@@ -146,11 +146,15 @@ export const adventureMethods = {
     this.event = null;
     this.reveal = null;
     this.victoryChest = true;
+    // The end-game chest is a concise reward for finishing the expedition:
+    // a few rare finds and one guaranteed legendary, rather than every drop.
+    const rareRewards = Array.from({ length: 3 }, () => ({
+      type: rollGear(this.random, "rare"),
+      qty: 1,
+    }));
     this.victoryRewards = [
-      ...(this.victoryRewards || []).filter(Boolean),
-      ...this.loot
-        .filter((i) => i.qty > 0)
-        .map(({ type, qty }) => ({ type, qty })),
+      ...rareRewards,
+      { type: rollGear(this.random, "legendary"), qty: 1 },
     ];
     this.loot = [];
     for (const p of this.players) {
@@ -318,6 +322,17 @@ export const adventureMethods = {
       return;
     }
     let door = this.portals.find((d) => !d.temple && d.owner === p.id);
+    // A nearby private portal is already the shared entry for this storage room.
+    // Reuse it instead of spawning a second portal on top of the first one.
+    const nearby = this.portals.find(
+      (d) => !d.temple && d.owner !== p.id && dist(p, d) <= 70,
+    );
+    if (!door && nearby) {
+      if (dist(p, nearby) <= 26) this.enterRoom(p, nearby);
+      else this.message("A storage portal is already open nearby.");
+      this.persist();
+      return;
+    }
     if (!door) {
       const angle = Math.atan2(p.faceY || 0, p.faceX || 1);
       let spot;
@@ -796,7 +811,7 @@ export const adventureMethods = {
             else if (this.victoryChest && dist(p, { x: 800, y: 914 }) < 60)
               this.openInventory(p, "victory");
             else if (dist(p, { x: 800, y: 800 }) < 130)
-              this.openInventory(p, "shared");
+              this.message("The board has no storage chest. Visit a portal or use the Field Kit for storage.");
           }
           p.interactTime = 0;
           p.interactUsed = false;
@@ -1101,3 +1116,4 @@ export const adventureMethods = {
     this.persist();
   },
 };
+

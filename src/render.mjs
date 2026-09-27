@@ -127,7 +127,7 @@ export class Renderer {
       ctx.font = "7px monospace";
       ctx.textAlign = "center";
       ctx.fillText(
-        "SHARED VICTORY CHEST · " + (game.controlLabels?.interact || "E / Y"),
+        "VICTORY CHEST · " + (game.controlLabels?.interact || "E / Y"),
         CENTER,
         CENTER + 141,
       );
@@ -1270,4 +1270,5 @@ export function drawMenu(canvas, assets, time) {
   c.fillStyle = vignette;
   c.fillRect(0, 0, w, h);
 }
+
 
