@@ -46,3 +46,13 @@ test("Approaching guest enters on touch; returning owner is not pulled back in",
   assert.equal(p.room, null);
   assert.ok(d.closing < 10);
 });
+test("Players summoning beside an existing portal reuse the same storage room", () => {
+  const { g, p } = setup(), q = g.addPlayer("pad:0");
+  g.portal(p);
+  const d = g.portals[0];
+  q.x = d.x;
+  q.y = d.y;
+  g.portal(q);
+  assert.equal(g.portals.filter((door) => !door.temple).length, 1);
+  assert.equal(q.room, d.id);
+});
