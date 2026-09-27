@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {jointAngle,validAngles} from '../src/joint-angles.mjs';
+import {defaultPlayerMotion,drawPlayer,validatePlayerMotion} from '../src/player-motion.mjs';
+import {moveGraphKey,insertFrame,removeFrame} from '../src/animation-graph.mjs';
+test('Joint angles interpolate across the shortest arc and stay isolated per facing',()=>{const m=defaultPlayerMotion();m.clips.run.keys=[{frame:0,joints:{handR:[0,0,0]},angles:{1:{handR:170}}},{frame:4,joints:{handR:[0,0,0]},angles:{1:{handR:-170}}}];assert.equal(Math.abs(jointAngle(m,'run',2,1,'handR')),180);assert.equal(jointAngle(m,'run',2,0,'handR'),0);assert.ok(validatePlayerMotion(m));});
+test('Angle keys travel with graph moves and frame insertion/removal',()=>{const m=defaultPlayerMotion(),c=m.clips.run;c.keys=[{frame:0,joints:{handR:[0,0,0]},angles:{0:{handR:45}}}];assert.ok(moveGraphKey(c,'handR',0,3,0,2));assert.equal(c.keys.find(k=>k.frame===3).angles[0].handR,45);insertFrame(c,2);assert.equal(c.keys.find(k=>k.frame===4).angles[0].handR,45);removeFrame(c,2);assert.equal(c.keys.find(k=>k.frame===3).angles[0].handR,45);});
+test('Renderer applies hand and foot rotations around their joint anchors',()=>{const m=defaultPlayerMotion(),rotations=[];m.jointAngles={0:{handR:30,footL:-45}};const c={fillStyle:'',fillRect(){},save(){},restore(){},translate(){},rotate(a){rotations.push(a);}};drawPlayer(c,{faceX:0,faceY:1,equipment:{hand1:'sword'},animationAction:'idle',playerFrame:0},0,m);assert.ok(rotations.some(a=>Math.abs(a-Math.PI/6)<1e-9));assert.ok(rotations.some(a=>Math.abs(a+Math.PI/4)<1e-9));assert.equal(validAngles({0:{handR:NaN}},m.joints),false);});

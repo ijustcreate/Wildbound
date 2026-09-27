@@ -1,0 +1,23 @@
+{
+  "name": "wildbound",
+  "version": "1.0.5",
+  "private": true,
+  "description": "A living jungle board. Shared-screen local co-op adventure and pixel workshop.",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "node scripts/serve.cjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:app": "electron . --smoke-test",
+    "package": "node scripts/package.cjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^41.0.2",
+    "pngjs": "^7.0.0",
+    "prettier": "^3.9.9"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}
