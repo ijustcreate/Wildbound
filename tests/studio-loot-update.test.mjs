@@ -11,16 +11,16 @@ test('First and fourth-space rolls do not manufacture loot',()=>{
  g.hitTable(p);g.resolveRoll();assert.equal(g.loot.length,0);
  p.progress=2;g.roll=null;g.turnOrder=[];g.hitTable(p);g.resolveRoll();assert.equal(p.progress,4);assert.equal(g.loot.length,0);
 });
-test('Victory gathers all unclaimed loot without a 24-slot cap or duplicate awards',()=>{
+test('Victory chest contains a focused rare and legendary reward set',()=>{
  const g=new Game(),p=g.addPlayer('keyboard');g.start();
  g.loot=Array.from({length:60},(_,i)=>({type:i%2?'potion':'sword',qty:i+1,x:50,y:50}));
- const expected=g.loot.map(({type,qty})=>({type,qty}));
- g.completeVictory();assert.deepEqual(g.victoryRewards,expected);assert.equal(g.loot.length,0);
- g.completeVictory();assert.deepEqual(g.victoryRewards,expected);
- g.openInventory(p,'victory');g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:50');assert.equal(p.ui.index,50);
- g.newExpedition();assert.equal(g.loot.length,0);assert.deepEqual(g.victoryRewards,expected);assert.ok(g.victoryChest);
-});
-test('Graph frame changes preserve keys and outgoing easing affects the game pose',()=>{
+ g.completeVictory();
+ assert.equal(g.victoryRewards.length,4);
+ assert.equal(g.loot.length,0);
+ g.completeVictory();assert.equal(g.victoryRewards.length,4);
+ g.openInventory(p,'victory');g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:3');assert.equal(p.ui.index,3);
+ g.newExpedition();assert.equal(g.loot.length,0);assert.equal(g.victoryRewards.length,4);assert.ok(g.victoryChest);
+});test('Graph frame changes preserve keys and outgoing easing affects the game pose',()=>{
  const m=defaultPlayerMotion(),c=m.clips.idle;
  c.keys=[{frame:0,joints:{head:[0,0,0]},interpolation:{head:'hold'}},{frame:4,joints:{head:[8,0,0]}}];
  assert.equal(poseAt(m,'idle',2).head[0],0);
@@ -41,3 +41,4 @@ test('Portal outline and glow use the owning player highlight',()=>{
  drawPortal(c,{x:0,y:0,color:'#22bb99',closing:null},0);
  assert.equal(c.shadowColor,'#22bb99');assert.equal(c.strokeStyle,'#22bb99');
 });
+

@@ -22,24 +22,26 @@ test("Character names reject case and whitespace duplicates", () => {
   assert.ok(characterNameError("x", []));
   assert.equal(characterNameError("Scout", []), "");
 });
-test("Victory gathers loose loot into the reward chest even with a full shared stash", () => {
+test("Victory rewards three rares and one legendary", () => {
   const g = setup();
   g.sharedStash = Array.from({ length: 24 }, () => ({ type: "sword", qty: 1 }));
   g.dropLoot(400, 400, "hat");
-  const loot = g.loot.map(({type,qty})=>({type,qty}));
   g.completeVictory();
   assert.deepEqual(g.loot, []);
-  assert.deepEqual(g.victoryRewards, loot);
+  assert.equal(g.victoryRewards.length, 4);
+  assert.equal(g.victoryRewards.filter((i) => ITEMS[i.type].rarity === "rare").length, 3);
+  assert.equal(g.victoryRewards.filter((i) => ITEMS[i.type].rarity === "legendary").length, 1);
+  assert.ok(g.victoryRewards.every((i) => i.qty === 1));
+  const rewards = structuredClone(g.victoryRewards);
   g.completeVictory();
-  assert.deepEqual(g.victoryRewards, loot);
+  assert.deepEqual(g.victoryRewards, rewards);
   const seed = g.seed;
   g.newExpedition();
   assert.notEqual(g.seed, seed);
   assert.deepEqual(g.loot, []);
-  assert.deepEqual(g.victoryRewards, loot);
+  assert.deepEqual(g.victoryRewards, rewards);
   assert.equal(g.current, null);
-});
-test("Ordinary loot and boss equipment never award legendary items", () => {
+});test("Ordinary loot and boss equipment never award legendary items", () => {
   for (let n = 0; n < 100; n++)
     assert.notEqual(ITEMS[rollGear(() => n / 100)].rarity, "legendary");
   const g = setup();
@@ -154,3 +156,4 @@ for (const kind of [
       s.replace(s.defaults());
     },
   );
+
