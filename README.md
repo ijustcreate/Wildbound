@@ -2,7 +2,9 @@
 
 # Wildbound — The Living Board
 
-### A local co-op pixel adventure where the board comes alive.
+### A Jumanji-inspired local co-op roguelike where the board comes alive.
+
+**Wildbound** is the working title for a game I am building with my son, Ember. The idea began while we were reading *Jumanji* together at bedtime: we imagined our own living board, dangerous jungle expeditions, and a story we could keep adding to.
 
 <img src="assets/wildbound-header-v2.png" alt="Wildbound jungle adventure banner" width="100%">
 
@@ -112,3 +114,5 @@ The release remains focused on local co-op. Direct-network transport is experime
 ## Compatibility and saves
 
 Old character and rig migrations remain supported. Saves use validated asynchronous temporary-file writes and backups. Import adds new character IDs without replacing existing heroes; recovering a previous save has an explicit in-game confirmation.
+
+
