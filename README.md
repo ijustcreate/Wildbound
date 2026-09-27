@@ -6,6 +6,12 @@
 
 **Wildbound** is the working title for a game I am building with my son, Ember. The idea began while we were reading *Jumanji* together at bedtime: we imagined our own living board, dangerous jungle expeditions, and a story we could keep adding to.
 
+## A game and a workshop
+
+Wildbound is designed as a full creative workshop as well as a playable game. The goal is to keep human design and creation in the loop: the people making the game should be able to draw a character, shape a creature, tune a combat move, build a level, author an encounter, or invent a new effect and see that idea become part of the world.
+
+Over time, the project is intended to become a standalone game that is easy to modify and extend. New characters, enemies, animations, gear, levels, environments, particles, sounds, rules, and story events should be addable through approachable tools and documented assets instead of requiring a complete rewrite of the engine. The workshop exists to make experimentation, family collaboration, and personal authorship part of the game itself.
+
 <img src="assets/wildbound-header-v2.png" alt="Wildbound jungle adventure banner" width="100%">
 
 <p>
@@ -114,5 +120,6 @@ The release remains focused on local co-op. Direct-network transport is experime
 ## Compatibility and saves
 
 Old character and rig migrations remain supported. Saves use validated asynchronous temporary-file writes and backups. Import adds new character IDs without replacing existing heroes; recovering a previous save has an explicit in-game confirmation.
+
 
 
