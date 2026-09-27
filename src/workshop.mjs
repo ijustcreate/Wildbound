@@ -334,19 +334,17 @@ export class Workshop {
   }
   paint(e) {
     const r = $("pixel-canvas").getBoundingClientRect(),
-      x = Math.max(
+      fit = this.fitRect(r.width, r.height, this.sprite.width, this.sprite.height),
+      localX = e.clientX - r.left - fit.x,
+      localY = e.clientY - r.top - fit.y;
+    if (localX < 0 || localY < 0 || localX >= fit.width || localY >= fit.height) return;
+    const x = Math.max(
         0,
-        Math.min(
-          this.sprite.width - 1,
-          Math.floor(((e.clientX - r.left) / r.width) * this.sprite.width),
-        ),
+        Math.min(this.sprite.width - 1, Math.floor((localX / fit.width) * this.sprite.width)),
       ),
       y = Math.max(
         0,
-        Math.min(
-          this.sprite.height - 1,
-          Math.floor(((e.clientY - r.top) / r.height) * this.sprite.height),
-        ),
+        Math.min(this.sprite.height - 1, Math.floor((localY / fit.height) * this.sprite.height)),
       );
     if (this.layer === "footprint") {
       ensureFootprint(this.sprite, this.name);
@@ -432,6 +430,12 @@ export class Workshop {
     );
     return c;
   }
+  fitRect(boxWidth, boxHeight, contentWidth, contentHeight) {
+    const scale = Math.min(boxWidth / contentWidth, boxHeight / contentHeight);
+    const width = contentWidth * scale;
+    const height = contentHeight * scale;
+    return { x: (boxWidth - width) / 2, y: (boxHeight - height) / 2, width, height };
+  }
   checker(ctx, w, h, size = 12) {
     for (let y = 0; y < h; y += size)
       for (let x = 0; x < w; x += size) {
@@ -444,21 +448,23 @@ export class Workshop {
     const canvas = $("pixel-canvas"),
       ctx = canvas.getContext("2d"),
       s = this.sprite,
-      unit = canvas.width / s.width;
+      fit = this.fitRect(canvas.width, canvas.height, s.width, s.height),
+      unitX = fit.width / s.width,
+      unitY = fit.height / s.height;
     ctx.imageSmoothingEnabled = false;
-    this.checker(ctx, canvas.width, canvas.height, unit * 2);
+    this.checker(ctx, canvas.width, canvas.height, Math.max(unitX, unitY) * 2);
     this.previewCanvas = this.spriteCanvas(s);
-    ctx.drawImage(this.previewCanvas, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(this.previewCanvas, fit.x, fit.y, fit.width, fit.height);
     if (this.layer === "footprint") {
       ensureFootprint(s, this.name);
       ctx.fillStyle = "#fa5e627d";
       s.footprint.forEach((v, i) => {
         if (v)
           ctx.fillRect(
-            (i % s.width) * unit,
-            (Math.floor(i / s.width) * canvas.height) / s.height,
-            unit,
-            canvas.height / s.height,
+            fit.x + (i % s.width) * unitX,
+            fit.y + Math.floor(i / s.width) * unitY,
+            unitX,
+            unitY,
           );
       });
     }
@@ -467,12 +473,12 @@ export class Workshop {
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let i = 0; i <= s.width; i++) {
-        ctx.moveTo(i * unit, 0);
-        ctx.lineTo(i * unit, canvas.height);
+        ctx.moveTo(fit.x + i * unitX, fit.y);
+        ctx.lineTo(fit.x + i * unitX, fit.y + fit.height);
       }
       for (let i = 0; i <= s.height; i++) {
-        ctx.moveTo(0, (i * canvas.height) / s.height);
-        ctx.lineTo(canvas.width, (i * canvas.height) / s.height);
+        ctx.moveTo(fit.x, fit.y + i * unitY);
+        ctx.lineTo(fit.x + fit.width, fit.y + i * unitY);
       }
       ctx.stroke();
     }
@@ -493,7 +499,14 @@ export class Workshop {
       p.lineTo(180, y);
       p.stroke();
     }
-    p.drawImage(this.spriteCanvas(s), 42, 17, 96, 96);
+    const previewFit = this.fitRect(96, 96, s.width, s.height);
+    p.drawImage(
+      this.spriteCanvas(s),
+      42 + previewFit.x,
+      17 + previewFit.y,
+      previewFit.width,
+      previewFit.height,
+    );
     $("pixel-status").textContent =
       s.width +
       " × " +
@@ -544,20 +557,30 @@ export class Workshop {
         state: mode === "attack" ? "windup" : "hunt",
         attack: mode === "attack" ? 0.34 * (1 - (time % 1)) : 0,
       };
-    if (this.layer === "footprint")
-      c.drawImage(this.previewCanvas, 42, 17, 96, 96);
-    else this.previewAnimator.draw(c, actor, time, 76);
+    if (this.layer === "footprint") {
+      const previewFit = this.fitRect(96, 96, this.sprite.width, this.sprite.height);
+      c.drawImage(
+        this.previewCanvas,
+        42 + previewFit.x,
+        17 + previewFit.y,
+        previewFit.width,
+        previewFit.height,
+      );
+    } else this.previewAnimator.draw(c, actor, time, 76);
     if (this.layer === "footprint") {
       ensureFootprint(this.sprite, this.name);
       c.fillStyle = "#fa5e628a";
       this.sprite.footprint.forEach((v, i) => {
         if (v)
-          c.fillRect(
-            42 + ((i % this.sprite.width) * 96) / this.sprite.width,
-            17 + (Math.floor(i / this.sprite.width) * 96) / this.sprite.height,
-            96 / this.sprite.width,
-            96 / this.sprite.height,
-          );
+          (() => {
+            const fit = this.fitRect(96, 96, this.sprite.width, this.sprite.height);
+            c.fillRect(
+              42 + fit.x + ((i % this.sprite.width) * fit.width) / this.sprite.width,
+              17 + fit.y + (Math.floor(i / this.sprite.width) * fit.height) / this.sprite.height,
+              fit.width / this.sprite.width,
+              fit.height / this.sprite.height,
+            );
+          })();
       });
     }
   }

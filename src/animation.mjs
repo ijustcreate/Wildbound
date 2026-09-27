@@ -327,7 +327,14 @@ export class Animator {
       part(0, 8, 23, 32, -9, -9, 26, Math.max(7, Math.round(31 * flap)), -0.2);
       part(25, 8, 23, 32, 9, -9, 26, Math.max(7, Math.round(31 * flap)), 0.2);
       part(17, 9, 14, 35, 0, -14, 15, 34);
-    } else c.drawImage(source, -24, -24, 48, 48);
+    } else {
+      // Keep custom sprites (for example the tiger's 10x3 art) pixel-square
+      // when they are placed in the 48px animation cell.
+      const scale = Math.min(48 / source.width, 48 / source.height),
+        width = source.width * scale,
+        height = source.height * scale;
+      c.drawImage(source, -width / 2, -height / 2, width, height);
+    }
     c.restore();
     ctx.drawImage(
       this.surface,
