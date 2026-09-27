@@ -46,6 +46,7 @@ import { count, give, equip, ITEMS } from "./src/items.mjs";
 import { Designer } from "./src/designer.mjs";
 import { loadDefinitions, creatures } from "./src/definitions.mjs";
 loadDefinitions(EVENTS, ITEMS);
+await (await import('./src/project-rigs.mjs')).loadProjectRigs(EVENTS, ITEMS);
 let designer;
 import { Rooms, cleanInput } from "./src/rooms.mjs";
 import { saveSession, restoreSession } from "./src/session.mjs";
@@ -1477,7 +1478,7 @@ try {
     const finish=()=>{workshop.attachmentSave=null;Object.assign(workshop,original);back.remove();$('save-sprite').textContent='SAVE SPRITE';show(priorScreen);paused=priorPaused;designer.dialog.showModal();designer.playerStudio.animate(0);};
     const back=document.createElement('button');back.textContent='Cancel and return to rig';back.className='full';back.onclick=finish;$('save-sprite').after(back);
     workshop.name=detail.name;workshop.sprite=structuredClone(detail.sprite);workshop.history=[];workshop.future=[];workshop.layer='art';$('sprite-layer').value='art';$('sprite-name').value=detail.name;
-    workshop.attachmentSave=(sprite)=>{detail.apply(sprite);finish();};$('save-sprite').textContent='SAVE TO BONE & RETURN';workshop.render();
+    workshop.attachmentSave=async(sprite)=>{await detail.apply(sprite);finish();};$('save-sprite').textContent='SAVE TO BONE & RETURN';workshop.render();
   });
   const studioButton = document.createElement("button");
   studioButton.textContent = "ANIMATION & GAME STUDIO";

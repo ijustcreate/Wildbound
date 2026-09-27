@@ -118,6 +118,13 @@ app.whenReady().then(async () => {
   const profilePath = path.join(app.getPath("userData"), "characters-v1.json");
   const sessionPath = path.join(app.getPath("userData"), "expedition-v1.json");
   const store = require("./save-store.cjs");
+  const rigStore = require('./project-rig-store.cjs').createRigStore({
+    appPath: app.getAppPath(), exePath: app.getPath('exe'),
+    userData: app.getPath('userData'), packaged: app.isPackaged,
+    testMode: process.argv.includes('--smoke-test'),
+  });
+  ipcMain.handle('project-rigs-load', () => rigStore.load());
+  ipcMain.handle('project-rigs-save', (_e, data) => rigStore.save(data));
   ipcMain.handle("session-load", () => store.read(sessionPath, "session"));
   ipcMain.handle("session-save", (_e, data) =>
     store.write(sessionPath, data, "session"),

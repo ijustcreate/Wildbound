@@ -407,9 +407,9 @@ export class Workshop {
     }
     this.render();
   }
-  save() {
+  async save() {
     try {
-      if(this.attachmentSave) { if(!validateSprite(this.sprite))throw Error('Invalid sprite.');this.attachmentSave(structuredClone(this.sprite));return; }
+      if(this.attachmentSave) { if(!validateSprite(this.sprite))throw Error('Invalid sprite.');await this.attachmentSave(structuredClone(this.sprite));return; }
       const name = $("sprite-name").value.trim();
       this.assets.save(name, this.sprite);
       this.name = name;

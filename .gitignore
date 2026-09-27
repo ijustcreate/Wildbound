@@ -4,3 +4,5 @@ dist/
 test-output/
 *.log
 build/*.zip
+authored/*.tmp
+authored/*.bak

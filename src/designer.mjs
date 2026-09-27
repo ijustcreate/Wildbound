@@ -13,6 +13,7 @@ import {
 } from "./definitions.mjs";
 import { Animator } from "./animation.mjs";
 import { RigStudio } from "./player-studio.mjs";
+import { saveProjectRigs } from './project-rigs.mjs';
 const element = (tag, text) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
@@ -33,12 +34,13 @@ export class Designer {
     this.time = 0;
     this.poseTime = 0;
     this.animator = new Animator(assets);
-    this.playerStudio = new RigStudio(() => {
+    this.playerStudio = new RigStudio(async () => {
       localStorage.setItem(
         "wildbound-design",
         JSON.stringify(definitionPack(this.events, this.items)),
       );
       this.onSave();
+      return await saveProjectRigs(this.events, this.items);
     });
     this.dialog = element("dialog");
     this.dialog.className = "designer-dialog";
@@ -612,7 +614,7 @@ export class Designer {
       this.dialog.append(fields);
     }
     const footer = element("footer");
-    this.button(footer, "Save definitions", () => {
+    this.button(footer, "Save definitions", async () => {
       try {
         for (const c of Object.values(creatures))
           if (!validateRig(c.rig))
@@ -622,6 +624,7 @@ export class Designer {
           JSON.stringify(definitionPack(this.events, this.items)),
         );
         this.onSave();
+        await saveProjectRigs(this.events, this.items);
         this.status.textContent =
           "Saved. Existing creatures refreshed; new events use these settings.";
       } catch (e) {

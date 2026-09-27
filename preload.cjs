@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("desktop", {
   testMode: process.argv.includes("--wildbound-test"),
+  loadProjectRigs: () => ipcRenderer.invoke('project-rigs-load'),
+  saveProjectRigs: (data) => ipcRenderer.invoke('project-rigs-save', data),
   restoreBackup: () => ipcRenderer.invoke("restore-backup"),
   loadHouseDesigns: () => ipcRenderer.invoke("house-designs-load"),
   saveHouseDesigns: (data) => ipcRenderer.invoke("house-designs-save", data),

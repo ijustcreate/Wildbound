@@ -497,14 +497,14 @@ export class RigStudio {
       const edit=document.createElement('button');edit.textContent='Edit in sprite editor';edit.onclick=()=>{
         this.playing=false;const model=this.model,direction=this.direction,id=part.id;
         const current=boneSprites(model,direction,this.selected).find(p=>p.id===id)||part;
-        window.dispatchEvent(new CustomEvent('rig-sprite-edit',{detail:{name:this.subject+' · '+id+' · '+DIRECTIONS[direction],sprite:copy(current.sprite),apply:(sprite)=>{
+        window.dispatchEvent(new CustomEvent('rig-sprite-edit',{detail:{name:this.subject+' · '+id+' · '+DIRECTIONS[direction],sprite:copy(current.sprite),apply:async(sprite)=>{
           this.remember();model.boneSprites||={};model.boneSprites[id]||={};
           const savedSprite={...sprite,x:current.sprite.x,y:current.sprite.y};
           model.boneSprites[id][direction]=savedSprite;
-          this.definition.replace(model);saveRigSpriteOverride(this.subject,id,direction,savedSprite);this.boneSpriteKey=null;this.save();this.changed('Sprite saved to this bone and facing.');
+          this.definition.replace(model);saveRigSpriteOverride(this.subject,id,direction,savedSprite);this.boneSpriteKey=null;const message=await this.save();this.changed(message || 'Sprite saved to this bone and facing.');
         }}}));
       };card.append(edit);
-      const reset=document.createElement('button');reset.textContent='Restore original';reset.onclick=()=>{this.remember();if(this.model.boneSprites?.[part.id])delete this.model.boneSprites[part.id][this.direction];removeRigSpriteOverride(this.subject,part.id,this.direction);this.definition.replace(this.model);this.save();this.boneSpriteKey=null;this.changed('Original sprite restored.');};card.append(reset);root.append(card);
+      const reset=document.createElement('button');reset.textContent='Restore original';reset.onclick=async()=>{try{this.remember();if(this.model.boneSprites?.[part.id])delete this.model.boneSprites[part.id][this.direction];removeRigSpriteOverride(this.subject,part.id,this.direction);this.definition.replace(this.model);const message=await this.save();this.boneSpriteKey=null;this.changed(message || 'Original sprite restored.');}catch(error){this.message(error.message);}};card.append(reset);root.append(card);
     }
   }
   changed(message = "Unsaved · preview updated") {
@@ -632,7 +632,7 @@ export class RigStudio {
         : "ANIMATE · drag to pose and key this frame. Changes are shared across all eight facings.";
     $('[data-do="play"]').textContent = this.playing ? "Pause" : "Play";
   }
-  command(action) {
+  async command(action) {
     if (action === "zoom-in" || action === "zoom-out") {
       this.zoomAt(action === "zoom-in" ? 1.25 : 0.8);
       return;
@@ -707,8 +707,8 @@ export class RigStudio {
       }
     } else if (action === "save") {
       try {
-        this.save();
-        this.message("Saved · gameplay and studio now use this rig");
+        const message = await this.save();
+        this.message(message || "Saved · gameplay and studio now use this rig");
       } catch (e) {
         this.message(e.message);
       }

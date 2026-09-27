@@ -508,7 +508,7 @@ export function loadDefinitions(events, items) {
     console.warn("Design data not loaded", e);
   }
 }
-export function applyDefinitions(d, events, items) {
+export function applyDefinitions(d, events, items, { spriteOverrides = true } = {}) {
   for (const [k, m] of Object.entries(d.beastMotions || {}))
     if (!beastMotions[k] || !validateBeastMotion(k, m))
       throw Error("Invalid beast rig");
@@ -569,7 +569,7 @@ export function applyDefinitions(d, events, items) {
     ...skeletonMotions,
     ...creatureMotions,
   };
-  for (const [subject, model] of Object.entries(savedSpriteModels))
+  if (spriteOverrides) for (const [subject, model] of Object.entries(savedSpriteModels))
     applyRigSpriteOverrides(subject, model);
   if (Array.isArray(d.events) && d.events.length) {
     const added = events.filter(
