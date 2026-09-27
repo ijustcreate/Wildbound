@@ -56,25 +56,24 @@ Open **G / right-stick click**. This pauses the local expedition while you organ
 
 ## Artwork
 
-The repository includes the source art used by the editor and runtime. A few pieces are shown here as a quick tour:
+The README uses current Wildbound presentation and production art. The older concept-sheet and creature-parts collage has been retired from this overview; the maintained source files remain available for reference in the repository.
 
 <div align="center">
 
 <table>
 <tr>
-<td><img src="assets/concept-sheet.png" alt="Wildbound character concept sheet" width="420"></td>
-<td><img src="assets/animal-parts-source-v1.png" alt="Wildbound animal parts sheet" width="420"></td>
+<td><img src="Progress%20pictures/wildboundv1Landing.png" alt="Current Wildbound landing artwork" width="560"></td>
+<td><img src="design/player-eight-directions-v031.png" alt="Current Wildbound player animation sheet" width="420"></td>
 </tr>
 <tr>
-<td><em>Explorer and gear concepts</em></td>
-<td><em>Creature parts and rig source</em></td>
+<td><em>Current game presentation</em></td>
+<td><em>Current player rig and animation reference</em></td>
 </tr>
 </table>
 
 </div>
 
-More production art and direction sheets are in [`design/`](design/) and [`Concept Art Pixel/`](Concept%20Art%20Pixel/). Runtime-ready art references are documented in the [asset manifest](assets/FIELD_KIT_ASSETS.md).
-
+Current production art and direction sheets are in [`design/`](design/). Runtime-ready art references are documented in the [asset manifest](assets/FIELD_KIT_ASSETS.md).
 ## Default controls
 
 | Action | Keyboard / mouse | Controller |
@@ -120,6 +119,7 @@ The release remains focused on local co-op. Direct-network transport is experime
 ## Compatibility and saves
 
 Old character and rig migrations remain supported. Saves use validated asynchronous temporary-file writes and backups. Import adds new character IDs without replacing existing heroes; recovering a previous save has an explicit in-game confirmation.
+
 
 
 
