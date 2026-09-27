@@ -66,6 +66,18 @@ test("Later rolls keep previously summoned creatures", () => {
   assert.ok(g.enemies.some((e) => e.id === lionId));
   assert.ok(g.enemies.length > 1);
 });
+test("A roll still moves the piece and can summon another event over a live wave", () => {
+  const g = game(),
+    p = g.players[0];
+  g.spawnEvent(0);
+  const existing = g.enemies.length,
+    startProgress = p.progress;
+  assert.ok(g.hitTable(p));
+  tick(g, 5);
+  assert.ok(p.progress > startProgress);
+  assert.ok(g.enemies.length > existing);
+  assert.ok(g.eventTime > 0);
+});
 test("All events have working spawns, including mixed squads", () => {
   const g = game();
   for (let i = 0; i < EVENTS.length; i++) {

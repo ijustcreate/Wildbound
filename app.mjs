@@ -71,7 +71,25 @@ let mapping = { ...DEFAULT_MAPPING };
 try { Object.assign(mapping, normalizeMapping(JSON.parse(localStorage.getItem("wildbound-mapping") || "{}"))); } catch {}
 const keys = new Set(),
   mouse = { x: 0, y: 0, down: false, active: false },
-  previousPads = new Map();
+  previousPads = new Map(),
+  controllerClaims = new Map(),
+  pendingControllerClaims = new Set(),
+  controllerLastSeen = new Map();
+const controllerClaimKey = (pad) =>
+  `${pad.index}|${pad.id || "unknown"}|${pad.mapping || ""}`;
+function requestControllerClaim(pad, key) {
+  if (!window.desktop?.claimController || pendingControllerClaims.has(key)) return;
+  pendingControllerClaims.add(key);
+  window.desktop.claimController(key).then((claimed) => {
+    if (claimed) controllerClaims.set(pad.index, key);
+  }).catch(() => {}).finally(() => pendingControllerClaims.delete(key));
+}
+function releaseControllerClaim(key) {
+  if (window.desktop?.releaseController) window.desktop.releaseController(key).catch(() => {});
+  for (const [index, owned] of controllerClaims)
+    if (owned === key) controllerClaims.delete(index);
+  controllerLastSeen.delete(key);
+}
 let soundEnabled = localStorage.getItem('wildbound-sound') !== 'off';
 let musicVolume = Number(localStorage.getItem('wildbound-music-volume') ?? .45);
 const audio = new GameAudio(); audio.enabled=soundEnabled;
@@ -439,11 +457,12 @@ function nameNewCharacter(p, done = () => {}) {
   dialog.id = "character-name-dialog";
   dialog.dataset.ownerDevice=p.device;
   dialog.innerHTML =
-    '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off"></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance and preview</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
+    '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back. Use the name button only when you want the on-screen keyboard.</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off" readonly></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
   document.body.append(dialog);
   const input = dialog.querySelector("input");
   input.value = p.name;
-  input.onclick=()=>openControllerKeyboard(input);
+  input.dataset.controllerSkip = "true";
+  input.tabIndex = -1;
   const appearance = structuredClone(DEFAULT_APPEARANCE);
   let creationDirection = 0,
     creationPose = "idle",
@@ -474,56 +493,23 @@ function nameNewCharacter(p, done = () => {}) {
     );
     c.restore();
   };
-  const previewOptions = document.createElement("div");
-  previewOptions.className = "appearance-toolbar";
-  const addChoice = (label, options, change) => {
-    const s = document.createElement("select");
-    s.setAttribute("aria-label", label);
-    for (const [v, t] of options) s.append(new Option(t, v));
-    s.onchange = () => {
-      change(s.value);
-      preview();
-    };
-    previewOptions.append(s);
+  const kitLabel = document.createElement("label");
+  kitLabel.className = "creation-choice creation-starting-gear";
+  kitLabel.textContent = "Starting gear";
+  const kit = document.createElement("select");
+  kit.setAttribute("aria-label", "Starting gear");
+  for (const [v, t] of [
+    ["classic", "Classic · three traps"],
+    ["melee", "Blade · sword and one trap"],
+    ["ranged", "Archer · bow, eight arrows and one trap"],
+    ["trapper", "Trapper · five traps"],
+  ]) kit.append(new Option(t, v));
+  kit.onchange = () => {
+    starterKit = kit.value;
+    preview();
   };
-  addChoice(
-    "Starter kit",
-    [
-      ["classic", "Classic · three traps"],
-      ["melee", "Blade · sword and one trap"],
-      ["ranged", "Archer · bow, eight arrows and one trap"],
-      ["trapper", "Trapper · five traps"],
-    ],
-    (v) => (starterKit = v),
-  );
-  addChoice(
-    "Facing",
-    Array.from({ length: 8 }, (_, i) => [i, "View " + (i + 1)]),
-    (v) => (creationDirection = +v),
-  );
-  addChoice(
-    "Pose",
-    ["idle", "run", "slash", "block"].map((v) => [v, v]),
-    (v) => (creationPose = v),
-  );
-  addChoice(
-    "Gear preview",
-    [
-      ["none", "No gear"],
-      ["armor", "Armor"],
-      ["magic", "Magic"],
-    ],
-    (v) =>
-      (creationGear =
-        v === "armor"
-          ? { head: "hat", chest: "armor", cape: "cape", hand1: "sword" }
-          : v === "magic"
-            ? { head: "hat", hand1: "wand" }
-            : {}),
-  );
-  const kit=previewOptions.firstElementChild;
-  dialog.querySelector(".creation-preview").after(kit);
-  dialog.querySelector('.creation-details').append(previewOptions);
+  kitLabel.append(kit);
+  dialog.querySelector(".creation-preview").after(kitLabel);
   const nameTools = document.createElement("div");
   nameTools.className = "appearance-toolbar";
   const nameButton = document.createElement("button");
@@ -544,7 +530,9 @@ function nameNewCharacter(p, done = () => {}) {
     dialog.querySelector(".creation-appearance"),
     appearance,
     preview,
+    { compact: true },
   );
+  kit.focus({ preventScroll: true });
   const animateCreation = () => {
     if (!dialog.isConnected) return;
     preview();
@@ -1096,6 +1084,7 @@ function dialogController(pad, previous) {
       "button:not(:disabled), select:not(:disabled), input:not(:disabled), summary",
     ),
   ).filter((el) => {
+    if (el.dataset.controllerSkip === "true") return false;
     if(!el.getClientRects().length)return false;
     for(let node=el.parentElement;node&&node!==dialog;node=node.parentElement)
       if(node.tagName==='DETAILS'&&!node.open && !(el.tagName==='SUMMARY'&&el.parentElement===node))return false;
@@ -1181,6 +1170,8 @@ function dialogController(pad, previous) {
 function inputFrame() {
   const inputs = {},
     pads = Array.from(navigator.getGamepads?.() || []).filter(Boolean);
+  const now = performance.now(), claimSupported = !!window.desktop?.claimController;
+  const seenControllerClaims = new Set();
   for (const pad of pads) {
     let previous = previousPads.get(pad.index) || [];
     const modal = !!document.querySelector("dialog[open]"),
@@ -1190,6 +1181,15 @@ function inputFrame() {
     // Solo mouse-started expeditions should work as soon as a controller is used.
     const device = "pad:" + pad.index;
     const active = rising || pad.axes.slice(0, 2).some((v) => Math.abs(v) > 0.35);
+    const claimKey = controllerClaimKey(pad), ownedKey = controllerClaims.get(pad.index);
+    controllerLastSeen.set(claimKey, now);
+    if (ownedKey === claimKey) {
+      seenControllerClaims.add(claimKey);
+    } else if (claimSupported) {
+      if (active && document.hasFocus()) requestControllerClaim(pad, claimKey);
+      previousPads.set(pad.index, pad.buttons.map((b) => b.pressed));
+      continue;
+    }
     if (active && screen === "play" && rooms.role !== "client" &&
         !game.players.some((p) => p.device === device)) {
       const connected = new Set(pads.map((p) => "pad:" + p.index));
@@ -1301,6 +1301,12 @@ function inputFrame() {
       pad.index,
       pad.buttons.map((b) => b.pressed),
     );
+  }
+  if (claimSupported) {
+    for (const [index, key] of controllerClaims) {
+      if (!seenControllerClaims.has(key) && now - (controllerLastSeen.get(key) || 0) > 1500)
+        releaseControllerClaim(key);
+    }
   }
   if (screen === "lobby") {
     $("device-status").textContent = pads.length

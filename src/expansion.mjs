@@ -16,6 +16,27 @@ export function toggleDoor(g,p){
 }
 export const isSpider=e=>e.kind==='spider'||e.kind==='baby_spider';
 export const webSlow=(g,a)=>!isSpider(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
+export function maintainSpiderWebs(g, dt = 0) {
+  const adults = (g.enemies || []).filter(e => e.hp > 0 && isSpider(e) && e.kind === 'spider');
+  if (!adults.length) {
+    for (const tree of g.scenery || []) tree.webbed = false;
+    g.webs = [];
+    return;
+  }
+  for (const w of g.webs || []) {
+    const nearby = adults.some(e => Math.hypot(e.x - w.x, e.y - w.y) < w.radius + 80);
+    if (nearby) w.radius = Math.min(220, w.radius + dt * 0.8);
+    for (const tree of g.scenery || [])
+      if (['tree','palm','snow_tree'].includes(tree.kind) && Math.hypot(tree.x-w.x, tree.y-w.y) < w.radius) tree.webbed = true;
+  }
+}
+function layWebEgg(g, adult, web) {
+  const angle = Math.atan2(adult.y - web.y, adult.x - web.x) + Math.PI * 0.35;
+  const x = web.x + Math.cos(angle) * (web.radius - 14), y = web.y + Math.sin(angle) * (web.radius - 14);
+  g.enemies.push({id:g.nextId++,group:adult.group,kind:'spider_egg',x,y,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
+  adult.webEggCooldown = 45;
+  g.message('A spider lays an egg at the web edge.');
+}
 export function spawnSpot(g,a,d,interior=false){
   if(interior && g.house?.floors?.length){
     const candidates=[];
@@ -36,7 +57,7 @@ export function spawnSpot(g,a,d,interior=false){
   return {x:800,y:1250};
 }
 export function spiderNest(g,anchor,group){
-  g.webs ||= [];g.webs.push({x:anchor.x,y:anchor.y,radius:145});
+  g.webs ||= [];g.webs.push({x:anchor.x,y:anchor.y,radius:145,group});
   for(const tree of g.scenery)if(['tree','palm','snow_tree'].includes(tree.kind)&&Math.hypot(tree.x-anchor.x,tree.y-anchor.y)<180)tree.webbed=true;
   for(let i=0;i<3;i++){
     let spot={x:anchor.x+Math.cos(i*2.1)*42,y:anchor.y+Math.sin(i*2.1)*42};
@@ -62,6 +83,19 @@ export function tickSpider(g,e,dt){
   if(trap&&trap.variant!=='slow'){trap.life=0;e.state='snared';e.timer=2;return true;}
   const target=targets.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];
   if(!target)return true;
+  if (e.kind === 'spider') {
+    const web = (g.webs || []).filter(w => w.group === e.group || Math.hypot(e.x-w.x,e.y-w.y)<w.radius+30).sort((a,b)=>Math.hypot(e.x-a.x,e.y-a.y)-Math.hypot(e.x-b.x,e.y-b.y))[0];
+    if (web) {
+      e.webEggCooldown = Math.max(0, (e.webEggCooldown ?? 45) - dt);
+      const sameGroupEgg = g.enemies.some(q => q.hp > 0 && q.kind === 'spider_egg' && q.group === e.group);
+      const lead = g.enemies.filter(q => q.hp > 0 && q.kind === 'spider' && q.group === e.group).sort((a,b)=>a.id-b.id)[0];
+      if (lead === e && e.webEggCooldown <= 0 && !sameGroupEgg) layWebEgg(g,e,web);
+      if (Math.hypot(e.x-web.x,e.y-web.y) > web.radius * 0.82) {
+        const d = Math.hypot(web.x-e.x, web.y-e.y) || 1;
+        g.moveActor(e, (web.x-e.x)/d*e.speed*dt, (web.y-e.y)/d*e.speed*dt);
+      }
+    }
+  }
   const d=Math.hypot(target.x-e.x,target.y-e.y)||1;e.faceX=(target.x-e.x)/d;e.faceY=(target.y-e.y)/d;
   if(g.house&&!lineClear(g,e,target)){navigateEnemy(g,e,target,dt);return true;}
   if(d>28){const moved=g.moveActor(e,e.faceX*e.speed*dt,e.faceY*e.speed*dt,insect&&e.kind!=='beetle');if(moved<e.speed*dt*.2)g.moveActor(e,-e.faceY*e.speed*dt,e.faceX*e.speed*dt);}

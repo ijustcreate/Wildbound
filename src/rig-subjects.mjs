@@ -97,6 +97,7 @@ export const RIG_SUBJECTS = {
           archer: "Skeleton / archer",
           skeleton_unarmed: "Skeleton / unarmed",
           skeleton_boss: "Skeleton / horned boss",
+          frost_skeleton_mage: "Frost skeletal mage",
         }[kind],
         data: skeletonMotions[kind],
         defaults: () => defaultSkeletonMotion(kind),
@@ -233,5 +234,6 @@ export const RIG_SUBJECTS = {
   ),
 };
 RIG_SUBJECTS.tiger={...RIG_SUBJECTS.lion,name:"Tiger / lion rig",sprite:"tiger",draw:(c,a,t,m,p)=>drawLion(c,{...a,skin:"tiger"},t,m,p)};
+RIG_SUBJECTS.tsetse={...RIG_SUBJECTS.bat,name:"Tsetse fly / winged rig",sprite:"bat"};
 export const rigSubject = (name) =>
-  RIG_SUBJECTS[name?.startsWith("explorer") ? "player" : name==='baby_spider'?'spider':name];
+  RIG_SUBJECTS[name?.startsWith("explorer") ? "player" : name==='baby_spider'?'spider':name==='tsetse'?'tsetse':name];

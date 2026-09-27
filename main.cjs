@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
+const { createHash, randomUUID } = require("node:crypto");
 let window;
+let releaseControllerClaims = () => {};
 const testOutput = path.join(
   app.isPackaged ? path.dirname(app.getPath("exe")) : __dirname,
   "test-output",
@@ -13,6 +15,72 @@ app.commandLine.appendSwitch("disable-background-timer-throttling");
 if (process.argv.includes("--smoke-test"))
   app.setPath("userData", path.join(testOutput, "profile"));
 app.whenReady().then(async () => {
+  const controllerClaimRoot = path.join(
+    app.getPath("temp"),
+    "wildbound-controller-claims",
+  );
+  fs.mkdirSync(controllerClaimRoot, { recursive: true });
+  const controllerOwner = randomUUID();
+  const ownedControllerClaims = new Set();
+  const claimFile = (key) =>
+    path.join(
+      controllerClaimRoot,
+      createHash("sha256").update(String(key)).digest("hex") + ".json",
+    );
+  const staleOwner = (record) => {
+    if (!record?.pid || record.owner === controllerOwner) return false;
+    try {
+      process.kill(record.pid, 0);
+      return false;
+    } catch {
+      return true;
+    }
+  };
+  const releaseClaimFile = (file) => {
+    try {
+      const record = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (record.owner === controllerOwner) fs.unlinkSync(file);
+    } catch {}
+  };
+  releaseControllerClaims = () => {
+    for (const file of ownedControllerClaims) releaseClaimFile(file);
+    ownedControllerClaims.clear();
+  };
+  ipcMain.handle("controller-claim", (_event, key) => {
+    if (!key) return false;
+    const file = claimFile(key);
+    const record = JSON.stringify({ owner: controllerOwner, pid: process.pid, key });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const fd = fs.openSync(file, "wx");
+        fs.writeFileSync(fd, record);
+        fs.closeSync(fd);
+        ownedControllerClaims.add(file);
+        return true;
+      } catch (error) {
+        if (error.code !== "EEXIST") return false;
+        try {
+          const existing = JSON.parse(fs.readFileSync(file, "utf8"));
+          if (existing.owner === controllerOwner) {
+            ownedControllerClaims.add(file);
+            return true;
+          }
+          if (!staleOwner(existing)) return false;
+          fs.unlinkSync(file);
+        } catch {
+          return false;
+        }
+      }
+    }
+    return false;
+  });
+  ipcMain.handle("controller-release", (_event, key) => {
+    if (!key) return false;
+    const file = claimFile(key);
+    releaseClaimFile(file);
+    ownedControllerClaims.delete(file);
+    return true;
+  });
   window = new BrowserWindow({
     width: 1440,
     height: 940,
@@ -65,7 +133,10 @@ app.whenReady().then(async () => {
   ipcMain.handle("room-join", (_e, address, name) => room.join(address, name));
   ipcMain.on("room-send", (_e, data) => room.send(data));
   ipcMain.handle("room-stop", () => room.stop());
-  app.on("before-quit", () => room.stop());
+  app.on("before-quit", () => {
+    releaseControllerClaims();
+    room.stop();
+  });
   ipcMain.handle("profiles-load", () => store.read(profilePath, "profiles"));
   ipcMain.handle("profiles-save", (_e, data) =>
     store.write(profilePath, data, "profiles"),

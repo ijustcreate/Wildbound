@@ -30,8 +30,83 @@ export function shade(color) {
   );
 }
 const appearanceLocks = new WeakMap();
-export function appearanceControls(root, value, changed) {
+export function appearanceControls(root, value, changed, options = {}) {
   root.innerHTML = "";
+  root.classList.toggle("compact-appearance", !!options.compact);
+  if (options.compact) {
+    const presets = {
+      Explorer: {
+        skin: "#d9ab76", shirt: "#39745b", pants: "#665b87",
+        shoes: "#49372d", hair: "crop", hairColor: "#593923",
+      },
+      Sunward: {
+        skin: "#865437", shirt: "#d3b562", pants: "#49372d",
+        shoes: "#272c35", hair: "curls", hairColor: "#272c35",
+      },
+      River: {
+        skin: "#f2d6b3", shirt: "#46799e", pants: "#272c35",
+        shoes: "#593923", hair: "ponytail", hairColor: "#a94955",
+      },
+    };
+    const skinTones = [
+      ["#f2d6b3", "Light"],
+      ["#d9ab76", "Warm"],
+      ["#b97850", "Bronze"],
+      ["#865437", "Deep"],
+      ["#54372c", "Umber"],
+    ];
+    const hairColors = [
+      ["#272c35", "Black"],
+      ["#593923", "Brown"],
+      ["#a94955", "Auburn"],
+      ["#d3b562", "Golden"],
+      ["#d9d4ba", "Silver"],
+    ];
+    const grid = document.createElement("div");
+    grid.className = "compact-appearance-grid";
+    const addSelect = (label, options, current, apply) => {
+      const field = document.createElement("label");
+      field.className = "creation-choice";
+      field.textContent = label;
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", label);
+      for (const [id, name] of options) select.append(new Option(name, id));
+      select.value = current;
+      select.onchange = () => {
+        apply(select.value);
+        changed();
+      };
+      field.append(select);
+      grid.append(field);
+    };
+    addSelect(
+      "Look",
+      [["", "Choose a look"], ...Object.keys(presets).map((name) => [name, name])],
+      "",
+      (name) => {
+        if (presets[name]) Object.assign(value, presets[name]);
+      },
+    );
+    addSelect("Skin tone", skinTones, value.skin, (v) => (value.skin = v));
+    addSelect(
+      "Hair style",
+      Object.entries(HAIR_STYLES),
+      value.hair,
+      (v) => (value.hair = v),
+    );
+    addSelect(
+      "Hair color",
+      hairColors,
+      value.hairColor,
+      (v) => (value.hairColor = v),
+    );
+    root.append(grid);
+    const note = document.createElement("p");
+    note.className = "appearance-help";
+    note.textContent = "Choose a look, then fine-tune skin and hair.";
+    root.append(note);
+    return;
+  }
   const swatches = [
     "#d9ab76",
     "#f2d6b3",

@@ -6,7 +6,7 @@ import { creatureCue } from './sound-bank.mjs';
 import {iceMotion,snowAt} from './ice-world.mjs';
 import {collisionOffset, actorRadius, clearShot, navigateEnemy} from './navigation.mjs';
 import { initializeField, record, tickField } from "./field-systems.mjs";
-import {resolveEnvironment,structureBlocked,webSlow,spawnSpot,spiderNest,tickSpider,insideHouse} from './expansion.mjs';
+import {resolveEnvironment,structureBlocked,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
 import {
   waterAt,
@@ -185,6 +185,31 @@ EVENTS.push(
 );
 EVENTS.push(...HAZARD_EVENTS);
 EVENTS.push(
+  {
+    name: "The sleeping sickness",
+    kind: "tsetse",
+    count: 5,
+    hp: 30,
+    speed: 92,
+    damage: 5,
+    weight: 4,
+    verse: "A black-winged hush slips through the trees.\nFive needles carry dream disease.",
+    tip: "Break their charge-up attack before it puts someone to sleep.",
+  },
+  {
+    name: "The frost throne",
+    kind: "skeleton_wizard",
+    environment: "ice",
+    count: 6,
+    hp: 120,
+    speed: 32,
+    damage: 16,
+    weight: 3,
+    verse: "A crown of rime, a wand of blue.\nThe dead bring winter down on you.",
+    tip: "Defeat the crowned mage and its five frost-bound minions.",
+    frostMinions: 5,
+    wizardEscort: true,
+  },
   {
     name: "The armory wakes",
     kind: "skeleton",
@@ -793,18 +818,6 @@ export class Game {
     this.spawnEvent();
   }
   spawnEvent(index) {
-    const automatic = index === undefined;
-    const active = this.players.filter((p) => p.hp > 0 && !p.room).length;
-    if (
-      automatic &&
-      this.enemies.filter((e) => e.hp > 0).length >= Math.max(6, active * 5)
-    ) {
-      this.openingBoard = false;
-      this.message(
-        "The jungle is crowded. Clear the current wave before more creatures arrive.",
-      );
-      return;
-    }
     if (index === undefined) {
       const weight = (e) =>
         e.environment && e.environment !== this.generatedEnvironment
@@ -883,7 +896,9 @@ export class Game {
     for (let i = 0; i < this.event.count; i++) {
       const spawnedKind =
         this.event.squad?.[i] ||
-        (this.event.mixedSkeletons
+        (this.event.frostMinions
+          ? i === 0 ? "skeleton_wizard" : "skeleton"
+          : this.event.mixedSkeletons
           ? i % 2
             ? "archer"
             : "skeleton"
@@ -910,6 +925,8 @@ export class Game {
         attackX: 0,
         attackY: 0,
         step: 0,
+        frostBound: this.event.frostMinions && spawnedKind === "skeleton",
+        frostMage: this.event.frostMinions && i === 0,
         moving: false,
         faceX: 0,
         faceY: 1,
@@ -1019,6 +1036,7 @@ export class Game {
     for (const p of this.players) {
       tickJump(p,dt);
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
+      p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
       p.attack = Math.max(0, p.attack - dt);
       if(p.queuedAttack&&p.attack===0){const queued=p.queuedAttack;delete p.queuedAttack;if(queued.until>=this.time&&!p.room&&!p.ui&&p.hp>0)this.attack(p,queued.charge);}
@@ -1032,6 +1050,11 @@ export class Game {
       const input = inputs[p.device] || {};
       if (p.room || p.ui || p.consumeInput || p.stun > 0) {
         p.moving = false;p.slideX=p.slideY=0;
+        continue;
+      }
+      if (p.sleeping > 0) {
+        p.moving = false;
+        p.slideX = p.slideY = 0;
         continue;
       }
       if (p.hp <= 0) {
@@ -1149,6 +1172,8 @@ export class Game {
       e.x = clamp(e.x, 24, WORLD - 24);
       e.y = clamp(e.y, 24, WORLD - 24);
       e.flash = Math.max(0, e.flash - dt);
+      e.frozen = Math.max(0, (e.frozen || 0) - dt);
+      if (e.frozen > 0) { e.moving = false; continue; }
       e.attack = Math.max(0, (e.attack || 0) - dt);
       e.healEffect = Math.max(0, (e.healEffect || 0) - dt);
       e.throwTime = Math.max(0, (e.throwTime || 0) - dt);
@@ -1583,8 +1608,11 @@ export class Game {
           ["bat", "wasp"].includes(aiKind),
         );
         if (travel < dt * 80) e.timer = 0;
-        for (const q of alive)
-          if (distance(e, q) < 30) this.hurt(q, e.damage, e);
+        for (const q of alive) if (distance(e, q) < 30) {
+          const before = q.hp;
+          this.hurt(q, e.damage, e);
+          if (aiKind === "tsetse" && q.hp < before && q.hp > 0 && !(q.sleeping > 0)) q.sleeping = 3;
+        }
         if (e.timer <= 0) {
           e.state = "recover";
           e.timer = cfg?.edited
@@ -1611,6 +1639,7 @@ export class Game {
         "snake",
         "bat",
         "wasp",
+        "tsetse",
         "skeleton",
       ].includes(aiKind);
       if (
@@ -1714,7 +1743,9 @@ export class Game {
         }
       }
     }
-    for (const e of this.enemies.filter((e) => e.hp <= 0)) {
+    for (const e of this.enemies.filter((e) => e.hp <= 0 && !e.defeated)) {
+      e.defeated = true;
+      e.deathTimer = 0;
       summonGhost(this,e);
       this.enemyLoot(e);
       this.cleared++;
@@ -1731,7 +1762,9 @@ export class Game {
       if (e.kind === "panther")
         for (const p of alive) p.hp = Math.min(100, p.hp + 25);
     }
-    this.enemies = this.enemies.filter((e) => e.hp > 0);
+    for (const e of this.enemies) if (e.hp <= 0) e.deathTimer = (e.deathTimer || 0) + dt;
+    this.enemies = this.enemies.filter((e) => e.hp > 0 || (e.state !== "snared" && (e.deathTimer || 0) < 3.5));
+    maintainSpiderWebs(this, dt);
     for (const t of this.traps) t.life -= dt;
     this.traps = this.traps.filter((t) => t.life > 0);
     for (const p of this.pickups) p.life -= dt;

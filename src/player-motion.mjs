@@ -211,6 +211,13 @@ export function defaultPlayerMotion() {
     },
   };
   Object.assign(model.clips,humanoidClips(model.clips));
+  model.clips.sleep = {
+    fps: 4, length: 2, loop: true,
+    keys: [
+      { frame: 0, joints: { chest: [0, 7, -10], head: [0, 13, -10], handL: [-3, 6, -4], handR: [3, 6, -4], footL: [-2, 5, -8], footR: [2, 5, -8] } },
+      { frame: 1, joints: { chest: [0, 7, -10], head: [0, 13, -10], handL: [-3, 6, -5], handR: [3, 6, -5], footL: [-2, 5, -8], footR: [2, 5, -8] } },
+    ],
+  };
   model.visibility = humanVisibility();
   for (const clip of Object.values(model.clips))
     for (const key of clip.keys)
@@ -417,6 +424,7 @@ export function playerAction(actor) {
         ? "punch"
         : actor.animationAction;
   if(actor.hp<=0)return 'death';
+  if(actor.sleeping > 0)return 'sleep';
   if (actor.hit > 0) return "hurt";
   if(actor.jumpHeight>0)return actor.jumpAge<.1?'jump_takeoff':actor.jumpVelocity>0?'jump_air':'jump_fall';
   if(actor.landTime>0)return 'land';

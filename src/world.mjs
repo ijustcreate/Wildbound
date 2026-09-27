@@ -47,6 +47,7 @@ export function createScenery(seed = 0, environment = "forest") {
                 ? 32 + Math.floor(terrainHash(y, x) * 32)
                 : 28 + Math.floor(terrainHash(y, x) * 16),
           procedural: true,
+          ...(environment === "desert" && r > 0.975 ? { coconuts: Math.floor(terrainHash(x + seed, y) * 4) } : {}),
         });
     }
   return result;

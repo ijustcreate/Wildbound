@@ -139,7 +139,7 @@ export function creatureDefaults(kind) {
         ? "plant"
         : kind === "snake"
           ? "serpent"
-          : ["bat", "wasp"].includes(kind)
+          : ["bat", "wasp", "tsetse"].includes(kind)
             ? "winged"
             : "quadruped";
   const rig = rigPreset(type);
@@ -158,7 +158,7 @@ export function creatureDefaults(kind) {
     behaviors: {
       hunt: true,
       jump: ["monkey","lion","tiger","panther"].includes(kind),
-      circle: ["lion", "panther", "bat", "wasp", "fire_elemental", "water_elemental"].includes(
+      circle: ["lion", "panther", "bat", "wasp", "tsetse", "fire_elemental", "water_elemental"].includes(
         kind,
       ),
       dash: [
@@ -169,6 +169,7 @@ export function creatureDefaults(kind) {
         "snake",
         "bat",
         "wasp",
+        "tsetse",
       ].includes(kind),
       melee: true,
       ranged: ["archer", "skeleton_wizard"].includes(kind),
@@ -222,6 +223,7 @@ for (const name of [
   "bat",
   "beetle",
   "wasp",
+  "tsetse",
   "vine",
   "golem",
   "monkey",
@@ -230,6 +232,7 @@ for (const name of [
   "rhino",
   "dragon",
   "fire_elemental",
+  "water_elemental",
   "explorer-teal",
   "explorer-coral",
   "explorer-blue",
@@ -249,6 +252,19 @@ for (const kind of ["skeleton_unarmed", "skeleton_boss"]) {
 creatures.skeleton_wizard = creatureDefaults("skeleton_wizard");
 creatures.skeleton_wizard.name = "skeleton_wizard";
 creatures.skeleton_wizard.aiKind = "skeleton_wizard";
+creatures.tsetse = creatureDefaults("wasp");
+creatures.tsetse.name = "tsetse";
+creatures.tsetse.aiKind = "tsetse";
+creatures.tsetse.stats.hp = 30;
+creatures.tsetse.stats.damage = 5;
+creatures.tsetse.stats.dashCooldown = 3.2;
+creatures.tsetse.stats.dashDistance = 150;
+creatures.tsetse.stats.dashSpeed = 260;
+creatures.frost_skeleton_mage = creatureDefaults("skeleton_wizard");
+creatures.frost_skeleton_mage.name = "frost_skeleton_mage";
+creatures.frost_skeleton_mage.aiKind = "skeleton_wizard";
+creatures.frost_skeleton_mage.stats.hp = 120;
+creatures.frost_skeleton_mage.stats.damage = 16;
 for (const [name, c] of Object.entries(creatures)) {
   if (name.startsWith("explorer")) {
     const color = name.slice(9);
@@ -306,7 +322,7 @@ for (const [name, c] of Object.entries(creatures)) {
         name === "lion" ? "#76552e" : "#526d3b",
       ),
     );
-  } else if (["bat", "wasp"].includes(name)) {
+  } else if (["bat", "wasp", "tsetse"].includes(name)) {
     for (const p of c.rig.parts) {
       p.source = name;
       p.rect =
@@ -367,6 +383,7 @@ for (const [name, c] of Object.entries(creatures)) {
   }
 }
 creatures.fire_elemental.dropType = "fire_wand";
+creatures.frost_skeleton_mage.dropType = "ice_wand";
 creatures.fire_elemental.stats.dropChance = 1;
 for (const name of ["lion", "crocodile"]) {
   const r = creatures[name].rig;

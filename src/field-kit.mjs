@@ -195,7 +195,7 @@ export class FieldKit {
     this.body.append(
       node(
         "p",
-        "Rolling with creatures alive earns 2 gold. Dense encounters wait until the party has room to fight.",
+        "Rolling with creatures alive earns 2 gold. New encounters can overlap while the jungle is still dangerous.",
       ),
     );
     if (g.objective)

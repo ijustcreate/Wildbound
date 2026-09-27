@@ -43,6 +43,23 @@ import {
   rollRelic,
 } from "./items.mjs";
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function aimedDirection(g, p, origin, strength = 0.2) {
+  const fx = p.faceX || 1, fy = p.faceY || 0, fl = Math.hypot(fx, fy) || 1;
+  let best = null;
+  for (const e of g.enemies || []) {
+    if (e.hp <= 0 || e.room) continue;
+    const dx = e.x - origin.x, dy = e.y - origin.y, d = Math.hypot(dx, dy) || 1;
+    const dot = (dx * fx + dy * fy) / (d * fl);
+    if (d > 320 || dot < 0.55 || !clearShot(g, origin, e, 4)) continue;
+    const score = d * (1.35 - dot);
+    if (!best || score < best.score) best = { x: dx / d, y: dy / d, score };
+  }
+  if (!best) return { x: fx / fl, y: fy / fl };
+  const x = fx / fl * (1 - strength) + best.x * strength;
+  const y = fy / fl * (1 - strength) + best.y * strength;
+  const l = Math.hypot(x, y) || 1;
+  return { x: x / l, y: y / l };
+}
 export const VISION = 280;
 export function initAdventure(g) {
   initHazards(g);
@@ -225,6 +242,13 @@ export const adventureMethods = {
     this.persist();
     return true;
   },
+  useCoconut(p) {
+    if (p.hp <= 0 || p.hp >= p.maxHp || !take(p.inventory, "coconut")) return false;
+    p.hp = Math.min(p.maxHp, p.hp + 18);
+    this.onSound("heal");
+    this.persist();
+    return true;
+  },
   dropLoot(x, y, type, qty = 1, source = "Ground loot", manualPickup = false) {
     this.onSound("drop",{x,y});
     const position = lootSpot(this, x, y);
@@ -248,6 +272,9 @@ export const adventureMethods = {
       id: this.nextId++,
       ...position,
       amount,
+      originX: x,
+      originY: y,
+      bornAt: this.time,
       readyAt: this.time + 0.35,
     });
   },
@@ -288,6 +315,23 @@ export const adventureMethods = {
     return this.loot
       .filter((l) => dist(p, l) < 65)
       .sort((a, b) => dist(a, p) - dist(b, p))[0];
+  },
+  nearbyArrow(p) {
+    return this.arrows
+      .filter((a) => a.stuck && dist(p, a) < 65 && !a.hostile)
+      .sort((a, b) => dist(a, p) - dist(b, p))[0];
+  },
+  collectArrow(p, arrow) {
+    if (!arrow || !this.arrows.includes(arrow) || dist(p, arrow) > 65) return false;
+    if (!give(p.inventory, "arrow", 1)) {
+      this.inventoryFullNotice(p, "arrow");
+      return false;
+    }
+    this.arrows = this.arrows.filter((a) => a !== arrow);
+    this.onSound("loot", p);
+    this.message("Recovered arrow.");
+    this.persist();
+    return true;
   },
   inventoryFullNotice(p, key = "pickup") {
     if (this.time < (p.inventoryFullNoticeUntil || 0)) return;
@@ -416,7 +460,7 @@ export const adventureMethods = {
   },
   openInventory(p, storage = null) {
     this.onSound("inventory",p);
-    p.ui = { panel: "pack", index: 0, slot: 0, storage, hold: 0 };
+    p.ui = { panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
     p.charge = 0;
   },
   storageFor(p) {
@@ -614,6 +658,7 @@ export const adventureMethods = {
         const item = p.inventory[u.index];
         if (item?.type === "stamina_potion") useStamina(p);
         else if (item?.type === "potion") this.usePotion(p);
+        else if (item?.type === "coconut") this.useCoconut(p);
         else if (item?.type === "trap" && !p.room) this.trap(p);
         else equip(p, u.index);
       }
@@ -795,7 +840,8 @@ export const adventureMethods = {
           this.attack(p, p.charge);
           p.charge = 0;
         }
-        const l = this.nearbyLoot(p);
+        const l = this.nearbyLoot(p), embeddedArrow = this.nearbyArrow(p);
+        if (edge("loot") && embeddedArrow) this.collectArrow(p, embeddedArrow);
         if (edge("loot") && l) this.collect(p, l);
         if (i.interact) {
           p.interactTime = (p.interactTime || 0) + dt;
@@ -807,6 +853,7 @@ export const adventureMethods = {
           if (old.interact && p.interactTime > 0 && p.interactTime < 0.35 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
             if (toggleDoor(this,p)||interactIce(this,p)) {}
+            else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (l) this.collect(p, l);
             else if (this.victoryChest && dist(p, { x: 800, y: 914 }) < 60)
               this.openInventory(p, "victory");
@@ -871,6 +918,7 @@ export const adventureMethods = {
           target.flash = 0.2;
           target.aggro = true;
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
+          if (bolt.ice && !this.players.includes(target) && this.random() < 0.35) target.frozen = 1.6;
           bolt.life = 0;
         } else if (this.projectileBlocked(bolt.x, bolt.y, (bolt.size || 6) / 2))
           bolt.life = 0;
@@ -885,8 +933,8 @@ export const adventureMethods = {
         if (a.enemy) {
           const e = this.enemies.find((e) => e.id === a.enemy);
           if (e) {
-            a.x = e.x;
-            a.y = e.y;
+            a.x = e.x + (a.hitOffsetX || 0);
+            a.y = e.y + (a.hitOffsetY || 0);
           }
         }
         continue;
@@ -900,7 +948,7 @@ export const adventureMethods = {
         a.y += a.vy * s;
         a.z += a.vz * s;
         a.vz -= rules.arrowGravity * s;
-        if(this.projectileBlocked(a.x,a.y,1)){a.x=previousX;a.y=previousY;a.stuck=true;a.remove=true;this.dropLoot(a.x,a.y,'arrow');break;}
+        if(this.projectileBlocked(a.x,a.y,1)){a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;a.angle=Math.atan2(a.vy,a.vx);this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);this.loot.at(-1).embedded=true;this.loot.at(-1).angle=a.angle;a.remove=true;break;}
         const target = a.hostile
           ? this.players.find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
           : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 && dist(e, a) < 19 && clearShot(this,a,e));
@@ -913,14 +961,16 @@ export const adventureMethods = {
               a.remove = true;
             } else {
               this.hurt(target, a.damage, a);
-              this.dropLoot(a.x, a.y, "arrow");
               a.remove = true;
             }
           } else {
             target.aggro = true;
             target.hp -= a.damage;target.killedBy=a.owner;target.ritualKill=false;
             target.flash = 0.2;
+            if (a.ice && this.random() < 0.35) target.frozen = 1.6;
             a.enemy = target.id;
+            a.hitOffsetX = a.x - target.x;
+            a.hitOffsetY = a.y - target.y;
           }
           a.stuck = true;
         } else if (
@@ -933,7 +983,10 @@ export const adventureMethods = {
         ) {
           a.stuck = true;
           a.z = 0;
-          this.dropLoot(a.x, a.y, "arrow");
+          a.angle = Math.atan2(a.vy, a.vx);
+          this.dropLoot(a.x, a.y, "arrow", 1, "Embedded arrow", true);
+          this.loot.at(-1).embedded = true;
+          this.loot.at(-1).angle = a.angle;
           a.remove = true;
         }
       }
@@ -993,18 +1046,20 @@ export const adventureMethods = {
     this.spells ||= [];
     const strength = Math.max(0, Math.min(1, charge / 1.2));
     const tip=wandTipWorld(p,slot,this.time);
+    const aim = aimedDirection(this, p, tip, 0.18);
     this.spells.push({
       owner:p.id,slot,age:0,
       x: tip.x,
       y: tip.y+16,
-      vx: p.faceX * 260,
-      vy: p.faceY * 260,
+      vx: aim.x * 260,
+      vy: aim.y * 260,
       life: 3,
       remaining: 224,
       size: 6 + Math.round(strength * 8),
       damage: Math.round(def.damage * (1 + strength)),
       color: def.artColor || def.color,
       fire: def.spellType === "fire",
+      ice: def.spellType === "ice",
       burnDamage: def.spellType === "fire" ? 3 : 0,
     });
     return true;
@@ -1017,14 +1072,15 @@ export const adventureMethods = {
     this.onSound("bow",p);
     const strength = Math.min(1, charge / 1.2),
       speed = rules.bowSpeed + strength * rules.bowBonusSpeed;
+    const aim = aimedDirection(this, p, p, 0.2);
     this.arrows.push({
       owner:p.id,
       id: this.nextId++,
       x: p.x + p.faceX * 20,
       y: p.y + p.faceY * 20,
       z: 18,
-      vx: p.faceX * speed,
-      vy: p.faceY * speed,
+      vx: aim.x * speed,
+      vy: aim.y * speed,
       vz: 20 + strength * 70,
       damage:
         (ITEMS[p.equipment.hand1]?.damage || 18) * (2 / 3 + (strength * 4) / 3),
@@ -1074,7 +1130,9 @@ export const adventureMethods = {
     const drop = (...args) => {
       if (this.random() < 0.1) this.dropLoot(...args);
     };
-    this.dropXP(e.x, e.y, 10);
+    const cfg = creatures[e.kind], difficulty = cfg?.stats?.hp || e.maxHp || 20;
+    const xpValue = e.kind === "skeleton" ? 10 : Math.max(1, Math.min(10, Math.round(difficulty / 10)));
+    this.dropXP(e.x, e.y, xpValue);
     if (this.random() < 0.4 || e.kind === "skeleton_boss")
       drop(
         e.x + 24,
@@ -1087,11 +1145,11 @@ export const adventureMethods = {
       drop(e.x - 18, e.y + 12, rollRelic(this.random), 1, "Relic");
     const config = creatures[e.kind];
     if (
-      config?.dropType &&
+      (config?.dropType || e.frostMage) &&
       ITEMS[config.dropType]?.rarity !== "legendary" &&
       this.random() < (config.stats.dropChance ?? 1)
     )
-      drop(e.x, e.y, config.dropType, 1, "Enemy drop");
+      drop(e.x, e.y, e.frostMage ? "ice_wand" : config.dropType, 1, "Enemy drop");
     if (e.kind === "skeleton") drop(e.x, e.y, "sword", 1, "Skeleton drop");
     if (e.kind === "archer") {
       drop(e.x, e.y, "bow", 1, "Archer drop");
@@ -1110,8 +1168,9 @@ export const adventureMethods = {
         1,
         "Enemy drop",
       );
-    for (const a of this.arrows.filter((a) => a.enemy === e.id))
-      this.dropLoot(e.x, e.y, "arrow", 1, "Recovered arrow");
+    for (const a of this.arrows.filter((a) => a.enemy === e.id)) {
+      this.dropLoot(e.x + (a.hitOffsetX || 0), e.y + (a.hitOffsetY || 0), "arrow", 1, "Recovered arrow", true);
+    }
     this.arrows = this.arrows.filter((a) => a.enemy !== e.id);
     this.persist();
   },

@@ -134,7 +134,8 @@ export class Renderer {
     }
     for (const orb of game.xpOrbs || []) {
       if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;
-      const y = orb.y - 5 + Math.sin(game.time * 3 + orb.id) * 2;
+      const pop = Math.min(1, Math.max(0, (game.time - (orb.bornAt || game.time)) / 0.35));
+      const y = orb.y - 5 + (1 - pop) * 10 + Math.sin(game.time * 3 + orb.id) * 2;
       ellipse(ctx, orb.x, orb.y + 3, 6, 2, "#071b2377");
       ellipse(ctx, orb.x, y, 7, 7, "#53b4ef33");
       ellipse(ctx, orb.x, y, 4, 4, "#647adc");
@@ -162,7 +163,18 @@ export class Renderer {
         ctx.ellipse(l.x, l.y + 6, 12, 6, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
-      drawItem(ctx, l.type, l.x, l.y - 3, 24);
+      if (l.embedded && l.type === "arrow") {
+        ctx.save();
+        ctx.translate(l.x, l.y - 3);
+        ctx.rotate(l.angle || 0);
+        ctx.fillStyle = "#ba9763";
+        ctx.fillRect(-13, -1, 25, 2);
+        ctx.fillStyle = "#f0e7cd";
+        ctx.fillRect(10, -2, 4, 4);
+        ctx.fillStyle = "#d7bd78";
+        ctx.fillRect(-15, -2, 3, 4);
+        ctx.restore();
+      } else drawItem(ctx, l.type, l.x, l.y - 3, 24);
       if (ITEMS[l.type]?.slot) {
         ctx.fillStyle = ITEMS[l.type].color;
         ctx.fillRect(l.x - 8, l.y + 9, 16, 1);
@@ -238,7 +250,7 @@ export class Renderer {
       if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
       ctx.save();
       ctx.translate(a.x, a.y - (a.z || 0));
-      ctx.rotate(Math.atan2(a.vy, a.vx));
+      ctx.rotate(a.angle ?? Math.atan2(a.vy, a.vx));
       if (a.rock) {
         ctx.fillStyle = "#45564e";
         ctx.beginPath();
@@ -259,9 +271,15 @@ export class Renderer {
         ctx.fillRect(-1, -3, 2, 6);
       } else {
         ctx.fillStyle = "#ba9763";
-        ctx.fillRect(-9, -1, 17, 2);
+        ctx.fillRect(a.stuck ? -13 : -9, -1, a.stuck ? 25 : 17, 2);
         ctx.fillStyle = "#f0e7cd";
-        ctx.fillRect(6, -2, 4, 4);
+        ctx.fillRect(a.stuck ? 10 : 6, -2, 4, 4);
+        if (a.stuck) {
+          ctx.fillStyle = "#d7bd78";
+          ctx.fillRect(-15, -2, 3, 4);
+          ctx.fillStyle = "#e8d6a1";
+          ctx.fillRect(-14, -1, 2, 2);
+        }
       }
       if (a.rock) {
         ctx.fillStyle = "#839187";
@@ -518,6 +536,33 @@ export class Renderer {
           size,
         );
       ctx.restore();
+      if (!player && a.kind === "tsetse") {
+        ctx.save();
+        ctx.fillStyle = "#161b20";
+        ctx.beginPath(); ctx.ellipse(a.x, a.y - 14, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#713b49";
+        ctx.fillRect(a.x - 3, a.y - 12, 6, 5);
+        ctx.strokeStyle = "#d6e4ee88"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(a.x - 3, a.y - 17); ctx.lineTo(a.x - 12, a.y - 23); ctx.moveTo(a.x + 3, a.y - 17); ctx.lineTo(a.x + 12, a.y - 23); ctx.stroke();
+        ctx.strokeStyle = "#c8a36a"; ctx.beginPath(); ctx.moveTo(a.x, a.y - 20); ctx.lineTo(a.x + (a.faceX || 1) * 10, a.y - 20 + (a.faceY || 0) * 10); ctx.stroke();
+        ctx.restore();
+      }
+      if (!player && (a.frostMage || (a.kind === "skeleton" && a.frostBound))) {
+        ctx.fillStyle = "#8cecff";
+        ctx.fillRect(a.x - 5, a.y - 29, 3, 2);
+        ctx.fillRect(a.x + 2, a.y - 29, 3, 2);
+      }
+      if (player && a.sleeping > 0) {
+        ctx.save();
+        ctx.fillStyle = "#bdefff";
+        ctx.font = "bold 13px sans-serif";
+        ctx.textAlign = "center";
+        const bob = Math.sin(game.time * 3) * 2;
+        ctx.fillText("Z", a.x + 16, a.y - 32 + bob);
+        ctx.font = "bold 9px sans-serif";
+        ctx.fillText("z", a.x + 25, a.y - 43 + bob);
+        ctx.restore();
+      }
       if(grounded)snowRim(ctx,game,a.x,snowBase,size*.5);
       if (!player && a.state === "breath") {
         ctx.save();

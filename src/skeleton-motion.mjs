@@ -9,6 +9,7 @@ export const SKELETON_KINDS = [
   "archer",
   "skeleton_unarmed",
   "skeleton_boss",
+  "frost_skeleton_mage",
 ];
 export function defaultSkeletonMotion(kind = "skeleton") {
   const m = defaultPlayerMotion();
@@ -47,7 +48,9 @@ export function drawSkeleton(
     gear =
       kind === "archer"
         ? { hand1: "bow", hand2: "occupied" }
-        : kind === "skeleton_boss"
+        : kind === "skeleton_wizard" && a.frostMage
+          ? { hand1: "ice_wand", cape: "cape", head: "moon_circlet" }
+          : kind === "skeleton_boss"
           ? { hand1: "sun_blade", hand2: "sun_shield", head: "horned_helm" }
           : kind === "skeleton"
             ? { hand1: "sword" }

@@ -4,7 +4,8 @@ export const ITEM_ART_TYPES = [
   "trap",
   "potion",
   "arrow",
-  "fruit",
+    "fruit",
+  "coconut",
   "meat",
   "sword",
   "dagger",
@@ -249,6 +250,15 @@ export function paintItem(c, type) {
       r(11, 4, 2, 5, "#735131");
       r(13, 3, 6, 3, green);
       r(14, 3, 3, 1, "#bbd088");
+      break;
+    case "coconut":
+      r(5, 7, 14, 13, dark);
+      r(6, 6, 13, 14, "#765236");
+      r(8, 5, 10, 3, "#ad8251");
+      r(8, 9, 9, 8, "#9a6b3c");
+      r(10, 10, 2, 2, "#d7b777");
+      r(14, 10, 2, 2, "#d7b777");
+      r(12, 3, 3, 4, "#567848");
       break;
     case "meat":
       line(4, 20, 10, 14, "#e4d6b4", 3);

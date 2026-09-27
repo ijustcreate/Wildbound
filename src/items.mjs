@@ -166,6 +166,12 @@ export const ITEMS = {
     color: "#cbbc68",
     description: "T / D-pad down: toss to distract a biting plant.",
   },
+  coconut: {
+    name: "Coconut",
+    stack: 20,
+    color: "#c6a36a",
+    description: "Eat from the backpack to restore 18 HP.",
+  },
   meat: {
     name: "Raw meat",
     stack: 20,
@@ -254,6 +260,12 @@ export const ITEMS = {
     variant: 1,
     description:
       "Fireballs ignite enemies for 2 seconds, dealing damage over time.",
+  },
+  ice_wand: {
+    base: "wand", name: "Frost wand", slot: "hand1", magic: true,
+    spellType: "ice", damage: 24, manaCost: 14, color: "#9beaff",
+    artColor: "#7edcff", rarity: "unique", variant: 2,
+    description: "Ice bolts have a chance to freeze enemies on hit.",
   },
   charm: {
     name: "Amber charm",

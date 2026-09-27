@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld("desktop", {
   sendRoom: (data) => ipcRenderer.send("room-send", data),
   onRoom: (fn) => ipcRenderer.on("room-event", (_e, data) => fn(data)),
   fullscreen: () => ipcRenderer.invoke("fullscreen"),
+  claimController: (key) => ipcRenderer.invoke("controller-claim", key),
+  releaseController: (key) => ipcRenderer.invoke("controller-release", key),
 });

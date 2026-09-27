@@ -33,7 +33,7 @@ export const isQuicksand = (type) => type === "quicksand";
 export function harvest(g, p, damage, range) {
   const candidates = g.scenery
     .filter(
-      (s) => !s.falling && !s.depleted && ["tree", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
+      (s) => !s.falling && !s.depleted && ["tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
     )
     .map((s) => ({ s, b: propBase(s) }))
     .filter(({ b }) => {
@@ -63,13 +63,14 @@ export function harvest(g, p, damage, range) {
     g.dropLoot(p.x + p.faceX * 12, p.y + p.faceY * 12, type, qty, "Harvested");
     g.loot.at(-1).manualPickup = true;
   };
-  if (["tree","snow_tree","frozen_log"].includes(s.kind)) {
+  if (["tree","palm","snow_tree","frozen_log"].includes(s.kind)) {
     drop("stick", 1);
     s.maxHarvest ||= Math.round(s.size * 0.85);
     if (s.harvest >= s.maxHarvest) {
       s.falling = 0.001;
       s.fallDirection = p.faceX < 0 ? -1 : 1;
       s.logCount = Math.max(2, Math.round(s.size / 32));
+      if (s.kind === "palm") s.coconuts ??= Math.floor(terrainHash(s.x, s.y) * 4);
     }
   } else {
     s.maxHarvest = 36;
@@ -115,6 +116,9 @@ export function tickEnvironment(g, dt) {
           "Felled tree",
         );
         g.loot.at(-1).manualPickup = true;
+        if (s.kind === "palm" && s.coconuts > 0) {
+          g.dropLoot(b.x + s.fallDirection * 12, b.y - 8, "coconut", s.coconuts, "Felled palm", true);
+        }
         g.persist();
       }
     }
@@ -247,12 +251,15 @@ export function drawProp(c, p, time) {
       }
     }
   } else if (p.kind === "palm") {
-    r(-3, -42, 6, 42, "#765331");
-    r(-8, -45, 16, 5, "#3e7047");
-    r(-22, -51, 18, 5, "#4f8750");
-    r(5, -54, 18, 5, "#4f8750");
-    r(-16, -42, 5, 4, "#6b9b52");
-    r(12, -43, 5, 4, "#6b9b52");
+    r(-4, -44, 8, 44, "#4c3827");
+    r(-2, -43, 3, 42, "#a47644");
+    r(-8, -47, 15, 5, "#315a3c");
+    for (const [x, y, w, h] of [[-30,-54,27,4],[-25,-61,23,4],[5,-59,25,4],[8,-51,29,4],[-10,-66,17,4]]) {
+      r(x, y, w, h, "#3f7a4b");
+      r(x + (x < 0 ? 4 : 0), y + 1, Math.max(3, w - 7), 2, "#77a95c");
+    }
+    const coconuts = Math.max(0, Math.min(3, p.coconuts ?? 0));
+    for (let i = 0; i < coconuts; i++) { r(-5 + i * 5, -42 + (i % 2) * 3, 5, 5, "#6b472d"); r(-4 + i * 5, -42 + (i % 2) * 3, 2, 2, "#a77a48"); }
   } else if (p.kind === "cactus") {
     r(-4, -31, 8, 31, "#4f7049");
     r(-12, -21, 8, 5, "#5f8251");
