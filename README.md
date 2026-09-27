@@ -120,3 +120,4 @@ The release remains focused on local co-op. Direct-network transport is experime
 
 Old character and rig migrations remain supported. Saves use validated asynchronous temporary-file writes and backups. Import adds new character IDs without replacing existing heroes; recovering a previous save has an explicit in-game confirmation.
 
+
