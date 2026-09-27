@@ -248,6 +248,6 @@ export function drawBeast(
   c.fillRect(Math.round(p.head.x) + 2, Math.round(p.head.y) - 1, 1, 1);
   if(m.type==='spider'){c.fillRect(Math.round(p.head.x)-1,Math.round(p.head.y)-2,2,1);c.fillRect(Math.round(p.head.x)-4,Math.round(p.head.y)+1,1,1);c.fillRect(Math.round(p.head.x)+3,Math.round(p.head.y)+1,1,1);}
   }});
-  paintLayers(layers,m,d);
+  paintLayers(layers,m,d,c,p);
   return p;
 }

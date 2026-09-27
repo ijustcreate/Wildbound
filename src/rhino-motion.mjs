@@ -138,14 +138,18 @@ export function drawRhino(
     s = model.shape,
     pal = model.palette;
   const q = [],
-    add = (depth, fn) => q.push({ depth, fn }),
+    add = (depth, fn, id, bone, bones) => q.push({ depth, fn, id, bone, bones }),
     visible = (n) => model.visibility[n]?.[d] !== false;
   for (const [start, end] of [
     ["tailBase", "tailMid"],
     ["tailMid", "tailTip"],
   ])
-    add((p[start].depth + p[end].depth) / 2, () =>
-      limb(c, p[start], p[end], s.tailWidth, pal.shade),
+    add(
+      (p[start].depth + p[end].depth) / 2,
+      () => limb(c, p[start], p[end], s.tailWidth, pal.shade),
+      end === "tailTip" ? "Tail tip" : "Tail base",
+      start,
+      [start, end],
     );
   for (const side of ["L", "R"])
     for (const names of [
@@ -173,7 +177,7 @@ export function drawRhino(
         c.fillStyle = pal.light;
         for (let x = -2; x <= 2; x += 2)
           c.fillRect(Math.round(foot.x + x), Math.round(foot.y), 1, 2);
-      });
+      }, (names[0].startsWith("shoulder") ? "Front leg " : "Rear leg ") + side, names[0], names);
     }
   add((p.chest.depth + p.pelvis.depth) / 2, () => {
     limb(c, p.pelvis, p.chest, s.bodyWidth, pal.shade);
@@ -231,6 +235,6 @@ export function drawRhino(
         }
       });
   }
-  paintLayers(q, model, d);
+  paintLayers(q, model, d, c, p);
   return p;
 }

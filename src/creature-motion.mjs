@@ -910,7 +910,7 @@ export function drawCreature(
         );
       }
     }, "Head");
-    paintLayers(queue, model, d);
+    paintLayers(queue, model, d, c, p);
     return p;
   } else if (["fire_elemental", "water_elemental"].includes(kind)) {
     const phase = creatureFrame(kind, actor, time, model) * 0.78;
@@ -974,7 +974,7 @@ export function drawCreature(
           c.fillRect(Math.round(eye.x) - 1, Math.round(eye.y), 2, 1);
         }
     });
-    paintLayers(queue, model, d);
+    paintLayers(queue, model, d, c, p);
     for (let i = 0; i < 5; i++) {
       const rise = (((phase * 3 + i * 7) % 27) + 27) % 27;
       c.fillStyle = i % 2 ? pal.light : pal.body;
@@ -1160,7 +1160,7 @@ export function drawCreature(
       add(p.head.depth + 1, () => {
         ball(n, kind === "golem" ? 1.7 : 1, pal.eye);
       });
-  paintLayers(queue, model, d);
+  paintLayers(queue, model, d, c, p);
   return p;
 }
 export const creatureRigLabels = labels;

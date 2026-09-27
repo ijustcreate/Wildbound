@@ -226,7 +226,7 @@ export function drawBat(
     s = model.shape,
     visible = (n) => model.visibility[n]?.[direction] !== false,
     queue = [];
-  const add = (depth, draw) => queue.push({ depth, draw });
+  const add = (depth, draw, id, bone, bones) => queue.push({ depth, draw, id, bone, bones });
   for (const side of ["L", "R"]) {
     const shoulder = p["shoulder" + side],
       elbow = p["elbow" + side],
@@ -265,13 +265,21 @@ export function drawBat(
         [wrist, inner],
       ])
         limb(c, a, b, s.wingBoneWidth, far ? pal.bodyShade : pal.bone);
-    });
-    add(p["foot" + side].depth, () =>
-      limb(c, p.pelvis, p["foot" + side], 2, pal.bone),
+    }, "Wing " + side, "shoulder" + side, ["shoulder" + side, "elbow" + side, "wrist" + side, "wingTip" + side]);
+    add(
+      p["foot" + side].depth,
+      () => limb(c, p.pelvis, p["foot" + side], 2, pal.bone),
+      "Foot " + side,
+      "foot" + side,
+      ["foot" + side, "pelvis"],
     );
   }
-  add(p.chest.depth, () =>
-    limb(c, p.pelvis, p.chest, s.bodyRadius * 2, pal.body),
+  add(
+    p.chest.depth,
+    () => limb(c, p.pelvis, p.chest, s.bodyRadius * 2, pal.body),
+    "Body",
+    "chest",
+    ["pelvis", "chest"],
   );
   add(p.head.depth, () => {
     for (const n of ["earL", "earR"])
@@ -310,7 +318,7 @@ export function drawBat(
         c.fillRect(Math.round(p[n].x), Math.round(p[n].y), 1, 1);
       }
     if (visible("nose")) ellipse(c, p.nose.x, p.nose.y, 1.4, 1, pal.ears);
-  });
-  paintLayers(queue, model, direction);
+  }, "Head", "head", ["head", "neck"]);
+  paintLayers(queue, model, direction, c, p);
   return p;
 }

@@ -976,7 +976,7 @@ export function drawPlayer(
       },
       "Bow",
     );
-  paintLayers(queue, model, d);
+  paintLayers(queue, model, d, c, p);
   wearableDetails(c, p, {}, look, d, time, cosmetics);
   if (!cosmetics.hideRelics && !model.skeleton)
     (actor.inventory || [])

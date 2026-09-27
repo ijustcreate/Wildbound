@@ -6,6 +6,23 @@ export function boneSprites(model, direction, bone) { return (captures.get(model
 export function renderLayers(model, direction) {
   return layers.get(model)?.[direction] || [];
 }
+function inferredBones(id, joints) {
+  const name = String(id || "").toLowerCase();
+  const has = (...names) => names.filter((n) => joints?.[n]);
+  const left = /\b(?:l|left)\b/.test(name), right = /\b(?:r|right)\b/.test(name);
+  if (name.includes("tail")) return has("tailTip", "tailMid", "tailBase", "pelvis");
+  if (name.includes("wing")) return has("wingTipL", "wingTipR", "wingRootL", "wingRootR", "chest");
+  if (name.includes("front") || name.includes("shoulder")) {
+    return left && !right ? has("frontPawL", "elbowL", "shoulderL") : has("frontPawR", "elbowR", "shoulderR");
+  }
+  if (name.includes("rear") || name.includes("hip") || name.includes("foot")) {
+    return left && !right ? has("rearPawL", "hockL", "kneeL", "hipL") : has("rearPawR", "hockR", "kneeR", "hipR");
+  }
+  if (name.includes("hand") || name.includes("arm") || name.includes("bow")) return has("handL", "handR", "wristL", "wristR", "chest");
+  if (name.includes("head") || name.includes("face") || name.includes("mane")) return has("head", "neck");
+  if (name.includes("body") || name.includes("pelvis") || name.includes("chest")) return has("pelvis", "chest", "neck");
+  return Object.keys(joints || {}).slice(0, 1);
+}
 export function paintLayers(queue, model, direction, context, joints) {
   const order = model.renderOrder?.[direction] || [];
   const sorted = queue.map((part,i)=>({...part,id:part.id || `Layer ${i+1}`})).sort((a,b)=>a.depth-b.depth);
@@ -15,7 +32,9 @@ export function paintLayers(queue, model, direction, context, joints) {
   if (order.length) sorted.sort((a,b)=>all.indexOf(a.id)-all.indexOf(b.id));
   const captured=[];
   sorted.forEach(part=>{
-    const anchor=joints?.[part.bone];
+    const bones = part.bones?.length ? part.bones : inferredBones(part.id, joints);
+    const bone = part.bone || bones[0];
+    const anchor=joints?.[bone];
     const sprite=model.boneSprites?.[part.id]?.[direction];
     const paint=()=>{
       if(sprite && context && anchor) {
@@ -30,7 +49,7 @@ export function paintLayers(queue, model, direction, context, joints) {
       const x=points.length?Math.min(...points.map(p=>p[0])):Math.round(anchor.x)-8, y=points.length?Math.min(...points.map(p=>p[1])):Math.round(anchor.y)-8;
       const width=points.length?Math.max(...points.map(p=>p[0]))-x+1:16,height=points.length?Math.max(...points.map(p=>p[1]))-y+1:16;
       const palette=['transparent',...new Set(pixels.values())];
-      captured.push({id:part.id,bone:part.bone,bones:part.bones||[part.bone],sprite:{width,height,x:x-Math.round(anchor.x),y:y-Math.round(anchor.y),palette,pixels:Array.from({length:width*height},(_,i)=>Math.max(0,palette.indexOf(pixels.get((x+i%width)+','+(y+Math.floor(i/width))))))}});
+      captured.push({id:part.id,bone,bones,sprite:{width,height,x:x-Math.round(anchor.x),y:y-Math.round(anchor.y),palette,pixels:Array.from({length:width*height},(_,i)=>Math.max(0,palette.indexOf(pixels.get((x+i%width)+','+(y+Math.floor(i/width))))))}});
     } else paint();
   });
   if(captured.length){const views=captures.get(model)||{};views[direction]=captured;captures.set(model,views);}

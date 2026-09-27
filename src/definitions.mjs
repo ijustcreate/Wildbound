@@ -39,6 +39,7 @@ import {
   validateCreatureMotion,
   replaceCreatureMotion,
 } from "./creature-motion.mjs";
+import { applyRigSpriteOverrides } from "./rig-sprite-storage.mjs";
 export const RULE_DEFAULTS = {
   startingTraps: 3,
   potionHeal: 45,
@@ -555,6 +556,21 @@ export function applyDefinitions(d, events, items) {
   if (d.rhino) replaceRhinoMotion(d.rhino);
   for (const [kind, model] of Object.entries(d.creatureMotions || {}))
     replaceCreatureMotion(kind, model);
+  const savedSpriteModels = {
+    player: playerMotion,
+    alligator: alligatorMotion,
+    lion: lionMotion,
+    tiger: lionMotion,
+    wolf: wolfMotion,
+    bat: batMotion,
+    tsetse: batMotion,
+    rhino: rhinoMotion,
+    ...beastMotions,
+    ...skeletonMotions,
+    ...creatureMotions,
+  };
+  for (const [subject, model] of Object.entries(savedSpriteModels))
+    applyRigSpriteOverrides(subject, model);
   if (Array.isArray(d.events) && d.events.length) {
     const added = events.filter(
       (e) =>

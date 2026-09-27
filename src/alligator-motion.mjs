@@ -81,7 +81,7 @@ export function drawAlligator(
   const s = m.shape,
     pal = m.palette,
     q = [],
-    add = (depth, fn) => q.push({ depth, fn }),
+    add = (depth, fn, id, bone, bones) => q.push({ depth, fn, id, bone, bones }),
     visible = (n) => m.visibility[n]?.[d] !== false;
   for (const side of ["L", "R"])
     for (const chain of [
@@ -101,7 +101,7 @@ export function drawAlligator(
             i === 1 ? pal.shade : pal.body,
           );
         ellipse(c, p[z].x, p[z].y, 3, 1.5, pal.light);
-      });
+      }, (chain[0] === "shoulder" ? "Front leg " : "Rear leg ") + side, x, names);
     }
   for (const [x, y, w] of [
     ["tailBase", "tailMid", s.tailWidth],
@@ -119,7 +119,7 @@ export function drawAlligator(
           pal.body,
         );
       }
-    });
+    }, y === "tailTip" ? "Tail tip" : "Tail base", x, [x, y]);
   add((p.pelvis.depth + p.chest.depth) / 2, () => {
     limb(c, p.pelvis, p.chest, s.bodyWidth, pal.body);
     for (let i = 0; i < 5; i++) {
@@ -133,7 +133,7 @@ export function drawAlligator(
         pal.light,
       );
     }
-  });
+  }, "Body", "chest", ["pelvis", "chest"]);
   add(p.head.depth, () => {
     limb(c, p.chest, p.head, s.bodyWidth * 0.7, pal.shade);
     if (visible("face")) limb(c, p.head, p.face, s.headWidth * 2, pal.body);
@@ -150,7 +150,7 @@ export function drawAlligator(
     if (visible("nose")) ellipse(c, p.nose.x, p.nose.y, 2, 1, pal.shade);
     for (const n of ["eyeL", "eyeR"])
       if (visible(n)) ellipse(c, p[n].x, p[n].y, 1.4, 1.1, pal.eyes);
-  });
-  paintLayers(q, m, d);
+  }, "Head", "head", ["head", "neck"]);
+  paintLayers(q, m, d, c, p);
   return p;
 }

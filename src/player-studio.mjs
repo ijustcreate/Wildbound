@@ -24,6 +24,7 @@ import { ITEMS, SLOTS, fitsSlot } from "./items.mjs";
 import { DEFAULT_APPEARANCE, appearanceControls, HAIR_STYLES } from "./appearance.mjs";
 import { AnimationGraph } from "./animation-graph.mjs";
 import { renderLayers, captureLayers, releaseLayers, boneSprites } from "./render-order.mjs";
+import { saveRigSpriteOverride, removeRigSpriteOverride } from "./rig-sprite-storage.mjs";
 import { ANGLE_JOINTS, jointAngle, wrapAngle } from "./joint-angles.mjs";
 const copy = (v) => structuredClone(v);
 export class RigStudio {
@@ -497,11 +498,13 @@ export class RigStudio {
         this.playing=false;const model=this.model,direction=this.direction,id=part.id;
         const current=boneSprites(model,direction,this.selected).find(p=>p.id===id)||part;
         window.dispatchEvent(new CustomEvent('rig-sprite-edit',{detail:{name:this.subject+' · '+id+' · '+DIRECTIONS[direction],sprite:copy(current.sprite),apply:(sprite)=>{
-          this.remember();model.boneSprites||={};model.boneSprites[id]||={};model.boneSprites[id][direction]={...sprite,x:current.sprite.x,y:current.sprite.y};
-          this.definition.replace(model);this.boneSpriteKey=null;this.save();this.changed('Sprite saved to this bone and facing.');
+          this.remember();model.boneSprites||={};model.boneSprites[id]||={};
+          const savedSprite={...sprite,x:current.sprite.x,y:current.sprite.y};
+          model.boneSprites[id][direction]=savedSprite;
+          this.definition.replace(model);saveRigSpriteOverride(this.subject,id,direction,savedSprite);this.boneSpriteKey=null;this.save();this.changed('Sprite saved to this bone and facing.');
         }}}));
       };card.append(edit);
-      const reset=document.createElement('button');reset.textContent='Restore original';reset.onclick=()=>{this.remember();if(this.model.boneSprites?.[part.id])delete this.model.boneSprites[part.id][this.direction];this.definition.replace(this.model);this.boneSpriteKey=null;this.changed('Original sprite restored. Save rig to keep.');};card.append(reset);root.append(card);
+      const reset=document.createElement('button');reset.textContent='Restore original';reset.onclick=()=>{this.remember();if(this.model.boneSprites?.[part.id])delete this.model.boneSprites[part.id][this.direction];removeRigSpriteOverride(this.subject,part.id,this.direction);this.definition.replace(this.model);this.save();this.boneSpriteKey=null;this.changed('Original sprite restored.');};card.append(reset);root.append(card);
     }
   }
   changed(message = "Unsaved · preview updated") {
