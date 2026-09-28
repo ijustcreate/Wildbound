@@ -122,7 +122,7 @@ test("A finisher holds interact to seal even with enemies and unfinished friends
     p = g.players[0];
   p.progress = FINISH;
   p.x = CENTER;
-  p.y = CENTER - 130;
+  p.y = CENTER - 100;
   g.spawnEvent(0);
   assert.equal(g.hitTable(p), false);
   assert.equal(g.phase, "play");

@@ -1,4 +1,4 @@
-import { PAD_NAMES, renderPlayerMappings } from "./controls.mjs";
+import { PAD_NAMES, renderPlayerMappings, controllerButtonNames } from "./controls.mjs";
 import { ITEMS, SLOTS, give, take, equip, itemStats } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { drawPlayer, directionVector } from "./player-motion.mjs";
@@ -6,6 +6,7 @@ import { appearanceControls, DEFAULT_APPEARANCE } from "./appearance.mjs";
 import {
   SYMBOLS,
   BOONS,
+  SKILLS,
   RECIPES,
   initializeField,
   protectedItem,
@@ -37,7 +38,7 @@ export class FieldKit {
       onResume,
     });
     this.marked = new Map();
-    this.tab = "Trail";
+    this.tab = "Craft";
     this.page = 0;
     this.filter = "All";
     this.query = "";
@@ -141,7 +142,7 @@ export class FieldKit {
     const header = node("header");
     header.append(
       node("span", "FIELD KIT", "eyebrow"),
-      node("h2", `${f.symbol || "◆"} ${p.name}`),
+      node("h2", p.name),
     );
     const close = node("button", "Close · B / Esc");
     close.dataset.focus = "close";
@@ -149,7 +150,7 @@ export class FieldKit {
     header.append(close);
     this.dialog.append(header);
     const nav = node("nav");
-    for (const tab of ["Trail", "Storage", "Craft", "Look", "Settings"]) {
+    for (const tab of ["Craft", "Skills"]) {
       const b = node("button", tab);
       b.dataset.focus = "tab:" + tab;
       b.classList.toggle("active", tab === this.tab);
@@ -164,17 +165,18 @@ export class FieldKit {
     this.dialog.append(nav);
     this.body = node("section", null, "field-body");
     this.dialog.append(this.body);
-    if (this.tab === "Trail") this.trail(g, p, f);
-    if (this.tab === "Storage") this.storage(g, p, f);
     if (this.tab === "Craft") this.crafting(g, p, f);
-    if (this.tab === "Look") this.look(g, p, f);
-    if (this.tab === "Settings") this.settings(g, p, f);
+    if (this.tab === "Skills") this.skills(g, p, f);
     const footer = node("footer");
+    const buttons = p.device === 'keyboard' ? { tab:'LB/RB', select:'A / Enter', close:'B / Esc' } : (() => {
+      const names = controllerButtonNames(p.controllerFamily || 'generic');
+      return { tab:`${names[4]}/${names[5]}`, select:names[0], close:names[1] };
+    })();
     footer.append(
       node(
         "p",
         this.notice ||
-          "LB/RB: tab · D-pad: focus · left/right: choice · A: select · B: close",
+          `${buttons.tab}: tab · D-pad: focus · left/right: choice · ${buttons.select}: select · ${buttons.close}: close`,
         "field-notice",
       ),
     );
@@ -198,6 +200,8 @@ export class FieldKit {
         "Rolling with creatures alive earns 2 gold. New encounters can overlap while the jungle is still dangerous.",
       ),
     );
+    for(const hunter of g.enemies.filter(e=>e.kind==='hunter'&&e.night?.objective?.status==='active'))
+      this.body.append(node('p',`Hunter pursuit · ${Math.ceil(120-hunter.night.objective.elapsed)}s remaining · defeat him or survive in the world · 20 gold each`,'field-card'));
     if (g.objective)
       this.body.append(
         node(
@@ -228,11 +232,6 @@ export class FieldKit {
       this.body.append(
         node("p", `Boon: ${BOONS.find((b) => b.id === f.boon)?.name}`),
       );
-    this.action("Ping my position", () => {
-      g.ping = { x: p.x, y: p.y, color: p.color, until: g.time + 6 };
-      g.message(`${p.name} marked their position.`);
-      return "Party ping placed.";
-    });
     this.action("Regroup safely", () => regroup(g, p));
     this.body.append(
       node(
@@ -533,6 +532,24 @@ export class FieldKit {
       (g.barricades ||= []).push({ x, y, life: 30 });
       return "Barricade placed.";
     });
+  }
+  skills(g, p, f) {
+    this.body.append(node("p", `Spend XP on permanent field skills. XP: ${p.xp || 0} · Next level: ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} to go.`, "field-card"));
+    for (const s of SKILLS) {
+      const rank = f.skills?.[s.id] || 0;
+      const card = node("article", null, "field-card");
+      card.append(node("h3", `${s.name} · ${rank}/${s.max}`), node("p", s.detail));
+      const button = this.action(rank >= s.max ? "Mastered" : `Train · ${s.cost} XP`, () => {
+        if (rank >= s.max) return "This skill is mastered.";
+        if ((p.xp || 0) < s.cost) return `Need ${s.cost} XP.`;
+        p.xp -= s.cost;
+        f.skills[s.id] = rank + 1;
+        return `${s.name} upgraded.`;
+      }, card);
+      button.disabled = rank >= s.max;
+      this.body.append(card);
+    }
+    this.body.append(node("p", "More possible skills: silent movement, stronger parries, faster gathering, better lantern range, and a once-per-round emergency dodge.", "subtle"));
   }
   look(g, p, f) {
     const preview = node("canvas", null, "field-preview");

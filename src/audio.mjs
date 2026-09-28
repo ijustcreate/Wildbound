@@ -1,6 +1,8 @@
 import { waterAt } from './environment.mjs';
 import {CUES,creatureCue} from './sound-bank.mjs';
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
+// Add future biome loops here as they become available. Missing entries use the light wind fallback.
+export const AMBIENT_TRACKS={forest:'forest_ambient',desert:null,ice:null,house:null,temple:null};
 export class GameAudio {
  constructor(){
   this.settings={master:.8,sfx:.8,ui:.65,ambience:.45,night:false};
@@ -31,7 +33,9 @@ export class GameAudio {
  }
  update(game,active){
   if(!this.unlocked)return;this.listener=game.players?.find(p=>p.hp>0)||game.players?.[0];
-  this.ambient(active?(game.weather?.type==='monsoon'?'rain':'wind'):null);
+  const biome=game.generatedEnvironment||game.environment||'forest';
+  const ambientCue=game.weather?.type==='monsoon'?'rain':(AMBIENT_TRACKS[biome]||'wind');
+  this.ambient(active?ambientCue:null);
   if(!active)return;
   if(this.game!==game||this.seed!==game.seed){this.previous.clear();this.playerState=new WeakMap();this.game=game;this.seed=game.seed;}
   const next=new Map();for(const e of game.enemies||[]){const old=this.previous.get(e.id);if(!old)this.play(creatureCue(e.kind,'spawn'),e);else{if(old.kind!==e.kind)this.play('hatch',e);if((e.attack||0)>old.attack+.03||e.state!==old.state&&['windup','breath','rocklift'].includes(e.state))this.play(creatureCue(e.kind,'attack'),e);if(e.hp<old.hp)this.play(creatureCue(e.kind,'hurt'),e);}next.set(e.id,{kind:e.kind,attack:e.attack||0,state:e.state,hp:e.hp});}this.previous=next;

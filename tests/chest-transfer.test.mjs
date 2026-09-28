@@ -17,13 +17,13 @@ test("Chest transfers move stacks both ways through A/Enter and shoulder/Tab act
   g.inventoryAction(p, "select:1");
   g.inventoryAction(p, "use");
   assert.equal(count(p, "potion"), 0);
-  assert.equal(p.chests[0][0].qty, 4);
+  assert.equal(p.chests[0][0].qty, 6);
   g.inventoryAction(p, "panel");
   assert.equal(p.ui.panel, "gear");
   g.inventoryAction(p, "panel");
   assert.equal(p.ui.panel, "chest");
   g.inventoryAction(p, "use");
-  assert.equal(count(p, "potion"), 4);
+  assert.equal(count(p, "potion"), 6);
   assert.equal(p.chests[0].length, 0);
   g.inventoryAction(p, "panel");
   assert.equal(p.ui.panel, "pack");

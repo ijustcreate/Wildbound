@@ -1,4 +1,9 @@
 import {drawParticleEffect} from './particles.mjs';
+import {drawNightLight, drawNightStatus, enemyVisibility} from './night-cycle.mjs';
+import {drawLivingEcosystem} from './living-ecosystem.mjs';
+import {drawNightEnemyEffects, nightEnemyOpacity} from './night-enemies.mjs';
+import {drawNightEquipment} from './night-equipment.mjs';
+import {NIGHT_KINDS} from './night-rigs.mjs';
 import {drawTemple} from './temple.mjs';
 import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt} from './ice-world.mjs';
 import { drawFieldWorld } from "./field-art.mjs";
@@ -28,6 +33,65 @@ const hash = (x, y) => {
   const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
   return v - Math.floor(v);
 };
+// A tsetse is a biting fly, but its long legs, narrow abdomen, wings, and
+// needle-like proboscis should read immediately as a mosquito to players.
+function drawMosquito(ctx, a, time) {
+  const flap = Math.sin(time * 38 + a.id * 0.7) * 2;
+  const angle = Math.atan2(a.faceY || 0, a.faceX || 1);
+  ctx.save();
+  ctx.translate(a.x, a.y - 15);
+  ctx.rotate(angle);
+  ctx.lineCap = "round";
+
+  // translucent wings
+  ctx.fillStyle = "#d8eef044";
+  ctx.strokeStyle = "#d8eef0aa";
+  ctx.lineWidth = 1;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(1, side * 2);
+    ctx.quadraticCurveTo(9, side * (10 + flap), 19, side * (7 + flap));
+    ctx.quadraticCurveTo(11, side * 1, 1, side * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // long abdomen with a visible red-brown banding
+  ctx.fillStyle = "#252832";
+  ctx.beginPath();
+  ctx.ellipse(-5, 0, 12, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#8e4650";
+  ctx.fillRect(-10, -2, 3, 4);
+  ctx.fillRect(-4, -2, 3, 4);
+  ctx.fillStyle = "#c8a36a";
+  ctx.fillRect(-17, -1, 5, 2);
+
+  // head and proboscis
+  ctx.fillStyle = "#11161b";
+  ctx.beginPath();
+  ctx.arc(8, 0, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#c8a36a";
+  ctx.beginPath();
+  ctx.moveTo(11, 0);
+  ctx.lineTo(24, 0);
+  ctx.stroke();
+
+  // six spindly legs
+  ctx.strokeStyle = "#252832";
+  ctx.lineWidth = 1.2;
+  for (const side of [-1, 1]) {
+    for (const x of [-5, 0, 5]) {
+      ctx.beginPath();
+      ctx.moveTo(x, side * 2);
+      ctx.lineTo(x - 4, side * 8);
+      ctx.lineTo(x - 10, side * 10);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
 export class Renderer {
   constructor(canvas, assets) {
     this.canvas = canvas;
@@ -110,6 +174,7 @@ export class Renderer {
     drawExpansion(ctx,game);
     drawTemple(ctx,game,this.animator);
     drawTracks(ctx, game);
+    drawLivingEcosystem(ctx, game, 'ground');
     ctx.save();
     if (pull) {
       ctx.translate(CENTER, CENTER);
@@ -166,13 +231,14 @@ export class Renderer {
       if (l.embedded && l.type === "arrow") {
         ctx.save();
         ctx.translate(l.x, l.y - 3);
-        ctx.rotate(l.angle || 0);
+        ctx.rotate((l.angle || 0) + (l.angleJitter || 0));
+        const depth = Math.max(5, Math.min(30, l.embedDepth || 7));
         ctx.fillStyle = "#ba9763";
-        ctx.fillRect(-13, -1, 25, 2);
+        ctx.fillRect(-depth - 7, -1, depth + 19, 2);
         ctx.fillStyle = "#f0e7cd";
-        ctx.fillRect(10, -2, 4, 4);
+        ctx.fillRect(depth + 8, -2, 4, 4);
         ctx.fillStyle = "#d7bd78";
-        ctx.fillRect(-15, -2, 3, 4);
+        ctx.fillRect(-depth - 9, -2, 3, 4);
         ctx.restore();
       } else drawItem(ctx, l.type, l.x, l.y - 3, 24);
       if (ITEMS[l.type]?.slot) {
@@ -271,14 +337,15 @@ export class Renderer {
         ctx.fillRect(-1, -3, 2, 6);
       } else {
         ctx.fillStyle = "#ba9763";
-        ctx.fillRect(a.stuck ? -13 : -9, -1, a.stuck ? 25 : 17, 2);
+        const depth = Math.max(5, Math.min(30, a.embedDepth || 7));
+        ctx.fillRect(a.stuck ? -depth - 7 : -9, -1, a.stuck ? depth + 19 : 17, 2);
         ctx.fillStyle = "#f0e7cd";
-        ctx.fillRect(a.stuck ? 10 : 6, -2, 4, 4);
+        ctx.fillRect(a.stuck ? depth + 8 : 6, -2, 4, 4);
         if (a.stuck) {
           ctx.fillStyle = "#d7bd78";
-          ctx.fillRect(-15, -2, 3, 4);
+          ctx.fillRect(-depth - 9, -2, 3, 4);
           ctx.fillStyle = "#e8d6a1";
-          ctx.fillRect(-14, -1, 2, 2);
+          ctx.fillRect(-depth - 8, -1, 2, 2);
         }
       }
       if (a.rock) {
@@ -295,7 +362,7 @@ export class Renderer {
         ctx,
         { ...d, color: owner?.color || d.color },
         game.time,
-        (owner?.field?.symbol || "") + " PRIVATE STORAGE",
+        "PRIVATE STORAGE",
       );
     }
     for (const d of this.decor)
@@ -344,7 +411,7 @@ export class Renderer {
       ctx.setLineDash([]);
     }
     for (const e of game.enemies)
-      if (e.state === "windup") {
+      if (e.state === "windup" && !e.night) {
         ctx.fillStyle = "#e96b5140";
         ctx.strokeStyle = "#ff9470";
         ctx.lineWidth = 1;
@@ -431,11 +498,13 @@ export class Renderer {
       const player = a.isPlayer,
         size = player
           ? 43
-          : a.kind==='baby_spider'?27:["golem", "crocodile", "lion", "tiger", "white_lion", "rhino", "dragon"].includes(a.kind)
+          : a.kind==='elephant'?82:a.kind==='baby_spider'?27:["golem", "crocodile", "lion", "tiger", "white_lion", "rhino", "dragon", "zebra", "carnivorous_flower"].includes(a.kind)
             ? 61
-            : a.kind === "bat" || a.kind === "wasp"
+            : a.kind === "bat" || a.kind === "wasp" || a.kind === "tsetse"
               ? 34
               : 47;
+      ctx.save();
+      ctx.globalAlpha *= player ? 1 : Math.min(enemyVisibility(game, a), nightEnemyOpacity(game, a));
       ctx.fillStyle = "#091c1680";
       ctx.beginPath();
       ctx.ellipse(
@@ -492,8 +561,12 @@ export class Renderer {
           ctx.fillText("WILDBOUND…", a.x, a.y - 51);
         }
         if (a.charge > 0) {
-          ctx.fillStyle = "#e9c677";
-          ctx.fillRect(a.x - 12, a.y - 39, 24 * Math.min(1, a.charge / 1.2), 2);
+          const aimTime=ITEMS[a.equipment?.hand1]?.shot?.aimTime || 1.2;
+          ctx.fillStyle = a.charge>=aimTime ? '#a6e3b1' : "#e9c677";
+          ctx.fillRect(a.x - 12, a.y - 39, 24 * Math.min(1, a.charge / aimTime), 2);
+        }
+        if(a.rifleReload>0) {
+          ctx.fillStyle='#afbbcf';ctx.fillRect(a.x-12,a.y-43,24*Math.max(0,1-a.rifleReload/(ITEMS.rifle.shot.cooldown)),2);
         }
         if (a.spin > 0) {
           ctx.save();
@@ -520,33 +593,35 @@ export class Renderer {
         }
       }
       ctx.save();
-      const grounded=!['bat','wasp','bee','dragon'].includes(a.kind),snowBase=a.y+(player||rigSubject(a.kind)?1:14);
+      const grounded=!['bat','wasp','bee','dragon','pelican'].includes(a.kind),snowBase=a.y+(player||rigSubject(a.kind)?1:14);
       if(grounded)clipSnow(ctx,game,a.x,snowBase,200);
-      if ((a.invuln > 0 && Math.floor(this.age * 15) % 2) || a.hp <= 0)
-        ctx.globalAlpha = 0.5;
-      if (a.hp <= 0) {
-        ctx.translate(a.x, a.y);
-        ctx.rotate(Math.PI / 2);
-        this.assets.draw(ctx, a.sprite, 0, 0, size);
-      } else
+      if (a.invuln > 0 && Math.floor(this.age * 15) % 2) ctx.globalAlpha *= 0.5;
+      const dead = !player && a.hp <= 0;
+      if (dead) {
+        // Let the creature finish its death-1 pose on the floor, then fade the
+        // whole body away. This replaces the old half-alpha upright sprite.
+        const fade = Math.max(0, Math.min(1, ((a.deathTimer || 0) - 1.15) / 2.1));
+        ctx.globalAlpha *= 1 - fade;
+        ctx.translate(a.x, a.y + 8);
+        ctx.rotate(Math.PI / 2 + Math.atan2(a.faceY || 0, a.faceX || 1) * 0.12);
+        ctx.scale(1.08, 0.58);
+        this.animator.draw(
+          ctx,
+          { ...a, x: 0, y: 0, animationAction: "death", deathTimer: a.deathTimer || 0 },
+          game.time,
+          size,
+        );
+      } else if (a.kind === "tsetse") {
+        drawMosquito(ctx, a, game.time);
+      } else {
         this.animator.draw(
           ctx,
           a.sink ? { ...a, y: a.y + a.sink } : a,
           game.time,
           size,
         );
-      ctx.restore();
-      if (!player && a.kind === "tsetse") {
-        ctx.save();
-        ctx.fillStyle = "#161b20";
-        ctx.beginPath(); ctx.ellipse(a.x, a.y - 14, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#713b49";
-        ctx.fillRect(a.x - 3, a.y - 12, 6, 5);
-        ctx.strokeStyle = "#d6e4ee88"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(a.x - 3, a.y - 17); ctx.lineTo(a.x - 12, a.y - 23); ctx.moveTo(a.x + 3, a.y - 17); ctx.lineTo(a.x + 12, a.y - 23); ctx.stroke();
-        ctx.strokeStyle = "#c8a36a"; ctx.beginPath(); ctx.moveTo(a.x, a.y - 20); ctx.lineTo(a.x + (a.faceX || 1) * 10, a.y - 20 + (a.faceY || 0) * 10); ctx.stroke();
-        ctx.restore();
       }
+      ctx.restore();
       if (!player && (a.frostMage || (a.kind === "skeleton" && a.frostBound))) {
         ctx.fillStyle = "#8cecff";
         ctx.fillRect(a.x - 5, a.y - 29, 3, 2);
@@ -605,7 +680,8 @@ export class Renderer {
         player &&
         a.attack > 0.1 &&
         !ITEMS[a.equipment?.hand1]?.magic && !ITEMS[a.equipment?.hand2]?.magic &&
-        ITEMS[a.equipment?.hand1]?.base !== "bow"
+        ITEMS[a.equipment?.hand1]?.base !== "bow" &&
+        !ITEMS[a.equipment?.hand1]?.ranged && !ITEMS[a.equipment?.hand1]?.utility
       ) {
         const angle = Math.atan2(a.faceY, a.faceX),progress=1-a.attack/(a.attackDuration||.34),big=a.attackClip==='swipe_big',upper=a.attackClip==='uppercut';
         const radius=(big?44:upper?24:34)*(a.attackReach||1),half=(a.attackArc||90)*Math.PI/360;
@@ -631,7 +707,7 @@ export class Renderer {
           48,
         );
       }
-      if (!player && a.hp < a.maxHp) {
+      if (!player && a.hp > 0 && a.hp < a.maxHp) {
         const healthY = a.y - (a.kind === "lion" ? 49 : 31);
         ctx.fillStyle = "#182f21";
         ctx.fillRect(a.x - 15, healthY, 30, 3);
@@ -652,8 +728,12 @@ export class Renderer {
           ctx.fillRect(a.x - 15, a.y - 30, (30 * a.revive) / 1.6, 3);
         }
       }
+      ctx.restore();
     }
     // Draw burn sparks after actors so the fire visibly clings to the target.
+    drawLivingEcosystem(ctx, game, 'air');
+    drawNightEnemyEffects(ctx, game);
+    drawNightEquipment(ctx, game);
     for (const f of game.fireParticles || []) {
       ctx.fillStyle = f.smoke ? "#aaa99dbb" : "#ffb63a";
       ctx.fillRect(
@@ -698,7 +778,9 @@ export class Renderer {
     drawRain(ctx, game, this.camera, w, h);
     ctx.restore();
     drawFog(ctx, game, this.camera, w, h);
+    drawNightLight(ctx, game, this.camera, w, h);
     drawWeather(ctx, game, w, h);
+    drawNightStatus(ctx, game, w, h);
     this.lootPrompts(game, w, h);
     if (pull) {
       ctx.textAlign = "center";
@@ -1041,7 +1123,8 @@ export class Renderer {
       CENTER + (game.tableShake ? Math.sin(this.age * 90) * 2 : 0),
       CENTER,
     );
-    ctx.scale(80 / 132, 47 / 78);
+    // Keep the physical table readable without dominating the playfield.
+    ctx.scale(58 / 132, 34 / 78);
     drawBoard(ctx, game, this.age);
     ctx.restore();
   }
@@ -1115,7 +1198,6 @@ export class Renderer {
         ctx.fillStyle = p.color;
         ctx.font = "6px monospace";
         ctx.textAlign = "center";
-        ctx.fillText(p.field?.symbol || "●", mx, my + 2);
       }
     }
     ctx.fillStyle = "#a4b58e";

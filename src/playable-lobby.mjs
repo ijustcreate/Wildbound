@@ -2,6 +2,7 @@ import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
+import { controllerButtonNames } from './controls.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:230,y:190},
@@ -150,12 +151,15 @@ export class PlayableLobby {
           for(const color of BASIC_COLORS){const swatch=button(color,()=>chooseColor(color),swatches);swatch.className='lobby-swatch';swatch.style.background=color;swatch.setAttribute('aria-label',`Choose color ${color}`);}
           pickerBox.append(swatches);
           const recentTitle=document.createElement('small');recentTitle.textContent='Recent colors';pickerBox.append(recentTitle);
-          const recents=document.createElement('div');recents.className='lobby-color-swatches';
+          const recents=document.createElement('div');recents.className='lobby-color-swatches lobby-recent-swatches';
           for(const color of s.recentColors){const swatch=button(color,()=>chooseColor(color),recents);swatch.className='lobby-swatch';swatch.style.background=color;swatch.setAttribute('aria-label',`Choose recent color ${color}`);}
           if(!s.recentColors.length){const empty=document.createElement('small');empty.textContent='Your last four colors appear here.';recents.append(empty);}
           pickerBox.append(recents);
           const picker=document.createElement('input');picker.type='color';picker.value=look[key];picker.setAttribute('aria-label',`Custom ${LOOK_LABELS[key]} color`);picker.oninput=()=>chooseColor(picker.value);
-          button('Open color picker',()=>picker.click(),pickerBox).classList.add('lobby-open-picker');pickerBox.append(picker);
+          const openPicker=button(`Custom color · ${look[key]}`,()=>picker.click(),pickerBox);
+          openPicker.classList.add('lobby-open-picker');
+          openPicker.style.borderLeft=`8px solid ${look[key]}`;
+          pickerBox.append(picker);
           const close=button('Done',()=>{s.creationColorKey=null;this.renderPanel(p);},pickerBox);close.classList.add('lobby-color-done');
           panel.append(pickerBox);
         }
@@ -293,7 +297,7 @@ export class PlayableLobby {
       const actor=this.practice.players.find(a=>a.id===p.id)||{...p,...s};
       c.save();c.translate(s.x,s.y-(actor.jumpHeight||0));c.scale(2,2);drawPlayer(c,actor,this.practice.time);c.restore();
       c.font='13px system-ui';c.fillStyle=p.ready?'#a8f4c9':p.color;c.fillText((p.ready?'✓ ':'')+p.name+(p.lobbyDisconnected?' · disconnected':''),s.x,s.y+27);
-      const o=this.state.nearest(p);if(o&&!s.panel){c.fillStyle='#182326';c.fillRect(s.x-69,s.y-95,138,24);c.fillStyle='#fff';c.font='12px system-ui';c.fillText((p.device==='keyboard'?'E':'Y')+' · '+o.name,s.x,s.y-79);}
+      const o=this.state.nearest(p);if(o&&!s.panel){const interact=p.device==='keyboard'?'E':controllerButtonNames(p.controllerFamily||'generic')[3];c.fillStyle='#182326';c.fillRect(s.x-69,s.y-95,138,24);c.fillStyle='#fff';c.font='12px system-ui';c.fillText(interact+' · '+o.name,s.x,s.y-79);}
     }
   }
 }

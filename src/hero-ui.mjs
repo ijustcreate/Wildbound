@@ -1,5 +1,6 @@
 import {drawTempleRoom} from './temple.mjs';
-import { compareItem } from "./field-systems.mjs";
+import { compareItem, itemStatDelta } from "./field-systems.mjs";
+import { controllerButtonNames, CONTROLLER_NAMES } from "./controls.mjs";
 import { chestName } from "./items.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
 import { robotRig, drawRobotPortrait } from "./robot-art.mjs";
@@ -19,6 +20,49 @@ export class HeroUI {
     this.root = root;
     this.panels = new Map();
     this.panelAnchors = new Map();
+  }
+  controllerText(game, p) {
+    if (p.device === 'keyboard') return { accept:'A / Enter', close:'B / Esc', select:'D-pad / arrows', tabs:'LB / RB' };
+    const names = controllerButtonNames(p.controllerFamily || 'generic');
+    return { accept:names[0], close:names[1], select:'D-pad', tabs:`${names[4]} / ${names[5]}` };
+  }
+  itemTooltip(panel, button, game, p, item) {
+    const def = ITEMS[item?.type];
+    if (!def) return;
+    const show = () => {
+      let tip = panel.querySelector('.item-tooltip');
+      if (!tip) { tip = el('div', null, 'item-tooltip'); panel.append(tip); }
+      tip.replaceChildren(el('strong', def.name));
+      if (def.description) tip.append(el('p', def.description));
+      const stats = el('div', null, 'item-tooltip-stats');
+      const base = itemStats(item.type);
+      if (base) stats.append(el('span', base, 'item-tooltip-base'));
+      for (const delta of itemStatDelta(p, item.type)) {
+        const sign = delta.value > 0 ? '+' : '';
+        stats.append(el('span', `${delta.label} ${sign}${delta.value}  (${delta.current} → ${delta.next})`, delta.value > 0 ? 'stat-up' : 'stat-down'));
+      }
+      if (!stats.children.length) stats.append(el('span', 'No equipment stat change', 'item-tooltip-muted'));
+      tip.append(stats);
+      const r = button.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+      const bx = r.left - pr.left, by = r.top - pr.top;
+      const candidates = [
+        [r.right - pr.left + 6, by],
+        [bx - tip.offsetWidth - 6, by],
+        [bx, by - tip.offsetHeight - 6],
+        [bx, r.bottom - pr.top + 6],
+      ];
+      const fits = ([x, y]) => x >= 4 && y >= 4 && x + tip.offsetWidth <= pr.width - 4 && y + tip.offsetHeight <= pr.height - 4;
+      const clear = ([x, y]) => x + tip.offsetWidth < bx - 2 || x > r.right - pr.left + 2 || y + tip.offsetHeight < by - 2 || y > r.bottom - pr.top + 2;
+      const [x, y] = candidates.find((candidate) => fits(candidate) && clear(candidate)) || candidates.find(fits) || candidates[2];
+      tip.style.left = `${Math.max(4, Math.min(pr.width - tip.offsetWidth - 4, x))}px`;
+      tip.style.top = `${Math.max(4, Math.min(pr.height - tip.offsetHeight - 4, y))}px`;
+      tip.hidden = false;
+    };
+    const hide = () => { const tip = panel.querySelector('.item-tooltip'); if (tip) tip.hidden = true; };
+    button.addEventListener('pointerenter', show, { passive:true });
+    button.addEventListener('pointerleave', hide, { passive:true });
+    button.addEventListener('focus', show);
+    button.addEventListener('blur', hide);
   }
   draw(game, renderer, onlyId = null) {
     const wanted = new Set();
@@ -365,6 +409,7 @@ export class HeroUI {
               ? " · Drag to backpack to unequip"
               : " · Drag onto an equipment slot")
           : "Empty slot";
+        if (def) this.itemTooltip(panel, b, game, p, item);
         if (def?.slot) b.style.color = def.color;
         if (def) {
           const icon = el("canvas");
@@ -465,7 +510,9 @@ export class HeroUI {
         "storage-notice",
       ),
     );
-    panel.append(el('small','D-pad: select · LB/RB: equipment / bag · A: use · Y: split / offhand · X: drop / transfer · B: close'));
+    const controls = this.controllerText(game, p);
+    const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
+    panel.append(el('small',`${family} · ${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.accept}: use · Y: split / offhand · X: drop / transfer · ${controls.close}: close`));
   }
 
   preview(panel, p, time) {
@@ -474,8 +521,8 @@ export class HeroUI {
     const c = canvas.getContext("2d");
     c.clearRect(0, 0, canvas.width, canvas.height);
     c.save();
-    c.translate(70, 158);
-    c.scale(3.2, 3.2);
+    c.translate(canvas.width / 2, 170);
+    c.scale(4.15, 4.15);
     drawPlayer(
       c,
       {

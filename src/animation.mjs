@@ -1,4 +1,5 @@
 import {drawGorilla} from './temple.mjs';
+import { NIGHT_KINDS, STAMPEDE_KINDS, nightMotions, nightMotionRevisions, nightAction, nightFrame } from './night-rigs.mjs';
 import { ITEMS } from "./items.mjs";
 import {
   playerMotion,
@@ -42,6 +43,8 @@ export class Animator {
     this.catFrames = new Map();
     this.catRevisions = { lion: lionRevision, tiger: tigerRevision };
     this.stampedeRevision = rhinoMotionRevision;
+    this.nightStampedeFrames = new Map();
+    this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
     if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
@@ -63,6 +66,29 @@ export class Animator {
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
     if (rigSubject(nameKey)) {
+      if (STAMPEDE_KINDS.includes(nameKey) && actor.state === 'stampede' && !actor.aggro &&
+          !(actor.flash > 0) && !(actor.hit > 0) && !(actor.hp <= 0) && !actor.dead &&
+          !actor.animationAction && !Number.isFinite(actor.playerFrame) && !Number.isFinite(actor.poseTime) &&
+          !Number.isFinite(actor.animationProgress) && !actor.rigOverride) {
+        if (this.nightStampedeRevisions[nameKey] !== nightMotionRevisions[nameKey]) {
+          this.nightStampedeFrames.clear();
+          this.nightStampedeRevisions[nameKey] = nightMotionRevisions[nameKey];
+        }
+        const model = nightMotions[nameKey], action = nightAction(nameKey, actor, model), clip = model.clips[action];
+        const raw = nightFrame(nameKey, actor, time, model), sample = Math.floor(((raw % clip.length + clip.length) % clip.length) * 2) / 2;
+        const key = [nameKey, facingIndex(actor.faceX, actor.faceY), action, sample].join(':');
+        let surface = this.nightStampedeFrames.get(key);
+        if (!surface) {
+          surface = document.createElement('canvas'); surface.width = surface.height = 256;
+          const cc = surface.getContext('2d'); cc.translate(128, 128);
+          rigSubject(nameKey).draw(cc, { ...actor, playerFrame: sample }, time, model);
+          if (this.nightStampedeFrames.size >= 192) this.nightStampedeFrames.delete(this.nightStampedeFrames.keys().next().value);
+          this.nightStampedeFrames.set(key, surface);
+        }
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(surface, Math.round(actor.x - size * 8 / 3), Math.round(actor.y - size * 8 / 3), size * 16 / 3, size * 16 / 3);
+        return;
+      }
       if (
         (nameKey === "player" || nameKey?.startsWith("explorer")) &&
         !actor.animationAction &&
@@ -234,7 +260,9 @@ export class Animator {
             : cfg?.edited
               ? cfg.stats.recovery
               : 0.65;
-      rigSubject(nameKey).draw(c, { ...actor, motionDuration }, time);
+      // Night behavior owns state timing. Avoid replacing its duration with the
+      // legacy charge/recovery heuristic; explicit stateAge also remains usable.
+      rigSubject(nameKey).draw(c, NIGHT_KINDS.includes(nameKey) ? actor : { ...actor, motionDuration }, time);
       c.restore();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(

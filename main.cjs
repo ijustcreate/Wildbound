@@ -3,9 +3,11 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { createHash, randomUUID } = require("node:crypto");
 let window;
+const preview = process.argv.includes('--preview');
+if (preview) app.setPath('userData', path.join(app.getPath('appData'), 'Wildbound Night Hunt Preview'));
 let releaseControllerClaims = () => {};
 const testOutput = path.join(
-  app.isPackaged ? path.dirname(app.getPath("exe")) : __dirname,
+  app.getAppPath().endsWith('.asar') ? path.dirname(app.getAppPath()) : app.isPackaged ? path.dirname(app.getPath("exe")) : __dirname,
   "test-output",
 );
 if (process.argv.includes("--software-rendering"))
@@ -88,7 +90,8 @@ app.whenReady().then(async () => {
     minHeight: 700,
     show: false,
     backgroundColor: "#101e1b",
-    title: "Wildbound • The Living Board",
+    title: preview ? "Wildbound · Night Hunt Preview" : "Wildbound • The Living Board",
+    icon: path.join(__dirname, 'assets', 'wildbound-icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       additionalArguments: process.argv.includes("--smoke-test")
@@ -102,9 +105,17 @@ app.whenReady().then(async () => {
       offscreen: process.argv.includes("--smoke-test"),
     },
   });
+  const rendererLog = path.join(app.getPath("temp"), "wildbound-renderer.log");
+  window.webContents.on("console-message", (_event, level, message, line, source) => {
+    try { fs.appendFileSync(rendererLog, `[${new Date().toISOString()}] ${level} ${source}:${line} ${message}\n`); } catch {}
+  });
+  window.webContents.on("render-process-gone", (_event, details) => {
+    try { fs.appendFileSync(rendererLog, `[${new Date().toISOString()}] renderer-gone ${JSON.stringify(details)}\n`); } catch {}
+  });
   window.once("ready-to-show", () => {
     if (!process.argv.includes("--smoke-test")) window.show();
   });
+  window.on('page-title-updated', event => { if(preview)event.preventDefault(); });
   if (process.argv.includes("--smoke-test"))
     window.webContents.setAudioMuted(true);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -131,6 +142,7 @@ app.whenReady().then(async () => {
     appPath: app.getAppPath(), exePath: app.getPath('exe'),
     userData: app.getPath('userData'), packaged: app.isPackaged,
     testMode: process.argv.includes('--smoke-test'),
+    isolated: preview,
   });
   ipcMain.handle('project-rigs-load', () => rigStore.load());
   ipcMain.handle('project-rigs-save', (_e, data) => rigStore.save(data));

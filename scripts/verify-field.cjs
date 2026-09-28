@@ -25,7 +25,7 @@ app.whenReady().then(async () => {
     await win.webContents.executeJavaScript(
       "document.querySelector('.field-open').click()",
     );
-    for (const tab of ["Trail", "Storage", "Craft", "Look", "Settings"]) {
+    for (const tab of ["Craft", "Skills"]) {
       const result = await win.webContents.executeJavaScript(
         `(()=>{const d=document.querySelector('#field-kit-dialog');[...d.querySelectorAll('nav button')].find(b=>b.textContent===${JSON.stringify(tab)}).click();return {open:d.open,buttons:d.querySelectorAll('button').length,width:d.scrollWidth,client:d.clientWidth};})()`,
       );

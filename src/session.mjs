@@ -4,6 +4,7 @@ import { snapshot } from "./rooms.mjs";
 import { generateWorld } from "./world.mjs";
 import { initHero } from "./adventure.mjs";
 import {upgradeHouseFeatures} from './house-design.mjs';
+import {initLivingEcosystem} from './living-ecosystem.mjs';
 export function saveSession(game) {
   return { version: 1, state: snapshot(game) };
 }
@@ -39,5 +40,6 @@ export function restoreSession(saved) {
     p.ui = null;
     p.dashHeld = false;
   }
+  initLivingEcosystem(g);
   return g;
 }

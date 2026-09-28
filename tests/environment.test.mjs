@@ -65,9 +65,9 @@ test("Harvest respects facing, drops sticks then logs, removes footprint and per
   tickEnvironment(g, 1.3);
   assert.equal(g.loot.filter((l) => l.type === "log").length, 1);
   tickEnvironment(g, 0.3);
-  assert.equal(g.scenery.length, 0);
+  assert.equal(g.scenery.length, 1);
   const saved = restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
-  assert.equal(saved.scenery.length, 0);
+  assert.equal(saved.scenery.length, 1);
   assert.equal(saved.loot.filter((l) => l.type === "log").length, 1);
 });
 test("Mining awards one chunk per completed progress bar and eventually depletes rock", () => {

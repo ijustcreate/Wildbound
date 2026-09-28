@@ -2,6 +2,7 @@ import { ITEMS, SLOTS, give, take, equip, stat, itemKind } from "./items.mjs";
 
 export const SYMBOLS = ["◆", "●", "▲", "✦", "■", "✚"];
 export const RECIPES = [
+  { id: 'torch', name: 'Trail torch', ingredients: { stick: 2 }, output: 'torch', qty: 1 },
   {
     id: "arrow",
     name: "Trail arrows",
@@ -9,6 +10,10 @@ export const RECIPES = [
     output: "arrow",
     qty: 8,
   },
+  { id: "bone_arrow", name: "Bone-fletched arrows", ingredients: { stick: 2, bone_shard: 1 }, output: "arrow", qty: 12 },
+  { id: "reinforced_barricade", name: "Core-reinforced barricade", ingredients: { log: 1, golem_core: 1 }, output: "barricade", qty: 2 },
+  { id: "silk_trap", name: "Silk snare", ingredients: { stick: 2, web_silk: 1 }, output: "trap", qty: 2 },
+  { id: "scented_bait", name: "Scented bait", ingredients: { fruit: 1, beast_fang: 1 }, output: "fruit", qty: 3 },
   {
     id: "trap",
     name: "Snare trap",
@@ -19,7 +24,7 @@ export const RECIPES = [
   {
     id: "potion",
     name: "Forest tonic",
-    ingredients: { fruit: 2 },
+    ingredients: { frost_berry: 2 },
     output: "potion",
     qty: 1,
   },
@@ -44,6 +49,14 @@ export const BOONS = [
     detail: "Traps capture 25% faster this expedition.",
   },
 ];
+export const SKILLS = [
+  { id: "second_wind", name: "Second Wind", cost: 20, max: 1, detail: "Once per expedition, recover from a knockdown at 35 HP." },
+  { id: "long_jump", name: "Trail Legs", cost: 15, max: 2, detail: "Jump farther and higher. Each rank adds 15% reach." },
+  { id: "quick_revive", name: "Quick Rescue", cost: 25, max: 1, detail: "Hold Interact near a downed friend for an instant revive." },
+  { id: "pack_mule", name: "Pack Mule", cost: 20, max: 1, detail: "Carry four additional backpack stacks." },
+  { id: "scavenger", name: "Scavenger", cost: 15, max: 1, detail: "Enemy material drops are more likely to appear." },
+  { id: "steady_hand", name: "Steady Hand", cost: 15, max: 1, detail: "Bow charge builds more quickly and holds its depth longer." },
+];
 export function initializeField(p) {
   p.field ||= {
     favorites: [],
@@ -54,6 +67,7 @@ export function initializeField(p) {
     overflow: [],
     cosmetics: {},
     totals: {},
+    skills: {},
   };
   for (const [key, value] of Object.entries({
     favorites: [],
@@ -64,6 +78,7 @@ export function initializeField(p) {
     overflow: [],
     cosmetics: {},
     totals: {},
+    skills: {},
   }))
     p.field[key] ??= structuredClone(value);
   return p.field;
@@ -77,7 +92,7 @@ export function category(type) {
     ? "Relics"
     : i?.slot
       ? "Equipment"
-      : ["stick", "log", "stone"].includes(type)
+      : ["stick", "log", "stone", "bone_shard", "golem_core", "web_silk", "beast_fang", "frost_berry"].includes(type)
         ? "Materials"
         : "Supplies";
 }
@@ -222,6 +237,14 @@ export function compareItem(p, type) {
           .join(", "),
     );
   return notes.join(" · ") || "No stat change";
+}
+export function itemStatDelta(p, type) {
+  const d = ITEMS[type];
+  if (!d?.slot) return [];
+  const current = ITEMS[p.equipment[d.slot]] || {};
+  return [['damage','Damage'],['armor','Armor'],['punch','Fists'],['reach','Reach'],['magnet','Loot reach']]
+    .map(([key,label]) => ({ key, label, value:(d[key] || 0) - (current[key] || 0), next:d[key] || 0, current:current[key] || 0 }))
+    .filter((entry) => entry.value !== 0);
 }
 export function record(p, key, amount = 1) {
   const f = initializeField(p);

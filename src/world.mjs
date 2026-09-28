@@ -4,10 +4,11 @@ import {contains} from './house-design.mjs';
 import {makeHouse,insideHouse} from './expansion.mjs';
 // Matches the visible board footprint (including the lower carved rim).
 export const TABLE = {
-  halfWidth: 85,
-  halfHeight: 48,
-  footOffset: 11,
-  attackRadius: 28,
+  // Keep the physical board aligned with the reduced board art in render.mjs.
+  halfWidth: 62,
+  halfHeight: 36,
+  footOffset: 8,
+  attackRadius: 40,
 };
 export function crossesTable(a, b) {
   const steps = Math.max(1, Math.ceil(Math.hypot(a.x - b.x, a.y - b.y) / 12));

@@ -670,7 +670,7 @@ export function installDebugTools(ctx) {
       });
       check("Music decodes: " + track.name, () => playable);
     }
-    check('Expedition soundtrack uses random mode',()=>ctx.$('music-track').value==='random'&&ctx.$('music-track').disabled&&ctx.music.loop);
+    check('Expedition soundtrack offers random and explicit tracks',()=>ctx.$('music-track').value==='random'&&!ctx.$('music-track').disabled&&ctx.MUSIC_TRACKS.length>=11&&ctx.music.loop);
     check(
       "Three-player second roll renders water elementals and all heroes at fullscreen size",
       () => {
@@ -2055,7 +2055,7 @@ export function installDebugTools(ctx) {
         !ctx.fieldKit.dialog.open && !ctx.paused,
       );
       ctx.fieldKit.open(p);
-      for (const tab of ["Trail", "Storage", "Craft", "Look", "Settings"]) {
+      for (const tab of ["Craft", "Skills"]) {
         ctx.fieldKit.tab = tab;
         ctx.fieldKit.render();
         if(tab==='Settings') check('Settings shows named controls for each player device',ctx.fieldKit.dialog.querySelectorAll('.controller-card').length===2 && ctx.fieldKit.dialog.textContent.includes('Left stick') && ctx.fieldKit.dialog.textContent.includes('inventory'));

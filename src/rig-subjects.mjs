@@ -1,4 +1,5 @@
 import {wolfMotion, defaultWolfMotion, replaceWolfMotion, drawWolf} from './wolf-motion.mjs';
+import { NIGHT_KINDS, nightMotions, nightRigLabels, defaultNightMotion, replaceNightMotion, drawNightRig } from './night-rigs.mjs';
 import {
   BEAST_KINDS,
   beastMotions,
@@ -53,6 +54,18 @@ import {
   creatureRigLabels,
 } from "./creature-motion.mjs";
 export const RIG_SUBJECTS = {
+  ...Object.fromEntries(NIGHT_KINDS.map(kind => {
+    const data = nightMotions[kind];
+    const selected = { carnivorous_flower: 'jawTop', night_stalker: 'frontPawR', burrower: 'head', mimic_vine: 'tendril6', poison_pod: 'sacR', carrion_pack: 'jaw', hunter: 'rifleMuzzle', elephant: 'trunkTip', zebra: 'frontPawR', pelican: 'wingTipR' }[kind];
+    return [kind, {
+      name: nightRigLabels[kind], data, defaults: () => defaultNightMotion(kind),
+      replace: model => replaceNightMotion(kind, model),
+      draw: (c, actor, time, model = nightMotions[kind], pose) => drawNightRig(c, actor, time, model, pose),
+      sprite: kind, selected, palette: Object.keys(data.palette), shapeKeys: Object.keys(data.shape),
+      tracks: [selected, ...Object.keys(data.joints).filter(n => /^(foot|frontPaw|jaw|tendril|wingTip)/.test(n) && n !== selected)].slice(0, 5),
+      clip: kind === 'carnivorous_flower' ? 'sway' : kind === 'mimic_vine' ? 'wrap' : 'run', scale: kind === 'elephant' ? 4 : 5,
+    }];
+  })),
   ...Object.fromEntries(
     BEAST_KINDS.map((kind) => [
       kind,

@@ -38,6 +38,7 @@ export const HAZARD_EVENTS = [
     name: "Twenty thunders",
     type: "stampede",
     kind: "rhino",
+    squad: ['rhino', 'elephant', 'zebra', 'zebra', 'pelican'],
     count: 20,
     weight: 4,
     hp: 130,
@@ -45,7 +46,7 @@ export const HAZARD_EVENTS = [
     damage: 20,
     verse:
       "Twenty shadows shake the plain.\nLet them pass, or earn their pain.",
-    tip: "Rhinos charge across the jungle. They only turn to fight if you hit them.",
+    tip: "Rhinos, elephants, zebras and pelicans cross the jungle. Stand clear; only struck animals turn to fight.",
   },
 ];
 export function initHazards(g) {
@@ -71,6 +72,7 @@ export function firePatch(g, x, y, life = 2.6, damage = 3) {
     patch = { x: tx, y: ty, life, damage, tick: 0 };
     g.firePatches.push(patch);
   } else patch.life = Math.max(patch.life, life);
+  return patch;
 }
 export function startHazard(g, event) {
   if (event.type === "monsoon" || (event.type === "blizzard" && g.generatedEnvironment==='ice')) {
@@ -113,7 +115,8 @@ export function startHazard(g, event) {
       g.enemies.push({
         ...event,
         id: g.nextId++,
-        kind: "rhino",
+        kind: (event.squad || ['rhino'])[n % (event.squad?.length || 1)],
+        stampeding: true,
         x: dir > 0 ? -30 - n * 48 : 1630 + n * 48,
         y: lane + ((n % 3) - 1) * 18,
         lane: lane + ((n % 3) - 1) * 18,
@@ -183,6 +186,11 @@ export function tickHazards(g, dt) {
       ) {
         g.hurt(p, f.damage);
         ignite(p, 2, f.damage);
+      }
+    if(f.playerLit)for(const e of g.enemies)
+      if(!e.room&&e.hp>0&&e.x>=f.x&&e.x<f.x+32&&e.y>=f.y&&e.y<f.y+32) {
+        e.hp-=f.damage;e.killedBy=f.ownerId;e.aggro=true;e.flash=.12;
+        ignite(e,2,f.damage);
       }
   }
   g.firePatches = (g.firePatches || []).filter((f) => f.life > 0);
@@ -320,7 +328,7 @@ export function tickHazards(g, dt) {
   }
   g.bananas = g.bananas.filter((b) => b.life > 0);
   for (const e of g.enemies)
-    if (e.kind === "rhino" && !e.aggro && e.hp > 0) {
+    if ((e.stampeding || e.kind === "rhino") && !e.aggro && e.hp > 0) {
       e.x += e.runDirection * e.speed * dt;
       e.y =
         e.lane -

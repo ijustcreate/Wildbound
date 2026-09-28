@@ -11,8 +11,8 @@ function findProject(start) {
   }
 }
 
-function createRigStore({ appPath, exePath, userData, packaged, testMode }) {
-  const project = testMode ? null : findProject(packaged ? path.dirname(exePath) : appPath);
+function createRigStore({ appPath, exePath, userData, packaged, testMode, isolated = false }) {
+  const project = testMode || isolated ? null : findProject(packaged ? path.dirname(exePath) : appPath);
   const file = path.join(project || userData, 'authored', 'rigs.json');
   const bundled = path.join(appPath, 'authored', 'rigs.json');
   let queue = Promise.resolve();

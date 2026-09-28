@@ -1,4 +1,5 @@
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
+import { emitNoise } from './night-cycle.mjs';
 import { terrainHash } from "./world.mjs";
 export const propBase = (p) => ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
@@ -30,7 +31,7 @@ export function waterAt(g, x, y) {
 }
 export const isShallow = (type) => type === "shallow" || type === "floodbridge";
 export const isQuicksand = (type) => type === "quicksand";
-export function harvest(g, p, damage, range) {
+export function harvest(g, p, damage, range, onHit) {
   const candidates = g.scenery
     .filter(
       (s) => !s.falling && !s.depleted && ["tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
@@ -56,6 +57,9 @@ export function harvest(g, p, damage, range) {
   const hit = candidates[0];
   if (!hit) return false;
   const { s, b } = hit;
+  p.gatherAction = ["tree", "palm", "snow_tree", "frozen_log"].includes(s.kind) ? "woodcut" : "mine";
+  p.gatherTime = 0.55;
+  emitNoise(g, p, 'break', 300);
   g.onSound(["rock","ice_rock","ice_spire"].includes(s.kind)?"mine":"harvest",p);
   s.hitAt = g.time;
   s.harvest = (s.harvest || 0) + Math.max(12, damage);
@@ -92,6 +96,7 @@ export function harvest(g, p, damage, range) {
     life: 0.5,
     kind: s.kind,
   });
+  onHit?.(s);
   g.persist();
   return true;
 }
@@ -122,6 +127,15 @@ export function tickEnvironment(g, dt) {
         g.persist();
       }
     }
+  for (const s of g.scenery) {
+    if (s.falling >= 1.5 && ["tree", "snow_tree", "palm"].includes(s.kind)) {
+      // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
+      s.fallen = true;
+      s.falling = 0;
+      s.size = 32;
+      s.harvest = 0;
+    }
+  }
   g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
   for (const a of [...g.players, ...g.enemies]) {
     if (
@@ -209,6 +223,18 @@ export function drawProp(c, p, time) {
   c.save();
   c.translate(Math.round(base.x), Math.round(base.y));
   c.scale(scale, scale);
+  if (p.fallen && ["tree", "snow_tree", "palm"].includes(p.kind)) {
+    c.fillStyle = "#15251d";
+    c.beginPath();
+    c.ellipse(0, 3, 15, 5, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = p.kind === "palm" ? "#5a402b" : "#493d2c";
+    c.fillRect(-7, -4, 14, 7);
+    c.fillStyle = p.kind === "palm" ? "#a47644" : "#98704a";
+    c.fillRect(-4, -4, 8, 3);
+    c.restore();
+    return true;
+  }
   if (p.falling) {
     c.rotate(
       ((p.fallDirection || 1) * Math.min(1, p.falling / 1.1) * Math.PI) / 2,

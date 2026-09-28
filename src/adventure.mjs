@@ -1,4 +1,7 @@
 import {wandTipWorld} from './player-motion.mjs';
+import {sightRadius, emitNoise} from './night-cycle.mjs';
+import {cutLivingVines} from './living-ecosystem.mjs';
+import {lightTorchFire} from './night-equipment.mjs';
 import {templeRoomStep} from './temple.mjs';
 import {interactIce} from './ice-world.mjs';
 import {clearShot} from './navigation.mjs';
@@ -79,6 +82,7 @@ export function initHero(p) {
     profileId: c.id,
     inventory: [
       { type: "trap", qty: Math.max(0, Math.floor(rules.startingTraps)) },
+      { type: "potion", qty: 2 },
     ],
     equipment: c.equipment,
     chests: c.chests,
@@ -111,7 +115,7 @@ export function canSee(g, a) {
       !p.room &&
       p.hp > 0 &&
       dist(p, a) <
-        rules.visionRadius * (g.weather?.type === "monsoon" ? 0.8 : 1),
+        sightRadius(g, p, rules.visionRadius),
   );
 }
 export const adventureMethods = {
@@ -132,7 +136,7 @@ export const adventureMethods = {
       this.phase !== "play" ||
       p.progress < 48 ||
       p.room ||
-      dist(p, { x: 800, y: 800 }) > 215
+      dist(p, { x: 800, y: 800 }) > 120
     )
       return false;
     this.phase = "sealing";
@@ -177,6 +181,7 @@ export const adventureMethods = {
     for (const p of this.players) {
       p.hp = p.maxHp;
       p.sealHold = 0;
+      p.secondWindUsed = false;
     }
     this.message(
       "WILDBOUND! The jungle sleeps. Interact at the table for the shared reward chest. Strike the board to begin again.",
@@ -354,6 +359,8 @@ export const adventureMethods = {
         p.inventory.findIndex((i) => i?.type === l.type),
       );
     this.onSound("loot",p);
+    p.pickupTime = 0.42;
+    if (["unique", "legendary"].includes(ITEMS[l.type]?.rarity)) p.foundUnique = 1.1;
     this.loot = this.loot.filter((i) => i !== l);
     this.persist();
     return true;
@@ -827,7 +834,7 @@ export const adventureMethods = {
         if (
           this.phase === "play" &&
           p.progress >= 48 &&
-          dist(p, { x: 800, y: 800 }) < 215 &&
+          dist(p, { x: 800, y: 800 }) < 120 &&
           i.interact &&
           !this.nearbyLoot(p)
         ) {
@@ -853,12 +860,14 @@ export const adventureMethods = {
           if (old.interact && p.interactTime > 0 && p.interactTime < 0.35 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
             if (toggleDoor(this,p)||interactIce(this,p)) {}
+            else if (cutLivingVines(this,p)) { this.onSound('harvest',p); this.message('Vines cut. The path is clear.'); this.persist(); }
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (l) this.collect(p, l);
             else if (this.victoryChest && dist(p, { x: 800, y: 914 }) < 60)
               this.openInventory(p, "victory");
-            else if (dist(p, { x: 800, y: 800 }) < 130)
+            else if (dist(p, { x: 800, y: 800 }) < 86)
               this.message("The board has no storage chest. Visit a portal or use the Field Kit for storage.");
+            else lightTorchFire(this,p);
           }
           p.interactTime = 0;
           p.interactUsed = false;
@@ -876,7 +885,7 @@ export const adventureMethods = {
             else this.inventoryFullNotice(p, l.id ?? l.type);
           }
         const sight =
-          rules.visionRadius * (this.weather?.type === "monsoon" ? 0.8 : 1);
+          sightRadius(this, p, rules.visionRadius);
         for (
           let y = Math.max(0, Math.floor((p.y - sight) / 32));
           y < Math.min(50, (p.y + sight) / 32);
@@ -948,7 +957,13 @@ export const adventureMethods = {
         a.y += a.vy * s;
         a.z += a.vz * s;
         a.vz -= rules.arrowGravity * s;
-        if(this.projectileBlocked(a.x,a.y,1,true)){a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;a.angle=Math.atan2(a.vy,a.vx);this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);this.loot.at(-1).embedded=true;this.loot.at(-1).angle=a.angle;a.remove=true;break;}
+        if(this.projectileBlocked(a.x,a.y,1,true)){
+          a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;
+          a.angle=Math.atan2(a.vy,a.vx);
+          this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);
+          Object.assign(this.loot.at(-1),{embedded:true,angle:a.angle,embedDepth:a.embedDepth||7,angleJitter:a.angleJitter||0});
+          a.remove=true;break;
+        }
         const target = a.hostile
           ? this.players.find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
           : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 && dist(e, a) < 19 && clearShot(this,a,e));
@@ -971,6 +986,8 @@ export const adventureMethods = {
             a.enemy = target.id;
             a.hitOffsetX = a.x - target.x;
             a.hitOffsetY = a.y - target.y;
+            a.embedDepth = a.embedDepth || 7;
+            a.angleJitter = a.angleJitter || 0;
           }
           a.stuck = true;
         } else if (
@@ -984,9 +1001,9 @@ export const adventureMethods = {
           a.stuck = true;
           a.z = 0;
           a.angle = Math.atan2(a.vy, a.vx);
+          a.embedDepth = a.embedDepth || 7;
           this.dropLoot(a.x, a.y, "arrow", 1, "Embedded arrow", true);
-          this.loot.at(-1).embedded = true;
-          this.loot.at(-1).angle = a.angle;
+          Object.assign(this.loot.at(-1),{embedded:true,angle:a.angle,embedDepth:a.embedDepth,angleJitter:a.angleJitter||0});
           a.remove = true;
         }
       }
@@ -996,7 +1013,13 @@ export const adventureMethods = {
   shieldBlocks(p, source) {
     if (!source || !p.blocking) return false;
     const d = dist(p, source) || 1;
-    return ((source.x - p.x) * p.faceX + (source.y - p.y) * p.faceY) / d > 0.25;
+    const blocked = ((source.x - p.x) * p.faceX + (source.y - p.y) * p.faceY) / d > 0.25;
+    if (blocked && source.state === "windup") {
+      p.parry = 0.32;
+      source.state = "recover";
+      source.timer = 0.45;
+    }
+    return blocked;
   },
   shopOwner(p) {
     const door = this.portals.find((d) => d.id === p.room);
@@ -1039,6 +1062,7 @@ export const adventureMethods = {
     return true;
   },
   fireSpell(p, charge = 0, slot = "hand1") {
+    emitNoise(this, p, 'magic', 260);
     const def = ITEMS[p.equipment[slot]];
     if (!def?.magic || (p.mana ?? 100) < def.manaCost) return false;
     this.onSound("magic",p);
@@ -1065,12 +1089,16 @@ export const adventureMethods = {
     return true;
   },
   fireArrow(p, charge) {
+    emitNoise(this, p, 'bow', 150);
     if (!take(p.inventory, "arrow")) {
       this.message("No arrows. Recover shafts or find a quiver.");
       return false;
     }
     this.onSound("bow",p);
     const strength = Math.min(1, charge / 1.2),
+      shotId = this.nextId,
+      angleJitter = (((shotId * 17) % 9) - 4) * 0.012,
+      embedDepth = Math.max(5, Math.min(30, 6 + strength * 20 + (((shotId * 13) % 7) - 3) * 0.8)),
       speed = rules.bowSpeed + strength * rules.bowBonusSpeed;
     const aim = aimedDirection(this, p, p, 0.2);
     this.arrows.push({
@@ -1081,7 +1109,11 @@ export const adventureMethods = {
       z: 18,
       vx: aim.x * speed,
       vy: aim.y * speed,
+      angle: Math.atan2(aim.y, aim.x) + angleJitter,
       vz: 20 + strength * 70,
+      strength,
+      embedDepth,
+      angleJitter,
       damage:
         (ITEMS[p.equipment.hand1]?.damage || 18) * (2 / 3 + (strength * 4) / 3),
       owner: p.id,
@@ -1131,6 +1163,11 @@ export const adventureMethods = {
       if (this.random() < 0.1) this.dropLoot(...args);
     };
     const cfg = creatures[e.kind], difficulty = cfg?.stats?.hp || e.maxHp || 20;
+    if(e.kind==='hunter') {
+      const worn=[...new Set(Object.values(e.equipment||{}))].filter(type=>ITEMS[type]?.slot);
+      for(const [i,type] of worn.entries())this.dropLoot(e.x+(i%3-1)*22,e.y+Math.floor(i/3)*22,type,1,'Hunter equipment',true);
+      this.dropLoot(e.x,e.y+60,'cartridge',12,'Hunter ammunition',true);
+    }
     const xpValue = e.kind === "skeleton" ? 10 : Math.max(1, Math.min(10, Math.round(difficulty / 10)));
     this.dropXP(e.x, e.y, xpValue);
     if (this.random() < 0.4 || e.kind === "skeleton_boss")
@@ -1151,6 +1188,16 @@ export const adventureMethods = {
     )
       drop(e.x, e.y, e.frostMage ? "ice_wand" : config.dropType, 1, "Enemy drop");
     if (e.kind === "skeleton") drop(e.x, e.y, "sword", 1, "Skeleton drop");
+    if (["skeleton", "skeleton_unarmed", "skeleton_boss", "skeleton_wizard", "frost_skeleton_mage"].includes(e.kind))
+      drop(e.x - 12, e.y + 8, "bone_shard", e.kind === "skeleton_boss" ? 3 : 1, "Skeleton remains");
+    if (e.kind === "golem")
+      this.dropLoot(e.x, e.y, "golem_core", 1, "Golem core", true);
+    if (["spider", "baby_spider"].includes(e.kind))
+      drop(e.x, e.y + 8, "web_silk", 1, "Spider silk");
+    if (["lion", "tiger", "panther", "white_lion", "snow_leopard", "wolf", "boar"].includes(e.kind))
+      drop(e.x, e.y + 8, "beast_fang", 1, "Beast remains");
+    if (e.lanternBearer)
+      this.dropLoot(e.x, e.y - 18, "lantern", 1, "Skeleton lantern", true);
     if (e.kind === "archer") {
       drop(e.x, e.y, "bow", 1, "Archer drop");
       drop(e.x + 12, e.y, "arrow", 8, "Archer drop");

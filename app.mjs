@@ -4,7 +4,7 @@ import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
 import { GameAudio } from './src/audio.mjs';
 import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
-import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings } from "./src/controls.mjs";
+import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES } from "./src/controls.mjs";
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
 import { FieldKit } from "./src/field-kit.mjs";
 import { FrameMetrics, FixedClock } from "./src/performance.mjs";
@@ -98,7 +98,7 @@ function releaseControllerClaim(key) {
 let soundEnabled = localStorage.getItem('wildbound-sound') !== 'off';
 let musicVolume = Number(localStorage.getItem('wildbound-music-volume') ?? .45);
 const audio = new GameAudio(); audio.enabled=soundEnabled;
-let selectedMusic = MUSIC_TRACKS[0], levelMusicKey=null, lastLevelTrack=null;
+let selectedMusic = musicTrack(localStorage.getItem('wildbound-level-music') || 'curious-groove'), levelMusicKey=null, lastLevelTrack=null;
 const music = new Audio(selectedMusic.file); music.loop=true;
 function startMusic(){audio.unlock();if(soundEnabled&&musicVolume>0)music.play().catch(()=>{});}
 window.addEventListener('pointerdown',startMusic);window.addEventListener('keydown',startMusic);
@@ -108,7 +108,7 @@ document.addEventListener('change',()=>audio.play('click'));
 function sound(type,actor){audio.play(type,actor);}
 function routeMusic(){
  const active=screen==='play',key=active?String(game.seed)+':'+(game.environment||'forest'):'menu';
- if(key!==levelMusicKey){levelMusicKey=key;if(active){const pool=MUSIC_TRACKS.slice(1).filter(t=>t.id!==lastLevelTrack);selectedMusic=pool[Math.floor(Math.random()*pool.length)];lastLevelTrack=selectedMusic.id;}else selectedMusic=MUSIC_TRACKS[0];music.src=selectedMusic.file;music.load();if(audio.unlocked)startMusic();if($('music-status'))$('music-status').textContent=(active?'Expedition: ':'Menu: ')+selectedMusic.name;}
+ if(key!==levelMusicKey){levelMusicKey=key;if(active){const choice=localStorage.getItem('wildbound-level-music') || 'random';if(choice==='random'){const pool=MUSIC_TRACKS.slice(1).filter(t=>t.id!==lastLevelTrack);selectedMusic=pool[Math.floor(Math.random()*pool.length)];}else selectedMusic=musicTrack(choice);lastLevelTrack=selectedMusic.id;}else selectedMusic=MUSIC_TRACKS[0];music.src=selectedMusic.file;music.load();if(audio.unlocked)startMusic();if($('music-status'))$('music-status').textContent=(active?'Expedition: ':'Menu: ')+selectedMusic.name;}
  const target=soundEnabled?musicVolume*audio.settings.master*(performance.now()<(audio.duckUntil||0)?.4:1):0;music.volume+= (Math.max(0,Math.min(1,target))-music.volume)*.08;
 }
 window.addEventListener('wildbound-house-applied',e=>{
@@ -117,6 +117,7 @@ window.addEventListener('wildbound-house-applied',e=>{
 });
 function wireGame() {
   game.onSound = sound;
+  game.mapping = mapping;
   game.pvp=localStorage.getItem("wildbound-pvp")==="on";
   game.controlLabels = controlLabels(mapping);
   game.spriteLibrary = assets.library;
@@ -752,8 +753,19 @@ $("settings-button").onclick = () => {
   if (screen === "play") pause();
   $("settings-dialog").showModal();
   renderPlayerMappings($("player-mappings"), game, mapping);
+  const hero = game.players[0];
+  if (hero) {
+    hero.appearance ||= structuredClone(DEFAULT_APPEARANCE);
+    appearanceControls($("appearance-settings"), hero.appearance, () => game.persist(), { compact: true });
+  }
 };
 $("close-settings").onclick = () => $("settings-dialog").close();
+$("ui-scale").value = localStorage.getItem("wildbound-ui-scale") || "1";
+$("ui-scale").onchange = e => { localStorage.setItem("wildbound-ui-scale", e.target.value); document.documentElement.style.setProperty("--ui-scale", e.target.value); };
+$("board-size").value = localStorage.getItem("wildbound-board-size") || "compact";
+$("board-size").onchange = e => { localStorage.setItem("wildbound-board-size", e.target.value); document.body.dataset.boardSize = e.target.value; };
+$("event-duration").value = localStorage.getItem("wildbound-event-duration") || "7";
+$("event-duration").onchange = e => { localStorage.setItem("wildbound-event-duration", e.target.value); game.eventDuration = Number(e.target.value); };
 $("pvp-toggle").checked=game.pvp;
 $("pvp-toggle").onchange=e=>{game.pvp=e.target.checked;localStorage.setItem("wildbound-pvp",game.pvp?"on":"off");game.persist();};
 $("sound-toggle").checked = soundEnabled;
@@ -764,10 +776,12 @@ $("sound-toggle").onchange = (e) => {
   else music.pause();
 };
 $("music-volume").value = String(musicVolume);
-$('music-track').append(new Option('Random expedition soundtrack','random'));$('music-track').disabled=true;
-$('music-status').textContent='Curious Groove in the menu; a random adventure track for each expedition.';
+$('music-track').append(new Option('Random expedition soundtrack','random'), ...MUSIC_TRACKS.map(t=>new Option(t.name,t.id)));
+$('music-track').value=localStorage.getItem('wildbound-level-music') || 'random';
+$('music-track').onchange=e=>{localStorage.setItem('wildbound-level-music',e.target.value);levelMusicKey=null;routeMusic();};
+$('music-status').textContent='Choose a track or let each expedition select one at random.';
 $('music-volume').oninput=e=>{musicVolume=Number(e.target.value);localStorage.setItem('wildbound-music-volume',String(musicVolume));if(musicVolume>0)startMusic();};
-for(const key of ['master','sfx','ui','ambience']){const label=document.createElement('label');label.className='field-label';label.textContent=key.toUpperCase()+' VOLUME';const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.01;input.id=key+'-volume';input.value=audio.settings[key];input.setAttribute('aria-label',label.textContent);input.oninput=()=>audio.set(key,input.value);label.append(input);$('audio-mixer').append(label);}
+for(const key of ['master','sfx','ui','ambience']){const label=document.createElement('label');label.className='field-label';label.textContent=(key==='ambience'?'AMBIENT LEVEL ':key.toUpperCase()+' ')+'VOLUME';const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.01;input.id=key+'-volume';input.value=audio.settings[key];input.setAttribute('aria-label',label.textContent);input.oninput=()=>audio.set(key,input.value);label.append(input);$('audio-mixer').append(label);}
 $('audio-night').checked=audio.settings.night;$('audio-night').onchange=e=>audio.set('night',e.target.checked);
 $('audio-test').onclick=()=>{startMusic();audio.play('loot');};
 $("fullscreen-button").onclick = () => {
@@ -934,10 +948,10 @@ function dialogController(pad, previous) {
     ((pad.buttons[4]?.pressed && !previous[4]) ||
       (pad.buttons[5]?.pressed && !previous[5]))
   ) {
-    const tabs = ["Trail", "Storage", "Craft", "Look", "Settings"];
+    const tabs = ["Craft", "Skills"];
     fieldKit.tab =
       tabs[
-        (tabs.indexOf(fieldKit.tab) + (pad.buttons[5]?.pressed ? 1 : 4)) % 5
+      (tabs.indexOf(fieldKit.tab) + (pad.buttons[5]?.pressed ? 1 : tabs.length - 1)) % tabs.length
       ];
     fieldKit.render();
     fieldKit.dialog
@@ -1009,7 +1023,8 @@ function dialogController(pad, previous) {
 function inputFrame() {
   const inputs = {},
     pads = Array.from(navigator.getGamepads?.() || []).filter(Boolean);
-  const now = performance.now(), claimSupported = !!window.desktop?.claimController;
+  // Offscreen smoke tests supply synthetic pads, not real shared controllers.
+  const now = performance.now(), claimSupported = !!window.desktop?.claimController && !window.desktop?.testMode;
   const seenControllerClaims = new Set();
   for (const pad of pads) {
     let previous = previousPads.get(pad.index) || [];
@@ -1019,6 +1034,11 @@ function inputFrame() {
     // Reclaim an existing explorer before considering drop-in character creation.
     // Solo mouse-started expeditions should work as soon as a controller is used.
     const device = "pad:" + pad.index;
+    const playerForPad = game.players.find((p) => p.device === device);
+    if (playerForPad) {
+      playerForPad.controllerFamily = controllerFamily(pad);
+      playerForPad.controllerName = CONTROLLER_NAMES[playerForPad.controllerFamily];
+    }
     const active = rising || pad.axes.slice(0, 2).some((v) => Math.abs(v) > 0.35);
     const claimKey = controllerClaimKey(pad), ownedKey = controllerClaims.get(pad.index);
     controllerLastSeen.set(claimKey, now);

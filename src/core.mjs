@@ -1,4 +1,8 @@
 import {nextCombo} from './combat-combos.mjs';
+import {ensureNightCycle, tickNightCycle, movementNoise, emitNoise, eventAvailable, rewardNightHunts} from './night-cycle.mjs';
+import {initLivingEcosystem, updateLivingEcosystem, livingEcosystemBlocked, cutLivingVines} from './living-ecosystem.mjs';
+import {NIGHT_EVENTS, tickNightEnemy, tickNightEnemyHazards, startNightEvent, hitNightEnemyVines} from './night-enemies.mjs';
+import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equipment.mjs';
 import {startJump,tickJump} from './jumping.mjs';
 import {tickWolf, wolfPack} from './wolf-pack.mjs';
 import {ensureTemple,tickGorilla,tickGhosts,summonGhost} from './temple.mjs';
@@ -184,6 +188,7 @@ EVENTS.push(
   },
 );
 EVENTS.push(...HAZARD_EVENTS);
+EVENTS.push(...NIGHT_EVENTS);
 EVENTS.push(
   {
     name: "The sleeping sickness",
@@ -443,9 +448,11 @@ export class Game {
     Object.assign(this, generateWorld(this.seed));
     this.bloom = 3;
     this.spriteLibrary = {};
+    ensureNightCycle(this);
   }
   blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false) {
     if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile))return true;
+    if(livingEcosystemBlocked(this,x,y,radius,flying,footOffset))return true;
     if (
       (this.barricades || []).some(
         (b) =>
@@ -526,6 +533,7 @@ export class Game {
     else actor.sink = Math.max(0, (actor.sink || 0) - 0.2);
     actor.moving = moved > 0.01;
     actor.step = (actor.step || 0) + moved * 0.13;
+    if (this.players.includes(actor)) movementNoise(this, actor, moved);
     return moved;
   }
   addPlayer(device, name) {
@@ -585,6 +593,7 @@ export class Game {
       this.generatedEnvironment = env;
     }
     this.phase = "play";
+    initLivingEcosystem(this);
     this.turnOrder = [];
     this.message("The board is awake. Hit the table to roll.");
     return true;
@@ -630,6 +639,12 @@ export class Game {
       0,
       p.hp - amount * (this.difficulty === "adventure" ? 0.65 : 1),
     );
+    if (p.hp === 0 && p.field?.skills?.second_wind && !p.secondWindUsed) {
+      p.hp = 35;
+      p.secondWindUsed = true;
+      p.invuln = 2;
+      this.message(p.name + " found a second wind!");
+    }
     p.invuln = 0.75;
     p.hit = 0.2;
     this.onSound("hurt");
@@ -653,9 +668,15 @@ export class Game {
   attack(p, charge = 0) {
     if (!["play", "won"].includes(this.phase) || p.hp <= 0 || p.room || p.ui) return false;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
+    // Utility items do no melee damage; rifles have their own aimed shot and reload.
+    if(tryEquipmentAttack(this,p,charge)){
+      if(this.canHitBoard(p)){this.tableShake=.2;this.hitTable(p);}
+      return true;
+    }
     p.attack = p.attackDuration = 0.34;
     p.attackClip=null;
     this.onSound(p.equipment?.hand1?.includes('bow')?'bow':p.equipment?.hand1?.includes('wand')?'magic':'attack',p);
+    emitNoise(this, p, 'attack', 200);
     if (this.canHitBoard(p)) {
       this.tableShake = 0.2;
       this.hitTable(p);
@@ -672,15 +693,13 @@ export class Game {
       this.fireArrow(p, charge);
       return true;
     }
-    const weapon =
-        ITEMS[p.equipment.hand1] ||
-        (ITEMS[p.equipment.hand2]?.damage ? ITEMS[p.equipment.hand2] : null),
-      off = ITEMS[p.equipment.hand2];
+    const hands = [ITEMS[p.equipment.hand1], ITEMS[p.equipment.hand2]].filter(i=>i?.damage && !i.magic && !i.ranged);
+    const weapon = hands[0], off = hands[1];
     const combo=nextCombo(p,weapon?.damage?"melee":"unarmed",this.time);
     p.attackClip=combo.clip;p.attack=p.attackDuration=combo.duration;p.attackArc=combo.arc;p.attackReach=combo.reach;
     const damage = combo.damage * (
       (weapon?.damage || 12 + stat(p, "punch")) +
-      (off && ITEMS[p.equipment.hand1] && off.damage && !off.magic
+      (off && off.damage && !off.magic
         ? Math.round(off.damage * 0.5)
         : 0) +
       Math.round(charge * 16));
@@ -690,7 +709,9 @@ export class Game {
         (id) => itemKind(id) === "sword",
       );
     if (spin) p.spin = 0.38;
-    harvest(this, p, damage, (weapon ? 76 : 49)*combo.reach);
+    harvest(this, p, damage, (weapon ? 76 : 49)*combo.reach, s=>applyTorchHit(this,p,s));
+    hitNightEnemyVines(this,p,damage,(weapon ? 76 : 49)*combo.reach);
+    if(cutLivingVines(this,p,(weapon ? 76 : 49)*combo.reach))this.persist();
     for(const pane of this.house?.walls||[]){
       if(pane.kind!=='window'||pane.broken)continue;
       const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
@@ -720,12 +741,13 @@ export class Game {
         e.hp -= Math.round(
           damage * (e.state === "recover" ? 1.3 : 1) * (guard ? 0.35 : 1),
         );
+        applyTorchHit(this,p,e);
         e.flash = 0.13;
         if (charge > 0.6) {
           e.state = "recover";
           e.timer = 0.7;
         }
-        if (e.state !== "charge") {
+        if (e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
           this.moveActor(
             e,
             p.faceX * (13 + charge * 50),
@@ -826,7 +848,7 @@ export class Game {
   spawnEvent(index) {
     if (index === undefined) {
       const weight = (e) =>
-        e.environment && e.environment !== this.generatedEnvironment
+        !eventAvailable(this, e)
           ? 0
           : Math.max(0, e.weight ?? 10);
       const sum = EVENTS.reduce((n, e) => n + weight(e), 0);
@@ -898,6 +920,10 @@ export class Game {
       };
     }
     const group = this.nextId++;
+    let lanternAssigned = this.players.some((p) =>
+      (p.inventory || []).some((i) => i?.type === "lantern") ||
+      Object.values(p.equipment || {}).includes("lantern"),
+    );
     let first = null;
     for (let i = 0; i < this.event.count; i++) {
       const spawnedKind =
@@ -946,6 +972,11 @@ export class Game {
             ? "tiger"
             : spawnedKind,
       };
+      if (spawnedKind === "skeleton" && !lanternAssigned) {
+        e.lanternBearer = true;
+        e.equipment = { hand1: "lantern" };
+        lanternAssigned = true;
+      }
       this.configureCreature(e, false);
       Object.assign(e,spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned));
       if(this.house && e.kind === "lion")this.houseLionSpawned = true;
@@ -961,6 +992,7 @@ export class Game {
       first ??= e;
     }
     for(const e of this.enemies.filter(e=>e.group===group&&e.kind==="wolf"))wolfPack(this,e);
+    startNightEvent(this,this.event,this.enemies.filter(e=>e.group===group));
     if(this.event.spiderNest&&first)spiderNest(this,first,group);
     this.reveal = { x: first.x, y: first.y, life: 4 };
     this.message(this.event.name + " — " + this.event.tip);
@@ -998,12 +1030,17 @@ export class Game {
     }
     if (!["play", "won"].includes(this.phase)) return;
     dt = Math.min(dt, 0.05);
+    tickNightCycle(this, dt);
     ensureTemple(this);
     this.tickAdventure(dt, inputs);
     tickGhosts(this,dt);
     tickField(this, dt, inputs);
     tickHazards(this, dt);
     tickEnvironment(this, dt);
+    tickNightEquipment(this, dt);
+    tickNightEnemyHazards(this, dt);
+    rewardNightHunts(this);
+    updateLivingEcosystem(this, dt);
     if (this.phase === "sealing") return;
     this.bloom = Math.min(3, (this.bloom || 0) + dt);
     this.time += dt;
@@ -1044,6 +1081,9 @@ export class Game {
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
+      p.pickupTime=Math.max(0,(p.pickupTime||0)-dt);p.foundUnique=Math.max(0,(p.foundUnique||0)-dt);
+      p.gatherTime=Math.max(0,(p.gatherTime||0)-dt);if(!p.gatherTime)p.gatherAction=null;
+      p.parry=Math.max(0,(p.parry||0)-dt);
       p.attack = Math.max(0, p.attack - dt);
       if(p.queuedAttack&&p.attack===0){const queued=p.queuedAttack;delete p.queuedAttack;if(queued.until>=this.time&&!p.room&&!p.ui&&p.hp>0)this.attack(p,queued.charge);}
       p.spin = Math.max(0, (p.spin || 0) - dt);
@@ -1072,7 +1112,7 @@ export class Game {
         );
         if(helper)helper.reviveAnimation=.15;
         p.revive = helper ? p.revive + dt : Math.max(0, p.revive - dt);
-        if (p.revive >= 1.6) {
+        if (helper?.field?.skills?.quick_revive || p.revive >= 1.6) {
           if (helper) record(helper, "rescues");
           p.hp = 55;
           p.getUpTime=.4;
@@ -1140,7 +1180,7 @@ export class Game {
     const alive = this.players.filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
       tickJump(e,dt,this,collisionOffset(this,e));
-      if (e.hp <= 0 || (e.kind === "rhino" && !e.aggro)) continue;
+      if (e.hp <= 0 || ((e.stampeding || e.kind === "rhino") && !e.aggro)) continue;
       if(creatures[e.kind]?.behaviors.jump&&e.state==='hunt'){
         const target=alive.reduce((best,p)=>!best||distance(e,p)<distance(e,best)?p:best,null);
         if(target&&distance(e,target)>65&&distance(e,target)<180&&clearShot(this,e,target))startJump(e);
@@ -1191,6 +1231,7 @@ export class Game {
         (best, p) => (!best || distance(e, p) < distance(e, best) ? p : best),
         null,
       );
+      if(tickNightEnemy(this,e,nearest,dt))continue;
       let p =
         e.temperament === "restless" && alive.length > 1
           ? alive[e.id % alive.length]
@@ -1752,6 +1793,13 @@ export class Game {
     for (const e of this.enemies.filter((e) => e.hp <= 0 && !e.defeated)) {
       e.defeated = true;
       e.deathTimer = 0;
+      e.wasSnared = e.state === "snared";
+      // Death is a real actor state. Rendering owns the collapse/fade window;
+      // combat and AI already ignore defeated actors.
+      if (!e.wasSnared) {
+        e.state = "death";
+        e.animationAction = "death";
+      }
       summonGhost(this,e);
       this.enemyLoot(e);
       this.cleared++;
@@ -1769,7 +1817,23 @@ export class Game {
         for (const p of alive) p.hp = Math.min(100, p.hp + 25);
     }
     for (const e of this.enemies) if (e.hp <= 0) e.deathTimer = (e.deathTimer || 0) + dt;
-    this.enemies = this.enemies.filter((e) => e.hp > 0 || (e.state !== "snared" && (e.deathTimer || 0) < 3.5));
+    this.enemies = this.enemies.filter((e) =>
+      e.hp > 0 || (e.wasSnared ? e.state === "snared" && false : (e.deathTimer || 0) < 3.5),
+    );
+    // An encounter card is an active warning, not a permanent banner. Once
+    // its creatures are gone, close it immediately so the tip cannot claim
+    // that the party is still fighting that creature type.
+    if (
+      this.event &&
+      this.eventTime > 0 &&
+      this.event.count > 0 &&
+      !this.enemies.some((e) => e.hp > 0)
+    ) {
+      const clearedEvent = this.event.name;
+      this.eventTime = 0;
+      this.message(clearedEvent + " cleared · the area is safe.");
+      this.persist();
+    }
     maintainSpiderWebs(this, dt);
     for (const t of this.traps) t.life -= dt;
     this.traps = this.traps.filter((t) => t.life > 0);

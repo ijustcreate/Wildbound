@@ -136,12 +136,12 @@ test("Potions stay on ground until manually collected, including after reaching 
   g.tickAdventure(0.05, { keyboard: { interact: true } });
   g.tickAdventure(0.05, { keyboard: {} });
   assert.equal(g.loot.length, 0);
-  assert.equal(count(p, "potion"), 2);
+  assert.equal(count(p, "potion"), 4);
   assert.equal(g.phase, "play");
   g.openInventory(p);
   p.ui.index = p.inventory.findIndex((i) => i?.type === "potion");
   g.inventoryAction(p, "dropOne");
-  assert.equal(count(p, "potion"), 1);
+  assert.equal(count(p, "potion"), 3);
   p.ui = null;
   g.tickAdventure(0.05, {});
   assert.equal(g.loot[0].qty, 1);

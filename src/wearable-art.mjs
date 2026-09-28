@@ -20,6 +20,11 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
       if(t<.8) {rect(x-2,y,1,1,back?'#5c5849':'#c2ad79');if(!side)rect(x+1,y,1,1,'#c2ad79');}
     }
     rect(bottom.x-1,bottom.y-1,2,1,ITEMS[gear.chest]?.color || '#d9bc73');
+    if (ITEMS[gear.chest]?.style === "safari" && !back) {
+      const y = (chest.y + bottom.y) / 2;
+      rect(chest.x - 4, y, 3, 3, "#74553c");
+      if (!side) rect(chest.x + 1, y, 3, 3, "#74553c");
+    }
   }
   if (gear.pants)
     for (const side of ["L", "R"]) {
@@ -47,6 +52,13 @@ export function directionalHelmet(c, id, h, d, cosmetics = {}) {
     c.fillRect(Math.round(x), Math.round(y), w, hh);
   };
   const color = cosmetics.dye || def.artColor || def.color || "#9d936b";
+  if (def.style === "safari") {
+    r(h.x - 5, h.y - 8, 10, 6, color);
+    r(h.x - 6, h.y - 3, 12, 2, "#74553c");
+    r(h.x - 8, h.y - 1, 16, 2, color);
+    r(h.x - 1, h.y - 9, 2, 6, "#eee0b0");
+    return true;
+  }
   if (back || side) {
     if (def.style === "circlet") {
       r(h.x - 5, h.y - 4, 10, 2, color);

@@ -1,4 +1,5 @@
 import { nearbyScenery } from "./performance.mjs";
+import { sightRadius } from './night-cycle.mjs';
 import { terrainHash } from "./world.mjs";
 import { rules } from "./definitions.mjs";
 import { waterAt, isShallow } from "./environment.mjs";
@@ -48,12 +49,9 @@ export function drawFog(ctx, g, camera, w, h) {
   );
   c.filter = "none";
   c.globalAlpha = 1;
-  const radius =
-    rules.visionRadius *
-    (g.weather?.type === "monsoon" ? 0.8 : 1) *
-    camera.zoom;
   for (const p of g.players) {
     if (p.room || p.hp <= 0) continue;
+    const radius = sightRadius(g, p, rules.visionRadius) * camera.zoom;
     const x = w / 2 + (p.x - camera.x) * camera.zoom,
       y = h / 2 + (p.y - camera.y) * camera.zoom;
     const gradient = c.createRadialGradient(x, y, radius * 0.78, x, y, radius);

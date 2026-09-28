@@ -87,7 +87,7 @@
         boot.error = String(error);
         boot.stopAnimation();
         loader.querySelector("p").textContent =
-          "Could not start Wildbound. Restart the app.";
+          `Could not start Wildbound: ${error?.message || error}. Restart the app.`;
         console.error(error);
       }
     });

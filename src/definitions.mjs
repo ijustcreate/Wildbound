@@ -1,4 +1,5 @@
 import {wolfMotion, validateWolfMotion, replaceWolfMotion} from './wolf-motion.mjs';
+import { NIGHT_KINDS, nightMotions, validateNightMotion, replaceNightMotion } from './night-rigs.mjs';
 import {
   beastMotions,
   validateBeastMotion,
@@ -133,19 +134,34 @@ export function rigPreset(type = "quadruped") {
     ];
   return r;
 }
+// Keep the editor's base stats aligned with NIGHT_EVENTS without importing AI
+// (night-enemies depends on these definitions). Saved stat edits still win.
+const NIGHT_CREATURE_DEFAULTS = {
+  night_stalker: { type: 'quadruped', hp: 85, speed: 80, damage: 16 },
+  carrion_pack: { type: 'quadruped', hp: 48, speed: 72, damage: 10 },
+  burrower: { type: 'serpent', hp: 80, speed: 64, damage: 18 },
+  mimic_vine: { type: 'plant', hp: 65, speed: 0, damage: 12 },
+  carnivorous_flower: { type: 'plant', hp: 115, speed: 0, damage: 14 },
+  poison_pod: { type: 'plant', hp: 45, speed: 0, damage: 7 },
+  hunter: { type: 'humanoid', hp: 210, speed: 68, damage: 24 },
+  elephant: { type: 'quadruped', hp: 260, speed: 44, damage: 24 },
+  zebra: { type: 'quadruped', hp: 65, speed: 110, damage: 9 },
+  pelican: { type: 'winged', hp: 55, speed: 85, damage: 10 },
+};
 export function creatureDefaults(kind) {
+  const night = NIGHT_CREATURE_DEFAULTS[kind];
   const type =
     kind.startsWith("explorer") ||
-    ["skeleton", "archer", "skeleton_wizard", "golem", "monkey"].includes(kind)
+    ["skeleton", "archer", "skeleton_wizard", "golem", "monkey", "hunter"].includes(kind)
       ? "humanoid"
-      : kind === "vine"
+      : ["vine", "carnivorous_flower", "mimic_vine", "poison_pod"].includes(kind)
         ? "plant"
         : kind === "snake"
           ? "serpent"
-          : ["bat", "wasp", "tsetse"].includes(kind)
+          : ["bat", "wasp", "tsetse", "pelican"].includes(kind)
             ? "winged"
             : "quadruped";
-  const rig = rigPreset(type);
+  const rig = rigPreset(night?.type || type);
   rig.mode = "rig";
   if (kind === "crocodile") {
     rig.tailThickness = 8;
@@ -186,9 +202,9 @@ export function creatureDefaults(kind) {
       poisonSpit: kind === "vine",
     },
     stats: {
-      hp: 80,
-      speed: 60,
-      damage: 12,
+      hp: night?.hp ?? 80,
+      speed: night?.speed ?? 60,
+      damage: night?.damage ?? 12,
       detection: 600,
       attackRange: 65,
       windup: 0.65,
@@ -217,6 +233,7 @@ export function creatureDefaults(kind) {
 }
 export const creatures = {};
 for (const name of [
+  ...NIGHT_KINDS,
   "lion",
   "panther",
   "wolf",
@@ -511,6 +528,8 @@ export function loadDefinitions(events, items) {
   }
 }
 export function applyDefinitions(d, events, items, { spriteOverrides = true } = {}) {
+  for (const [kind, model] of Object.entries(d.nightMotions || {}))
+    if (!validateNightMotion(kind, model)) throw Error('Invalid night animation: ' + kind);
   for (const [k, m] of Object.entries(d.beastMotions || {}))
     if (!beastMotions[k] || !validateBeastMotion(k, m))
       throw Error("Invalid beast rig");
@@ -561,6 +580,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if (d.rhino) replaceRhinoMotion(d.rhino);
   for (const [kind, model] of Object.entries(d.creatureMotions || {}))
     replaceCreatureMotion(kind, model);
+  for (const [kind, model] of Object.entries(d.nightMotions || {}))
+    replaceNightMotion(kind, model);
   const savedSpriteModels = {
     player: playerMotion,
     alligator: alligatorMotion,
@@ -573,13 +594,20 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     ...beastMotions,
     ...skeletonMotions,
     ...creatureMotions,
+    ...nightMotions,
   };
   if (spriteOverrides) for (const [subject, model] of Object.entries(savedSpriteModels))
     applyRigSpriteOverrides(subject, model);
   if (Array.isArray(d.events) && d.events.length) {
+    const stampedeSquad = events.find(e => e.type === 'stampede' && Array.isArray(e.squad))?.squad
+      || ['rhino', 'elephant', 'zebra', 'zebra', 'pelican'];
+    const importedEvents = d.events.map(event => event.type === 'stampede' && event.squad == null
+      ? { ...event, squad: structuredClone(stampedeSquad) }
+      : event);
     const added = events.filter(
       (e) =>
         [
+          ...NIGHT_KINDS,
           "skeleton_unarmed",
           "skeleton_boss",
           "beetle",
@@ -593,7 +621,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   "water_elemental",
         ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind),
     );
-    events.splice(0, events.length, ...d.events, ...added);
+    events.splice(0, events.length, ...importedEvents, ...added);
   }
   for(const event of events)if(event.kind==="monkey"||event.kind==="gorilla")event.environment="temple";
   for (const [k, v] of Object.entries(d.items || {}))
@@ -620,6 +648,7 @@ export function definitionPack(events, items) {
     bat: batMotion,
     rhino: rhinoMotion,
     creatureMotions,
+    nightMotions,
     beastMotions,
   };
 }

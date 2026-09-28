@@ -1,6 +1,7 @@
 import { drawRobotPortrait } from "./robot-art.mjs";
 import { ITEMS, sellValue } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
+import { controllerButtonNames } from "./controls.mjs";
 const node = (tag, text, cls) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
@@ -187,9 +188,11 @@ export function shopPanel(panel, game, p, button) {
   panel.append(
     node(
       "small",
-      u.shop === "robot"
-        ? "D-pad / arrows: select · A / Enter: sell · Y / 2: split · B / Esc: room"
-        : "D-pad / arrows: select slot · A / Enter: buy · Y / 2: collect tray · B / Esc: room",
+      (() => {
+        if (p.device === 'keyboard') return u.shop === "robot" ? "D-pad / arrows: select · A / Enter: sell · Y / 2: split · B / Esc: room" : "D-pad / arrows: select slot · A / Enter: buy · Y / 2: collect tray · B / Esc: room";
+        const n = controllerButtonNames(p.controllerFamily || 'generic');
+        return u.shop === "robot" ? `D-pad: select · ${n[0]}: sell · ${n[2]}: split · ${n[1]}: room` : `D-pad: select slot · ${n[0]}: buy · ${n[2]}: collect tray · ${n[1]}: room`;
+      })(),
     ),
   );
 }

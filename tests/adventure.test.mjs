@@ -28,7 +28,7 @@ test("Potions are consumables and cannot be wasted at full health", () => {
   p.hp = 20;
   assert.equal(g.usePotion(p), true);
   assert.equal(p.hp, 65);
-  assert.equal(count(p, "potion"), 1);
+  assert.equal(count(p, "potion"), 3);
 });
 test("Bow occupies both hands and swapping shield returns bow without duplication", () => {
   const { p } = setup();

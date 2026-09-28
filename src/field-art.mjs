@@ -53,6 +53,5 @@ export function drawFieldWorld(c, g) {
     c.fillStyle = p.color;
     c.font = "bold 8px monospace";
     c.textAlign = "center";
-    c.fillText(p.field?.symbol || "", p.x, p.y + 19);
   }
 }

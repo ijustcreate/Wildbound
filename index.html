@@ -94,7 +94,7 @@
       <div class="party-help">A · Choose / Ready &nbsp; B · Leave / Back &nbsp; ↑↓ · Navigate &nbsp; ←→ · Change option &nbsp; Start · Ready & Start</div>
       <select id="environment" hidden><option value="random">Random · All five maps</option><option value="forest">Forest</option><option value="desert">Desert</option><option value="ice">Ice</option><option value="house">House &amp; Yard</option><option value="temple">Jungle Temple</option></select>
       <select id="dice-count" hidden><option value="1">One die · longer game</option><option value="2" selected>Two dice · faster game</option></select>
-    <select id="difficulty" hidden><option value="adventure" selected>Adventure</option><option value="gentle">Gentle</option><option value="wild">Wild</option></select>
+    <select id="difficulty" hidden><option value="gentle">Gentle</option><option value="adventure" selected>Adventure</option><option value="wild">Wild</option></select>
       <button id="back-home" hidden>Back</button><div id="device-status" hidden></div>
     </main>
     <main id="play" class="screen">
@@ -385,12 +385,21 @@
       ><button id="fullscreen-button" class="small-button full">
         TOGGLE FULLSCREEN
       </button>
+      <div class="panel-title space-top">DISPLAY</div>
+      <label class="field-label" for="ui-scale">INTERFACE SIZE</label>
+      <select id="ui-scale"><option value="1">Standard</option><option value="1.15">Large</option><option value="1.3">Couch</option></select>
+      <label class="field-label" for="board-size">BOARD VIEW</label>
+      <select id="board-size"><option value="compact">Compact</option><option value="expanded">Expanded</option></select>
+      <label class="field-label" for="event-duration">EVENT MESSAGES</label>
+      <select id="event-duration"><option value="7">Brief · 7 seconds</option><option value="12">Comfortable · 12 seconds</option><option value="20">Extended · 20 seconds</option></select>
       <label class="field-label" for="music-volume">MUSIC VOLUME</label>
       <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.45" />
       <label class="field-label" for="music-track">LEVEL MUSIC</label>
       <select id="music-track" aria-label="Music track"></select>
       <div id="music-status" class="subtle" role="status">Loops in the menu and during gameplay.</div>
       <div class="panel-title space-top">CONTROLLER BUTTON MAPPING</div>
+      <div class="panel-title space-top">CHARACTER APPEARANCE</div>
+      <div id="appearance-settings"></div>
       <label class="check-row"><input id="pvp-toggle" type="checkbox"> PvP · players can damage each other</label><div id="audio-mixer"></div><label class="check-row"><input id="audio-night" type="checkbox"> Night mix · reduce loud peaks</label><button id="audio-test" type="button">Test sound</button><div id="player-mappings" aria-label="Controls by player"></div>
       <p class="subtle">
         Bindings below apply to all controllers. Changing a used button swaps the two actions so one button cannot open several actions.

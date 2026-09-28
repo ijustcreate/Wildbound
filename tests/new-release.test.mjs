@@ -69,7 +69,7 @@ test("Board attacks require proximity and facing the smaller collider", () => {
     p = g.players[0];
   Object.assign(p, { x: 800, y: 700, faceX: 0, faceY: 1 });
   assert.equal(g.canHitBoard(p), false);
-  p.y = 720;
+  p.y = 730;
   assert.ok(g.canHitBoard(p));
   p.faceY = -1;
   assert.equal(g.canHitBoard(p), false);

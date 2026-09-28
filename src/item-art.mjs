@@ -57,7 +57,43 @@ export function paintItem(c, type) {
   const def = ITEMS[type],
     originalType = type;
   type = itemKind(type);
+  if (def?.style === "safari") {
+    const khaki = def.artColor, trim = "#74553c", pale = "#eee0b0";
+    if (type === "hat") {
+      r(7,4,11,12,khaki); r(5,9,15,7,khaki); r(2,15,21,3,pale);
+      r(6,12,14,3,trim); r(11,3,3,10,pale);
+    } else if (type === "armor") {
+      r(5,4,15,17,khaki); r(10,3,5,5,trim); r(12,8,1,13,trim);
+      r(6,10,5,6,trim); r(14,10,5,6,trim); r(6,10,5,2,pale); r(14,10,5,2,pale);
+    } else if (type === "pants") {
+      r(5,3,14,6,khaki); r(5,9,5,13,khaki); r(14,9,5,13,khaki);
+      r(5,4,14,2,trim); r(4,11,6,5,trim); r(14,11,6,5,trim); r(11,4,3,2,pale);
+    } else for (const x of [2,13]) {
+      if (type === "shoulder_armor") { r(x,7,9,9,khaki); r(x,7,9,2,pale); r(x+3,10,3,3,trim); }
+      if (type === "gloves") { r(x+1,8,6,12,khaki); r(x+6,12,3,5,khaki); r(x,18,8,3,pale); }
+      if (type === "boots") { r(x+1,4,6,16,khaki); r(x,18,10,4,trim); r(x+2,6,4,2,pale); r(x+2,11,4,2,pale); }
+    }
+    return;
+  }
   switch (type) {
+    case "lantern":
+      r(8,2,9,2,dark); r(7,4,2,5,gold); r(16,4,2,5,gold);
+      r(5,8,15,3,dark); r(6,11,13,9,gold); r(8,11,9,8,"#fff0ab");
+      r(11,13,3,5,"#ffa13f"); r(5,20,15,3,dark); r(11,9,2,11,gold);
+      break;
+    case "torch":
+      r(10,11,4,12,"#805635"); r(9,9,6,5,"#aa986c");
+      r(7,4,10,7,"#ec6936"); r(10,1,4,10,"#ffac42"); r(11,5,3,6,"#fff0a4");
+      break;
+    case "rifle":
+      line(4,20,18,6,"#765036",4); line(12,11,21,2,"#39434b",2);
+      line(13,11,22,2,"#c8d2ca"); r(3,17,4,6,"#a87b49");
+      r(11,14,3,4,dark); r(13,6,4,2,dark);
+      break;
+    case "cartridge":
+      r(9,6,6,15,gold); r(10,3,4,4,"#b97f49"); r(11,2,2,2,"#dbb176");
+      r(10,8,2,12,"#fff0ab"); r(8,20,8,2,"#8c663a");
+      break;
     case "stick":
       line(5, 13, 12, 3, "#9e7646", 2);
       line(9, 8, 14, 6, "#bf9c60", 1);
@@ -73,6 +109,36 @@ export function paintItem(c, type) {
       r(5, 3, 7, 9, "#929e8e");
       r(5, 3, 6, 2, "#c6c9ab");
       r(9, 7, 3, 5, "#79867b");
+      break;
+    case "bone_shard":
+      line(5, 20, 18, 5, "#9a8f76", 3);
+      line(7, 19, 19, 4, "#eee5c4", 2);
+      r(17, 3, 4, 4, "#c9bea0");
+      r(4, 18, 4, 4, "#c9bea0");
+      break;
+    case "golem_core":
+      r(5, 5, 14, 15, "#304d4a");
+      r(7, 3, 10, 18, "#709f91");
+      r(9, 6, 6, 12, "#a5e0bf");
+      r(10, 9, 4, 5, "#e0ffd0");
+      break;
+    case "web_silk":
+      line(3, 5, 20, 20, "#d9c9e7", 1);
+      line(20, 5, 3, 20, "#d9c9e7", 1);
+      line(11, 3, 11, 22, "#f4eafa", 1);
+      line(4, 12, 19, 12, "#b9a5cf", 1);
+      break;
+    case "beast_fang":
+      line(7, 4, 15, 20, "#8f7957", 3);
+      line(8, 4, 16, 18, "#fff0c8", 2);
+      r(6, 3, 5, 4, "#d9c99e");
+      break;
+    case "frost_berry":
+      r(10, 3, 3, 6, "#71905e");
+      r(6, 8, 12, 12, "#522f58");
+      r(8, 6, 9, 13, "#d879a4");
+      r(10, 8, 3, 3, "#ffd5e8");
+      r(14, 12, 3, 3, "#eea8d0");
       break;
     case "wand":
       line(7, 20, 15, 7, "#745a87", 2);

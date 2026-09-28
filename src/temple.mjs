@@ -14,7 +14,9 @@ export function templeRoomStep(g,p,i,dt){
  const x=p.roomX,y=p.roomY;p.roomX=Math.max(28,Math.min(292,x+(i.x||0)*90*dt));p.roomY=Math.max(48,Math.min(214,y+(i.y||0)*90*dt));p.roomMoving=x!==p.roomX||y!==p.roomY;p.roomStep=(p.roomStep||0)+Math.hypot(p.roomX-x,p.roomY-y)*.13;
  if(p.roomMoving){const len=Math.hypot(p.roomX-x,p.roomY-y);p.faceX=(p.roomX-x)/len;p.faceY=(p.roomY-y)/len;}
  if(p.roomY>202&&Math.abs(p.roomX-160)<24){g.leaveRoom(p);return true;}
- if(i.interact&&!p.previousInput?.interact&&Math.hypot(p.roomX-160,p.roomY-78)<50){g.openInventory(p,'temple');g.onSound('inventory',p);}return true;
+ const nearChest=Math.hypot(p.roomX-160,p.roomY-78)<68;
+ if(i.interact&&!p.previousInput?.interact&&nearChest){g.openInventory(p,'temple');g.onSound('inventory',p);g.message('Ritual chest opened.');}
+ return true;
 }
 export function summonGhost(g,e){
  const owner=g.players.find(p=>p.id===e.killedBy);if(!owner||!e.ritualKill||e.ghost)return;

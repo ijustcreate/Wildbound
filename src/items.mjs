@@ -11,6 +11,30 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  lantern: {
+    name: "Trail lantern", slot: "hand1", eitherHand: true, damage: 0,
+    utility: true, stack: 1, color: "#edc776",
+    lightSource: { radius: 150, intensity: 1, color: "#ffdf91" },
+    description: "Either hand · light source only; deals no damage.",
+  },
+  torch: {
+    name: "Trail torch", slot: "hand1", eitherHand: true, damage: 5,
+    stack: 1, color: "#ed954d",
+    lightSource: { radius: 100, intensity: 0.8, color: "#ffb35e" },
+    fire: { duration: 3, damage: 2, meltRadius: 48 },
+    description: "Either hand · low melee damage; ignites enemies and trees, melts ice.",
+  },
+  rifle: {
+    name: "Safari rifle", slot: "hand1", twoHanded: true, damage: 36,
+    stack: 1, color: "#96714e", ranged: true,
+    shot: { range: 720, cooldown: 1.2, aimTime: 0.6, radius: 2, speed: 900 },
+    ammo: "cartridge",
+    description: "Both hands · hold aim for 0.6 seconds, release to consume one cartridge; reload takes 1.2 seconds.",
+  },
+  cartridge: {
+    name: "Rifle cartridge", stack: 99, color: "#d5ad61",
+    description: "One cartridge per rifle shot.",
+  },
   ritual_dagger:{name:'Ritual Dagger',base:'dagger',slot:'hand1',damage:32,stack:1,rarity:'legendary',color:'#efb94e',artColor:'#73e5cc',description:'Legendary · dagger kills summon a ghost ally for 30 seconds. Up to six spirits follow each wielder.'},
   barricade: {
     name: "Trail barricade",
@@ -36,6 +60,36 @@ export const ITEMS = {
     stack: 99,
     color: "#a5b1a1",
     description: "Mined from rocks. Building material.",
+  },
+  bone_shard: {
+    name: "Bone shard",
+    stack: 99,
+    color: "#d8d0ae",
+    description: "A sharp fragment from a defeated skeleton. Useful for fletching.",
+  },
+  golem_core: {
+    name: "Golem core",
+    stack: 20,
+    color: "#8fc7b5",
+    description: "A warm stone core. Reinforces field defenses.",
+  },
+  web_silk: {
+    name: "Web silk",
+    stack: 99,
+    color: "#d8c9e7",
+    description: "Strong spider silk. Ideal for binding traps.",
+  },
+  beast_fang: {
+    name: "Beast fang",
+    stack: 99,
+    color: "#e7d9b5",
+    description: "A sharp fang from a predator. Adds scent to bait.",
+  },
+  frost_berry: {
+    name: "Frost berry",
+    stack: 20,
+    color: "#d879a4",
+    description: "An ice-level berry used in restorative tonics.",
   },
   jade_scarab: {
     name: "Jade scarab",
@@ -703,6 +757,23 @@ for (const [id, name, base, rarity, artColor, stats, style] of gearVariants)
     description: "",
     variant: gearVariants.findIndex((v) => v[0] === id) + 1,
   };
+export const SAFARI_HUNTER_SET = Object.freeze({
+  head: "safari_hat", shoulders: "safari_shoulders", chest: "safari_vest",
+  gloves: "safari_gloves", pants: "safari_pants", feet: "safari_boots",
+});
+for (const [slot, id] of Object.entries(SAFARI_HUNTER_SET)) {
+  const base = { head: "hat", shoulders: "shoulder_armor", chest: "armor",
+    gloves: "gloves", pants: "pants", feet: "boots" }[slot];
+  ITEMS[id] = {
+    name: { head: "Safari pith helmet", shoulders: "Safari epaulettes",
+      chest: "Safari pocket vest", gloves: "Safari leather gloves",
+      pants: "Safari cargo trousers", feet: "Safari field boots" }[slot],
+    base, slot, stack: 1, armor: slot === "chest" ? 3 : 1,
+    set: "safari_hunter", style: "safari", rarity: "common",
+    color: "#c7b17a", artColor: ["gloves", "feet"].includes(slot) ? "#836044" : "#c7b17a",
+    description: "Safari hunter set · individually equippable field gear.",
+  };
+}
 for (const [id, item] of Object.entries(ITEMS)) {
   item.base ??= id;
   item.rarity ??= "common";
@@ -715,7 +786,10 @@ export function itemStats(id) {
   const i = ITEMS[id];
   if (!i) return "";
   return [
-    i.damage ? `Damage ${i.damage}` : "",
+    i.damage !== undefined ? `Damage ${i.damage}` : "",
+    i.lightSource ? `Light radius ${i.lightSource.radius}` : "",
+    i.fire ? "Ignites enemies and trees · melts ice" : "",
+    i.shot ? `Aimed shot · range ${i.shot.range}` : "",
     i.magic ? `Mana ${i.manaCost} per cast` : "",
     i.armor ? `Armor +${i.armor}` : "",
     i.punch ? `Fists +${i.punch}` : "",
@@ -788,6 +862,7 @@ export function fitsSlot(type, slot) {
   if (!def?.slot || !SLOTS.includes(slot)) return false;
   return (
     slot === def.slot ||
+    (def.eitherHand && !def.twoHanded && ["hand1", "hand2"].includes(slot)) ||
     (slot === "hand2" &&
       ((["sword", "dagger"].includes(itemKind(type)) && !def.twoHanded) ||
         itemKind(type) === "wand"))

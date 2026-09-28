@@ -28,7 +28,7 @@ export function interactIce(g,p){
  if(g.generatedEnvironment!=='ice')return false;
  const prop=g.scenery.filter(s=>!s.used&&['frost_shrub','winter_cache'].includes(s.kind)).map(s=>({s,b:iceBase(s)})).filter(({b})=>Math.hypot(p.x-b.x,p.y+14-b.y)<48).sort((a,b)=>Math.hypot(p.x-a.b.x,p.y-a.b.y)-Math.hypot(p.x-b.b.x,p.y-b.b.y))[0]?.s;
  if(!prop)return false;prop.used=true;
- const cache=prop.kind==='winter_cache';g.dropLoot(p.x,p.y+18,cache?'potion':'fruit',cache?2:3,cache?'Winter supplies':'Frost berries');g.message(cache?'Winter cache opened — two health potions.':'Frost berries gathered — three fruit.');g.onSound('loot');g.persist();return true;
+ const cache=prop.kind==='winter_cache';g.dropLoot(p.x,p.y+18,cache?'potion':'frost_berry',cache?2:3,cache?'Winter supplies':'Frost berries');g.message(cache?'Winter cache opened — two health potions.':'Frost berries gathered — three frost berries.');g.onSound('loot');g.persist();return true;
 }
 export function tickSnow(g,dt){if(g.generatedEnvironment!=='ice'){g.snowDepth=0;return;}if(g.weather?.type==='blizzard')g.snowDepth=Math.min(1,(g.snowDepth||0)+dt/22);else g.snowDepth=Math.max(0,(g.snowDepth||0)-dt/150);}
 export function drawSnowGround(c,g){if(!g.snowDepth)return;c.save();c.fillStyle='#e7f4f7';c.globalAlpha=g.snowDepth*.42;c.fillRect(0,0,1600,1600);c.globalAlpha=g.snowDepth*.4;c.strokeStyle='#ffffff';c.lineWidth=2;for(let y=0;y<25;y++)for(let x=0;x<25;x++){const h=hash(x,y);if(h>.65){c.beginPath();c.moveTo(x*64+8,y*64+30);c.quadraticCurveTo(x*64+28,y*64+20,x*64+46,y*64+28);c.stroke();}}c.restore();}

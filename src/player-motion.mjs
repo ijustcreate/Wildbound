@@ -423,6 +423,11 @@ export function playerAction(actor) {
       : actor.animationAction === "attack"
         ? "punch"
         : actor.animationAction;
+  if (actor.foundUnique > 0) return "found_unique";
+  if (actor.pickupTime > 0) return "pickup";
+  if (actor.gatherTime > 0) return actor.gatherAction || "mine";
+  if (actor.carryingItem) return "carry";
+  if (actor.parry > 0) return "parry";
   if(actor.hp<=0)return 'death';
   if(actor.sleeping > 0)return 'sleep';
   if (actor.hit > 0) return "hurt";
@@ -434,10 +439,10 @@ export function playerAction(actor) {
   if (actor.dashTime > 0) return "dash";
   if (actor.blocking) return "block";
   if (
-    itemKind(actor.equipment?.hand1) === "bow" &&
+    ["bow", "rifle"].includes(itemKind(actor.equipment?.hand1)) &&
     (actor.charge > 0 || actor.attack > 0)
   )
-    return "draw";
+    return actor.attack > 0 ? "ranged" : "draw";
   if(actor.attack>0&&actor.attackClip)return actor.attackClip;
   if (actor.attack > 0)
     return actor.equipment?.hand1 || ITEMS[actor.equipment?.hand2]?.damage
@@ -759,6 +764,18 @@ export function drawPlayer(
           weapon = itemKind(weaponId),
           weaponColor = ITEMS[weaponId]?.artColor;
         rotateJoint('hand'+side,hand,()=>wear(side === "R" ? "hand1" : "hand2", hand, () => {
+          if (weapon === "lantern" || weapon === "torch") {
+            drawItem(c, weaponId, hand.x, hand.y + (weapon === "lantern" ? 5 : -7), 15);
+          }
+          if (weapon === "rifle") {
+            const length = Math.hypot(actor.faceX, actor.faceY) || 1;
+            const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
+            const butt = { x: hand.x - aim.x * 6, y: hand.y - aim.y * 3 };
+            const muzzle = { x: hand.x + aim.x * 21, y: hand.y + aim.y * 11 - 2 };
+            limb(c, butt, hand, 4, "#916642");
+            limb(c, hand, muzzle, 2.5, "#39434b");
+            limb(c, { x: hand.x, y: hand.y - 1 }, { x: muzzle.x, y: muzzle.y - 1 }, 1, "#c6d0c7");
+          }
           if (weapon === "sword" || weapon === "dagger") {
             const attack =
               actor.attack > 0 || actor.animationAction === "slash";

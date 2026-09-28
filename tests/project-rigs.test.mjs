@@ -26,6 +26,12 @@ test('Desktop saves survive a fresh checkout and packaged build without local st
   const isolated = createRigStore({appPath:bundle,exePath:path.join(repo,'dist','game','Wildbound.exe'),userData:path.join(root,'test-profile'),packaged:true,testMode:true});
   assert.equal(isolated.load(),null);
   assert.notEqual(isolated.file,store.file);
+  const preview = createRigStore({appPath:bundle,exePath:path.join(repo,'dist','game','Wildbound.exe'),userData:path.join(root,'preview-profile'),packaged:true,isolated:true});
+  assert.deepEqual(preview.load().lion.boneSprites,pack.lion.boneSprites);
+  const previewPack=structuredClone(pack);previewPack.lion.boneSprites.Body[6].palette[1]='#ff0000';
+  await preview.save(previewPack);
+  assert.deepEqual(store.load().lion.boneSprites,pack.lion.boneSprites);
+  assert.equal(preview.load().lion.boneSprites.Body[6].palette[1],'#ff0000');
 });
 
 test('Pulled rig artwork overrides stale local sprites, including restored defaults', async t => {

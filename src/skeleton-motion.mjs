@@ -53,7 +53,7 @@ export function drawSkeleton(
           : kind === "skeleton_boss"
           ? { hand1: "sun_blade", hand2: "sun_shield", head: "horned_helm" }
           : kind === "skeleton"
-            ? { hand1: "sword" }
+            ? a.equipment?.hand1 === "lantern" ? { hand1: "lantern" } : { hand1: "sword" }
             : {};
   const actor = { ...a, equipment: gear };
   if (!a.animationAction) {
