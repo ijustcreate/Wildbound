@@ -17,13 +17,7 @@ const LOOK_PRESETS = [
   { skin:'#54372c', shirt:'#d49c3d', pants:'#272c35', shoes:'#593923', hair:'long', hairColor:'#d9d4ba' },
   { skin:'#d9ab76', shirt:'#9a638c', pants:'#49372d', shoes:'#272c35', hair:'mohawk', hairColor:'#d9d4ba' },
 ];
-const LOOK_COLORS = {
-  skin:['#f2d6b3','#d9ab76','#b97850','#865437','#54372c'],
-  shirt:['#39745b','#46799e','#d3b562','#a94955','#d49c3d','#9a638c'],
-  pants:['#665b87','#49372d','#272c35','#3f5e58'],
-  shoes:['#49372d','#272c35','#593923'],
-  hairColor:['#272c35','#593923','#a94955','#d3b562','#d9d4ba'],
-};
+const BASIC_COLORS = ['#f2d6b3','#d9ab76','#865437','#54372c','#e8c547','#d49c3d','#d45b5b','#9a638c','#46799e','#39745b','#3f5e58','#272c35'];
 const LOOK_LABELS={skin:'Skin',shirt:'Shirt',pants:'Pants',shoes:'Shoes',hairColor:'Hair color'};
 export function moveLobbyCharacter(s,input,dt){
   const x=Number.isFinite(input.x)?input.x:0,y=Number.isFinite(input.y)?input.y:0;
@@ -42,7 +36,7 @@ export class LobbyState {
     let changed=false;
     for(const id of this.members.keys())if(!ids.has(id)){this.members.delete(id);changed=true;}
     for(const [i,p] of players.entries())if(!this.members.has(p.id)){
-      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false});changed=true;
+      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[]});changed=true;
     }
     if(changed)this.invalidate(players);
   }
@@ -115,15 +109,17 @@ export class PlayableLobby {
       button('Suggest name',()=>{input.value=suggestCharacterName(this.profiles.data.heroes);});
       const look=s.creationLook||(s.creationLook=structuredClone(LOOK_PRESETS[0]));
       const custom=!!s.customLook;
+      const rememberColor=(color)=>{s.recentColors=[color,...s.recentColors.filter((v)=>v!==color)].slice(0,4);};
+      const chooseColor=(color)=>{look[s.creationColorKey]=color;rememberColor(color);this.renderPanel(p);};
       button('Random look',()=>{Object.assign(look,LOOK_PRESETS[Math.floor(Math.random()*LOOK_PRESETS.length)]);preview();});
       button(custom?'Hide custom options':'Custom look · colors',()=>{s.customLook=!s.customLook;this.renderPanel(p);});
       if(custom){
         const customBox=document.createElement('div');customBox.className='lobby-custom-look';
         for(const key of ['skin','shirt','pants','shoes','hairColor']){
           const option=button(`${LOOK_LABELS[key]} · ${look[key]}`,()=>{
-            const choices=LOOK_COLORS[key],index=choices.indexOf(look[key]);
-            look[key]=choices[(index+1)%choices.length];this.renderPanel(p);
+            s.creationColorKey=key;this.renderPanel(p);
           },customBox);
+          option.style.borderLeft=`6px solid ${look[key]}`;
           option.classList.add('lobby-color-option');
         }
         const styles=['crop','bob','long','ponytail','mohawk','curls','none'];
@@ -132,6 +128,23 @@ export class PlayableLobby {
         },customBox);
         hair.classList.add('lobby-color-option');
         panel.append(customBox);
+        if(s.creationColorKey){
+          const key=s.creationColorKey, pickerBox=document.createElement('div');
+          pickerBox.className='lobby-color-picker';
+          const title=document.createElement('strong');title.textContent=`Choose ${LOOK_LABELS[key]}`;pickerBox.append(title);
+          const swatches=document.createElement('div');swatches.className='lobby-color-swatches';
+          for(const color of BASIC_COLORS){const swatch=button(color,()=>chooseColor(color),swatches);swatch.className='lobby-swatch';swatch.style.background=color;swatch.setAttribute('aria-label',`Choose color ${color}`);}
+          pickerBox.append(swatches);
+          const recentTitle=document.createElement('small');recentTitle.textContent='Recent colors';pickerBox.append(recentTitle);
+          const recents=document.createElement('div');recents.className='lobby-color-swatches';
+          for(const color of s.recentColors){const swatch=button(color,()=>chooseColor(color),recents);swatch.className='lobby-swatch';swatch.style.background=color;swatch.setAttribute('aria-label',`Choose recent color ${color}`);}
+          if(!s.recentColors.length){const empty=document.createElement('small');empty.textContent='Your last four colors appear here.';recents.append(empty);}
+          pickerBox.append(recents);
+          const picker=document.createElement('input');picker.type='color';picker.value=look[key];picker.setAttribute('aria-label',`Custom ${LOOK_LABELS[key]} color`);picker.oninput=()=>chooseColor(picker.value);
+          button('Open color picker',()=>picker.click(),pickerBox).classList.add('lobby-open-picker');pickerBox.append(picker);
+          const close=button('Done',()=>{s.creationColorKey=null;this.renderPanel(p);},pickerBox);close.classList.add('lobby-color-done');
+          panel.append(pickerBox);
+        }
       }
       const art=document.createElement('canvas');art.width=220;art.height=110;panel.append(art);
       const preview=()=>{const c=art.getContext('2d');c.clearRect(0,0,220,110);c.save();c.translate(110,90);c.scale(2.4,2.4);drawPlayer(c,{appearance:look,equipment:{},faceX:0,faceY:1,animationAction:'idle'},0);c.restore();};preview();
