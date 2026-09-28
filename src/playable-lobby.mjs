@@ -1,6 +1,7 @@
 import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
-import { characterNameError } from './profiles.mjs';
+import { characterNameError, suggestCharacterName } from './profiles.mjs';
+import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { DEFAULT_APPEARANCE } from './appearance.mjs';
 
 export const LOBBY_OBJECTS = [
@@ -94,9 +95,9 @@ export class PlayableLobby {
     }else if(s.panel==='create'){
       heading.textContent='New explorer';
       const input=document.createElement('input');input.maxLength=20;input.setAttribute('aria-label','Character name');input.placeholder='Character name';
-      let number=1;while(characterNameError(p.name+(number===1?'':' '+number),this.profiles.data.heroes))number++;
-      input.value=p.name+(number===1?'':' '+number);panel.append(input);
-      button('Suggest name',()=>{input.value=['Fern','Scout','River','Ember','Echo'][Math.floor(Math.random()*5)]+' '+Math.floor(Math.random()*900+100);});
+      input.value=suggestCharacterName(this.profiles.data.heroes);panel.append(input);
+      button('Edit name',()=>openControllerKeyboard(input));
+      button('Suggest name',()=>{input.value=suggestCharacterName(this.profiles.data.heroes);});
       const appearances=['#cf7647','#e0ad77','#72513d','#b87954'];let tone=0;
       const look=structuredClone(DEFAULT_APPEARANCE);
       button('Change look',()=>{tone=(tone+1)%appearances.length;look.skin=appearances[tone];look.shirt=['#cb488c','#368d84','#5672ba','#d49c3d'][tone];preview();});

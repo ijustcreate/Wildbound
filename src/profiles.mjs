@@ -5,6 +5,27 @@ export const cleanCharacterName = (name) =>
     .normalize("NFKC")
     .trim()
     .replace(/\s+/g, " ");
+const NAME_SUGGESTIONS = [
+  "Alder", "Bramble", "Cedar", "Clover", "Cove", "Dawn", "Ember",
+  "Fern", "Flint", "Grove", "Juniper", "Lumen", "Marsh", "Meadow",
+  "Moss", "Nettle", "Oak", "Pip", "Raven", "Reed", "River", "Sable",
+  "Sage", "Scout", "Sol", "Sparrow", "Thistle", "Vale", "Willow",
+  "Wren", "Amber Fox", "Bramble Hare", "Cedar Finch", "Clover Jay",
+  "Fern Otter", "Moss Badger", "River Heron", "Sage Lynx", "Willow Moth",
+];
+export function suggestCharacterName(heroes = [], random = Math.random) {
+  const used = new Set(
+    heroes.map((hero) => cleanCharacterName(hero.name).toLocaleLowerCase()),
+  );
+  const available = NAME_SUGGESTIONS.filter(
+    (name) => !used.has(name.toLocaleLowerCase()),
+  );
+  if (available.length) return available[Math.floor(random() * available.length)];
+  const first = ["Amber", "Cedar", "Fern", "Moss", "River", "Sage", "Willow"];
+  const second = ["Bear", "Fox", "Hare", "Heron", "Lynx", "Otter", "Wren"];
+  const candidates = first.flatMap((a) => second.map((b) => `${a} ${b}`));
+  return candidates.find((name) => !used.has(name.toLocaleLowerCase())) || "New Explorer";
+}
 export function characterNameError(name, heroes, exceptId = null) {
   const n = cleanCharacterName(name);
   if (n.length < 2 || n.length > 20)

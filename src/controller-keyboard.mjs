@@ -2,7 +2,7 @@ export function openControllerKeyboard(input) {
   if(document.querySelector('#controller-keyboard'))return;
   let text=input.value, upper=true;
   const dialog=document.createElement('dialog');dialog.id='controller-keyboard';
-  dialog.dataset.ownerDevice=input.closest('dialog')?.dataset.ownerDevice || input.closest('.player-slot')?.dataset.device || '';
+  dialog.dataset.ownerDevice=input.closest('dialog')?.dataset.ownerDevice || input.closest('[data-owner-device]')?.dataset.ownerDevice || input.closest('.player-slot')?.dataset.device || '';
   const title=document.createElement('h2');title.textContent='Name your explorer';
   const output=document.createElement('output');output.className='keyboard-text';output.setAttribute('aria-live','polite');
   const hint=document.createElement('p');hint.textContent='D-pad / stick: move · A: choose · X: delete · Y: shift · Start: done · B: cancel';

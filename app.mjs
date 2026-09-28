@@ -42,6 +42,7 @@ import {
   Profiles,
   characterNameError,
   cleanCharacterName,
+  suggestCharacterName,
 } from "./src/profiles.mjs";
 import { count, give, equip, ITEMS } from "./src/items.mjs";
 import { Designer } from "./src/designer.mjs";
@@ -354,12 +355,10 @@ function nameNewCharacter(p, done = () => {}) {
   dialog.id = "character-name-dialog";
   dialog.dataset.ownerDevice=p.device;
   dialog.innerHTML =
-    '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back. Use the name button only when you want the on-screen keyboard.</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off" readonly></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
+    '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back. You can type with the mouse/keyboard or use the on-screen keyboard.</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off"></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
   document.body.append(dialog);
   const input = dialog.querySelector("input");
   input.value = p.name;
-  input.dataset.controllerSkip = "true";
-  input.tabIndex = -1;
   const appearance = structuredClone(DEFAULT_APPEARANCE);
   let creationDirection = 0,
     creationPose = "idle",
@@ -413,12 +412,7 @@ function nameNewCharacter(p, done = () => {}) {
   nameButton.type = "button";
   nameButton.textContent = "Suggest unique name";
   nameButton.onclick = () => {
-    input.value =
-      ["Scout", "River", "Fern", "Echo", "Ember", "Willow", "Ash"][
-        Math.floor(Math.random() * 7)
-      ] +
-      " " +
-      Math.floor(100 + Math.random() * 900);
+    input.value = suggestCharacterName(profiles.data.heroes);
   };
   const editName=document.createElement('button');editName.type='button';editName.textContent='Edit name · on-screen keyboard';editName.onclick=()=>openControllerKeyboard(input);
   nameTools.append(editName,nameButton);
@@ -997,7 +991,8 @@ function dialogController(pad, previous) {
   }
   selected?.scrollIntoView({block:'nearest'});
   if (accept) {
-    if(selected instanceof HTMLSelectElement){selected.selectedIndex=(selected.selectedIndex+1)%selected.options.length;selected.dispatchEvent(new Event('change',{bubbles:true}));}
+    if(selected.matches?.('input[name="characterName"]')) openControllerKeyboard(selected);
+    else if(selected instanceof HTMLSelectElement){selected.selectedIndex=(selected.selectedIndex+1)%selected.options.length;selected.dispatchEvent(new Event('change',{bubbles:true}));}
     else selected?.click();
   }
   if (back) {
