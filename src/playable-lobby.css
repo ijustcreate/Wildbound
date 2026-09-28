@@ -12,9 +12,13 @@ body[data-screen="lobby"]{overflow:hidden}
 .lobby-world{position:relative;width:min(1200px,calc((100dvh - 170px) * 1024 / 620),100%);margin:auto}
 .lobby-world>canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
 .lobby-panels{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;pointer-events:none;overflow:auto}
-.lobby-player-panel{pointer-events:auto;width:240px;max-height:96%;overflow:auto;background:#172125f5;border:1px solid #617073;border-top:3px solid var(--player-color);border-radius:10px;padding:14px;box-shadow:0 8px 30px #0006;display:flex;flex-direction:column;gap:7px;color:#eef1e8;font:14px system-ui}
-.lobby-player-panel h2{font:19px system-ui;margin:2px 0 6px}.lobby-player-panel small{font:10px system-ui;letter-spacing:1px;color:var(--player-color)}
-.lobby-player-panel button,.lobby-player-panel input{min-height:34px;width:100%;font:14px system-ui;margin:0;padding:6px 10px}
+.lobby-player-panel{pointer-events:auto;width:240px;max-height:96%;overflow:auto;background:linear-gradient(145deg,#173b31f7,#102b27f7);border:3px solid #9b7a43;border-radius:4px;padding:14px;box-shadow:inset 0 0 0 3px #3c2d1d,inset 0 0 0 5px #d0ad63,0 12px 30px #0008;display:flex;flex-direction:column;gap:7px;color:#f3e7c8;font:14px system-ui}
+.lobby-player-panel::before{content:'WILDBOUND  ·  EXPEDITION';display:block;margin:-2px 0 8px;padding-bottom:7px;border-bottom:1px solid #b7924e;color:#d5b66b;text-align:center;font:10px/1 Georgia,serif;letter-spacing:2px}
+.lobby-player-panel h2{font:21px/1.05 Georgia,serif;margin:2px 0 7px;color:#f5e8c9}.lobby-player-panel small{font:10px system-ui;letter-spacing:1px;color:#70d5b3}
+.lobby-player-panel button,.lobby-player-panel input{min-height:34px;width:100%;font:15px Georgia,serif;margin:0;padding:6px 10px}
+.lobby-player-panel button{border:1px solid #b69454;background:linear-gradient(#f0e5c7,#d5c28f);color:#263c34;box-shadow:inset 0 0 0 1px #fff1c9,0 2px 0 #392d1c}
+.lobby-player-panel button:hover,.lobby-player-panel .lobby-focus{background:linear-gradient(#fff3cf,#dfc98e);outline:2px solid #71d9bc;outline-offset:2px}
+.lobby-player-panel input{background:#f2ead5;color:#263c34;border:1px solid #b69454;box-shadow:inset 0 0 0 1px #fff1c9}
 .lobby-custom-look{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:7px 0;border-top:1px solid #405054;border-bottom:1px solid #405054}
 .lobby-custom-look button{min-height:30px;padding:5px 6px;font-size:12px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lobby-custom-look .lobby-color-option::first-letter{color:var(--player-color)}
@@ -31,8 +35,7 @@ body[data-screen="lobby"]{overflow:hidden}
 .lobby-player-panel.board-menu h2{margin:0 0 12px;color:#f5e8c9;text-align:center;font:24px/1.05 Georgia,serif;letter-spacing:.3px}
 .board-menu-summary{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 0 15px;padding:9px 5px;border-top:1px solid #66502e;border-bottom:1px solid #66502e}
 .board-setting{padding:5px 8px;background:#e7d8ae;color:#3b3425;border:1px solid #b39458;box-shadow:inset 0 0 0 1px #f4e7c2;font:12px/1.1 Georgia,serif;text-align:center}
-.lobby-player-panel.board-menu button{min-height:42px;border:1px solid #b69454;background:linear-gradient(#f0e5c7,#d5c28f);color:#263c34;box-shadow:inset 0 0 0 1px #fff1c9,0 2px 0 #392d1c;font:16px Georgia,serif}
-.lobby-player-panel.board-menu button:hover,.lobby-player-panel.board-menu .lobby-focus{background:linear-gradient(#fff3cf,#dfc98e);outline:2px solid #71d9bc;outline-offset:2px}
+.lobby-player-panel.board-menu button{min-height:42px;font:16px Georgia,serif}
 .lobby-player-panel .difficulty-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 9px;min-height:54px}
 .lobby-player-panel .difficulty-choice-icon{width:40px!important;height:40px!important;flex:0 0 40px;image-rendering:auto}
 .lobby-player-panel .map-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 9px;min-height:54px}
