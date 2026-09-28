@@ -15,8 +15,8 @@ Over time, the project is intended to become a standalone game that is easy to m
 <img src="assets/wildbound-header-v2.png" alt="Wildbound jungle adventure banner" width="100%">
 
 <p>
-  <strong>Latest build: 1.0.5</strong><br>
-  Combat combos · jumping · temple tigers · Field Kit systems
+  <strong>Latest build: 1.0.6 development build</strong><br>
+  Living expeditions · expanded rigs · night-hunt systems · Field Kit systems
 </p>
 
 <a href="RELEASE_REPORT_1.0.5.md">Release notes</a> ·
@@ -28,9 +28,10 @@ Over time, the project is intended to become a standalone game that is easy to m
 
 ## Play the build
 
-1. Launch **[Play Wildbound.cmd](Play%20Wildbound.cmd)**, or run `dist/1.0.5/Wildbound-win32-x64/Wildbound.exe`.
-2. Keep the complete packaged folder together when moving or sharing the build.
-3. Gather 1–6 local players, choose explorers and difficulty, then open the board and strike the table to roll.
+1. Launch **[Play Wildbound.cmd](Play%20Wildbound.cmd)** for the Electron development build.
+2. To preview the web version locally, run **[Play Wildbound Browser.cmd](Play%20Wildbound%20Browser.cmd)**. The hosted web build is at [ijustcreate.github.io/Wildbound](https://ijustcreate.github.io/Wildbound/).
+3. Keep the complete packaged folder together when moving or sharing an Electron build.
+4. Gather 1–6 local players, choose explorers and difficulty, then open the board and strike the table to roll.
 
 During a solo expedition started with keyboard/mouse, use the left stick or a controller button to take over the existing hero. To add a second player during the first round, press Start/Menu on an unused controller. In the lobby, any controller button joins; reconnecting a controller reclaims a disconnected hero.
 
@@ -43,6 +44,8 @@ Reach space 48, hold Interact near the table to seal the jungle, and collect the
 - **Field Kit:** trail objectives, storage, crafting, cosmetic look editing, settings, loadout management and recovery tools.
 - **Combat and creatures:** charge attacks, dodge, block, traps, drag-and-revive, creature patrols and dense encounter pacing.
 - **Character and rig tools:** curated looks, randomization locks, dyes, gear previews, directional wearables, animation and custom asset workflows.
+- **Night Hunt preview:** day/night lighting, sound-aware predators, lantern and torch equipment, living jungle growth, environmental critters and survival encounters.
+- **Audio:** selectable level music plus a separate forest ambience channel; forest ambience can be muted independently in Settings.
 
 ## Field Kit
 
@@ -104,7 +107,9 @@ npm run test:app
 npm run package
 ```
 
-For browser preview use `npm run dev`. Desktop graphics acceleration is enabled by default; pass `--software-rendering` for the fallback. The full-frame comparison harness is `scripts/benchmark-full.cjs`; Field Kit smoke coverage is in `scripts/verify-field.cjs`.
+For a preview package, run `node scripts/package.cjs --preview`. For the web build, run `node scripts/build-web.cjs`; it performs a syntax check before copying the publishable files. `node scripts/check-syntax.cjs` checks all runtime JavaScript directly. Desktop graphics acceleration is enabled by default; pass `--software-rendering` for the fallback.
+
+On Windows 11 systems with Smart App Control enabled, a newly packaged unsigned Electron executable may be blocked. The source development launcher and web build are separate from that Windows policy; production distribution should use a trusted code-signing certificate.
 
 The release remains focused on local co-op. Direct-network transport is experimental and has not been certified for the newest Field Kit systems. Physical controller hardware and long-session balancing still need hands-on playtesting.
 
