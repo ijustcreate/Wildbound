@@ -2,7 +2,6 @@ import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
-import { DEFAULT_APPEARANCE } from './appearance.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:230,y:190},
@@ -10,6 +9,22 @@ export const LOBBY_OBJECTS = [
   {id:'dice-count',name:'Dice tray',x:800,y:440},
   {id:'board',name:'Closed board',x:510,y:280},
 ];
+const LOOK_PRESETS = [
+  { skin:'#d9ab76', shirt:'#39745b', pants:'#665b87', shoes:'#49372d', hair:'crop', hairColor:'#593923' },
+  { skin:'#865437', shirt:'#d3b562', pants:'#49372d', shoes:'#272c35', hair:'curls', hairColor:'#272c35' },
+  { skin:'#f2d6b3', shirt:'#46799e', pants:'#272c35', shoes:'#593923', hair:'ponytail', hairColor:'#a94955' },
+  { skin:'#b97850', shirt:'#a94955', pants:'#3f5e58', shoes:'#49372d', hair:'bob', hairColor:'#d3b562' },
+  { skin:'#54372c', shirt:'#d49c3d', pants:'#272c35', shoes:'#593923', hair:'long', hairColor:'#d9d4ba' },
+  { skin:'#d9ab76', shirt:'#9a638c', pants:'#49372d', shoes:'#272c35', hair:'mohawk', hairColor:'#d9d4ba' },
+];
+const LOOK_COLORS = {
+  skin:['#f2d6b3','#d9ab76','#b97850','#865437','#54372c'],
+  shirt:['#39745b','#46799e','#d3b562','#a94955','#d49c3d','#9a638c'],
+  pants:['#665b87','#49372d','#272c35','#3f5e58'],
+  shoes:['#49372d','#272c35','#593923'],
+  hairColor:['#272c35','#593923','#a94955','#d3b562','#d9d4ba'],
+};
+const LOOK_LABELS={skin:'Skin',shirt:'Shirt',pants:'Pants',shoes:'Shoes',hairColor:'Hair color'};
 export function moveLobbyCharacter(s,input,dt){
   const x=Number.isFinite(input.x)?input.x:0,y=Number.isFinite(input.y)?input.y:0;
   const length=Math.hypot(x,y),scale=180*dt/Math.max(1,length),beforeX=s.x,beforeY=s.y;
@@ -27,7 +42,7 @@ export class LobbyState {
     let changed=false;
     for(const id of this.members.keys())if(!ids.has(id)){this.members.delete(id);changed=true;}
     for(const [i,p] of players.entries())if(!this.members.has(p.id)){
-      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0});changed=true;
+      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false});changed=true;
     }
     if(changed)this.invalidate(players);
   }
@@ -77,7 +92,7 @@ export class PlayableLobby {
     const panel=document.createElement('section');panel.className='lobby-player-panel';panel.dataset.ownerDevice=p.device;panel.style.setProperty('--player-color',p.color);panel.setAttribute('aria-label',p.name+' lobby controls');
     const tag=document.createElement('small');tag.textContent=p.device==='keyboard'?'KEYBOARD':'PLAYER '+(this.getGame().players.indexOf(p)+1);panel.append(tag);
     const heading=document.createElement('h2');panel.append(heading);
-    const button=(label,fn)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();this.sync();};panel.append(b);return b;};
+    const button=(label,fn,parent=panel)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();this.sync();};parent.append(b);return b;};
     const error=document.createElement('p');error.className='lobby-error';error.setAttribute('role','alert');
     if(s.panel==='choose'){
       heading.textContent='Choose your explorer';
@@ -98,9 +113,26 @@ export class PlayableLobby {
       input.value=suggestCharacterName(this.profiles.data.heroes);panel.append(input);
       button('Edit name',()=>openControllerKeyboard(input));
       button('Suggest name',()=>{input.value=suggestCharacterName(this.profiles.data.heroes);});
-      const appearances=['#cf7647','#e0ad77','#72513d','#b87954'];let tone=0;
-      const look=structuredClone(DEFAULT_APPEARANCE);
-      button('Change look',()=>{tone=(tone+1)%appearances.length;look.skin=appearances[tone];look.shirt=['#cb488c','#368d84','#5672ba','#d49c3d'][tone];preview();});
+      const look=s.creationLook||(s.creationLook=structuredClone(LOOK_PRESETS[0]));
+      const custom=!!s.customLook;
+      button('Random look',()=>{Object.assign(look,LOOK_PRESETS[Math.floor(Math.random()*LOOK_PRESETS.length)]);preview();});
+      button(custom?'Hide custom options':'Custom look · colors',()=>{s.customLook=!s.customLook;this.renderPanel(p);});
+      if(custom){
+        const customBox=document.createElement('div');customBox.className='lobby-custom-look';
+        for(const key of ['skin','shirt','pants','shoes','hairColor']){
+          const option=button(`${LOOK_LABELS[key]} · ${look[key]}`,()=>{
+            const choices=LOOK_COLORS[key],index=choices.indexOf(look[key]);
+            look[key]=choices[(index+1)%choices.length];this.renderPanel(p);
+          },customBox);
+          option.classList.add('lobby-color-option');
+        }
+        const styles=['crop','bob','long','ponytail','mohawk','curls','none'];
+        const hair=button(`Hair style · ${look.hair}`,()=>{
+          look.hair=styles[(styles.indexOf(look.hair)+1)%styles.length];this.renderPanel(p);
+        },customBox);
+        hair.classList.add('lobby-color-option');
+        panel.append(customBox);
+      }
       const art=document.createElement('canvas');art.width=220;art.height=110;panel.append(art);
       const preview=()=>{const c=art.getContext('2d');c.clearRect(0,0,220,110);c.save();c.translate(110,90);c.scale(2.4,2.4);drawPlayer(c,{appearance:look,equipment:{},faceX:0,faceY:1,animationAction:'idle'},0);c.restore();};preview();
       button('Create & join',()=>{
