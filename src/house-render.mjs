@@ -1,3 +1,9 @@
+export function drawWindow(c,w){
+ const {x,y,w:width,h}=w;c.fillStyle='#364951';c.fillRect(x,y,width,h);
+ c.strokeStyle='#c0b68f';c.lineWidth=3;c.strokeRect(x+1,y+1,width-2,h-2);
+ if(!w.broken){c.fillStyle='#80c4d2';c.fillRect(x+4,y+4,width-8,h-8);c.strokeStyle='#dbf7ec';c.lineWidth=2;c.beginPath();c.moveTo(x+5,y+h-5);c.lineTo(x+width-5,y+5);c.stroke();}
+ else {c.fillStyle='#b3e0df';for(let i=0;i<4;i++){const px=x+4+(width-8)*i/4,py=y+4;c.beginPath();c.moveTo(px,py);c.lineTo(px+4,py);c.lineTo(px+2,py+5);c.fill();}}
+}
 export function drawFurniture(c,f){
  const {x,y,w,h,kind}=f;c.save();c.translate(x,y);
  c.fillStyle='#0005';if(kind!=='rug')c.fillRect(3,5,w,h);

@@ -364,7 +364,7 @@ export function wandTipWorld(actor,slot,time,model=playerMotion,size=43){
   let x=(tip.x*Math.cos(angle)-tip.y*Math.sin(angle))*scale+(visual?.x||0),y=(tip.x*Math.sin(angle)+tip.y*Math.cos(angle))*scale+(visual?.y||0);
   const rotation=jointAngle(model,playerAction(actor),playerFrame(actor,time,model),d,joint,actor.angleRestOnly)*Math.PI/180;
   const rx=x*Math.cos(rotation)-y*Math.sin(rotation),ry=x*Math.sin(rotation)+y*Math.cos(rotation);
-  return {x:actor.x+(hand.x+rx)*size/48,y:actor.y-(actor.jumpHeight||0)+(hand.y+ry)*size/48};
+  return {x:actor.x+(hand.x+rx)*size/48,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)+(hand.y+ry)*size/48};
 }
 export function projectPoint(p, direction) {
   const a = (direction * Math.PI) / 4,

@@ -42,7 +42,7 @@ export class Animator {
     this.stampedeRevision = rhinoMotionRevision;
   }
   draw(ctx, actor, time, size = 48) {
-    if(actor.jumpHeight>0)actor={...actor,y:actor.y-actor.jumpHeight};
+    if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
     if (this.metrics?.enabled)
       return this.metrics.measure("animation", () =>
         this.drawActor(ctx, actor, time, size),

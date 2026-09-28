@@ -118,6 +118,15 @@ app.whenReady().then(async () => {
   const profilePath = path.join(app.getPath("userData"), "characters-v1.json");
   const sessionPath = path.join(app.getPath("userData"), "expedition-v1.json");
   const store = require("./save-store.cjs");
+  if(!process.argv.includes('--no-live-diagnostics')){
+    const diagnostics=require('./live-diagnostics.cjs').createDiagnostics(app.getPath('userData'));
+    let lastReport=0;
+    ipcMain.on('live-diagnostics',(event,data)=>{
+      if(event.sender!==window.webContents||Date.now()-lastReport<200)return;
+      lastReport=Date.now();diagnostics.publish(data);
+    });
+    app.on('will-quit',()=>diagnostics.close());
+  }
   const rigStore = require('./project-rig-store.cjs').createRigStore({
     appPath: app.getAppPath(), exePath: app.getPath('exe'),
     userData: app.getPath('userData'), packaged: app.isPackaged,

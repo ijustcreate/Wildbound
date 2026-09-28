@@ -25,6 +25,24 @@ export function flushHouseStorage(){
  return pendingSave;
 }
 export const contains=(r,x,y)=>x>=r.x&&y>=r.y&&x<r.x+r.w&&y<r.y+r.h;
+export const LOW_FURNITURE={bed:12,table:16,desk:16,sofa:10,chair:8,bench:8,counter:16};
+export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
+export function upgradeHouseFeatures(h){
+ for(const f of h.furniture||[])if(LOW_FURNITURE[f.kind]&&f.jumpable===undefined){f.jumpable=true;f.surfaceHeight=LOW_FURNITURE[f.kind];}
+ if(h.featuresVersion>=1)return h;
+ h.featuresVersion=1;
+ if(h.walls.some(w=>w.kind==='window'))return h;
+ const walls=[];
+ for(const w of h.walls){
+  const horizontal=w.w>w.h,length=horizontal?w.w:w.h,x=w.x+w.w/2,y=w.y+w.h/2;
+  const inside=(x,y)=>h.floors.some(f=>contains(f,x,y));
+  const exterior=horizontal?inside(x,w.y-2)!==inside(x,w.y+w.h+2):inside(w.x-2,y)!==inside(w.x+w.w+2,y);
+  if(w.kind==='fence'||length<144||!exterior){walls.push(w);continue;}
+  const half=(length-48)/2;
+  walls.push({...w,[horizontal?'w':'h']:half},{...w,kind:'window',x:horizontal?w.x+half:w.x,y:horizontal?w.y:w.y+half,[horizontal?'w':'h']:48},{...w,x:horizontal?w.x+half+48:w.x,y:horizontal?w.y:w.y+half+48,[horizontal?'w':'h']:half});
+ }
+ h.walls=walls;return h;
+}
 export function defaultHouse(){
  const walls=[],doors=[];
  const wall=(x,y,w,h,kind='wall')=>walls.push({x,y,w,h,kind});
@@ -38,7 +56,7 @@ export function defaultHouse(){
  add('sofa',512,736,48,128);add('bookcase',1040,736,32,128);add('rug',920,832,128,80);add('table',944,848,64,48);add('plant',1056,880,32,32);
  add('desk',512,992,112,40);add('chair',544,1040,32,32);add('bookcase',688,992,32,96);add('rug',832,992,160,64);add('dresser',1040,976,48,80);
  add('mailbox',1136,1360,24,32);add('bench',528,288,112,32);add('plant',512,352,32,32);
- return {version:1,name:'The Living House',walls,doors,floors:[{x:480,y:480,w:640,h:640}],pools:[{x:896,y:240,w:256,h:160}],paths:[{x:768,y:1120,w:64,h:352},{x:608,y:400,w:64,h:80}],furniture,trees:[{x:400,y:256,size:92},{x:416,y:400,size:82},{x:1200,y:240,size:96},{x:1216,y:416,size:80},{x:400,y:1248,size:96},{x:512,y:1392,size:80},{x:1248,y:1232,size:92},{x:1216,y:1456,size:80}],rooms:[{name:'Kitchen',x:640,y:568},{name:'Bedroom',x:944,y:648},{name:'Living room',x:800,y:904},{name:'Study',x:656,y:1080},{name:'Entrance hall',x:928,y:1080}]};
+ return upgradeHouseFeatures({version:1,name:'The Living House',walls,doors,floors:[{x:480,y:480,w:640,h:640}],pools:[{x:896,y:240,w:256,h:160}],paths:[{x:768,y:1120,w:64,h:352},{x:608,y:400,w:64,h:80}],furniture,trees:[{x:400,y:256,size:92},{x:416,y:400,size:82},{x:1200,y:240,size:96},{x:1216,y:416,size:80},{x:400,y:1248,size:96},{x:512,y:1392,size:80},{x:1248,y:1232,size:92},{x:1216,y:1456,size:80}],rooms:[{name:'Kitchen',x:640,y:568},{name:'Bedroom',x:944,y:648},{name:'Living room',x:800,y:904},{name:'Study',x:656,y:1080},{name:'Entrance hall',x:928,y:1080}]});
 }
 export function validateHouse(h){
  if(h?.version!==1||typeof h.name!=='string'||!h.name.trim()||h.name.length>60)return false;
@@ -49,7 +67,7 @@ export function validateHouse(h){
  return h.floors.some(r=>contains(r,800,800))&&!h.walls.concat(h.doors,h.pools,h.furniture.filter(f=>!['rug','plant'].includes(f.kind))).some(r=>r.x<900&&r.x+r.w>700&&r.y<878&&r.y+r.h>700);
 }
 export function houseLibrary(){
- try{const data=JSON.parse(globalThis.localStorage?.getItem(HOUSE_KEY)||'null');if(data?.designs?.length&&data.designs.every(d=>typeof d.id==='string'&&validateHouse(d.house)))return data;}catch{}
+ try{const data=JSON.parse(globalThis.localStorage?.getItem(HOUSE_KEY)||'null');if(data?.designs?.length&&data.designs.every(d=>typeof d.id==='string'&&validateHouse(d.house))){for(const d of data.designs)upgradeHouseFeatures(d.house);return data;}}catch{}
  return {active:'default',designs:[{id:'default',house:defaultHouse()}]};
 }
 export function activeHouse(){const lib=houseLibrary();return structuredClone((lib.designs.find(d=>d.id===lib.active)||lib.designs[0]).house);}

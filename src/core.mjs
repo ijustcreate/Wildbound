@@ -6,7 +6,7 @@ import { creatureCue } from './sound-bank.mjs';
 import {iceMotion,snowAt} from './ice-world.mjs';
 import {collisionOffset, actorRadius, clearShot, navigateEnemy} from './navigation.mjs';
 import { initializeField, record, tickField } from "./field-systems.mjs";
-import {resolveEnvironment,structureBlocked,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
+import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
 import {
   waterAt,
@@ -444,8 +444,8 @@ export class Game {
     this.bloom = 3;
     this.spriteLibrary = {};
   }
-  blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14) {
-    if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset))return true;
+  blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false) {
+    if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile))return true;
     if (
       (this.barricades || []).some(
         (b) =>
@@ -482,14 +482,15 @@ export class Game {
       )
     );
   }
-  projectileBlocked(x, y, radius = 1) {
+  projectileBlocked(x, y, radius = 1, impact = false) {
+    if(impact&&breakWindow(this,x,y,radius))return true;
     // Airborne shots cross water but still hit scenery, the board and map edges.
     return (
       x - radius < 0 ||
       x + radius >= WORLD ||
       y + 14 - radius < 0 ||
       y + 14 + radius >= WORLD ||
-      this.blocked(x, y, radius, false, true,false,this.house?0:14)
+      this.blocked(x, y, radius, false, true,false,this.house?0:14,0,true)
     );
   }
   moveActor(actor, dx, dy, flying = false) {
@@ -512,9 +513,9 @@ export class Game {
       steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
     for (let i = 0; i < steps; i++) {
       const x = clamp(actor.x + dx / steps, 24, WORLD - 24);
-      if (!this.blocked(x, actor.y, actorRadius(actor), flying,false,false,collisionOffset(this,actor))) actor.x = x;
+      if (!this.blocked(x, actor.y, actorRadius(actor), flying,false,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.x = x;
       const y = clamp(actor.y + dy / steps, 24, WORLD - 24);
-      if (!this.blocked(actor.x, y, actorRadius(actor), flying,false,false,collisionOffset(this,actor))) actor.y = y;
+      if (!this.blocked(actor.x, y, actorRadius(actor), flying,false,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.y = y;
     }
     const moved = Math.hypot(actor.x - oldX, actor.y - oldY);
     if (!flying && isQuicksand(waterAt(this, actor.x, actor.y + collisionOffset(this,actor))))
@@ -690,6 +691,11 @@ export class Game {
       );
     if (spin) p.spin = 0.38;
     harvest(this, p, damage, (weapon ? 76 : 49)*combo.reach);
+    for(const pane of this.house?.walls||[]){
+      if(pane.kind!=='window'||pane.broken)continue;
+      const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
+      if(d<(weapon?76:49)*combo.reach&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35))breakWindow(this,x,y,2);
+    }
     for (const e of [...this.enemies,...(this.pvp?this.players.filter(q=>q!==p&&q.hp>0&&!q.room):[])]) {
       const dx = e.x - p.x,
         dy = e.y - p.y,
@@ -1034,7 +1040,7 @@ export class Game {
       }
     }
     for (const p of this.players) {
-      tickJump(p,dt);
+      tickJump(p,dt,this,collisionOffset(this,p));
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
@@ -1133,7 +1139,7 @@ export class Game {
     }
     const alive = this.players.filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
-      tickJump(e,dt);
+      tickJump(e,dt,this,collisionOffset(this,e));
       if (e.hp <= 0 || (e.kind === "rhino" && !e.aggro)) continue;
       if(creatures[e.kind]?.behaviors.jump&&e.state==='hunt'){
         const target=alive.reduce((best,p)=>!best||distance(e,p)<distance(e,best)?p:best,null);

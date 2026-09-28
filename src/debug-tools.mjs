@@ -1,5 +1,77 @@
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyLobbyActions=async()=>{
+    const lobby=ctx.playableLobby,p=ctx.game.players.find(p=>p.device==='keyboard');
+    const press=code=>window.dispatchEvent(new KeyboardEvent('keydown',{key:code==='Space'?' ':code.slice(3).toLowerCase(),code,bubbles:true,cancelable:true}));
+    const release=code=>window.dispatchEvent(new KeyboardEvent('keyup',{code,bubbles:true}));
+    press('KeyJ');lobby.update(.05,ctx.inputFrame());release('KeyJ');lobby.update(.05,{});
+    const a=lobby.practice.players.find(a=>a.id===p.id);if(!(a.jumpHeight>0))throw Error('Lobby keyboard jump failed');
+    press('Space');lobby.update(.05,ctx.inputFrame());release('Space');if(!(a.dashTime>0))throw Error('Lobby keyboard dodge failed');
+    const dice=document.getElementById('dice-count');dice.value='1';dice.dispatchEvent(new Event('change'));
+    await lobby.difficultyArt.decode();
+    lobby.open(p,'difficulty');
+    if(lobby.nodes.get(p.id).querySelectorAll('canvas').length!==3)throw Error('Missing difficulty icons');
+    lobby.close(p);lobby.draw();return {passed:3};
+  };
+  window.verifyInputOwnership=()=>{
+    ctx.newLobby();
+    const p=ctx.game.addPlayer('keyboard'),q=ctx.game.addPlayer('pad:7');ctx.renderLobby();
+    for(const [i,player] of [p,q].entries()){
+      ctx.profiles.assign(player,ctx.profiles.create('Input '+i+' '+Date.now().toString().slice(-6)));
+      const s=ctx.playableLobby.state.members.get(player.id);s.spawned=true;ctx.playableLobby.close(player);
+    }
+    const a=ctx.playableLobby.state.members.get(p.id),b=ctx.playableLobby.state.members.get(q.id);
+    const ax=a.x,bx=b.x;
+    window.dispatchEvent(new KeyboardEvent('keydown',{key:'d',code:'KeyD',bubbles:true}));
+    ctx.playableLobby.update(.05,ctx.inputFrame());
+    window.dispatchEvent(new KeyboardEvent('keyup',{key:'d',code:'KeyD',bubbles:true}));
+    if(a.x<=ax||b.x!==bx)throw Error('Keyboard movement leaked into the controller player');
+    ctx.playableLobby.open(q,'board');
+    const button=[...ctx.playableLobby.nodes.get(q.id).querySelectorAll('button')].find(b=>b.textContent==='Ready');button.focus();
+    const enter=new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true,cancelable:true});button.dispatchEvent(enter);
+    if(q.ready||!enter.defaultPrevented)throw Error('Keyboard activates controller panel');
+    const before=a.x;ctx.playableLobby.update(.05,{'pad:7':{x:1}});
+    if(a.x!==before)throw Error('Controller input moved keyboard player');
+    ctx.playableLobby.close(q);
+    const controllerX=b.x;ctx.playableLobby.update(.05,{'pad:7':{x:1}});
+    if(b.x<=controllerX||a.x!==before)throw Error('Independent controller movement failed');
+    return {passed:4,players:ctx.game.players.map(p=>({id:p.id,device:p.device}))};
+  };
+  window.verifyPlayableLobby = () => {
+    const assert=(value,message)=>{if(!value)throw Error(message);};
+    const click=(device,text)=>{
+      const panel=document.querySelector(`.lobby-player-panel[data-owner-device="${device}"]`);
+      const button=[...panel?.querySelectorAll('button')||[]].find(b=>b.textContent===text);
+      assert(button,'Missing '+device+' control: '+text);button.click();
+    };
+    window.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
+    const lobby=ctx.playableLobby,p=ctx.game.players.find(p=>p.device==='keyboard');
+    assert(p,'Keyboard joins');click('keyboard','+ New character');
+    document.querySelector('.lobby-player-panel input').value='Test '+Date.now().toString().slice(-6);click('keyboard','Create & join');
+    assert(lobby.state.members.get(p.id).spawned,'Created character spawns');
+    const q=ctx.game.addPlayer('pad:7');ctx.renderLobby();
+    assert(lobby.nodes.has(q.id)&&!lobby.nodes.has(p.id),'Selection is independent');
+    const before=lobby.state.members.get(p.id).x;
+    lobby.update(.05,{keyboard:{x:1,y:0}});
+    assert(lobby.state.members.get(p.id).x>before,'Player moves while another selects');
+    assert(!lobby.available(q).some(h=>h.id===p.profileId),'Cannot select the same hero twice');
+    const pad={index:7,axes:[0,0],buttons:Array.from({length:16},()=>({pressed:false}))};
+    // The first saved hero is in use: focus moves to New character, then A opens it.
+    lobby.state.members.get(q.id).focus=1;pad.buttons[0].pressed=true;ctx.lobbyController(pad,[]);
+    assert(lobby.state.members.get(q.id).panel==='create','Controller owns its creation panel');
+    document.querySelector('[data-owner-device="pad:7"] input').value='Other '+Date.now().toString().slice(-6);click('pad:7','Create & join');
+    const s=lobby.state.members.get(p.id);s.x=230;s.y=220;
+    lobby.update(.01,{keyboard:{interact:true}});
+    assert(s.panel==='environment','E opens nearby map object');
+    p.ready=true;q.ready=true;click('keyboard','Forest');assert(!p.ready&&!q.ready,'Changing map resets everyone');
+    const interactBoard=player=>{const m=lobby.state.members.get(player.id);m.x=510;m.y=325;m.held={};lobby.update(.01,{[player.device]:{interact:true}});assert(m.panel==='board','Board opens prompt');click(player.device,'Ready');};
+    interactBoard(p);assert(!q.ready,'Readiness is per player');interactBoard(q);
+    lobby.update(1,{});assert(lobby.state.countdown>0,'All ready starts countdown');
+    p.ready=false;lobby.update(.01,{});assert(lobby.state.countdown===null,'Cancel aborts countdown');
+    p.ready=true;lobby.update(3.1,{});assert(ctx.screen==='play','Countdown starts expedition');
+    ctx.show('home');
+    return {passed:10};
+  };
   window.verifyHouseSave=async()=>{
    localStorage.removeItem("wildbound-house-state-v1");localStorage.removeItem("wildbound-house-designs-v1");
    const {HouseBuilder}=await import('./house-builder.mjs');const {houseLibrary,flushHouseStorage}=await import('./house-design.mjs');
@@ -20,23 +92,7 @@ export function installDebugTools(ctx) {
     if(stage==='upper'||stage==='chest'){Object.assign(p,TEMPLE_STAIRS);ctx.game.enterRoom(p,ctx.game.portals.find(d=>d.temple));if(stage==='chest')ctx.game.openInventory(p,'temple');}
     ctx.renderer.draw(ctx.game,0);ctx.heroUI.draw(ctx.game,ctx.renderer);return true;
   };
-  window.verifyLobbyFlow=()=>{
-    ctx.profiles.data.heroes=[];ctx.newLobby();
-    const count=()=>document.querySelectorAll('#player-slots>.player-slot').length;
-    if(count()!==2)throw Error('Initial slots');
-    const p=ctx.game.addPlayer('pad:0');ctx.renderLobby();
-    const choose=document.querySelector('[data-lobby-focus$="-saved"]');
-    if(count()!==2||choose.textContent!=='Create new character'||document.querySelector('.party-ready'))throw Error('Empty save actions');
-    choose.click();if(!document.querySelector('#character-name-dialog'))throw Error('Create action');document.querySelector('#character-name-dialog').remove();
-    const hero=ctx.profiles.create('Lobby Test');ctx.profiles.assign(p,hero);ctx.renderLobby();
-    if(document.querySelector('.create-character')||document.querySelector('[data-lobby-focus$="-saved"]').textContent!=='Choose character')throw Error('Duplicate create action');
-    for(let n=1;n<6;n++){ctx.game.addPlayer('pad:'+n);ctx.renderLobby();if(count()!==Math.min(6,n+2))throw Error('Growing slots '+n);}
-    ctx.game.players=ctx.game.players.slice(0,1);ctx.renderLobby();if(count()!==2)throw Error('Shrinking slots');
-    const rows=[...document.querySelectorAll('[data-option-target]')];if(!rows.every((r,i)=>!i||r.getBoundingClientRect().top>=rows[i-1].getBoundingClientRect().bottom))throw Error('Options not stacked');
-    const pad={index:0,axes:[0,0],buttons:Array.from({length:16},()=>({pressed:false}))};const press=i=>{pad.buttons[i].pressed=true;ctx.lobbyController(pad,[]);pad.buttons[i].pressed=false;ctx.lobbyController(pad,[]);};
-    rows[0].focus();const before=ctx.$('environment').value;press(15);if(ctx.$('environment').value===before||document.activeElement!==rows[0])throw Error('Right must change map without focus movement');press(13);if(document.activeElement!==rows[1])throw Error('Down must move to dice');press(13);if(document.activeElement!==rows[2])throw Error('Down must move to difficulty');press(12);if(document.activeElement!==rows[1])throw Error('Up must move to dice');
-    return 'Slots 0–6, empty saves, character actions and controller option navigation passed';
-  };
+  window.verifyLobbyFlow=()=>window.verifyPlayableLobby();
   window.expansionPreview=async(stage)=>{
     const {EVENTS}=await import('./core.mjs');
     const {RIG_SUBJECTS}=await import('./rig-subjects.mjs');

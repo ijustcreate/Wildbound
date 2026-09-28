@@ -1,3 +1,4 @@
+import { PlayableLobby } from './src/playable-lobby.mjs';
 import {loadHouseStorage} from './src/house-design.mjs';
 import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
 import { GameAudio } from './src/audio.mjs';
@@ -60,6 +61,8 @@ const heroUI = new HeroUI(heroRoot);
 const $ = (id) => document.getElementById(id);
 const assets = new Assets();
 const lobbyAnimator = new Animator(assets);
+let playableLobby;
+
 let game = new Game(),
   screen = "home",
   paused = false,
@@ -205,6 +208,7 @@ function newLobby() {
   boardPinned = false;
   boardDismissedRoll = null;
   game = new Game();
+  playableLobby?.reset();
   wireGame();
   paused = false;
   show("lobby");
@@ -341,115 +345,7 @@ $("room-join").onclick = async () => {
     $("room-status").textContent = e.message;
   }
 };
-function renderLobby() {
-  const pickers=new Map([...document.querySelectorAll('.character-gallery')].map(panel=>[panel.dataset.ownerDevice,panel]));
-  const focused = document.activeElement?.dataset.lobbyFocus;
-  const slots = [];
-  const visibleSlots=Math.min(6,Math.max(2,game.players.length+1));
-  $("player-slots").style.setProperty("--party-slots",visibleSlots);
-  for (let i = 0; i < visibleSlots; i++) {
-    const p = game.players[i],
-      el = document.createElement("div");
-    el.className = "player-slot" + (p ? "" : " empty");
-    const n = document.createElement("span");
-    n.className = "slot-number";
-    n.textContent = String(i + 1).padStart(2, "0");
-    el.append(n);
-    if (p) {
-      el.dataset.device=p.device;
-      el.style.borderTop = "3px solid " + p.color;
-      const c = document.createElement("canvas");
-      c.width = 96;
-      c.height = 96;
-      const ctx = c.getContext("2d");
-      ctx.imageSmoothingEnabled = false;
-      lobbyAnimator.draw(
-        ctx,
-        {
-          ...p,
-          x: 48,
-          y: 79.5,
-          faceX: 0,
-          faceY: 1,
-          moving: false,
-          animationAction: "idle",
-          playerFrame: 0,
-        },
-        0,
-        90,
-      );
-      const input = document.createElement("input");
-      input.value = p.name;
-      input.maxLength = 20;
-      input.readOnly = true;
-      input.dataset.lobbyFocus=p.id+'-name';
-      input.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}};
-      input.onclick = () => {
-        const dialog=document.createElement('dialog');dialog.id='rename-character-dialog';dialog.dataset.ownerDevice=p.device;
-        const title=document.createElement('h2');title.textContent='Edit '+p.name+"’s name?";
-        const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.onclick=()=>{dialog.close();dialog.remove();input.focus();};
-        const edit=document.createElement('button');edit.textContent='Edit';edit.onclick=()=>{dialog.close();dialog.remove();openControllerKeyboard(input);};
-        dialog.append(title,cancel,edit);dialog.oncancel=e=>{e.preventDefault();cancel.click();};document.body.append(dialog);dialog.showModal();cancel.focus();
-      };
-      input.setAttribute("aria-label", "Player " + (i + 1) + " name");
-      input.onchange = () => {
-        const error = characterNameError(
-          input.value,
-          profiles.data.heroes,
-          p.profileId,
-        );
-        input.setCustomValidity(error);
-        if (error) {
-          input.reportValidity();
-          input.value = p.name;
-          return;
-        }
-        p.name = cleanCharacterName(input.value);
-        const h = profiles.data.heroes.find((h) => h.id === p.profileId);
-        if (h) {
-          h.name = p.name;
-          profiles.save();
-        }
-      };
-      const small = document.createElement("small");
-      small.textContent =
-        p.device === "keyboard"
-          ? "KEYBOARD + MOUSE"
-          : "CONTROLLER " + (Number(p.device.split(":")[1]) + 1);
-      const remove = document.createElement("button");
-      remove.className = "remove-player";
-      remove.textContent = "×";
-      remove.title = "Remove player";
-      remove.onclick = () => {
-        game.players = game.players.filter((q) => q !== p);
-        renderLobby();
-      };
-      const select=document.createElement("button");select.textContent=profiles.data.heroes.length?"Choose character":"Create new character";select.dataset.lobbyFocus=p.id+"-saved";
-      select.onclick=()=>profiles.data.heroes.length?openCharacterGallery({profiles,game,player:p,onChange:renderLobby,onNew:()=>nameNewCharacter(p)}):nameNewCharacter(p);
-      const readyButton=document.createElement('button');readyButton.className='party-ready';readyButton.textContent=p.ready?'✓ READY':'Ready up · A';readyButton.dataset.lobbyFocus=p.id+'-ready';
-      readyButton.onclick=()=>{if(!profiles.data.heroes.some(h=>h.id===p.profileId)){nameNewCharacter(p);return;}p.ready=!p.ready;renderLobby();};
-      el.classList.toggle('is-ready',!!p.ready);
-      el.append(small,c,input,select);
-      if(profiles.data.heroes.some(h=>h.id===p.profileId))el.append(readyButton);
-      el.append(remove);
-      if(pickers.has(p.device)){el.replaceChildren(pickers.get(p.device));pickers.get(p.device).refreshAvailability();}
-    } else {
-      const plus = document.createElement("span");
-      plus.textContent = "+";
-      plus.style.fontSize = "30px";
-      const text = document.createElement("small");
-      text.textContent = i
-        ? "PRESS A BUTTON TO JOIN"
-        : "CONTROLLER BUTTON / ENTER";
-      el.append(plus, text);
-    }
-    slots.push(el);
-  }
-  $("player-slots").replaceChildren(...slots);
-  $("begin-button").disabled = !game.players.length || game.players.some(p=>!p.ready || !p.profileId);
-  $('party-status').textContent=!game.players.length?'Press A to join · Enter for keyboard':game.players.every(p=>p.ready&&p.profileId)?'Everyone is ready. Press Start to begin.':'Choose your explorer, then ready up. '+game.players.filter(p=>p.ready).length+' / '+game.players.length+' ready';
-  if(focused)document.querySelector(`[data-lobby-focus="${focused}"]`)?.focus({preventScroll:true});
-}
+function renderLobby() { playableLobby?.sync(); }
 function nameNewCharacter(p, done = () => {}) {
   const wasPaused = paused;
   if (screen === "play") paused = true;
@@ -907,6 +803,14 @@ for (const [action, value] of Object.entries(mapping)) {
   $("mapping-fields").append(label);
 }
 window.addEventListener("keydown", (e) => {
+  if(screen==='lobby' && !document.querySelector('dialog[open]')) {
+    if(['Enter',' '].includes(e.key))e.preventDefault();
+    if(playableLobby?.key(e)) return;
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','Space','KeyC','KeyQ','KeyH','KeyT'].includes(e.code)) {
+      e.preventDefault();keys.add(e.code);return;
+    }
+  }
+
   const editing = ["INPUT", "SELECT", "TEXTAREA"].includes(
     document.activeElement.tagName,
   );
@@ -974,8 +878,11 @@ window.addEventListener("keydown", (e) => {
       e.preventDefault();
     keys.add(e.code);
   }
-});
-window.addEventListener("keyup", (e) => keys.delete(e.code));
+}, true);
+window.addEventListener("keyup", (e) => {
+  if(screen==='lobby'&&['Enter',' '].includes(e.key)&&!document.querySelector('dialog[open]'))e.preventDefault();
+  keys.delete(e.code);
+},true);
 window.addEventListener("blur", () => {
   keys.clear();
   mouse.down = false;
@@ -1010,71 +917,7 @@ window.addEventListener("gamepaddisconnected", (e) => {
       "Controller disconnected. Reconnect it and press a button to reclaim your explorer.",
     );
 });
-const previousLobbyAxes = new Map();
-function lobbyController(pad, previous) {
-  const controls = Array.from(
-    document.querySelectorAll(
-      "#lobby button:not(:disabled):not(.remove-player), #lobby select:not(:disabled), #lobby input[readonly]",
-    ),
-  ).filter((el) => el.getClientRects().length && (!el.closest('.player-slot') || el.closest('.player-slot').dataset.device === 'pad:'+pad.index));
-  if (!controls.length) return;
-  if(pad.buttons[9]?.pressed && !previous[9]) {
-    const p=game.players.find(p=>p.device==='pad:'+pad.index);
-    if(p&&!profiles.data.heroes.some(h=>h.id===p.profileId)){nameNewCharacter(p);return;}
-    if(p)p.ready=true;renderLobby();$('begin-button').click();return;
-  }
-  const active = controls.indexOf(document.activeElement),
-    axis = previousLobbyAxes.get(pad.index) || [0, 0],
-    x = Math.abs(pad.axes[0] || 0) > 0.65 ? Math.sign(pad.axes[0]) : 0,
-    y = Math.abs(pad.axes[1] || 0) > 0.65 ? Math.sign(pad.axes[1]) : 0,
-    left =
-      (!!pad.buttons[14]?.pressed && !previous[14]) || (x < 0 && axis[0] >= 0),
-    right =
-      (!!pad.buttons[15]?.pressed && !previous[15]) || (x > 0 && axis[0] <= 0),
-    up =
-      (!!pad.buttons[12]?.pressed && !previous[12]) || (y < 0 && axis[1] >= 0),
-    down =
-      (!!pad.buttons[13]?.pressed && !previous[13]) || (y > 0 && axis[1] <= 0),
-    accept = !!pad.buttons[0]?.pressed && !previous[0],
-    back = !!pad.buttons[1]?.pressed && !previous[1];
-  previousLobbyAxes.set(pad.index, [x, y]);
-  if(back){game.players=game.players.filter(p=>p.device!=='pad:'+pad.index);renderLobby();return;}
-  if (active < 0 && (left || right || up || down || accept)) {
-    const first =
-      controls.find((el) => el.dataset.lobbyFocus?.endsWith('-saved')) || controls[0];
-    first.focus();
-    if (accept) first.click();
-    return;
-  }
-  if (active < 0) return;
-  const selected = controls[active];
-  if((left||right)&&selected.changeOption){selected.changeOption(right?1:-1);}
-  else if ((left || right) && selected instanceof HTMLSelectElement) {
-    selected.selectedIndex =
-      (selected.selectedIndex + (right ? 1 : selected.options.length - 1)) %
-      selected.options.length;
-    selected.dispatchEvent(new Event("change", { bubbles: true }));
-    selected.dispatchEvent(new Event("input", { bubbles: true }));
-    requestAnimationFrame(() =>
-      document
-        .querySelectorAll(
-          "#lobby button:not(:disabled):not(.remove-player), #lobby select:not(:disabled)",
-        )
-        [active]?.focus(),
-    );
-  } else if (up || down) {
-    controls[
-      (active + (down ? 1 : controls.length - 1)) % controls.length
-    ].focus();
-  }
-  if (accept) {
-    if (selected instanceof HTMLSelectElement) {
-      selected.selectedIndex=(selected.selectedIndex+1)%selected.options.length;
-      selected.dispatchEvent(new Event('change',{bubbles:true}));
-    } else selected.click();
-  }
-  if(back){game.players=game.players.filter(p=>p.device!=='pad:'+pad.index);renderLobby();}
-}
+function lobbyController(pad, previous) { playableLobby?.controller(pad, previous); }
 const previousDialogAxes = new Map();
 function dialogController(pad, previous) {
   const dialog = [...document.querySelectorAll("dialog[open]")].at(-1);
@@ -1237,26 +1080,11 @@ function inputFrame() {
       }
     }
     const pressed = (key) => !joinedNow && (pad.buttons[mapping[key]]?.pressed || false);
-    if (screen === "lobby" && !modal && !joinedNow) {
-      const picker=document.querySelector(`.character-gallery[data-owner-device="${device}"]`);
-      if(picker){picker.handleController(pad,previous);previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
-      lobbyController(pad, previous);
-      if(screen!=='lobby') {previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
-    }
-    if (
-      screen === "lobby" &&
-      ((pad.buttons[4]?.pressed && !previous[4]) ||
-        (pad.buttons[5]?.pressed && !previous[5]))
-    ) {
-      const p = game.players.find((p) => p.device === "pad:" + pad.index),
-        options = profiles.data.heroes.filter(
-          (h) => !game.players.some((q) => q !== p && q.profileId === h.id),
-        );
-      if (p && options.length) {
-        const n = options.findIndex((h) => h.id === p.profileId);
-        profiles.assign(p, options[(n + 1) % options.length]);
-        renderLobby();
-      }
+    if (screen === "lobby") {
+      if(!modal && !joinedNow) lobbyController(pad, previous);
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0};
+      previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
+      continue;
     }
     if (
       pressed("board") &&
@@ -1335,7 +1163,7 @@ function inputFrame() {
         : p.device === "keyboard",
     ),
     aim =
-      mouse.active && renderer && p
+      screen === "play" && mouse.active && renderer && p
         ? renderer.screenToWorld(mouse.x, mouse.y)
         : null;
   inputs.keyboard = {
@@ -1372,6 +1200,10 @@ function inputFrame() {
 let last = performance.now(),
   hudAge = 0;
 let saveAge = 0;
+let diagnosticAge=0;
+const diagnosticErrors=[];
+window.addEventListener('error',e=>{diagnosticErrors.push(String(e.message).slice(0,500));if(diagnosticErrors.length>8)diagnosticErrors.shift();});
+window.addEventListener('unhandledrejection',e=>{diagnosticErrors.push(String(e.reason?.message||e.reason).slice(0,500));if(diagnosticErrors.length>8)diagnosticErrors.shift();});
 const menuHeldInputs = new Map();
 function frame(now) {
   const elapsed = Math.max(0, (now - last) / 1000);
@@ -1382,6 +1214,16 @@ function frame(now) {
     designer?.animate(dt);
     const wasBlocked = paused || !!document.querySelector('dialog[open]');
     const inputs = inputFrame();
+    diagnosticAge+=dt;
+    if(diagnosticAge>=.5&&window.desktop?.reportDiagnostics){
+      diagnosticAge=0;
+      window.desktop.reportDiagnostics({screen,phase:game.phase,paused,focused:document.hasFocus(),
+        focusedPanelOwner:document.activeElement?.closest('[data-owner-device]')?.dataset.ownerDevice,
+        countdown:playableLobby?.state.countdown,
+        players:game.players.map(p=>{const s=screen==='lobby'?playableLobby?.state.members.get(p.id):p;return {id:p.id,name:p.name,device:p.device,profileSelected:!!p.profileId,x:s?.x,y:s?.y,ready:p.ready,disconnected:p.lobbyDisconnected,panel:s?.panel,input:inputs[p.device]};}),
+        controllers:Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>({index:p.index,id:p.id,claimed:controllerClaims.has(p.index),axes:p.axes,buttons:p.buttons.map((b,i)=>b.pressed?i:-1).filter(i=>i>=0)})),
+        settings:{map:$('environment').value,difficulty:$('difficulty').value,dice:Number($('dice-count').value)},errors:diagnosticErrors});
+    }
     const blocked = wasBlocked || paused || !!document.querySelector('dialog[open]');
     for(const [device,input] of Object.entries(inputs)) {
       const held=menuHeldInputs.get(device)||new Set();
@@ -1393,6 +1235,11 @@ function frame(now) {
       menuHeldInputs.set(device,held);
     }
     if(blocked) for(const p of game.players){p.charge=0;p.previousInput={};p.interactTime=0;p.interactUsed=false;}
+    if (screen === 'lobby' && playableLobby) {
+      const connected = new Set(Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>'pad:'+p.index));
+      for(const p of game.players) {p.lobbyDisconnected=p.device.startsWith('pad:')&&!connected.has(p.device);if(p.lobbyDisconnected)p.ready=false;}
+      playableLobby.update(dt,inputs,blocked);
+    }
     if (screen === "home") drawMenu($("menu-art"), assets, now / 1000);
     if (screen === "workshop") {
       workshop.animate(now / 1000);
@@ -1520,6 +1367,7 @@ try {
       $("room-status").textContent = e.message;
     }
   };
+  playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
   ready = true;
   newLobby();
   $("loading").classList.add("done");
@@ -1628,6 +1476,7 @@ if (
     get newLobby() {
       return newLobby;
     },
+    get playableLobby() { return playableLobby; },
     get lobbyController() { return lobbyController; },
     get renderLobby() {
       return renderLobby;

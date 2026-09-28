@@ -161,7 +161,7 @@ export function tickHazards(g, dt) {
         }
         b.life = 0;
       }
-    if (b.life > 0 && g.projectileBlocked(b.x, b.y, 5)) {
+    if (b.life > 0 && g.projectileBlocked(b.x, b.y, 5,true)) {
       firePatch(g, b.x, b.y, 2, b.burnDamage);
       b.life = 0;
     }

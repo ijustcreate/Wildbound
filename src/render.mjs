@@ -611,7 +611,7 @@ export class Renderer {
         const radius=(big?44:upper?24:34)*(a.attackReach||1),half=(a.attackArc||90)*Math.PI/360;
         const direction=a.attackClip==='swipe_two'?-1:1,center=angle+direction*(progress-.5)*half;
         ctx.strokeStyle=big?'#ffcd70':'#ffe5a3';ctx.lineWidth=big?6:3;ctx.beginPath();
-        ctx.arc(a.x,a.y-(a.jumpHeight||0)-(upper?progress*22:0),radius,center-half*.65,center+half*.65);ctx.stroke();
+        ctx.arc(a.x,a.y-(a.jumpHeight||0)-(a.groundHeight||0)-(upper?progress*22:0),radius,center-half*.65,center+half*.65);ctx.stroke();
 
       }
       if (a.state === "snared") {

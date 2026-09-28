@@ -909,7 +909,7 @@ export const adventureMethods = {
         bolt.x += (bolt.vx / speed) * distance;
         bolt.y += (bolt.vy / speed) * distance;
         bolt.remaining -= distance;
-        if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2)){bolt.life=0;break;}
+        if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true)){bolt.life=0;break;}
         const target = [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==bolt.owner&&!p.room):[])].find(
           (e) => e.hp > 0 && dist(e, bolt) < 16 + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
         );
@@ -920,7 +920,7 @@ export const adventureMethods = {
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
           if (bolt.ice && !this.players.includes(target) && this.random() < 0.35) target.frozen = 1.6;
           bolt.life = 0;
-        } else if (this.projectileBlocked(bolt.x, bolt.y, (bolt.size || 6) / 2))
+        } else if (this.projectileBlocked(bolt.x, bolt.y, (bolt.size || 6) / 2,true))
           bolt.life = 0;
         if (bolt.remaining <= 0) bolt.life = 0;
       }
@@ -948,7 +948,7 @@ export const adventureMethods = {
         a.y += a.vy * s;
         a.z += a.vz * s;
         a.vz -= rules.arrowGravity * s;
-        if(this.projectileBlocked(a.x,a.y,1)){a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;a.angle=Math.atan2(a.vy,a.vx);this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);this.loot.at(-1).embedded=true;this.loot.at(-1).angle=a.angle;a.remove=true;break;}
+        if(this.projectileBlocked(a.x,a.y,1,true)){a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;a.angle=Math.atan2(a.vy,a.vx);this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);this.loot.at(-1).embedded=true;this.loot.at(-1).angle=a.angle;a.remove=true;break;}
         const target = a.hostile
           ? this.players.find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
           : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 && dist(e, a) < 19 && clearShot(this,a,e));
@@ -979,7 +979,7 @@ export const adventureMethods = {
           a.y < 10 ||
           a.x > 1590 ||
           a.y > 1590 ||
-          this.projectileBlocked(a.x, a.y, 1)
+          this.projectileBlocked(a.x, a.y, 1,true)
         ) {
           a.stuck = true;
           a.z = 0;

@@ -3,6 +3,7 @@ import { Game } from "./core.mjs";
 import { snapshot } from "./rooms.mjs";
 import { generateWorld } from "./world.mjs";
 import { initHero } from "./adventure.mjs";
+import {upgradeHouseFeatures} from './house-design.mjs';
 export function saveSession(game) {
   return { version: 1, state: snapshot(game) };
 }
@@ -16,6 +17,7 @@ export function restoreSession(saved) {
     throw Error("Invalid expedition save");
   const g = new Game();
   Object.assign(g, saved.state);
+  if(g.house)upgradeHouseFeatures(g.house);
   if (!saved.state.turnOrder) {
     g.turnOrder = g.players.map((p) => p.id);
     g.locked = true;

@@ -1,7 +1,7 @@
 import {generateWorld} from './world.mjs';
 import {collisionOffset,actorRadius} from './navigation.mjs';
 import {activeHouse} from './house-design.mjs';
-const layoutKey=h=>JSON.stringify(h&&{...h,doors:h.doors.map(d=>({...d,open:false}))});
+const layoutKey=h=>JSON.stringify(h&&{...h,walls:h.walls.map(({broken,...w})=>w),doors:h.doors.map(d=>({...d,open:false}))});
 export function applyChangedHouse(game){
  if(game.generatedEnvironment!=='house'||layoutKey(game.house)===layoutKey(activeHouse()))return false;
  return applyActiveHouse(game);
