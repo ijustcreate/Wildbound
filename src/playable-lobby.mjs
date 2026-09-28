@@ -19,6 +19,11 @@ const LOOK_PRESETS = [
 ];
 const BASIC_COLORS = ['#f2d6b3','#d9ab76','#865437','#54372c','#e8c547','#d49c3d','#d45b5b','#9a638c','#46799e','#39745b','#3f5e58','#272c35'];
 const LOOK_LABELS={skin:'Skin',shirt:'Shirt',pants:'Pants',shoes:'Shoes',hairColor:'Hair color'};
+const DIFFICULTY_DETAILS={
+  gentle:'Relaxed · Each hit deals 1 damage.',
+  adventure:'Balanced · Take 35% less damage.',
+  wild:'Brutal · Full enemy damage.',
+};
 export function moveLobbyCharacter(s,input,dt){
   const x=Number.isFinite(input.x)?input.x:0,y=Number.isFinite(input.y)?input.y:0;
   const length=Math.hypot(x,y),scale=180*dt/Math.max(1,length),beforeX=s.x,beforeY=s.y;
@@ -161,9 +166,17 @@ export class PlayableLobby {
     }else{
       const o=LOBBY_OBJECTS.find(o=>o.id===s.panel);heading.textContent=o.name;
       const select=document.getElementById(s.panel);
-      for(const option of select.options){const b=button((select.value===option.value?'✓ ':'')+option.text,()=>{
+      for(const option of select.options){const b=button('',()=>{
         select.value=option.value;select.dispatchEvent(new Event('change'));this.close(p);
-      });if(s.panel==='difficulty'){const icon=document.createElement('canvas');icon.width=72;icon.height=72;icon.style.cssText='display:inline-block;vertical-align:middle;margin-right:10px';this.drawDifficulty(icon.getContext('2d'),option.value,0,0,72);b.prepend(icon);}}
+      });if(s.panel==='difficulty'){
+        b.classList.add('difficulty-choice');
+        b.setAttribute('aria-label',`${option.text}. ${DIFFICULTY_DETAILS[option.value]}`);
+        const icon=document.createElement('canvas');icon.width=40;icon.height=40;icon.className='difficulty-choice-icon';this.drawDifficulty(icon.getContext('2d'),option.value,0,0,40);
+        const copy=document.createElement('span');copy.className='difficulty-choice-copy';
+        const name=document.createElement('strong');name.textContent=(select.value===option.value?'✓ ':'')+option.text;
+        const detail=document.createElement('small');detail.textContent=DIFFICULTY_DETAILS[option.value];
+        copy.append(name,detail);b.append(icon,copy);
+      }else b.textContent=(select.value===option.value?'✓ ':'')+option.text;}
       button('Close',()=>this.close(p));
     }
     panel.append(error);this.panels.append(panel);this.nodes.set(p.id,panel);this.highlight(p);
@@ -238,7 +251,9 @@ export class PlayableLobby {
       if(o.id==='environment'){
         c.fillStyle='#775a41';c.fillRect(o.x-47,o.y-35,94,44);c.fillRect(o.x-40,o.y+9,8,16);c.fillRect(o.x+32,o.y+9,8,16);c.fillStyle='#cebf92';c.fillRect(o.x-38,o.y-29,76,29);c.strokeStyle='#607760';c.lineWidth=3;c.beginPath();c.moveTo(o.x-30,o.y-22);c.lineTo(o.x-4,o.y-7);c.lineTo(o.x+26,o.y-24);c.stroke();
       }else if(o.id==='difficulty'){
-        c.fillStyle='#918779';c.fillRect(o.x-21,o.y-65,42,76);c.fillStyle='#403c36';c.fillRect(o.x-12,o.y-44,8,9);c.fillRect(o.x+4,o.y-44,8,9);c.fillRect(o.x-9,o.y-20,18,7);this.drawDifficulty(c,document.getElementById('difficulty').value,o.x-43,o.y-74,86);
+        c.fillStyle='#918779';c.fillRect(o.x-21,o.y-65,42,76);c.fillStyle='#403c36';c.fillRect(o.x-12,o.y-44,8,9);c.fillRect(o.x+4,o.y-44,8,9);c.fillRect(o.x-9,o.y-20,18,7);
+        c.strokeStyle='#c7a75f';c.lineWidth=2;c.beginPath();c.moveTo(o.x,o.y-68);c.lineTo(o.x,o.y-91);c.stroke();
+        this.drawDifficulty(c,document.getElementById('difficulty').value,o.x-28,o.y-147,56);
       }else if(o.id==='dice-count'){
         c.fillStyle='#785a46';c.fillRect(o.x-43,o.y-34,86,47);for(const x of lobbyDiceOffsets(document.getElementById('dice-count').value)){c.fillStyle='#ede5cc';c.fillRect(o.x+x,o.y-25,24,24);c.fillStyle='#333';c.fillRect(o.x+x+5,o.y-20,4,4);c.fillRect(o.x+x+15,o.y-10,4,4);}
       }else{

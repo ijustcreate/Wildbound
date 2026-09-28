@@ -26,4 +26,7 @@ body[data-screen="lobby"]{overflow:hidden}
 .lobby-player-panel canvas{width:100%;max-height:130px;object-fit:contain;image-rendering:pixelated}
 .lobby-player-panel .lobby-focus{outline:2px solid var(--player-color);outline-offset:1px}
 .lobby-player-panel p{margin:4px 0;font:13px/1.4 system-ui}.lobby-error{color:#ffb5a9}
+.lobby-player-panel .difficulty-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 9px;min-height:54px}
+.lobby-player-panel .difficulty-choice-icon{width:40px!important;height:40px!important;flex:0 0 40px;image-rendering:auto}
+.difficulty-choice-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.difficulty-choice-copy strong{font-size:14px}.difficulty-choice-copy small{font-size:11px;line-height:1.2;color:#52635e}
 .lobby-countdown{position:absolute;top:15px;left:0;right:0;text-align:center;color:#fff4c4;font:24px system-ui;pointer-events:none;text-shadow:0 2px 6px #000}
