@@ -26,7 +26,9 @@ import {
 } from "./rhino-motion.mjs";
 import {
   lionMotion,
+  tigerMotion,
   replaceLionMotion,
+  replaceTigerMotion,
   validateLionMotion,
 } from "./lion-motion.mjs";
 import {
@@ -523,6 +525,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if (d.wolf && !validateWolfMotion(d.wolf)) throw Error("Invalid wolf animation");
   if (d.lion && !validateLionMotion(d.lion))
     throw Error("Invalid lion animation");
+  if (d.tiger && !validateLionMotion(d.tiger))
+    throw Error("Invalid tiger animation");
   if (d.bat && !validateBatMotion(d.bat)) throw Error("Invalid bat animation");
   if (d.rhino && !validateRhinoMotion(d.rhino))
     throw Error("Invalid rhino animation");
@@ -551,6 +555,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   for (const [kind, m] of Object.entries(d.skeletonMotions || {}))
     replaceSkeletonMotion(kind, m);
   if (d.lion) replaceLionMotion(d.lion);
+  if (d.tiger) replaceTigerMotion(d.tiger);
   if (d.wolf) replaceWolfMotion(d.wolf);
   if (d.bat) replaceBatMotion(d.bat);
   if (d.rhino) replaceRhinoMotion(d.rhino);
@@ -560,7 +565,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     player: playerMotion,
     alligator: alligatorMotion,
     lion: lionMotion,
-    tiger: lionMotion,
+    tiger: tigerMotion,
     wolf: wolfMotion,
     bat: batMotion,
     tsetse: batMotion,
@@ -610,6 +615,7 @@ export function definitionPack(events, items) {
     alligator: alligatorMotion,
     skeletonMotions,
     lion: lionMotion,
+    tiger: tigerMotion,
     wolf: wolfMotion,
     bat: batMotion,
     rhino: rhinoMotion,

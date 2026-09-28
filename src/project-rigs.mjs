@@ -1,6 +1,6 @@
 import { definitionPack, applyDefinitions } from './definitions.mjs';
 
-const RIG_KEYS = ['player', 'alligator', 'skeletonMotions', 'lion', 'wolf', 'bat', 'rhino', 'creatureMotions', 'beastMotions'];
+const RIG_KEYS = ['player', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'bat', 'rhino', 'creatureMotions', 'beastMotions'];
 export function rigPack(events, items) {
   const definitions = definitionPack(events, items);
   return structuredClone(Object.fromEntries([['version', 1], ...RIG_KEYS.map(key => [key, definitions[key]])]));

@@ -33,8 +33,10 @@ import {
 } from "./rhino-motion.mjs";
 import {
   lionMotion,
+  tigerMotion,
   defaultLionMotion,
   replaceLionMotion,
+  replaceTigerMotion,
   drawLion,
 } from "./lion-motion.mjs";
 import {
@@ -233,7 +235,7 @@ export const RIG_SUBJECTS = {
     ]),
   ),
 };
-RIG_SUBJECTS.tiger={...RIG_SUBJECTS.lion,name:"Tiger / lion rig",sprite:"tiger",draw:(c,a,t,m,p)=>drawLion(c,{...a,skin:"tiger"},t,m,p)};
+RIG_SUBJECTS.tiger={...RIG_SUBJECTS.lion,name:"Tiger / lion rig",data:tigerMotion,defaults:()=>defaultLionMotion(),replace:replaceTigerMotion,sprite:"tiger",draw:(c,a,t,m,p)=>drawLion(c,{...a,skin:"tiger"},t,m||tigerMotion,p)};
 RIG_SUBJECTS.tsetse={...RIG_SUBJECTS.bat,name:"Tsetse fly / winged rig",sprite:"bat"};
 export const rigSubject = (name) =>
   RIG_SUBJECTS[name?.startsWith("explorer") ? "player" : name==='baby_spider'?'spider':name==='tsetse'?'tsetse':name];

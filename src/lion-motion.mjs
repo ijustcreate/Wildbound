@@ -253,6 +253,8 @@ export function defaultLionMotion() {
   return model;
 }
 export const lionMotion = defaultLionMotion();
+// Tiger uses the same quadruped rig topology, but owns an independent model.
+export const tigerMotion = defaultLionMotion();
 // Upgrade old lion packages without discarding their edited head or animation.
 export function upgradeLionMotion(input) {
   const m = structuredClone(input);
@@ -294,6 +296,13 @@ export function replaceLionMotion(m) {
     throw Error("Invalid lion rig or clips. Nothing imported.");
   Object.assign(lionMotion, upgradeLionMotion(m));
   lionRevision++;
+}
+export let tigerRevision = 0;
+export function replaceTigerMotion(m) {
+  if (!validateLionMotion(m))
+    throw Error("Invalid tiger rig or clips. Nothing imported.");
+  Object.assign(tigerMotion, upgradeLionMotion(m));
+  tigerRevision++;
 }
 export function lionAction(actor) {
   if (actor.animationAction)

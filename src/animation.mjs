@@ -10,7 +10,9 @@ import {
   lionAction,
   lionFrame,
   lionMotion,
+  tigerMotion,
   lionRevision,
+  tigerRevision,
 } from "./lion-motion.mjs";
 import { rigSubject } from "./rig-subjects.mjs";
 import { animationFrame } from "./frame-workshop.mjs";
@@ -38,7 +40,7 @@ export class Animator {
     this.playerFrames = new Map();
     this.playerRevision = playerMotionRevision;
     this.catFrames = new Map();
-    this.catRevision = lionRevision;
+    this.catRevisions = { lion: lionRevision, tiger: tigerRevision };
     this.stampedeRevision = rhinoMotionRevision;
   }
   draw(ctx, actor, time, size = 48) {
@@ -117,7 +119,7 @@ export class Animator {
         return;
       }
       if (
-        nameKey === "lion" &&
+        ["lion", "tiger"].includes(nameKey) &&
         !actor.animationAction &&
         !Number.isFinite(actor.playerFrame) &&
         !Number.isFinite(actor.poseTime) &&
@@ -126,15 +128,17 @@ export class Animator {
         !(actor.hit > 0) &&
         ["idle", "run"].includes(lionAction(actor))
       ) {
-        if (this.catRevision !== lionRevision) {
+        const motion = nameKey === "tiger" ? tigerMotion : lionMotion,
+          revision = nameKey === "tiger" ? tigerRevision : lionRevision;
+        if (this.catRevisions[nameKey] !== revision) {
           this.catFrames.clear();
-          this.catRevision = lionRevision;
+          this.catRevisions[nameKey] = revision;
         }
         const action = lionAction(actor),
-          clip = lionMotion.clips[action],
+          clip = motion.clips[action],
           frame =
             Math.floor(
-              (((lionFrame(actor, time) % clip.length) + clip.length) %
+              (((lionFrame(actor, time, motion) % clip.length) + clip.length) %
                 clip.length) *
                 2,
             ) / 2;
@@ -151,7 +155,7 @@ export class Animator {
           surface.width = surface.height = 256;
           const cc = surface.getContext("2d");
           cc.translate(128, 128);
-          rigSubject(nameKey).draw(cc, { ...actor, playerFrame: frame }, time);
+          rigSubject(nameKey).draw(cc, { ...actor, playerFrame: frame }, time, motion);
           if (this.catFrames.size >= 96)
             this.catFrames.delete(this.catFrames.keys().next().value);
           this.catFrames.set(key, surface);
