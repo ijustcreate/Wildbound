@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'"
+    />
+    <title>Wildbound — The Living Board</title>
+    <link rel="stylesheet" href="src/style.css" />
+    <link rel="stylesheet" href="src/field.css" />
+    <link rel="stylesheet" href="src/couch-menu.css" />
+    <link rel="stylesheet" href="src/editor-shell.css" />
+    <link rel="stylesheet" href="src/playable-lobby.css" />
+  </head>
+  <body>
+    <div id="loading">
+      <canvas id="infinity" width="220" height="100"></canvas>
+      <p>THE JUNGLE IS WAKING</p>
+    </div>
+    <script src="src/boot.js"></script>
+    <header id="site-header">
+      <a class="brand" href="#" id="home-link"
+        ><span class="brand-mark">✦</span> WILDBOUND
+        <small>THE LIVING BOARD</small></a
+      >
+      <nav>
+        <button id="nav-play" class="nav active">ADVENTURE</button
+        ><button id="nav-workshop" class="nav">SPRITE WORKSHOP</button
+        ><button
+          id="settings-button"
+          class="icon-button"
+          title="Sound and display settings"
+        >
+          ⚙
+        </button>
+      </nav>
+    </header>
+    <main id="home" class="screen active">
+      <section class="hero-copy">
+        <div class="eyebrow">
+          <span class="tiny-line"></span> A COUCH CO-OP JUNGLE ADVENTURE
+        </div>
+        <h1>
+          One more<br />roll.<br /><em>What could<br />go wild?</em>
+        </h1>
+        <p class="lede">
+          An ancient board. An untamed jungle.<br />And a very questionable
+          decision to roll again.
+        </p>
+        <div class="hero-actions">
+          <button id="local-button" class="primary">
+            GATHER YOUR PARTY <span>↗</span></button
+          ><button id="how-button" class="text-button">
+            How to play <span>→</span>
+          </button>
+        </div>
+        <div class="hero-meta">
+          <span><i class="dot"></i> 1–6 LOCAL PLAYERS</span
+          ><span>CONTROLLER + KEYBOARD</span>
+        </div>
+      </section>
+      <section class="hero-art">
+        <canvas id="menu-art"></canvas>
+        <div class="art-label">
+          <span>EXPEDITION 001</span><span>THE BOARD IS AWAKE</span>
+        </div>
+        <div class="art-note">
+          <span class="note-star">✧</span>
+          <div>
+            Every roll leaves a mark.<small
+              >The jungle doesn't wait its turn.</small
+            >
+          </div>
+        </div>
+        <div class="coordinate">25° N &nbsp; / &nbsp; 25° E</div>
+      </section>
+      <footer class="home-footer">
+        <span>BRING A FRIEND. MAYBE TWO. DEFINITELY A TRAP.</span
+        ><span>LOCAL EDITION <b>01</b></span>
+      </footer>
+    </main>
+    <main id="lobby" class="screen couch-lobby">
+      <div class="party-banner"><img src="./assets/wildbound-header-v2.png" alt="Wildbound — jungle adventure"><div class="party-topbar"><span>LOCAL CO-OP · 1–6 PLAYERS</span><nav id="party-menu"><button id="party-settings">Settings</button></nav></div></div>
+      <div class="party-heading"><h1>Gather your party</h1><p id="party-status" aria-live="polite">Press A to join · Enter for keyboard</p></div>
+      <div id="player-slots"></div>
+      <div class="party-options">
+        <button data-option-target="environment" aria-label="Environment"></button>
+        <button data-option-target="dice-count" aria-label="Roll length"></button>
+        <button data-option-target="difficulty" aria-label="Difficulty" aria-describedby="difficulty-description"></button><p id="difficulty-description" aria-live="polite"></p>
+        <button id="begin-button" class="primary">START ADVENTURE <span>Start / Menu</span></button>
+      </div>
+      <div class="party-help">A · Choose / Ready &nbsp; B · Leave / Back &nbsp; ↑↓ · Navigate &nbsp; ←→ · Change option &nbsp; Start · Ready & Start</div>
+      <select id="environment" hidden><option value="random">Random · All five maps</option><option value="forest">Forest</option><option value="desert">Desert</option><option value="ice">Ice</option><option value="house">House &amp; Yard</option><option value="temple">Jungle Temple</option></select>
+      <select id="dice-count" hidden><option value="1">One die · longer game</option><option value="2" selected>Two dice · faster game</option></select>
+    <select id="difficulty" hidden><option value="gentle">Gentle</option><option value="adventure" selected>Adventure</option><option value="wild">Wild</option></select>
+      <button id="back-home" hidden>Back</button><div id="device-status" hidden></div>
+    </main>
+    <main id="play" class="screen">
+      <canvas id="game-canvas"></canvas>
+      <div class="game-top">
+        <div class="game-title">
+          <span class="eyebrow">THE LIVING BOARD</span
+          ><strong id="round-label">ROUND 01</strong>
+        </div>
+        <div class="game-top-right">
+          <button id="board-button" class="small-button">BOARD · B</button>
+          <span id="threat-label">0 CREATURES</span
+          ><button id="pause-button" class="small-button">Ⅱ PAUSE</button>
+        </div>
+      </div>
+      <div id="event-card" class="hidden" role="status" aria-live="polite"><div class="encounter-art"><canvas id="event-portrait" width="144" height="144" aria-hidden="true"></canvas><span id="event-count"></span></div><div class="encounter-copy">
+        <span class="eyebrow">THE BOARD HAS SPOKEN</span>
+        <h3 id="event-name"></h3>
+        <p id="event-verse"></p>
+        <div class="encounter-tactic"><span aria-hidden="true">◆</span><small id="event-tip"></small></div></div><div class="encounter-progress" aria-hidden="true"><i id="event-progress"></i></div>
+      </div>
+      <div id="dice-result" class="hidden"></div>
+      <div id="game-hint">
+        WASD move · click attack · Space dodge · Q trap · hold E revive
+      </div>
+      <div id="roster"></div>
+      <div id="game-toast" aria-live="polite"></div>
+      <div id="board-panel" class="hidden">
+        <div>
+          <span>THE LIVING BOARD</span
+          ><button id="close-board" aria-label="Close board view">×</button>
+        </div>
+        <div class="turn-pill">
+          <span id="turn-dot"></span>
+          <div>
+            <small id="turn-caption">HIT THE TABLE TO ROLL</small
+            ><strong id="turn-label">Scout's turn</strong>
+          </div>
+        </div>
+        <canvas id="board-closeup" width="560" height="380"></canvas>
+        <p id="board-caption">
+          Figures walk every space. The jungle keeps moving.
+        </p>
+      </div>
+    </main>
+    <main id="workshop" class="screen">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">THE ARTIST'S FIELD KIT</div>
+          <h2>Pixel workshop.</h2>
+          <p>Bring a sheet. Find your creature. Make every pixel yours.</p>
+        </div>
+        <div class="inline-actions">
+          <button id="import-image" class="primary compact">LOAD IMAGE ↗</button
+          ><input type="file" id="image-file" accept="image/*" hidden /><button
+            id="new-sprite"
+            class="small-button"
+          >
+            NEW SPRITE
+          </button>
+        </div>
+      </div>
+      <div class="workshop-layout">
+        <aside class="library-panel">
+          <div class="panel-title">
+            ASSET LIBRARY <span id="asset-count"></span>
+          </div>
+          <input
+            id="asset-search"
+            placeholder="Find a sprite…"
+            aria-label="Find a sprite"
+          />
+          <div id="asset-library"></div>
+          <button id="export-library" class="small-button full">
+            EXPORT LIBRARY JSON</button
+          ><button id="import-library" class="text-button full">
+            Import library JSON</button
+          ><input
+            id="library-file"
+            type="file"
+            accept="application/json,.json"
+            hidden
+          />
+        </aside>
+        <section class="editor-panel">
+          <div class="layer-toolbar">
+            <label for="sprite-layer">EDIT LAYER</label
+            ><select id="sprite-layer">
+              <option value="art">Sprite artwork</option>
+              <option value="footprint">Collision footprint</option></select
+            ><span id="layer-hint">Paint colors and transparency.</span>
+          </div>
+          <div class="editor-toolbar">
+            <div id="editor-tools">
+              <button data-tool="pencil" class="selected" title="Pencil (B)">
+                PENCIL</button
+              ><button data-tool="eraser" title="Erase to transparency (E)">
+                ERASE</button
+              ><button data-tool="fill" title="Flood fill (G)">FILL</button
+              ><button data-tool="picker" title="Pick color (I)">PICK</button>
+            </div>
+            <button id="undo-button" title="Undo Ctrl+Z">↶</button
+            ><button id="redo-button" title="Redo Ctrl+Y">↷</button>
+          </div>
+          <div class="pixel-stage">
+            <canvas id="pixel-canvas" width="576" height="576"></canvas>
+          </div>
+          <div class="editor-status">
+            <span id="pixel-status">48 × 48 · TRANSPARENT RGBA</span
+            ><label
+              ><input id="show-grid" type="checkbox" checked /> Pixel
+              grid</label
+            >
+          </div>
+        </section>
+        <aside class="inspector-panel">
+          <div class="panel-title">SPRITE DETAILS</div>
+          <label class="field-label" for="sprite-name">ASSET NAME</label
+          ><input id="sprite-name" value="new-sprite" maxlength="60" />
+          <p class="subtle">
+            Use an existing game asset name to replace its art.
+          </p>
+          <div class="panel-title space-top">PALETTE</div>
+          <div id="palette"></div>
+          <label class="color-row"
+            ><input id="paint-color" type="color" value="#dbb36a" /><span
+              id="color-value"
+              >#DBB36A</span
+            ></label
+          ><label class="check-row"
+            ><input id="mirror" type="checkbox" /> Mirror painting</label
+          >
+          <div class="panel-title space-top">IN-GAME PREVIEW</div>
+          <label class="check-row"
+            ><input id="canopy-toggle" type="checkbox" /> Fade when covering a
+            player</label
+          >
+          <label class="check-row"
+            ><input id="animate-preview" type="checkbox" checked /> Animate
+            preview</label
+          >
+          <select id="preview-action" aria-label="Preview animation">
+            <option value="walk">Walk / slither</option>
+            <option value="idle">Idle</option>
+            <option value="attack">Attack / windup</option>
+          </select>
+          <canvas id="sprite-preview" width="180" height="130"></canvas
+          ><button id="save-sprite" class="primary compact full">
+            SAVE TO GAME ↗</button
+          ><button id="export-png" class="small-button full">EXPORT PNG</button>
+          <p id="workshop-status" class="subtle" role="status">
+            Your sprites are saved on this computer.
+          </p>
+        </aside>
+      </div>
+    </main>
+    <dialog id="crop-dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">FROM ARTWORK TO GAME PIXELS</div>
+          <h2>Find your sprite.</h2>
+        </div>
+        <button id="close-crop" class="icon-button" aria-label="Close crop">
+          ×
+        </button>
+      </div>
+      <div class="crop-layout">
+        <div>
+          <div class="source-stage">
+            <canvas id="source-canvas" width="720" height="510"></canvas>
+          </div>
+          <p class="subtle">
+            Drag to crop · wheel to zoom · right-drag or Shift-drag to pan
+          </p>
+        </div>
+        <aside>
+          <label class="field-label">OUTPUT SIZE</label
+          ><select id="crop-size">
+            <option>16</option>
+            <option>32</option>
+            <option selected>48</option>
+            <option>64</option>
+            <option>96</option></select
+          ><label class="check-row"
+            ><input id="remove-bg" type="checkbox" checked /> Remove corner
+            background</label
+          ><label class="field-label"
+            >BACKGROUND TOLERANCE <span id="tolerance-label">28</span></label
+          ><input
+            id="bg-tolerance"
+            type="range"
+            min="0"
+            max="150"
+            value="28"
+          /><label class="check-row"
+            ><input id="quantize" type="checkbox" /> Match game palette</label
+          ><canvas id="crop-preview" width="180" height="180"></canvas
+          ><button id="use-crop" class="primary compact full">
+            EDIT THIS CROP →
+          </button>
+          <div class="panel-title space-top">IMPORT A WHOLE SHEET</div>
+          <div class="grid-inputs">
+            <label
+              >Rows
+              <input
+                id="sheet-rows"
+                type="number"
+                min="1"
+                max="12"
+                value="5" /></label
+            ><label
+              >Columns
+              <input id="sheet-cols" type="number" min="1" max="12" value="5"
+            /></label>
+          </div>
+          <input
+            id="sheet-prefix"
+            placeholder="Asset prefix"
+            value="creature"
+          /><button id="split-sheet" class="small-button full">
+            SPLIT GRID & IMPORT ALL
+          </button>
+          <p class="subtle">
+            Grid import divides the entire source image into equal cells.
+          </p>
+        </aside>
+      </div>
+    </dialog>
+    <dialog id="info-dialog">
+      <div class="eyebrow">A FEW RULES. A LOT OF JUNGLE.</div>
+      <h2>Don't leave anyone behind.</h2>
+      <ol class="rules">
+        <li>
+          <b>Hit the table to roll.</b> Only the current player's attack wakes
+          the board. Your miniature advances along the trail.
+        </li>
+        <li>
+          <b>Every roll summons trouble.</b> Fight or trap it together. The next
+          player can roll while creatures are still out.
+        </li>
+        <li>
+          <b>Stay together.</b> Dodge red attack warnings. Hold Interact beside
+          a fallen friend to revive them.
+        </li>
+        <li>
+          <b>Call WILDBOUND.</b> Once your miniature reaches the center, hold
+          Interact at the table. The jungle collapses into the board. Loot the
+          shared victory chest, then strike the board to grow a new jungle.
+        </li>
+        <li>
+          <b>Commit to the adventure.</b> Players may join during the first
+          round. After that the party locks and turns cannot be skipped.
+        </li>
+        <li>
+          <b>Keep your character.</b> Select a saved explorer in the lobby.
+          Store equipment in your private portal room. Defeat loses carried
+          gear; stored equipment survives.
+        </li>
+        <li>
+          <b>Fight and loot.</b> Hold attack to charge, release to strike. RT /
+          right mouse dashes. X quick-loots; E / Y interacts or revives. I /
+          Back opens your pack. H / RB drinks a potion. P / D-pad up opens your
+          portal. Q / left-stick click uses a trap. C / LT blocks with a shield.
+        </li>
+      </ol>
+      <button id="close-info" class="primary compact">GOT IT →</button>
+    </dialog>
+    <dialog id="pause-dialog">
+      <div class="eyebrow" id="pause-eyebrow">TAKE A BREATH</div>
+      <h2 id="pause-title">The jungle can wait.</h2>
+      <p id="pause-text">Your expedition is paused.</p>
+      <button id="resume-button" class="primary full">
+        BACK TO THE JUNGLE →</button
+      ><button id="reassign-button" class="small-button full hidden">
+        USE KEYBOARD FOR DISCONNECTED PLAYER</button
+      ><button id="restart-button" class="small-button full">
+        NEW EXPEDITION</button
+      ><button id="quit-button" class="text-button full">
+        Return to landing screen
+      </button>
+    </dialog>
+    <dialog id="settings-dialog">
+      <div class="eyebrow">MAKE YOURSELF AT HOME</div>
+      <h2>Camp settings.</h2>
+      <label class="check-row"
+        ><input id="sound-toggle" type="checkbox" checked /> Jungle sound
+        effects</label
+      ><button id="fullscreen-button" class="small-button full">
+        TOGGLE FULLSCREEN
+      </button>
+      <div class="panel-title space-top">DISPLAY</div>
+      <label class="field-label" for="ui-scale">INTERFACE SIZE</label>
+      <select id="ui-scale"><option value="1">Standard</option><option value="1.15">Large</option><option value="1.3">Couch</option></select>
+      <label class="field-label" for="board-size">BOARD VIEW</label>
+      <select id="board-size"><option value="compact">Compact</option><option value="expanded">Expanded</option></select>
+      <label class="field-label" for="event-duration">EVENT MESSAGES</label>
+      <select id="event-duration"><option value="7">Brief · 7 seconds</option><option value="12">Comfortable · 12 seconds</option><option value="20">Extended · 20 seconds</option></select>
+      <label class="field-label" for="music-volume">MUSIC VOLUME</label>
+      <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.45" />
+      <label class="field-label" for="music-track">LEVEL MUSIC</label>
+      <select id="music-track" aria-label="Music track"></select>
+      <div id="music-status" class="subtle" role="status">Loops in the menu and during gameplay.</div>
+      <div class="panel-title space-top">CONTROLLER BUTTON MAPPING</div>
+      <div class="panel-title space-top">CHARACTER APPEARANCE</div>
+      <div id="appearance-settings"></div>
+      <label class="check-row"><input id="pvp-toggle" type="checkbox"> PvP · players can damage each other</label><div id="audio-mixer"></div><label class="check-row"><input id="audio-night" type="checkbox"> Night mix · reduce loud peaks</label><button id="audio-test" type="button">Test sound</button><div id="player-mappings" aria-label="Controls by player"></div>
+      <p class="subtle">
+        Bindings below apply to all controllers. Changing a used button swaps the two actions so one button cannot open several actions.
+      </p>
+      <div id="mapping-fields"></div>
+      <button id="close-settings" class="primary compact full">DONE →</button>
+    </dialog>
+  </body>
+</html>
+

@@ -1,0 +1,25 @@
+import {effects,DEFAULT_EFFECTS,LIMITS,saveEffect,validEffect,drawParticleEffect} from './particles.mjs';
+export class ParticleEditor {
+ constructor(){this.id='torch';this.draft=structuredClone(effects.torch);this.playing=true;this.time=0;}
+ stop(){cancelAnimationFrame(this.frame);}
+ mount(root){
+  this.stop();this.root=root;root.className='particle-editor';
+  root.innerHTML='<div class="particle-toolbar"><label>Effect <select aria-label="Particle effect"></select></label><button data-action="new">New effect</button><button data-action="save">Save effect</button><button data-action="reset">Restore preset</button><button data-action="export">Export JSON</button><label>Import JSON <input type="file" accept=".json"></label></div><div class="particle-workspace"><section><canvas width="720" height="420" aria-label="Live particle preview"></canvas><button data-action="play">Pause</button><button data-action="restart">Restart</button><p>Fire and knocked-out stars are used in game. Rain is a study here; the existing gameplay rain stays unchanged.</p><p class="particle-status" role="status"></p></section><aside></aside></div>';
+  const $=s=>root.querySelector(s),select=$('select'),status=$('.particle-status');
+  for(const [id,v]of Object.entries(effects).sort((a,b)=>a[1].name.localeCompare(b[1].name)))select.append(new Option(v.name,id));select.value=this.id;
+  select.onchange=()=>{this.id=select.value;this.draft=structuredClone(effects[this.id]);this.time=0;this.mount(root);};
+  const controls=$('aside');
+  const field=(key,label,type,options)=>{const row=document.createElement('label');row.textContent=label;const input=document.createElement(options?'select':'input');if(options)for(const v of options)input.append(new Option(v,v));else input.type=type;input.value=this.draft[key];if(LIMITS[key]){const [min,max,step]=LIMITS[key];Object.assign(input,{min,max,step});}if(key==='name')input.maxLength=60;input.setAttribute('aria-label',label);input.oninput=()=>{const value=type==='number'?Number(input.value):input.value;const next={...this.draft,[key]:value};if(validEffect(next)){this.draft=next;status.textContent='Unsaved · preview updated';}else status.textContent='Enter a value within the shown limits.';};row.append(input);controls.append(row);};
+  field('name','Name','text');for(const [key,label]of Object.entries({count:'Particle count',life:'Lifetime (seconds)',speedX:'Horizontal speed',speedY:'Vertical speed',spread:'Emitter width',gravity:'Gravity',size:'Size',orbit:'Orbit radius'}))field(key,label,'number');field('shape','Shape','text',['square','star','streak']);field('blend','Blend','text',['source-over','lighter']);field('start','Start color','color');field('end','End color','color');
+  const action=(id,fn)=>$(`[data-action="${id}"]`).onclick=()=>{try{fn();}catch(e){status.textContent=e.message;}};
+  action('save',()=>{saveEffect(this.id,this.draft);select.selectedOptions[0].textContent=this.draft.name;status.textContent='Saved · available next time you open the editor'+(['torch','knockout'].includes(this.id)?' and applied in game.':'.');});
+  action('new',()=>{this.id='custom-'+Date.now().toString(36);this.draft={...structuredClone(this.draft),name:'New particle effect'};effects[this.id]=structuredClone(this.draft);this.time=0;this.mount(root);});
+  action('reset',()=>{this.draft=structuredClone(DEFAULT_EFFECTS[this.id]||DEFAULT_EFFECTS.torch);this.mount(root);$('.particle-status').textContent='Preset restored in preview. Save to apply.';});
+  action('play',()=>{this.playing=!this.playing;$('[data-action="play"]').textContent=this.playing?'Pause':'Play';});$('[data-action="play"]').textContent=this.playing?'Pause':'Play';
+  action('restart',()=>{this.time=0;});
+  action('export',()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(this.draft,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=this.id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+  $('input[type=file]').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>20000)throw Error('Effect file is too large.');const v=JSON.parse(await f.text());if(!validEffect(v))throw Error('Invalid effect file.');this.draft=v;this.mount(root);$('.particle-status').textContent='Imported into preview. Save to apply.';}catch(e){status.textContent=e.message;}};
+  const canvas=$('canvas'),c=canvas.getContext('2d');let previous;
+  const tick=t=>{if(!root.isConnected)return;const dialog=root.closest('dialog');if(dialog&&!dialog.open)return;if(previous!==undefined&&this.playing)this.time+=Math.min(.05,(t-previous)/1000);previous=t;c.fillStyle='#102822';c.fillRect(0,0,720,420);c.strokeStyle='#29453e';for(let x=0;x<720;x+=24){c.beginPath();c.moveTo(x,0);c.lineTo(x,420);c.stroke();}c.save();c.translate(360,this.id==='rain'?10:310);c.scale(this.id==='rain'?1.7:3,this.id==='rain'?1.7:3);if(this.id==='torch'){c.fillStyle='#766046';c.fillRect(-3,-1,6,22);}drawParticleEffect(c,this.draft,0,0,this.time);c.restore();this.frame=requestAnimationFrame(tick);};this.frame=requestAnimationFrame(tick);
+ }
+}
