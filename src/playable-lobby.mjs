@@ -24,6 +24,14 @@ const DIFFICULTY_DETAILS={
   adventure:'Balanced · Take 35% less damage.',
   wild:'Brutal · Full enemy damage.',
 };
+const MAP_DETAILS={
+  random:'A changing expedition every time.',
+  forest:'Lush trails, rivers, and wild creatures.',
+  desert:'Dry dunes, mesas, and scarce water.',
+  ice:'Frozen ground, snow, and blizzards.',
+  house:'A lived-in house with gardens and doors.',
+  temple:'Jungle ruins with dangerous encounters.',
+};
 export function moveLobbyCharacter(s,input,dt){
   const x=Number.isFinite(input.x)?input.x:0,y=Number.isFinite(input.y)?input.y:0;
   const length=Math.hypot(x,y),scale=180*dt/Math.max(1,length),beforeX=s.x,beforeY=s.y;
@@ -61,6 +69,7 @@ export class PlayableLobby {
   constructor({root,game,profiles,start,sound}){
     Object.assign(this,{root,getGame:game,profiles,start,sound});this.state=new LobbyState();this.nodes=new Map();this.practice=new LobbyPractice();this.practice.onSound=sound;
     this.difficultyArt=new Image();this.difficultyArt.src=new URL('../assets/difficulty-icons.png',import.meta.url).href;
+    this.mapArt=new Image();this.mapArt.src=new URL('../assets/map-icons.png',import.meta.url).href;
     root.classList.add('playable-lobby');
     const area=document.createElement('div');area.className='lobby-world';
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or Y interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
@@ -178,6 +187,14 @@ export class PlayableLobby {
         const name=document.createElement('strong');name.textContent=(select.value===option.value?'✓ ':'')+option.text;
         const detail=document.createElement('small');detail.textContent=DIFFICULTY_DETAILS[option.value];
         copy.append(name,detail);b.append(icon,copy);
+      }else if(s.panel==='environment'){
+        b.classList.add('map-choice');
+        b.setAttribute('aria-label',`${option.text}. ${MAP_DETAILS[option.value]}`);
+        const icon=document.createElement('canvas');icon.width=40;icon.height=40;icon.className='map-choice-icon';this.drawMapIcon(icon.getContext('2d'),option.value,0,0,40);
+        const copy=document.createElement('span');copy.className='difficulty-choice-copy';
+        const name=document.createElement('strong');name.textContent=(select.value===option.value?'✓ ':'')+option.text;
+        const detail=document.createElement('small');detail.textContent=MAP_DETAILS[option.value];
+        copy.append(name,detail);b.append(icon,copy);
       }else b.textContent=(select.value===option.value?'✓ ':'')+option.text;}
       button('Close',()=>this.close(p));
     }
@@ -242,6 +259,11 @@ export class PlayableLobby {
     if(!this.difficultyArt.complete||!this.difficultyArt.naturalWidth)return;
     const index={gentle:0,adventure:1,wild:2}[value]??1,w=this.difficultyArt.naturalWidth/3;
     c.drawImage(this.difficultyArt,index*w,0,w,this.difficultyArt.naturalHeight,x,y,size,size);
+  }
+  drawMapIcon(c,value,x,y,size){
+    if(!this.mapArt.complete||!this.mapArt.naturalWidth)return;
+    const index={random:0,forest:1,desert:2,ice:3,house:4,temple:5}[value]??0,w=this.mapArt.naturalWidth/6;
+    c.drawImage(this.mapArt,index*w,0,w,this.mapArt.naturalHeight,x,y,size,size);
   }
   draw(){
     const c=this.canvas.getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#50565a';c.fillRect(0,0,1024,620);
