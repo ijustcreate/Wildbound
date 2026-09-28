@@ -88,7 +88,7 @@ export class PlayableLobby {
   available(p){return this.profiles.data.heroes.filter(h=>!this.getGame().players.some(q=>q!==p&&q.profileId===h.id));}
   renderPanel(p){
     const s=this.state.members.get(p.id);this.nodes.get(p.id)?.remove();
-    const panel=document.createElement('section');panel.className='lobby-player-panel';panel.dataset.ownerDevice=p.device;panel.style.setProperty('--player-color',p.color);panel.setAttribute('aria-label',p.name+' lobby controls');
+    const panel=document.createElement('section');panel.className='lobby-player-panel';panel.classList.toggle('board-menu',s.panel==='board');panel.dataset.ownerDevice=p.device;panel.style.setProperty('--player-color',p.color);panel.setAttribute('aria-label',p.name+' lobby controls');
     const tag=document.createElement('small');tag.textContent=p.device==='keyboard'?'KEYBOARD':'PLAYER '+(this.getGame().players.indexOf(p)+1);panel.append(tag);
     const heading=document.createElement('h2');panel.append(heading);
     const button=(label,fn,parent=panel)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();this.sync();};parent.append(b);return b;};
@@ -160,7 +160,9 @@ export class PlayableLobby {
       button('Back',()=>{s.panel='choose';s.focus=0;this.renderPanel(p);});
     }else if(s.panel==='board'){
       heading.textContent='Ready to begin?';
-      const info=document.createElement('p');info.textContent=['environment','difficulty','dice-count'].map(id=>{const e=document.getElementById(id);return e.selectedOptions[0].text;}).join(' · ');panel.append(info);
+      const info=document.createElement('div');info.className='board-menu-summary';
+      for(const id of ['environment','difficulty','dice-count']){const e=document.getElementById(id),setting=document.createElement('span');setting.className='board-setting';setting.textContent=e.selectedOptions[0].text;info.append(setting);}
+      panel.append(info);
       button(p.ready?'Cancel readiness':'Ready',()=>{p.ready=!p.ready;this.close(p);});
       button('Not yet',()=>this.close(p));
     }else{
