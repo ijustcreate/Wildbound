@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="src/field.css" />
     <link rel="stylesheet" href="src/couch-menu.css" />
     <link rel="stylesheet" href="src/editor-shell.css" />
+    <link rel="stylesheet" href="src/studio-tools.css" />
     <link rel="stylesheet" href="src/playable-lobby.css" />
   </head>
   <body>
@@ -377,34 +378,57 @@
       </button>
     </dialog>
     <dialog id="settings-dialog">
-      <div class="eyebrow">MAKE YOURSELF AT HOME</div>
-      <h2>Camp settings.</h2>
-      <label class="check-row"
-        ><input id="sound-toggle" type="checkbox" checked /> Jungle sound
-        effects</label
-      ><button id="fullscreen-button" class="small-button full">
-        TOGGLE FULLSCREEN
-      </button>
-      <div class="panel-title space-top">DISPLAY</div>
-      <label class="field-label" for="ui-scale">INTERFACE SIZE</label>
-      <select id="ui-scale"><option value="1">Standard</option><option value="1.15">Large</option><option value="1.3">Couch</option></select>
-      <label class="field-label" for="board-size">BOARD VIEW</label>
-      <select id="board-size"><option value="compact">Compact</option><option value="expanded">Expanded</option></select>
-      <label class="field-label" for="event-duration">EVENT MESSAGES</label>
-      <select id="event-duration"><option value="7">Brief · 7 seconds</option><option value="12">Comfortable · 12 seconds</option><option value="20">Extended · 20 seconds</option></select>
-      <label class="field-label" for="music-volume">MUSIC VOLUME</label>
-      <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.45" />
-      <label class="field-label" for="music-track">LEVEL MUSIC</label>
-      <select id="music-track" aria-label="Music track"></select>
-      <div id="music-status" class="subtle" role="status">Loops in the menu and during gameplay.</div>
-      <div class="panel-title space-top">CONTROLLER BUTTON MAPPING</div>
-      <div class="panel-title space-top">CHARACTER APPEARANCE</div>
-      <div id="appearance-settings"></div>
-      <label class="check-row"><input id="pvp-toggle" type="checkbox"> PvP · players can damage each other</label><div id="audio-mixer"></div><label class="check-row"><input id="audio-night" type="checkbox"> Night mix · reduce loud peaks</label><button id="audio-test" type="button">Test sound</button><div id="player-mappings" aria-label="Controls by player"></div>
-      <p class="subtle">
-        Bindings below apply to all controllers. Changing a used button swaps the two actions so one button cannot open several actions.
-      </p>
-      <div id="mapping-fields"></div>
+      <header class="settings-heading">
+        <div>
+          <div class="eyebrow">MAKE YOURSELF AT HOME</div>
+          <h2>Camp settings.</h2>
+        </div>
+        <span class="settings-hint">LB / RB to browse</span>
+      </header>
+      <nav class="settings-tabs" role="tablist" aria-label="Camp settings sections">
+        <button type="button" role="tab" aria-selected="true" aria-controls="settings-display" data-settings-tab="display">DISPLAY &amp; AUDIO</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="settings-explorer" data-settings-tab="explorer">EXPLORER</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="settings-controls" data-settings-tab="controls">CONTROLS</button>
+      </nav>
+      <div class="settings-panels">
+        <section id="settings-display" class="settings-panel" role="tabpanel" data-settings-panel="display">
+          <div class="settings-columns">
+            <div class="settings-card">
+              <div class="panel-title">DISPLAY</div>
+              <label class="field-label" for="ui-scale">INTERFACE SIZE</label>
+              <select id="ui-scale"><option value="1">Standard</option><option value="1.15">Large</option><option value="1.3">Couch</option></select>
+              <label class="field-label" for="board-size">BOARD VIEW</label>
+              <select id="board-size"><option value="compact">Compact</option><option value="expanded">Expanded</option></select>
+              <label class="field-label" for="event-duration">EVENT MESSAGES</label>
+              <select id="event-duration"><option value="7">Brief · 7 seconds</option><option value="12">Comfortable · 12 seconds</option><option value="20">Extended · 20 seconds</option></select>
+            </div>
+            <div class="settings-card settings-audio-card">
+              <div class="panel-title">SOUND</div>
+              <label class="check-row"><input id="sound-toggle" type="checkbox" checked /> Jungle sound effects</label>
+              <label class="field-label" for="music-volume">MUSIC VOLUME</label>
+              <input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.45" />
+              <label class="field-label" for="music-track">LEVEL MUSIC</label>
+              <select id="music-track" aria-label="Music track"></select>
+              <div id="music-status" class="subtle" role="status">Choose a track or let each expedition select one at random.</div>
+              <div id="audio-mixer" class="audio-mixer-grid"></div>
+              <label class="check-row"><input id="audio-night" type="checkbox"> Night mix · reduce loud peaks</label>
+              <button id="audio-test" type="button" class="small-button">TEST SOUND</button>
+            </div>
+          </div>
+          <button id="fullscreen-button" class="small-button full">TOGGLE FULLSCREEN</button>
+        </section>
+        <section id="settings-explorer" class="settings-panel" role="tabpanel" data-settings-panel="explorer" hidden>
+          <div class="panel-title">CHARACTER APPEARANCE</div>
+          <div id="appearance-settings"></div>
+          <label class="check-row"><input id="pvp-toggle" type="checkbox"> PvP · players can damage each other</label>
+        </section>
+        <section id="settings-controls" class="settings-panel" role="tabpanel" data-settings-panel="controls" hidden>
+          <div class="panel-title">CONTROLLER BUTTON MAPPING</div>
+          <div id="player-mappings" aria-label="Controls by player"></div>
+          <p class="subtle">Bindings apply to all controllers. Changing a used button swaps the two actions.</p>
+          <div id="mapping-fields"></div>
+        </section>
+      </div>
       <button id="close-settings" class="primary compact full">DONE →</button>
     </dialog>
   </body>

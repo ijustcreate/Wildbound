@@ -14,6 +14,7 @@ import {
 import { Animator } from "./animation.mjs";
 import { RigStudio } from "./player-studio.mjs";
 import { saveProjectRigs } from './project-rigs.mjs';
+import { ItemStudioPreview } from './item-studio-preview.mjs';
 const element = (tag, text) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
@@ -104,11 +105,30 @@ export class Designer {
     parent.append(row);
     return input;
   }
+  eventEnemyDefaults(event) {
+    if (!event.enemies) {
+      const kinds = event.squad?.length ? [...new Set(event.squad)] : [event.kind || this.kind];
+      event.enemies = kinds.map((kind) => {
+        const count = event.squad?.filter((entry) => entry === kind).length || event.count || 1;
+        const stats = event.squadStats?.[kind] || {};
+        return { kind, count, hp: stats.hp || event.hp || 100, speed: stats.speed || event.speed || 50, damage: stats.damage || event.damage || 10 };
+      });
+    }
+    return event.enemies;
+  }
+  eventChainDefaults(event) {
+    event.chain ??= [];
+    return event.chain;
+  }
+  eventRewardDefaults(event) {
+    event.rewards ??= [];
+    return event.rewards;
+  }
   shell(){
     const header=this.dialog.querySelector(':scope > header'),nav=this.dialog.querySelector(':scope > nav'),body=element('main');body.className='studio-body';body.id='studio-panel';body.setAttribute('role','tabpanel');body.setAttribute('aria-label',this.tab);
     for(const child of [...this.dialog.children])if(child!==header&&child!==nav)body.append(child);this.dialog.append(body);
     nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor jobs');
-    const labels=['Players','Creature','Rig & animation','Rules','Items','Events','House Builder','Particles','Combos'];
+    const labels=['Players','Creature','Rules','Items','Events','House Builder','Particles','Combos'];
     [...nav.children].forEach((b,i)=>{const active=labels[i]===this.tab;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(active));b.setAttribute('aria-controls','studio-panel');b.tabIndex=active?0:-1;b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?labels.length-1:(i+(e.key==='ArrowLeft'?-1:1)+labels.length)%labels.length;this.tab=labels[next];this.render();this.dialog.querySelector('[aria-selected="true"]')?.focus();};});
   }
   render() {
@@ -133,7 +153,6 @@ export class Designer {
     for (const tab of [
       "Players",
       "Creature",
-      "Rig & animation",
       "Rules",
       "Items",
       "Events",
@@ -145,9 +164,7 @@ export class Designer {
         nav,
         tab === "Players"
           ? "Rig studio"
-          : tab === "Rig & animation"
-            ? "Other creature rigs"
-            : tab,
+          : tab,
         () => {
           this.tab = tab;
           this.render();
@@ -541,7 +558,7 @@ export class Designer {
       const item = this.items[this.item],
         fields = element("div");
       fields.className = "studio-fields";
-      for (const k of ["name", "description", "color"])
+      for (const k of ["name", "description", "color", "artColor"])
         this.field(fields, k, item, k);
       for (const k of ["damage", "armor", "stack", "punch", "magnet"]) {
         item[k] ??= 0;
@@ -568,6 +585,12 @@ export class Designer {
         this.field(fields, k, item, k);
       }
       this.dialog.append(fields);
+      const previews=element('section');
+      this.itemPreview=new ItemStudioPreview(previews,this.item,this.items,(id,direction)=>{
+        this.tab='Players';this.playerStudio.setSubject('player');this.playerStudio.previewEquipment={[this.items[id].slot]:id};this.playerStudio.gearSlot=this.items[id].slot;this.playerStudio.direction=direction;this.render();
+        this.playerStudio.$('.ps-inspector').classList.add('show-equipment');
+      });
+      fields.before(previews);fields.classList.add('item-studio-fields');
     } else {
       this.eventIndex ??= 0;
       const select = element("select");
@@ -587,6 +610,12 @@ export class Designer {
           kind: this.kind,
         });
         this.eventIndex = this.events.length - 1;
+        this.render();
+      });
+      this.button(controls, "Delete event", () => {
+        if (this.events.length <= 1) { this.status.textContent = "Keep at least one event definition."; return; }
+        this.events.splice(this.eventIndex, 1);
+        this.eventIndex = Math.max(0, this.eventIndex - 1);
         this.render();
       });
       const fields = element("div");
@@ -611,6 +640,52 @@ export class Designer {
           min: k === "count" ? 1 : 0,
           max: k === "count" ? 20 : 1000,
         });
+      const enemies = this.eventEnemyDefaults(event);
+      const enemyPanel = element("section");
+      enemyPanel.className = "event-builder-section";
+      enemyPanel.append(element("h3", "Enemy groups"), element("p", "Add as many creature groups as this event needs. Legacy count/kind fields remain as the first group for compatibility."));
+      enemies.forEach((enemy, i) => {
+        const row = element("div"); row.className = "event-builder-row";
+        this.field(row, `Group ${i + 1} creature`, enemy, "kind", { options: Object.keys(creatures) });
+        for (const k of ["count", "hp", "speed", "damage"]) this.field(row, k, enemy, k, { min: k === "count" ? 1 : 0, max: 1000 });
+        this.button(row, "Delete group", () => { enemies.splice(i, 1); this.render(); });
+        enemyPanel.append(row);
+      });
+      this.button(enemyPanel, "Add enemy group", () => { enemies.push({ kind: this.kind, count: 1, hp: 100, speed: 50, damage: 10 }); this.render(); });
+      this.dialog.append(enemyPanel);
+
+      const chain = this.eventChainDefaults(event);
+      const chainPanel = element("section");
+      chainPanel.className = "event-builder-section";
+      chainPanel.append(element("h3", "Chained actions"), element("p", "Actions run in order when the event starts, after a delay, or when it is cleared."));
+      chain.forEach((step, i) => {
+        const row = element("div"); row.className = "event-builder-row";
+        step.trigger ??= "start"; step.action ??= "message";
+        this.field(row, "Trigger", step, "trigger", { options: ["start", "delay", "cleared"] });
+        this.field(row, "Action", step, "action", { options: ["message", "reward"] });
+        if (step.action === "message") this.field(row, "Message", step, "message");
+        else { step.item ??= Object.keys(this.items)[0]; step.qty ??= 1; this.field(row, "Loot", step, "item", { options: Object.keys(this.items) }); this.field(row, "Quantity", step, "qty", { min: 1, max: 999 }); }
+        if (step.trigger === "delay") { step.delay ??= 3; this.field(row, "Seconds", step, "delay", { min: 0, max: 300 }); }
+        this.button(row, "Delete action", () => { chain.splice(i, 1); this.render(); });
+        chainPanel.append(row);
+      });
+      this.button(chainPanel, "Add chained action", () => { chain.push({ trigger: "start", action: "message", message: "" }); this.render(); });
+      this.dialog.append(chainPanel);
+
+      const rewards = this.eventRewardDefaults(event);
+      const rewardPanel = element("section");
+      rewardPanel.className = "event-builder-section";
+      rewardPanel.append(element("h3", "Clear rewards"), element("p", "Guaranteed special loot dropped when every enemy in the event is defeated."));
+      rewards.forEach((reward, i) => {
+        const row = element("div"); row.className = "event-builder-row";
+        reward.item ??= Object.keys(this.items)[0]; reward.qty ??= 1;
+        this.field(row, "Loot", reward, "item", { options: Object.keys(this.items) });
+        this.field(row, "Quantity", reward, "qty", { min: 1, max: 999 });
+        this.button(row, "Delete reward", () => { rewards.splice(i, 1); this.render(); });
+        rewardPanel.append(row);
+      });
+      this.button(rewardPanel, "Add special loot", () => { rewards.push({ item: Object.keys(this.items)[0], qty: 1 }); this.render(); });
+      this.dialog.append(rewardPanel);
       this.dialog.append(fields);
     }
     const footer = element("footer");
@@ -664,6 +739,7 @@ export class Designer {
     this.dialog.append(footer, this.status);this.shell();
   }
   animate(dt) {
+    if(this.dialog.open&&this.tab==='Items'){this.itemPreview?.animate(dt);return;}
     if (this.dialog.open && this.tab === "Players") {
       this.playerStudio.animate(dt);
       return;

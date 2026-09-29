@@ -15,11 +15,11 @@ Over time, the project is intended to become a standalone game that is easy to m
 <img src="assets/wildbound-header-v2.png" alt="Wildbound jungle adventure banner" width="100%">
 
 <p>
-  <strong>Latest build: 1.0.6 development build</strong><br>
+  <strong>Latest build: 1.0.7 development build</strong><br>
   Living expeditions · expanded rigs · night-hunt systems · Field Kit systems
 </p>
 
-<a href="RELEASE_REPORT_1.0.5.md">Release notes</a> ·
+<a href="RELEASE_REPORT_1.0.7.md">Release notes</a> ·
 <a href="CHANGELOG.md">Changelog</a> ·
 <a href="PLAYER_ANIMATION.md">Animation guide</a> ·
 <a href="assets/FIELD_KIT_ASSETS.md">Asset manifest</a>
@@ -28,7 +28,7 @@ Over time, the project is intended to become a standalone game that is easy to m
 
 ## Play the build
 
-1. Launch **[Play Wildbound.cmd](Play%20Wildbound.cmd)** for the Electron development build.
+1. Launch **[Play Wildbound.cmd](Play%20Wildbound.cmd)** for the Electron desktop build. It uses the packaged version in `dist/<package.json version>/Wildbound-win32-x64/` (currently 1.0.7).
 2. To preview the web version locally, run **[Play Wildbound Browser.cmd](Play%20Wildbound%20Browser.cmd)**. The hosted web build is at [ijustcreate.github.io/Wildbound](https://ijustcreate.github.io/Wildbound/).
 3. Keep the complete packaged folder together when moving or sharing an Electron build.
 4. Gather 1–6 local players, choose explorers and difficulty, then open the board and strike the table to roll.
@@ -36,6 +36,16 @@ Over time, the project is intended to become a standalone game that is easy to m
 During a solo expedition started with keyboard/mouse, use the left stick or a controller button to take over the existing hero. To add a second player during the first round, press Start/Menu on an unused controller. In the lobby, any controller button joins; reconnecting a controller reclaims a disconnected hero.
 
 Reach space 48, hold Interact near the table to seal the jungle, and collect the shared victory chest. Unclaimed loot is recovered into that chest. Strike the board again for a new expedition. Saved equipment, personal storage, coins, appearance and loadouts persist.
+
+### Creating the Windows desktop shortcut
+
+After packaging, run this from the project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1
+```
+
+The script reads the version from `package.json`, requires the matching `dist/<version>/Wildbound-win32-x64/Wildbound.exe`, and creates or refreshes `Wildbound Latest (<version>).lnk` on the current user's Desktop. It uses `assets/wildbound-icon.ico` and points the shortcut at the packaged executable.
 
 ## What’s in the current build
 
@@ -115,7 +125,7 @@ The release remains focused on local co-op. Direct-network transport is experime
 
 ## Documentation
 
-- [1.0.5 test instructions](RELEASE_REPORT_1.0.5.md)
+- [1.0.7 test instructions](RELEASE_REPORT_1.0.7.md)
 - [Complete implementation report](RELEASE_REPORT_0.9.0.md)
 - [Player animation guide](PLAYER_ANIMATION.md)
 - [Audio plan](AUDIO_PLAN_1.0.0.md)

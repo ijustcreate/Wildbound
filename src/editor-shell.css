@@ -19,6 +19,12 @@
 .designer-dialog p{font-family:system-ui,sans-serif;color:#aebfb6;}
 .designer-dialog .studio-controls,.designer-dialog .house-toolbar{padding:10px;background:#182c2e;border:1px solid #314b40;border-radius:6px;margin:0 0 14px;gap:8px;}
 .designer-dialog .studio-fields{padding:16px;background:#18292e;border:1px solid #314b40;border-radius:6px;align-content:start;gap:14px;}
+.designer-dialog .event-builder-section{padding:14px;margin-top:14px;background:#18292e;border:1px solid #314b40;border-radius:6px;}
+.designer-dialog .event-builder-section h3{margin-top:0;}
+.designer-dialog .event-builder-section p{margin:0 0 10px;}
+.designer-dialog .event-builder-row{display:grid;grid-template-columns:repeat(5,minmax(100px,1fr)) auto;align-items:end;gap:8px;padding:10px 0;border-top:1px solid #29443b;}
+.designer-dialog .event-builder-row label{min-width:0;}
+.designer-dialog .event-builder-row button{white-space:nowrap;}
 .designer-dialog .studio-layout{grid-template-columns:250px minmax(0,1fr);gap:16px;}
 .designer-dialog .studio-layout>section:first-child{padding:12px;background:#18292e;border:1px solid #314b40;border-radius:6px;}
 .designer-dialog .studio-layout>section:first-child canvas{max-width:100%;height:auto;}

@@ -845,6 +845,23 @@ export class Game {
     );
     this.spawnEvent();
   }
+  runEventActions(trigger) {
+    const event = this.event;
+    if (!event) return;
+    for (const [index, action] of (event.chain || []).entries()) {
+      const matches = trigger === "delay"
+        ? (action.trigger || "start") === "delay" && this.event.chainRuntime >= (Number(action.delay) || 0)
+        : (action.trigger || "start") === trigger;
+      if (!matches || this.eventActionRun?.has(index)) continue;
+      (this.eventActionRun ??= new Set()).add(index);
+      if (action.action === "message" && action.message) this.message(action.message);
+      if (action.action === "reward" && action.item && ITEMS[action.item] !== undefined)
+        this.dropLoot(800, 800, action.item, Math.max(1, Number(action.qty) || 1), event.name + " reward", true);
+    }
+    if (trigger === "cleared") for (const reward of event.rewards || [])
+      if (reward.item && ITEMS[reward.item] !== undefined)
+        this.dropLoot(800, 800, reward.item, Math.max(1, Number(reward.qty) || 1), event.name + " reward", true);
+  }
   spawnEvent(index) {
     if (index === undefined) {
       const weight = (e) =>
@@ -867,6 +884,9 @@ export class Game {
     if(!this.event||(this.event.environment&&this.event.environment!==this.generatedEnvironment))return;
     this.openingBoard = false;
     this.eventTime = this.eventDuration || 7;
+    this.eventActionRun = new Set();
+    this.event.chainRuntime = 0;
+    this.runEventActions("start");
     if (startHazard(this, this.event)) {
       this.message(this.event.name + " — " + this.event.tip);
       this.onSound("event");
@@ -919,15 +939,23 @@ export class Game {
         done: false,
       };
     }
+    const usingGroups = this.event.enemies?.length > 0;
+    const groups = usingGroups ? this.event.enemies : [{
+      kind: this.event.kind, count: this.event.count, hp: this.event.hp,
+      speed: this.event.speed, damage: this.event.damage,
+    }];
+    this.eventSpawnCount = groups.reduce((sum, enemy) => sum + Math.max(0, Number(enemy.count) || 0), 0);
     const group = this.nextId++;
     let lanternAssigned = this.players.some((p) =>
       (p.inventory || []).some((i) => i?.type === "lantern") ||
       Object.values(p.equipment || {}).includes("lantern"),
     );
     let first = null;
-    for (let i = 0; i < this.event.count; i++) {
+    let spawned = 0;
+    for (const enemyGroup of groups) for (let member = 0; member < (enemyGroup.count || 0); member++) {
+      const i = spawned++;
       const spawnedKind =
-        this.event.squad?.[i] ||
+        (usingGroups ? enemyGroup.kind : null) || this.event.squad?.[i] ||
         (this.event.frostMinions
           ? i === 0 ? "skeleton_wizard" : "skeleton"
           : this.event.mixedSkeletons
@@ -941,13 +969,14 @@ export class Game {
         d = 280 + this.random() * 95;
       const e = {
         ...this.event,
+        ...enemyGroup,
         ...(this.event.squadStats?.[spawnedKind] || {}),
         kind: spawnedKind,
         id: this.nextId++,
         group,
         x: clamp(CENTER + Math.cos(a) * d, 70, WORLD - 70),
         y: clamp(CENTER + Math.sin(a) * d, 70, WORLD - 70),
-        maxHp: this.event.squadStats?.[spawnedKind]?.hp || this.event.hp,
+        maxHp: this.event.squadStats?.[spawnedKind]?.hp || enemyGroup.hp || this.event.hp,
         state: "hunt",
         timer: 1 + this.random(),
         cooldown: 1,
@@ -994,6 +1023,7 @@ export class Game {
     for(const e of this.enemies.filter(e=>e.group===group&&e.kind==="wolf"))wolfPack(this,e);
     startNightEvent(this,this.event,this.enemies.filter(e=>e.group===group));
     if(this.event.spiderNest&&first)spiderNest(this,first,group);
+    if (!first) return;
     this.reveal = { x: first.x, y: first.y, life: 4 };
     this.message(this.event.name + " — " + this.event.tip);
     this.onSound("event");
@@ -1046,6 +1076,10 @@ export class Game {
     this.time += dt;
     this.tableShake = Math.max(0, this.tableShake - dt);
     this.eventTime = Math.max(0, this.eventTime - dt);
+    if (this.event?.chain?.some((action, index) => action.trigger === "delay" && !this.eventActionRun?.has(index))) {
+      this.event.chainRuntime = (this.event.chainRuntime || 0) + dt;
+      this.runEventActions("delay");
+    }
     if (this.reveal) {
       this.reveal.life -= dt;
       if (this.reveal.life <= 0) this.reveal = null;
@@ -1826,11 +1860,12 @@ export class Game {
     if (
       this.event &&
       this.eventTime > 0 &&
-      this.event.count > 0 &&
+      (this.eventSpawnCount || this.event.count) > 0 &&
       !this.enemies.some((e) => e.hp > 0)
     ) {
       const clearedEvent = this.event.name;
       this.eventTime = 0;
+      this.runEventActions("cleared");
       this.message(clearedEvent + " cleared · the area is safe.");
       this.persist();
     }

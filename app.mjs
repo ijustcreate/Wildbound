@@ -749,9 +749,29 @@ $("reassign-button").onclick = () => {
     p.device = "keyboard";
   pause("Keyboard assigned. Press Back to the Jungle to continue.");
 };
+const settingsTabNames = ['display', 'explorer', 'controls'];
+let settingsTab = 'display';
+function selectSettingsTab(name, focus = false) {
+  settingsTab = settingsTabNames.includes(name) ? name : 'display';
+  document.querySelectorAll('[data-settings-tab]').forEach(button => {
+    const selected = button.dataset.settingsTab === settingsTab;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll('[data-settings-panel]').forEach(panel => {
+    const selected = panel.dataset.settingsPanel === settingsTab;
+    panel.hidden = !selected;
+    panel.setAttribute('aria-hidden', String(!selected));
+  });
+  if (focus) document.querySelector(`[data-settings-panel="${settingsTab}"] button, [data-settings-panel="${settingsTab}"] select, [data-settings-panel="${settingsTab}"] input`)?.focus();
+}
+document.querySelectorAll('[data-settings-tab]').forEach(button => {
+  button.onclick = () => selectSettingsTab(button.dataset.settingsTab, true);
+});
 $("settings-button").onclick = () => {
   if (screen === "play") pause();
   $("settings-dialog").showModal();
+  selectSettingsTab('display');
   renderPlayerMappings($("player-mappings"), game, mapping);
   const hero = game.players[0];
   if (hero) {
@@ -957,6 +977,14 @@ function dialogController(pad, previous) {
     fieldKit.dialog
       .querySelector(".field-body button,.field-body select")
       ?.focus();
+    return;
+  }
+  if (dialog.id === "settings-dialog" &&
+    ((pad.buttons[4]?.pressed && !previous[4]) ||
+      (pad.buttons[5]?.pressed && !previous[5]))) {
+    const index = settingsTabNames.indexOf(settingsTab);
+    const next = (index + (pad.buttons[5]?.pressed ? 1 : settingsTabNames.length - 1)) % settingsTabNames.length;
+    selectSettingsTab(settingsTabNames[next], true);
     return;
   }
   const active = controls.indexOf(document.activeElement),

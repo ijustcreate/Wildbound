@@ -1,4 +1,5 @@
 import { ITEMS, itemKind } from "./items.mjs";
+import { mixGearColor, paintGearIcon } from './gear-art.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -19,9 +20,38 @@ export const ITEM_ART_TYPES = [
   "charm",
 ];
 const cache = new Map();
+export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if (!ITEMS[type]?.slot && !ITEMS[type]?.relic) return paintItemBase(c,type);
+  const pixels = Array(576).fill(null);
+  const raster = {fillStyle:'#302b2b',fillRect(x,y,w,h) {
+    for(let yy=Math.max(0,y);yy<Math.min(24,y+h);yy++)
+      for(let xx=Math.max(0,x);xx<Math.min(24,x+w);xx++) pixels[yy*24+xx]=this.fillStyle;
+  }};
+  paintItemBase(raster,type);
+  const at=(x,y)=>x>=0&&x<24&&y>=0&&y<24?pixels[y*24+x]:null;
+  const dense=pixels.filter(Boolean).length>300;
+  const colors=new Map();
+  const tint=(color,light)=>{
+    const key=color+light;
+    if(!colors.has(key)) colors.set(key,mixGearColor(color,light?'#f7e7c0':'#302b2b',.3));
+    return colors.get(key);
+  };
+  for(let y=0;y<24;y++)for(let x=0;x<24;x++) {
+    let color=at(x,y);
+    if(!color) {
+      if(dense)continue;
+      if(![at(x-1,y),at(x+1,y),at(x,y-1),at(x,y+1)].some(Boolean)) continue;
+      color='#302b2b';
+    } else if(!at(x,y-1)) color=tint(color,true);
+    else if(!at(x+1,y)||!at(x,y+1)) color=tint(color,false);
+    c.fillStyle=color;c.fillRect(x,y,1,1);
+  }
+}
+function paintItemBase(c, type) {
+  if(paintGearIcon(c,type))return;
   const r = (x, y, w, h, color) => {
     c.fillStyle = color;
     c.fillRect(x, y, w, h);

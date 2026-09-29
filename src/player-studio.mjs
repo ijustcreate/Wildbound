@@ -26,6 +26,7 @@ import { AnimationGraph } from "./animation-graph.mjs";
 import { renderLayers, captureLayers, releaseLayers, boneSprites } from "./render-order.mjs";
 import { saveRigSpriteOverride, removeRigSpriteOverride } from "./rig-sprite-storage.mjs";
 import { ANGLE_JOINTS, jointAngle, wrapAngle } from "./joint-angles.mjs";
+import { BoneTools, transformBones } from './bone-tools.mjs';
 const copy = (v) => structuredClone(v);
 export class RigStudio {
   constructor(save) {
@@ -110,6 +111,7 @@ export class RigStudio {
     this.timelineDrag = null;
   }
   mount(root) {
+    this.resizeObserver?.disconnect();
     this.root = root;
     root.tabIndex = 0;
     root.onkeydown = (e) => {
@@ -140,13 +142,12 @@ export class RigStudio {
     this.$ = $;
     if (this.subject === "player") {
       const tabs = document.createElement('div'); tabs.className='ps-inspector-tabs';
-      for (const name of ['Equipment','Joints']) {
+      for (const name of ['Joints','Equipment']) {
         const button=document.createElement('button'); button.textContent=name;
         button.onclick=()=>$('.ps-inspector').classList.toggle('show-equipment',name==='Equipment');
         tabs.append(button);
       }
       $('.ps-inspector').prepend(tabs);
-      $('.ps-inspector').classList.add('show-equipment');
     }
     const picker = document.createElement("select");
     picker.className = "ps-subject";
@@ -159,6 +160,11 @@ export class RigStudio {
       this.mount(root);
     };
     $(".ps-toolbar").prepend(picker);
+    for(const tool of ['shear','scale']) {
+      const button=document.createElement('button');button.dataset.do=tool;button.textContent=tool==='scale'?'Scale':'Shear';
+      $('[data-do="rotate"]').after(button);
+    }
+    $('[data-do="move"]').textContent='Translate';
     this.mountWardrobe();
     const shape = document.createElement("div");
     shape.className = "ps-shape";
@@ -338,6 +344,7 @@ export class RigStudio {
     canvas.onpointerdown = (e) => this.startDrag(e);
     canvas.onpointermove = (e) => this.drag(e);
     canvas.onpointerup = canvas.onpointercancel = () => {
+      if(this.boneTools)this.boneTools.gesture=null;
       this.dragging = null;
       this.panning = null;
       canvas.classList.remove("panning");
@@ -363,9 +370,9 @@ export class RigStudio {
     tracks.onpointercancel = () => (this.timelineDrag = null);
     this.graph = new AnimationGraph(this);
     this.graph.mount();
-    const order = document.createElement('details'); order.className='ps-render-order'; order.open=true;
+    const order = document.createElement('details'); order.className='ps-render-order'; order.open=false;
     order.innerHTML='<summary>Render order · per facing</summary><p>Back to front. Select a layer and move it forward or backward. Edits apply only to the current facing.</p><select size="7" aria-label="Sprite render order"></select><button type="button" data-layer="-1">Move backward</button><button type="button" data-layer="1">Move forward</button><button type="button" data-layer="reset">Automatic order</button>';
-    this.$('.ps-hierarchy').prepend(order);
+    this.$('.ps-hierarchy').append(order);
     const spriteSection=document.createElement('section');spriteSection.className='ps-bone-sprites';
     this.$('[data-do="key"]').after(spriteSection);this.boneSpriteKey=null;
     const angles=document.createElement('section');angles.className='ps-angle-controls';
@@ -374,7 +381,11 @@ export class RigStudio {
     selector.onchange=()=>{this.selected=selector.value;this.refresh();this.animate(0);};
     angles.querySelectorAll('input').forEach(input=>input.onchange=()=>{this.remember();this.setAngle(Number(input.value));});
     angles.querySelector('button').onclick=()=>{this.remember();this.setAngle(0);};
-    this.$('.ps-inspector').prepend(angles);
+    this.$('.ps-inspector').append(angles);
+    this.boneTools=new BoneTools(this);this.boneTools.mount();
+    const search=document.createElement('input');search.type='search';search.placeholder='Find a bone…';search.setAttribute('aria-label','Find a bone');
+    search.oninput=()=>this.root.querySelectorAll('[data-joint]').forEach(b=>b.hidden=!b.dataset.joint.toLowerCase().includes(search.value.toLowerCase()));
+    this.$('.ps-joints').before(search);
     this.layerSelect=order.querySelector('select');
     this.layerNames = null;
     order.querySelectorAll('button').forEach(b=>b.onclick=()=>{
@@ -386,6 +397,12 @@ export class RigStudio {
     });
     this.refresh();
     this.animate(0);
+    const stage=this.$('.ps-stage'),fitCanvas=()=>{
+      const reserved=['.ps-view-controls','.ps-directions','.ps-hint'].reduce((sum,selector)=>sum+this.$(selector).getBoundingClientRect().height,24);
+      const width=Math.max(120,Math.min(stage.clientWidth-20,(stage.clientHeight-reserved)*560/380));
+      this.$('.ps-canvas').style.width=width+'px';
+    };
+    this.resizeObserver=new ResizeObserver(fitCanvas);this.resizeObserver.observe(stage);fitCanvas();
   }
   message(s) {
     this.$(".ps-status").textContent = s;
@@ -569,6 +586,7 @@ export class RigStudio {
   }
   refresh() {
     if (!this.root?.isConnected) return;
+    this.boneTools?.refresh();
     const angleBox=this.$('.ps-angle-controls');
     if(angleBox){angleBox.hidden=this.subject!=='player';const supported=ANGLE_JOINTS.includes(this.selected);angleBox.querySelector('select').value=supported?this.selected:'';
       const angle=supported?jointAngle(this.model,this.clip,this.frame,this.direction,this.selected,this.mode==='setup'):0;
@@ -600,9 +618,11 @@ export class RigStudio {
     });
     this.root
       .querySelectorAll("[data-joint]")
-      .forEach((b) =>
-        b.classList.toggle("active", b.dataset.joint === this.selected),
-      );
+      .forEach((b) => {
+        b.classList.toggle("active", b.dataset.joint === this.selected);
+        b.style.borderLeftColor=this.model.joints[b.dataset.joint].editor?.color||'#476356';
+        b.style.borderLeftWidth='3px';
+      });
     this.root
       .querySelectorAll("[data-direction]")
       .forEach((b) =>
@@ -648,7 +668,7 @@ export class RigStudio {
     if (["setup", "animate"].includes(action)) {
       this.mode = action;
       this.playing = false;
-    } else if (["move", "rotate", "pan"].includes(action)) this.tool = action;
+    } else if (["move", "rotate", "scale", "shear", "pan"].includes(action)) this.tool = action;
     else if (action === "play") {
       this.mode = "animate";
       if (this.frame >= c.length - 1) this.frame = 0;
@@ -767,10 +787,12 @@ export class RigStudio {
     const canvas = this.$(".ps-canvas"),
       mouse = this.canvasPoint(e, canvas),
       pose = this.pose();
+    if(this.boneTools?.start(mouse)){canvas.setPointerCapture(e.pointerId);e.preventDefault();return;}
     if(this.angleHandle && this.bones && Math.hypot(mouse.x-this.angleHandle.x,mouse.y-this.angleHandle.y)<12){
       this.remember();this.playing=false;this.dragging={angle:true,center:this.angleHandle.center,base:this.angleHandle.base};canvas.setPointerCapture(e.pointerId);return;
     }
     const candidates = Object.entries(pose)
+      .filter(([name])=>this.model.joints[name].editor?.selectable!==false)
       .map(([n, p]) => {
         const q = projectPoint(p, this.direction);
         return {
@@ -789,7 +811,7 @@ export class RigStudio {
             : 1
           : a.d - b.d,
       );
-    if (candidates[0].d > 16) return;
+    if (!candidates.length || candidates[0].d > 16) return;
     this.selected = candidates[0].n;
     this.playing = false;
     this.frame = Math.min(
@@ -808,7 +830,8 @@ export class RigStudio {
     e.preventDefault();
   }
   editPositions(original, delta, rotate = null) {
-    for (const name of descendants(this.model, this.selected)) {
+    const affected=transformBones(this.model,original,this.selected,this.direction,rotate?'rotate':'move',[0,0],'world',this.boneTools?.children??true);
+    for (const name of Object.keys(affected)) {
       let p = original[name].map((v, i) => v + delta[i]);
       if (rotate) {
         const projected = projectPoint(original[name], this.direction),
@@ -826,6 +849,7 @@ export class RigStudio {
     }
   }
   drag(e) {
+    if(this.boneTools?.gesture){this.boneTools.drag(this.canvasPoint(e,this.$('.ps-canvas')));return;}
     if (this.panning) {
       const point = this.canvasPoint(e, this.$(".ps-canvas"));
       this.panX = this.panning.x + point.x - this.panning.start.x;
@@ -838,6 +862,10 @@ export class RigStudio {
     const mouse = this.canvasPoint(e, this.$(".ps-canvas"));
     if(drag.angle){this.setAngle((Math.atan2(mouse.y-drag.center.y,mouse.x-drag.center.x)-drag.base)*180/Math.PI);return;}
     this.replace(drag.model);
+    if(this.tool==='scale'||this.tool==='shear') {
+      const dx=(mouse.x-drag.start.x)/60,dy=(mouse.y-drag.start.y)/60;
+      this.boneTools.apply(drag.pose,this.tool,this.tool==='scale'?[Math.max(.1,1+dx),Math.max(.1,1+dy)]:[Math.max(-75,Math.min(75,dx*45)),Math.max(-75,Math.min(75,dy*45))]);this.changed();return;
+    }
     let rot = null;
     const parent = this.model.joints[this.selected].parent;
     if (this.tool === "rotate" && parent) {
@@ -1056,7 +1084,8 @@ export class RigStudio {
       for (const [n, j] of Object.entries(this.model.joints)) {
         const p = projected[n],
           parent = projected[j.parent];
-        c.strokeStyle = n === this.selected ? "#71e4ce" : "#e2d9b2aa";
+        const style=j.editor||{},color=style.color||'#e2d9b2';
+        c.strokeStyle = color;
         c.lineWidth = n === this.selected ? 3 : 1.5;
         if (parent) {
           c.beginPath();
@@ -1064,15 +1093,20 @@ export class RigStudio {
           c.lineTo(p.x, p.y);
           c.stroke();
         }
-        c.fillStyle = n === this.selected ? "#71e4ce" : "#303250";
+        c.fillStyle = n === this.selected ? color : "#303250";
         c.beginPath();
-        c.arc(p.x, p.y, n === this.selected ? 5 : 3, 0, Math.PI * 2);
+        const radius=Math.max(2,Math.min(9,style.iconSize||3))+(n===this.selected?2:0);
+        if(style.icon==='diamond'){c.moveTo(p.x,p.y-radius);c.lineTo(p.x+radius,p.y);c.lineTo(p.x,p.y+radius);c.lineTo(p.x-radius,p.y);c.closePath();}
+        else if(style.icon==='cross'){c.moveTo(p.x-radius,p.y);c.lineTo(p.x+radius,p.y);c.moveTo(p.x,p.y-radius);c.lineTo(p.x,p.y+radius);}
+        else c.arc(p.x, p.y, radius, 0, Math.PI * 2);
         c.fill();
         c.stroke();
+        if(style.showName){c.font='11px sans-serif';c.fillStyle=color;c.fillText(n,p.x+radius+3,p.y-4);}
       }
     c.fillStyle = "#e6d79a";
     this.angleHandle=null;
-    if(this.subject==='player'&&ANGLE_JOINTS.includes(this.selected)&&this.bones){
+    this.boneTools?.draw(c,projected);
+    if(this.subject==='player'&&ANGLE_JOINTS.includes(this.selected)&&this.bones&&this.tool==='pan'){
       const anchor=projected[this.selected];
       const angle=jointAngle(this.model,this.clip,this.frame,this.direction,this.selected,this.mode==='setup');
       let base=-Math.PI/2;

@@ -285,23 +285,61 @@ export function drawHair(c, h, appearance, direction) {
   const x = Math.round(h.x),
     y = Math.round(h.y),
     back = direction >= 3 && direction <= 5;
-  c.fillStyle = appearance.hairColor;
-  c.fillRect(x - 4, y - 6, 8, 3);
-  if (style === "crop") c.fillRect(x - 4, y - 3, 2, 2);
+  const base = appearance.hairColor || "#593923";
+  const dark = shade(base), ink = shade(dark);
+  const light = "#" + base.slice(1).match(/../g).map(v =>
+    Math.min(255, Math.round(parseInt(v, 16) * 1.25 + 16)).toString(16).padStart(2, "0")
+  ).join("");
+  const r = (dx, dy, w, hh, color) => {
+    c.fillStyle = color; c.fillRect(x + dx, y + dy, w, hh);
+  };
+  // Stepped silhouette and clustered highlights stay crisp at game resolution.
+  // The part shifts with facing; the rear has a full crown rather than a face.
+  const profile = direction === 2 || direction === 6;
+  const flip = direction >= 5 ? -1 : 1;
+  r(-4, -8, 8, 1, ink);
+  r(-6, -7, 11, 3, ink);
+  r(profile ? (flip === 1 ? -2 : -6) : -7, -4, profile ? 8 : 13, 3, ink);
+  r(-5, -7, 8, 2, base);
+  r(-6, -5, 11, profile ? 2 : 3, base);
+  r(profile ? (flip === 1 ? -2 : -5) : -5, -3, profile ? 7 : 10, 2, dark);
+  r(-3, -8, 3, 2, dark);
+  r(3, -7, 3, 2, ink);
+  r(3, -6, 2, 2, base);
+  r(-4, -6, 3, 2, light);
+  r(0, -5, 2, 2, light);
+  r(3, -4, 2, 1, light);
+  if (back) {
+    r(-5, -2, 10, 5, ink);
+    r(-4, -2, 8, 4, base);
+    r(-3, -2, 2, 3, light);
+    r(1, -1, 3, 4, dark);
+    r(-2, 2, 4, 2, dark);
+  } else {
+    r(profile ? 3 * flip : -5 * flip - (flip < 0 ? 1 : 0), -2, 2, 4, dark);
+    if (!profile) {
+      r(-3 * flip, -2, 2, 2, base);
+      r(0, -2, 2, 1, base);
+    }
+  }
   if (["bob", "long", "curls"].includes(style)) {
     const length = style === "long" ? 10 : 6;
-    c.fillRect(x - 5, y - 4, 2, length);
-    c.fillRect(x + 3, y - 4, 2, length);
-    if (back) c.fillRect(x - 3, y - 4, 6, length);
+    r(-7, -4, 3, length + 1, ink);
+    r(-6, -4, 2, length, base);
+    r(4, -4, 3, length + 1, ink);
+    r(4, -4, 2, length, dark);
+    if (back) { r(-4, -2, 8, length - 2, base); r(1, -2, 2, length - 2, dark); }
   }
   if (style === "ponytail") {
-    c.fillRect(x + 3, y - 3, 3, 9);
-    c.fillRect(x + 4, y + 4, 3, 3);
+    const tail = direction >= 5 ? -7 : 4;
+    r(tail, -2, 4, 10, ink);
+    r(tail + 1, -1, 2, 8, base);
+    r(tail, -1, 3, 1, "#c3a15e");
   }
-  if (style === "mohawk") c.fillRect(x - 1, y - 10, 3, 7);
+  if (style === "mohawk") { r(-2, -11, 4, 7, ink); r(-1, -10, 2, 6, light); }
   if (style === "curls") {
-    c.fillRect(x - 5, y - 7, 3, 3);
-    c.fillRect(x - 1, y - 8, 3, 3);
-    c.fillRect(x + 3, y - 6, 3, 3);
+    for (const [dx,dy] of [[-6,-7],[-2,-9],[2,-7],[-7,-3],[4,-3]]) {
+      r(dx,dy,4,3,ink); r(dx,dy,2,2,base); r(dx,dy,1,1,light);
+    }
   }
 }

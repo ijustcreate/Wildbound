@@ -6,7 +6,7 @@ set "WILDBOUND_BUILD="
 for /f "delims=" %%D in ('dir /b /ad /o-n "%WILDBOUND_ROOT%dist\night-hunt-*" 2^>nul') do (
   if not defined WILDBOUND_BUILD if exist "%WILDBOUND_ROOT%dist\%%D\Wildbound-win32-x64\resources\app.asar" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\%%D\Wildbound-win32-x64"
 )
-if not defined WILDBOUND_BUILD if exist "%WILDBOUND_ROOT%dist\1.0.6\Wildbound-win32-x64\Wildbound.exe" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\1.0.6\Wildbound-win32-x64"
+if not defined WILDBOUND_BUILD if exist "%WILDBOUND_ROOT%dist\1.0.7\Wildbound-win32-x64\Wildbound.exe" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\1.0.7\Wildbound-win32-x64"
 if not defined WILDBOUND_BUILD goto missing
 if /i "%~1"=="--check" (
   echo "%WILDBOUND_BUILD%\Wildbound.exe"

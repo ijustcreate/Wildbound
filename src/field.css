@@ -286,7 +286,49 @@ body[data-board-size="compact"] #board-caption {
   display: grid;
 }
 #hero-overlays { top:112px; bottom:180px; }
-#settings-dialog { max-height:90vh; overflow:auto; width:min(780px,94vw); }
+#settings-dialog {
+  width:min(780px,94vw);
+  height:min(610px,calc(100vh - 42px));
+  max-height:calc(100vh - 42px);
+  overflow:hidden;
+  padding:24px 28px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.settings-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.settings-heading h2 { margin:4px 0 0; }
+.settings-hint { color:#6c806c; font:10px system-ui,sans-serif; letter-spacing:1px; text-transform:uppercase; padding-top:8px; white-space:nowrap; }
+.settings-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; border-bottom:1px solid #b2bea2; padding-bottom:8px; }
+.settings-tabs button { min-height:34px; padding:7px 8px; border:1px solid transparent; background:transparent; color:#416458; font:10px system-ui,sans-serif; letter-spacing:1.2px; }
+.settings-tabs button[aria-selected="true"] { background:#dfe5d5; border-color:#aebda8; color:#123f35; box-shadow:inset 0 -2px #b78d4e; }
+.settings-tabs button:focus-visible { outline:2px solid #c18f4f; outline-offset:2px; }
+.settings-panels { flex:1; min-height:0; }
+.settings-panel { height:100%; min-height:0; }
+.settings-columns { display:grid; grid-template-columns:1fr 1fr; gap:18px; min-height:0; }
+.settings-card { min-width:0; padding:2px 4px; }
+.settings-card .field-label { margin-top:12px; }
+.settings-card select { max-width:100%; }
+.settings-audio-card { border-left:1px solid #c3cbb9; padding-left:18px; }
+.settings-panel > .full { margin-top:14px; }
+.settings-panel .check-row { margin:10px 0; }
+.audio-mixer-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; margin-top:8px; }
+.audio-mixer-grid .field-label { margin:0; }
+.audio-mixer-grid input[type="range"] { width:100%; }
+#settings-explorer { display:flex; flex-direction:column; }
+#settings-explorer .panel-title { margin-bottom:16px; }
+#settings-controls { display:flex; flex-direction:column; }
+#settings-controls #player-mappings { min-height:0; max-height:128px; overflow:hidden; }
+#settings-controls #mapping-fields { min-height:0; overflow:hidden; }
+#settings-controls .subtle { margin:8px 0; }
+#settings-dialog .primary { margin-top:auto; }
+.compact-appearance-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.compact-appearance-grid .creation-choice { min-width:0; }
+.compact-appearance-grid select { width:100%; min-width:0; }
+.appearance-help { margin:10px 0 0; }
+#mapping-fields { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+#mapping-fields label { min-width:0; }
+#mapping-fields select { min-width:0; }
 .controller-card { border:1px solid #749386; border-radius:4px; padding:12px; margin:12px 0; }
 .controller-card h4 { margin:0 0 6px; }
 .controller-card p { overflow-wrap:anywhere; font-size:12px; }
@@ -295,6 +337,21 @@ body[data-board-size="compact"] #board-caption {
 .controller-card dd { margin:0; font-weight:bold; }
 #mapping-fields label { display:flex; flex-direction:column; gap:4px; }
 #mapping-fields select { min-width:0; width:100%; }
+#mapping-fields { grid-template-columns:repeat(3,minmax(0,1fr)); }
+
+@media (max-height:650px) {
+  #settings-dialog { padding:18px 22px 14px; gap:9px; }
+  #settings-dialog h2 { font-size:30px; }
+  .settings-card .field-label { margin-top:7px; }
+  .settings-panel > .full { margin-top:8px; }
+}
+@media (max-width:620px) {
+  #settings-dialog { width:calc(100vw - 24px); padding:18px; }
+  .settings-columns { grid-template-columns:1fr; gap:8px; }
+  .settings-audio-card { border-left:0; border-top:1px solid #c3cbb9; padding:10px 4px 0; }
+  .compact-appearance-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #mapping-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
 #controller-keyboard { width:min(760px,94vw); max-height:92vh; overflow:auto; }
 .keyboard-text { display:block; min-height:58px; font-size:28px; padding:12px; background:#173e34; color:#fff1c9; overflow-wrap:anywhere; }
 .controller-keyboard-grid { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:5px; }

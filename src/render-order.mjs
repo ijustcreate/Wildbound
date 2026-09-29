@@ -2,6 +2,7 @@ const layers = new WeakMap();
 const captures = new WeakMap(), editing = new WeakSet();
 export function captureLayers(model) { editing.add(model); }
 export function releaseLayers(model) { editing.delete(model); }
+export function capturedLayers(model,direction) { return captures.get(model)?.[direction] || []; }
 export function boneSprites(model, direction, bone) { return (captures.get(model)?.[direction] || []).filter(p=>p.bones?.includes(bone)); }
 export function renderLayers(model, direction) {
   return layers.get(model)?.[direction] || [];

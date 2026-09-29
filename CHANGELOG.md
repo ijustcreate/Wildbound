@@ -1,3 +1,11 @@
+## 1.0.7 — Studio tools, event chains and settings polish
+
+- Added new studio tooling for bone editing, gear artwork and item previews, with expanded character customization support.
+- Added chained encounter actions, grouped enemy waves and event reward handling.
+- Reworked settings into controller-friendly Display & Audio, Explorer and Controls tabs.
+- Improved character motion, wearable rendering, item art, render ordering and editor presentation.
+- Refined authored rig data and added regression coverage for the new studio tools.
+
 ## 1.0.5 — Combat combos, jumping and temple tigers
 
 - Each wand fires from its own posed tip.
