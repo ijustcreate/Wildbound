@@ -58,10 +58,16 @@ function aimedDirection(g, p, origin, strength = 0.2) {
     if (!best || score < best.score) best = { x: dx / d, y: dy / d, score };
   }
   if (!best) return { x: fx / fl, y: fy / fl };
-  const x = fx / fl * (1 - strength) + best.x * strength;
-  const y = fy / fl * (1 - strength) + best.y * strength;
-  const l = Math.hypot(x, y) || 1;
-  return { x: x / l, y: y / l };
+  // Keep aim help subtle: target assistance may nudge a shot, but never
+  // redirect it more than a few degrees away from the player's aim.
+  const current = Math.atan2(fy, fx);
+  const target = Math.atan2(best.y, best.x);
+  let delta = target - current;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  const assisted = Math.max(-Math.PI / 45, Math.min(Math.PI / 45, delta * strength));
+  const angle = current + assisted;
+  return { x: Math.cos(angle), y: Math.sin(angle) };
 }
 export const VISION = 280;
 export function initAdventure(g) {
@@ -74,6 +80,8 @@ export function initAdventure(g) {
   g.xpOrbs = [];
   g.sharedStash = [];
   g.explored = new Set();
+  g.encounteredEvents = Object.create(null);
+  g.killedCreatures = Object.create(null);
   g.persist = () => {};
 }
 export function initHero(p) {
@@ -126,10 +134,28 @@ export const adventureMethods = {
       e.speed = c.stats.speed;
       e.damage = c.stats.damage;
       e.maxHp = c.stats.hp;
+      e.jumpImpulse = c.stats.jumpImpulse;
       if (refresh) e.hp = Math.min(e.hp, e.maxHp);
       else e.hp = e.maxHp;
     }
     e.faction = c.faction;
+  },
+  lootConditionMet(condition = {}) {
+    if (!condition.type || condition.type === "always") return true;
+    const players = this.players || [];
+    if (condition.type === "has_item")
+      return players.some((p) => (p.inventory || []).some((item) => item.type === condition.item && item.qty > 0));
+    if (condition.type === "encountered_event") return !!this.encounteredEvents?.[condition.event];
+    if (condition.type === "killed_creature") return (this.killedCreatures?.[condition.creature] || 0) > 0;
+    if (condition.type === "player_level") {
+      const level = Number(condition.level) || 1;
+      const highest = Math.max(1, ...players.map((p) => Number(p.level) || 1));
+      if (condition.mode === "at_most") return highest <= level;
+      if (condition.mode === "exactly") return highest === level;
+      if (condition.mode === "between") return highest >= level && highest <= (Number(condition.maxLevel) || level);
+      return highest >= level;
+    }
+    return true;
   },
   beginSeal(p) {
     if (
@@ -819,7 +845,7 @@ export const adventureMethods = {
       } else if (!p.consumeInput) {
         if (edge("interact"))p.interactAnimation=.35;
         if (edge("potion")) this.usePotion(p);
-        p.blocking = !!i.block && itemKind(p.equipment.hand2) === "shield";
+        p.blocking = !!i.block && itemKind(p.equipment.hand1) !== 'bow' && itemKind(p.equipment.hand2) === "shield";
         if (
           edge("bait") &&
           (take(p.inventory, "meat") || take(p.inventory, "fruit"))
@@ -841,9 +867,10 @@ export const adventureMethods = {
           p.sealHold = (p.sealHold || 0) + dt;
           if (p.sealHold >= rules.sealHold) this.beginSeal(p);
         } else p.sealHold = 0;
-        if (i.attack)
+        if(p.swimming){p.charge=0;delete p.queuedAttack;}
+        if (i.attack&&!p.swimming)
           p.charge = Math.min(1.2, (p.charge || 0) + dt);
-        if (!i.attack && old.attack && p.charge) {
+        if (!i.attack && old.attack && p.charge&&!p.swimming) {
           this.attack(p, p.charge);
           p.charge = 0;
         }
@@ -1061,7 +1088,7 @@ export const adventureMethods = {
     p.vendingOrders ||= [];
     return true;
   },
-  fireSpell(p, charge = 0, slot = "hand1") {
+  fireSpell(p, charge = 0, slot = "hand1", comboDamage = 1) {
     emitNoise(this, p, 'magic', 260);
     const def = ITEMS[p.equipment[slot]];
     if (!def?.magic || (p.mana ?? 100) < def.manaCost) return false;
@@ -1080,7 +1107,7 @@ export const adventureMethods = {
       life: 3,
       remaining: 224,
       size: 6 + Math.round(strength * 8),
-      damage: Math.round(def.damage * (1 + strength)),
+      damage: Math.round(def.damage * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
       fire: def.spellType === "fire",
       ice: def.spellType === "ice",
@@ -1181,8 +1208,14 @@ export const adventureMethods = {
     if (this.random() < (e.kind === "skeleton_boss" ? 0.35 : 0.08))
       drop(e.x - 18, e.y + 12, rollRelic(this.random), 1, "Relic");
     const config = creatures[e.kind];
+    const lootDrops = config?.lootDrops || [];
+    for (const entry of lootDrops) {
+      if (!entry?.item || !this.lootConditionMet(entry.condition)) continue;
+      if (this.random() >= Math.max(0, Math.min(100, Number(entry.chance ?? 100))) / 100) continue;
+      this.dropLoot(e.x, e.y, entry.item, Math.max(1, Number(entry.qty) || 1), "Enemy drop");
+    }
     if (
-      (config?.dropType || e.frostMage) &&
+      !lootDrops.length && (config?.dropType || e.frostMage) &&
       ITEMS[config.dropType]?.rarity !== "legendary" &&
       this.random() < (config.stats.dropChance ?? 1)
     )

@@ -1,9 +1,11 @@
-import {nextCombo} from './combat-combos.mjs';
+import {nextCombo,loadoutKind} from './combat-combos.mjs';
 import {ensureNightCycle, tickNightCycle, movementNoise, emitNoise, eventAvailable, rewardNightHunts} from './night-cycle.mjs';
 import {initLivingEcosystem, updateLivingEcosystem, livingEcosystemBlocked, cutLivingVines} from './living-ecosystem.mjs';
 import {NIGHT_EVENTS, tickNightEnemy, tickNightEnemyHazards, startNightEvent, hitNightEnemyVines} from './night-enemies.mjs';
 import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equipment.mjs';
 import {startJump,tickJump} from './jumping.mjs';
+import {tickSwimming,inDeepWater} from './swimming.mjs';
+import {tickQuicksand} from './quicksand.mjs';
 import {tickWolf, wolfPack} from './wolf-pack.mjs';
 import {ensureTemple,tickGorilla,tickGhosts,summonGhost} from './temple.mjs';
 import { creatureCue } from './sound-bank.mjs';
@@ -463,7 +465,7 @@ export class Game {
     )
       return true;
     if (
-      Math.abs(x - CENTER) < TABLE.halfWidth + radius &&
+      projectile && Math.abs(x - CENTER) < TABLE.halfWidth + radius &&
       Math.abs(y + TABLE.footOffset - CENTER) < TABLE.halfHeight + radius
     )
       return true;
@@ -508,29 +510,33 @@ export class Game {
       dy *= 0.45;
     }
     const ground = waterAt(this, actor.x, actor.y + collisionOffset(this,actor));
+    const canSwim=this.players.includes(actor);
+    if(canSwim&&!flying&&ground==='water'&&!(actor.jumpHeight>0)){dx*=.58;dy*=.58;}
     if (!flying && isQuicksand(ground)) {
       dx *= 0.32;
       dy *= 0.32;
     } else if (!flying && isShallow(ground)) {
-      dx *= 0.55;
-      dy *= 0.55;
+      dx *= ground==='mud'?.85:.55;
+      dy *= ground==='mud'?.85:.55;
     }
     const oldX = actor.x,
       oldY = actor.y,
       steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
     for (let i = 0; i < steps; i++) {
       const x = clamp(actor.x + dx / steps, 24, WORLD - 24);
-      if (!this.blocked(x, actor.y, actorRadius(actor), flying,false,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.x = x;
+      if (!this.blocked(x, actor.y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.x = x;
       const y = clamp(actor.y + dy / steps, 24, WORLD - 24);
-      if (!this.blocked(actor.x, y, actorRadius(actor), flying,false,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.y = y;
+      if (!this.blocked(actor.x, y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.y = y;
     }
     const moved = Math.hypot(actor.x - oldX, actor.y - oldY);
+    if (!this.players.includes(actor)) {
     if (!flying && isQuicksand(waterAt(this, actor.x, actor.y + collisionOffset(this,actor))))
       actor.sink =
         moved < 0.01
           ? Math.min(16, (actor.sink || 0) + 7 * 0.016)
           : Math.max(0, (actor.sink || 0) - 0.08);
     else actor.sink = Math.max(0, (actor.sink || 0) - 0.2);
+    }
     actor.moving = moved > 0.01;
     actor.step = (actor.step || 0) + moved * 0.13;
     if (this.players.includes(actor)) movementNoise(this, actor, moved);
@@ -560,8 +566,8 @@ export class Game {
         "explorer-purple",
         "explorer-green",
       ][i],
-      x: CENTER + Math.cos(a) * 116,
-      y: CENTER - 11 + Math.sin(a) * 68,
+      x: CENTER + Math.cos(a) * (TABLE.halfWidth+30),
+      y: CENTER + Math.sin(a) * (TABLE.halfHeight+30),
       hp: 100,
       maxHp: 100,
       progress: 0,
@@ -666,6 +672,7 @@ export class Game {
       );
   }
   attack(p, charge = 0) {
+    if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
     if (!["play", "won"].includes(this.phase) || p.hp <= 0 || p.room || p.ui) return false;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
     // Utility items do no melee damage; rifles have their own aimed shot and reload.
@@ -685,8 +692,9 @@ export class Game {
       (slot) => ITEMS[p.equipment[slot]]?.magic,
     );
     if (magicSlots.length) {
-      p.attackClip="cast";p.comboId=null;
-      for (const slot of magicSlots) this.fireSpell(p, charge, slot);
+      const spellCombo=nextCombo(p,loadoutKind(p),this.time);
+      p.attackClip=spellCombo.clip==='cast'?'cast':'cast';
+      for (const slot of magicSlots) this.fireSpell(p, charge, slot, spellCombo.damage);
       return true;
     }
     if (itemKind(p.equipment.hand1) === "bow") {
@@ -695,7 +703,7 @@ export class Game {
     }
     const hands = [ITEMS[p.equipment.hand1], ITEMS[p.equipment.hand2]].filter(i=>i?.damage && !i.magic && !i.ranged);
     const weapon = hands[0], off = hands[1];
-    const combo=nextCombo(p,weapon?.damage?"melee":"unarmed",this.time);
+    const combo=nextCombo(p,loadoutKind(p),this.time);
     p.attackClip=combo.clip;p.attack=p.attackDuration=combo.duration;p.attackArc=combo.arc;p.attackReach=combo.reach;
     const damage = combo.damage * (
       (weapon?.damage || 12 + stat(p, "punch")) +
@@ -882,6 +890,8 @@ export class Game {
     }
     this.event = EVENTS[index];
     if(!this.event||(this.event.environment&&this.event.environment!==this.generatedEnvironment))return;
+    this.encounteredEvents ??= Object.create(null);
+    this.encounteredEvents[this.event.name] = true;
     this.openingBoard = false;
     this.eventTime = this.eventDuration || 7;
     this.eventActionRun = new Set();
@@ -967,16 +977,18 @@ export class Game {
             : this.event.kind);
       const a = this.random() * Math.PI * 2,
         d = 280 + this.random() * 95;
+      const creatureConfig = creatures[spawnedKind];
       const e = {
         ...this.event,
         ...enemyGroup,
         ...(this.event.squadStats?.[spawnedKind] || {}),
+        ...(!enemyGroup.manualOverride && creatureConfig ? { hp: creatureConfig.stats.hp, speed: creatureConfig.stats.speed, damage: creatureConfig.stats.damage } : {}),
         kind: spawnedKind,
         id: this.nextId++,
         group,
         x: clamp(CENTER + Math.cos(a) * d, 70, WORLD - 70),
         y: clamp(CENTER + Math.sin(a) * d, 70, WORLD - 70),
-        maxHp: this.event.squadStats?.[spawnedKind]?.hp || enemyGroup.hp || this.event.hp,
+        maxHp: this.event.squadStats?.[spawnedKind]?.hp || (!enemyGroup.manualOverride && creatureConfig ? creatureConfig.stats.hp : enemyGroup.hp || this.event.hp),
         state: "hunt",
         timer: 1 + this.random(),
         cooldown: 1,
@@ -1112,6 +1124,8 @@ export class Game {
     }
     for (const p of this.players) {
       tickJump(p,dt,this,collisionOffset(this,p));
+      tickQuicksand(this,p,inputs[p.device]||{},dt);
+      tickSwimming(this,p,inputs[p.device]||{},dt);
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
@@ -1128,6 +1142,8 @@ export class Game {
       p.trapCooldown = Math.max(0, p.trapCooldown - dt);
       p.hit = Math.max(0, p.hit - dt);
       const input = inputs[p.device] || {};
+      p.bowAiming = !!input.block && itemKind(p.equipment?.hand1) === 'bow' && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !this.openingBoard;
+      if(p.bowAiming){p.blocking=false;p.dashTime=0;p.slideX=p.slideY=0;}
       if (p.room || p.ui || p.consumeInput || p.stun > 0) {
         p.moving = false;p.slideX=p.slideY=0;
         continue;
@@ -1175,8 +1191,8 @@ export class Game {
       }
       if(!this.openingBoard&&input.jump&&!p.jumpHeld)startJump(p);
       p.jumpHeld=!!input.jump;
-      p.swimming=['water','shallow','floodbridge'].includes(waterAt(this,p.x,p.y));
-      if (!this.openingBoard && input.dodge && !p.dashHeld && p.dodge === 0) {
+      if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
+      if (!this.openingBoard && !p.bowAiming && input.dodge && !p.dashHeld && p.dodge === 0) {
         p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
         p.dashX = len > 0.1 ? mx / (Math.hypot(mx, my) || 1) : p.faceX;
@@ -1196,7 +1212,8 @@ export class Game {
         mx = p.dashX;
         my = p.dashY;
       }
-      if (!this.openingBoard) {
+      if (p.bowAiming) {p.moving=false;p.walking=false;}
+      else if (!this.openingBoard) {
         const motion=iceMotion(this,p,mx,my,speed,dt),oldX=p.x,oldY=p.y;
         this.moveActor(p,motion.dx,motion.dy);
         if(Math.abs(p.x-oldX)<.01)p.slideX=0;if(Math.abs(p.y-oldY)<.01)p.slideY=0;
@@ -1305,6 +1322,7 @@ export class Game {
             damage: e.damage,
             burnDamage: cfg.stats.burnDamage,
             water: aiKind === "water_elemental",
+            ice: aiKind === "water_elemental",
           });
           e.fireCooldown = cfg.stats.fireCooldown || 2.4;
         }
@@ -1312,7 +1330,7 @@ export class Game {
           this.moveActor(e, -aimX * e.speed * dt, -aimY * e.speed * dt);
         else if (rangeToTarget > 190)
           this.moveActor(e, aimX * e.speed * dt, aimY * e.speed * dt);
-        if (e.moving && beh.fireTrail) {
+        if (e.moving && beh.fireTrail && aiKind!=="water_elemental") {
           e.fireTrailTimer = (e.fireTrailTimer || 0) - dt;
           if (e.fireTrailTimer <= 0) {
             firePatch(this, previousX, previousY, 1.8, cfg.stats.burnDamage);
@@ -1835,6 +1853,8 @@ export class Game {
         e.animationAction = "death";
       }
       summonGhost(this,e);
+      this.killedCreatures ??= Object.create(null);
+      this.killedCreatures[e.kind] = (this.killedCreatures[e.kind] || 0) + 1;
       this.enemyLoot(e);
       this.cleared++;
       this.onSound(creatureCue(e.kind,'death'),e);

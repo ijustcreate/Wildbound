@@ -35,7 +35,10 @@ export function humanoidClips(base){
   sword_combo:clip([{chest:[0,-2,0],head:[0,-1,1],handR:[5,-2,14],elbowR:[4,-1,8]},{chest:[0,3,-1],head:[0,4,0],handR:[-13,9,7],elbowR:[-8,5,5]},{chest:[0,0,0],head:[0,0,1]}],8),
   get_up:clip([{pelvis:[0,0,-10],chest:[6,0,-16],head:[10,0,-22],handL:[4,0,-8],handR:[4,0,-8]},crouch,{}],8),
   revive:clip([{chest:[0,3,-6],head:[0,3,-6],pelvis:[0,0,-5],handL:[2,10,-3],handR:[-2,10,-3]},{}],8),
-  swim:clip([{handL:[-6,6,8],handR:[6,-4,8],footL:[0,-5,3]},{handL:[-6,-4,8],handR:[6,6,8],footR:[0,-5,3]}],8,true),
+  swim:clip([{handL:[4,10,10],handR:[-4,10,10],elbowL:[1,5,1],elbowR:[-1,5,1]},
+    {handL:[-7,5,10],handR:[7,5,10],elbowL:[-4,3,2],elbowR:[4,3,2]},
+    {handL:[-4,-3,9],handR:[4,-3,9],elbowL:[-2,-1,1],elbowR:[2,-1,1]},
+    {handL:[4,10,10],handR:[-4,10,10],elbowL:[1,5,1],elbowR:[-1,5,1]}],12,true),
   death:clip([{}, {pelvis:[0,0,-12],chest:[8,0,-18],head:[15,0,-25],shoulderL:[8,0,-18],shoulderR:[8,0,-18],elbowL:[9,0,-14],elbowR:[9,0,-14],handL:[10,0,-11],handR:[10,0,-11],kneeL:[-5,0,-5],kneeR:[-5,0,-5],footL:[-8,0,0],footR:[-8,0,0]}],8),
  };
 }

@@ -25,25 +25,60 @@ export function gearPixels(c, anchor) {
   };
 }
 
+// Rotate pixel coverage about the ankle, following the projected shin. Inverse
+// sampling keeps the silhouette solid (forward-splatting pixels leaves holes).
+export function bootFrame(ankle, knee) {
+  const dx=knee.x-ankle.x,dy=ankle.y-knee.y,length=Math.hypot(dx,dy);
+  return length<.01?{cos:1,sin:0}:{cos:dy/length,sin:dx/length};
+}
+export function withBootPose(c, ankle, knee, paint, customSprite=false) {
+  const {cos,sin}=bootFrame(ankle,knee),fill=c.fillRect;
+  // Real canvas transforms compose with authored wearable offsets/rotations.
+  if(customSprite&&c.save&&c.restore&&c.translate&&c.rotate){
+    c.save();c.translate(ankle.x,ankle.y);c.rotate(Math.atan2(sin,cos));c.translate(-ankle.x,-ankle.y);
+    try{return paint();}finally{c.restore();}
+  }
+  // Procedural boots stay on the pixel grid instead of blurring at each angle.
+  const ax=Math.round(ankle.x),ay=Math.round(ankle.y);
+  c.fillRect=function(x,y,w,h){
+    if(Math.abs(sin)<1e-8&&cos>0)return fill.call(this,x,y,w,h);
+    const corners=[[x,y],[x+w,y],[x,y+h],[x+w,y+h]].map(([px,py])=>[ax+(px-ax)*cos-(py-ay)*sin,ay+(px-ax)*sin+(py-ay)*cos]);
+    const x0=Math.floor(Math.min(...corners.map(p=>p[0]))),x1=Math.ceil(Math.max(...corners.map(p=>p[0])));
+    const y0=Math.floor(Math.min(...corners.map(p=>p[1]))),y1=Math.ceil(Math.max(...corners.map(p=>p[1])));
+    for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++){
+      const dx=xx+.5-ax,dy=yy+.5-ay,sx=ax+dx*cos+dy*sin,sy=ay-dx*sin+dy*cos;
+      if(sx>=x&&sx<x+w&&sy>=y&&sy<y+h)fill.call(this,xx,yy,1,1);
+    }
+  };
+  try{return paint();}finally{c.fillRect=fill;}
+}
+
 // Deliberately authored at character resolution: never resize inventory pairs.
 export function fittedGear(c, id, anchor, direction, side, dye) {
   const def=ITEMS[id], kind=itemKind(id), p=gearPalette(id,dye);
   const r=gearPixels(c,anchor), profile=direction===2||direction===6;
   const rear=direction>=3&&direction<=5;
   if(kind==='gloves') {
-    r(-2,-3,5,6,p.ink);r(-2,-2,4,4,p.dark);r(-1,-2,3,3,p.base);
-    r(-2,-3,4,1,p.light);r(-1,-1,1,2,p.light);r(side==='L'?2:-3,0,1,2,p.dark);
-    if(def.style==='wraps') {r(-2,-1,4,1,p.light);r(-1,1,3,1,p.light);}
-    if(def.style==='gauntlets'||def.style==='sun') {r(-2,-1,4,1,p.light);r(0,0,1,1,p.shine);}
+    // The joint is the wrist: keep the silhouette compact so the glove does
+    // not swallow the sleeve or read as a second arm.
+    const thumb=side==='L'?-1:1;
+    r(-2,-2,5,6,p.ink);r(-1,-1,3,4,p.base);
+    r(-1,-2,3,1,p.light);r(-1,2,3,2,p.dark);
+    r(-2,3,5,2,p.leather);r(-1,3,3,1,p.trim);
+    r(thumb<0?-2:1,0,2,2,p.dark);r(thumb<0?-2:2,0,1,1,p.light);
+    if(def.style==='wraps') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.light);}
+    if(def.style==='gauntlets'||def.style==='sun') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.shine);}
     if(def.style==='spiked'||id==='gloves') {r(-2,-4,1,2,p.shine);r(1,-4,1,2,p.light);}
-    if(def.style==='safari') r(-1,-2,2,1,p.trim);
+    if(def.style==='safari') r(-1,-1,3,1,p.trim);
   } else if(kind==='boots') {
-    const toe=profile?(direction===2?-2:2):0;
+    // The foot joint is the ankle. Keep the sole one pixel below it and put
+    // the toe on the visible side for profile views.
+    const toe=profile?(direction===2?-2:2):side==='L'?-1:1;
     const height=def.style==='tall'?7:5;
-    r(-2,-height,5,height+2,p.ink);r(-1,-height+1,3,height,p.dark);
-    r(-2+toe,-1,5,3,p.ink);r(-1+toe,-1,3,2,p.base);
-    r(-1,-height+1,2,height-1,p.base);r(-1,-height+1,3,1,p.light);
-    r(-2+toe,2,5,1,p.leather);
+    r(-3,-height,6,height+2,p.ink);r(-2,-height+1,4,height-1,p.dark);
+    r(-3+toe,-1,6,4,p.ink);r(-2+toe,-1,4,3,p.base);
+    r(-1,-height+1,3,height-1,p.base);r(-1,-height+1,3,1,p.light);
+    r(-3+toe,2,6,1,p.leather);r(-2+toe,1,4,1,p.trim);
     if(!rear) {r(-1,-3,2,1,p.trim);r(-1,-1,2,1,p.light);}
     if(def.style==='sandals') {r(-1,-4,3,4,'#b98e62');r(-1,-3,3,1,p.dark);r(-1,-1,3,1,p.base);}
     if(def.style==='flame') {r(1,-3,1,3,'#f2b66c');r(0,-2,1,2,p.shine);}
@@ -61,17 +96,29 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
 
 export function fittedShield(c,id,hand,d,blocking,dye) {
   const p=gearPalette(id,dye),style=ITEMS[id]?.style;
-  const r=gearPixels(c,hand), profile=d===2||d===6;
-  const width=profile?3:style==='tower'?5:4;
+  const r=gearPixels(c,hand), profile=d===2||d===6, rear=d>=3&&d<=5;
+  const width=profile?1:(d%2?3:style==='tower'?5:4);
   const height=style==='tower'?7:6;
   for(let y=-height;y<=height;y++) {
-    const taper=style==='round'?Math.floor(Math.abs(y)*Math.abs(y)/15):Math.max(0,y-2);
+    const taper=style==='round'?Math.floor(Math.abs(y)*Math.abs(y)/15):Math.max(0,Math.floor((y-1)/2));
     const half=Math.max(1,width-taper);
     r(-half,y,half*2+1,1,p.ink);
-    if(half>1) {r(-half+1,y,half*2-1,1,p.dark);r(-half+1,y,half,1,p.base);}
+    if(half>1) {
+      r(-half+1,y,half*2-1,1,rear?p.leather:p.dark);
+      r(-half+1,y,Math.max(1,half-1),1,rear?p.dark:p.base);
+      if(!rear)r(-half+1,y,1,1,p.light);
+    } else r(0,y,1,1,p.dark);
+  }
+  if(profile){r(0,-height+1,1,height*2-1,p.light);return;}
+  if(rear){
+    r(-width+1,-3,width*2-1,1,p.dark);r(-width+1,3,width*2-1,1,p.dark);
+    r(-1,-2,3,5,p.ink);r(0,-1,1,3,p.trim);return;
   }
   r(-width+1,-height+2,1,height,blocking?p.shine:p.light);
-  r(0,-height+2,1,height*2-3,p.trim);
+  if(!style||style==='wood') {
+    r(0,-height+2,1,height*2-3,p.dark);
+    r(-width+1,-3,width*2-1,1,p.trim);r(-width+1,3,width*2-1,1,p.trim);
+  } else r(0,-height+2,1,height*2-3,p.trim);
   r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
   if(style==='tower') {r(-2,3,5,1,p.trim);r(-2,-4,5,1,p.trim);}
 }
@@ -147,12 +194,25 @@ export function paintGearIcon(c,id) {
       if(style==='safari') {r(x+1,11,7,2,p.trim);r(x+4,8,1,1,p.shine);}
     }
   } else if(kind==='cape') {
+    if(['tattered','short','pointed'].includes(style)){
+      const length=style==='tattered'?18:9;
+      for(let y=0;y<length;y++){
+        const half=style==='pointed'?Math.max(1,Math.round(5*(1-y/length))):Math.round(4+y/length*3);
+        for(let x=-half;x<half;x++){
+          const cut=style==='tattered'?[0,2,1,4,0,2,1][((x+7)%7+7)%7]:0;
+          if(y>=length-cut)continue;
+          r(12+x,4+y,1,1,y===length-cut-1?p.trim:x<-2?p.light:x>2?p.dark:p.base);
+        }
+      }
+      r(8,4,8,1,p.trim);r(11,4,2,2,p.shine);
+    }else{
     r(8,4,8,4,p.base);r(6,8,12,7,p.base);r(4,15,16,6,p.base);
     r(7,8,2,12,p.light);r(14,8,2,12,p.dark);r(5,20,14,1,p.trim);
     r(8,4,8,1,p.trim);r(11,4,2,2,p.shine);
     if(style==='leaf') {r(10,11,3,1,p.light);r(11,10,1,4,p.light);}
     if(style==='night') {r(11,10,3,5,p.light);r(12,9,3,4,p.base);}
     if(style==='gold') {r(10,11,4,4,p.trim);r(11,12,2,2,p.shine);}
+    }
   } else if(kind==='shield') {
     for(let y=4;y<=21;y++) {
       const half=style==='tower'?7:style==='round'?Math.max(2,Math.floor(Math.sqrt(Math.max(0,81-(y-12)**2)))):Math.max(2,7-Math.max(0,y-12));

@@ -1,7 +1,8 @@
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
+import {drawForestTree,drawBush,treeBase,tickForest,drawPalmTrunk,drawPalmFronds} from './forest.mjs';
 import { emitNoise } from './night-cycle.mjs';
 import { terrainHash } from "./world.mjs";
-export const propBase = (p) => ICE_PROPS.includes(p.kind)?iceBase(p):({
+export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
 });
@@ -12,6 +13,8 @@ export function waterAt(g, x, y) {
   if (tx < 0 || ty < 0 || tx >= 50 || ty >= 50) return "water";
   let base = g.terrain?.[ty * 50 + tx] || "grass";
   if(g.house?.pools){if(g.house.pools.some(p=>x>=p.x&&y>=p.y&&x<p.x+p.w&&y<p.y+p.h))return 'water';if(base==='water')base='grass';}
+  // Derived from terrain so existing saves gain natural muddy shorelines too.
+  if(base==='sand'&&!g.house?.pools&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>tx+dx>=0&&tx+dx<50&&ty+dy>=0&&ty+dy<50&&['water','shallow'].includes(g.terrain?.[(ty+dy)*50+tx+dx])))return 'mud';
   if (g.weather?.type !== "monsoon") return base;
   if (base === "bridge") return "floodbridge";
   if (base === "grass")
@@ -29,7 +32,7 @@ export function waterAt(g, x, y) {
     }
   return base;
 }
-export const isShallow = (type) => type === "shallow" || type === "floodbridge";
+export const isShallow = (type) => type === "shallow" || type === "floodbridge" || type === 'mud';
 export const isQuicksand = (type) => type === "quicksand";
 export function harvest(g, p, damage, range, onHit) {
   const candidates = g.scenery
@@ -101,6 +104,7 @@ export function harvest(g, p, damage, range, onHit) {
   return true;
 }
 export function tickEnvironment(g, dt) {
+  tickForest(g,dt);
   g.footprints ||= [];
   g.environmentParticles ||= [];
   g.footprints = g.footprints.filter((f) => g.time - f.time < 18);
@@ -132,7 +136,7 @@ export function tickEnvironment(g, dt) {
       // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
       s.fallen = true;
       s.falling = 0;
-      s.size = 32;
+      s.rootY = propBase(s).y;
       s.harvest = 0;
     }
   }
@@ -214,7 +218,9 @@ export function drawTracks(c, g) {
     }
   }
 }
-export function drawProp(c, p, time) {
+export function drawProp(c, p, time,game={}) {
+  if(p.procedural&&['tree','snow_tree'].includes(p.kind)){drawForestTree(c,p,time,game);if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/90),3);}return true;}
+  if(p.kind==='bush'){drawBush(c,p,time);return true;}
   if(drawIceProp(c,p,time))return true;
   if (!p.procedural) return false;
   const base = propBase(p),
@@ -277,15 +283,7 @@ export function drawProp(c, p, time) {
       }
     }
   } else if (p.kind === "palm") {
-    r(-4, -44, 8, 44, "#4c3827");
-    r(-2, -43, 3, 42, "#a47644");
-    r(-8, -47, 15, 5, "#315a3c");
-    for (const [x, y, w, h] of [[-30,-54,27,4],[-25,-61,23,4],[5,-59,25,4],[8,-51,29,4],[-10,-66,17,4]]) {
-      r(x, y, w, h, "#3f7a4b");
-      r(x + (x < 0 ? 4 : 0), y + 1, Math.max(3, w - 7), 2, "#77a95c");
-    }
-    const coconuts = Math.max(0, Math.min(3, p.coconuts ?? 0));
-    for (let i = 0; i < coconuts; i++) { r(-5 + i * 5, -42 + (i % 2) * 3, 5, 5, "#6b472d"); r(-4 + i * 5, -42 + (i % 2) * 3, 2, 2, "#a77a48"); }
+    drawPalmTrunk(c,p);drawPalmFronds(c,p,time);
   } else if (p.kind === "cactus") {
     r(-4, -31, 8, 31, "#4f7049");
     r(-12, -21, 8, 5, "#5f8251");

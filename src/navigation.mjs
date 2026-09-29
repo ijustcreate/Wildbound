@@ -1,4 +1,6 @@
 import {rigSubject} from './rig-subjects.mjs';
+import {creatures} from './definitions.mjs';
+import {startJump} from './jumping.mjs';
 export const collisionOffset=(g,e)=>(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
 export const actorRadius=e=>e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
 export const usesDoors=e=>['hunter','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
@@ -7,10 +9,10 @@ export function clearShot(g,a,b,r=2){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.
 export function advanceShot(g,b,dt,r=2){const dx=b.vx*dt,dy=b.vy*dt,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));for(let i=0;i<n;i++){const x=b.x+dx/n,y=b.y+dy/n;if(g.projectileBlocked(x,y,r,true)){b.life=0;return false;}b.x=x;b.y=y;}return true;}
 const caches=new WeakMap(),routes=new WeakMap();
 function gridFor(g,e){
- const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+Math.floor((g.time||0)/2);
+ const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+Math.floor((g.time||0)/2);
  let cache=caches.get(g);if(!cache||cache.house!==g.house||cache.signature!==signature){cache={house:g.house,signature,grids:new Map()};caches.set(g,cache);}
- const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),key=[radius,door,flying].join(':');
- if(!cache.grids.has(key)){const grid=new Uint8Array(2500);for(let y=0;y<50;y++)for(let x=0;x<50;x++)grid[y*50+x]=!g.blocked(x*32+16,y*32+16,radius,flying,false,door,collisionOffset(g,e));cache.grids.set(key,grid);}
+ const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),jump=!!creatures[e.kind]?.behaviors.jump,key=[radius,door,flying,jump].join(':');
+ if(!cache.grids.has(key)){const grid=new Uint8Array(2500);for(let y=0;y<50;y++)for(let x=0;x<50;x++)grid[y*50+x]=!g.blocked(x*32+16,y*32+16,radius,flying,false,door,collisionOffset(g,e),jump?10:0);cache.grids.set(key,grid);}
  return {grid:cache.grids.get(key),signature};
 }
 export function findPath(g,e,target){
@@ -48,6 +50,15 @@ export function navigateEnemy(g,e,target,dt){
    next=e.housePatrol.path[0];if(!next)e.patrolIndex=(e.patrolIndex+1)%points.length;
  }
  if(!next){e.moving=false;return false;}
+ if(creatures[e.kind]?.behaviors.jump&&!e.jumpHeight){
+   for(const pane of g.house?.walls||[]){
+     if(pane.kind!=='window'||!pane.broken)continue;
+     const horizontal=pane.w>pane.h,axis=horizontal?'y':'x',center=pane[axis]+pane[horizontal?'h':'w']/2;
+     const close=Math.hypot(e.x-Math.max(pane.x,Math.min(e.x,pane.x+pane.w)),e.y+collisionOffset(g,e)-Math.max(pane.y,Math.min(e.y+collisionOffset(g,e),pane.y+pane.h)))<42;
+     const onOpening=next[axis]>=pane[axis]-actorRadius(e)&&next[axis]<=pane[axis]+pane[horizontal?'h':'w']+actorRadius(e);
+     if(close&&(onOpening||(next[axis]-center)*(e[axis]-center)<=0)){startJump(e);break;}
+   }
+ }
  if(usesDoors(e))for(const d of g.house?.doors||[])if(!d.open&&Math.hypot(e.x-d.x-d.w/2,e.y+collisionOffset(g,e)-d.y-d.h/2)<56&&Math.hypot(next.x-d.x-d.w/2,next.y+collisionOffset(g,e)-d.y-d.h/2)<68)d.open=true;
  const d=Math.hypot(next.x-e.x,next.y-e.y)||1;e.faceX=(next.x-e.x)/d;e.faceY=(next.y-e.y)/d;e.state='hunt';const step=Math.min(d,e.speed*dt);return g.moveActor(e,e.faceX*step,e.faceY*step,flies(e))>0;
 }

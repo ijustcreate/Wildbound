@@ -87,7 +87,7 @@ export class BoneTools {
     }
   }
   refresh() {
-    const s=this.s,box=this.box,joint=s.model.joints[s.selected],editor=joint.editor||{},pose=s.pose();
+    const s=this.s,box=s.root,joint=s.model.joints[s.selected],editor=joint.editor||{},pose=s.pose();
     const length=joint.parent?Math.hypot(...pose[s.selected].map((v,i)=>v-pose[joint.parent][i])):0;
     const lengthInput=box.querySelector('[data-length]');lengthInput.disabled=!joint.parent;
     if(document.activeElement!==lengthInput)lengthInput.value=length.toFixed(2);

@@ -21,7 +21,7 @@ test("Zoom preserves the point under the cursor, clamps range and does not edit 
   const s = setup(),
     before = JSON.stringify(s.model),
     point = { x: 140, y: 160 },
-    local = [(point.x - 280) / s.scale, (point.y - 315) / s.scale];
+    local = [(point.x - 280 - s.panX) / s.scale, (point.y - 315 - s.panY) / s.scale];
   s.zoomAt(2, point);
   assert.equal((point.x - 280 - s.panX) / s.scale, local[0]);
   assert.equal((point.y - 315 - s.panY) / s.scale, local[1]);
@@ -44,11 +44,11 @@ test("Pan changes only the view and reset restores default framing", () => {
   });
   s.drag({ clientX: 150, clientY: 80 });
   assert.equal(s.panX, 50);
-  assert.equal(s.panY, -20);
+  assert.equal(s.panY, -44);
   assert.equal(JSON.stringify(s.model), before);
   s.command("reset-view");
   assert.equal(s.panX, 0);
-  assert.equal(s.panY, 0);
+  assert.equal(s.panY, -24);
   assert.equal(s.scale, 7);
 });
 test("Joint picking and subpixel dragging stay accurate after zoom and pan", () => {

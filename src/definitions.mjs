@@ -175,6 +175,8 @@ export function creatureDefaults(kind) {
     aiKind: kind,
     rig,
     behaviors: {
+      health: true,
+      loot: false,
       hunt: true,
       jump: ["monkey","lion","tiger","panther"].includes(kind),
       circle: ["lion", "panther", "bat", "wasp", "tsetse", "fire_elemental", "water_elemental"].includes(
@@ -228,6 +230,7 @@ export function creatureDefaults(kind) {
       knockback: 85,
     },
     drops: [],
+    lootDrops: [],
     sounds: { attack: "attack", hurt: "hurt", defeat: "defeat" },
   };
 }
@@ -404,6 +407,8 @@ for (const [name, c] of Object.entries(creatures)) {
 }
 creatures.fire_elemental.dropType = "fire_wand";
 creatures.frost_skeleton_mage.dropType = "ice_wand";
+creatures.fire_elemental.behaviors.loot = true;
+creatures.frost_skeleton_mage.behaviors.loot = true;
 creatures.fire_elemental.stats.dropChance = 1;
 for (const name of ["lion", "crocodile"]) {
   const r = creatures[name].rig;

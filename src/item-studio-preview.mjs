@@ -7,11 +7,12 @@ export class ItemStudioPreview {
   constructor(root,id,items,editFit) {
     this.id=id;this.items=items;this.direction=0;this.frame=0;this.playing=false;this.clip='idle';this.root=root;
     root.className='item-studio-preview';
-    root.innerHTML='<section class="item-character"><h3>ON CHARACTER</h3><canvas width="360" height="300" aria-label="Equipped item on character"></canvas><div class="item-directions"></div><div class="item-playback"><select aria-label="Preview animation"><option>idle</option><option>run</option><option>slash</option><option>block</option></select><button type="button">Play</button><button type="button" data-fit>Edit fit in Rig studio</button></div><p class="item-preview-note"></p></section><section class="item-artwork"><h3>INVENTORY ICON</h3><canvas class="item-icon" width="144" height="144" aria-label="Item inventory icon"></canvas><h3>WORN ARTWORK</h3><p>Actual runtime layers affected by this item in the selected facing. Transparent areas are shown on a checkerboard.</p><div class="item-sprite-list"></div></section>';
+    root.innerHTML='<section class="item-character"><h3>ON CHARACTER</h3><canvas width="360" height="300" aria-label="Equipped item on character"></canvas><div class="item-directions"></div><div class="item-playback"><select aria-label="Preview animation"><option>idle</option><option>run</option><option>slash</option><option>block</option></select><button type="button">Play</button><button type="button" data-fit>Edit fit</button><button type="button" data-art>Edit pixel art</button></div><p class="item-preview-note"></p></section><section class="item-artwork"><h3>INVENTORY ICON</h3><canvas class="item-icon" width="144" height="144" aria-label="Item inventory icon"></canvas><h3>WORN ARTWORK</h3><p>Actual runtime layers affected by this item in the selected facing. Transparent areas are shown on a checkerboard.</p><div class="item-sprite-list"></div></section>';
     DIRECTIONS.forEach((name,d)=>{const b=document.createElement('button');b.textContent=name;b.onclick=()=>{this.direction=d;this.dirty=true;this.animate(0);};root.querySelector('.item-directions').append(b);});
     root.querySelector('select').onchange=e=>{this.clip=e.target.value;this.frame=0;this.dirty=true;this.animate(0);};
     root.querySelector('.item-playback button').onclick=e=>{this.playing=!this.playing;e.target.textContent=this.playing?'Pause':'Play';};
-    root.querySelector('[data-fit]').onclick=()=>editFit(id,this.direction);
+    root.querySelector('[data-fit]').onclick=()=>editFit(id,this.direction,'fit');
+    root.querySelector('[data-art]').onclick=()=>editFit(id,this.direction,'art');
     this.dirty=true;this.animate(0);
   }
   actor(equipped=true) {

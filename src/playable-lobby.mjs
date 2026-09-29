@@ -1,5 +1,6 @@
 import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
+import {drawBowAim} from './bow-aim.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { controllerButtonNames } from './controls.mjs';
@@ -9,6 +10,7 @@ export const LOBBY_OBJECTS = [
   {id:'difficulty',name:'Difficulty totem',x:800,y:190},
   {id:'dice-count',name:'Dice tray',x:800,y:440},
   {id:'board',name:'Closed board',x:510,y:280},
+  {id:'target-lever',name:'Target lever',x:930,y:325},
 ];
 const LOOK_PRESETS = [
   { skin:'#d9ab76', shirt:'#39745b', pants:'#665b87', shoes:'#49372d', hair:'crop', hairColor:'#593923' },
@@ -83,7 +85,7 @@ export class PlayableLobby {
       const o=LOBBY_OBJECTS.find(o=>Math.hypot(o.x-x,o.y-y)<65);
       if(o&&this.state.nearest(p)===o)this.open(p,o.id);
     };
-    for(const o of LOBBY_OBJECTS.filter(o=>o.id!=='board'))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
+    for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
   reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.nodes.clear();this.panels.replaceChildren();}
   sync(){
@@ -93,7 +95,7 @@ export class PlayableLobby {
     const count=players.filter(p=>p.ready).length;
     this.root.querySelector('#party-status').textContent=players.length?`${count} / ${players.length} ready · Walk to an object to interact`:'Press Enter or a controller button to join';
   }
-  open(p,panel){const s=this.state.members.get(p.id);if(!s?.spawned)return;s.panel=panel;s.focus=0;this.renderPanel(p);}
+  open(p,panel){const s=this.state.members.get(p.id);if(!s?.spawned)return;if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}s.panel=panel;s.focus=0;this.renderPanel(p);}
   close(p){const s=this.state.members.get(p.id);s.panel=null;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);}
   available(p){return this.profiles.data.heroes.filter(h=>!this.getGame().players.some(q=>q!==p&&q.profileId===h.id));}
   renderPanel(p){
@@ -241,7 +243,7 @@ export class PlayableLobby {
     for(const p of players){
       const s=this.state.members.get(p.id),input=players.find(q=>q.device===p.device)===p?(inputs[p.device]||{}):{};
       if(!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected){
-        if(input.interact&&!s.held.interact){const o=this.state.nearest(p);if(o)this.open(p,o.id);}
+        if(input.interact&&!s.held.interact){const o=this.state.nearest(p);if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}else if(o)this.open(p,o.id);}
       }else s.moving=false;
       s.held={...input};
     }
@@ -274,6 +276,12 @@ export class PlayableLobby {
     for(let y=65;y<590;y+=42)for(let x=30;x<1000;x+=42){c.fillStyle=((x-30)/42+(y-65)/42)%2?'#686d70':'#62676a';c.fillRect(x,y,40,40);}
     c.fillStyle='#343a3e';c.fillRect(20,55,984,10);c.fillRect(20,590,984,12);
     c.textAlign='center';
+    for(const t of this.practice.targets){
+      c.fillStyle='#3b3832';c.fillRect(t.homeX-65,89,130,5);c.fillStyle='#96958b';c.fillRect(t.homeX-61,90,122,1);
+      c.fillStyle='#74604a';c.fillRect(t.x-3,93,6,19);
+      for(const [radius,color] of [[23,'#8d744a'],[20,'#dbca99'],[16,'#e5e1ca'],[12,'#36464c'],[9,'#598ea6'],[6,'#bf5948'],[3,'#e8bf52']]){c.fillStyle=t.flash>0&&radius===23?'#fff5b2':color;c.beginPath();c.arc(t.x,t.y-18,radius,0,Math.PI*2);c.fill();}
+      c.fillStyle='#ede7d6';c.font='10px system-ui';c.fillText(t.hits+' hits · '+t.score+' pts',t.homeX,153);
+    }
     for(const o of LOBBY_OBJECTS){
       c.fillStyle='#42474a';c.beginPath();c.ellipse(o.x,o.y+12,58,18,0,0,Math.PI*2);c.fill();
       if(o.id==='environment'){
@@ -284,18 +292,21 @@ export class PlayableLobby {
         this.drawDifficulty(c,document.getElementById('difficulty').value,o.x-28,o.y-147,56);
       }else if(o.id==='dice-count'){
         c.fillStyle='#785a46';c.fillRect(o.x-43,o.y-34,86,47);for(const x of lobbyDiceOffsets(document.getElementById('dice-count').value)){c.fillStyle='#ede5cc';c.fillRect(o.x+x,o.y-25,24,24);c.fillStyle='#333';c.fillRect(o.x+x+5,o.y-20,4,4);c.fillRect(o.x+x+15,o.y-10,4,4);}
+      }else if(o.id==='target-lever'){
+        c.fillStyle='#574a38';c.fillRect(o.x-15,o.y-12,30,18);c.strokeStyle='#c0b497';c.lineWidth=5;c.beginPath();c.moveTo(o.x,o.y);c.lineTo(o.x+(this.practice.targetsMoving?10:-10),o.y-29);c.stroke();c.fillStyle=this.practice.targetsMoving?'#8dc99a':'#b66b4e';c.fillRect(o.x+(this.practice.targetsMoving?5:-15),o.y-34,11,9);
       }else{
         c.fillStyle='#523c2b';c.fillRect(o.x-60,o.y-37,120,57);c.fillStyle='#9b7041';c.fillRect(o.x-56,o.y-40,112,48);c.strokeStyle='#d6b569';c.lineWidth=2;c.strokeRect(o.x-49,o.y-34,98,36);c.fillStyle='#2f3d2b';c.font='bold 15px Georgia';c.fillText('WILDBOUND',o.x,o.y-11);c.fillStyle='#e2bf6c';c.fillRect(o.x-6,o.y+6,12,8);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';c.fillText(o.name,o.x,o.y+44);
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';c.fillText(document.getElementById(o.id).selectedOptions[0].text,o.x,o.y+61);}
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';c.fillText(o.id==='target-lever'?(this.practice.targetsMoving?'Moving · pull to stop':'Stopped · pull to move'):document.getElementById(o.id).selectedOptions[0].text,o.x,o.y+61);}
     }
     this.drawPractice(c);
     for(const p of [...this.getGame().players].sort((a,b)=>this.state.members.get(a.id).y-this.state.members.get(b.id).y)){
       const s=this.state.members.get(p.id);if(!s.spawned)continue;
-      c.fillStyle='#41474b';c.beginPath();c.ellipse(s.x,s.y+4,20,7,0,0,Math.PI*2);c.fill();
       const actor=this.practice.players.find(a=>a.id===p.id)||{...p,...s};
-      c.save();c.translate(s.x,s.y-(actor.jumpHeight||0));c.scale(2,2);drawPlayer(c,actor,this.practice.time);c.restore();
+      c.fillStyle='#41474b';c.beginPath();c.ellipse(s.x,s.y-(actor.groundHeight||0)+4,20,7,0,0,Math.PI*2);c.fill();
+      c.save();c.translate(s.x,s.y-(actor.jumpHeight||0)-(actor.groundHeight||0));c.scale(2,2);drawPlayer(c,actor,this.practice.time);c.restore();
+      drawBowAim(c,actor,2);
       c.font='13px system-ui';c.fillStyle=p.ready?'#a8f4c9':p.color;c.fillText((p.ready?'✓ ':'')+p.name+(p.lobbyDisconnected?' · disconnected':''),s.x,s.y+27);
       const o=this.state.nearest(p);if(o&&!s.panel){const interact=p.device==='keyboard'?'E':controllerButtonNames(p.controllerFamily||'generic')[3];c.fillStyle='#182326';c.fillRect(s.x-69,s.y-95,138,24);c.fillStyle='#fff';c.font='12px system-ui';c.fillText(interact+' · '+o.name,s.x,s.y-79);}
     }

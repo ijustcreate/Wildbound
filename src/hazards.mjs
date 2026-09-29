@@ -146,10 +146,12 @@ export function tickHazards(g, dt) {
     if(!advanceShot(g,b,dt,3))continue;
     b.life -= dt;
     b.trail -= dt;
+    const cold=!!(b.ice||b.water);
     if (b.trail <= 0) {
-      firePatch(g, b.x, b.y, 2, b.burnDamage);
+      if(!cold)firePatch(g, b.x, b.y, 2, b.burnDamage);
       b.trail = 0.14;
-      g.fireParticles.push({ x: b.x, y: b.y, life: 0.5, smoke: false });
+      if(cold)g.effects.push({x:b.x,y:b.y,life:.35,radius:5,color:'#a7edff'});
+      else g.fireParticles.push({ x: b.x, y: b.y, life: 0.5, smoke: false });
     }
     for (const p of g.players)
       if (
@@ -160,12 +162,12 @@ export function tickHazards(g, dt) {
       ) {
         if (!g.shieldBlocks(p, b) && p.invuln <= 0) {
           g.hurt(p, b.damage, b);
-          ignite(p, 2, b.burnDamage);
+          if(!cold)ignite(p, 2, b.burnDamage);
         }
         b.life = 0;
       }
     if (b.life > 0 && g.projectileBlocked(b.x, b.y, 5,true)) {
-      firePatch(g, b.x, b.y, 2, b.burnDamage);
+      if(!cold)firePatch(g, b.x, b.y, 2, b.burnDamage);
       b.life = 0;
     }
   }
@@ -365,6 +367,11 @@ export function drawHazards(ctx, g) {
     ctx.fillRect(f.x + 12, f.y + 8, 5, 9);
   }
   for (const b of g.fireballs || []) {
+    if(b.ice||b.water){
+      ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));
+      ctx.fillStyle='#6fcce9';ctx.beginPath();ctx.moveTo(10,0);ctx.lineTo(-3,-5);ctx.lineTo(-8,0);ctx.lineTo(-3,5);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#e4fcff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(7,0);ctx.stroke();ctx.restore();continue;
+    }
     ctx.fillStyle = "#ff512c";
     ctx.beginPath();
     ctx.arc(b.x, b.y, 8, 0, Math.PI * 2);

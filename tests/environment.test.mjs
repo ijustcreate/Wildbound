@@ -34,13 +34,13 @@ test("Monsoon expands water exactly one tile and submerges bridges without chang
   assert.equal(waterAt(g, 12 * 32 + 16, 10 * 32 + 16), "grass");
   assert.equal(waterAt(g, 10 * 32 + 16, 11 * 32 + 16), "bridge");
 });
-test("Shallow water slows walking; deep water blocks walkers but not flying creatures", () => {
+test("Shallow water slows walking; players swim in deep water while flyers pass freely", () => {
   const { g, p } = setup();
   g.terrain[12 * 50 + 12] = "shallow";
   assert.ok(Math.abs(g.moveActor(p, 10, 0) - 5.5) < 0.01);
   p.x = 400;
   g.terrain[12 * 50 + 12] = "water";
-  assert.equal(g.moveActor(p, 10, 0), 0);
+  assert.ok(Math.abs(g.moveActor(p, 10, 0)-5.8)<.01);
   assert.equal(g.moveActor(p, 10, 0, true), 10);
 });
 test("Harvest respects facing, drops sticks then logs, removes footprint and persists depletion", () => {

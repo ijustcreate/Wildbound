@@ -28,6 +28,7 @@ export const contains=(r,x,y)=>x>=r.x&&y>=r.y&&x<r.x+r.w&&y<r.y+r.h;
 export const LOW_FURNITURE={bed:12,table:16,desk:16,sofa:10,chair:8,bench:8,counter:16};
 export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
 export function upgradeHouseFeatures(h){
+ for(const p of h.pools||[])p.waterType='pool';
  for(const f of h.furniture||[])if(LOW_FURNITURE[f.kind]&&f.jumpable===undefined){f.jumpable=true;f.surfaceHeight=LOW_FURNITURE[f.kind];}
  if(h.featuresVersion>=1)return h;
  h.featuresVersion=1;

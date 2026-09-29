@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game,EVENTS} from '../src/core.mjs';
 import {playerMotion,defaultPlayerMotion,upgradePlayerMotion,validatePlayerMotion,wandTipWorld,directionVector,playerAction,poseAt} from '../src/player-motion.mjs';
-import {combos,saveCombos,nextCombo,DEFAULT_COMBOS} from '../src/combat-combos.mjs';
+import {combos,saveCombos,nextCombo,DEFAULT_COMBOS,loadoutKind} from '../src/combat-combos.mjs';
 import {startJump,tickJump} from '../src/jumping.mjs';
 import {creatures} from '../src/definitions.mjs';
 import {cleanInput} from '../src/rooms.mjs';
@@ -13,6 +13,16 @@ test('dual wand spells originate at their own animated tip in all eight directio
   for(const bolt of g.spells){const tip=wandTipWorld(p,bolt.slot,g.time);assert.equal(bolt.x,tip.x);assert.equal(bolt.y-16,tip.y);assert.equal(bolt.age,0);}
   assert.notDeepEqual([g.spells[0].x,g.spells[0].y],[g.spells[1].x,g.spells[1].y]);
  }
+});
+test('combo loadout profiles distinguish supported hand combinations',()=>{
+ for(const [equipment,kind] of [
+  [{},'unarmed'],[{hand1:'dagger'},'dagger'],[{hand1:'sword'},'sword'],
+  [{hand1:'dagger',hand2:'shield'},'dagger_shield'],[{hand1:'sword',hand2:'shield'},'sword_shield'],
+  [{hand1:'dagger',hand2:'dagger'},'dual_dagger'],[{hand1:'sword',hand2:'sword'},'dual_sword'],
+  [{hand1:'dagger',hand2:'sword'},'dagger_sword'],[{hand1:'wand'},'wand'],
+  [{hand1:'wand',hand2:'wand'},'dual_wand'],[{hand1:'dagger',hand2:'wand'},'dagger_wand'],
+  [{hand1:'sword',hand2:'wand'},'sword_wand'],
+ ]) assert.equal(loadoutKind({equipment}),kind);
 });
 test('wand origin follows fit, rotation, scaling and jump height',()=>{
  const {p}=setup();p.equipment.hand1='wand';p.attack=.34;p.attackClip='cast';const m=defaultPlayerMotion(),plain=wandTipWorld(p,'hand1',0,m);

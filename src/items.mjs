@@ -337,6 +337,9 @@ export const RARITIES = {
   legendary: "#ffad4f",
 };
 const gearVariants = [
+  ['tattered_cape','Wayfarer’s tattered cape','cape','rare','#aa6855',{armor:4},'tattered'],
+  ['short_cape','Scout’s half cape','cape','common','#579f91',{armor:2},'short'],
+  ['pointed_cape','Swiftwing pointed cape','cape','rare','#597fac',{armor:4},'pointed'],
   [
     "cinder_wand",
     "Cinder wand",

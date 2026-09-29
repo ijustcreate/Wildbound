@@ -1,4 +1,6 @@
 import {drawFurniture,drawWindow} from './house-render.mjs';
+import {boardTableBlocked} from './board-table.mjs';
+import {drawWaterSurface} from './water-surface.mjs';
 import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
 export const ENVIRONMENTS=['forest','desert','ice','house','temple'];
@@ -6,11 +8,12 @@ export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Ma
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
 export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false){
- return [...(g.house?.walls||[]).filter(w=>!projectile||w.kind!=='window'||!w.broken),...(g.house?.doors||[]).filter(d=>!d.open&&!canOpenDoors),...(g.house?.furniture||[]).filter(f=>!['rug','plant'].includes(f.kind)&&!(furnitureHeight(f)>0&&elevation>=furnitureHeight(f)))].some(b=>Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y+footOffset-Math.max(b.y,Math.min(y+footOffset,b.y+b.h)))<r);
+ if(!projectile&&boardTableBlocked(g,x,y,r,elevation))return true;
+ return [...(g.house?.walls||[]).filter(w=>!(w.kind==='window'&&w.broken&&(projectile||elevation>=10))),...(g.house?.doors||[]).filter(d=>!d.open&&!canOpenDoors),...(g.house?.furniture||[]).filter(f=>!['rug','plant'].includes(f.kind)&&!(furnitureHeight(f)>0&&elevation>=furnitureHeight(f)))].some(b=>Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y+footOffset-Math.max(b.y,Math.min(y+footOffset,b.y+b.h)))<r);
 }
 export function breakWindow(g,x,y,r=1){
  const pane=g.house?.walls.find(w=>w.kind==='window'&&!w.broken&&Math.hypot(x-Math.max(w.x,Math.min(x,w.x+w.w)),y-Math.max(w.y,Math.min(y,w.y+w.h)))<r);
- if(!pane)return false;pane.broken=true;g.onSound?.('hit',{x,y});g.message?.('Glass shattered. You can shoot through the window.');return true;
+ if(!pane)return false;pane.broken=true;g.onSound?.('hit',{x,y});g.message?.('Glass shattered. Shoot or jump through the opening.');return true;
 }
 export function toggleDoor(g,p){
   const d=g.house?.doors.find(d=>Math.hypot(p.x-d.x-d.w/2,p.y-d.y-d.h/2)<64);
@@ -116,7 +119,7 @@ export function drawExpansion(c,g){
   }
   if(!g.house)return;
   for(const r of g.house.rooms){c.fillStyle='#e5d8bc70';c.font='10px sans-serif';c.textAlign='center';c.fillText(r.name,r.x,r.y);}
-  for(const p of g.house.pools||[]){c.fillStyle='#286b82';c.fillRect(p.x,p.y,p.w,p.h);c.save();c.beginPath();c.rect(p.x,p.y,p.w,p.h);c.clip();c.strokeStyle='#76b9cd60';c.lineWidth=1;for(let y=p.y+12;y<p.y+p.h;y+=18){c.beginPath();c.moveTo(p.x+5,y);c.lineTo(p.x+p.w-5,y+Math.sin(g.time+y)*3);c.stroke();}c.restore();c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);}
+  for(const p of g.house.pools||[]){drawWaterSurface(c,g,p.x,p.y,p.w,p.h);c.strokeStyle='#bcece488';c.lineWidth=2;c.strokeRect(p.x+5,p.y+5,p.w-10,p.h-10);c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);}
   for(const f of g.house.furniture||[]){drawFurniture(c,f);if(furnitureHeight(f)&&g.players.some(p=>!p.room&&Math.hypot(p.x-f.x-f.w/2,p.y-f.y-f.h/2)<90)){c.fillStyle='#e7edce';c.font='9px sans-serif';c.textAlign='center';c.fillText('Jumpable · '+f.kind,f.x+f.w/2,f.y-7);}}
   for(const b of g.house.walls){if(b.kind==='window'){drawWindow(c,b);continue;}if(b.kind==='fence'){c.fillStyle='#876c49';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#b99a6a';for(let n=0;n<Math.max(b.w,b.h);n+=24)c.fillRect(b.x+(b.w>b.h?n:0),b.y+(b.h>b.w?n:0),12,20);continue;}c.fillStyle='#252d34';c.fillRect(b.x,b.y+5,b.w,b.h+8);c.fillStyle='#a9b6b4';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#d8d8c4';c.fillRect(b.x,b.y,b.w,3);}
   for(const d of g.house.doors){c.fillStyle=d.open?'#a1bb83':'#90643c';const horizontal=d.w>d.h;c.fillRect(d.x,d.y,d.open?(horizontal?7:48):d.w,d.open?(horizontal?48:7):d.h);c.fillStyle='#f3d58a';c.fillRect(d.x+(d.open?2:Math.max(3,d.w-10)),d.y+4,3,3);

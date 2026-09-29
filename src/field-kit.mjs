@@ -623,18 +623,6 @@ export class FieldKit {
       },
     );
     this.select(
-      "Relic display",
-      [
-        ["show", "Belt accessories"],
-        ["hide", "Hidden"],
-      ],
-      f.cosmetics.hideRelics ? "hide" : "show",
-      (v) => {
-        f.cosmetics.hideRelics = v === "hide";
-        g.persist();
-      },
-    );
-    this.select(
       "Stowed weapons",
       [
         ["off", "Always in hand"],

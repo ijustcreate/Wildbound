@@ -256,6 +256,8 @@ test("Enemies can navigate around the table", () => {
   const e = g.enemies[0];
   e.x = CENTER;
   e.y = CENTER - 110;
-  tick(g, 5);
-  assert.ok(e.y > CENTER + 60);
+  let reached=false;
+  for(let i=0;i<100;i++){g.update(.05);if(e.y>CENTER+60)reached=true;}
+  // A shorter detour can reach the player and start fleeing before five seconds.
+  assert.ok(reached);
 });

@@ -105,6 +105,7 @@ app.whenReady().then(async () => {
       offscreen: process.argv.includes("--smoke-test"),
     },
   });
+  window.setMenuBarVisibility(false);
   const rendererLog = path.join(app.getPath("temp"), "wildbound-renderer.log");
   window.webContents.on("console-message", (_event, level, message, line, source) => {
     try { fs.appendFileSync(rendererLog, `[${new Date().toISOString()}] ${level} ${source}:${line} ${message}\n`); } catch {}

@@ -1,3 +1,90 @@
+## 1.0.19 — Consolidated test build
+
+- Package all current gameplay, art, animation and editor changes for a fresh test build.
+- Include current player/gear art exports, restrained projectile aim assistance, and recent editor/UI refinements.
+- Update the desktop launcher and release metadata; preserve older builds and saves.
+
+## 1.0.18 — Practice range, tabletop jumping and desert hazards
+
+- Add solid, jumpable lobby tables, a solid totem, and three scored archery targets with a movement toggle lever.
+- Hold left trigger to block with shields or anchor bow aiming with a short direction guide; preserve attack charge/release.
+- Resize the open board table to two tiles wide and support jumping, landing and elevated contact shadows.
+- Clip quicksand immersion through full submersion; movement and jumping raise the player, with shared underwater breath rules.
+- Replace scattered quicksand with four large irregular patches on newly generated deserts.
+- Add modular curved palm trunks and wind-swaying fronds, plus walkable brown muddy shorelines on natural sand-water borders.
+
+## 1.0.17 — Layered procedural forest and shoulder-pinned capes
+
+- Preserve tree root coordinates and scale after felling so stumps no longer jump upward.
+- Build oak, birch and pine from separate procedural trunk, branch and foliage layers with seeded height, width, lean and branching variation.
+- Add tree shadows, sparse falling leaves, reactive ground litter, and pass-through rustling bushes.
+- Decorate natural forest waterways with reeds and lily pads; explicitly mark pools and exclude aquatic vegetation.
+- Add Forest editor season and evergreen/deciduous controls, plus per-tree type/habit overrides in House Builder.
+- Anchor capes to both animated shoulder joints and propagate flutter through the upper fabric instead of hinging at the hips.
+
+## 1.0.16 — Grounded bodies, cold projectiles and planted arrows
+
+- Remove arbitrary corpse rotation; use settled, horizontally projected floor poses with jump height cleared.
+- Blue elemental projectiles render as ice shards and no longer create flames or apply burning, including existing water-tagged shots.
+- Embedded ground arrows have buried tips, raised fletching and small contact shadows instead of hovering horizontally.
+
+## 1.0.15 — Higher cape flutter and three silhouettes
+
+- Increase cape hem lift, trailing motion and flutter, with stronger movement/dash/jump response.
+- Add Wayfarer’s tattered cape (long, torn hem), Scout’s half cape, and Swiftwing pointed cape.
+- Give each new cape a matching inventory icon and include it in the equipment catalog and rarity-based loot pool.
+
+## 1.0.14 — Swimming, diving and living water
+
+- Walk or jump into deep water. Surface swimming uses a shoulder-depth cutout and a breaststroke animation; jump launches back out.
+- Hold attack to dive and release to float up. Depth changes the underwater silhouette; bubbles and swimming wakes use the particle engine.
+- Air lasts 20 seconds underwater, then drowning costs 25% maximum health each second. Air rapidly refills at the surface and the meter fades out.
+- Add animated WebGL water with layered noise, highlights and ripples, plus a Canvas fallback. See THIRD_PARTY_WATER.md for MIT attribution.
+- Upgrade only the untouched original swim clip; custom animation edits are preserved.
+
+## 1.0.13 — IK workflow, cloth and surface contact
+
+- Add opt-in two-bone IK constraints, endpoint posing, keyed targets and runtime length preservation.
+- Organize the rig browser into Rig, Clips, IK and Order; add collapsible hierarchy, cyan IK handles and Setup/Animate separation.
+- Add lightweight procedural cape waves, trailing/lifting hems and curved folds.
+- Place contact shadows and selection rings on elevated supports; soften shadows with jump separation.
+- Allow jumping through shattered windows. Jump-capable enemies plan routes and leap across openings in either direction.
+- Document the workflow and remaining reference-feature gaps in RIG_WORKFLOW.md.
+
+## 1.0.12 — Boots follow the legs
+
+- Boots and base shoes pivot around the ankle using the projected knee-to-ankle angle.
+- Keep procedural boot pixels crisp during rotation and preserve custom wearable fitting and foot-joint rotation.
+- Check boot cuffs through idle/run poses and render a 32-frame running contact sheet.
+
+## 1.0.11 — Held equipment and clean silhouettes
+
+- Give held items independent hand-depth sorting instead of bundling them into the arm layer.
+- Refine shield profiles and rear straps, wand heads and facing angles, sword guards/grips, and bow orientation.
+- Keep wand spell origins aligned with the new directional tips.
+- Remove worn relic artwork and its obsolete display selector; inventory and relic effects are unchanged.
+
+## 1.0.10 — Character polish and full-width editing
+
+- Fill the rig stage with an editable grey grid; zoom, pan and picking use the full canvas width.
+- Refine cropped hair, rolled sleeves, hands, trouser seams, boot soles and directional arm layering.
+- Settings now show only the selected tab, with independent content and reset scroll position.
+- Preview level music by hovering or focusing a track. Duck lobby music during preview and restore it when closing the picker, changing tabs or leaving settings.
+
+## 1.0.9 — Focused rig inspector
+
+- Split the right inspector into Joint, Sprites, Properties and Equipment tabs with keyboard navigation.
+- Keep tabs and the selected bone visible while only the selected section scrolls.
+- Move the duplicate preview out of view and compact equipment slots; put absolute coordinates behind a disclosure.
+
+## 1.0.8 — Sprite resolution and equipment rendering polish
+
+- Arms now layer correctly over the torso in front-facing views while remaining behind the body from the rear.
+- Reworked gloves with stronger outlines, cuffs, palms, finger highlights and directional thumb shapes.
+- Corrected boot sole/toe anchoring so boots follow animated ankles and side-facing feet.
+- Upgraded the main world canvas to a 2× nearest-neighbor backing resolution for sharper pixel sprites without changing world scale.
+- Added regression coverage for glove readability and boot anchoring.
+
 ## 1.0.7 — Studio tools, event chains and settings polish
 
 - Added new studio tooling for bone editing, gear artwork and item previews, with expanded character customization support.

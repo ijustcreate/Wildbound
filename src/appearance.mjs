@@ -297,6 +297,24 @@ export function drawHair(c, h, appearance, direction) {
   // The part shifts with facing; the rear has a full crown rather than a face.
   const profile = direction === 2 || direction === 6;
   const flip = direction >= 5 ? -1 : 1;
+  if (style === 'crop') {
+    // A close, swept cut with a smaller crown and direction-aware sideburns.
+    r(-3,-7,6,1,ink);r(-5,-6,9,3,ink);r(-6,-4,11,2,ink);
+    r(-3,-6,6,1,dark);r(-4,-5,8,2,base);r(-5,-3,9,1,base);
+    r(-3,-5,3,1,light);r(-4,-4,3,1,light);r(0,-4,3,1,dark);
+    r(2,-3,2,2,dark);
+    if(back){
+      r(-5,-2,10,4,ink);r(-4,-2,8,3,base);
+      r(-3,-2,3,1,light);r(2,-1,2,3,dark);r(-3,2,6,1,dark);
+    }else if(profile){
+      const rear=direction===2?3:-5;
+      r(rear,-2,2,4,ink);r(rear,-2,1,3,base);
+    }else{
+      r(-5,-2,1,3,dark);r(4,-2,1,2,dark);
+      r(-3,-2,3,1,base);r(-3,-1,1,1,dark);
+    }
+    return;
+  }
   r(-4, -8, 8, 1, ink);
   r(-6, -7, 11, 3, ink);
   r(profile ? (flip === 1 ? -2 : -6) : -7, -4, profile ? 8 : 13, 3, ink);

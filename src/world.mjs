@@ -2,12 +2,13 @@ import {templeLayout} from './temple.mjs';
 import {iceWorld} from './ice-world.mjs';
 import {contains} from './house-design.mjs';
 import {makeHouse,insideHouse} from './expansion.mjs';
+import {BOARD_TABLE} from './board-table.mjs';
 // Matches the visible board footprint (including the lower carved rim).
 export const TABLE = {
   // Keep the physical board aligned with the reduced board art in render.mjs.
-  halfWidth: 62,
-  halfHeight: 36,
-  footOffset: 8,
+  halfWidth: BOARD_TABLE.w/2,
+  halfHeight: BOARD_TABLE.h/2,
+  footOffset: 0,
   attackRadius: 40,
 };
 export function crossesTable(a, b) {
@@ -40,7 +41,7 @@ export function createScenery(seed = 0, environment = "forest") {
           y: y * 32 + 16,
           kind: environment === "desert"
             ? r > 0.975 ? "palm" : r > 0.965 ? "cactus" : r > 0.935 ? "rock" : "dune"
-            : r > 0.975 ? "tree" : r > 0.954 ? "rock" : r > 0.931 ? "fern" : "flower",
+            : r > 0.975 ? "tree" : r > 0.954 ? "rock" : r > 0.942 ? "bush" : r > 0.931 ? "fern" : "flower",
           size:
             r > 0.975
               ? 78 + Math.floor(terrainHash(y, x) * 48)
@@ -76,9 +77,9 @@ export function generateWorld(seed, environment = "forest") {
   }
   if (environment === "desert") {
     terrain.fill("sand");
+    const patches=[[9,31],[29,10],[39,22],[29,41]].map(([x,y],i)=>({x:x+(terrainHash(seed,i)-.5)*4,y:y+(terrainHash(i,seed)-.5)*4,rx:3.3+terrainHash(seed+i,4)*1.6,ry:2.8+terrainHash(8,seed+i)*1.5,phase:terrainHash(seed,i+19)*6.28}));
     for (let y = 0; y < 50; y++) for (let x = 0; x < 50; x++) {
-      const r = terrainHash(x + seed * 0.07, y - seed * 0.11);
-      if (r > 0.84 && Math.hypot(x - 25, y - 25) > 7) terrain[y * 50 + x] = "quicksand";
+      if(Math.hypot(x-25,y-25)>7&&patches.some(p=>{const dx=(x-p.x)/p.rx,dy=(y-p.y)/p.ry,a=Math.atan2(dy,dx);return Math.hypot(dx,dy)<1+.12*Math.sin(a*3+p.phase)+.06*Math.cos(a*5-p.phase);}))terrain[y*50+x]='quicksand';
       if (Math.hypot(x - 13, y - 14) < 3.2 || Math.hypot(x - 37, y - 34) < 2.6) terrain[y * 50 + x] = "shallow";
     }
     return { terrain, house:null, webs:[], scenery: createScenery(seed, environment).filter((p) => terrain[Math.floor(p.y / 32) * 50 + Math.floor(p.x / 32)] === "sand") };
@@ -142,6 +143,7 @@ export function ensureFootprint(sprite, name) {
   return sprite;
 }
 export function propDepth(prop, sprite) {
+  if(prop.procedural&&['tree','snow_tree'].includes(prop.kind))return prop.rootY??prop.y+prop.size*.35;
   const mask = sprite?.footprint;
   if (!mask?.some(Boolean)) return prop.y + prop.size * 0.4;
   let bottom = 0;

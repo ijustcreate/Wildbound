@@ -181,6 +181,18 @@ test("Arrows consume ammunition and grounded shafts become loot", () => {
   assert.ok(g.loot.some((l) => l.type === "arrow"));
   assert.equal(g.arrows.length, 0);
 });
+test("Projectile aim assist stays within four degrees of player aim", () => {
+  const { g, p } = setup();
+  give(p.inventory, "arrow", 1);
+  p.faceX = 1;
+  p.faceY = 0;
+  g.projectileBlocked = () => false;
+  g.enemies = [{ id: 7, x: p.x + 100, y: p.y + 50, hp: 100, room: null }];
+  g.fireArrow(p, 0);
+  const shot = g.arrows[0];
+  const angle = Math.abs(Math.atan2(shot.vy, shot.vx) * 180 / Math.PI);
+  assert.ok(angle <= 4.000001, `aim correction was ${angle} degrees`);
+});
 test("Embedded arrows transfer to enemy loot on death", () => {
   const { g, p } = setup();
   const e = { id: 55, x: 450, y: 400, kind: "skeleton" };

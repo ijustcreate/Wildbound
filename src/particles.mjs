@@ -1,6 +1,9 @@
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
 export const DEFAULT_EFFECTS={
+  splash:{name:'Water entry splash',count:24,life:.8,speedX:0,speedY:-32,spread:28,gravity:95,size:3,orbit:7,shape:'square',blend:'source-over',start:'#e3fffa',end:'#4da8c1'},
+  bubbles:{name:'Diving bubbles',count:7,life:.65,speedX:0,speedY:-12,spread:12,gravity:0,size:2,orbit:3,shape:'square',blend:'source-over',start:'#dbfff9',end:'#6ab8ce'},
+  'swim-wake':{name:'Swimming wake',count:10,life:.65,speedX:0,speedY:2,spread:20,gravity:0,size:2,orbit:8,shape:'square',blend:'source-over',start:'#b5f4e9',end:'#3c91a7'},
   torch:{name:'Temple torch fire',count:44,life:1.1,speedX:0,speedY:-25,spread:7,gravity:-9,size:4,orbit:0,shape:'square',blend:'lighter',start:'#fff0a3',end:'#e74c21'},
   rain:{name:'Rain study (preview only)',count:160,life:.8,speedX:-28,speedY:230,spread:500,gravity:0,size:1,orbit:0,shape:'streak',blend:'source-over',start:'#abcbd8',end:'#608fa8'},
   knockout:{name:'Knocked-out stars',count:7,life:2,speedX:0,speedY:-12,spread:3,gravity:0,size:3,orbit:15,shape:'star',blend:'source-over',start:'#fff5ba',end:'#d6ad5b'},
@@ -22,9 +25,9 @@ export function particleSamples(effect,time,seed=0){
 }
 export function drawParticleEffect(c,id,x,y,time,seed=0){
  const effect=typeof id==='string'?effects[id]:id;if(!effect)return;
- const a=rgb(effect.start),b=rgb(effect.end);c.save();c.translate(x,y);c.globalCompositeOperation=effect.blend;
+ const a=rgb(effect.start),b=rgb(effect.end),alpha=c.globalAlpha??1;c.save();c.translate(x,y);c.globalCompositeOperation=effect.blend;
  for(const p of particleSamples(effect,time,seed)){
-  c.globalAlpha=p.alpha;c.fillStyle=`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*p.u)).join(',')})`;
+  c.globalAlpha=p.alpha*alpha;c.fillStyle=`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*p.u)).join(',')})`;
   const x=Math.round(p.x),y=Math.round(p.y),s=Math.max(1,Math.round(p.size));
   if(effect.shape==='star'){c.fillRect(x-s,y,s*2+1,1);c.fillRect(x,y-s,1,s*2+1);}
   else if(effect.shape==='streak'){for(let k=0;k<7;k++)c.fillRect(x+Math.round(k*effect.speedX/Math.max(1,Math.abs(effect.speedY))),y+k*2,s,2);}

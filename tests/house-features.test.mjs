@@ -22,13 +22,14 @@ test('Jump lands on table, stays supported, then falls when walking off; tall wa
  g.moveActor(p,90,0);for(let i=0;i<50;i++)tickJump(p,.02,g,0);assert.equal(p.groundHeight,0);
  g.house.walls=[{x:430,y:280,w:16,h:120}];p.jumpHeight=25;g.moveActor(p,70,0);assert.ok(p.x<430);
 });
-test('First shot breaks glass and is consumed; subsequent shots pass but actors cannot',()=>{
+test('First shot breaks glass; subsequent shots and elevated jumps pass but walking cannot',()=>{
  const g=setup();g.house={walls:[{kind:'window',x:400,y:200,w:16,h:120}],doors:[],furniture:[],pools:[]};
  const pane=g.house.walls[0];assert.equal(clearShot(g,{x:350,y:250},{x:450,y:250},2),false);assert.ok(!pane.broken);
  const shot=()=>({x:350,y:250,vx:2000,vy:0,life:2});
  const a=shot();assert.equal(advanceShot(g,a,.05,2),false);assert.equal(a.life,0);assert.equal(pane.broken,true);
  assert.equal(advanceShot(g,shot(),.05,2),true);
- assert.equal(g.blocked(408,250,8,false,false,false,0,30),true);
+ assert.equal(g.blocked(408,250,8,false,false,false,0,30),false);
+ assert.equal(g.blocked(408,250,8,false,false,false,0,0),true);
 });
 test('Broken panes survive session restore and do not count as house architecture edits',()=>{
  const g=setup();g.house.walls.find(w=>w.kind==='window').broken=true;

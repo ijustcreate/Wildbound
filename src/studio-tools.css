@@ -1,4 +1,23 @@
 /* Rig: hierarchy / canvas / inspector, with transport always below the stage. */
+.designer-dialog .ps-mode-label { position:absolute;left:12px;top:52px;color:#86e4ef;font-size:11px;font-weight:bold;pointer-events:none; }
+.designer-dialog .ps-browser-tabs { display:grid;grid-template-columns:repeat(4,1fr);gap:3px;position:sticky;top:0;background:#182c30;z-index:2;padding-bottom:8px; }
+.designer-dialog .ps-browser-tabs button { padding:6px 2px;font-size:11px; }
+.designer-dialog .ps-hierarchy > [hidden] { display:none !important; }
+.designer-dialog .ps-hierarchy > .ps-animation-list .ps-animation-buttons { max-height:none; }
+.designer-dialog .ps-animation-buttons { max-height:115px;overflow:auto;display:grid;grid-template-columns:1fr;gap:2px;margin:6px 0; }
+.designer-dialog .ps-animation-buttons button,.designer-dialog .ps-ik-list button { text-align:left;width:100%;padding:5px 8px; }
+.designer-dialog .ps-hierarchy details { border:0;background:transparent;margin:5px 0; }
+.designer-dialog .ps-hierarchy summary { cursor:pointer;font-size:11px;font-weight:bold;color:#aebdc8;padding:5px 0; }
+.designer-dialog .ps-tree-branch { padding-left:9px;border-left:1px solid #42515b !important; }
+.designer-dialog .ps-tree-branch > summary { padding:0; }
+.designer-dialog .ps-tree-branch > summary button { display:inline-block;width:calc(100% - 18px); }
+.designer-dialog .ps-tree-branch > button { margin-left:8px;width:calc(100% - 8px); }
+.designer-dialog .ps-constraints { border-top:1px solid #42515b !important;padding-top:6px; }
+.designer-dialog .ps-constraints p { font-size:10px;line-height:1.5;color:#aebdc8; }
+.designer-dialog .ps-constraints > button { width:100%;padding:6px;margin-bottom:4px; }
+.designer-dialog .player-studio button.active { background:#276c89;border-color:#69d9ee;color:#fff; }
+.designer-dialog .player-studio[data-mode="setup"] { grid-template-rows:auto minmax(400px,1fr) auto; }
+.designer-dialog .player-studio[data-mode="setup"] .ps-timeline { display:none; }
 .designer-dialog.player-designer .studio-body { padding:10px; }
 .designer-dialog .player-studio { display:grid;grid-template-rows:auto minmax(340px,1fr) auto auto;gap:8px;min-height:650px;height:100%; }
 .designer-dialog .player-studio,.designer-dialog .player-studio > *,.designer-dialog .ps-layout > * { min-width:0;max-width:100%; }
@@ -7,8 +26,11 @@
 .designer-dialog .ps-toolbar { margin:0;gap:6px;flex-wrap:wrap; }
 .designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:200px minmax(260px,1fr) 290px;height:auto;min-height:0;gap:10px; }
 .designer-dialog.player-designer .ps-layout > aside { height:100%;max-height:100%;min-height:0;overflow:auto;padding:10px; }
-.designer-dialog.player-designer .ps-stage { height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden; }
-.designer-dialog.player-designer .ps-canvas { width:min(100%,560px,calc((100vh - 455px)*1.47));height:auto;max-height:none;flex:none; }
+.designer-dialog.player-designer .ps-stage { position:relative;height:100%;min-height:0;overflow:hidden;padding:0;background:#343b3e; }
+.designer-dialog.player-designer .ps-canvas { position:absolute;inset:0;width:100%;height:100%;max-height:none;max-width:none; }
+.designer-dialog.player-designer .ps-view-controls { position:absolute;z-index:1;top:10px;left:10px;right:10px; }
+.designer-dialog.player-designer .ps-directions { position:absolute;z-index:1;bottom:26px;left:8px;right:8px;justify-content:center; }
+.designer-dialog.player-designer .ps-hint { position:absolute;bottom:3px;left:8px;right:8px;margin:0;text-align:center;pointer-events:none; }
 .designer-dialog .ps-view-controls { flex-wrap:wrap;gap:4px;justify-content:center; }
 .designer-dialog .ps-view-controls span { display:none; }
 .designer-dialog.player-designer .ps-joints { max-height:none;display:flex;flex-direction:column;gap:2px; }
@@ -26,7 +48,26 @@
 .designer-dialog .ps-bone-tools fieldset { margin:8px 0;padding:6px;border:1px solid #395a50; }
 .designer-dialog .ps-bone-tools fieldset label { display:inline-flex;justify-content:start;width:48%; }
 .designer-dialog .ps-bone-tools details { margin-top:10px; }
-.designer-dialog .ps-inspector-tabs { top:-10px; }
+.designer-dialog.player-designer .ps-layout > .ps-inspector { display:flex;flex-direction:column;overflow:hidden; }
+.designer-dialog .ps-inspector-tabs { position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex:none;gap:4px;padding:0 0 8px; }
+.designer-dialog .ps-inspector-tabs button { min-width:0;padding:7px 4px; }
+.designer-dialog .ps-inspector-tabs button[aria-selected="true"] { background:#396657;border-color:#d4b46e;box-shadow:inset 0 -2px #d4b46e; }
+.designer-dialog .ps-inspector > .ps-selected { flex:none;margin:4px 0; }
+.designer-dialog .ps-inspector > .ps-parent { flex:none;margin:0 0 8px; }
+.designer-dialog .ps-inspector-body { flex:1;min-height:0;overflow:auto;overflow-x:hidden;padding-right:4px; }
+.designer-dialog .ps-inspector-panel[hidden],.designer-dialog .ps-inspector-panel [hidden] { display:none !important; }
+.designer-dialog .ps-inspector-panel details { margin:8px 0; }
+.designer-dialog .ps-inspector-panel label { display:flex;align-items:center;justify-content:space-between;gap:6px;margin:7px 0; }
+.designer-dialog .ps-inspector-panel .ps-transform-values label { display:block; }
+.designer-dialog .ps-inspector-panel :is(input:not([type=checkbox]),select) { min-width:0;max-width:100%; }
+.designer-dialog .ps-inspector-panel > details input:not([type=checkbox]),.designer-dialog .ps-inspector-panel > details select { width:110px; }
+.designer-dialog .ps-inspector-panel fieldset { margin:8px 0;border:1px solid #395a50; }
+.designer-dialog .ps-inspector-panel .ps-preview { display:none; }
+.designer-dialog .ps-inspector-panel .ps-doll { grid-template-columns:repeat(2,minmax(0,1fr));gap:4px; }
+.designer-dialog .ps-inspector-panel .ps-doll [data-slot] { grid-column:auto;grid-row:auto; }
+.designer-dialog .ps-inspector-panel .ps-slot-picker { display:block; }
+.designer-dialog .ps-bone-sprites > div { padding:8px 0;border-bottom:1px solid #395a50; }
+.designer-dialog .ps-bone-sprites .bone-sprite-preview { width:64px;height:64px;object-fit:contain;display:block;margin-bottom:8px; }
 .designer-dialog .ps-inspector.show-equipment > .ps-angle-controls:not([hidden]) { display:none !important; }
 .designer-dialog .ps-angle-controls { margin-top:14px;padding:8px;border:1px solid #395a50; }
 .designer-dialog .ps-timeline { margin:0;padding:8px; }

@@ -12,6 +12,7 @@ import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
 import { drawPlayer } from "./src/player-motion.mjs";
 import { generateWorld } from "./src/world.mjs";
 import { MUSIC_TRACKS, musicTrack } from "./src/music.mjs";
+import { mountMusicPicker } from './src/music-picker.mjs';
 import { Game, CENTER, EVENTS, FINISH, cameraTarget } from "./src/core.mjs";
 import { Assets } from "./src/assets.mjs";
 import { Renderer, drawMenu } from "./src/render.mjs";
@@ -71,7 +72,8 @@ let game = new Game(),
   renderer,
   ready = false;
 let boardPinned = false,
-  boardDismissedRoll = null;
+  boardDismissedRoll = null,
+  lootDetailsVisible = false;
 let mapping = { ...DEFAULT_MAPPING };
 try { Object.assign(mapping, normalizeMapping(JSON.parse(localStorage.getItem("wildbound-mapping") || "{}"))); } catch {}
 const keys = new Set(),
@@ -100,6 +102,18 @@ let musicVolume = Number(localStorage.getItem('wildbound-music-volume') ?? .45);
 const audio = new GameAudio(); audio.enabled=soundEnabled;
 let selectedMusic = musicTrack(localStorage.getItem('wildbound-level-music') || 'curious-groove'), levelMusicKey=null, lastLevelTrack=null;
 const music = new Audio(selectedMusic.file); music.loop=true;
+const musicPreview = new Audio();musicPreview.loop=true;musicPreview.volume=0;
+let previewTrack=null,previewRequest=0;
+function stopMusicPreview(){previewRequest++;previewTrack=null;musicPreview.pause();musicPreview.volume=0;const status=$('music-status');if(status)status.textContent=(screen==='play'?'Expedition: ':'Menu: ')+selectedMusic.name;}
+function previewMusic(track){
+ if(!track){stopMusicPreview();return;}
+ if(previewTrack===track.id)return;
+ const request=++previewRequest;previewTrack=track.id;
+ musicPreview.pause();musicPreview.volume=0;musicPreview.src=track.file;
+ $('music-status').textContent='Preview: '+track.name;
+ audio.unlock();
+ if(soundEnabled&&musicVolume>0)musicPreview.play().catch(()=>{if(request===previewRequest){stopMusicPreview();$('music-status').textContent='Preview unavailable. Choose another track.';}});
+}
 function startMusic(){audio.unlock();if(soundEnabled&&musicVolume>0)music.play().catch(()=>{});}
 window.addEventListener('pointerdown',startMusic);window.addEventListener('keydown',startMusic);
 document.addEventListener('focusin',e=>{if(e.target.matches('button,input,select'))audio.play('focus');});
@@ -109,8 +123,13 @@ function sound(type,actor){audio.play(type,actor);}
 function routeMusic(){
  const active=screen==='play',key=active?String(game.seed)+':'+(game.environment||'forest'):'menu';
  if(key!==levelMusicKey){levelMusicKey=key;if(active){const choice=localStorage.getItem('wildbound-level-music') || 'random';if(choice==='random'){const pool=MUSIC_TRACKS.slice(1).filter(t=>t.id!==lastLevelTrack);selectedMusic=pool[Math.floor(Math.random()*pool.length)];}else selectedMusic=musicTrack(choice);lastLevelTrack=selectedMusic.id;}else selectedMusic=MUSIC_TRACKS[0];music.src=selectedMusic.file;music.load();if(audio.unlocked)startMusic();if($('music-status'))$('music-status').textContent=(active?'Expedition: ':'Menu: ')+selectedMusic.name;}
- const target=soundEnabled?musicVolume*audio.settings.master*(performance.now()<(audio.duckUntil||0)?.4:1):0;music.volume+= (Math.max(0,Math.min(1,target))-music.volume)*.08;
 }
+// Audio fades must continue even when rendering is paused or the window is hidden.
+setInterval(()=>{
+ const target=soundEnabled?musicVolume*audio.settings.master*(performance.now()<(audio.duckUntil||0)?.4:1):0;
+ music.volume+=(Math.max(0,Math.min(1,target*(previewTrack ? .15 : 1)))-music.volume)*.08;
+ musicPreview.volume+=(Math.max(0,Math.min(1,previewTrack?target:0))-musicPreview.volume)*.12;
+}, 16);
 window.addEventListener('wildbound-house-applied',e=>{
   if(rooms.role==='client'){e.detail.message='Saved locally. The host controls the current map.';return;}
   e.detail.message=applyActiveHouse(game)?'Saved and applied to the current House expedition.':'Saved and active. Your next House expedition will use this layout.';
@@ -307,6 +326,7 @@ function onRoomEvent(data) {
         $("begin-button").disabled = true;
       } else if (screen !== "play") {
         renderer = new Renderer($("game-canvas"), assets);
+        renderer.showLootDetails = lootDetailsVisible;
         show("play");
         paused = false;
       }
@@ -491,6 +511,7 @@ function startGame() {
   game.diceCount = Number($("dice-count").value);
   profiles.capture(game);
   renderer = new Renderer($("game-canvas"), assets);
+  renderer.showLootDetails = lootDetailsVisible;
   paused = false;
   show("play");
   renderRoster();
@@ -752,6 +773,8 @@ $("reassign-button").onclick = () => {
 const settingsTabNames = ['display', 'explorer', 'controls'];
 let settingsTab = 'display';
 function selectSettingsTab(name, focus = false) {
+  musicPicker.close();
+  document.querySelector('.settings-panels').scrollTop=0;
   settingsTab = settingsTabNames.includes(name) ? name : 'display';
   document.querySelectorAll('[data-settings-tab]').forEach(button => {
     const selected = button.dataset.settingsTab === settingsTab;
@@ -779,7 +802,7 @@ $("settings-button").onclick = () => {
     appearanceControls($("appearance-settings"), hero.appearance, () => game.persist(), { compact: true });
   }
 };
-$("close-settings").onclick = () => $("settings-dialog").close();
+$("close-settings").onclick = () => { musicPicker.close(); $("settings-dialog").close(); };
 $("ui-scale").value = localStorage.getItem("wildbound-ui-scale") || "1";
 $("ui-scale").onchange = e => { localStorage.setItem("wildbound-ui-scale", e.target.value); document.documentElement.style.setProperty("--ui-scale", e.target.value); };
 $("board-size").value = localStorage.getItem("wildbound-board-size") || "compact";
@@ -798,7 +821,11 @@ $("sound-toggle").onchange = (e) => {
 $("music-volume").value = String(musicVolume);
 $('music-track').append(new Option('Random expedition soundtrack','random'), ...MUSIC_TRACKS.map(t=>new Option(t.name,t.id)));
 $('music-track').value=localStorage.getItem('wildbound-level-music') || 'random';
-$('music-track').onchange=e=>{localStorage.setItem('wildbound-level-music',e.target.value);levelMusicKey=null;routeMusic();};
+$('music-track').onchange=e=>{localStorage.setItem('wildbound-level-music',e.target.value);if(screen==='play'){levelMusicKey=null;routeMusic();}};
+const musicPicker=mountMusicPicker($('music-track'),MUSIC_TRACKS,{preview:previewMusic,stop:stopMusicPreview});
+$('settings-dialog').addEventListener('close',()=>musicPicker.close());
+$('settings-dialog').addEventListener('cancel',e=>{if(musicPicker.picker.open){e.preventDefault();musicPicker.close();musicPicker.picker.querySelector('summary').focus();}});
+window.addEventListener('blur',()=>musicPicker.close());
 $('music-status').textContent='Choose a track or let each expedition select one at random.';
 $('music-volume').oninput=e=>{musicVolume=Number(e.target.value);localStorage.setItem('wildbound-music-volume',String(musicVolume));if(musicVolume>0)startMusic();};
 for(const key of ['master','sfx','ui','ambience']){const label=document.createElement('label');label.className='field-label';label.textContent=(key==='ambience'?'AMBIENT LEVEL ':key.toUpperCase()+' ')+'VOLUME';const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.01;input.id=key+'-volume';input.value=audio.settings[key];input.setAttribute('aria-label',label.textContent);input.oninput=()=>audio.set(key,input.value);label.append(input);$('audio-mixer').append(label);}
@@ -831,6 +858,17 @@ for (const [action, value] of Object.entries(mapping)) {
   $("mapping-fields").append(label);
 }
 window.addEventListener("keydown", (e) => {
+  if (
+    screen === "play" &&
+    (e.code === "AltLeft" || e.code === "AltRight") &&
+    !e.repeat &&
+    !document.querySelector("dialog[open]")
+  ) {
+    e.preventDefault();
+    lootDetailsVisible = !lootDetailsVisible;
+    if (renderer) renderer.showLootDetails = lootDetailsVisible;
+    return;
+  }
   if(screen==='lobby' && !document.querySelector('dialog[open]')) {
     if(['Enter',' '].includes(e.key))e.preventDefault();
     if(playableLobby?.key(e)) return;
@@ -1040,7 +1078,10 @@ function dialogController(pad, previous) {
   if (back) {
     if (dialog.id === "pause-dialog") {
       if (game.phase === "play") resume();
-    } else if (dialog.id === "settings-dialog") $("close-settings").click();
+    } else if (dialog.id === "settings-dialog") {
+      if(musicPicker.picker.open){musicPicker.close();musicPicker.picker.querySelector('summary').focus();}
+      else $("close-settings").click();
+    }
     else if (dialog.id === "info-dialog") $("close-info").click();
     else if (dialog.id === "field-kit-dialog") fieldKit.close();
     else if (dialog.id === "character-name-dialog")
@@ -1138,13 +1179,25 @@ function inputFrame() {
       !modal
     )
       boardPinned = !boardPinned;
+    const controllerPlayer = game.players.find((p) => p.device === device);
+    const lootTogglePressed = pad.buttons[14]?.pressed && !previous[14];
+    if (
+      screen === "play" &&
+      controllerPlayer &&
+      !controllerPlayer.ui &&
+      !modal &&
+      lootTogglePressed
+    ) {
+      lootDetailsVisible = !lootDetailsVisible;
+      if (renderer) renderer.showLootDetails = lootDetailsVisible;
+    }
     if (pressed("pause") && !previous[mapping.pause] && screen === "play" && game.players.some((p) => p.device === device)) {
       if (paused && $("pause-dialog").open && game.phase === "play") resume();
       else if (!modal) pause();
     }
     const dead = (v) => (Math.abs(v || 0) < 0.18 ? 0 : v);
     inputs["pad:" + pad.index] = {
-      x: dead(pad.axes[0]),
+      x: lootTogglePressed ? 0 : dead(pad.axes[0]),
       y: dead(pad.axes[1]),
       aimX: dead(pad.axes[2]),
       aimY: dead(pad.axes[3]),
@@ -1160,7 +1213,7 @@ function inputFrame() {
       portal: pressed("portal"),
       bait: pressed("bait"),
       next: !!pad.buttons[15]?.pressed || dead(pad.axes[0]) > 0.5,
-      prev: !!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5,
+      prev: lootTogglePressed ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
       up: !!pad.buttons[12]?.pressed || dead(pad.axes[1]) < -0.5,
       down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
       panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
@@ -1401,6 +1454,7 @@ try {
       game.sharedStash = stash;
       applyChangedHouse(game);
       renderer = new Renderer($("game-canvas"), assets);
+      renderer.showLootDetails = lootDetailsVisible;
       show("play");
       paused = false;
       if (disconnected().length)
