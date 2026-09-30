@@ -1,5 +1,6 @@
 import {drawFurniture,drawWindow} from './house-render.mjs';
 import {boardTableBlocked} from './board-table.mjs';
+import {raisedSurfaceBlocked} from './terrain-support.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
@@ -7,9 +8,17 @@ export const ENVIRONMENTS=['forest','desert','ice','house','temple'];
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
-export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false){
- if(!projectile&&boardTableBlocked(g,x,y,r,elevation))return true;
- return [...(g.house?.walls||[]).filter(w=>!(w.kind==='window'&&w.broken&&(projectile||elevation>=10))),...(g.house?.doors||[]).filter(d=>!d.open&&!canOpenDoors),...(g.house?.furniture||[]).filter(f=>!['rug','plant'].includes(f.kind)&&!(furnitureHeight(f)>0&&elevation>=furnitureHeight(f)))].some(b=>Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y+footOffset-Math.max(b.y,Math.min(y+footOffset,b.y+b.h)))<r);
+export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false,from=null){
+ if(!projectile&&boardTableBlocked(g,x,y,r,elevation,from))return true;
+ const hit=b=>raisedSurfaceBlocked(b,x,y+footOffset,r);
+ if((g.house?.walls||[]).some(w=>!(w.kind==='window'&&w.broken&&(projectile||elevation>=10))&&hit(w)))return true;
+ if((g.house?.doors||[]).some(d=>!d.open&&!canOpenDoors&&hit(d)))return true;
+ return (g.house?.furniture||[]).some(f=>{
+  if(['rug','plant'].includes(f.kind))return false;
+  const height=furnitureHeight(f);
+  if(height>0&&elevation>=height)return false;
+  return raisedSurfaceBlocked(f,x,y+footOffset,r,height>0&&!projectile?from:null,footOffset);
+ });
 }
 export function breakWindow(g,x,y,r=1){
  const pane=g.house?.walls.find(w=>w.kind==='window'&&!w.broken&&Math.hypot(x-Math.max(w.x,Math.min(x,w.x+w.w)),y-Math.max(w.y,Math.min(y,w.y+w.h)))<r);

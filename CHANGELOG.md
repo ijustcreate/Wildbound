@@ -1,3 +1,9 @@
+## 1.0.32 - Raised surface walk-off fix
+
+- Let characters leave table, furniture, and stump edges while falling, even when their collision radius still overlaps the side.
+- Preserve side collisions on approach, solid walls and doors, and projectile blocking.
+- Cover slow frame-by-frame exits in all eight directions, paused falls, and collisions beside surfaces. All 464 Node tests pass.
+
 ## 1.0.31 - Combat animation review pass
 
 - Reauthor combat poses with separate wind-up, contact, follow-through, and guard recovery; connect combo cuts continuously.

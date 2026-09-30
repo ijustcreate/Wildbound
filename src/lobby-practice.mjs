@@ -17,7 +17,7 @@ export class LobbyPractice extends Game {
     for(const t of this.targets)Object.assign(t,{id:this.nextId++,kind:'practice_target',practiceTarget:true,hp:1e9,maxHp:1e9,combatText:[],state:'idle',speed:0,damage:0});
     this.enemies=this.targets;
   }
-  blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0){return x-radius<47||x+radius>978||y-radius<92||y+radius>568||structureBlocked(this,x,y,radius,false,offset,elevation);}
+  blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0,projectile=false,from=null){return x-radius<47||x+radius>978||y-radius<92||y+radius>568||structureBlocked(this,x,y,radius,false,offset,elevation,projectile,from);}
   projectileBlocked(x,y,radius=1,impact=false){
     if(x<48||x>978||y<92||y>568||structureBlocked(this,x,y,radius,false,0,20,true))return true;
     return false;

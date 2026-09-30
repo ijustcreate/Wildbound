@@ -1,3 +1,17 @@
+// A falling actor's feet can leave a top before its collision circle clears
+// the side. Let it move out (or slide along), but never deeper into that side.
+// Only movement supplies `from`; stationary queries and projectiles stay solid.
+export function raisedSurfaceBlocked(rect,x,y,radius,from=null,offset=0){
+  const distance=(px,py)=>Math.hypot(px-Math.max(rect.x,Math.min(px,rect.x+rect.w)),py-Math.max(rect.y,Math.min(py,rect.y+rect.h)));
+  const next=distance(x,y);
+  if(next>=radius)return false;
+  if(from){
+    const previous=distance(from.x,from.y+offset);
+    const outside=(px,py)=>px<=rect.x||px>=rect.x+rect.w||py<=rect.y||py>=rect.y+rect.h;
+    if(previous<radius&&next>=previous&&outside(from.x,from.y+offset)&&outside(x,y))return false;
+  }
+  return true;
+}
 export function stumpShape(p){
   if(!p.fallen||!['tree','snow_tree','palm'].includes(p.kind))return null;
   const scale=(p.size||64)/64,base=p.rootY??p.y+(p.size||64)*(p.kind==='palm'?.19:.35);

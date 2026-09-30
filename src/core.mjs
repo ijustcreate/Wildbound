@@ -5,7 +5,7 @@ import {NIGHT_EVENTS, tickNightEnemy, tickNightEnemyHazards, startNightEvent, hi
 import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equipment.mjs';
 import {startJump,tickJump} from './jumping.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
-import {stumpShape} from './terrain-support.mjs';
+import {stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
 import {tickQuicksand} from './quicksand.mjs';
 import {tickBoardSequence} from './board-sequence.mjs';
@@ -463,8 +463,8 @@ export class Game {
     this.spriteLibrary = {};
     ensureNightCycle(this);
   }
-  blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false) {
-    if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile))return true;
+  blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false, from = null) {
+    if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile,from))return true;
     if(livingEcosystemBlocked(this,x,y,radius,flying,footOffset))return true;
     if (
       (this.barricades || []).some(
@@ -499,7 +499,7 @@ export class Game {
       !flying &&
       nearbyScenery(this.scenery, x, y + footOffset, radius).some((prop) => {
         const stump=stumpShape(prop);
-        if(stump)return elevation<stump.height&&Math.hypot(x-Math.max(stump.x,Math.min(x,stump.x+stump.w)),y+footOffset-Math.max(stump.y,Math.min(y+footOffset,stump.y+stump.h)))<radius;
+        if(stump)return elevation<stump.height&&raisedSurfaceBlocked(stump,x,y+footOffset,radius,projectile?null:from,footOffset);
         return footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius);
       })
     );
@@ -537,9 +537,9 @@ export class Game {
       steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
     for (let i = 0; i < steps; i++) {
       const x = clamp(actor.x + dx / steps, 24, WORLD - 24);
-      if (!this.blocked(x, actor.y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.x = x;
+      if (!this.blocked(x, actor.y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.x = x;
       const y = clamp(actor.y + dy / steps, 24, WORLD - 24);
-      if (!this.blocked(actor.x, y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0))) actor.y = y;
+      if (!this.blocked(actor.x, y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.y = y;
     }
     const moved = Math.hypot(actor.x - oldX, actor.y - oldY);
     if (!this.players.includes(actor)) {
