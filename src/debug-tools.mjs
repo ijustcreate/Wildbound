@@ -1,3 +1,4 @@
+import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
   window.previewGhostMinions=async()=>{
@@ -1127,10 +1128,10 @@ export function installDebugTools(ctx) {
         card.getBoundingClientRect().width < 210
       );
     });
-    check("Inventory window and ten paper-doll slots exist", () => {
+    check("Inventory window and all paper-doll slots exist", () => {
       ctx.game.inventoryAction(p, "panel:gear");
       ctx.heroUI.draw(ctx.game, ctx.renderer);
-      return ctx.heroRoot.querySelectorAll(".paper-doll button").length === 10;
+      return ctx.heroRoot.querySelectorAll(".paper-doll button").length === SLOTS.length;
     });
     check(
       "Equipment sits above backpack; drag equips offhand and rejects invalid slots",
