@@ -1069,10 +1069,14 @@ export const adventureMethods = {
         a.z += a.vz * s;
         a.vz -= rules.arrowGravity * s;
         if(this.projectileBlocked(a.x,a.y,1,true)){
+          const impactHeight=a.z,impactX=a.x,impactY=a.y;
           a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;
           a.angle=Math.atan2(a.vy,a.vx);
           this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);
           Object.assign(this.loot.at(-1),{embedded:true,angle:a.angle,embedDepth:a.embedDepth||7,angleJitter:a.angleJitter||0});
+          // Practice props need the actual contact point, not lootSpot's nearby
+          // walkable placement, so the shaft stays attached to what it hit.
+          if(this.generatedEnvironment==='lobby')Object.assign(this.loot.at(-1),{x:impactX,y:impactY,z:Math.max(0,impactHeight),surfaceEmbedded:true});
           a.remove=true;break;
         }
         const target = a.hostile

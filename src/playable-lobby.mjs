@@ -1,4 +1,5 @@
 import {applyCelShading} from './cel-shading.mjs';
+import {drawEmbeddedArrow,drawLodgedArrow} from './embedded-arrow.mjs';
 import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
@@ -318,7 +319,8 @@ export class PlayableLobby {
     c.save();
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
-    for(const a of this.practice.arrows){c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(a.angle??Math.atan2(a.vy,a.vx));c.fillStyle='#ba9763';c.fillRect(-10,-1,20,2);c.fillStyle='#f0e7cd';c.fillRect(8,-3,5,6);c.restore();}
+    for(const a of this.practice.loot)if(a.embedded&&a.type==='arrow')drawEmbeddedArrow(c,a);
+    for(const a of this.practice.arrows){if(a.stuck){drawLodgedArrow(c,a);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(a.angle??Math.atan2(a.vy,a.vx));c.fillStyle='#ba9763';c.fillRect(-10,-1,20,2);c.fillStyle='#f0e7cd';c.fillRect(-10,-3,5,6);c.restore();}
     for(const b of this.practice.spells){c.fillStyle=b.color||'#ace3ff';c.beginPath();c.arc(b.x,b.y-16,b.size||6,0,Math.PI*2);c.fill();}
     for(const f of this.practice.effects){if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';c.fillText(f.text,f.x,f.y);}
     c.restore();

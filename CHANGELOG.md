@@ -1,3 +1,9 @@
+## 1.0.33 - Persistent lobby arrows
+
+- Render embedded arrows on the lobby floor and props; preserve the contact point and shaft direction on prop impacts.
+- Stop projectiles at lobby tables, the starter chest, and the hero cabinet. Show target arrows with their tips anchored and tails trailing the shot.
+- Verify nine persistent, visible impact cases and moving-target attachment. All 473 Node tests pass.
+
 ## 1.0.32 - Raised surface walk-off fix
 
 - Let characters leave table, furniture, and stump edges while falling, even when their collision radius still overlaps the side.

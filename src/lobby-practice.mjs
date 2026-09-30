@@ -19,7 +19,9 @@ export class LobbyPractice extends Game {
   }
   blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0,projectile=false,from=null){return x-radius<47||x+radius>978||y-radius<92||y+radius>568||structureBlocked(this,x,y,radius,false,offset,elevation,projectile,from);}
   projectileBlocked(x,y,radius=1,impact=false){
-    if(x<48||x>978||y<92||y>568||structureBlocked(this,x,y,radius,false,0,20,true))return true;
+    if(x<48||x>978||y<92||y>568||structureBlocked(this,x,y,radius,false,0,0,true))return true;
+    // These cabinets are painted lobby objects, separate from jumpable tables.
+    if([{x:892,y:492,w:116,h:48},{x:583,y:515,w:84,h:54}].some(b=>x+radius>=b.x&&x-radius<=b.x+b.w&&y+radius>=b.y&&y-radius<=b.y+b.h))return true;
     return false;
   }
   toggleTargets(){this.targetsMoving=!this.targetsMoving;return this.targetsMoving;}
