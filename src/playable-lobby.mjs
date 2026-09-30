@@ -60,8 +60,8 @@ export function moveLobbyCharacter(s,input,dt){
   s.step+=moved*.13;
 }
 export function lobbyCamera(width,height){
-  const zoom=Math.min(Math.max(1,width)/1024,Math.max(1,height)/608);
-  return {x:512,y:310,zoom};
+  const zoom=Math.min(Math.max(1,width)/1024,Math.max(1,height)/632);
+  return {x:512,y:314,zoom};
 }
 export class LobbyState {
   constructor(){this.members=new Map();this.countdown=null;this.started=false;}

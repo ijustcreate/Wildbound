@@ -1,4 +1,5 @@
-import {raisedSurfaceBlocked} from './terrain-support.mjs';
+import {raisedSurfaceBlocked,VICTORY_CHEST} from './terrain-support.mjs';
+export {VICTORY_CHEST} from './terrain-support.mjs';
 import {ITEMS,rollGear} from './items.mjs';
 export function victoryRewards(players,random=Math.random){
  const party=players.slice(0,6),level=party.reduce((sum,p)=>sum+Math.max(1,p.level||1),0)/Math.max(1,party.length),count=3+party.length*2;
@@ -6,7 +7,7 @@ export function victoryRewards(players,random=Math.random){
  while(tiers.length<count)tiers.push(level>=10?'rare':'common');
  return tiers.map(tier=>({type:rollGear(random,tier)||Object.keys(ITEMS).find(id=>ITEMS[id].slot&&ITEMS[id].rarity==='common'),qty:1}));
 }
-export const VICTORY_CHEST={x:776,y:905,w:48,h:22,height:20};
+
 export function victoryChestBlocked(g,x,y,radius,elevation,from){return !!g.victoryChest&&elevation<20&&raisedSurfaceBlocked(VICTORY_CHEST,x,y,radius,from,0);}
 export function drawVictoryChest(c,g){
  if(!g.victoryChest)return;

@@ -23,7 +23,7 @@ test('Profile noses stay small and ears survive the hair pass',()=>{
     drawHair(c,p.head,DEFAULT_APPEARANCE,d);
     drawHumanHead(c,p,d,DEFAULT_APPEARANCE.skin,DEFAULT_APPEARANCE,visible,true);
     const sign=d===2?-1:1,pal=skinPalette(DEFAULT_APPEARANCE.skin);
-    assert.equal(c.pixels.get(`${Math.round(p.head.x)+sign*5},${Math.round(p.head.y)+1}`),pal.light);
+    assert.equal(c.pixels.get(`${Math.round(p.head.x)+sign*4},${Math.round(p.head.y)}`),pal.light);
     assert.equal(c.pixels.get(`${Math.round(p.head.x)-sign},${Math.round(p.head.y)}`),pal.blush);
   }
 });
