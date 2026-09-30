@@ -1,3 +1,4 @@
+import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
 import { PlayableLobby } from './src/playable-lobby.mjs';
 import {loadHouseStorage} from './src/house-design.mjs';
 import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
@@ -886,6 +887,8 @@ $("event-duration").value = localStorage.getItem("wildbound-event-duration") || 
 $("event-duration").onchange = e => { localStorage.setItem("wildbound-event-duration", e.target.value); game.eventDuration = Number(e.target.value); };
 $("pvp-toggle").checked=game.pvp;
 $("pvp-toggle").onchange=e=>{game.pvp=e.target.checked;localStorage.setItem("wildbound-pvp",game.pvp?"on":"off");game.persist();};
+$("cel-shading-toggle").checked = celShadingEnabled();
+$("cel-shading-toggle").onchange = e => setCelShading(e.target.checked);
 $("sound-toggle").checked = soundEnabled;
 $("sound-toggle").onchange = (e) => {
   soundEnabled = e.target.checked; audio.enabled=soundEnabled; audio.apply();

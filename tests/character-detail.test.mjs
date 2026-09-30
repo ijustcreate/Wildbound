@@ -37,6 +37,19 @@ test('Long hair follows the frame clock, while static poses remain static',()=>{
     assert.deepEqual(c.pixels,d.pixels);
   }
 });
+
+test('Diagonal ears remain behind the cheek and covered styles do not paint skin over rear hair',()=>{
+  for(const [d,earX] of [[1,3],[3,-4],[5,4],[7,-3]]){
+    const p=Object.fromEntries(Object.entries(model.joints).map(([key,value])=>[key,projectPoint(value.position,d)]));
+    const visible=n=>model.visibility[n]?.[d]!==false,c=raster();
+    drawHumanHead(c,p,d,DEFAULT_APPEARANCE.skin,{...DEFAULT_APPEARANCE,hair:'none'},visible,true);
+    assert.equal(c.pixels.get(`${Math.round(p.head.x)+earX},${Math.round(p.head.y)}`),skinPalette(DEFAULT_APPEARANCE.skin).blush);
+    if(d===3||d===5)for(const hair of ['bob','long','curls']){
+      const covered=raster();drawHumanHead(covered,p,d,DEFAULT_APPEARANCE.skin,{...DEFAULT_APPEARANCE,hair},visible,true);
+      assert.equal(covered.pixels.size,0);
+    }
+  }
+});
 test('All authored clips and hairstyles render every facing without mutating the rig',()=>{
   const original=JSON.stringify(model);
   const c={save(){},restore(){},translate(){},rotate(){},scale(){},fillRect(...values){assert.ok(values.every(Number.isFinite));}};

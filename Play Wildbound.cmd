@@ -3,7 +3,7 @@ setlocal
 set "WILDBOUND_ROOT=%~dp0"
 rem Prefer the current test release; retain preview builds as a fallback.
 set "WILDBOUND_BUILD="
-if exist "%WILDBOUND_ROOT%dist\1.0.30\Wildbound-win32-x64\Wildbound.exe" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\1.0.30\Wildbound-win32-x64"
+if exist "%WILDBOUND_ROOT%dist\1.0.31\Wildbound-win32-x64\Wildbound.exe" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\1.0.31\Wildbound-win32-x64"
 if not defined WILDBOUND_BUILD if exist "%WILDBOUND_ROOT%dist\night-hunt-2026-09-30T04-09-07-270Z\Wildbound-win32-x64\Wildbound.exe" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\night-hunt-2026-09-30T04-09-07-270Z\Wildbound-win32-x64"
 for /f "delims=" %%D in ('dir /b /ad /o-n "%WILDBOUND_ROOT%dist\night-hunt-*" 2^>nul') do (
   if not defined WILDBOUND_BUILD if exist "%WILDBOUND_ROOT%dist\%%D\Wildbound-win32-x64\resources\app.asar" set "WILDBOUND_BUILD=%WILDBOUND_ROOT%dist\%%D\Wildbound-win32-x64"

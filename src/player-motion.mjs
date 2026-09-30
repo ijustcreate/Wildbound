@@ -1,6 +1,7 @@
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
 import { fitHeroGrip } from './hero-generation.mjs';
+import {fitCombatLoadout,combatWeaponVector,combatPhase,castWandVector,SWING_ACTIONS} from './combat-animation.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {SALVAGE_SECONDS} from './salvage.mjs';
 import {defaultAnimationLayers,validAnimationLayers,blendJointMask} from './animation-layers.mjs';
@@ -380,11 +381,17 @@ export function wandLocalTip(visual, direction=0, side='R') {
   const a=direction*Math.PI/4;
   return {x:Math.round(-Math.sin(a)*5+Math.cos(a)*(side==='R'?2:-2)),y:-10+Math.round(Math.cos(a)*2)};
 }
+function posedWandTip(actor,time,model,d,side,visual){
+  const action=playerEquipmentAction(actor,time,model);
+  if(model.combatRevision!==4||visual||action.action!=='cast')return wandLocalTip(visual,d,side);
+  const t=action.frame/(model.clips.cast.length-1);
+  return projectPoint(castWandVector(t,side),d);
+}
 export function wandTipWorld(actor,slot,time,model=playerMotion,size=43){
   const d=facingIndex(actor.faceX,actor.faceY),side=slot==='hand1'?'R':'L',joint='hand'+side;
   const pose=playerPose(actor,time,model);
   const v=[...pose[joint]];if(actor.appearance?.build==='broad')v[0]*=1.12;else if(actor.appearance?.build&&actor.appearance.build!=='standard')v[0]*=.9;
-  const hand=projectPoint(v,d),visual=model.wearables?.[actor.equipment?.[slot]]?.[d],tip=wandLocalTip(visual,d,side);
+  const hand=projectPoint(v,d),visual=model.wearables?.[actor.equipment?.[slot]]?.[d],tip=posedWandTip(actor,time,model,d,side,visual);
   const angle=(visual?.rotation||0)*Math.PI/180,scale=visual?.scale||1;
   let x=(tip.x*Math.cos(angle)-tip.y*Math.sin(angle))*scale+(visual?.x||0),y=(tip.x*Math.sin(angle)+tip.y*Math.cos(angle))*scale+(visual?.y||0);
   const rotation=playerJointAngle(actor,time,model,d,joint)*Math.PI/180;
@@ -493,7 +500,7 @@ export function playerFrame(actor, time, model = playerMotion, action = playerAc
       ? time * clip.fps
       : (actor.step / (0.13 * (model.artGeneration===3&&action==='walk'?56:88))) * clip.length;
   if (action === "draw")
-    return Math.min(clip.length - 1, (actor.charge || 1) * 7);
+    return Math.min(clip.length - 1, (actor.charge ?? 1) * (clip.length-1));
   if(action==='death')return Math.min(1,(actor.deathTime??.5)/.5)*(clip.length-1);
   if(action==='get_up')return (1-(actor.getUpTime||0)/.4)*(clip.length-1);
   if(action==='land')return (1-(actor.landTime||0)/.22)*(clip.length-1);
@@ -501,7 +508,7 @@ export function playerFrame(actor, time, model = playerMotion, action = playerAc
   if(actor.bowAiming && action==='cast')return (clip.length-1)*.5;
   if (actor.charge > 0 && !action.startsWith('jump')) return 0;
   if (["punch", "slash", "ranged"].includes(action))
-    return (1 - (actor.attack || 0) / 0.34) * (clip.length - 1);
+    return (1 - (actor.attack || 0) / (actor.attackDuration||.34)) * (clip.length - 1);
   if (action === "hurt")
     return Math.max(0, (0.2 - (actor.hit || 0)) / 0.2) * (clip.length - 1);
   return time * clip.fps;
@@ -526,7 +533,14 @@ export function playerPose(actor,time,model=playerMotion){
   pose=blendJointMask(pose,poseAt(model,layer.overlay,layer.overlayFrame),layer);
  }
   if(model.artGeneration===3)applyIK(model,pose);
-  return fitHeroGrip(pose,actor,model,playerAction(actor));
+  const equipment=playerEquipmentAction(actor,time,model),action=equipment.action,t=equipment.frame/(model.clips[action]?.length-1||1);
+  fitCombatLoadout(pose,model,action,t,['hand1','hand2'].map(slot=>itemKind(actor.equipment?.[slot])));
+  return fitHeroGrip(pose,actor,model,action);
+}
+export function playerEquipmentAction(actor,time,model=playerMotion){
+  const layer=playerLayers(actor,time,model).filter(l=>l.joints.includes('handR')||l.joints.includes('handL')).at(-1);
+  const action=layer?.overlay||playerAction(actor);
+  return {action,frame:layer?.overlayFrame??playerFrame(actor,time,model,action)};
 }
 export function playerJointAngle(actor,time,model,d,joint){
  let angle=jointAngle(model,playerAction(actor),playerFrame(actor,time,model),d,joint,actor.angleRestOnly);
@@ -618,6 +632,7 @@ export function drawPlayer(
   }
   const human = !model.skeleton && !model.robot;
   const sculpted=human&&model.artGeneration===3;
+  const equipmentPose=playerEquipmentAction(actor,time,model);
   const look = actor.appearance || (human ? DEFAULT_APPEARANCE : null);
   const ink = human ? "#302b2b" : pal.outline;
   const pixel = (x, y, w, h, color) => {
@@ -855,7 +870,7 @@ export function drawPlayer(
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
             const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
-            const aimed=sculpted&&['draw','ranged'].includes(playerAction(actor));
+            const aimed=sculpted&&['draw','ranged'].includes(equipmentPose.action);
             const butt = aimed?{x:p.shoulderR.x,y:p.shoulderR.y+1}:{ x: hand.x - aim.x * 6, y: hand.y - aim.y * 3 };
             const muzzle = aimed?{x:p.handL.x+(p.handL.x-hand.x)*1.5,y:p.handL.y+(p.handL.y-hand.y)*1.5}:{ x: hand.x + aim.x * 21, y: hand.y + aim.y * 11 - 2 };
             limb(c,butt,hand,6,ink);limb(c,hand,muzzle,4,ink);
@@ -867,7 +882,19 @@ export function drawPlayer(
           }
           if (weapon === "sword" || weapon === "dagger") {
             const style=ITEMS[weaponId]?.style;
-            if(style==='whip'){
+            if(style==='whip'&&model.combatRevision===4){
+              const action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1),active=SWING_ACTIONS.includes(action),phase=combatPhase(action,t);
+              const extension=active?Math.max(.18,Math.sin(Math.PI*Math.min(1,phase.t/ .85))):.15;
+              const reach=13+extension*27,sign=phase.reverse?-1:1;
+              let last=hand;
+              for(let n=1;n<=12;n++){
+                const u=n/12,lag=(1-u)*.2,v=active?combatWeaponVector(action,Math.max(0,t-lag),'sword',side):[4,3,-13];
+                const scale=reach/Math.hypot(...v),curve=Math.sin(u*Math.PI)*(1-extension)*10*sign;
+                const q=projectPoint([v[0]*scale*u+curve,v[1]*scale*u,v[2]*scale*u-(1-extension)*u*u*12],d);
+                const next={x:hand.x+q.x,y:hand.y+q.y};
+                limb(c,last,next,n===12?1:2,n%2?weaponColor||'#d35b54':gearPalette(weaponId).light);last=next;
+              }
+            }else if(style==='whip'){
               const length = actor.attack > 0 ? 27 + (1 - actor.attack / (actor.attackDuration || .34)) * 34 : 27;
               const dx = actor.faceX || 0, dy = actor.faceY || -1, px = -dy, py = dx;
               let last = hand;
@@ -885,13 +912,18 @@ export function drawPlayer(
               y: hand.y - (weapon === "sword" ? 14 : 8) + (attack ? Math.cos(d*Math.PI/4)*5 : 0),
             };
             if(sculpted){
-              const action=playerAction(actor),swing=['slash','swipe_one','swipe_two','swipe_big','sword_combo'].includes(action);
+              const action=equipmentPose.action,swing=['slash','swipe_one','swipe_two','swipe_big','sword_combo'].includes(action);
               if(swing){
-                const f=playerFrame(actor,time,model)/(model.clips[action].length-1);
+                const f=equipmentPose.frame/(model.clips[action].length-1);
                 const phase=action==='sword_combo'?(f<=.5?f*2:(f-.5)*2):f,reverse=action==='swipe_two'||action==='sword_combo'&&f>.5;
                 const angle=(phase<.25?-.7:phase<.65?-.7+(phase-.25)/.4*2.5:1.8-(phase-.65)/.35*1.6)*(reverse?-1:1);
                 const reach=weapon==='sword'?15:9;
                 tip={x:hand.x+Math.sin(angle)*reach*Math.cos(d*Math.PI/4),y:hand.y-Math.cos(angle)*reach};
+                if(model.combatRevision===4){
+                  const otherKind=itemKind(gear[side==='R'?'hand2':'hand1']),dual=['sword','dagger'].includes(otherKind),active=!dual||(combatPhase(action,f).reverse?side==='L':side==='R');
+                  const v=projectPoint(combatWeaponVector(active?action:'slash',active?f:0,weapon,side),d);
+                  tip={x:hand.x+v.x,y:hand.y+v.y};
+                }
               }
             }
             const material=gearPalette(weaponId);
@@ -925,7 +957,7 @@ export function drawPlayer(
             }
           }
           if (weapon === "wand") {
-            const localTip=wandLocalTip(null,d,side);
+            const localTip=posedWandTip(actor,time,model,d,side,null);
             const tip = { x: hand.x + localTip.x, y: hand.y + localTip.y };
             const material=gearPalette(weaponId),style=ITEMS[weaponId]?.style;
             limb(c,hand,tip,3,material.ink);
@@ -1159,21 +1191,29 @@ export function drawPlayer(
           const style=ITEMS[gear.hand1]?.style,material=gearPalette(gear.hand1);
           const length=style==='longbow'?10:8;
           const facing=d>0&&d<4?-1:1,bulge=(d===2||d===6)?3:5;
-          const top = { x: hand.x + facing, y: hand.y - length },
+          let top = { x: hand.x + facing, y: hand.y - length },
             mid = { x: hand.x + facing*bulge, y: hand.y },
             bottom = { x: hand.x + facing, y: hand.y + length };
+          const action=equipmentPose.action,aimed=['draw','ranged'].includes(action),t=equipmentPose.frame/(model.clips[action]?.length-1||1);
+          if(model.combatRevision===4){
+            const a=projectPoint([0,-3,length],d),b=projectPoint([0,-3,-length],d);
+            top={x:hand.x+a.x,y:hand.y+a.y};bottom={x:hand.x+b.x,y:hand.y+b.y};mid=hand;
+          }
           limb(c,top,mid,3,material.ink);limb(c,mid,bottom,3,material.ink);
           limb(c, top, mid, 1.5, ITEMS[gear.hand1]?.artColor || "#d4ac69");
           limb(c, mid, bottom, 1.5, ITEMS[gear.hand1]?.artColor || "#d4ac69");
-          limb(c, top, p.handR, 0.7, "#dfd8b4");
-          limb(c, p.handR, bottom, 0.7, "#dfd8b4");
+          const stringHand=model.combatRevision===4&&(!aimed||action==='ranged'&&t>.1)?{x:(top.x+bottom.x)/2,y:(top.y+bottom.y)/2}:p.handR;
+          limb(c, top, stringHand, 0.7, "#dfd8b4");
+          limb(c, stringHand, bottom, 0.7, "#dfd8b4");
           limb(c,{x:mid.x,y:mid.y-2},{x:mid.x,y:mid.y+2},2,material.leather);
           if(style==='winged'||style==='recurve') {
             limb(c,top,{x:top.x+facing*3,y:top.y-2},2,material.light);
             limb(c,bottom,{x:bottom.x+facing*3,y:bottom.y+2},2,material.light);
           }
-          if (actor.charge > 0 || sculpted&&['draw','ranged'].includes(playerAction(actor)))
-            limb(c, p.handR, { x: hand.x + facing*12, y: hand.y }, 1, "#dfc693");
+          if (actor.charge > 0 || sculpted&&aimed&&!(model.combatRevision===4&&action==='ranged'&&t>.1)){
+            const v=model.combatRevision===4?projectPoint([0,12,0],d):{x:facing*12,y:0};
+            limb(c, p.handR, { x: hand.x + v.x, y: hand.y+v.y }, 1, "#dfc693");
+          }
         }));
       },
       "Bow",

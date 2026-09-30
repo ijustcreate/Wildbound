@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import {buildCombatPass} from '../src/combat-animation.mjs';
+import {validatePlayerMotion} from '../src/player-motion.mjs';
+const root=new URL('../',import.meta.url),file=new URL('authored/rigs.json',root);
+const project=JSON.parse(fs.readFileSync(file,'utf8')),folder=new URL('art/player/detail-native-v4/',root);
+fs.mkdirSync(folder,{recursive:true});
+const backup=new URL('before-rig.json',folder),rebuild=process.argv.includes('--rebuild');
+if(!rebuild)fs.writeFileSync(backup,JSON.stringify(project.player,null,2),{flag:'wx'});
+const result=buildCombatPass(JSON.parse(fs.readFileSync(backup,'utf8')));
+if(!validatePlayerMotion(result))throw Error('Combat rig validation failed');
+project.player=result;fs.writeFileSync(file,JSON.stringify(project,null,2));
+console.log('Authored generation 4 combat, preserving noncombat clips and other rigs.');

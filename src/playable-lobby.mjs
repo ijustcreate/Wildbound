@@ -1,3 +1,4 @@
+import {applyCelShading} from './cel-shading.mjs';
 import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
@@ -395,5 +396,6 @@ export class PlayableLobby {
       c.font='13px system-ui';c.fillStyle=p.ready?'#a8f4c9':p.color;c.fillText((p.ready?'✓ ':'')+p.name+(p.lobbyDisconnected?' · disconnected':''),s.x,s.y+27);
       const o=this.state.nearest(p);if(o&&!s.panel&&!p.ui){const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3],prompt=o.id==='character-station'?(p.device==='keyboard'?'Hold 2':'Hold '+names[3])+' · '+o.name:interact+' · '+o.name;c.fillStyle='#182326';c.fillRect(s.x-75,s.y-95,150,24);c.fillStyle='#fff';c.font='12px system-ui';c.fillText(prompt,s.x,s.y-79);}
     }
+    applyCelShading(c);
   }
 }

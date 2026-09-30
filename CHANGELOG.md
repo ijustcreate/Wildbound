@@ -1,3 +1,12 @@
+## 1.0.31 - Combat animation review pass
+
+- Reauthor combat poses with separate wind-up, contact, follow-through, and guard recovery; connect combo cuts continuously.
+- Project blade arcs in model space for all eight directions; add dagger thrusts, alternating dual-wield hands, and a trailing whip.
+- Correct bowstring release, wand-tip aiming, rifle recoil timing, and airborne equipment animation clocks.
+- Fix diagonal ear placement and directional hair occlusion, side locks, curls, and mohawk silhouettes.
+- Preserve earlier sheets and export generation 4: 684 contact sheets, 684 native sheets, 19 variants, all 36 clips, and a written animation critique.
+- Include the current shared game changes as requested. Detailed verification and remaining issues are in RELEASE_REPORT_1.0.31.md.
+
 ## 1.0.30 - Skill scrolls and aiming updates
 
 - Boss scrolls unlock all six Field Guild skills, with distinct scroll markings and permanent discovery.

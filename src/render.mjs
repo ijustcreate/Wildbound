@@ -1,3 +1,4 @@
+import {applyCelShading} from './cel-shading.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {drawBridges} from './bridges.mjs';
@@ -880,6 +881,7 @@ export class Renderer {
       ctx.textAlign = "center";
       ctx.fillText(p.name + " · REVIVE", x, y + 14);
     }
+    applyCelShading(ctx);
     this.minimap(ctx, game, w, h);
   }
   visible(p, w, h, margin = 100) {

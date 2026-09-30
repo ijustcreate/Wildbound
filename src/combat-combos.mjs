@@ -1,3 +1,4 @@
+import {ITEMS,itemKind} from './items.mjs';
 export const COMBO_KEY='wildbound-combos-v1';
 export const COMBO_KINDS=['unarmed','dagger','sword','dagger_shield','sword_shield','dual_dagger','dual_sword','dagger_sword','wand','dual_wand','dagger_wand','sword_wand','melee'];
 const step=(clip,damage=1,reach=1,arc=90,duration=.34)=>({clip,damage,reach,arc,duration});
@@ -13,7 +14,11 @@ try{const saved=JSON.parse(globalThis.localStorage?.getItem(COMBO_KEY)||'null');
 export function saveCombos(data){if(!validCombos(data))throw Error('Invalid combo settings');globalThis.localStorage?.setItem(COMBO_KEY,JSON.stringify(data));combos.splice(0,combos.length,...structuredClone(data));}
 export function loadoutKind(actor){
  const hands=['hand1','hand2'].map(slot=>actor.equipment?.[slot]).filter(Boolean);
- const kinds=hands.map(id=>id==='occupied'?'':id.includes('wand')||id==='wand'?'wand':id.includes('shield')||id==='shield'?'shield':id.includes('dagger')||id==='dagger'?'dagger':id.includes('sword')||id==='sword'?'sword':'').filter(Boolean);
+ const kinds=hands.map(id=>{
+  if(id==='occupied')return '';
+  const kind=ITEMS[id]?.magic?'wand':itemKind(id);
+  return ['wand','shield','dagger','sword'].includes(kind)?kind:'';
+ }).filter(Boolean);
  const w=kinds.filter(k=>k==='wand').length,m=kinds.filter(k=>k==='dagger'||k==='sword');
  if(!kinds.length)return 'unarmed';
  if(w===2)return 'dual_wand';

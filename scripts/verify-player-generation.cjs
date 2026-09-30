@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const {PNG}=require('pngjs');
-const root=path.resolve(__dirname,'..'),folder=path.join(root,'art/player/detail-native-v'+(process.env.WILDBOUND_ART_GENERATION||3));
+const root=path.resolve(__dirname,'..'),folder=path.join(root,'art/player/detail-native-v'+(process.env.WILDBOUND_ART_GENERATION||4));
 const manifest=JSON.parse(fs.readFileSync(path.join(folder,'manifest.json')));
 let cells=0;
 for(const variant of manifest.variants)for(const animation of manifest.animations){

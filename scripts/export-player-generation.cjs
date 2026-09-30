@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const root = path.resolve(__dirname, '..');
-const generation=Number(process.env.WILDBOUND_ART_GENERATION||3);
+const generation=Number(process.env.WILDBOUND_ART_GENERATION||4);
 const out = path.join(root, 'art/player/detail-native-v'+generation);
 fs.mkdirSync(path.join(root, 'test-output'), { recursive:true });
 app.setPath('userData', fs.mkdtempSync(path.join(root, 'test-output/generation-')));
@@ -16,14 +16,24 @@ async function exportInBrowser(url, model) {
   const {ITEMS,SAFARI_HUNTER_SET} = await import(url+'items.mjs');
   const {drawItem} = await import(url+'item-art.mjs');
   const directions=['S','SW','W','NW','N','NE','E','SE'];
-  const generation=model.artGeneration||2;
-  const appearance={...DEFAULT_APPEARANCE,shirt:generation===3?'#66744e':'#bb8c35',pants:generation===3?'#79634a':'#655039'};
+  const generation=model.combatRevision||model.artGeneration||2;
+  const appearance={...DEFAULT_APPEARANCE,shirt:generation>=3?'#66744e':'#bb8c35',pants:generation>=3?'#79634a':'#655039'};
   const variants=Object.keys(HAIR_STYLES).map(hair=>({id:hair==='crop'?'base':'hair-'+hair,appearance:{...appearance,hair},equipment:{}}));
   variants.push(
     {id:'sword-shield',equipment:{hand1:'iron_sword',hand2:'moon_shield',feet:'moon_steps',shoulders:'moon_shoulders'}},
     {id:'archer',equipment:{hand1:'moon_bow',chest:'armor',feet:'boots',gloves:'gloves'}},
     {id:'safari',equipment:{...SAFARI_HUNTER_SET,hand1:'rifle'}},
     {id:'mage',equipment:{head:'moon_circlet',hand1:'storm_wand',cape:'night_cape'}}
+  );
+  if(generation>=4)variants.push(
+    {id:'dagger',equipment:{hand1:'ritual_dagger'}},
+    {id:'whip',equipment:{hand1:'krampus_whip'}},
+    {id:'dual-sword',equipment:{hand1:'iron_sword',hand2:'moon_blade'}},
+    {id:'dual-dagger',equipment:{hand1:'bone_dagger',hand2:'thorn_dagger'}},
+    {id:'mixed-blades',equipment:{hand1:'bone_dagger',hand2:'iron_sword'}},
+    {id:'dual-wand',equipment:{hand1:'storm_wand',hand2:'wand'}},
+    {id:'sword-wand',equipment:{hand1:'iron_sword',hand2:'wand'}},
+    {id:'dagger-shield',equipment:{hand1:'bone_dagger',hand2:'moon_shield'}}
   );
   const animations=Object.entries(model.clips).map(([action,clip])=>({action,frames:clip.length,fps:clip.fps||12,loop:clip.loop!==false}));
   const canvas=(width,height)=>{const el=document.createElement('canvas');el.width=width;el.height=height;return el;};
@@ -37,27 +47,27 @@ async function exportInBrowser(url, model) {
     return {equipment:variant.equipment,appearance:variant.appearance||appearance,inventory:[],pickupItem:'moon_prism',faceX,faceY,animationAction:action,playerFrame:frame};
   }
   // Return one file at a time to keep Electron's IPC payload bounded.
-  window.generation={variants,animations,directions,render(variantId,action){
+  window.generation={variants,animations,directions,render(variantId,action,contactsOnly=false){
     const variant=variants.find(v=>v.id===variantId),clip=model.clips[action];
     const cell=128,ax=64,ay=88;
     const native=canvas(cell*clip.length,cell*8),n=native.getContext('2d');
-    for(let d=0;d<8;d++)for(let f=0;f<clip.length;f++){
+    if(!contactsOnly)for(let d=0;d<8;d++)for(let f=0;f<clip.length;f++){
       n.save();n.translate(f*cell+ax,d*cell+ay);
       drawPlayer(n,actor(variant,d,action,f),f/clip.fps,model);n.restore();
     }
-    const sheet=canvas(1280,1340),c=sheet.getContext('2d');
-    background(c,1280,1340,'WILDBOUND / '+variantId.toUpperCase()+' / '+action.toUpperCase());
+    const sheet=canvas(1600,1880),c=sheet.getContext('2d');
+    background(c,sheet.width,sheet.height,'WILDBOUND / '+variantId.toUpperCase()+' / '+action.toUpperCase());
     c.fillText('Generation '+generation+' | 8 directions | '+clip.length+' source frames | native sprites included',24,58);
     for(let d=0;d<8;d++){
-      const y=105+d*150;c.fillStyle='#becdc6';c.fillText(directions[d],20,y+66);
-      c.fillStyle='#304641';c.fillRect(65,y+140,1190,1);
+      const y=105+d*215;c.fillStyle='#becdc6';c.fillText(directions[d],20,y+110);
+      c.fillStyle='#304641';c.fillRect(65,y+200,1510,1);
       for(let sample=0;sample<8;sample++){
-        const f=sample/7*(clip.length-1),x=128+sample*150;
-        c.save();c.translate(x,y+130);c.scale(3,3);
+        const f=sample/7*(clip.length-1),x=160+sample*180;
+        c.save();c.translate(x,y+180);c.scale(3,3);
         drawPlayer(c,actor(variant,d,action,f),f/clip.fps,model);c.restore();
       }
     }
-    return {native:png(native),sheet:png(sheet)};
+    return {native:contactsOnly?null:png(native),sheet:png(sheet)};
   },styles(){
     const sheet=canvas(1200,100+Object.keys(HAIR_STYLES).length*208),c=sheet.getContext('2d');
     background(c,sheet.width,sheet.height,'WILDBOUND / GENERATION '+generation+' / ALL HAIRSTYLES');
@@ -80,6 +90,19 @@ async function exportInBrowser(url, model) {
         drawPlayer(c,actor({appearance:{...appearance,face,skin,build:['standard','broad','slender'][row%3]},equipment:{}},d,'idle',0),0,model);c.restore();
       }row++;
     }return png(sheet);
+  },review(page){
+    const sheet=canvas(1600,1540),c=sheet.getContext('2d');
+    background(c,1600,1540,'WILDBOUND / ANIMATION CRITIQUE / PAGE '+(page+1));
+    animations.slice(page*6,page*6+6).forEach(({action,frames,fps},row)=>{
+      const id=['draw','ranged'].includes(action)?'archer':action==='cast'?'mage':['slash','swipe_one','swipe_two','swipe_big','sword_combo','block','shield','parry'].includes(action)?'sword-shield':'base';
+      const variant=variants.find(v=>v.id===id),y=100+row*240;
+      c.fillStyle='#f0dba1';c.font='bold 15px sans-serif';c.fillText(action.toUpperCase()+' / '+id+' / W then SE',24,y);
+      for(let i=0;i<8;i++){
+        const phases=action==='sword_combo'?[.18,.25,.55,.63]:['slash','swipe_one','swipe_two','swipe_big','punch','punch_left','punch_right','uppercut','cast','parry'].includes(action)?[0,.25,.43,.67]:[0,1/3,2/3,1];
+        const f=phases[i%4]*(frames-1),d=i<4?2:7;
+        c.save();c.translate(160+i*180,y+198);c.scale(3,3);drawPlayer(c,actor(variant,d,action,f),f/fps,model);c.restore();
+      }
+    });return png(sheet);
   },catalog(page){
     const ids=Object.keys(ITEMS).filter(id=>ITEMS[id].slot),chunk=ids.slice(page*28,(page+1)*28);
     const sheet=canvas(1120,850),c=sheet.getContext('2d');
@@ -105,20 +128,22 @@ app.whenReady().then(async()=>{
   const url=pathToFileURL(path.join(root,'src')).href+'/';
   const manifest=await win.webContents.executeJavaScript(`(${exportInBrowser.toString()})(${JSON.stringify(url)},${JSON.stringify(model)})`);
   if(process.argv.includes('--study')){
-    manifest.variants=manifest.variants.filter(v=>['base','sword-shield','safari'].includes(v.id));
-    manifest.animations=manifest.animations.filter(a=>['idle','run','walk','death','get_up','sleep','draw','sword_combo','mine'].includes(a.action));
+    manifest.variants=manifest.variants.filter(v=>['base','sword-shield','safari','archer','whip','dual-dagger'].includes(v.id));
+    manifest.animations=manifest.animations.filter(a=>['idle','swipe_one','swipe_two','swipe_big','uppercut','cast','ranged','draw','sword_combo'].includes(a.action));
   }
   const write=(file,data)=>{const target=path.join(out,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,Buffer.from(data,'base64'));};
   for(const variant of process.argv.includes('--appearance-only')?[]:manifest.variants){
     for(const {action} of manifest.animations){
-      const result=await win.webContents.executeJavaScript(`generation.render(${JSON.stringify(variant.id)},${JSON.stringify(action)})`);
+      const result=await win.webContents.executeJavaScript(`generation.render(${JSON.stringify(variant.id)},${JSON.stringify(action)},${process.argv.includes('--contact-only')})`);
       write(`after/${variant.id}/player-${action}-8dir.png`,result.sheet);
-      write(`native/${variant.id}/${action}.png`,result.native);
+      if(result.native)write(`native/${variant.id}/${action}.png`,result.native);
     }
     console.log('Exported '+variant.id+' / '+manifest.animations.length+' animations');
   }
   write('all-hairstyles.png',await win.webContents.executeJavaScript('generation.styles()'));
   write('face-variants.png',await win.webContents.executeJavaScript('generation.faces()'));
+  for(let page=0;page<Math.ceil(manifest.animations.length/6);page++)
+    write(`animation-review-${page+1}.png`,await win.webContents.executeJavaScript(`generation.review(${page})`));
   for(let page=0;page<manifest.catalogPages;page++){
     const result=await win.webContents.executeJavaScript(`generation.catalog(${page})`);
     write(`gear-catalog-${page+1}.png`,result.data);

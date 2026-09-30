@@ -16,7 +16,7 @@ packager({
     /^\/scripts\/(upgrade|integrate|extract|fix|finish|optimize|polish|cleanup)/,
     /^\/\.tools/,
     /^\/test-output/,
-    /^\/art\/player\/detail-native-v[23]/,
+    /^\/art\/player\/detail-native-v[234]/,
     /^\/tests/,
     /^\/dist/,
     /^\/\.git/,
