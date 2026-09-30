@@ -1,3 +1,58 @@
+## 1.0.30 - Skill scrolls and aiming updates
+
+- Boss scrolls unlock all six Field Guild skills, with distinct scroll markings and permanent discovery.
+- Open the existing cheat console with ten Y presses while paused in an active expedition.
+- Fix vertical projectile direction, current-frame aiming, and network mouse-angle preservation; add stationary wand aiming.
+- Move set progress and bonuses into item tooltips.
+- Include winter loot, Santa hat, Krampus whip, ground texture, forest, inventory, and character updates from the current workspace.
+
+## 1.0.29 - Character generation 3
+
+- Rebuild all 36 hero clips with body weight, distinct walk/run cycles, grounded recovery, and constrained limb lengths.
+- Resculpt the eight-direction torso and head; improve hair masses, ears, noses, facial shading, leather, and cloth.
+- Fit rifle grips, add two-handed gathering tools and carried props, and connect utility poses to their gameplay timers.
+- Preserve older exports and add a fresh generation-3 comparison set with 11 variants, eight directions, native sheets, catalogs, slow motion, and frame scrubbing.
+- Retain editable authored keys, existing appearance customization, other creature rigs, and combat durations.
+
+## 1.0.28 - Living forest landscape
+
+- Continuous forest ground, irregular board clearing, and connected winding trails.
+- Seeded groves, distinct tree silhouettes, directional canopy shadows, and shared wind.
+- Overgrown ruins, solid decorative terraces, WFC-generated broken paving, moss, roots, and rubble.
+- Irregular riverbank dressing, downstream currents, and contextual grass, ferns, and flowers.
+- Cached ground and foliage, canopy visibility, and compact save/network reconstruction.
+- Fresh Windows build and launcher. Full implementation checklist: docs/FOREST_UPGRADE.md.
+
+## 1.0.27 - Character detail generation 2
+
+- Directional human faces with visible ears, profile noses, brows, jaw shading, and layered face styles beneath helmets.
+- Refined all seven hair options; long hair and ponytails follow the animation frame clock.
+- Add cloth seams, skin highlights, glove articulation, boot trim, shield rivets, and held-item details without replacing authored keyframes.
+- Export 36 animations across eight directions and 11 appearance/equipment variants to a fresh comparison folder, with native sprites, catalogs, and an animated viewer. Previous generation remains intact.
+- Verified with 423 automated tests and 22,176 exported sprite cells checked for clipping and missing pixels.
+
+## 1.0.26 - Softer lighting and exploration fog
+
+- Broaden the player-light fade to remove the sharply outlined spotlight edge.
+- Feather explored tiles over half a world tile, preserving the grid-shaped boundary while keeping softness consistent across zoom levels.
+- Verified with an Electron fog render and pixel falloff check.
+
+## 1.0.25 - Practice combat, traversal, and readability
+
+- Practice targets use real melee and projectile damage without losing health. Typed damage numbers pop, stack upward, and fade after half a second.
+- Jump-capable monsters can route and pounce onto low furniture; fallen stumps block walking and support landing.
+- Ritual ghosts reset corpse state, follow in separate positions, animate, and prioritize nearby targets. Up to three blue cooldown dots accompany the hero portrait.
+- Center the opening table and improve board-event text size, contrast, spacing, and canvas resolution.
+- Lighten shallows, animate edge ripples, separate bridge rendering from water, fade decks over swimmers, and splash on both depth transitions.
+- Includes lobby inventory. Verified with 414 automated tests and focused Electron visual checks.
+
+## 1.0.24 - Lobby inventory
+
+- Open the backpack in the lobby with I or the mapped controller inventory button, then equip and organize gear using the existing inventory controls.
+- Inventory changes persist on the selected hero and update practice equipment immediately. Inventory menus block practice actions and cancel readiness.
+- Ground-item actions remain expedition-only so lobby inventory actions cannot discard items into an invisible world.
+- Verified with 402 automated tests and a focused Electron keyboard inventory check.
+
 ## 1.0.23 - Lobby layout and consolidated desktop build
 
 - Match the reference lobby with a tiled floor, center divider, five oriented target tracks, and rearranged stations.

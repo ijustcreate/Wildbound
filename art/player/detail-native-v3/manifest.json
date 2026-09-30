@@ -1,0 +1,363 @@
+{
+  "variants": [
+    {
+      "id": "hair-none",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "none",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "base",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "crop",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "hair-bob",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "bob",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "hair-long",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "long",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "hair-ponytail",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "ponytail",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "hair-mohawk",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "mohawk",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "hair-curls",
+      "appearance": {
+        "skin": "#d9ab76",
+        "shirt": "#66744e",
+        "pants": "#79634a",
+        "shoes": "#49372d",
+        "hair": "curls",
+        "hairColor": "#593923"
+      },
+      "equipment": {}
+    },
+    {
+      "id": "sword-shield",
+      "equipment": {
+        "hand1": "iron_sword",
+        "hand2": "moon_shield",
+        "feet": "moon_steps",
+        "shoulders": "moon_shoulders"
+      }
+    },
+    {
+      "id": "archer",
+      "equipment": {
+        "hand1": "moon_bow",
+        "chest": "armor",
+        "feet": "boots",
+        "gloves": "gloves"
+      }
+    },
+    {
+      "id": "safari",
+      "equipment": {
+        "head": "safari_hat",
+        "shoulders": "safari_shoulders",
+        "chest": "safari_vest",
+        "gloves": "safari_gloves",
+        "pants": "safari_pants",
+        "feet": "safari_boots",
+        "hand1": "rifle"
+      }
+    },
+    {
+      "id": "mage",
+      "equipment": {
+        "head": "moon_circlet",
+        "hand1": "storm_wand",
+        "cape": "night_cape"
+      }
+    }
+  ],
+  "animations": [
+    {
+      "action": "idle",
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    {
+      "action": "run",
+      "frames": 8,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "action": "punch",
+      "frames": 6,
+      "fps": 18,
+      "loop": false
+    },
+    {
+      "action": "slash",
+      "frames": 6,
+      "fps": 18,
+      "loop": false
+    },
+    {
+      "action": "draw",
+      "frames": 8,
+      "fps": 12,
+      "loop": false
+    },
+    {
+      "action": "hurt",
+      "frames": 4,
+      "fps": 12,
+      "loop": false
+    },
+    {
+      "action": "dash",
+      "frames": 4,
+      "fps": 12,
+      "loop": true
+    },
+    {
+      "action": "block",
+      "frames": 4,
+      "fps": 8,
+      "loop": true
+    },
+    {
+      "action": "walk",
+      "frames": 8,
+      "fps": 7,
+      "loop": true
+    },
+    {
+      "action": "swipe_one",
+      "frames": 7,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "swipe_two",
+      "frames": 7,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "swipe_big",
+      "frames": 10,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "punch_left",
+      "frames": 6,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "punch_right",
+      "frames": 6,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "uppercut",
+      "frames": 6,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "cast",
+      "frames": 7,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "jump_takeoff",
+      "frames": 4,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "jump_air",
+      "frames": 4,
+      "fps": 16,
+      "loop": true
+    },
+    {
+      "action": "jump_fall",
+      "frames": 4,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "land",
+      "frames": 5,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "interact",
+      "frames": 8,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "get_up",
+      "frames": 8,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "revive",
+      "frames": 8,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "swim",
+      "frames": 12,
+      "fps": 16,
+      "loop": true
+    },
+    {
+      "action": "death",
+      "frames": 8,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "sleep",
+      "frames": 8,
+      "fps": 4,
+      "loop": true
+    },
+    {
+      "action": "salvage",
+      "frames": 12,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "pickup",
+      "frames": 9,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "carry",
+      "frames": 8,
+      "fps": 16,
+      "loop": true
+    },
+    {
+      "action": "found_unique",
+      "frames": 10,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "mine",
+      "frames": 10,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "woodcut",
+      "frames": 10,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "shield",
+      "frames": 4,
+      "fps": 16,
+      "loop": true
+    },
+    {
+      "action": "parry",
+      "frames": 6,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "ranged",
+      "frames": 7,
+      "fps": 16,
+      "loop": false
+    },
+    {
+      "action": "sword_combo",
+      "frames": 12,
+      "fps": 24,
+      "loop": false
+    }
+  ],
+  "directions": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+  ],
+  "catalogPages": 4,
+  "cell": {
+    "width": 128,
+    "height": 128,
+    "anchorX": 64,
+    "anchorY": 88
+  },
+  "generation": 3,
+  "source": "authored/rigs.json + src/player-motion.mjs"
+}

@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {treeBase,treeType,treeStructure,forestSettings,treeSeason,forestDecor,tickForest,waterBodyAt} from '../src/forest.mjs';
+import {treeBase,treeType,treeStructure,forestSettings,treeSeason,forestDecor,tickForest,waterBodyAt,treeStumpPalette,palmBase} from '../src/forest.mjs';
 import {propBase,tickEnvironment} from '../src/environment.mjs';
+import {propDepth,isOccluded} from '../src/world.mjs';
 import {Game} from '../src/core.mjs';import {defaultHouse} from '../src/house-design.mjs';
 import {capeRows} from '../src/cape-motion.mjs';
 test('Felling keeps full-sized tree root and stump at exactly the same ground position',()=>{
@@ -9,6 +10,21 @@ test('Felling keeps full-sized tree root and stump at exactly the same ground po
 test('Three seeded tree types vary structure reproducibly and support winter',()=>{
  const kinds=new Set();for(let i=0;i<50;i++){const p={x:i*32,y:300,size:100,kind:'tree'};kinds.add(treeType(p));assert.deepEqual(treeStructure(p),treeStructure({...p}));}
  assert.equal(kinds.size,3);assert.notDeepEqual(treeStructure({x:1,y:2}),treeStructure({x:3,y:4}));assert.equal(treeSeason({kind:'snow_tree'}),'winter');
+});
+test('Felled tree stumps use the source tree bark palette',()=>{
+ const birch=treeStumpPalette({kind:'tree',treeType:'birch'});
+ const oak=treeStumpPalette({kind:'tree',treeType:'oak'});
+ const pine=treeStumpPalette({kind:'tree',treeType:'pine'});
+ assert.equal(birch.highlight,'#ebebcf');
+ assert.notEqual(birch.highlight,oak.highlight);
+ assert.notEqual(pine.bark,oak.bark);
+});
+test('Procedural palms use their live base for depth sorting and canopy fade',()=>{
+ const palm={kind:'palm',procedural:true,x:400,y:380,size:100};
+ assert.deepEqual(propBase(palm),palmBase(palm));
+ assert.equal(propDepth(palm),palmBase(palm).y);
+ assert.equal(isOccluded(palm,null,{x:402,y:palmBase(palm).y-34}),true);
+ assert.equal(isOccluded(palm,null,{x:502,y:palmBase(palm).y-34}),false);
 });
 test('Natural forest water gets reeds and pads; explicitly tagged pools never do',()=>{
  const g={seed:1,generatedEnvironment:'forest',terrain:Array(2500).fill('grass'),scenery:[]};for(let y=2;y<48;y++)for(let x=5;x<8;x++)g.terrain[y*50+x]='water';

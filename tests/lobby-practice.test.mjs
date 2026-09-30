@@ -27,7 +27,7 @@ test('Lobby tables block walking, support jumps and allow walking off; totem sta
 });
 test('Target lever toggles motion; actual arrows and spells score without hurting saved heroes',()=>{
  const {practice,tick}=setup();tick({});const t=practice.targets[0],x=t.x;practice.updateTargets(1);assert.equal(t.x,x);practice.toggleTargets();practice.updateTargets(.5);assert.notEqual(t.x,x);practice.toggleTargets();const stopped=t.x;practice.updateTargets(1);assert.equal(t.x,stopped);
- practice.arrows.push({x:t.x,y:165,z:20,vz:0,vx:0,vy:-300,damage:12,owner:practice.players[0].id});for(let i=0;i<5;i++)tick({});assert.equal(t.hits,1);assert.equal(t.score,10);
+ practice.arrows.push({x:t.x,y:165,z:20,vz:0,vx:0,vy:-300,damage:12,owner:practice.players[0].id});for(let i=0;i<5;i++)tick({});assert.equal(t.hits,1);assert.equal(t.score,12);
  practice.spells.push({x:t.x,y:165,vx:0,vy:-300,life:1,remaining:200,size:6,damage:15});for(let i=0;i<5;i++)tick({});assert.equal(t.hits,2);assert.equal(practice.spells.length,0);
 });
 test('Tray contains exactly the selected number of centered dice',()=>{assert.deepEqual(lobbyDiceOffsets('1'),[-12]);assert.equal(lobbyDiceOffsets('2').length,2);});

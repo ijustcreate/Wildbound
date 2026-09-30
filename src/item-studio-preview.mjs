@@ -26,7 +26,7 @@ export class ItemStudioPreview {
     if(!this.playing&&!this.dirty&&dt)return;
     const c=this.root.querySelector('.item-character canvas').getContext('2d');
     c.imageSmoothingEnabled=false;c.fillStyle='#182c2c';c.fillRect(0,0,360,300);
-    c.save();c.translate(180,250);c.scale(6,6);drawPlayer(c,this.actor(),0,playerMotion);c.restore();
+    c.save();c.translate(180,250);c.scale(4.5,4.5);drawPlayer(c,this.actor(),0,playerMotion);c.restore();
     if(!this.dirty)return;
     this.dirty=false;
     [...this.root.querySelector('.item-directions').children].forEach((b,d)=>b.classList.toggle('active',d===this.direction));

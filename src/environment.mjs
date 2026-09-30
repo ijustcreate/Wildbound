@@ -1,8 +1,9 @@
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
-import {drawForestTree,drawBush,treeBase,tickForest,drawPalmTrunk,drawPalmFronds} from './forest.mjs';
+import {drawForestTree,drawBush,treeBase,palmBase,tickForest,drawPalmTrunk,drawPalmFronds} from './forest.mjs';
 import { emitNoise } from './night-cycle.mjs';
+import {drawForestRuin} from './forest-art.mjs';
 import { terrainHash } from "./world.mjs";
-export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
+export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
 });
@@ -220,6 +221,7 @@ export function drawTracks(c, g) {
   }
 }
 export function drawProp(c, p, time,game={}) {
+  if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
   if(p.procedural&&['tree','snow_tree'].includes(p.kind)){drawForestTree(c,p,time,game);if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/90),3);}return true;}
   if(p.kind==='bush'){drawBush(c,p,time);return true;}
   if(drawIceProp(c,p,time))return true;

@@ -10,6 +10,7 @@ export function snapshot(g) {
     "persist",
     "spriteLibrary",
     "explored",
+    "forestLandscape",
   ]);
   return {
     ...Object.fromEntries(
@@ -22,8 +23,12 @@ export function snapshot(g) {
 }
 export function cleanInput(input) {
   const out = {};
+  const aimX = Number.isFinite(input?.aimX) ? input.aimX : 0;
+  const aimY = Number.isFinite(input?.aimY) ? input.aimY : 0;
+  const aimLength = Math.max(1, Math.hypot(aimX, aimY));
   for (const [key, v] of Object.entries(input || {})) {
-    if (["x", "y", "aimX", "aimY"].includes(key))
+    if (key === 'aimX' || key === 'aimY') out[key] = (key === 'aimX' ? aimX : aimY) / aimLength;
+    else if (["x", "y"].includes(key))
       out[key] = Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0;
     else if (
       [

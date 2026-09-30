@@ -17,7 +17,12 @@ await win.webContents.executeJavaScript(`(async()=>{
  const {HeroUI}=await import('./src/hero-ui.mjs'),{Game}=await import('./src/core.mjs'),{give,refreshVitals}=await import('./src/items.mjs');
  const host=document.createElement('div');host.id='test-gear-host';host.style='position:fixed;inset:0;z-index:999999;background:#182820';document.body.append(host);
  const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.persist=()=>{};p.name='Socket test';p.level=7;p.equipment={head:'moon_circlet',shoulders:'moon_shoulders',feet:'moon_steps',hand1:'moon_blade'};p.inventory=[];give(p.inventory,'azure_bead');give(p.inventory,'moon_prism');give(p.inventory,'starheart');refreshVitals(p);g.openInventory(p);p.ui.panel='gear';p.ui.index=8;
- const ui=new HeroUI(host);ui.draw(g,{});if(!host.querySelector('.set-checklist .set-active'))throw Error('Set checklist missing');
+ const ui=new HeroUI(host);ui.draw(g,{});if(host.querySelector('.storage-sheet .set-checklist'))throw Error('Set checklist takes inventory space');
+ const setItem=host.querySelector('[data-slot="head"]');setItem.dispatchEvent(new Event('pointerenter'));
+ const tip=host.querySelector('.item-tooltip');if(tip.hidden||!tip.querySelector('.item-tooltip-set .set-active')||!tip.textContent.includes('Moonbound')||!tip.textContent.includes('Lunar grace'))throw Error('Set tooltip missing');
+ setItem.dispatchEvent(new Event('pointerleave'));if(!tip.hidden)throw Error('Set tooltip stays visible');
+ setItem.dispatchEvent(new Event('focus'));if(tip.hidden)throw Error('Set tooltip missing on focus');
+ host.querySelector('[data-mode="pack"][data-index="0"]').dispatchEvent(new Event('pointerenter'));if(tip.querySelector('.item-tooltip-set'))throw Error('Set info leaked to ordinary item');
  g.inventoryAction(p,'offhand');ui.draw(g,{});if(!host.querySelector('.socket-workshop'))throw Error('Socket controller entry missing');
  g.inventoryAction(p,'down');g.inventoryAction(p,'use');ui.draw(g,{});if(!host.textContent.includes('Confirm insertion'))throw Error('Confirmation missing');
  g.inventoryAction(p,'use');ui.draw(g,{});if(p.equipmentSockets.hand1[0]!=='moon_prism')throw Error('Controller inserted wrong gem');

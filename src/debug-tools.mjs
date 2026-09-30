@@ -1,5 +1,14 @@
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.previewGhostMinions=async()=>{
+    await window.showcase('game');
+    const {summonGhost}=await import('./temple.mjs');
+    const p=ctx.game.players[0];ctx.game.ghosts=[];ctx.game.enemies=[];
+    for(let i=0;i<3;i++)summonGhost(ctx.game,{kind:'lion',x:p.x-50+i*40,y:p.y+55,hp:0,killedBy:p.id,ritualKill:true,damage:10,defeated:true});
+    ctx.game.ghosts.forEach((a,i)=>{a.cooldown=i*.4;});ctx.renderRoster();
+    if(document.querySelectorAll('.minion-dot').length!==3)throw Error('Ghost cooldown indicators missing');
+    ctx.renderer.draw(ctx.game,0);return true;
+  };
   window.verifyLobbyActions=async()=>{
     const lobby=ctx.playableLobby,p=ctx.game.players.find(p=>p.device==='keyboard');
     const press=code=>window.dispatchEvent(new KeyboardEvent('keydown',{key:code==='Space'?' ':code.slice(3).toLowerCase(),code,bubbles:true,cancelable:true}));

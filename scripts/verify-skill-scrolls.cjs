@@ -1,0 +1,40 @@
+const {app,BrowserWindow}=require('electron');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'test-output');
+fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'scroll-check-')));app.disableHardwareAcceleration();
+app.whenReady().then(async()=>{
+  const win=new BrowserWindow({show:false,width:1280,height:900,webPreferences:{offscreen:true,backgroundThrottling:false}});
+  await win.loadFile(path.join(root,'index.html'),{query:{tools:'1'}});
+  await win.webContents.executeJavaScript('window.wildboundBoot.ready');
+  await win.webContents.executeJavaScript(`(async()=>{
+    await window.showcase('game');document.getElementById('pause-button').click();
+    const pause=document.getElementById('pause-dialog');
+    const press=(repeat=false)=>window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyY',key:'y',repeat,bubbles:true,cancelable:true}));
+    for(let i=0;i<20;i++)press(true);
+    if(pause.querySelector('.game-debug-console'))throw Error('Held keyboard Y opened console');
+    for(let i=0;i<9;i++)press();
+    if(pause.querySelector('.game-debug-console'))throw Error('Console opened too early');
+    press();if(!pause.querySelector('.game-debug-console'))throw Error('Keyboard shortcut failed');
+    pause.querySelector('.game-debug-console').remove();
+    const pad={index:0,id:'Xbox test',mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[pad]});
+    const frame=()=>new Promise(r=>setTimeout(r,65));await frame();
+    pad.buttons[3]={pressed:true,value:1};await frame();await frame();
+    if(pause.querySelector('.game-debug-console'))throw Error('Held controller Y opened console');
+    pad.buttons[3]={pressed:false,value:0};await frame();
+    for(let i=0;i<9;i++){pad.buttons[3]={pressed:true,value:1};await frame();pad.buttons[3]={pressed:false,value:0};await frame();}
+    if(!pause.querySelector('.game-debug-console'))throw Error('Controller shortcut failed');
+    if(!pause.open)throw Error('Game resumed while opening console');
+    pad.buttons[1]={pressed:true,value:1};await frame();pad.buttons[1]={pressed:false,value:0};await frame();
+    if(pause.querySelector('.game-debug-console')||!pause.open)throw Error('Controller back did not return to pause');
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[]});
+    const {FieldKit}=await import('./src/field-kit.mjs');
+    const {Game}=await import('./src/core.mjs');const {initializeField}=await import('./src/field-systems.mjs');
+    const g=new Game(),p=g.addPlayer('keyboard');p.xp=100;
+    const kit=Object.create(FieldKit.prototype);kit.body=document.createElement('div');kit.action=(label,fn,card)=>{const b=document.createElement('button');b.textContent=label;b.onclick=fn;card.append(b);return b;};
+    kit.skills(g,p,initializeField(p));if([...kit.body.querySelectorAll('button')].some(b=>!b.disabled))throw Error('Skills start unlocked');
+    p.field.skillScrolls.long_jump=true;kit.body.replaceChildren();kit.skills(g,p,p.field);
+    const enabled=[...kit.body.querySelectorAll('button')].filter(b=>!b.disabled);if(enabled.length!==1)throw Error('Wrong skill unlocked');enabled[0].click();if(p.field.skills.long_jump!==1)throw Error('Training failed');
+  })()`);
+  console.log('Keyboard/controller pause shortcut, held-button protection, paused console navigation, and skill gating passed.');app.exit(0);
+}).catch(e=>{console.error(e);app.exit(1);});

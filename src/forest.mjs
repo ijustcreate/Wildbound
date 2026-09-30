@@ -1,6 +1,9 @@
 // Layered, deterministic pixel vegetation. No bitmap dependencies or per-frame random spawning.
+import {forestWind} from './forest-landscape.mjs';
+import {hasForestLandscape,drawCanopyShadow,drawLandscapeCover} from './forest-art.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export const TREE_TYPES=['oak','birch','pine'];
+export const palmBase=p=>({x:p.x,y:Number.isFinite(p.rootY)?p.rootY:p.y+p.size*.19});
 export function palmStructure(p){const seed=p.seed??hash(p.x,p.y)*1000;return {seed,lean:(hash(seed,11)-.5)*19,height:45+hash(seed,12)*10,spread:.85+hash(seed,13)*.3};}
 export function drawPalmTrunk(c,p){
  const s=palmStructure(p);
@@ -34,12 +37,18 @@ try{const saved=JSON.parse(globalThis.localStorage?.getItem('wildbound-forest')|
 export const saveForestSettings=()=>globalThis.localStorage?.setItem('wildbound-forest',JSON.stringify(forestSettings));
 export const treeType=p=>TREE_TYPES.includes(p.treeType)?p.treeType:p.kind==='snow_tree'?'pine':TREE_TYPES[Math.floor(hash(p.x,p.y)*3)];
 export const treeBase=p=>({x:p.x,y:Number.isFinite(p.rootY)?p.rootY:p.y+p.size*.35});
-export function treeSeason(p,g={}){return p.season|| (forestSettings.season==='auto'?(g.generatedEnvironment==='ice'||p.kind==='snow_tree'?'winter':'summer'):forestSettings.season);}
+export function treeSeason(p,g={}){return p.season|| (forestSettings.season==='auto'?(g.generatedEnvironment==='ice'||p.kind==='snow_tree'?'winter':p.autumnAccent?'autumn':'summer'):forestSettings.season);}
 export const leafHabit=p=>p.leafHabit||forestSettings[treeType(p)];
 export function treeStructure(p){const seed=p.seed??hash(p.x,p.y)*1000;return {height:.88+hash(seed,2)*.24,width:.85+hash(seed,3)*.3,lean:(hash(seed,4)-.5)*.16,branchSpread:.8+hash(seed,5)*.4,seed};}
+export function treeStumpPalette(p){
+ const type=treeType(p);
+ if(type==='birch')return {shadow:'#343b35',bark:'#c9cbb3',highlight:'#ebebcf',rings:'#4f5650',root:'#bfc3af'};
+ if(type==='pine')return {shadow:'#3b352c',bark:'#5f4b39',highlight:'#967755',rings:'#403a32',root:'#665a47'};
+ return {shadow:'#514333',bark:'#65503a',highlight:'#b79463',rings:'#72593e',root:'#65503a'};
+}
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
 function line(c,x,y,xx,yy,width,color){const n=Math.ceil(Math.hypot(xx-x,yy-y));for(let i=0;i<=n;i++)rect(c,x+(xx-x)*i/(n||1)-width/2,y+(yy-y)*i/(n||1),width,width,color);}
-function crown(c,x,y,rx,ry,color,seed){for(let row=-ry;row<=ry;row+=2){const half=Math.sqrt(Math.max(0,1-row*row/(ry*ry)))*rx;rect(c,x-half,y+row,half*2+hash(row,seed)*3,2,color);}}
+function crown(c,x,y,rx,ry,color,seed){for(let row=-ry;row<=ry;row+=2){const half=Math.sqrt(Math.max(0,1-row*row/(ry*ry)))*rx,jag=hash(Math.floor(row/4),seed)*3;rect(c,x-half+jag-1,y+row,half*2-jag+hash(row,seed)*2,2,color);}}
 export function drawTreeTrunk(c,p){
  const birch=treeType(p)==='birch',bark=birch?'#c9cbb3':'#655044';
  line(c,0,-43,-1,-3,birch?7:11,'#343b35');line(c,-1,-40,-2,-2,birch?5:7,bark);
@@ -58,16 +67,41 @@ export function drawTreeBranches(c,p){
  line(c,bx,by,tx,ty,1,birch?'#c5c9b7':'#665a47');line(c,tx,ty,tx-sign*2,ty-4,1,'#575547');}}
  });
 }
-export function drawTreeFoliage(c,p,time,g){
+const foliageCache=new Map();
+export function drawTreeFoliage(c,p,time,g={}){
+ if(typeof document==='undefined'){paintTreeFoliage(c,p,time,g);return;}
+ const shape=treeStructure(p),key=[treeType(p),treeSeason(p,g),leafHabit(p),p.x,p.y,shape.branchSpread].join(':');
+ let canvas=foliageCache.get(key);
+ if(!canvas){
+  canvas=document.createElement('canvas');canvas.width=144;canvas.height=128;
+  const ctx=canvas.getContext('2d');ctx.translate(72,112);paintTreeFoliage(ctx,p,0,g);
+  if(foliageCache.size>512)foliageCache.delete(foliageCache.keys().next().value);
+  foliageCache.set(key,canvas);
+ }
+ const wind=forestWind(p.x,p.y,time);
+ c.save();c.transform(1,0,wind*.012,1,wind*.5,0);c.drawImage(canvas,-72,-112);c.restore();
+}
+function paintTreeFoliage(c,p,time,g){
  const type=treeType(p),season=treeSeason(p,g);if(season==='winter'&&leafHabit(p)==='deciduous')return;
- const autumn=season==='autumn'&&leafHabit(p)==='deciduous',colors=autumn?['#65483e','#996047','#c88c49','#e0b564']:type==='pine'?['#173e37','#28584a','#41755a','#7b9870']:['#203f32','#365c3b','#5e8047','#9aab63'];
- const seed=hash(p.x,p.y),sway=Math.sin(time*1.3+seed*6)*.8;
- const clusters=type==='pine'?[[0,-64,10,10],[0,-53,16,11],[0,-41,22,12],[0,-29,25,11]]:type==='birch'?[[-9,-42,14,15],[10,-51,15,16],[-4,-63,14,14]]:[[-18,-37,17,14],[16,-41,18,15],[-11,-54,20,16],[12,-57,18,15],[0,-66,16,12]];
+ const autumn=season==='autumn'&&leafHabit(p)==='deciduous',colors=autumn?['#534d35','#877139','#b5a148','#d6c96b']:type==='pine'?['#204b43','#326652','#54845f','#91aa73']:type==='birch'?['#355941','#527944','#83a151','#bdc97b']:['#234d39','#386d43','#668c47','#a5b962'];
+ const seed=hash(p.x,p.y),sway=0;
+ const clusters=type==='pine'?[[0,-26,26,12],[-2,-38,23,13],[1,-50,18,13],[-1,-62,13,14],[0,-74,7,12]]:type==='birch'?[[-10,-39,12,16],[9,-48,14,18],[-8,-63,12,17],[5,-76,11,13]]:[[-24,-35,19,16],[22,-40,21,18],[-19,-52,22,20],[13,-59,25,19],[-5,-73,23,17]];
  clusters.forEach(([cx,cy,rx,ry],i)=>{
   const x=cx*treeStructure(p).branchSpread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
-  crown(c,x+sway,y,rx,ry,colors[0],i+seed);crown(c,x-1+sway,y-3,rx-2,ry-3,colors[1],i+seed);
-  crown(c,x-4+sway,y-6,rx*.65,ry*.55,colors[2],i+seed);
-  for(let n=0;n<34;n++){const lx=(hash(n+i*41,seed)-.5)*rx*1.7,ly=(hash(seed,n+i*17)-.5)*ry*1.5;if(lx*lx/(rx*rx)+ly*ly/(ry*ry)>.8)continue;rect(c,x+lx+sway,y+ly,2+hash(n,seed)*3,2,colors[n%6===0?3:n%2?1:2]);}
+  crown(c,x+sway,y,rx,ry,colors[0],i+seed);
+  for(let n=0;n<16;n++){
+    const a=n*Math.PI*2/16,r=.80+hash(n+i,seed)*.14;
+    crown(c,x+Math.cos(a)*rx*r,y+Math.sin(a)*ry*r,3+hash(n,seed)*3,3+hash(seed,n)*3,colors[0],n);
+  }
+  crown(c,x-2+sway,y-3,rx-3,ry-3,colors[1],i+seed);
+  for(let n=0;n<48;n++){
+    const lx=(hash(n+i*41,seed)-.6)*rx*1.55,ly=(hash(seed,n+i*17)-.63)*ry*1.5;
+    if(lx*lx/(rx*rx)+ly*ly/(ry*ry)>.8)continue;
+    const lit=ly<ry*.2&&lx<rx*.4;
+    const color=colors[lit?2:n%3?1:0],w=3+hash(n,seed)*5;
+    rect(c,x+lx-1,y+ly-2,w*.6,5,color);rect(c,x+lx-3,y+ly,w,3,color);
+    if(lit&&n%4===0){rect(c,x+lx-2+sway,y+ly-2,3,2,colors[3]);rect(c,x+lx-3+sway,y+ly,2,2,colors[3]);}
+  }
   if(season==='winter')crown(c,x-2,y-7,rx*.7,3,'#dceae4',seed+i);
  });
 }
@@ -79,7 +113,18 @@ export function drawForestTree(c,p,time,g={}){
  const shape=treeStructure(p);c.transform(shape.width,0,shape.lean,shape.height,0,0);
  drawTreeTrunk(c,p);drawTreeBranches(c,p);drawTreeFoliage(c,p,time,g);c.restore();
 }
-function drawStump(c,p){rect(c,-7,-6,14,7,'#514333');rect(c,-6,-6,12,3,'#b79463');rect(c,-3,-5,6,1,'#72593e');line(c,-4,-1,-11,2,3,'#65503a');line(c,4,-1,10,2,3,'#65503a');}
+function drawStump(c,p){
+ const colors=treeStumpPalette(p);
+ rect(c,-7,-6,14,7,colors.shadow);
+ rect(c,-6,-6,12,3,colors.highlight);
+ rect(c,-3,-5,6,1,colors.rings);
+ line(c,-4,-1,-11,2,3,colors.root);
+ line(c,4,-1,10,2,3,colors.root);
+ if(treeType(p)==='birch'){
+  rect(c,-6,-2,3,1,colors.rings);
+  rect(c,2,-1,4,1,colors.rings);
+ }
+}
 export function waterBodyAt(g,x,y){
  if((g.house?.pools||[]).some(p=>x>=p.x&&y>=p.y&&x<p.x+p.w&&y<p.y+p.h))return 'pool';
  if(x<0||y<0||x>=1600||y>=1600)return null;
@@ -108,19 +153,21 @@ export function tickForest(g,dt){
  for(const b of g.scenery||[])if(b.kind==='bush'){const near=players.some(p=>Math.hypot(p.x-b.x,p.y-(b.y+b.size*.19))<b.size*.55);b.rustle=near?1:Math.max(0,(b.rustle||0)-dt*2.5);}
 }
 export function drawForestGround(c,g,visible=()=>true){
- const data=forestDecor(g);c.save();
+ const data=forestDecor(g),landscape=hasForestLandscape(g);c.save();
+ if(landscape){const cameraVisible=visible;visible=p=>cameraVisible(p)&&(g.phase!=='won')&&(g.bloom>=3||Math.hypot(p.x-800,p.y-800)<g.bloom*430);drawLandscapeCover(c,g,visible);}
  for(const p of g.scenery||[])if(['tree','snow_tree','palm'].includes(p.kind)&&visible(p)){
- const b=p.kind==='palm'?{x:p.x,y:p.rootY??p.y+p.size*.19}:treeBase(p);c.fillStyle=p.fallen?'#102b224d':'#0b25234f';c.beginPath();c.ellipse(b.x+5,b.y+3,p.size*(p.fallen?.13:.34),p.size*(p.fallen?.05:.12),0,0,Math.PI*2);c.fill();}
+ if(landscape&&p.kind!=='palm'){drawCanopyShadow(c,p,g);continue;}
+ const b=p.kind==='palm'?palmBase(p):treeBase(p);c.fillStyle=p.fallen?'#102b224d':'#0b25234f';c.beginPath();c.ellipse(b.x+5,b.y+3,p.size*(p.fallen?.13:.34),p.size*(p.fallen?.05:.12),0,0,Math.PI*2);c.fill();}
  for(const l of data.leaves)if(visible(l)&&waterBodyAt(g,l.x,l.y)!=='pool'){
  const season=treeSeason(l.tree,g);if(season==='winter')continue;rect(c,l.x+l.dx,l.y+l.dy,3,1.5,season==='autumn'?['#a97442','#c79c51','#785742'][l.seed%3]:['#7e8448','#687643','#a18c53'][l.seed%3]);}
  for(const p of data.banks)if(visible(p)&&waterBodyAt(g,p.x,p.y)==='natural'){
  if(p.kind==='lily'){const bob=Math.sin(g.time*1.5+p.seed)*.6;c.fillStyle='#173f3b';c.beginPath();c.ellipse(p.x,p.y+1,7,3,0,0,Math.PI*2);c.fill();c.fillStyle='#558b50';c.beginPath();c.moveTo(p.x,p.y+bob);c.arc(p.x,p.y+bob,6,.25,Math.PI*1.95);c.closePath();c.fill();rect(c,p.x-3,p.y-2+bob,4,1,'#9ebc6b');if(p.seed%4===0){rect(c,p.x+2,p.y-4,3,3,'#eee2c4');rect(c,p.x+3,p.y-3,1,1,'#deb16b');}}
- else for(let i=0;i<6;i++){const x=p.x+i*3,y=p.y+hash(i,p.seed)*5,sway=Math.sin(g.time*2+p.seed+i)*1.5;line(c,x,y,x+sway,y-10-hash(i,p.seed)*9,1,i%2?'#799653':'#416b46');if(i%2)rect(c,x+sway,y-18,2,5,'#887248');}
+ else for(let i=0;i<6;i++){const x=p.x+i*3,y=p.y+hash(i,p.seed)*5,sway=forestWind(x,y,g.time)*2;line(c,x,y,x+sway,y-10-hash(i,p.seed)*9,1,i%2?'#799653':'#416b46');if(i%2)rect(c,x+sway,y-18,2,5,'#887248');}
  }
  c.restore();
 }
 export function drawFallingLeaves(c,g,visible=()=>true){
  for(const p of g.scenery||[])if(p.kind==='tree'&&!p.fallen&&!p.falling&&leafHabit(p)==='deciduous'&&treeSeason(p,g)!=='winter'&&visible(p)){
- const b=treeBase(p);for(let i=0;i<2;i++){const u=((g.time||0)*.09+hash(i+p.x,p.y))%1;if(u>.8)continue;const x=b.x+Math.sin(u*8+i)*12+(i-.5)*p.size*.3,y=b.y-p.size*.7+u*p.size*.88;rect(c,x,y,Math.sin(u*20)>0?3:1,2,treeSeason(p,g)==='autumn'?'#c29451':'#839854');}}
+ const b=treeBase(p);for(let i=0;i<2;i++){const u=((g.time||0)*.09+hash(i+p.x,p.y))%1;if(u>.8)continue;const x=b.x+Math.sin(u*8+i)*12+(i-.5)*p.size*.3+forestWind(b.x,b.y,g.time)*u*18,y=b.y-p.size*.7+u*p.size*.88;rect(c,x,y,Math.sin(u*20)>0?3:1,2,treeSeason(p,g)==='autumn'?'#c29451':'#839854');}}
 }
 export function drawBush(c,p,time){const s=p.size/40,b=p.y+p.size*.19;c.save();c.translate(p.x,b);c.scale(s,s);c.fillStyle='#17392e66';c.beginPath();c.ellipse(0,1,17,5,0,0,Math.PI*2);c.fill();const sway=Math.sin(time*24+p.x)*(p.rustle||0)*3;for(let i=0;i<3;i++){crown(c,(i-1)*10+sway,-8-(i===1?5:0),11,9,'#274f35',i);crown(c,(i-1)*10-2+sway,-12-(i===1?5:0),8,5,'#5e8247',i);for(let j=0;j<5;j++)rect(c,(i-1)*10-7+j*3+sway,-13+hash(j,i)*7,2,2,'#92a65b');}c.restore();}

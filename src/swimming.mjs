@@ -1,11 +1,15 @@
 import {waterAt} from './environment.mjs';
+import {bridgeAt} from './terrain-support.mjs';
 export const BREATH_SECONDS=20;
-export function inDeepWater(g,p){return !p.room&&waterAt(g,p.x,p.y)==='water';}
+export function inDeepWater(g,p){return !p.room&&(waterAt(g,p.x,p.y)==='water'||(bridgeAt(g,p.x,p.y)&&(p.underBridge||p.swimming)));}
 export function tickSwimming(g,p,input,dt){
+ const onBridge=bridgeAt(g,p.x,p.y);
+ p.underBridge=onBridge&&!!(p.underBridge||p.swimming)&&!(p.jumpHeight>0);
+ if(onBridge&&!p.underBridge&&!(p.jumpHeight>0))p.groundHeight=10;
  const deep=inDeepWater(g,p),airborne=(p.jumpHeight||0)>0||(p.groundHeight||0)>0;
  const wasSwimming=!!p.swimming;p.swimming=deep&&!airborne&&p.hp>0;
  p.breath=Number.isFinite(p.breath)?p.breath:BREATH_SECONDS;
- if(p.swimming&&!wasSwimming){
+ if((p.swimming&&!wasSwimming)||(wasSwimming&&!p.swimming&&waterAt(g,p.x,p.y)==='shallow'&&!airborne)){
   g.effects||=[];g.effects.push({particle:'splash',x:p.x,y:p.y,life:.8,duration:.8,seed:p.id||0});
   g.onSound?.('splash',p);
  }

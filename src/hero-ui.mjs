@@ -1,8 +1,9 @@
 import {drawTempleRoom} from './temple.mjs';
+import { INVENTORY_TABS, inventoryCategory, tabIndices, bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
 import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
 import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
-import { compareItem, itemStatDelta } from "./field-systems.mjs";
+import { compareItem, itemStatDelta, canAccess, protectedItem } from "./field-systems.mjs";
 import { controllerButtonNames, CONTROLLER_NAMES } from "./controls.mjs";
 import { chestName } from "./items.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
@@ -46,6 +47,16 @@ export class HeroUI {
       }
       if (!stats.children.length) stats.append(el('span', 'No equipment stat change', 'item-tooltip-muted'));
       tip.append(stats);
+      if (def.set && GEAR_SETS[def.set]) {
+        const set = setProgress(p, def.set), checklist = el('section', null, 'item-tooltip-set');
+        checklist.append(el('strong', `${set.name} · ${set.count}/${set.checks.length}`));
+        for (const part of set.checks)
+          checklist.append(el('div', (part.equipped ? '✓ ' : '○ ') + part.ids.map(id => ITEMS[id].name).join(' / '), part.equipped ? 'set-active' : 'set-missing'));
+        if (set.threeText) checklist.append(el('p', '3 pieces · ' + set.threeText, set.count >= 3 ? 'set-active' : 'set-missing'));
+        checklist.append(el('p', 'Complete · ' + set.fullText, set.complete ? 'set-active' : 'set-missing'));
+        tip.append(checklist);
+      }
+      tip.hidden = false;
       const r = button.getBoundingClientRect(), pr = panel.getBoundingClientRect();
       const bx = r.left - pr.left, by = r.top - pr.top;
       const candidates = [
@@ -80,6 +91,7 @@ export class HeroUI {
       let panel = this.panels.get(p.id);
       if (!panel) {
         panel = el("section", null, "hero-panel");
+        panel.dataset.ownerDevice=p.device;
         this.root.append(panel);
         this.panels.set(p.id, panel);
       }
@@ -99,6 +111,10 @@ export class HeroUI {
         p.ui?.storage,
         p.ui?.shop,
         p.ui?.notice,
+        p.ui?.tab,
+        JSON.stringify(p.ui?.split || null),
+        JSON.stringify(p.ui?.bag || null),
+        game.phase, game.environment,
         JSON.stringify(p.ui?.socket||null),
         (p.vendingOrders || []).map((o) => o.ready).join(","),
         portal?.closing == null ? "" : Math.ceil(portal.closing),
@@ -121,11 +137,13 @@ export class HeroUI {
       panel.selectionKey=selectionKey;
       layoutChanged = true;
       panel.hero = p;
+      panel.dataset.environment = game.phase === 'lobby' ? 'lobby' : p.room ? 'temple' : game.environment || 'forest';
       panel.classList.toggle(
         "storage-session",
         !!(p.ui && p.ui.shop !== "vending"),
       );
       panel.classList.toggle("vending-panel", p.ui?.shop === "vending");
+      panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop && !p.ui.socket);
       panel.replaceChildren();
       panel.style.borderColor = p.color;
       const head = el(
@@ -140,12 +158,13 @@ export class HeroUI {
       const button = (text, action, fn) => {
         const b = el("button", text);
         b.dataset.action = action;
+        if (action === 'close') b.setAttribute('aria-label', 'Close inventory');
         b.onclick = fn;
         return b;
       };
       panel.append(
         button(
-          p.ui ? "Close inventory" : p.room === "temple-upper" ? "Return downstairs" : p.room ? "Return through portal" : "Close",
+          p.ui ? "\u00d7" : p.room === "temple-upper" ? "Return downstairs" : p.room ? "Return through portal" : "Close",
           "close",
           () => {
             if (p.ui?.socket)game.inventoryAction(p,'close');
@@ -275,7 +294,6 @@ export class HeroUI {
         ),
       );
       if (gear) {
-        sheet.append(el('p',`Health ${Math.ceil(p.hp)} / ${p.maxHp} · Mana ${Math.ceil(p.mana)} / ${p.maxMana}`,'hero-vitals'));
         const portrait = el("canvas");
         portrait.width = 140;
         portrait.height = 180;
@@ -335,6 +353,18 @@ export class HeroUI {
         );
       }
       sheet.append(controls);
+      if (mode === 'pack') {
+        u.tab ||= inventoryCategory(p.inventory[u.index]?.type);
+        const tabs = el('nav', null, 'inventory-tabs');
+        tabs.setAttribute('role', 'tablist');
+        for (const tab of INVENTORY_TABS) {
+          const b = button(tab[0].toUpperCase() + tab.slice(1), 'tab-' + tab, () => game.inventoryAction(p, 'tab:' + tab));
+          b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(u.tab === tab));
+          tabs.append(b);
+        }
+        sheet.append(tabs);
+        sheet.querySelector('header').append(el('span', `${p.inventory.filter(Boolean).length} / 24`, 'pack-capacity'));
+      }
       const list = gear
         ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[slot]||[] }))
         : mode === "pack"
@@ -386,7 +416,8 @@ export class HeroUI {
         };
       };
       if (!gear) dropTarget(grid, { mode, index: list.length });
-      for (let n = page * 24; n < page * 24 + (gear ? SLOTS.length : 24); n++) {
+      const indices = mode === 'pack' ? tabIndices(list, u.tab) : Array.from({length:gear ? SLOTS.length : 24}, (_, i) => page * 24 + i);
+      for (const n of indices) {
         const item = list[n],
           def = ITEMS[item?.type];
         const action = storage
@@ -395,12 +426,15 @@ export class HeroUI {
             ? "item" + n
             : mode + "-item" + n;
         const b = button(
-          (gear ? item.slot.toUpperCase() : (item?.type === "occupied" ? "BOTH" : def ? "" : "—")) +
+          (gear ? item.slot.toUpperCase().replace('HAND', 'HAND ') : (item?.type === "occupied" ? "BOTH" : def ? "" : "—")) +
             (item?.qty > 1 ? " ×" + item.qty : ""),
           action,
-          () => select(mode, n),
+          () => { select(mode, n); if (def?.bag) u.bag = {mode, index:n, selected:0}; },
         );
         b.classList.toggle("selected", active && n === index);
+        b.dataset.index = n;
+        b.dataset.mode = mode;
+        if (def?.bag) b.ondblclick = () => { select(mode, n); u.bag = {mode, index:n}; };
         b.setAttribute('aria-label',(gear?item.slot+': ':'')+(def?.name||'Empty slot')+(item?.qty>1?' ×'+item.qty:''));
         b.style.setProperty("--item", def?.color || "#405047");
         if (gear) b.dataset.slot = item.slot;
@@ -418,6 +452,7 @@ export class HeroUI {
               : " · Drag onto an equipment slot")
           : "Empty slot";
         if (def) this.itemTooltip(panel, b, game, p, item);
+        if (def) b.removeAttribute('title');
         if (def?.slot) b.style.color = def.color;
         if (def) {
           const icon = el("canvas");
@@ -448,6 +483,10 @@ export class HeroUI {
         dropTarget(b, gear ? { mode, slot: item.slot } : { mode, index: n });
         grid.append(b);
       }
+      if (mode === 'pack') for (let n = indices.length; n < 24; n++) {
+        const b = el('button', '', 'reserved-slot'); b.disabled = true;
+        b.setAttribute('aria-label', 'Space occupied in another tab'); grid.append(b);
+      }
       sheet.append(grid);
       const item = list[index],
         def = ITEMS[item?.type];
@@ -474,11 +513,6 @@ export class HeroUI {
         sheet.append(el('p',`${'◆'.repeat(item.sockets?.length||0)}${'◇'.repeat(Math.max(0,socketCount(item.type)-(item.sockets?.length||0)))} · Item mana +${gearStat(item.type,item.sockets,'maxMana')}`,'socket-summary'));
         actions.append(button('Y · Trinket sockets','sockets-'+mode,()=>act(mode,'sockets')));
       }
-      if(def?.set&&GEAR_SETS[def.set]){
-        const set=setProgress(p,def.set),checklist=el('section',null,'set-checklist');checklist.append(el('strong',`${set.name} · ${set.count}/${set.checks.length}`));
-        for(const part of set.checks)checklist.append(el('div',(part.equipped?'✓ ':'○ ')+part.ids.map(id=>ITEMS[id].name).join(' / '),part.equipped?'set-active':'set-missing'));
-        checklist.append(el('p','3 pieces · '+set.threeText,set.count>=3?'set-active':'set-missing'),el('p','Complete · '+set.fullText,set.complete?'set-active':'set-missing'));sheet.append(checklist);
-      }
       const add = (label, key, action) =>
         actions.append(button(label, key, () => act(mode, action)));
       if (gear && def) add("Unequip", active ? "use" : "gear-use", "use");
@@ -493,26 +527,12 @@ export class HeroUI {
         if (storage) add("Store selected →", "transfer-pack", "store");
         if (item?.qty > 1)
           add("Split stack", storage ? "split-pack" : "split", "split");
-        if (item?.qty > 1) {
-          const amount = el("input");
-          amount.type = "number";
-          amount.min = 1;
-          amount.max = item.qty - 1;
-          amount.value = Math.floor(item.qty / 2);
-          amount.setAttribute("aria-label", "Amount to split");
-          amount.style.width = "60px";
-          actions.append(
-            amount,
-            button("Split amount", "split-amount", () =>
-              act(mode, "split:" + amount.value),
-            ),
-          );
-        }
-        if (!p.room) {
+        if (def.bag) add('Open bag', 'open-bag', 'equip');
+        if (!p.room && game.phase !== 'lobby') {
           add("Drop one", "dropOne", "dropOne");
           add("Drop stack", "drop", "drop");
         }
-        if(active&&salvageYield(item?.type).length){
+        if(game.phase!=='lobby'&&active&&salvageYield(item?.type).length){
           const reason=salvageReason(p),b=button('','salvage-hold',()=>{}),ring=el('span',null,'salvage-ring');
           ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
           b.className='salvage-button';b.disabled=!!reason;
@@ -541,6 +561,67 @@ export class HeroUI {
     const controls = this.controllerText(game, p);
     const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
     panel.append(el('small',`${family} · ${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.accept}: use · Y: sockets / split · X: drop / transfer · ${controls.close}: close`));
+    this.inventoryPopovers(panel, game, p, button);
+  }
+
+  inventoryPopovers(panel, game, p, button) {
+    const u = p.ui;
+    const anchorPopup = (popup, mode, index) => {
+      panel.querySelector('.item-tooltip')?.remove();
+      panel.append(popup);
+      popup.setAttribute('role', 'dialog');
+      const anchor = panel.querySelector(`[data-mode="${mode}"][data-index="${index}"]`);
+      const r = anchor?.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+      popup.style.left = Math.max(6, Math.min(panel.clientWidth - popup.offsetWidth - 6, (r?.left || pr.left) - pr.left)) + 'px';
+      popup.style.top = Math.max(6, Math.min(panel.clientHeight - popup.offsetHeight - 6, (r?.top || pr.top) - pr.top - popup.offsetHeight - 6)) + 'px';
+      popup.onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { delete u.split; delete u.bag; panel.uiSignature = null; } };
+    };
+    if (u.split) {
+      const s = u.split, list = s.panel === 'chest' ? game.storageFor(p) : p.inventory;
+      const item = list?.[s.index];
+      if (!item || item.qty < 2) { delete u.split; return; }
+      const popup = el('form', null, 'inventory-popover split-popover');
+      popup.setAttribute('aria-label', 'Split stack');
+      popup.append(el('strong', 'Split ' + ITEMS[item.type].name));
+      const row = el('div', null, 'split-stepper'), amount = el('input');
+      amount.type = 'number'; amount.min = 1; amount.max = item.qty - 1; amount.value = s.amount;
+      amount.setAttribute('aria-label', 'Amount to split');
+      amount.oninput = () => { s.amount = Math.max(1, Math.min(item.qty - 1, Number(amount.value) || 1)); };
+      const step = (label, delta) => { const b = button(label, 'split-step-' + delta, () => { amount.value = Math.max(1, Math.min(item.qty - 1, Number(amount.value) + delta)); amount.oninput(); }); b.type = 'button'; return b; };
+      row.append(step('\u2212', -1), amount, step('+', 1)); popup.append(row);
+      const confirm = el('button', 'Split'); confirm.type = 'submit';
+      const cancel = button('Cancel', 'split-cancel', () => { delete u.split; panel.uiSignature = null; }); cancel.type = 'button';
+      popup.append(confirm, cancel);
+      popup.onsubmit = e => { e.preventDefault(); u.panel = s.panel; u.index = s.index; game.inventoryAction(p, 'split:' + s.amount); };
+      anchorPopup(popup, s.panel, s.index);
+    }
+    if (u.bag) {
+      const s = u.bag, list = s.mode === 'chest' ? game.storageFor(p) : p.inventory, bag = list?.[s.index], rule = ITEMS[bag?.type]?.bag;
+      if (!rule) { delete u.bag; return; }
+      const popup = el('section', null, 'inventory-popover bag-popover');
+      popup.setAttribute('aria-label', ITEMS[bag.type].name);
+      popup.append(el('strong', ITEMS[bag.type].name), button('\u00d7', 'bag-close', () => { delete u.bag; panel.uiSignature = null; }));
+      const grid = el('div', null, 'bag-grid');
+      const changed = ok => { u.notice = ok ? 'Item moved.' : 'No room, or this bag cannot hold that item.'; game.persist(); panel.uiSignature = null; };
+      const canStore = item => !protectedItem(p, item?.type) && (s.mode !== 'chest' || canAccess(game, p, false));
+      for (let n = 0; n < rule.slots; n++) {
+        const item = bag.contents?.[n], b = button(item ? String(item.qty) : '+', 'bag-slot-' + n, () => { if (item) changed((s.mode !== 'chest' || canAccess(game,p,true)) && takeFromBag(bag, n, p.inventory)); });
+        b.classList.toggle('selected', n === (s.selected || 0));
+        b.setAttribute('aria-label', item ? 'Take ' + ITEMS[item.type].name : 'Empty bag slot');
+        if (item) { const icon = el('canvas'); icon.width = icon.height = 24; drawItem(icon.getContext('2d'), item.type, 12, 12, 24); b.prepend(icon); this.itemTooltip(panel, b, game, p, item); }
+        grid.append(b);
+      }
+      grid.ondragover = e => { if (this.dragItem?.player === p) e.preventDefault(); };
+      grid.ondrop = e => { e.preventDefault(); const source = this.dragItem; this.dragItem = null; if (source?.player !== p || source.from.mode === 'gear') return; const from = source.from.mode === 'pack' ? p.inventory : game.storageFor(p); if (from?.[source.from.index] !== source.ref) return; changed(canStore(source.ref) && (source.from.mode !== 'chest' || canAccess(game,p,true)) && storeInBag(from, bag, source.from.index)); };
+      popup.append(grid, el('small', `${(bag.contents || []).filter(Boolean).length} / ${rule.slots}`));
+      const eligible = p.inventory.map((item, index) => ({item, index})).filter(({item}) => bagAccepts(bag, item));
+      if (eligible.length) {
+        const choices = el('select'); choices.setAttribute('aria-label', 'Item to store');
+        for (const {item, index} of eligible) { const o = el('option', ITEMS[item.type].name + ' x' + item.qty); o.value = index; choices.append(o); }
+        popup.append(choices, button('Store', 'bag-store', () => changed(canStore(p.inventory[Number(choices.value)]) && storeInBag(p.inventory, bag, Number(choices.value)))));
+      }
+      anchorPopup(popup, s.mode, s.index);
+    }
   }
 
   preview(panel, p, time) {
@@ -550,7 +631,7 @@ export class HeroUI {
     c.clearRect(0, 0, canvas.width, canvas.height);
     c.save();
     c.translate(canvas.width / 2, 170);
-    c.scale(4.15, 4.15);
+    c.scale(3.5, 3.5);
     drawPlayer(
       c,
       {
@@ -568,7 +649,7 @@ export class HeroUI {
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), open = game.players.filter((q) => q.ui || q.room)) {
     if(panel.classList.contains('storage-session')&&!p.ui?.shop){
       const index=Math.max(0,open.findIndex(q=>q.id===p.id)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/3);
-      const width=Math.min(440,(bounds.width-32)/3),height=(bounds.height-16)/rows;
+      const width=Math.min(480,(bounds.width-16)/cols-8),height=(bounds.height-16)/rows;
       const left=cols===1?8:cols===2?(index%cols===0?8:bounds.width-width-8):(index%3)*(bounds.width/3)+8;
       panel.classList.toggle('party-panel',open.length>1);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=left+'px';panel.style.top=8+Math.floor(index/3)*height+'px';return;
     }

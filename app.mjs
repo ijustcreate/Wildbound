@@ -11,6 +11,7 @@ import { FrameMetrics, FixedClock } from "./src/performance.mjs";
 import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
 import { drawPlayer } from "./src/player-motion.mjs";
 import { generateWorld } from "./src/world.mjs";
+import { restoreForestLandscape } from './src/forest-landscape.mjs';
 import { MUSIC_TRACKS, musicTrack } from "./src/music.mjs";
 import { mountMusicPicker } from './src/music-picker.mjs';
 import { Game, CENTER, EVENTS, FINISH, cameraTarget } from "./src/core.mjs";
@@ -49,6 +50,7 @@ import { count, give, equip, ITEMS } from "./src/items.mjs";
 import { Designer } from "./src/designer.mjs";
 import { loadDefinitions, creatures } from "./src/definitions.mjs";
 import { createGameDebug } from './src/game-debug.mjs';
+import { createDebugCodeTracker, createPauseCheatTracker } from './src/debug-code.mjs';
 loadDefinitions(EVENTS, ITEMS);
 await (await import('./src/project-rigs.mjs')).loadProjectRigs(EVENTS, ITEMS);
 let designer;
@@ -86,17 +88,17 @@ const keys = new Set(),
   controllerLastSeen = new Map();
 const controllerClaimKey = (pad) =>
   `${pad.index}|${pad.id || "unknown"}|${pad.mapping || ""}`;
-const debugSequence = [];
-const debugCode = ['up','down','left','right','a','b','a','b','select','start'];
-let debugSequenceAt=0;
+const trackDebugCode = createDebugCodeTracker();
+const pauseCheat = createPauseCheatTracker();
+const pauseCheatActive = () => screen==='play' && game.phase==='play' && paused && $('pause-dialog').open && [...document.querySelectorAll('dialog[open]')].at(-1)===$('pause-dialog');
+function pressPauseCheat(){
+  if(pauseCheat.press(pauseCheatActive())){
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
+    gameDebug.open($('pause-dialog'));
+  }
+}
 function feedDebugCode(token){
-  const now=performance.now();
-  if(now-debugSequenceAt>3500)debugSequence.length=0;
-  debugSequenceAt=now;
-  debugSequence.push(token);
-  while(debugSequence.length>debugCode.length)debugSequence.shift();
-  if(debugSequence.length===debugCode.length&&debugSequence.every((v,i)=>v===debugCode[i])){
-    debugSequence.length=0;
+  if(trackDebugCode(token)){
     gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
     gameDebug.open();
   }
@@ -232,6 +234,7 @@ document.body.dataset.boardSize =
 function show(next) {
   if(next==='home'){newLobby();return;}
   screen = next;
+  (next === 'lobby' ? $('lobby') : $('play')).append(heroRoot);
   document.body.dataset.screen = next;
   keys.clear();
   mouse.down = false;
@@ -241,15 +244,31 @@ function show(next) {
   $("nav-workshop").classList.toggle("active", next === "workshop");
   if (next === "workshop") workshop?.render();
 }
-function newLobby() {
-  if (game.phase !== "lobby") profiles.capture(game);
+function newLobby({ keepParty = false } = {}) {
+  const returning = keepParty ? game.players.map(p=>({
+    device:p.device,
+    name:p.name,
+    profileId:p.profileId,
+    controllerFamily:p.controllerFamily,
+    controllerName:p.controllerName,
+  })) : [];
+  if (game.phase !== "lobby" && game.phase !== "lost") profiles.capture(game);
   boardPinned = false;
   boardDismissedRoll = null;
   game = new Game();
   playableLobby?.reset();
   wireGame();
+  for(const saved of returning){
+    const p=game.addPlayer(saved.device,saved.name);
+    if(!p)continue;
+    const hero=profiles.data.heroes.find(h=>h.id===saved.profileId);
+    if(hero)profiles.assign(p,hero);
+    p.controllerFamily=saved.controllerFamily;
+    p.controllerName=saved.controllerName;
+  }
   paused = false;
   show("lobby");
+  if(returning.length)playableLobby?.keepSelectedPlayers(game.players);
   renderLobby();
 }
 function onRoomEvent(data) {
@@ -320,6 +339,7 @@ function onRoomEvent(data) {
     if (data.type === "state") {
       const oldSeed = game.seed;
       Object.assign(game, data.state);
+      restoreForestLandscape(game,data.state.forestLandscapeVersion??0);
       if (game.phase === "won") game.scenery = [];
       else if (!data.state.scenery && oldSeed !== game.seed)
         game.scenery = generateWorld(game.seed).scenery;
@@ -552,8 +572,13 @@ function renderRoster() {
     name.append(b, span);
     const health = document.createElement("div");
     health.className = "health-track";
+    health.setAttribute("role", "meter");
+    health.setAttribute("aria-label", "Health");
+    health.setAttribute("aria-valuemin", "0");
+    health.setAttribute("aria-valuemax", String(p.maxHp || 100));
+    health.setAttribute("aria-valuenow", String(Math.max(0, Math.ceil(p.hp))));
     const fill = document.createElement("i");
-    fill.style.width = p.hp + "%";
+    fill.style.width = Math.max(0, Math.min(100, p.hp)) + "%";
     health.append(fill);
     const info = document.createElement("div");
     info.className = "roster-info";
@@ -562,18 +587,32 @@ function renderRoster() {
       p.progress >= FINISH
         ? "CENTER REACHED"
         : p.progress + " / " + FINISH + " SPACES";
-    const traps = document.createElement("span");
-    traps.textContent =
-      p.traps +
-      " TRAPS · " +
-      count(p, "potion") +
-      " POTIONS · " +
-      count(p, "arrow") +
-      " ARROWS · DASH " +
-      (p.dodge > 0 ? p.dodge.toFixed(1) + "s" : "READY");
+    const supplies = document.createElement("span");
+    supplies.className = "roster-supplies";
+    const addSupply = (kind, label, value, symbol) => {
+      const item = document.createElement("span");
+      item.className = "roster-supply roster-supply-" + kind;
+      item.title = label;
+      item.setAttribute("aria-label", `${value} ${label.toLowerCase()}`);
+      const icon = document.createElement("i");
+      icon.className = "supply-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = symbol;
+      const amount = document.createElement("b");
+      amount.textContent = value;
+      item.append(icon, amount);
+      supplies.append(item);
+    };
+    addSupply("traps", "Traps", p.traps, "✣");
+    addSupply("potions", "Potions", count(p, "potion"), "⚗");
+    addSupply("arrows", "Arrows", count(p, "arrow"), "➶");
+    const dash = document.createElement("span");
+    dash.className = "roster-dash";
+    dash.textContent = "DASH " + (p.dodge > 0 ? p.dodge.toFixed(1) + "s" : "READY");
+    supplies.append(dash);
     if (p.staminaBoost > 0)
-      traps.textContent += " · STAMINA " + Math.ceil(p.staminaBoost) + "s";
-    info.append(progress, traps);
+      dash.textContent += " · STAMINA " + Math.ceil(p.staminaBoost) + "s";
+    info.append(progress, supplies);
     const mana = document.createElement("div");
     mana.className = "mana-meter";
     if (ITEMS[p.equipment?.hand1]?.magic) {
@@ -582,17 +621,31 @@ function renderRoster() {
         Math.floor(p.mana ?? 100) + " / " + (p.maxMana || 100) + " MANA";
       const track = document.createElement("div");
       track.className = "health-track mana-track";
+      track.setAttribute("role", "meter");
+      track.setAttribute("aria-label", "Mana");
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", String(p.maxMana || 100));
+      track.setAttribute("aria-valuenow", String(Math.floor(p.mana ?? 100)));
       const bar = document.createElement("i");
       bar.style.width = ((p.mana ?? 100) / (p.maxMana || 100)) * 100 + "%";
       track.append(bar);
       mana.append(label, track);
     }
-    el.append(name, health, info, mana);
+    const portrait=document.createElement('canvas');portrait.width=96;portrait.height=112;portrait.className='roster-portrait';portrait.setAttribute('aria-label',p.name+' portrait');
+    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,145);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,faceX:0,faceY:1,animationAction:'idle'},game.time);
+    const minions=document.createElement('div');minions.className='roster-minions';
+    for(const minion of (game.ghosts||[]).filter(a=>a.owner===p.id&&a.hp>0&&!a.pet).slice(0,3)){
+      const dot=document.createElement('span');dot.className='minion-dot';dot.style.setProperty('--cooldown',Math.max(0,1-minion.cooldown)*360+'deg');dot.title=minion.cooldown>0?'Ghost attack ready in '+minion.cooldown.toFixed(1)+'s':'Ghost attack ready';dot.setAttribute('aria-label',dot.title);minions.append(dot);
+    }
+    const portraitWrap=document.createElement('div');portraitWrap.className='roster-portrait-wrap';
+    const portraitGlow=document.createElement('span');portraitGlow.className='roster-portrait-glow';portraitGlow.setAttribute('aria-hidden','true');
+    portraitWrap.append(portraitGlow,portrait);
+    el.append(portraitWrap,name, health, info, mana,minions);
     const existing = [...$("roster").children].find((card) => card.hero === p);
     if (existing) {
       existing.className = el.className;
       existing.style.cssText = el.style.cssText;
-      existing.replaceChildren(name, health, info, mana);
+      existing.replaceChildren(portraitWrap,name, health, info, mana,minions);
       return existing;
     }
     el.hero = p;
@@ -680,6 +733,7 @@ function disconnected() {
 }
 function pause(reason) {
   if (screen !== "play") return;
+  pauseCheat.reset();
   paused = true;
   persistSession();
   if (rooms.role !== "client") profiles.capture(game);
@@ -690,7 +744,7 @@ function pause(reason) {
     game.phase === "won"
       ? "THE JUNGLE REMEMBERS YOUR NAMES"
       : game.phase === "lost"
-        ? "THE BOARD IS STILL WAITING"
+        ? "DEFEAT"
         : "TAKE A BREATH";
   $("pause-title").textContent =
     game.phase === "won"
@@ -706,6 +760,7 @@ function pause(reason) {
         ? "Stay close, dodge the warning marks, and use your traps."
         : "Your expedition is paused.");
   $("resume-button").classList.toggle("hidden", ended);
+  $("restart-button").textContent = ended ? "BACK TO LOBBY" : "NEW EXPEDITION";
   $("reassign-button").classList.toggle(
     "hidden",
     !disconnected().length || game.players.some((p) => p.device === "keyboard"),
@@ -724,6 +779,8 @@ function resume() {
     return;
   }
   $("pause-dialog").close();
+  pauseCheat.reset();
+  $('pause-dialog').querySelector('.game-debug-console')?.remove();
   paused = false;
   keys.clear();
 }
@@ -773,7 +830,7 @@ $("pause-dialog").addEventListener("cancel", (e) => {
 });
 $("restart-button").onclick = () => {
   $("pause-dialog").close();
-  newLobby();
+  newLobby({keepParty:["won","lost"].includes(game.phase)});
 };
 $("quit-button").onclick = () => {
   profiles.capture(game);
@@ -876,6 +933,11 @@ for (const [action, value] of Object.entries(mapping)) {
   $("mapping-fields").append(label);
 }
 window.addEventListener("keydown", (e) => {
+  if(e.code==='KeyY' && pauseCheatActive()){
+    e.preventDefault();
+    if(!e.repeat)pressPauseCheat();
+    return;
+  }
   if(screen==='play'&&!document.querySelector('dialog[open]')){
     const token={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyA:'a',KeyB:'b',Backspace:'select',Enter:'start'}[e.code];
     if(token&&!e.repeat)feedDebugCode(token);
@@ -894,7 +956,7 @@ window.addEventListener("keydown", (e) => {
   if(screen==='lobby' && !document.querySelector('dialog[open]')) {
     if(['Enter',' '].includes(e.key))e.preventDefault();
     if(playableLobby?.key(e)) return;
-    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','Space','KeyC','KeyQ','KeyH','KeyT'].includes(e.code)) {
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','Space','KeyC','KeyQ','KeyH','KeyT','KeyI','Tab','Digit2','KeyR'].includes(e.code)||(e.code==='Enter'&&game.players.some(p=>p.device==='keyboard'&&p.ui))) {
       e.preventDefault();keys.add(e.code);return;
     }
   }
@@ -1012,7 +1074,7 @@ function dialogController(pad, previous) {
   if (!dialog) return;
   if(dialog.dataset.ownerDevice?.startsWith('pad:') && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
   const controls = Array.from(
-    dialog.querySelectorAll(
+    (dialog.querySelector('.game-debug-console')||dialog).querySelectorAll(
       "button:not(:disabled), select:not(:disabled), input:not(:disabled), summary",
     ),
   ).filter((el) => {
@@ -1098,6 +1160,7 @@ function dialogController(pad, previous) {
     else selected?.click();
   }
   if (back) {
+    if(dialog.querySelector('.game-debug-console')){dialog.querySelector('.game-debug-console').remove();dialog.querySelector('button')?.focus();return;}
     if (dialog.id === "pause-dialog") {
       if (game.phase === "play") resume();
     } else if (dialog.id === "settings-dialog") {
@@ -1112,6 +1175,7 @@ function dialogController(pad, previous) {
   }
 }
 function inputFrame() {
+  if(!pauseCheatActive())pauseCheat.reset();
   const inputs = {},
     pads = Array.from(navigator.getGamepads?.() || []).filter(Boolean);
   // Offscreen smoke tests supply synthetic pads, not real shared controllers.
@@ -1186,13 +1250,14 @@ function inputFrame() {
       }
     }
     const pressed = (key) => !joinedNow && (pad.buttons[mapping[key]]?.pressed || false);
+    if(!joinedNow && pad.buttons[3]?.pressed && !previous[3] && pauseCheatActive())pressPauseCheat();
     if (screen === 'play' && !modal && !joinedNow) {
       const debugButtons = [[12,'up'],[13,'down'],[14,'left'],[15,'right'],[0,'a'],[1,'b'],[8,'select'],[9,'start']];
       for (const [index,token] of debugButtons) if (pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token);
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
       previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
       continue;
     }
@@ -1365,6 +1430,7 @@ function frame(now) {
       const connected = new Set(Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>'pad:'+p.index));
       for(const p of game.players) {p.lobbyDisconnected=p.device.startsWith('pad:')&&!connected.has(p.device);if(p.lobbyDisconnected)p.ready=false;}
       playableLobby.update(dt,inputs,blocked);
+      heroUI.draw(game,renderer);
     }
     if (screen === "home") drawMenu($("menu-art"), assets, now / 1000);
     if (screen === "workshop") {
@@ -1401,7 +1467,9 @@ function frame(now) {
       $("board-panel").classList.toggle('board-sequence',!!game.roll);
       $('close-board').disabled=!!game.roll;
       if (boardVisible) {
-        const c = $("board-closeup").getContext("2d");
+        const boardCanvas=$('board-closeup'),boardWidth=Math.max(560,Math.round(boardCanvas.getBoundingClientRect().width*Math.min(2,window.devicePixelRatio||1))),boardHeight=Math.round(boardWidth*380/560);
+        if(boardCanvas.width!==boardWidth||boardCanvas.height!==boardHeight){boardCanvas.width=boardWidth;boardCanvas.height=boardHeight;}
+        const c = boardCanvas.getContext("2d");c.setTransform(boardCanvas.width/560,0,0,boardCanvas.height/380,0,0);
         c.imageSmoothingEnabled = false;
         c.clearRect(0, 0, 560, 380);
         c.save();

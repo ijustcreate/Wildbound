@@ -1,4 +1,8 @@
+import { INVENTORY_TABS, inventoryCategory, tabIndices, takeFromBag } from './inventory-containers.mjs';
 import {wandTipWorld} from './player-motion.mjs';
+import {SKILLS,SCROLL_BOSSES,skillAvailable,skillScrollId} from './field-skills.mjs';
+import {hasAimWeapon, updateAimFacing} from './ranged-aim.mjs';
+import {damageEnemy} from './enemy-damage.mjs';
 import {sightRadius, emitNoise} from './night-cycle.mjs';
 import {cutLivingVines} from './living-ecosystem.mjs';
 import {lightTorchFire} from './night-equipment.mjs';
@@ -50,7 +54,9 @@ import {
 } from "./items.mjs";
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function aimedDirection(g, p, origin, strength = 0.2) {
-  const fx = p.faceX || 1, fy = p.faceY || 0, fl = Math.hypot(fx, fy) || 1;
+  const length = Math.hypot(p.faceX ?? 0, p.faceY ?? 0);
+  const fx = length ? p.faceX / length : 0, fy = length ? p.faceY / length : 1, fl = 1;
+  if (p.bowAiming) return {x:fx,y:fy};
   let best = null;
   for (const e of g.enemies || []) {
     if (e.hp <= 0 || e.room) continue;
@@ -294,6 +300,7 @@ export const adventureMethods = {
       source,
       manualPickup,
       ...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),
+      ...(ITEMS[type]?.bag?{contents:structuredClone(metadata.contents||[])}:{}),
     });
   },
   dropXP(x, y, amount = 10) {
@@ -378,7 +385,11 @@ export const adventureMethods = {
   collect(p, l, quick = false) {
     if (!l || !this.loot.includes(l) || dist(p, l) > 65 + stat(p, "magnet"))
       return false;
-    if (!give(p.inventory, l.type, l.qty,24,l)) {
+    const skill=ITEMS[l.type]?.skillScroll;
+    if (skill) {
+      initializeField(p).skillScrolls[skill]=true;
+      this.message(ITEMS[l.type].name+' found. Training unlocked in the Field Guild.');
+    } else if (!give(p.inventory, l.type, l.qty,24,l)) {
       this.inventoryFullNotice(p, l.id ?? l.type);
       return false;
     }
@@ -391,6 +402,7 @@ export const adventureMethods = {
       );
     this.onSound("loot",p);
     p.pickupTime = 0.42;
+    p.pickupItem = l.type;
     if (["unique", "legendary"].includes(ITEMS[l.type]?.rarity)) p.foundUnique = 1.1;
     this.loot = this.loot.filter((i) => i !== l);
     this.persist();
@@ -499,6 +511,7 @@ export const adventureMethods = {
   openInventory(p, storage = null) {
     this.onSound("inventory",p);
     p.ui = { panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
+    p.ui.tab = inventoryCategory(p.inventory[0]?.type);
     p.charge = 0;
   },
   storageFor(p) {
@@ -540,11 +553,39 @@ export const adventureMethods = {
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    if (u.bag && !action.startsWith('select:')) {
+      const state=u.bag, list=state.mode==='chest'?this.storageFor(p):p.inventory, bag=list?.[state.index], rule=ITEMS[bag?.type]?.bag;
+      if (!rule || action==='close') { delete u.bag; return; }
+      if (['next','prev','up','down'].includes(action)) {
+        const step=action==='next'?1:action==='prev'?-1:action==='down'?5:-5;
+        state.selected=((state.selected||0)+step+rule.slots*6)%rule.slots;
+      } else if (action==='use' && (state.mode!=='chest'||canAccess(this,p,true))) {
+        u.notice=takeFromBag(bag,state.selected||0,p.inventory)?'Item taken.':'Backpack is full or this slot is empty.';
+        this.persist();
+      }
+      return;
+    }
+    if (u.split && ['up', 'down', 'next', 'prev', 'use', 'close', 'offhand'].includes(action)) {
+      const list = u.split.panel === 'chest' ? this.storageFor(p) : p.inventory;
+      const qty = list?.[u.split.index]?.qty || 1;
+      if (action === 'close') { delete u.split; return; }
+      if (action === 'use') { action = 'split:' + u.split.amount; }
+      else { u.split.amount = Math.max(1, Math.min(qty - 1, u.split.amount + (['up', 'next'].includes(action) ? 1 : -1))); return; }
+    }
+    if (action.startsWith('tab:') && INVENTORY_TABS.includes(action.slice(4))) {
+      u.tab = action.slice(4); u.panel = 'pack'; u.index = tabIndices(p.inventory, u.tab)[0] ?? 0;
+      delete u.split; delete u.bag; u.notice = ''; return;
+    }
+    if(this.phase==='lobby'&&(['drop','dropOne','store'].includes(action)||(['use','equip'].includes(action)&&p.inventory[u.index]?.type==='trap'&&u.panel==='pack'))){u.notice='Use this item in an expedition.';return;}
     if(p.salvageHold)p.salvageHold={latched:true};
     u.salvagePointer=false;
     if(socketAction(this,p,action))return;
     const storage = this.storageFor(p);
     const selected = p.inventory[u.index];
+    if (!u.shop && u.panel === 'pack' && u.tab && selected && inventoryCategory(selected.type) !== u.tab && ['use','equip','equipOffhand','offhand','drop','dropOne','store','split'].includes(action.split(':')[0])) {
+      u.notice = 'Select an item in this tab.';
+      return;
+    }
     if (
       protectedItem(p, selected?.type) &&
       u.panel === "pack" &&
@@ -589,6 +630,12 @@ export const adventureMethods = {
     if (action === "split" || action.startsWith("split:")) {
       const list =
         u.panel === "chest" ? storage : u.panel === "pack" ? p.inventory : null;
+      if (action === 'split') {
+        const item = list?.[u.index];
+        if (item?.qty > 1) u.split = { panel: u.panel, index: u.index, amount: Math.floor(item.qty / 2) };
+        return;
+      }
+      delete u.split;
       const splitTarget = list ? list.findIndex((i) => !i) : -1;
       const splitIndex = splitTarget >= 0 ? splitTarget : list?.length;
       if (list) {
@@ -670,8 +717,17 @@ export const adventureMethods = {
       return;
     }
     if (action === "panel") {
-      const panels = storage ? ["pack", "gear", "chest"] : ["pack", "gear"];
-      switchPanel(panels[(panels.indexOf(u.panel) + 1) % panels.length]);
+      if (!storage && u.panel === 'pack' && u.tab && u.tab !== 'other') {
+        u.tab = INVENTORY_TABS[INVENTORY_TABS.indexOf(u.tab) + 1];
+        u.index = tabIndices(p.inventory, u.tab)[0] ?? 0;
+      } else {
+        const panels = storage ? ["pack", "gear", "chest"] : ["pack", "gear"];
+        switchPanel(panels[(panels.indexOf(u.panel) + 1) % panels.length]);
+        if (u.panel === 'pack') {
+          if (storage) u.tab = inventoryCategory(p.inventory[u.index]?.type);
+          else { u.tab = 'gear'; u.index = tabIndices(p.inventory, u.tab)[0] ?? 0; }
+        }
+      }
     }
     const limit =
         u.shop === "vending"
@@ -682,7 +738,11 @@ export const adventureMethods = {
               ? Math.max(24, Math.ceil(storage.length / 24) * 24)
               : 24,
       stride = u.shop === "vending" || u.panel === "gear" ? 3 : 6;
-    if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
+    if(u.panel==='pack'&&!u.shop&&['next','prev','down','up'].includes(action)){
+      const indices=tabIndices(p.inventory,u.tab||inventoryCategory(p.inventory[u.index]?.type));
+      const pos=Math.max(0,indices.indexOf(u.index)),step=action==='next'?1:action==='prev'?-1:action==='down'?6:-6;
+      if(indices.length)u.index=indices[(pos+step+indices.length*6)%indices.length];
+    }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
       const order=['head','cape','neck','chest','shoulders','gloves','hand1','hand2','pants','feet'];
       const i=order.indexOf(SLOTS[u.index]),step=action==='next'?1:action==='prev'?-1:action==='down'?2:-2;
       u.index=SLOTS.indexOf(order[(i+step+10)%10]);
@@ -693,6 +753,10 @@ export const adventureMethods = {
       if (action === "up") u.index = (u.index + limit - stride) % limit;
     }
     if (action === "use" || action === "equip") {
+      const selectedList = u.panel === 'chest' ? storage : p.inventory;
+      if (u.panel !== 'gear' && ITEMS[selectedList?.[u.index]?.type]?.bag) {
+        u.bag = { mode: u.panel, index: u.index }; return;
+      }
       if (u.panel === "gear") unequip(p, SLOTS[u.index % SLOTS.length]);
       else if (storage && action === "use") moveItem();
       else {
@@ -859,10 +923,12 @@ export const adventureMethods = {
           }
         }
       } else if (!p.consumeInput) {
+        if (!p.sleeping) updateAimFacing(p, i);
+        p.bowAiming = !!i.block && hasAimWeapon(p) && !p.swimming && !p.sleeping && !this.openingBoard;
         if (edge("interact"))p.interactAnimation=.35;
         if (edge("summon")) this.raiseSkeleton(p);
         if (edge("potion")) this.usePotion(p);
-        p.blocking = !!i.block && itemKind(p.equipment.hand1) !== 'bow' && itemKind(p.equipment.hand2) === "shield";
+        p.blocking = !!i.block && !hasAimWeapon(p) && itemKind(p.equipment.hand2) === "shield";
         if (
           edge("bait") &&
           (take(p.inventory, "meat") || take(p.inventory, "fruit"))
@@ -967,8 +1033,8 @@ export const adventureMethods = {
           (e) => e.hp > 0 && dist(e, bolt) < 16 + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
         );
         if (target) {
-          if(this.players.includes(target))this.hurt(target,bolt.damage,bolt);else {target.hp-=bolt.damage;target.killedBy=bolt.owner;target.ritualKill=false;}
-          if (!this.players.includes(target) && bolt.friendship) { target.faction = 'ally'; target.allyOwner = bolt.owner; target.aggro = false; this.message(`${target.kind} has joined your side.`); }
+          if(this.players.includes(target))this.hurt(target,bolt.damage,bolt);else {damageEnemy(target,bolt.damage,bolt.fire?'fire':bolt.ice?'ice':'magic');target.killedBy=bolt.owner;target.ritualKill=false;}
+          if (!target.practiceTarget && !this.players.includes(target) && bolt.friendship) { target.faction = 'ally'; target.allyOwner = bolt.owner; target.aggro = false; this.message(`${target.kind} has joined your side.`); }
           target.flash = 0.2;
           target.aggro = true;
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
@@ -1025,7 +1091,7 @@ export const adventureMethods = {
             }
           } else {
             target.aggro = true;
-            target.hp -= a.damage;target.killedBy=a.owner;target.ritualKill=false;
+            damageEnemy(target,a.damage,a.ice?'ice':'physical');target.killedBy=a.owner;target.ritualKill=false;
             target.flash = 0.2;
             if (a.ice && this.random() < 0.35) target.frozen = 1.6;
             a.enemy = target.id;
@@ -1117,7 +1183,7 @@ export const adventureMethods = {
     this.spells ||= [];
     const strength = Math.max(0, Math.min(1, charge / 1.2));
     const tip=wandTipWorld(p,slot,this.time);
-    const aim = aimedDirection(this, p, tip, 0.18);
+    const aim = aimedDirection(this, p, {x:tip.x,y:tip.y+16}, 0.18);
     this.spells.push({
       owner:p.id,slot,age:0,
       x: tip.x,
@@ -1157,7 +1223,7 @@ export const adventureMethods = {
       z: 18,
       vx: aim.x * speed,
       vy: aim.y * speed,
-      angle: Math.atan2(aim.y, aim.x) + angleJitter,
+      angle: Math.atan2(aim.y, aim.x),
       vz: 20 + strength * 70,
       strength,
       embedDepth,
@@ -1207,6 +1273,15 @@ export const adventureMethods = {
     );
   },
   enemyLoot(e) {
+    if(SCROLL_BOSSES.has(e.kind)||e.frostMage||e.boss){
+      const missing=SKILLS.filter(s=>this.players.some(p=>!skillAvailable(p,s.id)));
+      const pool=missing.length?missing:SKILLS,skill=pool[Math.floor(this.random()*pool.length)];
+      this.dropLoot(e.x,e.y+24,skillScrollId(skill.id),1,'Boss skill scroll',true);
+    }
+    if (this.random() < 0.025) {
+      const bags = ['armor_bag', 'relic_bag', 'crafting_bag'];
+      this.dropLoot(e.x, e.y, bags[Math.min(2, Math.floor(this.random() * 3))], 1, 'Recovered bag', true);
+    }
     const drop = (...args) => {
       if (this.random() < 0.1) this.dropLoot(...args);
     };
@@ -1255,6 +1330,7 @@ export const adventureMethods = {
     )
       drop(e.x, e.y, e.frostMage ? "ice_wand" : config.dropType, 1, "Enemy drop");
     if (e.kind === "skeleton") drop(e.x, e.y, "sword", 1, "Skeleton drop");
+    if (e.kind === "krampus") this.dropLoot(e.x, e.y, "krampus_whip", 1, "Krampus drop", true);
     if (["skeleton", "skeleton_unarmed", "skeleton_boss", "skeleton_wizard", "frost_skeleton_mage"].includes(e.kind))
       drop(e.x - 12, e.y + 8, "bone_shard", e.kind === "skeleton_boss" ? 3 : 1, "Skeleton remains");
     if (e.kind === "golem")

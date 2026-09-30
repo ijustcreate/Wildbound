@@ -66,6 +66,7 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     r(-1,-2,3,1,p.light);r(-1,2,3,2,p.dark);
     r(-2,3,5,2,p.leather);r(-1,3,3,1,p.trim);
     r(thumb<0?-2:1,0,2,2,p.dark);r(thumb<0?-2:2,0,1,1,p.light);
+    r(-1,0,2,1,p.light);r(0,2,1,1,p.trim);
     if(def.style==='wraps') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.light);}
     if(def.style==='gauntlets'||def.style==='sun') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.shine);}
     if(def.style==='spiked'||id==='gloves') {r(-2,-4,1,2,p.shine);r(1,-4,1,2,p.light);}
@@ -80,6 +81,8 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     r(-1,-height+1,3,height-1,p.base);r(-1,-height+1,3,1,p.light);
     r(-3+toe,2,6,1,p.leather);r(-2+toe,1,4,1,p.trim);
     if(!rear) {r(-1,-3,2,1,p.trim);r(-1,-1,2,1,p.light);}
+    r(-2,-height+1,1,Math.max(1,height-3),p.light);
+    if(!rear&&def.style!=='sandals')r(1,-2,1,1,p.shine);
     if(def.style==='sandals') {r(-1,-4,3,4,'#b98e62');r(-1,-3,3,1,p.dark);r(-1,-1,3,1,p.base);}
     if(def.style==='flame') {r(1,-3,1,3,'#f2b66c');r(0,-2,1,2,p.shine);}
     if(def.style==='moon') r(0,-3,1,2,p.shine);
@@ -120,6 +123,7 @@ export function fittedShield(c,id,hand,d,blocking,dye) {
     r(-width+1,-3,width*2-1,1,p.trim);r(-width+1,3,width*2-1,1,p.trim);
   } else r(0,-height+2,1,height*2-3,p.trim);
   r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
+  for(const y of [-height+3,height-3]) {r(-width+1,y,1,1,p.shine);r(width-1,y,1,1,p.trim);}
   if(style==='tower') {r(-2,3,5,1,p.trim);r(-2,-4,5,1,p.trim);}
 }
 
@@ -169,6 +173,7 @@ export function paintGearIcon(c,id) {
     for(const x of [2,13]) {
       r(x+1,7,6,13,p.dark);r(x+2,8,4,9,p.base);r(x+2,8,1,8,p.light);
       r(x+7,12,2,5,p.base);r(x+1,18,7,3,p.leather);r(x+1,18,7,1,p.light);
+      r(x+3,10,1,5,p.dark);r(x+5,10,1,4,p.dark);r(x+3,19,2,1,p.trim);
       if(style==='wraps')for(const y of [10,13,16])r(x+2,y,5,1,p.light);
       if(style==='spiked'||id==='gloves') {r(x+1,4,1,4,p.shine);r(x+5,3,1,5,p.light);}
       if(style==='gauntlets'||style==='sun') {r(x+2,10,4,1,p.light);r(x+2,14,4,1,p.light);r(x+3,11,2,2,p.shine);}
@@ -181,6 +186,7 @@ export function paintGearIcon(c,id) {
       r(x+1,14,8,7,p.base);r(x+6,15,3,5,p.dark);r(x,20,10,2,p.leather);
       r(x+1,top,6,1,p.light);r(x+2,16,4,1,p.light);
       for(const y of [10,13])r(x+2,y,3,1,p.trim);
+      r(x+1,18,5,1,p.light);r(x+6,18,2,1,p.dark);r(x+4,11,1,1,p.shine);
       if(style==='sandals') {r(x+1,7,6,11,'#b58c68');r(x+1,10,6,2,p.dark);r(x+1,15,6,2,p.base);}
       if(style==='flame') {r(x+5,14,2,5,'#eea051');r(x+5,16,1,3,p.shine);}
       if(style==='moon') {r(x+2,7,3,4,p.light);r(x+3,7,2,3,p.base);}

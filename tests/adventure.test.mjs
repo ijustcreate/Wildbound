@@ -136,6 +136,20 @@ test("Party entirely in storage is not a defeat", () => {
   g.update(0.05, {});
   assert.equal(g.phase, "play");
 });
+
+test("Defeat does not strip selected character equipment before lobby return", () => {
+  const g = new Game();
+  const p = g.addPlayer("keyboard");
+  p.inventory = [{ type: "sword", qty: 1 }, { type: "trap", qty: 2 }];
+  p.equipment.hand1 = "sword";
+  g.start();
+  g.openingBoard = false;
+  p.hp = 0;
+  g.update(0.05, {});
+  assert.equal(g.phase, "lost");
+  assert.deepEqual(p.inventory, [{ type: "sword", qty: 1 }, { type: "trap", qty: 2 }]);
+  assert.equal(p.equipment.hand1, "sword");
+});
 test("Private chest uses owner inventory when a guest visits", () => {
   const { g, p } = setup();
   const q = g.addPlayer("pad:0");

@@ -39,7 +39,8 @@ export function drawFog(ctx, g, camera, w, h) {
   c.globalCompositeOperation = "destination-out";
   c.globalAlpha = 0.38;
   c.imageSmoothingEnabled = true;
-  c.filter = "blur(2px)";
+  // Feather roughly half a tile in world space while retaining the explored grid.
+  c.filter = `blur(${Math.max(.75,16*camera.zoom)}px)`;
   c.drawImage(
     memoryCanvas,
     w / 2 - camera.x * camera.zoom,
@@ -54,9 +55,11 @@ export function drawFog(ctx, g, camera, w, h) {
     const radius = sightRadius(g, p, rules.visionRadius) * camera.zoom;
     const x = w / 2 + (p.x - camera.x) * camera.zoom,
       y = h / 2 + (p.y - camera.y) * camera.zoom;
-    const gradient = c.createRadialGradient(x, y, radius * 0.78, x, y, radius);
+    const gradient = c.createRadialGradient(x, y, radius * 0.35, x, y, radius);
     gradient.addColorStop(0, "rgba(0,0,0,1)");
-    gradient.addColorStop(0.65, "rgba(0,0,0,.85)");
+    gradient.addColorStop(0.25, "rgba(0,0,0,.92)");
+    gradient.addColorStop(0.6, "rgba(0,0,0,.5)");
+    gradient.addColorStop(0.82, "rgba(0,0,0,.15)");
     gradient.addColorStop(1, "rgba(0,0,0,0)");
     c.fillStyle = gradient;
     c.beginPath();

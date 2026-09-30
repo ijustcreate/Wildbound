@@ -10,6 +10,7 @@ export const SKELETON_KINDS = [
   "skeleton_unarmed",
   "skeleton_boss",
   "frost_skeleton_mage",
+  "krampus",
 ];
 export function defaultSkeletonMotion(kind = "skeleton") {
   const m = defaultPlayerMotion();
@@ -25,6 +26,10 @@ export function defaultSkeletonMotion(kind = "skeleton") {
     legs: "#c6c5a8",
     legShade: "#89917b",
     outline: "#344039",
+  });
+  if (kind === "krampus") Object.assign(m.palette, {
+    head: "#a33b3b", headShade: "#632b31", body: "#8a3038", bodyShade: "#4b2630",
+    arms: "#a64040", armShade: "#642b32", legs: "#473746", legShade: "#2d2938", outline: "#241d29",
   });
   return m;
 }
@@ -52,6 +57,8 @@ export function drawSkeleton(
           ? { hand1: "ice_wand", cape: "cape", head: "moon_circlet" }
           : kind === "skeleton_boss"
           ? { hand1: "sun_blade", hand2: "sun_shield", head: "horned_helm" }
+          : kind === "krampus"
+            ? { hand1: "krampus_whip", head: "santa_hat" }
           : kind === "skeleton"
             ? a.equipment?.hand1 === "lantern" ? { hand1: "lantern" } : { hand1: "sword" }
             : {};

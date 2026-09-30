@@ -4,6 +4,8 @@ import {initLivingEcosystem, updateLivingEcosystem, livingEcosystemBlocked, cutL
 import {NIGHT_EVENTS, tickNightEnemy, tickNightEnemyHazards, startNightEvent, hitNightEnemyVines} from './night-enemies.mjs';
 import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equipment.mjs';
 import {startJump,tickJump} from './jumping.mjs';
+import {damageEnemy} from './enemy-damage.mjs';
+import {stumpShape} from './terrain-support.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
 import {tickQuicksand} from './quicksand.mjs';
 import {tickBoardSequence} from './board-sequence.mjs';
@@ -11,6 +13,7 @@ import {tickWolf, wolfPack} from './wolf-pack.mjs';
 import {ensureTemple,tickGorilla,tickGhosts,summonGhost,summonNecromancerPet} from './temple.mjs';
 import { creatureCue } from './sound-bank.mjs';
 import {iceMotion,snowAt} from './ice-world.mjs';
+import {hasAimWeapon, updateAimFacing} from './ranged-aim.mjs';
 import {collisionOffset, actorRadius, clearShot, navigateEnemy} from './navigation.mjs';
 import { initializeField, record, tickField } from "./field-systems.mjs";
 import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
@@ -32,6 +35,7 @@ import { TABLE, footprintHit, crossesTable, generateWorld } from "./world.mjs";
 import { initAdventure, initHero, adventureMethods } from "./adventure.mjs";
 import { ITEMS, stat, give, itemKind, hasSetSkill } from "./items.mjs";
 import { rules, creatures } from "./definitions.mjs";
+import { meleeProfile, meleeTargetInArc } from './melee-geometry.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
   WORLD = TILE * MAP_SIZE,
@@ -192,6 +196,7 @@ EVENTS.push(
 );
 EVENTS.push(...HAZARD_EVENTS);
 EVENTS.push(...NIGHT_EVENTS);
+EVENTS.push({name:'The Krampus comes down',kind:'krampus',environment:'ice',count:1,hp:260,speed:58,damage:26,weight:8,verse:'Bells beneath the frozen sky.\nA red shadow cracks its whip.',tip:"Keep outside the whip's long sweep, then strike between lashes."});
 EVENTS.push(
   {
     name: "The sleeping sickness",
@@ -402,10 +407,10 @@ export function expeditionCameraTarget(game, w, h) {
   if (game.phase === "play" && game.openingBoard)
     return {
       x: CENTER,
-      y: CENTER,
+      y: CENTER - 12,
       zoom: Math.min(
         w / (TABLE.halfWidth * 2 + 12),
-        Math.max(130, h - 24) / (TABLE.halfHeight * 2 + 4),
+        Math.max(130, h - 80) / (TABLE.halfHeight * 2 + 24),
       ),
     };
   const worldPlayers = game.players.filter((p) => !p.room);
@@ -492,9 +497,11 @@ export class Game {
         if (waterAt(this, x + dx, y + footOffset + dy) === "water") return true;
     return (
       !flying &&
-      nearbyScenery(this.scenery, x, y + footOffset, radius).some((prop) =>
-        footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius),
-      )
+      nearbyScenery(this.scenery, x, y + footOffset, radius).some((prop) => {
+        const stump=stumpShape(prop);
+        if(stump)return elevation<stump.height&&Math.hypot(x-Math.max(stump.x,Math.min(x,stump.x+stump.w)),y+footOffset-Math.max(stump.y,Math.min(y+footOffset,stump.y+stump.h)))<radius;
+        return footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius);
+      })
     );
   }
   projectileBlocked(x, y, radius = 1, impact = false) {
@@ -721,31 +728,29 @@ export class Game {
         ? Math.round(off.damage * 0.5)
         : 0) +
       Math.round(charge * 16));
+    const melee = meleeProfile(p);
     const spin =
       charge > 0.6 &&
       [p.equipment.hand1, p.equipment.hand2].some(
         (id) => itemKind(id) === "sword",
       );
     if (spin) p.spin = 0.38;
-    harvest(this, p, damage, (weapon ? 76 : 49)*combo.reach, s=>applyTorchHit(this,p,s));
-    hitNightEnemyVines(this,p,damage,(weapon ? 76 : 49)*combo.reach);
-    if(cutLivingVines(this,p,(weapon ? 76 : 49)*combo.reach))this.persist();
+    harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
+    hitNightEnemyVines(this,p,damage,melee.range);
+    if(cutLivingVines(this,p,melee.range))this.persist();
     for(const pane of this.house?.walls||[]){
       if(pane.kind!=='window'||pane.broken)continue;
       const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
-      if(d<(weapon?76:49)*combo.reach&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35))breakWindow(this,x,y,2);
+      if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35))breakWindow(this,x,y,2);
     }
     for (const e of [...this.enemies,...(this.pvp?this.players.filter(q=>q!==p&&q.hp>0&&!q.room):[])]) {
       const dx = e.x - p.x,
         dy = e.y - p.y,
         d = Math.hypot(dx, dy);
       if (
-        d < (spin ? 96 : (weapon ? 76 : 49)*combo.reach) &&
+        d < (spin ? 96 : melee.range) &&
         d > 0 && clearShot(this,p,e) &&
-        (spin ||
-          (dx * p.faceX + dy * p.faceY) /
-            (d * (Math.hypot(p.faceX, p.faceY) || 1)) >=
-            Math.cos(combo.arc*Math.PI / 360))
+        (spin || meleeTargetInArc(p,e,melee))
       ) {
         if(this.players.includes(e)){this.hurt(e,damage,p);continue;}
         e.killedBy=p.id;e.ritualKill=[p.equipment.hand1,p.equipment.hand2].includes('ritual_dagger');
@@ -756,16 +761,16 @@ export class Game {
           ((p.x - e.x) * (e.faceX || 0) + (p.y - e.y) * (e.faceY || 1)) /
             (d || 1) >
             0.3;
-        e.hp -= Math.round(
+        damageEnemy(e,Math.round(
           damage * (e.state === "recover" ? 1.3 : 1) * (guard ? 0.35 : 1),
-        );
+        ));
         applyTorchHit(this,p,e);
         e.flash = 0.13;
         if (charge > 0.6) {
           e.state = "recover";
           e.timer = 0.7;
         }
-        if (e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
+        if (!e.practiceTarget && e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
           this.moveActor(
             e,
             p.faceX * (13 + charge * 50),
@@ -776,7 +781,7 @@ export class Game {
         this.effects.push({
           x: e.x,
           y: e.y - 24,
-          text: String(damage),
+          text: e.practiceTarget ? '' : String(damage),
           color: "#ffe8ad",
           life: 0.5,
         });
@@ -1160,7 +1165,7 @@ export class Game {
       p.trapCooldown = Math.max(0, p.trapCooldown - dt);
       p.hit = Math.max(0, p.hit - dt);
       const input = inputs[p.device] || {};
-      p.bowAiming = !!input.block && itemKind(p.equipment?.hand1) === 'bow' && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !this.openingBoard;
+      p.bowAiming = !!input.block && hasAimWeapon(p) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !this.openingBoard;
       if(p.bowAiming){p.blocking=false;p.dashTime=0;p.slideX=p.slideY=0;}
       if (p.room || p.ui || p.consumeInput || p.stun > 0) {
         p.moving = false;p.slideX=p.slideY=0;
@@ -1199,20 +1204,14 @@ export class Game {
         mx /= len;
         my /= len;
       }
-      if (Math.hypot(input.aimX || 0, input.aimY || 0) > 0.2) {
-        let n = Math.hypot(input.aimX, input.aimY);
-        p.faceX = input.aimX / n;
-        p.faceY = input.aimY / n;
-      } else if (len > 0.15) {
-        p.faceX = mx / (len > 1 ? 1 : len);
-        p.faceY = my / (len > 1 ? 1 : len);
-      }
+      updateAimFacing(p, input);
       if(!this.openingBoard&&input.jump&&!p.jumpHeld)startJump(p);
       p.jumpHeld=!!input.jump;
       if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
       if (!this.openingBoard && !p.bowAiming && input.dodge && !p.dashHeld && p.dodge === 0) {
         p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
+        p.dashAnimationDuration = rules.dashDuration;
         p.dashX = len > 0.1 ? mx / (Math.hypot(mx, my) || 1) : p.faceX;
         p.dashY = len > 0.1 ? my / (Math.hypot(mx, my) || 1) : p.faceY;
         p.invuln = 0.32;
@@ -1248,6 +1247,7 @@ export class Game {
     }
     const alive = this.players.filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
+      if(e.practiceTarget)continue;
       tickJump(e,dt,this,collisionOffset(this,e));
       if (e.hp <= 0 || ((e.stampeding || e.kind === "rhino") && !e.aggro)) continue;
       if(creatures[e.kind]?.behaviors.jump&&e.state==='hunt'){
@@ -1277,7 +1277,7 @@ export class Game {
           if (d > 45 && beh.hunt)
             this.moveActor(e, e.faceX * e.speed * dt, e.faceY * e.speed * dt);
           if (d < 65 && e.cooldown <= 0 && beh.melee) {
-            target.hp -= e.damage;
+            damageEnemy(target,e.damage);
             e.cooldown = 1;
             e.attack = 0.34;
           }
@@ -1735,6 +1735,7 @@ export class Game {
             });
           } else {
             e.state = "charge";
+            if(beh.jump)startJump(e);
             e.timer = cfg?.stats
               ? cfg.stats.dashDistance / Math.max(1, cfg.stats.dashSpeed)
               : 0.48;
@@ -1743,6 +1744,7 @@ export class Game {
         continue;
       }
       if (e.state === "charge") {
+        if(beh.jump&&!e.jumpHeight)startJump(e);
         e.timer -= dt;
         const travel = this.moveActor(
           e,
@@ -1750,7 +1752,7 @@ export class Game {
           e.dy * (cfg?.stats.dashSpeed || 340) * dt,
           ["bat", "wasp"].includes(aiKind),
         );
-        if (travel < dt * 80) e.timer = 0;
+        if (travel < dt * 80 && !(beh.jump&&e.jumpHeight>0&&e.jumpVelocity>0)) e.timer = 0;
         for (const q of alive) if (distance(e, q) < 30) {
           const before = q.hp;
           this.hurt(q, e.damage, e);
@@ -1942,12 +1944,6 @@ export class Game {
     this.effects = this.effects.filter((f) => f.life > 0);
     if (!this.players.some((p) => p.hp > 0)) {
       this.phase = "lost";
-      for (const p of this.players) {
-        p.inventory = [{ type: "trap", qty: 3 }];
-        p.equipment = Object.fromEntries(
-          Object.keys(p.equipment).map((k) => [k, null]),
-        );
-      }
       this.persist();
       this.onSound("lose");
     }

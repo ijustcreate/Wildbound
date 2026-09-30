@@ -3,6 +3,8 @@ import {iceWorld} from './ice-world.mjs';
 import {contains} from './house-design.mjs';
 import {makeHouse,insideHouse} from './expansion.mjs';
 import {BOARD_TABLE} from './board-table.mjs';
+import {createForestLandscape,createForestScenery} from './forest-landscape.mjs';
+import {palmBase} from './forest.mjs';
 // Matches the visible board footprint (including the lower carved rim).
 export const TABLE = {
   // Keep the physical board aligned with the reduced board art in render.mjs.
@@ -55,6 +57,9 @@ export function createScenery(seed = 0, environment = "forest") {
   return result;
 }
 export function generateWorld(seed, environment = "forest") {
+  return {forestLandscape:null,forestLandscapeVersion:0,...generateWorldData(seed,environment)};
+}
+function generateWorldData(seed, environment) {
   const terrain = Array(2500).fill("grass");
   if(environment==='ice')return iceWorld(seed);
   if(environment==='temple'){
@@ -115,7 +120,11 @@ export function generateWorld(seed, environment = "forest") {
         if (terrain[(y + dy) * 50 + x + dx] !== "grass") return false;
     return true;
   });
-  return { terrain, scenery, house:null, webs:[] };
+  if (environment === 'forest') {
+    const forestLandscape = createForestLandscape(seed, terrain);
+    return {terrain, scenery: createForestScenery(seed, terrain, forestLandscape), forestLandscape, forestLandscapeVersion:1, house:null, webs:[]};
+  }
+  return { terrain, scenery, forestLandscape:null, house:null, webs:[] };
 }
 export function defaultFootprint(name, width, height) {
   const mask = Array(width * height).fill(0);
@@ -143,7 +152,9 @@ export function ensureFootprint(sprite, name) {
   return sprite;
 }
 export function propDepth(prop, sprite) {
+  if(prop.kind==='forest_ruin')return prop.y;
   if(prop.procedural&&['tree','snow_tree'].includes(prop.kind))return prop.rootY??prop.y+prop.size*.35;
+  if(prop.procedural&&prop.kind==='palm')return palmBase(prop).y;
   const mask = sprite?.footprint;
   if (!mask?.some(Boolean)) return prop.y + prop.size * 0.4;
   let bottom = 0;
@@ -152,6 +163,7 @@ export function propDepth(prop, sprite) {
   return prop.y - prop.size / 2 + ((bottom + 0.5) * prop.size) / sprite.height;
 }
 export function footprintHit(prop, sprite, x, y, radius = 8) {
+  if(prop.kind==='forest_ruin')return Math.hypot(x-Math.max(prop.x-prop.width/2,Math.min(x,prop.x+prop.width/2)),y-Math.max(prop.y-prop.depth,Math.min(y,prop.y)))<radius;
   if(prop.procedural&&!prop.falling&&!prop.depleted){
     const sizes={tree:[12,8,.35],snow_tree:[8,6,.35],rock:[Math.max(10,25-(prop.chipped||0)*3)/2,8,.19],ice_rock:[25,10,.19],ice_spire:[25,10,.19],frozen_log:[28,7,.19],winter_cache:[20,12,.19]};
     const shape=sizes[prop.kind];if(shape){const scale=prop.size/64,baseY=prop.y+prop.size*shape[2],halfW=shape[0]*scale,depth=shape[1]*scale;const nx=Math.max(prop.x-halfW,Math.min(x,prop.x+halfW)),ny=Math.max(baseY-depth,Math.min(y,baseY));return Math.hypot(x-nx,y-ny)<radius;}
@@ -196,6 +208,15 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   return false;
 }
 export function isOccluded(prop, sprite, player) {
+  if(prop.kind==='forest_ruin')return player.y<prop.y&&player.y>prop.y-prop.depth-prop.height&&Math.abs(player.x-prop.x)<prop.width/2+8;
+  if(prop.procedural&&['tree','snow_tree'].includes(prop.kind)) {
+    const base=prop.rootY??prop.y+prop.size*.35;
+    return player.y+8<base&&player.y>base-prop.size*1.35&&Math.abs(player.x-prop.x)<prop.size*.53;
+  }
+  if(prop.procedural&&prop.kind==='palm') {
+    const base=palmBase(prop),scale=prop.size/64,shape={height:55*scale,spread:44*scale};
+    return player.y+14<base.y+prop.size*.22&&player.y>base.y-shape.height-prop.size*.35&&Math.abs(player.x-base.x)<shape.spread;
+  }
   if (!sprite?.occludes || player.y + 14 >= propDepth(prop, sprite))
     return false;
   const left = prop.x - prop.size / 2,

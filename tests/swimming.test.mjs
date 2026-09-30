@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs';
 import {upgradePlayerMotion,defaultPlayerMotion} from '../src/player-motion.mjs';
 test('Shipping swim animation upgrades without overwriting edited strokes',()=>{
  const model=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
- assert.deepEqual(upgradePlayerMotion(model).clips.swim,defaultPlayerMotion().clips.swim);
+ assert.deepEqual(upgradePlayerMotion(model).clips.swim,model.artGeneration===3?model.clips.swim:defaultPlayerMotion().clips.swim);
  model.clips.swim.keys[0].joints.handL[0]=123;assert.deepEqual(upgradePlayerMotion(model).clips.swim,model.clips.swim);
 });
 const fixture=()=>({g:{terrain:Array(2500).fill('water'),effects:[]},p:{id:1,x:300,y:300,hp:100,maxHp:100,faceX:1,faceY:0,moving:true}});

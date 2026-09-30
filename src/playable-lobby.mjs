@@ -5,6 +5,7 @@ import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { controllerButtonNames } from './controls.mjs';
 import { give, canGive } from './items.mjs';
+import {DAMAGE_COLORS} from './enemy-damage.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:635,y:165},
@@ -12,6 +13,7 @@ export const LOBBY_OBJECTS = [
   {id:'dice-count',name:'Dice tray',x:780,y:165},
   {id:'board',name:'Closed board',x:770,y:375},
   {id:'target-lever',name:'Target lever',x:465,y:548},
+  {id:'character-station',name:'Explorer station',x:625,y:548},
   {id:'starter-chest',name:'Starter chest',x:950,y:520},
 ];
 const LOOK_PRESETS = [
@@ -61,7 +63,7 @@ export class LobbyState {
   invalidate(players){for(const p of players)p.ready=false;this.countdown=null;}
   nearest(p){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
   tick(dt,players){
-    const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.lobbyDisconnected);
+    const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.lobbyDisconnected);
     if(!ready){this.countdown=null;return false;}
     if(this.started)return false;
     this.countdown=(this.countdown??3)-dt;
@@ -87,9 +89,20 @@ export class PlayableLobby {
       const o=LOBBY_OBJECTS.find(o=>Math.hypot(o.x-x,o.y-y)<65);
       if(o&&this.state.nearest(p)===o)this.open(p,o.id);
     };
-    for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
+    for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest','character-station'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
   reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.nodes.clear();this.panels.replaceChildren();}
+  keepSelectedPlayers(players=this.getGame().players){
+    this.state.sync(players);
+    for(const [i,p] of players.entries()){
+      const s=this.state.members.get(p.id);
+      if(!s||!p.profileId)continue;
+      Object.assign(s,{spawned:true,panel:null,x:300+i*60,y:480,faceX:0,faceY:-1,step:0});
+      const heroes=this.available(p),index=heroes.findIndex(h=>h.id===p.profileId);
+      s.choice=index>=0?index:0;
+      p.ready=false;
+    }
+  }
   sync(){
     const players=this.getGame().players;this.state.sync(players);
     for(const [id,node] of this.nodes)if(!players.some(p=>p.id===id)){node.remove();this.nodes.delete(id);}
@@ -97,7 +110,18 @@ export class PlayableLobby {
     const count=players.filter(p=>p.ready).length;
     this.root.querySelector('#party-status').textContent=players.length?`${count} / ${players.length} ready · Walk to an object to interact`:'Press Enter or a controller button to join';
   }
-  open(p,panel){const s=this.state.members.get(p.id);if(!s?.spawned)return;if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}s.panel=panel;s.focus=0;this.renderPanel(p);}
+  open(p,panel){
+    const s=this.state.members.get(p.id);if(!s?.spawned||p.ui)return;
+    if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}
+    if(panel==='character-station'){this.openCharacterStation(p);return;}
+    s.panel=panel;s.focus=0;this.renderPanel(p);
+  }
+  openCharacterStation(p){
+    const s=this.state.members.get(p.id);if(!s||p.ui)return;
+    const heroes=this.available(p),index=heroes.findIndex(h=>h.id===p.profileId);
+    s.panel='choose';s.focus=0;s.choice=index>=0?index:0;s.characterHold=0;
+    p.ready=false;this.state.countdown=null;this.renderPanel(p);this.sound?.('ui');
+  }
   close(p){const s=this.state.members.get(p.id);s.panel=null;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);}
   available(p){return this.profiles.data.heroes.filter(h=>!this.getGame().players.some(q=>q!==p&&q.profileId===h.id));}
   renderPanel(p){
@@ -112,7 +136,7 @@ export class PlayableLobby {
       const heroes=this.available(p);s.choice=((s.choice%Math.max(1,heroes.length))+heroes.length)%Math.max(1,heroes.length);
       const h=heroes[s.choice];
       const preview=document.createElement('canvas');preview.width=220;preview.height=130;panel.append(preview);
-      if(h){const c=preview.getContext('2d');c.imageSmoothingEnabled=false;c.translate(110,108);c.scale(2.7,2.7);drawPlayer(c,{...h,faceX:0,faceY:1,animationAction:'idle'},0);}
+      if(h){const c=preview.getContext('2d');c.imageSmoothingEnabled=false;c.translate(110,108);c.scale(2.25,2.25);drawPlayer(c,{...h,faceX:0,faceY:1,animationAction:'idle'},0);}
       button(h?'‹  '+h.name+'  ›':'No saved explorers',()=>{s.choice++;this.renderPanel(p);}).dataset.cycle='character';
       if(h)button('Choose',()=>{
         if(!this.available(p).some(q=>q.id===h.id)){this.renderPanel(p);return;}
@@ -169,7 +193,7 @@ export class PlayableLobby {
         }
       }
       const art=document.createElement('canvas');art.width=220;art.height=110;panel.append(art);
-      const preview=()=>{const c=art.getContext('2d');c.clearRect(0,0,220,110);c.save();c.translate(110,90);c.scale(2.4,2.4);drawPlayer(c,{appearance:look,equipment:{},faceX:0,faceY:1,animationAction:'idle'},0);c.restore();};preview();
+      const preview=()=>{const c=art.getContext('2d');c.clearRect(0,0,220,110);c.save();c.translate(110,96);c.scale(1.95,1.95);drawPlayer(c,{appearance:look,equipment:{},faceX:0,faceY:1,animationAction:'idle'},0);c.restore();};preview();
       button('Create & join',()=>{
         const problem=characterNameError(input.value,this.profiles.data.heroes);if(problem){error.textContent=problem;return;}
         this.profiles.assign(p,this.profiles.create(input.value,look));s.spawned=true;this.state.invalidate(this.getGame().players);this.close(p);this.refreshChoosers();
@@ -231,6 +255,12 @@ export class PlayableLobby {
     if(owner&&owner!=='keyboard')e.preventDefault();
     const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return false;
     const s=this.state.members.get(p.id);if(!s)return false;
+    if(p.ui){
+      if(owner&&owner!=='keyboard'){e.preventDefault();return true;}
+      if(e.target.matches?.('input,select,textarea')&&e.key!=='Escape')return true;
+      if(e.key==='Escape'){e.preventDefault();this.getGame().inventoryAction(p,'close');return true;}
+      return false;
+    }
     if(s.panel){
       if(owner==='keyboard'&&e.target.matches('input')&&!['Escape','Enter'].includes(e.key))return true;
       const action={x:e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0,y:e.key==='ArrowDown'?1:e.key==='ArrowUp'?-1:0,accept:e.key==='Enter',back:e.key==='Escape'};
@@ -253,8 +283,29 @@ export class PlayableLobby {
     for(const p of players){
       const s=this.state.members.get(p.id),input=players.find(q=>q.device===p.device)===p?(inputs[p.device]||{}):{};
       if(!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected){
-        if(input.interact&&!s.held.interact){const o=this.state.nearest(p);if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}else if(o)this.open(p,o.id);}
+        const game=this.getGame(),edge=key=>input[key]&&!s.held[key];
+        if(p.ui)s.inventoryRelease=true;
+        if(edge('inventory')){if(p.ui)p.ui=null;else{game.openInventory(p);this.state.invalidate(players);}}
+        if(p.ui){
+          s.inventoryRelease=true;
+          for(const action of ['next','prev','up','down','panel','use','offhand','close'])if(edge(action))game.inventoryAction(p,action);
+          const direction=['next','prev','up','down'].find(key=>input[key]);
+          s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
+          if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
+        }else{
+          const o=this.state.nearest(p);
+          if(o?.id==='character-station'&&input.offhand){
+            s.characterHold=(s.characterHold||0)+dt;
+            input.offhand=false;
+            if(s.characterHold>=.65)this.openCharacterStation(p);
+          }else s.characterHold=0;
+          if(input.interact&&!s.held.interact&&o?.id!=='character-station'){
+            if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}
+            else if(o)this.open(p,o.id);
+          }
+        }
       }else s.moving=false;
+      if(!p.ui&&!['inventory','use','close','interact','attack','jump','dodge','block','trap','potion','bait','offhand','panel'].some(key=>input[key]))s.inventoryRelease=false;
       s.held={...input};
     }
     this.practice.stepPractice(dt,players,this.state.members,inputs,blocked);
@@ -302,7 +353,7 @@ export class PlayableLobby {
       c.fillStyle='#3b3832';c.fillRect(-65,-22,130,5);c.fillStyle='#96958b';c.fillRect(-61,-21,122,1);
       c.fillStyle='#74604a';c.fillRect(travel-3,-18,6,19);
       for(const [radius,color] of [[23,'#8d744a'],[20,'#dbca99'],[16,'#e5e1ca'],[12,'#36464c'],[9,'#598ea6'],[6,'#bf5948'],[3,'#e8bf52']]){c.fillStyle=t.flash>0&&radius===23?'#fff5b2':color;c.beginPath();c.arc(travel,0,radius,0,Math.PI*2);c.fill();}
-      c.fillStyle='#ede7d6';c.font='10px system-ui';c.fillText(t.hits+' hits · '+t.score+' pts',0,46);c.restore();
+      c.fillStyle='#ede7d6';c.font='10px system-ui';c.fillText(t.hits+' hits · '+Math.round(t.score)+' damage',0,46);c.restore();
     }
     for(const o of LOBBY_OBJECTS){
       c.fillStyle='#42474a';c.beginPath();c.ellipse(o.x,o.y+12,58,18,0,0,Math.PI*2);c.fill();
@@ -318,21 +369,31 @@ export class PlayableLobby {
         c.fillStyle='#4b3527';c.fillRect(o.x-58,o.y-28,116,48);c.fillStyle='#8e623a';c.fillRect(o.x-55,o.y-32,110,44);c.fillStyle='#cfa85e';c.fillRect(o.x-5,o.y-10,10,13);c.strokeStyle='#e0bf73';c.lineWidth=2;c.strokeRect(o.x-55,o.y-32,110,44);c.fillStyle='#f1dfaa';c.font='bold 13px Georgia';c.fillText('STARTER',o.x,o.y-8);
       }else if(o.id==='target-lever'){
         c.fillStyle='#574a38';c.fillRect(o.x-15,o.y-12,30,18);c.strokeStyle='#c0b497';c.lineWidth=5;c.beginPath();c.moveTo(o.x,o.y);c.lineTo(o.x+(this.practice.targetsMoving?10:-10),o.y-29);c.stroke();c.fillStyle=this.practice.targetsMoving?'#8dc99a':'#b66b4e';c.fillRect(o.x+(this.practice.targetsMoving?5:-15),o.y-34,11,9);
+      }else if(o.id==='character-station'){
+        c.fillStyle='#40362f';c.fillRect(o.x-42,o.y-33,84,54);c.fillStyle='#6d4f38';c.fillRect(o.x-37,o.y-38,74,50);c.fillStyle='#d7bd7a';c.fillRect(o.x-7,o.y-18,14,19);
+        c.strokeStyle='#e4c778';c.lineWidth=2;c.strokeRect(o.x-30,o.y-29,60,28);
+        c.fillStyle='#eee2be';c.font='bold 11px system-ui';c.fillText('HEROES',o.x,o.y-10);
+        c.fillStyle='#98d2c7';c.beginPath();c.arc(o.x-22,o.y-17,5,0,Math.PI*2);c.arc(o.x+22,o.y-17,5,0,Math.PI*2);c.fill();
       }else{
         c.fillStyle='#523c2b';c.fillRect(o.x-60,o.y-37,120,57);c.fillStyle='#9b7041';c.fillRect(o.x-56,o.y-40,112,48);c.strokeStyle='#d6b569';c.lineWidth=2;c.strokeRect(o.x-49,o.y-34,98,36);c.fillStyle='#2f3d2b';c.font='bold 15px Georgia';c.fillText('WILDBOUND',o.x,o.y-11);c.fillStyle='#e2bf6c';c.fillRect(o.x-6,o.y+6,12,8);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';c.fillText(o.name,o.x,o.y+(o.id==='target-lever'?27:44));
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':document.getElementById(o.id).selectedOptions[0].text;c.fillText(detail,o.x,o.y+(o.id==='target-lever'?40:61),o.id==='target-lever'?130:140);}
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'Hold Y · change hero':document.getElementById(o.id).selectedOptions[0].text;c.fillText(detail,o.x,o.y+(o.id==='target-lever'||o.id==='character-station'?40:61),o.id==='target-lever'||o.id==='character-station'?150:140);}
     }
     this.drawPractice(c);
+    for(const t of this.practice.targets)for(const f of [...t.combatText].reverse()){
+      c.save();c.globalAlpha=Math.min(1,f.life/.12);c.translate(t.x,t.y-42-f.age*34-f.offset);
+      const scale=1+Math.sin(Math.min(1,f.age/.12)*Math.PI)*.25;c.scale(scale,scale);
+      c.font='bold 18px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#142021';c.strokeText(String(Math.round(f.amount)),0,0);c.fillStyle=DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical;c.fillText(String(Math.round(f.amount)),0,0);c.restore();
+    }
     for(const p of [...this.getGame().players].sort((a,b)=>this.state.members.get(a.id).y-this.state.members.get(b.id).y)){
       const s=this.state.members.get(p.id);if(!s.spawned)continue;
       const actor=this.practice.players.find(a=>a.id===p.id)||{...p,...s};
       c.fillStyle='#41474b';c.beginPath();c.ellipse(s.x,s.y-(actor.groundHeight||0)+4,20,7,0,0,Math.PI*2);c.fill();
       c.save();c.translate(s.x,s.y-(actor.jumpHeight||0)-(actor.groundHeight||0));c.scale(2,2);drawPlayer(c,actor,this.practice.time);c.restore();
-      drawBowAim(c,actor,2);
+      drawBowAim(c,actor,2,this.practice.time);
       c.font='13px system-ui';c.fillStyle=p.ready?'#a8f4c9':p.color;c.fillText((p.ready?'✓ ':'')+p.name+(p.lobbyDisconnected?' · disconnected':''),s.x,s.y+27);
-      const o=this.state.nearest(p);if(o&&!s.panel){const interact=p.device==='keyboard'?'E':controllerButtonNames(p.controllerFamily||'generic')[3];c.fillStyle='#182326';c.fillRect(s.x-69,s.y-95,138,24);c.fillStyle='#fff';c.font='12px system-ui';c.fillText(interact+' · '+o.name,s.x,s.y-79);}
+      const o=this.state.nearest(p);if(o&&!s.panel&&!p.ui){const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3],prompt=o.id==='character-station'?(p.device==='keyboard'?'Hold 2':'Hold '+names[3])+' · '+o.name:interact+' · '+o.name;c.fillStyle='#182326';c.fillRect(s.x-75,s.y-95,150,24);c.fillStyle='#fff';c.font='12px system-ui';c.fillText(prompt,s.x,s.y-79);}
     }
   }
 }

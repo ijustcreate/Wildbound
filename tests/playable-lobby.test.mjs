@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {LobbyState,moveLobbyCharacter} from '../src/playable-lobby.mjs';
+import {LOBBY_OBJECTS,LobbyState,PlayableLobby,moveLobbyCharacter} from '../src/playable-lobby.mjs';
+import {Game} from '../src/core.mjs';
+import {LobbyPractice} from '../src/lobby-practice.mjs';
 import {playerFrame,defaultPlayerMotion} from '../src/player-motion.mjs';
 
 test('Lobby footsteps match gameplay distance and stop advancing against room boundaries',()=>{
@@ -33,4 +35,37 @@ test('Interactions require a spawned character near an object; lobby positions d
   const s=lobby.members.get(1);s.x=770;s.y=420;assert.equal(lobby.nearest(p),null);
   s.spawned=true;assert.equal(lobby.nearest(p).id,'board');assert.equal(p.x,1000);
   s.x=60;s.y=560;assert.equal(lobby.nearest(p),undefined);
+});
+
+test('Explorer station sits right of the target lever and opens on hold Y',()=>{
+  const lever=LOBBY_OBJECTS.find(o=>o.id==='target-lever'),station=LOBBY_OBJECTS.find(o=>o.id==='character-station');
+  assert.ok(station.x>lever.x);assert.equal(station.y,lever.y);
+  const game=new Game(),p=game.addPlayer('keyboard');
+  const lobby=Object.create(PlayableLobby.prototype);let opened=null;
+  Object.assign(lobby,{getGame:()=>game,state:new LobbyState(),practice:new LobbyPractice(),sync(){},draw(){},area:{querySelector:()=>({textContent:''})},openCharacterStation(player){opened=player;}});
+  lobby.state.sync(game.players);Object.assign(lobby.state.members.get(p.id),{spawned:true,panel:null,x:station.x,y:station.y});
+  lobby.update(.3,{keyboard:{offhand:true}});
+  assert.equal(opened,null);
+  lobby.update(.36,{keyboard:{offhand:true}});
+  assert.equal(opened,p);
+});
+
+test('Lobby inventory equips the saved hero, blocks practice input, and cancels readiness',()=>{
+  const game=new Game(),p=game.addPlayer('keyboard'),q=game.addPlayer('pad:0');
+  const lobby=Object.create(PlayableLobby.prototype);
+  Object.assign(lobby,{getGame:()=>game,state:new LobbyState(),practice:new LobbyPractice(),sync(){},draw(){},area:{querySelector:()=>({textContent:''})}});
+  lobby.state.sync(game.players);
+  for(const player of game.players){player.profileId='hero-'+player.id;player.ready=true;Object.assign(lobby.state.members.get(player.id),{spawned:true,panel:null});}
+  p.inventory=[{type:'sword',qty:1}];
+  const tick=input=>lobby.update(.05,input);
+  const s=lobby.state.members.get(p.id),x=s.x;
+  tick({keyboard:{inventory:true,x:1,attack:true}});
+  assert.equal(p.ui.panel,'pack');assert.equal(q.ui,null);assert.equal(p.ready,false);assert.equal(s.x,x);assert.equal(lobby.state.countdown,null);
+  tick({});tick({keyboard:{use:true,attack:true}});
+  assert.equal(p.equipment.hand1,'sword');assert.equal(lobby.practice.players.find(a=>a.id===p.id).equipment.hand1,'sword');assert.equal(s.x,x);
+  tick({});tick({keyboard:{close:true,jump:true}});
+  assert.equal(p.ui,null);assert.equal(lobby.practice.players.find(a=>a.id===p.id).jumpHeight||0,0);
+  tick({});tick({'pad:0':{inventory:true}});assert.equal(q.ui.panel,'pack');assert.equal(p.ui,null);
+  tick({});tick({'pad:0':{inventory:true}});assert.equal(q.ui,null);
+  game.start();assert.equal(p.equipment.hand1,'sword');
 });

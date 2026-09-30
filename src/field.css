@@ -269,6 +269,40 @@ body #board-panel.board-sequence,body[data-board-size="compact"] #board-panel.bo
  box-shadow:0 0 0 100vmax #06130ee8,0 16px 60px #000a;border:2px solid #b89c60;
 }
 body #board-panel.board-sequence #board-caption{display:block;text-align:center;}
+body #board-panel.board-sequence #board-caption{font-size:13px;color:#f3f4df}
+.roster-card{--roster-accent:var(--player,#d5b96f);position:relative;box-sizing:border-box;padding:10px 12px 10px 76px!important;min-height:112px;width:calc(270px * var(--ui-scale));max-width:46vw;overflow:visible;border:1px solid color-mix(in srgb,var(--roster-accent) 62%,#384a3e)!important;border-radius:4px 12px 4px 12px;background:linear-gradient(120deg,#0a1b16f5,#152d24f5 70%,#10241cf5)!important;box-shadow:inset 0 0 0 2px #d2b66b16,inset 0 0 24px #07130ca8,0 5px 18px #0008;clip-path:polygon(0 5px,7px 0,calc(100% - 14px) 0,100% 12px,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%)}
+.roster-card::before{content:"";position:absolute;inset:4px;pointer-events:none;border:1px solid #f0d9a21a;border-radius:2px 8px 2px 8px}
+.roster-card.current{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--roster-accent) 40%,transparent),inset 0 0 26px color-mix(in srgb,var(--roster-accent) 12%,transparent),0 0 16px color-mix(in srgb,var(--roster-accent) 24%,transparent),0 5px 18px #0009}
+.roster-info{display:grid;gap:5px;margin-top:3px}
+.roster-info>span:first-child{font-size:9px;letter-spacing:.07em;color:#b4c4a8}
+.roster-name{align-items:baseline;gap:6px;padding-bottom:4px;border-bottom:1px solid #d6c28c25}
+.roster-name b{font-family:Georgia,serif;font-size:calc(15px * var(--ui-scale));letter-spacing:.025em;text-shadow:0 0 9px color-mix(in srgb,var(--roster-accent) 32%,transparent)}
+.roster-name span{font-variant-numeric:tabular-nums;color:#f1e8d2}
+.roster-portrait-wrap{position:absolute;left:10px;top:12px;width:56px;height:70px;display:grid;place-items:center;background:linear-gradient(145deg,#d1b36c22,#172e27 58%,#0b1814);border:1px solid #d1b36c72;border-radius:28px 28px 10px 10px;box-shadow:inset 0 0 14px #020906,0 0 12px #c6aa5430}
+.roster-portrait-wrap::after{content:"";position:absolute;inset:3px;border:1px solid #f1dfaa38;border-radius:25px 25px 8px 8px;pointer-events:none}
+.roster-portrait{width:48px;height:58px;image-rendering:pixelated;filter:drop-shadow(0 2px 3px #000b);z-index:1}
+.roster-portrait-glow{position:absolute;inset:6px;border-radius:50%;background:radial-gradient(ellipse,#c8de8c20,transparent 70%);animation:portrait-breath 3.8s ease-in-out infinite}
+.roster-supplies{display:flex;align-items:center;gap:9px;min-width:0}
+.roster-supply{display:inline-flex;align-items:center;gap:3px;color:#e8dec2;font-variant-numeric:tabular-nums}
+.roster-supply b{font-size:10px;color:#f4ecd4}
+.supply-icon{display:inline-grid;place-items:center;width:15px;height:15px;font-style:normal;font-size:13px;line-height:1;text-shadow:0 0 7px currentColor}
+.roster-supply-traps .supply-icon{color:#e6a870}.roster-supply-potions .supply-icon{color:#83d7b3}.roster-supply-arrows .supply-icon{color:#e6d18b}
+.roster-dash{margin-left:auto;color:#bdb695;font-size:8px;white-space:nowrap}
+.roster-minions{position:absolute;left:12px;bottom:5px;display:flex;gap:4px}
+.roster-card .health-track{position:relative;overflow:hidden;height:7px!important;margin:6px 0 4px!important;border:1px solid #e7c6a033;border-radius:5px;background:linear-gradient(#1a211b,#101711);box-shadow:inset 0 1px 3px #000b}
+.roster-card .health-track i{position:relative;border-radius:4px;background:linear-gradient(90deg,#812f2e,#e45f49 52%,#f7ac68);box-shadow:0 0 9px #ea654899;transition:width .25s ease}
+.roster-card .health-track i::after,.roster-card .mana-track i::after{content:"";position:absolute;top:0;bottom:0;width:22px;background:linear-gradient(90deg,transparent,#fff9,transparent);animation:bar-glint 3s ease-in-out infinite}
+.roster-card .mana-meter{font-size:9px;color:#c4bcff}
+.roster-card .mana-meter small{font-size:9px!important;letter-spacing:.06em}
+.roster-card .mana-track{height:5px!important;margin:3px 0 0!important}
+.roster-card .mana-track i{background:linear-gradient(90deg,#5147a7,#9c8cff 60%,#b5dcff);box-shadow:0 0 8px #8b7cff88}
+.roster-card .mana-track i::after{animation-delay:1.3s}
+.minion-dot{box-shadow:0 0 5px #70bdff,0 0 10px #70bdff77}
+@keyframes bar-glint{0%,32%{left:-25px}64%,100%{left:110%}}
+@keyframes portrait-breath{0%,100%{opacity:.48;transform:scale(.94)}50%{opacity:1;transform:scale(1.06)}}
+@media(prefers-reduced-motion:reduce){.roster-portrait-glow,.roster-card .health-track i::after,.roster-card .mana-track i::after{animation:none}}
+.minion-dot{width:12px;height:12px;border-radius:50%;border:1px solid #d1ecff;background:conic-gradient(#70bdff var(--cooldown),#16334e 0);box-shadow:0 0 3px #70bdff}
+.roster-minions .minion-dot{box-shadow:0 0 5px #70bdff,0 0 10px #70bdff77}
 body #board-panel.board-sequence #close-board{visibility:hidden;}
 @media (max-width: 1100px) {
   .field-kit {

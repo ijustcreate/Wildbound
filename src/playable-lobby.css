@@ -1,4 +1,5 @@
 body[data-screen="lobby"]{overflow:hidden}
+body[data-screen="lobby"] #hero-overlays{position:fixed;inset:104px 24px 28px}
 #lobby.playable-lobby{padding:0 24px 12px;background:#20292d;height:100dvh;min-height:0}
 #lobby.playable-lobby .party-banner{height:92px;background:none;border-bottom:1px solid #30393d;margin:0}
 #lobby.playable-lobby .party-banner::after{display:none}

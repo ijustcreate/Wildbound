@@ -1,15 +1,18 @@
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
+import { fitHeroGrip } from './hero-generation.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {SALVAGE_SECONDS} from './salvage.mjs';
 import {defaultAnimationLayers,validAnimationLayers,blendJointMask} from './animation-layers.mjs';
 import { capeRows } from './cape-motion.mjs';
 import { wearableDetails, directionalHelmet } from "./wearable-art.mjs";
+import { drawHumanHead, skinPalette } from './human-head.mjs';
+import {drawHeroTorso,withPixelRotation,unrotateFace} from './hero-art.mjs';
 import { gearPalette, fittedGear, fittedShield, withBootPose } from './gear-art.mjs';
 import { paintLayers } from "./render-order.mjs";
 import { jointAngle, validAngles } from "./joint-angles.mjs";
 import { ITEMS, itemKind } from "./items.mjs";
-import { drawItem } from "./item-art.mjs";
+import { drawItem, paintItem } from "./item-art.mjs";
 import { shade, drawHair, DEFAULT_APPEARANCE } from "./appearance.mjs";
 // One player definition, pose evaluator and pixel renderer for both game and studio.
 // Coordinates are model-space pixels: x across shoulders, y forward, z height.
@@ -440,9 +443,7 @@ export function poseAt(model, clipName, frame) {
 }
 export function playerAction(actor) {
   if (actor.animationAction)
-    return actor.animationAction === "walk"
-      ? "run"
-      : actor.animationAction === "attack"
+    return actor.animationAction === "attack"
         ? "punch"
         : actor.animationAction;
   if (actor.foundUnique > 0) return "found_unique";
@@ -468,6 +469,7 @@ export function playerAction(actor) {
   )
     return actor.attack > 0 ? "ranged" : "draw";
   if(actor.attack>0&&actor.attackClip)return actor.attackClip;
+  if(actor.bowAiming && ['hand1','hand2'].some(slot=>ITEMS[actor.equipment?.[slot]]?.magic))return 'cast';
   if (actor.attack > 0)
     return actor.equipment?.hand1 || ITEMS[actor.equipment?.hand2]?.damage
       ? "slash"
@@ -480,19 +482,23 @@ export function playerFrame(actor, time, model = playerMotion, action = playerAc
     clip = model.clips[action] || model.clips.idle;
   if (Number.isFinite(actor.playerFrame)) return actor.playerFrame;
   if (actor.poseTime !== undefined) return actor.poseTime * (clip.length - 1);
+  const timed={pickup:['pickupTime',.42],found_unique:['foundUnique',1.1],mine:['gatherTime',.55],woodcut:['gatherTime',.55],interact:['interactAnimation',.35],parry:['parry',.32],dash:['dashTime',actor.dashAnimationDuration||.28]};
+  if(timed[action]&&actor[timed[action][0]]>0)return Math.max(0,1-actor[timed[action][0]]/timed[action][1])*(clip.length-1);
+  if(action==='revive'&&actor.reviveAnimation>0)return Math.min(clip.length*.7,time*clip.fps%(clip.length*.7));
   if(action==='salvage')return (actor.salvageFinish>0?8+(1-actor.salvageFinish/.3)*3:Math.min(8,(actor.salvageHold?.elapsed||0)/SALVAGE_SECONDS*8))/11*(clip.length-1);
   if (action === "run" || action === "walk")
     // Core accumulates 0.13 radians per world pixel. Keep footsteps tied to
     // distance, with an 88px stride (about 1.5 cycles/sec at normal speed).
     return actor.step === undefined
       ? time * clip.fps
-      : (actor.step / (0.13 * 88)) * clip.length;
+      : (actor.step / (0.13 * (model.artGeneration===3&&action==='walk'?56:88))) * clip.length;
   if (action === "draw")
     return Math.min(clip.length - 1, (actor.charge || 1) * 7);
   if(action==='death')return Math.min(1,(actor.deathTime??.5)/.5)*(clip.length-1);
   if(action==='get_up')return (1-(actor.getUpTime||0)/.4)*(clip.length-1);
   if(action==='land')return (1-(actor.landTime||0)/.22)*(clip.length-1);
   if(actor.attack>0&&actor.attackClip===action)return Math.max(0,1-actor.attack/(actor.attackDuration||.34))*(clip.length-1);
+  if(actor.bowAiming && action==='cast')return (clip.length-1)*.5;
   if (actor.charge > 0 && !action.startsWith('jump')) return 0;
   if (["punch", "slash", "ranged"].includes(action))
     return (1 - (actor.attack || 0) / 0.34) * (clip.length - 1);
@@ -519,7 +525,8 @@ export function playerPose(actor,time,model=playerMotion){
   if(layer.base!=='$current'&&layer.base!==playerAction(actor))pose=poseAt(model,layer.base,layer.baseFrame);
   pose=blendJointMask(pose,poseAt(model,layer.overlay,layer.overlayFrame),layer);
  }
- return pose;
+  if(model.artGeneration===3)applyIK(model,pose);
+  return fitHeroGrip(pose,actor,model,playerAction(actor));
 }
 export function playerJointAngle(actor,time,model,d,joint){
  let angle=jointAngle(model,playerAction(actor),playerFrame(actor,time,model),d,joint,actor.angleRestOnly);
@@ -585,6 +592,8 @@ export function drawPlayer(
     back = d >= 3 && d <= 5;
   const salvaging=playerAction(actor)==='salvage';
   if(salvaging){gear.hand1=null;gear.hand2=null;}
+  const propAction=model.artGeneration===3?playerAction(actor):null;
+  if(['mine','woodcut','carry','pickup','found_unique','swim','sleep','death','get_up'].includes(propAction)){gear.hand1=null;gear.hand2=null;}
   const rotateJoint = (joint,anchor,paint) => {
     const angle=playerJointAngle(actor,time,model,d,joint);
     if(!angle)return paint();
@@ -608,6 +617,7 @@ export function drawPlayer(
     gear.hand2 = null;
   }
   const human = !model.skeleton && !model.robot;
+  const sculpted=human&&model.artGeneration===3;
   const look = actor.appearance || (human ? DEFAULT_APPEARANCE : null);
   const ink = human ? "#302b2b" : pal.outline;
   const pixel = (x, y, w, h, color) => {
@@ -725,15 +735,18 @@ export function drawPlayer(
           shade = gear.pants ? gearPalette(gear.pants,cosmetics.dye).dark : pal.legShade;
         wear("pants", hip, () => {
           if (human) {
-            limb(c, hip, knee, 4.8, ink);
+            limb(c, hip, knee, sculpted?6:4.8, ink);
             limb(c, knee, foot, 5.5, ink);
           }
-          limb(c, hip, knee, model.skeleton ? 2 : 4, shade);
-          limb(c, knee, foot, model.skeleton ? 2 : 3.5, color);
+          limb(c, hip, knee, model.skeleton ? 2 : sculpted?4.8:4, shade);
+          limb(c, knee, foot, model.skeleton ? 2 : sculpted?4:3.5, color);
           if (human) {
             limb(c, {x:hip.x-1,y:hip.y+1}, {x:knee.x-1,y:knee.y}, 1, color);
             pixel(knee.x-1,knee.y,2,1,shade);
             limb(c,{x:knee.x+1,y:knee.y+2},{x:foot.x+1,y:foot.y-3},1,shade);
+            const fabric=gearPalette(gear.pants,cosmetics.dye||color);
+            limb(c,{x:hip.x-1,y:hip.y+2},{x:knee.x-1,y:knee.y-1},1,fabric.light);
+            pixel(knee.x-1,knee.y+1,2,1,fabric.base);
           }
         });
         const toe = projectPoint(
@@ -774,21 +787,21 @@ export function drawPlayer(
       (shoulder.depth + elbow.depth + hand.depth) / 3 + (back ? -0.35 : 0.35),
       () => {
         if (human) {
-          limb(c, shoulder, elbow, 4.5, ink);
-          limb(c, elbow, hand, 3.5, ink);
+          limb(c, shoulder, elbow, sculpted?5.5:4.5, ink);
+          limb(c, elbow, hand, sculpted?4.5:3.5, ink);
         }
         limb(
           c,
           shoulder,
           elbow,
-          model.skeleton ? 2 : 3.5,
+          model.skeleton ? 2 : sculpted?4.5:3.5,
           gear.chest ? ITEMS[gear.chest]?.artColor || "#6c8580" : pal.armShade,
         );
         limb(
           c,
           elbow,
           hand,
-          model.skeleton ? 2 : 2.5,
+          model.skeleton ? 2 : sculpted?3.5:2.5,
           // Gloves belong to the hand anchor; they must not recolor the
           // entire forearm or turn the character into a pair of mitts.
           human ? pal.headShade : pal.arms,
@@ -802,9 +815,15 @@ export function drawPlayer(
           pal.headShade,
         );
         if (human && !gear.gloves) {
-          ellipse(c, hand.x, hand.y, 1.7, 1.8, ink);
-          ellipse(c, hand.x, hand.y - 0.5, 1.1, 1.3, pal.head);
-          pixel(hand.x-1,hand.y-1,1,1,"#f0d4ae");
+          ellipse(c, hand.x, hand.y, sculpted?2:1.7, sculpted?2:1.8, ink);
+          ellipse(c, hand.x, hand.y - 0.5, sculpted?1.5:1.1, sculpted?1.5:1.3, pal.head);
+          pixel(hand.x-1,hand.y-1,1,1,skinPalette(pal.head).light);
+        }
+        if (human) {
+          const sleeve=gearPalette(gear.chest,cosmetics.dye||(gear.chest?ITEMS[gear.chest]?.artColor:pal.arms));
+          limb(c,{x:shoulder.x-1,y:shoulder.y},{x:elbow.x-1,y:elbow.y-2},1,sleeve.light);
+          limb(c,{x:elbow.x-.5,y:elbow.y+1},{x:hand.x-.5,y:hand.y-2},1,skinPalette(pal.head).base);
+          pixel(elbow.x-1,elbow.y,2,1,sleeve.dark);
         }
         if (human && !gear.chest) {
           limb(c,{x:elbow.x-.8,y:elbow.y-1},{x:elbow.x+.8,y:elbow.y-1},2,"#d2c6a7");
@@ -817,6 +836,11 @@ export function drawPlayer(
           wear("shoulders", shoulder, () =>
             fittedGear(c,gear.shoulders,shoulder,d,side,cosmetics.dye),
           );
+        else if(sculpted&&!gear.chest){
+          ellipse(c,shoulder.x,shoulder.y,2.7,1.8,ink);
+          ellipse(c,shoulder.x,shoulder.y-.3,2,1.2,'#8c704b');
+          pixel(shoulder.x-1,shoulder.y-1,2,1,'#c6a16a');
+        }
       },
       "Arm " + side,
     );
@@ -831,8 +855,9 @@ export function drawPlayer(
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
             const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
-            const butt = { x: hand.x - aim.x * 6, y: hand.y - aim.y * 3 };
-            const muzzle = { x: hand.x + aim.x * 21, y: hand.y + aim.y * 11 - 2 };
+            const aimed=sculpted&&['draw','ranged'].includes(playerAction(actor));
+            const butt = aimed?{x:p.shoulderR.x,y:p.shoulderR.y+1}:{ x: hand.x - aim.x * 6, y: hand.y - aim.y * 3 };
+            const muzzle = aimed?{x:p.handL.x+(p.handL.x-hand.x)*1.5,y:p.handL.y+(p.handL.y-hand.y)*1.5}:{ x: hand.x + aim.x * 21, y: hand.y + aim.y * 11 - 2 };
             limb(c,butt,hand,6,ink);limb(c,hand,muzzle,4,ink);
             limb(c, butt, hand, 4, "#916642");
             limb(c, hand, muzzle, 2.5, "#39434b");
@@ -841,13 +866,35 @@ export function drawPlayer(
             pixel(butt.x,butt.y-1,2,1,"#bc9765");
           }
           if (weapon === "sword" || weapon === "dagger") {
+            const style=ITEMS[weaponId]?.style;
+            if(style==='whip'){
+              const length = actor.attack > 0 ? 27 + (1 - actor.attack / (actor.attackDuration || .34)) * 34 : 27;
+              const dx = actor.faceX || 0, dy = actor.faceY || -1, px = -dy, py = dx;
+              let last = hand;
+              for(let n=1;n<=7;n++){
+                const t=n/7,bend=Math.sin(t*Math.PI)*(actor.attack>0?(actor.attackClip==='swipe_two'?-1:1):.35)*(5+t*8);
+                const next={x:hand.x+dx*length*t+px*bend,y:hand.y+dy*length*t+py*bend};
+                limb(c,last,next,n===7?2:2.5-t*.8,n%2?weaponColor||'#d35b54':gearPalette(weaponId).light);last=next;
+              }
+              ellipse(c,last.x,last.y,2.5,2.5,gearPalette(weaponId).trim);
+            } else {
             const attack =
               actor.attack > 0 || actor.animationAction === "slash";
-            const tip = {
+            let tip = {
               x: hand.x + (attack ? -Math.sin(d*Math.PI/4)*12 : -Math.sin(d*Math.PI/4)*5+Math.cos(d*Math.PI/4)*(side==='R'?3:-3)),
               y: hand.y - (weapon === "sword" ? 14 : 8) + (attack ? Math.cos(d*Math.PI/4)*5 : 0),
             };
-            const material=gearPalette(weaponId),style=ITEMS[weaponId]?.style;
+            if(sculpted){
+              const action=playerAction(actor),swing=['slash','swipe_one','swipe_two','swipe_big','sword_combo'].includes(action);
+              if(swing){
+                const f=playerFrame(actor,time,model)/(model.clips[action].length-1);
+                const phase=action==='sword_combo'?(f<=.5?f*2:(f-.5)*2):f,reverse=action==='swipe_two'||action==='sword_combo'&&f>.5;
+                const angle=(phase<.25?-.7:phase<.65?-.7+(phase-.25)/.4*2.5:1.8-(phase-.65)/.35*1.6)*(reverse?-1:1);
+                const reach=weapon==='sword'?15:9;
+                tip={x:hand.x+Math.sin(angle)*reach*Math.cos(d*Math.PI/4),y:hand.y-Math.cos(angle)*reach};
+              }
+            }
+            const material=gearPalette(weaponId);
             const bladeWidth=style==='broad'?4:2;
             const bladeLength=Math.hypot(tip.x-hand.x,tip.y-hand.y)||1;
             const ux=(tip.x-hand.x)/bladeLength,uy=(tip.y-hand.y)/bladeLength;
@@ -872,7 +919,10 @@ export function drawPlayer(
               "#b28d54",
             );
             limb(c,hand,{x:hand.x-ux*3,y:hand.y-uy*3},2,material.leather);
+            pixel(guard.x-1,guard.y-1,1,1,material.shine);
+            pixel(hand.x-ux*2,hand.y-uy*2,1,1,material.trim);
             pixel(hand.x-ux*3-1,hand.y-uy*3,2,1,material.trim);
+            }
           }
           if (weapon === "wand") {
             const localTip=wandLocalTip(null,d,side);
@@ -908,6 +958,10 @@ export function drawPlayer(
           : pal.body,
         shade = gear.chest ? gearPalette(gear.chest,cosmetics.dye).dark : pal.bodyShade;
       wear("chest", p.chest, () => {
+        if(sculpted){
+          limb(c,p.chest,{x:p.head.x,y:p.head.y+3},4,pal.headShade);
+          drawHeroTorso(c,p,d,color,pal.head,back);
+        }else{
         if (human) limb(c, p.pelvis, p.chest, 10, ink);
         limb(c, p.pelvis, p.chest, 7, shade);
         limb(
@@ -917,10 +971,11 @@ export function drawPlayer(
           5,
           color,
         );
-        if (human && !gear.chest) {
+        }
+        if (human && !gear.chest && !sculpted) {
           // Collared tunic: highlights, center seam and a small stitched pocket.
           const x = p.chest.x, y = p.chest.y;
-          limb(c,{x:x-3,y:y+1},{x:p.pelvis.x-3,y:p.pelvis.y-2},1,color);
+          limb(c,{x:x-3,y:y+1},{x:p.pelvis.x-3,y:p.pelvis.y-2},1,gearPalette(null,color).light);
           pixel(x-3,y-2,2,2,"#eadcc0");
           pixel(x+1,y-2,2,2,"#eadcc0");
           if (!back) {
@@ -952,6 +1007,14 @@ export function drawPlayer(
         wear("pants", p.pelvis, () => {
           const pantsColor = gear.pants ? ITEMS[gear.pants]?.artColor || "#819a9b" : pal.legs;
           const pantsShade = gear.pants ? gearPalette(gear.pants,cosmetics.dye).dark : pal.legShade;
+          if(sculpted){
+            limb(c,p.hipL,p.hipR,5,ink);limb(c,p.hipL,p.hipR,3.5,pantsColor);
+            const vx=p.pelvis.x-p.chest.x,vy=p.pelvis.y-p.chest.y,len=Math.hypot(vx,vy)||1;
+            const a={x:p.pelvis.x-vy/len*4,y:p.pelvis.y+vx/len*4},b={x:p.pelvis.x+vy/len*4,y:p.pelvis.y-vx/len*4};
+            limb(c,a,b,2,'#4b3c2e');
+            if(!back){pixel(p.pelvis.x-1,p.pelvis.y-1,3,2,'#c5a268');pixel(p.pelvis.x,p.pelvis.y,1,1,'#53402d');}
+            return;
+          }
           // Base clothing needs the same connected hip panel as equipped pants.
           // Cover the rounded shirt endpoint, then join both animated hips so
           // shirt pixels cannot hang into the crotch between the legs.
@@ -1000,6 +1063,11 @@ export function drawPlayer(
   add(
     p.head.depth + 0.15,
     () => {
+      const hasCustomHead=model.wearables?.[gear.head]?.[d]||model.wearables?.['hair:'+look?.hair]?.[d];
+      const headAngle=sculpted&&!hasCustomHead?Math.atan2(p.head.x-p.chest.x,p.chest.y-p.head.y):0;
+      const facePoints=sculpted?unrotateFace(p,headAngle):p;
+      const faceLook=sculpted?{...look,eyesClosed:['sleep','death'].includes(playerAction(actor))}:look;
+      withPixelRotation(c,p.head,headAngle,()=>{
       const h = p.head,
         side = d === 2 || d === 6;
       const visible = (n) => model.visibility?.[n]?.[d] !== false;
@@ -1018,19 +1086,16 @@ export function drawPlayer(
         c.fillRect(Math.round(h.x) - 1, Math.round(h.y) - 11, 3, 2);
         return;
       }
-      for (const name of ["earL", "earR"])
+      if (!human) for (const name of ["earL", "earR"])
         if (visible(name))
           ellipse(c, p[name].x, p[name].y, 1.2, 1.8, pal.headShade);
       if (human) {
-        ellipse(c,h.x,h.y,side ? 5 : 6,6,ink);
-        ellipse(c,h.x,h.y-0.5,side ? 4 : 5,5,pal.headShade);
-        ellipse(c,h.x-0.7,h.y-1,side ? 3.2 : 4.2,4.2,pal.head);
-        if (!back) pixel(h.x-2,h.y+2,3,1,pal.head);
+        drawHumanHead(c,facePoints,d,pal.head,faceLook,visible);
       } else {
         ellipse(c, h.x, h.y, side ? 3.5 : 4.2, 5, pal.headShade);
         ellipse(c, h.x - 0.6, h.y - 1, side ? 2.8 : 3.6, 4, pal.head);
       }
-      for (const name of ["eyeL", "eyeR"])
+      if (!human) for (const name of ["eyeL", "eyeR"])
         if (visible(name)) {
           c.fillStyle = pal.outline;
           const q = p[name];
@@ -1041,7 +1106,7 @@ export function drawPlayer(
             2,
           );
         }
-      if (visible("nose")) {
+      if (!human && visible("nose")) {
         c.fillStyle = model.skeleton ? pal.outline : pal.headShade;
         c.fillRect(
           Math.round(p.nose.x),
@@ -1050,7 +1115,7 @@ export function drawPlayer(
           model.skeleton ? 1 : 2,
         );
       }
-      if (visible("mouth")) {
+      if (!human && visible("mouth")) {
         c.fillStyle = model.skeleton ? pal.outline : pal.headShade;
         const q = p.mouth;
         if (model.skeleton) {
@@ -1070,16 +1135,18 @@ export function drawPlayer(
           c.beginPath();
           c.rect(h.x - 8, h.y - 2, 16, 18);
           c.clip();
-          drawHair(c, h, look, d);
+          drawHair(c, h, look, d, playerFrame(actor,time,model), playerAction(actor));
           c.restore();
-        } else drawHair(c, h, look, d);
+        } else drawHair(c, h, look, d, playerFrame(actor,time,model), playerAction(actor));
       });
+      if (human) drawHumanHead(c,facePoints,d,pal.head,faceLook,visible,true,pal.outline);
       // Hair is cosmetic and sits beneath head equipment.
       if (gear.head)
         wear("head", h, () => {
           if (!directionalHelmet(c, gear.head, h, d, cosmetics))
             drawItem(c, gear.head, h.x, h.y - 2, 14, cosmetics.dye);
         });
+      });
     },
     "Head and headwear",
   );
@@ -1105,14 +1172,35 @@ export function drawPlayer(
             limb(c,top,{x:top.x+facing*3,y:top.y-2},2,material.light);
             limb(c,bottom,{x:bottom.x+facing*3,y:bottom.y+2},2,material.light);
           }
-          if (actor.charge > 0)
+          if (actor.charge > 0 || sculpted&&['draw','ranged'].includes(playerAction(actor)))
             limb(c, p.handR, { x: hand.x + facing*12, y: hand.y }, 1, "#dfc693");
         }));
       },
       "Bow",
     );
+  if(sculpted&&['mine','woodcut','carry','pickup','found_unique'].includes(propAction))add((p.handL.depth+p.handR.depth)/2+.3,()=>{
+    const a=p.handR,b=p.handL,mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    if(propAction==='mine'||propAction==='woodcut'){
+      const length=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/length,uy=(b.y-a.y)/length;
+      const tip={x:b.x+ux*8,y:b.y+uy*8},butt={x:a.x-ux*4,y:a.y-uy*4};
+      limb(c,butt,tip,3,ink);limb(c,butt,tip,1.5,'#a47c4e');
+      const left={x:tip.x-uy*5,y:tip.y+ux*5},right={x:tip.x+uy*5,y:tip.y-ux*5};
+      limb(c,left,right,propAction==='mine'?3:5,'#55696b');limb(c,left,right,1,'#c8d4cb');
+      pixel(tip.x,tip.y,2,2,'#d5b678');
+    }else{
+      const type=propAction==='found_unique'||propAction==='pickup'?actor.pickupItem:typeof actor.carryingItem==='string'?actor.carryingItem:actor.carryingItem?.type;
+      if(type&&ITEMS[type]){
+        const size=propAction==='found_unique'?16:12,scale=size/24,x=mid.x-size/2,y=mid.y-size/2-2;
+        paintItem({fillStyle:ink,fillRect(px,py,w,h){c.fillStyle=this.fillStyle;c.fillRect(Math.round(x+px*scale),Math.round(y+py*scale),Math.max(1,Math.round(w*scale)),Math.max(1,Math.round(h*scale)));}},type);
+      }else{
+        pixel(mid.x-5,mid.y-7,10,8,ink);pixel(mid.x-4,mid.y-6,8,6,'#9c7c4c');
+        pixel(mid.x-4,mid.y-6,8,1,'#ceb177');pixel(mid.x-1,mid.y-6,2,6,'#594d38');
+      }
+    }
+    for(const q of [a,b]){pixel(q.x-1,q.y-1,3,2,gear.gloves?gearPalette(gear.gloves).base:pal.head);}
+  },'Interaction prop');
   paintLayers(queue, model, d, c, p);
-  wearableDetails(c, p, {}, look, d, time, cosmetics);
+  if (!human) wearableDetails(c, p, {}, look, d, time, cosmetics);
   if(salvaging){
     if(actor.salvageHold?.type&&!actor.salvageHold.latched)drawItem(c,actor.salvageHold.type,(p.handL.x+p.handR.x)/2,(p.handL.y+p.handR.y)/2,10);
     for(const [index,hand] of [p.handL,p.handR].entries())drawParticleEffect(c,actor.salvageFinish>0?'salvage-burst':'salvage-hands',hand.x,hand.y,actor.salvageFinish>0?.3-actor.salvageFinish:actor.salvageHold?.elapsed||time,index+17);

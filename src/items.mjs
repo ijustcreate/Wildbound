@@ -1,3 +1,4 @@
+import {SKILLS,skillScrollId} from './field-skills.mjs';
 export const SLOTS = [
   "head",
   "neck",
@@ -11,6 +12,9 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
+  relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Stored relics grant no passive bonuses.' },
+  crafting_bag: { name: 'Crafting Pouch', stack: 1, color: '#83bb92', bag: { slots: 1, category: 'crafting' }, description: 'One crafting supply slot. Holds one stack.' },
   relic_dust:{name:'Relic Dust',stack:999,color:'#c6b38d',material:true,sellPrice:1,description:'Salvaged from unwanted gear. Sell later; stacks to 999.'},
   magic_essence:{name:'Magic Essence',stack:999,color:'#77d9ec',material:true,sellPrice:2,description:'Salvaged from magical or uncommon gear. Stacks to 999.'},
   legendary_essence:{name:'Legendary Essence',stack:999,color:'#f4bd62',material:true,sellPrice:10,description:'Salvaged from legendary gear. Stacks to 999.'},
@@ -246,6 +250,7 @@ export const ITEMS = {
     name: "Keeper sword",
     slot: "hand1",
     damage: 24,
+    reach: 76,
     color: "#c9d5d7",
     description: "A balanced blade. Charge to interrupt and shove.",
   },
@@ -261,6 +266,7 @@ export const ITEMS = {
     name: "Jungle knife",
     slot: "hand1",
     damage: 15,
+    reach: 54,
     light: true,
     color: "#b7d9ca",
     description: "Light weapon; equip a second in hand 2.",
@@ -307,6 +313,8 @@ export const ITEMS = {
     description: "A simple bow with starter arrows in the lobby chest.",
   },
   hat: { name: "Scout hat", slot: "head", armor: 2, color: "#ceb379" },
+  santa_hat: { name: "Santa hat", slot: "head", armor: 2, color: "#e45b5b", style: "santa", description: "A bright winter cap with a snowy pom-pom." },
+  krampus_whip: { name: "Krampus's whip", base: "sword", slot: "hand1", damage: 29, reach: 112, color: "#d35b54", style: "whip", description: "A sword-length lash whose blade snaps through a wide arc." },
   shoulder_armor: {
     name: "Leather shoulder guards",
     slot: "shoulders",
@@ -895,6 +903,10 @@ export function removeTrinket(p,target,index){
  const gems=target.mode==='gear'?p.equipmentSockets?.[target.slot]:p.inventory[target.index]?.sockets;
  if(!type||!gems?.[index]||!give(p.inventory,gems[index]))return false;gems.splice(index,1);refreshVitals(p);return true;
 }
+for (const skill of SKILLS) ITEMS[skillScrollId(skill.id)] = {
+  name:skill.name+' skill scroll',skillScroll:skill.id,stack:1,color:'#edce82',
+  description:'Unlocks '+skill.name+' training in the Field Guild when collected. '+skill.detail,
+};
 for (const [id, item] of Object.entries(ITEMS)) {
   item.base ??= id;
   item.rarity ??= "common";
@@ -908,6 +920,7 @@ export function itemStats(id) {
   if (!i) return "";
   return [
     i.damage !== undefined ? `Damage ${i.damage}` : "",
+    i.reach ? `Melee reach ${i.reach}` : "",
     i.lightSource ? `Light radius ${i.lightSource.radius}` : "",
     i.fire ? "Ignites enemies and trees · melts ice" : "",
     i.shot ? `Aimed shot · range ${i.shot.range}` : "",
@@ -963,7 +976,7 @@ export function give(list, type, qty = 1, slots = 24, metadata = {}) {
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    const item={type,qty:n,...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{})};
+    const item={type,qty:n,...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
     if (hole >= 0) list[hole] = item;
     else list.push(item);
     qty -= n;

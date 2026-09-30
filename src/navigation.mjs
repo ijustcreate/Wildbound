@@ -1,6 +1,7 @@
 import {rigSubject} from './rig-subjects.mjs';
 import {creatures} from './definitions.mjs';
 import {startJump} from './jumping.mjs';
+import {furnitureHeight} from './house-design.mjs';
 export const collisionOffset=(g,e)=>(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
 export const actorRadius=e=>e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
 export const usesDoors=e=>['hunter','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
@@ -12,7 +13,7 @@ function gridFor(g,e){
  const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+Math.floor((g.time||0)/2);
  let cache=caches.get(g);if(!cache||cache.house!==g.house||cache.signature!==signature){cache={house:g.house,signature,grids:new Map()};caches.set(g,cache);}
  const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),jump=!!creatures[e.kind]?.behaviors.jump,key=[radius,door,flying,jump].join(':');
- if(!cache.grids.has(key)){const grid=new Uint8Array(2500);for(let y=0;y<50;y++)for(let x=0;x<50;x++)grid[y*50+x]=!g.blocked(x*32+16,y*32+16,radius,flying,false,door,collisionOffset(g,e),jump?10:0);cache.grids.set(key,grid);}
+ if(!cache.grids.has(key)){const grid=new Uint8Array(2500);for(let y=0;y<50;y++)for(let x=0;x<50;x++)grid[y*50+x]=!g.blocked(x*32+16,y*32+16,radius,flying,false,door,collisionOffset(g,e),jump?20:0);cache.grids.set(key,grid);}
  return {grid:cache.grids.get(key),signature};
 }
 export function findPath(g,e,target){
@@ -50,6 +51,10 @@ export function navigateEnemy(g,e,target,dt){
    next=e.housePatrol.path[0];if(!next)e.patrolIndex=(e.patrolIndex+1)%points.length;
  }
  if(!next){e.moving=false;return false;}
+ if(creatures[e.kind]?.behaviors.jump&&!e.jumpHeight){
+   const d=Math.hypot(next.x-e.x,next.y-e.y)||1,px=e.x+(next.x-e.x)/d*28,py=e.y+(next.y-e.y)/d*28+collisionOffset(g,e);
+   if((g.house?.furniture||[]).some(f=>furnitureHeight(f)>(e.groundHeight||0)&&Math.hypot(px-Math.max(f.x,Math.min(px,f.x+f.w)),py-Math.max(f.y,Math.min(py,f.y+f.h)))<actorRadius(e)))startJump(e);
+ }
  if(creatures[e.kind]?.behaviors.jump&&!e.jumpHeight){
    for(const pane of g.house?.walls||[]){
      if(pane.kind!=='window'||!pane.broken)continue;

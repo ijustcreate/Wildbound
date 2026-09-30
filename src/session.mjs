@@ -5,6 +5,7 @@ import { generateWorld } from "./world.mjs";
 import { initHero } from "./adventure.mjs";
 import {upgradeHouseFeatures} from './house-design.mjs';
 import {initLivingEcosystem} from './living-ecosystem.mjs';
+import {restoreForestLandscape} from './forest-landscape.mjs';
 export function saveSession(game) {
   return { version: 1, state: snapshot(game) };
 }
@@ -18,6 +19,8 @@ export function restoreSession(saved) {
     throw Error("Invalid expedition save");
   const g = new Game();
   Object.assign(g, saved.state);
+  g.forestLandscape=null;
+  restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
   if(g.house)upgradeHouseFeatures(g.house);
   if (!saved.state.turnOrder) {
     g.turnOrder = g.players.map((p) => p.id);

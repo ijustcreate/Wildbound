@@ -1,7 +1,7 @@
 export function createGameDebug({getGame,events,items,give}) {
   let root, status;
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
-  const open=()=>{
+  const open=(host=document.body)=>{
     if(!root){
       root=el('section',null,'game-debug-console');
       root.style.cssText='position:fixed;z-index:1000;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:#171b2b;color:#f4eaff;border:2px solid #c76cf0;border-radius:10px;padding:18px;box-shadow:0 0 40px #5b167b;font:14px system-ui';
@@ -14,8 +14,9 @@ export function createGameDebug({getGame,events,items,give}) {
       const amount=document.createElement('input');amount.type='number';amount.min='1';amount.value='1';amount.style='width:70px';root.append(el('span','Amount '),amount);
       const add=el('button','Add to every player');add.onclick=()=>{let n=Math.max(1,Number(amount.value)||1);for(const p of getGame().players){for(let i=0;i<n;i++)give(p.inventory,item.value);};say(`Added ${n} × ${item.value} to every player`);};root.append(add);
       const close=el('button','Close');close.style='float:right';close.onclick=()=>root.remove();root.append(close);
-      status=el('p','Ready.');status.style='color:#efb6ff';root.append(status);document.body.append(root);
-    } else if(!root.isConnected) document.body.append(root);
+      status=el('p','Ready.');status.style='color:#efb6ff';root.append(status);
+    }
+    host.append(root);
     root.querySelector('select')?.focus();
   };
   const say=text=>{if(status)status.textContent=text;};

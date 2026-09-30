@@ -1,0 +1,85 @@
+/* Inventory chrome is independent of the couch menu's compact legacy layout. */
+.hero-panel.inventory-redesign {
+  --gold: #c9aa63;
+  padding: 12px !important;
+  border: 2px solid var(--gold) !important;
+  border-radius: 5px;
+  background: #101e1b !important;
+  box-shadow: inset 0 0 0 3px #273c30, 0 12px 40px #0009;
+  color: #f1e9cf;
+  gap: 4px;
+  letter-spacing: 0;
+}
+.hero-panel.inventory-redesign > header { font: bold 17px Georgia, serif; padding-right: 28px; }
+.hero-panel.inventory-redesign > .coin-balance { color: #e3bd63; font-size: 11px; }
+.hero-panel.inventory-redesign > button[data-action="close"] { position: absolute; right: 9px; top: 8px; width: 27px; height: 27px; font-size: 22px; padding: 0; }
+.hero-panel.inventory-redesign .storage-layout { display: grid !important; grid-template-rows: minmax(180px, 1.1fr) minmax(170px, 1fr); grid-template-columns: minmax(0, 1fr) !important; flex: 1; min-height: 0; overflow: hidden !important; gap: 8px; }
+.hero-panel.inventory-redesign .storage-layout.has-chest { grid-template-rows: minmax(165px, 1fr) minmax(140px, 1fr) minmax(135px, 1fr); }
+.hero-panel.inventory-redesign .storage-sheet { border: 0; border-radius: 0; padding: 0; margin: 0; min-height: 0; background: transparent; overflow: hidden; }
+.hero-panel.inventory-redesign .storage-sheet > header { position: static; background: #152923; font: bold 13px Georgia, serif; color: #f4dfac; padding: 6px 8px; border-block: 1px solid #8a774b; margin: 0; }
+.hero-panel.inventory-redesign .storage-sheet > nav:not(.inventory-tabs) { display: none; }
+.hero-panel.inventory-redesign .chest-window > nav { display: flex; }
+.hero-panel.inventory-redesign .storage-detail,
+.hero-panel.inventory-redesign .socket-summary,
+.hero-panel.inventory-redesign .set-checklist,
+.hero-panel.inventory-redesign > small { display: none; }
+.hero-panel.inventory-redesign .equipment-window { background-image: url('../assets/inventory-environments.png'); background-size: 300% 200%; background-position: 0 0; }
+.hero-panel[data-environment="forest"] .equipment-window { background-position: 50% 0; }
+.hero-panel[data-environment="desert"] .equipment-window { background-position: 100% 0; }
+.hero-panel[data-environment="ice"] .equipment-window { background-position: 0 100%; }
+.hero-panel[data-environment="temple"] .equipment-window { background-position: 50% 100%; }
+.hero-panel[data-environment="house"] .equipment-window { background-position: 100% 100%; }
+.hero-panel.inventory-redesign .equipment-window > header { display: none; }
+.hero-panel.inventory-redesign .equipment-window .equipment-preview { top: 18%; left: 50%; width: 28%; height: 64%; border: 0; border-radius: 0; background: transparent; object-fit: contain; z-index: 1; }
+.hero-panel.inventory-redesign .equipment-window .paper-doll { height: 100%; width: min(100%, 360px); margin: auto; background: none; overflow: visible; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot] { width: 18%; height: 17%; min-height: 0; max-height: 56px; left: auto; right: auto; top: auto; padding: 2px; border: 1px solid #b9a66a; border-radius: 3px; background: #0b211ee8; color: #f4e5c5 !important; display: flex; flex-direction: column; gap: 1px; font: 8px system-ui; white-space: normal; overflow: visible; box-shadow: inset 0 0 0 2px #365343, 0 2px 6px #0009; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="head"] { left: 41%; top: 1%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="neck"] { left: 19%; top: 19%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="cape"] { right: 19%; top: 19%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="shoulders"] { left: 14%; top: 38%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="chest"] { right: 14%; top: 38%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="hand1"] { left: 14%; top: 57%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="hand2"] { right: 14%; top: 57%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="gloves"] { left: 18%; top: 77%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="pants"] { right: 18%; top: 77%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="feet"] { left: 41%; top: 82%; }
+.hero-panel.inventory-redesign .paper-doll canvas.item-icon { width: 24px; height: 24px; max-height: 60%; object-fit: contain; }
+.hero-panel.inventory-redesign .equipment-window .inventory-actions { position: absolute; bottom: 2px; right: 2px; background: transparent; padding: 0; }
+.hero-panel.inventory-redesign .inventory-window { display: grid; grid-template-rows: auto 32px minmax(0, 1fr) auto; gap: 5px; }
+.hero-panel.inventory-redesign .chest-window { display: flex; flex-direction: column; gap: 3px; }
+.pack-capacity { float: right; font: 11px system-ui; color: #c6cbb5; }
+.hero-panel.inventory-redesign nav.inventory-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; height: 32px; }
+.hero-panel.inventory-redesign .inventory-tabs button { min-width: 0; padding: 3px; background: #1b3029; color: #c9d2be; border: 1px solid #677b61; border-radius: 2px; font: bold 12px Georgia, serif; }
+.hero-panel.inventory-redesign .inventory-tabs [aria-selected="true"] { background: #344a34; color: #ffe8a8; border-color: #e7bd67; box-shadow: inset 0 -2px #e7bd67; }
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); min-height: 0; height: 100%; max-height: none; overflow: hidden; gap: 4px; margin: 0; }
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button { min-width: 0; min-height: 0; height: 100%; padding: 2px; background: #172d27; color: #d9decc; border: 1px solid #64765c; border-bottom: 2px solid var(--item, #64765c); border-radius: 2px; font: 10px system-ui; display: flex; justify-content: center; align-items: center; gap: 3px; }
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) canvas.item-icon { width: 30px; height: 30px; max-height: 95%; max-width: 70%; object-fit: contain; image-rendering: pixelated; margin: 0; }
+.hero-panel.inventory-redesign button:hover { border-color: #ffe2a0; background-color: #304c39; }
+.hero-panel.inventory-redesign button.selected, .hero-panel.inventory-redesign button:focus-visible { outline: 2px solid #f4cc73; outline-offset: -2px; }
+.hero-panel.inventory-redesign .inventory-actions { position: static; display: flex; flex-wrap: wrap; background: transparent; padding: 2px 0; gap: 4px; }
+.hero-panel.inventory-redesign .inventory-actions button { font: 10px system-ui; padding: 4px 6px; min-height: 24px; }
+.hero-panel.inventory-redesign .salvage-description { display: none; }
+.hero-panel.inventory-redesign .storage-notice { margin: 0; font-size: 10px; min-height: 12px; }
+.inventory-popover { position: absolute; z-index: 30; width: min(290px, calc(100% - 12px)); padding: 10px; background: #122820; border: 2px solid #d5b269; border-radius: 4px; box-shadow: 0 8px 24px #000c; color: #f4e8c9; }
+.inventory-popover strong { display: block; margin-bottom: 8px; font: bold 14px Georgia, serif; }
+.inventory-popover button { padding: 5px 9px; }
+.inventory-popover select { width: 72%; min-width: 0; margin-top: 8px; }
+.split-stepper { display: grid; grid-template-columns: 34px 1fr 34px; gap: 5px; margin: 8px 0; }
+.split-stepper input { width: 100%; min-width: 0; text-align: center; }
+.bag-popover > button { position: absolute; right: 6px; top: 4px; }
+.bag-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.bag-grid button { aspect-ratio: 1; min-width: 0; padding: 2px; display: flex; align-items: center; justify-content: center; background: #203b30; border: 1px solid #8a895e; }
+.bag-grid canvas { width: 24px; height: 24px; image-rendering: pixelated; }
+.item-tooltip { z-index: 40; }
+.hero-panel.inventory-redesign .storage-layout { align-items: stretch; }
+.hero-panel.inventory-redesign .equipment-window { height: 100%; }
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) { height: auto; align-self: stretch; }
+.hero-panel.inventory-redesign > button[data-action="close"]::after { content: none; }
+.hero-panel.inventory-redesign .storage-sheet > header { min-height: 0; }
+.hero-panel.inventory-redesign .storage-notice:not(:empty) { display: block; }
+@media (max-height: 700px) {
+  .hero-panel.inventory-redesign { padding: 6px !important; }
+  .hero-panel.inventory-redesign .storage-layout { grid-template-rows: minmax(150px, 1fr) minmax(155px, 1fr); gap: 4px; }
+  .hero-panel.inventory-redesign > header { font-size: 13px; }
+  .hero-panel.inventory-redesign .paper-doll canvas.item-icon { width: 18px; height: 18px; }
+}

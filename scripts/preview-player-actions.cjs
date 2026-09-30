@@ -5,7 +5,9 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const root = path.resolve(__dirname, '..');
-const out = path.join(root, 'art', 'player', 'animations', 'base-native-v1');
+const out = process.env.WILDBOUND_ART_OUTPUT
+  ? path.resolve(root, process.env.WILDBOUND_ART_OUTPUT)
+  : path.join(root, 'art', 'player', 'animations', 'base-native-v1');
 fs.mkdirSync(out, { recursive: true });
 
 app.setPath('userData', fs.mkdtempSync(path.join(root, 'test-output', 'player-actions-')));

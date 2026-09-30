@@ -1,0 +1,197 @@
+{
+  "source": "src/player-motion.mjs + authored/rigs.json",
+  "equipment": "base gear",
+  "directions": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+  ],
+  "framesPerSheet": 8,
+  "animations": [
+    {
+      "action": "idle",
+      "sourceFrames": 8,
+      "file": "player-idle-8dir.png"
+    },
+    {
+      "action": "run",
+      "sourceFrames": 8,
+      "file": "player-run-8dir.png"
+    },
+    {
+      "action": "punch",
+      "sourceFrames": 6,
+      "file": "player-punch-8dir.png"
+    },
+    {
+      "action": "slash",
+      "sourceFrames": 6,
+      "file": "player-slash-8dir.png"
+    },
+    {
+      "action": "draw",
+      "sourceFrames": 8,
+      "file": "player-draw-8dir.png"
+    },
+    {
+      "action": "hurt",
+      "sourceFrames": 4,
+      "file": "player-hurt-8dir.png"
+    },
+    {
+      "action": "dash",
+      "sourceFrames": 4,
+      "file": "player-dash-8dir.png"
+    },
+    {
+      "action": "block",
+      "sourceFrames": 4,
+      "file": "player-block-8dir.png"
+    },
+    {
+      "action": "walk",
+      "sourceFrames": 8,
+      "file": "player-walk-8dir.png"
+    },
+    {
+      "action": "swipe_one",
+      "sourceFrames": 7,
+      "file": "player-swipe_one-8dir.png"
+    },
+    {
+      "action": "swipe_two",
+      "sourceFrames": 7,
+      "file": "player-swipe_two-8dir.png"
+    },
+    {
+      "action": "swipe_big",
+      "sourceFrames": 10,
+      "file": "player-swipe_big-8dir.png"
+    },
+    {
+      "action": "punch_left",
+      "sourceFrames": 6,
+      "file": "player-punch_left-8dir.png"
+    },
+    {
+      "action": "punch_right",
+      "sourceFrames": 6,
+      "file": "player-punch_right-8dir.png"
+    },
+    {
+      "action": "uppercut",
+      "sourceFrames": 6,
+      "file": "player-uppercut-8dir.png"
+    },
+    {
+      "action": "cast",
+      "sourceFrames": 7,
+      "file": "player-cast-8dir.png"
+    },
+    {
+      "action": "jump_takeoff",
+      "sourceFrames": 4,
+      "file": "player-jump_takeoff-8dir.png"
+    },
+    {
+      "action": "jump_air",
+      "sourceFrames": 4,
+      "file": "player-jump_air-8dir.png"
+    },
+    {
+      "action": "jump_fall",
+      "sourceFrames": 4,
+      "file": "player-jump_fall-8dir.png"
+    },
+    {
+      "action": "land",
+      "sourceFrames": 5,
+      "file": "player-land-8dir.png"
+    },
+    {
+      "action": "interact",
+      "sourceFrames": 8,
+      "file": "player-interact-8dir.png"
+    },
+    {
+      "action": "get_up",
+      "sourceFrames": 8,
+      "file": "player-get_up-8dir.png"
+    },
+    {
+      "action": "revive",
+      "sourceFrames": 8,
+      "file": "player-revive-8dir.png"
+    },
+    {
+      "action": "swim",
+      "sourceFrames": 12,
+      "file": "player-swim-8dir.png"
+    },
+    {
+      "action": "death",
+      "sourceFrames": 8,
+      "file": "player-death-8dir.png"
+    },
+    {
+      "action": "sleep",
+      "sourceFrames": 2,
+      "file": "player-sleep-8dir.png"
+    },
+    {
+      "action": "salvage",
+      "sourceFrames": 12,
+      "file": "player-salvage-8dir.png"
+    },
+    {
+      "action": "pickup",
+      "sourceFrames": 9,
+      "file": "player-pickup-8dir.png"
+    },
+    {
+      "action": "carry",
+      "sourceFrames": 8,
+      "file": "player-carry-8dir.png"
+    },
+    {
+      "action": "found_unique",
+      "sourceFrames": 10,
+      "file": "player-found_unique-8dir.png"
+    },
+    {
+      "action": "mine",
+      "sourceFrames": 10,
+      "file": "player-mine-8dir.png"
+    },
+    {
+      "action": "woodcut",
+      "sourceFrames": 10,
+      "file": "player-woodcut-8dir.png"
+    },
+    {
+      "action": "shield",
+      "sourceFrames": 4,
+      "file": "player-shield-8dir.png"
+    },
+    {
+      "action": "parry",
+      "sourceFrames": 6,
+      "file": "player-parry-8dir.png"
+    },
+    {
+      "action": "ranged",
+      "sourceFrames": 7,
+      "file": "player-ranged-8dir.png"
+    },
+    {
+      "action": "sword_combo",
+      "sourceFrames": 8,
+      "file": "player-sword_combo-8dir.png"
+    }
+  ]
+}

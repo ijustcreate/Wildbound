@@ -1,4 +1,5 @@
 import { ITEMS, take } from "./items.mjs";
+import {damageEnemy} from './enemy-damage.mjs';
 import { equipmentAttack } from "./equipment-runtime.mjs";
 import { ignite, firePatch } from "./hazards.mjs";
 import { clearShot } from "./navigation.mjs";
@@ -141,7 +142,7 @@ export function tickNightEquipment(g, dt) {
         .sort((a, z) => Math.hypot(a.x - previous.x, a.y - previous.y) - Math.hypot(z.x - previous.x, z.y - previous.y))[0];
       if (hit) {
         if (players.includes(hit)) g.hurt(hit, b.damage, b);
-        else { hit.hp -= b.damage; hit.killedBy = b.owner; hit.ritualKill = false; hit.aggro = true; hit.flash = 0.2; }
+        else { damageEnemy(hit,b.damage); hit.killedBy = b.owner; hit.ritualKill = false; hit.aggro = true; hit.flash = 0.2; }
         b.remaining = 0; break;
       }
     }

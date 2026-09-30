@@ -2,6 +2,7 @@ import { PAD_NAMES, renderPlayerMappings, controllerButtonNames } from "./contro
 import { ITEMS, SLOTS, give, take, equip, itemStats } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { drawPlayer, directionVector } from "./player-motion.mjs";
+import {skillAvailable,trainSkill} from './field-skills.mjs';
 import { appearanceControls, DEFAULT_APPEARANCE } from "./appearance.mjs";
 import {
   SYMBOLS,
@@ -539,14 +540,9 @@ export class FieldKit {
       const rank = f.skills?.[s.id] || 0;
       const card = node("article", null, "field-card");
       card.append(node("h3", `${s.name} · ${rank}/${s.max}`), node("p", s.detail));
-      const button = this.action(rank >= s.max ? "Mastered" : `Train · ${s.cost} XP`, () => {
-        if (rank >= s.max) return "This skill is mastered.";
-        if ((p.xp || 0) < s.cost) return `Need ${s.cost} XP.`;
-        p.xp -= s.cost;
-        f.skills[s.id] = rank + 1;
-        return `${s.name} upgraded.`;
-      }, card);
-      button.disabled = rank >= s.max;
+      const unlocked=skillAvailable(p,s.id);
+      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : `Train · ${s.cost} XP`, () => trainSkill(p,s.id), card);
+      button.disabled = !unlocked || rank >= s.max;
       this.body.append(card);
     }
     this.body.append(node("p", "More possible skills: silent movement, stronger parries, faster gathering, better lantern range, and a once-per-round emergency dodge.", "subtle"));

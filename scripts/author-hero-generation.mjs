@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import {buildHeroGeneration} from '../src/hero-generation.mjs';
+import {validatePlayerMotion} from '../src/player-motion.mjs';
+const root=new URL('../',import.meta.url),file=new URL('authored/rigs.json',root);
+const project=JSON.parse(fs.readFileSync(file,'utf8'));
+const rebuilding=process.argv.includes('--rebuild');
+if(project.player.artGeneration===3&&!rebuilding)throw Error('Generation 3 is already authored. Preserve subsequent studio edits.');
+const output=new URL('art/player/detail-native-v3/',root);
+fs.mkdirSync(output,{recursive:true});
+if(!rebuilding)fs.writeFileSync(new URL('before-rig.json',output),JSON.stringify(project.player,null,2),{flag:'wx'});
+const next=buildHeroGeneration(rebuilding?JSON.parse(fs.readFileSync(new URL('before-rig.json',output),'utf8')):project.player);
+if(!validatePlayerMotion(next))throw Error('Generated rig did not validate');
+project.player=next;
+fs.writeFileSync(file,JSON.stringify(project,null,2));
+console.log('Authored '+Object.keys(next.clips).length+' constrained player clips. Other rigs preserved.');

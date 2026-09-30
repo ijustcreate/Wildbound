@@ -1,5 +1,7 @@
 import {drawParticleEffect} from './particles.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
+import {drawBridges} from './bridges.mjs';
+import {terrainActorDepth} from './terrain-support.mjs';
 import {drawSwimmer,drawBreath} from './swim-render.mjs';
 import {drawBowAim} from './bow-aim.mjs';
 import {drawSinking} from './quicksand.mjs';
@@ -9,7 +11,7 @@ import {drawNightEnemyEffects, nightEnemyOpacity} from './night-enemies.mjs';
 import {drawNightEquipment} from './night-equipment.mjs';
 import {NIGHT_KINDS} from './night-rigs.mjs';
 import {drawTemple} from './temple.mjs';
-import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt} from './ice-world.mjs';
+import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt,drawWinterTile} from './ice-world.mjs';
 import { drawFieldWorld } from "./field-art.mjs";
 import {drawExpansion,drawTreeWeb} from './expansion.mjs';
 import { waterAt, isShallow, drawTracks, drawProp } from "./environment.mjs";
@@ -38,10 +40,19 @@ import { actorContact } from './contact-shadow.mjs';
 import {drawCorpse} from './corpse-pose.mjs';
 import {drawEmbeddedArrow} from './embedded-arrow.mjs';
 import {drawForestGround,drawFallingLeaves} from './forest.mjs';
+import {hasForestLandscape,drawLandscapeGround,drawForestBank} from './forest-art.mjs';
+import {meleeProfile} from './melee-geometry.mjs';
 const hash = (x, y) => {
   const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
   return v - Math.floor(v);
 };
+const sortedProceduralScenery = new Set(["palm"]);
+const sceneryNeedsDepthSort = (d, library = {}) =>
+  d.kind === "forest_ruin" ||
+  iceSolid(d) ||
+  sortedProceduralScenery.has(d.kind) ||
+  library[d.kind]?.occludes ||
+  library[d.kind]?.footprint?.some(Boolean);
 // A tsetse is a biting fly, but its long legs, narrow abdomen, wings, and
 // needle-like proboscis should read immediately as a mosquito to players.
 function drawMosquito(ctx, a, time) {
@@ -170,6 +181,8 @@ export class Renderer {
                     x: CENTER + (d.x - CENTER) * (1 - pull) ** 2,
                     y: CENTER + (d.y - CENTER) * (1 - pull) ** 2,
                     size: d.size * (1 - pull),
+                    ...(Number.isFinite(d.rootY)?{rootY:CENTER+(d.rootY-CENTER)*(1-pull)**2}:{}),
+                    ...(d.kind==='forest_ruin'?{width:d.width*(1-pull),depth:d.depth*(1-pull),height:d.height*(1-pull)}:{}),
                   }
                 : d,
             );
@@ -186,6 +199,7 @@ export class Renderer {
     ctx.scale(this.camera.zoom, this.camera.zoom);
     ctx.translate(-this.camera.x, -this.camera.y);
     this.floor(ctx, w, h, game);
+    drawBridges(ctx,game);
     drawSnowGround(ctx,game);
     drawExpansion(ctx,game);
     drawForestGround(ctx,game,p=>this.visible(p,w,h,160));
@@ -379,8 +393,7 @@ export class Renderer {
     }
     for (const d of this.decor)
       if (
-        !iceSolid(d) && !this.assets.library[d.kind]?.occludes &&
-        !this.assets.library[d.kind]?.footprint?.some(Boolean) &&
+        !sceneryNeedsDepthSort(d, this.assets.library) &&
         this.visible(d, w, h)
       ) {
         ctx.save();const base=iceBase(d);clipSnow(ctx,game,d.x,base.y,d.size*2);
@@ -463,7 +476,7 @@ export class Renderer {
     const actors = this.actorQueue;
     actors.length = 0;
     for (const p of game.players)
-      if (!p.room) actors.push({ ...p, isPlayer: true, drawDepth: boardActorDepth(game,p) });
+      if (!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
     for (const e of game.enemies)
       if (pull || (canSee(game, e) && this.visible(e, w, h, 180))) {
         const actor = pull
@@ -475,13 +488,12 @@ export class Renderer {
           : e;
         actors.push({
           ...actor,
-          drawDepth: boardActorDepth(game,actor,actor.y + (rigSubject(e.kind) ? 0 : 14)),
+          drawDepth: terrainActorDepth(game,actor,boardActorDepth(game,actor,actor.y + (rigSubject(e.kind) ? 0 : 14))),
         });
       }
     for (const d of this.decor)
       if (
-        (iceSolid(d) || this.assets.library[d.kind]?.occludes ||
-          this.assets.library[d.kind]?.footprint?.some(Boolean)) &&
+        sceneryNeedsDepthSort(d, this.assets.library) &&
         this.visible(d, w, h)
       )
         actors.push({
@@ -499,13 +511,14 @@ export class Renderer {
         continue;
       }
       if (a.isScenery) {
-        const obscures = game.players.some((p) =>
+        const obscures = !a.fallen && game.players.some((p) =>
             isOccluded(a, this.assets.library[a.kind], p),
           ),
           target = obscures ? 0.28 : 1,
-          old = this.canopyAlpha.get(a.id) ?? 1,
+          alphaKey = a.id ?? `${a.kind}:${Math.round(a.x)}:${Math.round(a.y)}`,
+          old = this.canopyAlpha.get(alphaKey) ?? 1,
           alpha = old + (target - old) * (1 - Math.exp(-dt * 9));
-        this.canopyAlpha.set(a.id, alpha);
+        this.canopyAlpha.set(alphaKey, alpha);
         ctx.save();
         ctx.globalAlpha = alpha;const base=iceBase(a);clipSnow(ctx,game,a.x,base.y,a.size*2);
         drawProp(ctx, a, game.time,game) ||
@@ -644,7 +657,7 @@ export class Renderer {
         );
       }
       ctx.restore();
-      if(player)drawBowAim(ctx,a);
+      if(player)drawBowAim(ctx,a,1,game.time);
       if (!player && a.hp>0 && (a.frostMage || (a.kind === "skeleton" && a.frostBound))) {
         ctx.fillStyle = "#8cecff";
         ctx.fillRect(a.x - 5, a.y - 29, 3, 2);
@@ -707,11 +720,15 @@ export class Renderer {
         ITEMS[a.equipment?.hand1]?.base !== "bow" &&
         !ITEMS[a.equipment?.hand1]?.ranged && !ITEMS[a.equipment?.hand1]?.utility
       ) {
-        const angle = Math.atan2(a.faceY, a.faceX),progress=1-a.attack/(a.attackDuration||.34),big=a.attackClip==='swipe_big',upper=a.attackClip==='uppercut';
-        const radius=(big?44:upper?24:34)*(a.attackReach||1),half=(a.attackArc||90)*Math.PI/360;
+        const angle = Math.atan2(a.faceY, a.faceX),progress=1-a.attack/(a.attackDuration||.34),big=a.attackClip==='swipe_big',upper=a.attackClip==='uppercut',melee=meleeProfile(a);
+        const radius=melee.range,half=melee.arc*Math.PI/360;
         const direction=a.attackClip==='swipe_two'?-1:1,center=angle+direction*(progress-.5)*half;
-        ctx.strokeStyle=big?'#ffcd70':'#ffe5a3';ctx.lineWidth=big?6:3;ctx.beginPath();
-        ctx.arc(a.x,a.y-(a.jumpHeight||0)-(a.groundHeight||0)-(upper?progress*22:0),radius,center-half*.65,center+half*.65);ctx.stroke();
+        const y=a.y-(a.jumpHeight||0)-(a.groundHeight||0)-(upper?progress*22:0);
+        ctx.save();ctx.translate(a.x,y);ctx.rotate(angle);
+        ctx.strokeStyle=big?'#ffcd70':'#ffe5a3';ctx.lineWidth=big?5:3;ctx.globalAlpha=.28;
+        ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,radius,-half,half);ctx.closePath();ctx.stroke();
+        ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(0,0,radius,center-angle-half*.2,center-angle+half*.2);ctx.stroke();ctx.restore();
+        if(melee.whip){ctx.strokeStyle='#ff8fc8';ctx.lineWidth=2;ctx.globalAlpha=.8;ctx.beginPath();ctx.arc(a.x,y,radius*.82,center-half*.72,center+half*.72);ctx.stroke();ctx.globalAlpha=1;}
         if (ITEMS[a.equipment?.hand1]?.truthSword || ITEMS[a.equipment?.hand2]?.truthSword) { ctx.strokeStyle='#ff8fc8';ctx.lineWidth=3;ctx.globalAlpha=.55;ctx.beginPath();ctx.arc(a.x,a.y,radius+10,center-half,center+half);ctx.stroke();ctx.globalAlpha=1; }
 
       }
@@ -757,6 +774,7 @@ export class Renderer {
       ctx.restore();
     }
     // Draw burn sparks after actors so the fire visibly clings to the target.
+    drawBridges(ctx,game,true);
     drawLivingEcosystem(ctx, game, 'air');
     drawNightEnemyEffects(ctx, game);
     drawNightEquipment(ctx, game);
@@ -1017,17 +1035,20 @@ export class Renderer {
         50,
         Math.ceil((this.camera.y + h / this.camera.zoom / 2) / 32),
       );
-    this.ground(ctx, sx, sy, ex, ey, game.generatedEnvironment === "desert");
+    const landscape=hasForestLandscape(game);
+    if(landscape)drawLandscapeGround(ctx,game,{sx,sy,ex,ey});
+    else this.ground(ctx, sx, sy, ex, ey, game.generatedEnvironment === "desert");
     for (let y = sy; y < ey; y++)
       for (let x = sx; x < ex; x++) {
         const r = hash(x, y),
           d = Math.hypot(x - 24.5, y - 24.5);
         const kind = waterAt(game, x * 32 + 16, y * 32 + 16);
         if(game.house?.pools&&kind==='water')continue;
-        if(['snow','ice','wood','path','temple_stone'].includes(kind)){
-          ctx.fillStyle=kind==='temple_stone'?(r>.5?'#7c8766':'#6c785c'):kind==='snow'?(r>.5?'#dce9eb':'#cadde1'):kind==='ice'?'#96c9df':kind==='wood'?(y%2?'#997450':'#a5815a'):'#c1b49a';
-          ctx.fillRect(x*32,y*32,32,32);ctx.strokeStyle=kind==='ice'?'#e3f6f7':kind==='wood'?'#73573f':'#b3cdd4';ctx.lineWidth=1;
-          ctx.beginPath();ctx.moveTo(x*32+2,y*32+16);ctx.lineTo(x*32+30,y*32+(kind==='ice'?4:16));ctx.stroke();continue;
+        if(['snow','ice'].includes(kind)){drawWinterTile(ctx,kind,x*32,y*32,32);continue;}
+        if(['wood','path','temple_stone'].includes(kind)){
+          ctx.fillStyle=kind==='temple_stone'?(r>.5?'#7c8766':'#6c785c'):kind==='wood'?(y%2?'#997450':'#a5815a'):'#c1b49a';
+          ctx.fillRect(x*32,y*32,32,32);ctx.strokeStyle=kind==='wood'?'#73573f':'#b3cdd4';ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(x*32+2,y*32+16);ctx.lineTo(x*32+30,y*32+16);ctx.stroke();continue;
         }
         if (kind === "quicksand") {
           ctx.fillStyle = "#8e6a45";
@@ -1066,6 +1087,8 @@ export class Renderer {
         }
         if (["water", "shallow", "bridge", "floodbridge"].includes(kind)) {
           drawWaterSurface(ctx,game,x*32,y*32,32,32);
+          if(landscape)drawForestBank(ctx,game,x*32,y*32,kind);
+          if(!landscape){
           ctx.fillStyle = "#588a963f";
           ctx.fillRect(
             x * 32 + ((game.time * 6 + y * 3) % 20),
@@ -1074,26 +1097,9 @@ export class Renderer {
             2,
           );
           ctx.fillRect(x * 32 + 3, y * 32 + 23, 17, 2);
-          if (kind === "bridge" || kind === "floodbridge") {
-            ctx.fillStyle = "#8f714a";
-            ctx.fillRect(x * 32, y * 32 + 2, 32, 28);
-            ctx.fillStyle = "#493d2e";
-            for (let n = 0; n < 32; n += 6)
-              ctx.fillRect(x * 32 + n, y * 32 + 2, 1, 28);
-          }
-          if (kind === "floodbridge") {
-            ctx.fillStyle = "#477d91aa";
-            ctx.fillRect(x * 32, y * 32, 32, 32);
-            ctx.fillStyle = "#a1cac47f";
-            ctx.fillRect(
-              x * 32 + 3,
-              y * 32 + 12 + Math.sin(game.time * 2 + x) * 4,
-              24,
-              1,
-            );
           }
         }
-        if (kind === "grass" && d > 5 && r > 0.22) {
+        if (!landscape && kind === "grass" && d > 5 && r > 0.22) {
           for (let i = 0; i < 3; i++) {
             const px = x * 32 + 4 + hash(x + i, y) * 24,
               py = y * 32 + 8 + hash(x, y + i) * 20;
@@ -1107,6 +1113,7 @@ export class Renderer {
             );
           }
         }
+        if(!landscape){
         ctx.strokeStyle = d < 5 ? "#81926b20" : "#6b866120";
         ctx.lineWidth = 0.6;
         ctx.strokeRect(x * 32 + 0.3, y * 32 + 0.3, 31.4, 31.4);
@@ -1115,6 +1122,7 @@ export class Renderer {
         if (r > 0.7) {
           ctx.fillStyle = "#132f2350";
           ctx.fillRect(x * 32 + 20, y * 32 + 12, 3, 2);
+        }
         }
         if (
           game.phase === "won" ||

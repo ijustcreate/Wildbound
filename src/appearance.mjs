@@ -9,8 +9,8 @@ export const HAIR_STYLES = {
 };
 export const DEFAULT_APPEARANCE = {
   skin: "#d9ab76",
-  shirt: "#39745b",
-  pants: "#665b87",
+  shirt: "#66744e",
+  pants: "#79634a",
   shoes: "#49372d",
   hair: "crop",
   hairColor: "#593923",
@@ -279,7 +279,7 @@ export function appearanceControls(root, value, changed, options = {}) {
   }
   root.append(advanced);
 }
-export function drawHair(c, h, appearance, direction) {
+export function drawHair(c, h, appearance, direction, frame = 0, action = 'idle') {
   const style = appearance?.hair;
   if (!style || style === "none") return;
   const x = Math.round(h.x),
@@ -290,74 +290,86 @@ export function drawHair(c, h, appearance, direction) {
   const light = "#" + base.slice(1).match(/../g).map(v =>
     Math.min(255, Math.round(parseInt(v, 16) * 1.25 + 16)).toString(16).padStart(2, "0")
   ).join("");
+  const profile = direction === 2 || direction === 6;
+  const turn = direction === 0 || direction === 4 ? 0 : direction < 4 ? -1 : 1;
+  const moving = !['idle','sleep','death'].includes(action);
+  // Sample the animation clock, not wall time, so paused rig frames stay still.
+  const sway = moving ? Math.round(Math.sin(frame * .7) * 1.2) : 0;
   const r = (dx, dy, w, hh, color) => {
     c.fillStyle = color; c.fillRect(x + dx, y + dy, w, hh);
   };
-  // Stepped silhouette and clustered highlights stay crisp at game resolution.
-  // The part shifts with facing; the rear has a full crown rather than a face.
-  const profile = direction === 2 || direction === 6;
-  const flip = direction >= 5 ? -1 : 1;
-  if (style === 'crop') {
-    // A close, swept cut with a smaller crown and direction-aware sideburns.
-    r(-3,-7,6,1,ink);r(-5,-6,9,3,ink);r(-6,-4,11,2,ink);
-    r(-3,-6,6,1,dark);r(-4,-5,8,2,base);r(-5,-3,9,1,base);
-    r(-3,-5,3,1,light);r(-4,-4,3,1,light);r(0,-4,3,1,dark);
-    r(2,-3,2,2,dark);
-    if(back){
-      r(-5,-2,10,4,ink);r(-4,-2,8,3,base);
-      r(-3,-2,3,1,light);r(2,-1,2,3,dark);r(-3,2,6,1,dark);
-    }else if(profile){
-      const rear=direction===2?3:-5;
-      r(rear,-2,2,4,ink);r(rear,-2,1,3,base);
+  const part = turn * 2;
+  if (style === 'mohawk') {
+    const mirror=turn>0,paint=(dx,dy,w,hh,color)=>r(mirror?1-dx-w:dx,dy,w,hh,color);
+    if(!turn){
+      r(-1,-10,3,7,ink);r(0,-9,1,6,light);r(-1,-7,1,4,base);
+      if(back){r(-1,-3,3,6,dark);r(0,-3,1,5,base);}
     }else{
-      r(-5,-2,1,3,dark);r(4,-2,1,2,dark);
-      r(-3,-2,3,1,base);r(-3,-1,1,1,dark);
+      const wide=profile?7:5;
+      paint(-3,-9,wide,5,ink);paint(-2,-10,wide-2,2,ink);
+      paint(-2,-8,wide-2,4,base);paint(-2,-9,wide-3,1,light);
+      paint(-3,-5,wide,1,dark);
+      if(back){paint(0,-4,3,6,dark);paint(0,-3,1,5,base);}
     }
     return;
   }
-  r(-4, -8, 8, 1, ink);
-  r(-6, -7, 11, 3, ink);
-  r(profile ? (flip === 1 ? -2 : -6) : -7, -4, profile ? 8 : 13, 3, ink);
-  r(-5, -7, 8, 2, base);
-  r(-6, -5, 11, profile ? 2 : 3, base);
-  r(profile ? (flip === 1 ? -2 : -5) : -5, -3, profile ? 7 : 10, 2, dark);
-  r(-3, -8, 3, 2, dark);
-  r(3, -7, 3, 2, ink);
-  r(3, -6, 2, 2, base);
-  r(-4, -6, 3, 2, light);
-  r(0, -5, 2, 2, light);
-  r(3, -4, 2, 1, light);
+  const crown = style === 'crop' ? -7 : -8;
+  r(-3,crown,7,1,ink); r(-5,crown+1,11,3,ink); r(-6,crown+3,13,2,ink);
+  r(-3,crown+1,7,1,base); r(-4,crown+2,9,3,base);
+  r(-4,crown+2,3,1,light); r(-5,crown+3,3,1,light);
+  r(part,crown+1,1,3,dark); r(3,crown+3,2,2,dark);
+  if(style==='crop'){
+    r(-3+part,crown-1,3,1,ink);r(-2+part,crown,3,1,base);
+    r(-4+part,crown+2,3,1,light);r(1+part,crown+3,2,1,base);
+  }
+  if(style==='bob'||style==='long'){
+    r(-2+part,crown,4,1,base);r(part,crown+1,1,4,dark);
+    r(-4,crown+3,2,2,light);r(3,crown+2,2,3,dark);
+  }
   if (back) {
-    r(-5, -2, 10, 5, ink);
-    r(-4, -2, 8, 4, base);
-    r(-3, -2, 2, 3, light);
-    r(1, -1, 3, 4, dark);
-    r(-2, 2, 4, 2, dark);
+    r(-5,-3,11,6,ink); r(-4,-3,9,5,base);
+    r(-3,-3,2,3,light); r(2,-2,2,4,dark);
+    r(-2,2,5,1,dark); r(0,0,1,2,dark);
   } else {
-    r(profile ? 3 * flip : -5 * flip - (flip < 0 ? 1 : 0), -2, 2, 4, dark);
-    if (!profile) {
-      r(-3 * flip, -2, 2, 2, base);
-      r(0, -2, 2, 1, base);
+    if(turn){
+      // In side views the temple belongs behind the ear; keep the cheek clear.
+      const rear=-turn;
+      r(rear>0?3:-4,-3,2,3,dark);
+      r(turn<0?-4:2,-3,3,1,base);
+      if(!profile)r(turn<0?-4:4,-2,1,1,base);
+    }else{
+      r(-5,-3,2,3,dark);r(4,-3,1,3,dark);
+      r(-3,-3,3,1,base);r(-2,-2,1,1,dark);
+      if(style==='bob')r(1,-3,3,1,base);
     }
   }
-  if (["bob", "long", "curls"].includes(style)) {
-    const length = style === "long" ? 10 : 6;
-    r(-7, -4, 3, length + 1, ink);
-    r(-6, -4, 2, length, base);
-    r(4, -4, 3, length + 1, ink);
-    r(4, -4, 2, length, dark);
-    if (back) { r(-4, -2, 8, length - 2, base); r(1, -2, 2, length - 2, dark); }
+  if (['bob','long','curls'].includes(style)) {
+    const length = style === 'long' ? 10 : style === 'bob' ? 6 : 5;
+    for (const side of [-1,1]) {
+      if(!back&&turn&&side===turn)continue;
+      // Face-side locks are tucked behind the ear; the rear lock is fuller.
+      const dx = side < 0 ? -5 : 3, hem = style === 'long' ? sway : 0;
+      r(dx,-3,3,length,ink); r(dx+(side<0?1:0),-3,2,length-1,side<0?base:dark);
+      r(dx+(side<0?1:0),-2,1,2,light);
+      r(dx+hem,length-4,3,2,ink); r(dx+hem+1,length-4,1,1,base);
+    }
+    if (back) {
+      r(-4,-2,9,length-1,base); r(-3,-2,1,length-2,light);
+      r(2,-1,2,length-2,dark); r(-1,0,1,length-3,dark);
+      r(-3,length-3,6,1,ink);
+    }
   }
-  if (style === "ponytail") {
-    const tail = direction >= 5 ? -7 : 4;
-    r(tail, -2, 4, 10, ink);
-    r(tail + 1, -1, 2, 8, base);
-    r(tail, -1, 3, 1, "#c3a15e");
+  if (style === 'ponytail') {
+    const tail = turn ? -turn*5 : back ? 0 : 5;
+    r(tail-1,-3,4,4,ink); r(tail,-3,2,3,base);
+    r(tail+sway,-1,4,5,ink);r(tail+sway+1,4,2,4,ink); r(tail+sway,0,2,6,base);
+    r(tail+sway,1,1,4,light); r(tail+sway+1,6,1,2,dark);
+    r(tail-1,-1,4,1,'#c3a15e'); r(tail,-1,1,1,'#f4ddb0');
   }
-  if (style === "mohawk") { r(-2, -11, 4, 7, ink); r(-1, -10, 2, 6, light); }
-  if (style === "curls") {
-    for (const [dx,dy] of [[-6,-7],[-2,-9],[2,-7],[-7,-3],[4,-3]]) {
-      r(dx,dy,4,3,ink); r(dx,dy,2,2,base); r(dx,dy,1,1,light);
+  if (style === 'curls') {
+    for (const [dx,dy] of [[-5,-6],[-2,-7],[2,-6],[-5,-3],[3,-3],[-4,0],[3,0]]) {
+      if(!back&&turn&&Math.sign(dx)===turn&&dy>=-3)continue;
+      r(dx,dy+1,3,2,dark);r(dx+1,dy,2,3,base);r(dx+1,dy,1,1,light);
     }
   }
 }

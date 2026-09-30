@@ -326,11 +326,11 @@ export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
   if(closeup&&game.roll?.resolved&&game.event){
     c.save();c.fillStyle='#092a20';c.strokeStyle='#84cd88';c.lineWidth=1.5;c.beginPath();c.arc(0,0,64,0,Math.PI*2);c.fill();c.stroke();c.clip();
     const wrap=(text,max)=>String(text||'').split(/\s+/).reduce((lines,word)=>{if(lines.length&&lines.at(-1).length+word.length+1<=max)lines[lines.length-1]+=' '+word;else lines.push(word);return lines;},[]);
-    c.textAlign='center';c.fillStyle='#dbffd1';c.font='bold 5.5px monospace';
-    wrap(game.event.name.toUpperCase(),25).slice(0,3).forEach((line,i)=>c.fillText(line,0,-39+i*7));
-    c.font='4.5px monospace';c.fillStyle='#b9e6ad';
-    wrap(game.event.verse,32).slice(0,7).forEach((line,i)=>c.fillText(line,0,-15+i*6));
-    c.font='3.5px monospace';c.fillStyle='#f0d391';wrap(game.event.tip,35).slice(0,3).forEach((line,i)=>c.fillText(line,0,35+i*5));c.restore();
+    c.textAlign='center';c.fillStyle='#f4fff0';c.font='bold 7px system-ui';
+    wrap(game.event.name.toUpperCase(),24).slice(0,2).forEach((line,i)=>c.fillText(line,0,-39+i*9,92));
+    c.font='6px system-ui';c.fillStyle='#e7f5df';
+    wrap(game.event.verse,31).slice(0,5).forEach((line,i)=>c.fillText(line,0,-15+i*8,110));
+    c.font='bold 5.5px system-ui';c.fillStyle='#ffe4a3';wrap(game.event.tip,32).slice(0,3).forEach((line,i)=>c.fillText(line,0,32+i*7,96));c.restore();
   }
   c.fillStyle = "#d3b57b";
   c.textAlign = "center";

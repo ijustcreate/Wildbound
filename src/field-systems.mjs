@@ -52,14 +52,7 @@ export const BOONS = [
     detail: "Traps capture 25% faster this expedition.",
   },
 ];
-export const SKILLS = [
-  { id: "second_wind", name: "Second Wind", cost: 20, max: 1, detail: "Once per expedition, recover from a knockdown at 35 HP." },
-  { id: "long_jump", name: "Trail Legs", cost: 15, max: 2, detail: "Jump farther and higher. Each rank adds 15% reach." },
-  { id: "quick_revive", name: "Quick Rescue", cost: 25, max: 1, detail: "Hold Interact near a downed friend for an instant revive." },
-  { id: "pack_mule", name: "Pack Mule", cost: 20, max: 1, detail: "Carry four additional backpack stacks." },
-  { id: "scavenger", name: "Scavenger", cost: 15, max: 1, detail: "Enemy material drops are more likely to appear." },
-  { id: "steady_hand", name: "Steady Hand", cost: 15, max: 1, detail: "Bow charge builds more quickly and holds its depth longer." },
-];
+export {SKILLS} from './field-skills.mjs';
 export function initializeField(p) {
   p.field ||= {
     favorites: [],
@@ -71,6 +64,7 @@ export function initializeField(p) {
     cosmetics: {},
     totals: {},
     skills: {},
+    skillScrolls: {},
   };
   for (const [key, value] of Object.entries({
     favorites: [],
@@ -82,6 +76,7 @@ export function initializeField(p) {
     cosmetics: {},
     totals: {},
     skills: {},
+    skillScrolls: {},
   }))
     p.field[key] ??= structuredClone(value);
   return p.field;

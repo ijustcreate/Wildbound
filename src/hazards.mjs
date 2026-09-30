@@ -1,4 +1,5 @@
 import {tickSnow,drawBlizzard} from './ice-world.mjs';
+import {damageEnemy} from './enemy-damage.mjs';
 import {advanceShot,clearShot} from './navigation.mjs';
 import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
@@ -191,7 +192,7 @@ export function tickHazards(g, dt) {
       }
     if(f.playerLit)for(const e of g.enemies)
       if(!e.room&&e.hp>0&&e.x>=f.x&&e.x<f.x+32&&e.y>=f.y&&e.y<f.y+32) {
-        e.hp-=f.damage;e.killedBy=f.ownerId;e.aggro=true;e.flash=.12;
+        damageEnemy(e,f.damage,'fire');e.killedBy=f.ownerId;e.aggro=true;e.flash=.12;
         ignite(e,2,f.damage);
       }
   }
@@ -204,7 +205,7 @@ export function tickHazards(g, dt) {
         if (target.hp > 0) {
           if (g.players.includes(target))
             g.hurt(target, target.burnDamage || 3);
-          else target.hp -= target.burnDamage || 3;
+          else damageEnemy(target,target.burnDamage || 3,'fire');
         }
         target.burnTick = 0.5;
       }

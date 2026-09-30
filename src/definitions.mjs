@@ -274,6 +274,10 @@ for (const kind of ["skeleton_unarmed", "skeleton_boss"]) {
   creatures[kind].name = kind;
   creatures[kind].aiKind = "skeleton";
 }
+creatures.krampus = creatureDefaults("skeleton");
+creatures.krampus.name = "krampus";
+creatures.krampus.aiKind = "skeleton";
+creatures.krampus.stats = {...creatures.krampus.stats, hp: 260, speed: 58, damage: 26, attackRange: 74};
 for (const [kind, stats] of [['skeleton_caster',{hp:92,speed:38,damage:16}],['necromancer',{hp:300,speed:35,damage:24}]]) {
   creatures[kind] = creatureDefaults('skeleton');
   creatures[kind].name = kind;
@@ -330,7 +334,7 @@ for (const [name, c] of Object.entries(creatures)) {
         p.views.right.x = p.name.endsWith("L") ? -3 : 2;
       }
     }
-  } else if (["skeleton", "skeleton_caster", "necromancer", "archer", "skeleton_wizard"].includes(name)) {
+  } else if (["skeleton", "skeleton_caster", "necromancer", "archer", "skeleton_wizard", "krampus"].includes(name)) {
     for (const p of c.rig.parts)
       p.color = p.name.includes("foot") ? "#8c8871" : "#ddd7af";
     if (name === "skeleton_wizard")

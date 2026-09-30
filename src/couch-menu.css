@@ -262,6 +262,9 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 .item-tooltip .stat-up { color:#7ee59c; }
 .item-tooltip .stat-down { color:#ff8980; }
 .item-tooltip-muted { color:#a8b6ab; }
+.item-tooltip-set { margin-top:8px; padding-top:7px; border-top:1px solid #426745; overflow-wrap:anywhere; }
+.item-tooltip .set-active { color:#91e799; }
+.item-tooltip .set-missing { color:#a5afa9; }
 .hero-panel.storage-session .item-grid:not(.paper-doll) {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-auto-rows: 30px;

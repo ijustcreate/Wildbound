@@ -15,11 +15,11 @@ Over time, the project is intended to become a standalone game that is easy to m
 <img src="assets/wildbound-header-v2.png" alt="Wildbound jungle adventure banner" width="100%">
 
 <p>
-  <strong>Latest build: 1.0.23 development build</strong><br>
+  <strong>Latest build: 1.0.30 development build</strong><br>
   Living expeditions · expanded rigs · night-hunt systems · Field Kit systems
 </p>
 
-<a href="RELEASE_REPORT_1.0.23.md">Release notes</a> ·
+<a href="RELEASE_REPORT_1.0.30.md">Release notes</a> ·
 <a href="CHANGELOG.md">Changelog</a> ·
 <a href="PLAYER_ANIMATION.md">Animation guide</a> ·
 <a href="assets/FIELD_KIT_ASSETS.md">Asset manifest</a>
@@ -28,7 +28,7 @@ Over time, the project is intended to become a standalone game that is easy to m
 
 ## Play the build
 
-1. Launch the versioned desktop shortcut generated below for the packaged version in `dist/<package.json version>/Wildbound-win32-x64/` (currently 1.0.23).
+1. Launch the versioned desktop shortcut generated below for the packaged version in `dist/<package.json version>/Wildbound-win32-x64/` (currently 1.0.30).
 2. To preview the web version locally, run **[Play Wildbound Browser.cmd](Play%20Wildbound%20Browser.cmd)**. The hosted web build is at [ijustcreate.github.io/Wildbound](https://ijustcreate.github.io/Wildbound/).
 3. Keep the complete packaged folder together when moving or sharing an Electron build.
 4. Gather 1–6 local players, choose explorers and difficulty, then open the board and strike the table to roll.

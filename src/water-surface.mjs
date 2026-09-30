@@ -1,4 +1,5 @@
 // Noise adapted from boona13/threejs-grass-water-shaders (MIT); see THIRD_PARTY_WATER.md.
+import {waterAt} from './environment.mjs';
 const fragment=`precision highp float;
 uniform float time; varying vec2 uv;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -29,4 +30,16 @@ export function drawWaterSurface(c,g,x,y,w,h){
  const t=g.time||0;
  if(renderer){const r=renderer,frame=Math.floor(t*30);if(frame!==r.frame){r.gl.uniform1f(r.time,t);r.gl.drawArrays(r.gl.TRIANGLE_STRIP,0,4);r.frame=frame;}c.drawImage(r.canvas,x/4,y/4,w/4,h/4,x,y,w,h);}
  else{c.fillStyle='#246779';c.fillRect(x,y,w,h);c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.strokeStyle='#88d6d544';for(let row=Math.floor(y/12)*12;row<y+h;row+=12){c.beginPath();for(let px=x;px<=x+w;px+=4)c.lineTo(px,row+Math.sin(px*.08+t+row)*2);c.stroke();}c.restore();}
+ const shallow=waterAt(g,x+w/2,y+h/2)==='shallow';
+ c.save();c.fillStyle=shallow?'#8fe5c58c':'#062e4940';c.fillRect(x,y,w,h);
+ const wet=kind=>['water','shallow','bridge','floodbridge'].includes(kind);
+ c.beginPath();c.rect(x,y,w,h);c.clip();c.lineWidth=1;
+ for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){
+   const neighbor=waterAt(g,x+w/2+dx*w,y+h/2+dy*h);
+   if(wet(neighbor)&&(!shallow||neighbor!=='water'))continue;
+   const pulse=(t*.8+(x+y)*.004)%1,inset=2+pulse*5;
+   c.strokeStyle=`rgba(204,255,233,${(1-pulse)*.65})`;c.beginPath();
+   for(let n=3;n<=29;n+=3){const wave=Math.sin(n*.35+t*2)*1.2;c.lineTo(dx?x+(dx<0?inset+wave:w-inset-wave):x+n,dy?y+(dy<0?inset+wave:h-inset-wave):y+n);}c.stroke();
+ }
+ c.restore();
 }
