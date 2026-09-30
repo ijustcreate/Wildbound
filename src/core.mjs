@@ -38,7 +38,7 @@ import { TABLE, footprintHit, crossesTable, generateWorld } from "./world.mjs";
 import { initAdventure, initHero, adventureMethods } from "./adventure.mjs";
 import { ITEMS, stat, give, itemKind, hasSetSkill } from "./items.mjs";
 import { rules, creatures } from "./definitions.mjs";
-import { meleeProfile, meleeTargetInArc } from './melee-geometry.mjs';
+import { meleeProfile, meleeCanHit } from './melee-geometry.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
   WORLD = TILE * MAP_SIZE,
@@ -740,6 +740,7 @@ export class Game {
       [p.equipment.hand1, p.equipment.hand2].some(
         (id) => itemKind(id) === "sword",
       );
+    p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
     harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
     hitNightEnemyVines(this,p,damage,melee.range);
@@ -754,9 +755,9 @@ export class Game {
         dy = e.y - p.y,
         d = Math.hypot(dx, dy);
       if (
-        d < (spin ? 96 : melee.range) &&
-        d > 0 && clearShot(this,p,e) &&
-        (spin || meleeTargetInArc(p,e,melee))
+        e.hp > 0 && meleeCanHit(p,e,spin?{...melee,range:96,arc:360}:melee,point=>
+          !this.projectileBlocked(point.x,point.y,.5) &&
+          clearShot(this,p,point,.5) && clearShot(this,e,point,.5))
       ) {
         if(this.players.includes(e)){this.hurt(e,damage,p);continue;}
         e.killedBy=p.id;e.ritualKill=[p.equipment.hand1,p.equipment.hand2].includes('ritual_dagger');
@@ -767,9 +768,10 @@ export class Game {
           ((p.x - e.x) * (e.faceX || 0) + (p.y - e.y) * (e.faceY || 1)) /
             (d || 1) >
             0.3;
-        damageEnemy(e,Math.round(
+        const appliedDamage=Math.round(
           damage * (e.state === "recover" ? 1.3 : 1) * (guard ? 0.35 : 1),
-        ));
+        );
+        damageEnemy(e,appliedDamage);
         applyTorchHit(this,p,e);
         e.flash = 0.13;
         if (charge > 0.6) {
@@ -787,7 +789,7 @@ export class Game {
         this.effects.push({
           x: e.x,
           y: e.y - 24,
-          text: e.practiceTarget ? '' : String(damage),
+          text: e.practiceTarget ? '' : String(appliedDamage),
           color: "#ffe8ad",
           life: 0.5,
         });

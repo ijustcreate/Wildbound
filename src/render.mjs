@@ -679,10 +679,11 @@ export class Renderer {
         ITEMS[a.equipment?.hand1]?.base !== "bow" &&
         !ITEMS[a.equipment?.hand1]?.ranged && !ITEMS[a.equipment?.hand1]?.utility
       ) {
-        const angle = Math.atan2(a.faceY, a.faceX),progress=1-a.attack/(a.attackDuration||.34),big=a.attackClip==='swipe_big',upper=a.attackClip==='uppercut',melee=meleeProfile(a);
-        const radius=melee.range,half=melee.arc*Math.PI/360;
+        const angle = Math.atan2(a.faceY, a.faceX),progress=1-a.attack/(a.attackDuration||.34),big=a.attackClip==='swipe_big',melee=meleeProfile(a);
+        const radius=a.meleeSweep?96:melee.range,half=a.meleeSweep?Math.PI:melee.arc*Math.PI/360;
         const direction=a.attackClip==='swipe_two'?-1:1,center=angle+direction*(progress-.5)*half;
-        const y=a.y-(a.jumpHeight||0)-(a.groundHeight||0)-(upper?progress*22:0);
+        // The cone marks the ground-space hit area, including uppercuts and jumps.
+        const y=a.y;
         ctx.save();ctx.translate(a.x,y);ctx.rotate(angle);
         ctx.strokeStyle=big?'#ffcd70':'#ffe5a3';ctx.lineWidth=big?5:3;ctx.globalAlpha=.28;
         ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,radius,-half,half);ctx.closePath();ctx.stroke();

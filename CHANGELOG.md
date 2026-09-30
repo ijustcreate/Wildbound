@@ -1,3 +1,10 @@
+## 1.0.35 - Melee contact and window strikes
+
+- Test creature bodies against the whole melee sector, including overlapping targets and the cone boundary.
+- Strike exposed body parts through broken windows while respecting solid walls and closed doors.
+- Align the displayed cone with ground-space hit checks, including charged circular swings.
+- Show rounded floating damage matching the amount applied after damage modifiers.
+
 ## 1.0.34 - Ranger companions and expedition supplies
 
 - Add five Ranger armor/quiver pieces: three grant a one-ammo spread volley; five grant Tame. Each hero keeps one named, colored companion after removing the set.
