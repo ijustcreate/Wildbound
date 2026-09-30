@@ -1,3 +1,4 @@
+import {LOBBY_BOARD} from './lobby-board.mjs';
 import {Game} from './core.mjs';
 import {structureBlocked} from './expansion.mjs';
 import {refreshVitals} from './items.mjs';
@@ -6,7 +7,7 @@ import {restoreHunterPet,petRecord} from './hunter-pets.mjs';
 export const LOBBY_FURNITURE=[
  {id:'environment',kind:'table',x:588,y:155,w:94,h:35,surfaceHeight:16,jumpable:true},
  {id:'dice-count',kind:'table',x:737,y:155,w:86,h:25,surfaceHeight:16,jumpable:true},
- {id:'board',kind:'table',x:710,y:365,w:120,h:30,surfaceHeight:16,jumpable:true},
+ {...LOBBY_BOARD},
 ];
 
 // A separate simulation uses the real combat/movement code without touching saves.

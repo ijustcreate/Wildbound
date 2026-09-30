@@ -1,3 +1,8 @@
+## 1.0.37 - Shared lobby gameboard art
+
+- Show the open expedition gameboard on its wooden table in the lobby, using the same board renderer.
+- Match the table collision and jump height to its enlarged lobby appearance.
+
 ## 1.0.36 - Roll again on doubles
 
 - Rolling doubles with two dice grants the same hero another turn, including consecutive doubles and opening-round rolls.

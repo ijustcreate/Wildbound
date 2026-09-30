@@ -1,3 +1,4 @@
+import {drawLobbyBoard} from './lobby-board.mjs';
 import {applyCelShading} from './cel-shading.mjs';
 import {drawEmbeddedArrow,drawLodgedArrow} from './embedded-arrow.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
@@ -18,7 +19,7 @@ export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:635,y:165},
   {id:'difficulty',name:'Difficulty totem',x:925,y:165},
   {id:'dice-count',name:'Dice tray',x:780,y:165},
-  {id:'board',name:'Closed board',x:770,y:375},
+  {id:'board',name:'Gameboard',x:770,y:375},
   {id:'target-lever',name:'Target lever',x:465,y:548},
   {id:'character-station',name:'Explorer station',x:625,y:548},
   {id:'starter-chest',name:'Starter chest',x:950,y:520},
@@ -391,7 +392,7 @@ export class PlayableLobby {
         c.fillStyle='#eee2be';c.font='bold 11px system-ui';c.fillText('HEROES',o.x,o.y-10);
         c.fillStyle='#98d2c7';c.beginPath();c.arc(o.x-22,o.y-17,5,0,Math.PI*2);c.arc(o.x+22,o.y-17,5,0,Math.PI*2);c.fill();
       }else{
-        c.fillStyle='#523c2b';c.fillRect(o.x-60,o.y-37,120,57);c.fillStyle='#9b7041';c.fillRect(o.x-56,o.y-40,112,48);c.strokeStyle='#d6b569';c.lineWidth=2;c.strokeRect(o.x-49,o.y-34,98,36);c.fillStyle='#2f3d2b';c.font='bold 15px Georgia';c.fillText('WILDBOUND',o.x,o.y-11);c.fillStyle='#e2bf6c';c.fillRect(o.x-6,o.y+6,12,8);
+        drawLobbyBoard(c,this.practice.time);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';c.fillText(o.name,o.x,o.y+(o.id==='target-lever'?27:44));
       if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'Hold Y · change hero':document.getElementById(o.id).selectedOptions[0].text;c.fillText(detail,o.x,o.y+(o.id==='target-lever'||o.id==='character-station'?40:61),o.id==='target-lever'||o.id==='character-station'?150:140);}
