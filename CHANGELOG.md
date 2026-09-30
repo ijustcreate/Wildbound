@@ -1,3 +1,9 @@
+## 1.0.38 - Equipment removal controls
+
+- Explain full-backpack unequip failures and confirm successful removal.
+- Add explicit equipped-item dropping during expeditions, with keyboard/controller labels and socket preservation.
+- Offer unequip on both hands of two-handed weapons, and keep equipment actions below the paper doll.
+
 ## 1.0.37 - Shared lobby gameboard art
 
 - Show the open expedition gameboard on its wooden table in the lobby, using the same board renderer.

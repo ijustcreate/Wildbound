@@ -98,3 +98,8 @@
 .hero-panel.inventory-redesign > small.inventory-help { display:block; flex:none; font-size:10px; margin:0; }
 .hero-panel.inventory-redesign .storage-notice:empty { display:none; }
 .hero-panel.inventory-redesign .chest-window .item-grid { flex:1; }
+
+/* Keep equipment actions reachable below the doll, rather than over its slots. */
+.hero-panel.inventory-redesign .equipment-window {display:flex;flex-direction:column;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll {flex:1;min-height:0;height:auto;}
+.hero-panel.inventory-redesign .equipment-window .inventory-actions {position:static;flex:none;justify-content:flex-end;z-index:2;padding:2px;background:#10221de8;}

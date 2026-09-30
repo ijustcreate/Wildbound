@@ -366,7 +366,7 @@ export class HeroUI {
         sheet.querySelector('header').append(el('span', `${p.inventory.filter(Boolean).length} / 24`, 'pack-capacity'));
       }
       const list = gear
-        ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[slot]||[] }))
+        ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot]==='occupied'?p.equipment.hand1:p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[slot]||[] }))
         : mode === "pack"
           ? p.inventory
           : storage;
@@ -511,13 +511,16 @@ export class HeroUI {
       const actions = el("div", null, "inventory-actions");
       const pad=controllerButtonNames(p.controllerFamily||'generic'),keyboard=p.device==='keyboard';
       const hints={use:keyboard?'Enter':pad[0],equip:keyboard?'Enter':pad[0],equipOffhand:keyboard?'2':pad[3],store:keyboard?'R':pad[2],split:keyboard?'2':pad[3],drop:keyboard?'Delete':pad[2],dropOne:keyboard?'Shift+Delete':'LT+'+pad[2]};
-      if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)){
+      if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)&&!(gear&&p.equipment[item.slot]==='occupied')){
         sheet.append(el('p',`${'◆'.repeat(item.sockets?.length||0)}${'◇'.repeat(Math.max(0,socketCount(item.type)-(item.sockets?.length||0)))} · Item mana +${gearStat(item.type,item.sockets,'maxMana')}`,'socket-summary'));
         actions.append(button((keyboard?'2':pad[3])+' · Trinket sockets','sockets-'+mode,()=>act(mode,'sockets')));
       }
       const add = (label, key, action) =>
         actions.append(button((hints[action]||'Click')+' · '+label, key, () => act(mode, action)));
-      if (gear && def) add("Unequip", active ? "use" : "gear-use", "use");
+      if (gear && def) {
+        add("Unequip", active ? "use" : "gear-use", "use");
+        if(!p.room&&game.phase==='play')add("Drop equipped","gear-drop","drop");
+      }
       else if (mode === "pack" && def) {
         add(
           "Use / Equip",

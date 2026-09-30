@@ -1,3 +1,4 @@
+import {equipmentAction} from './equipment-actions.mjs';
 import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
 import { INVENTORY_TABS, inventoryCategory, tabIndices, takeFromBag } from './inventory-containers.mjs';
 import {wandTipWorld,bowHandleWorld} from './player-motion.mjs';
@@ -559,6 +560,7 @@ export const adventureMethods = {
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    if(equipmentAction(this,p,action))return;
     if (u.bag && !action.startsWith('select:')) {
       const state=u.bag, list=state.mode==='chest'?this.storageFor(p):p.inventory, bag=list?.[state.index], rule=ITEMS[bag?.type]?.bag;
       if (!rule || action==='close') { delete u.bag; return; }
