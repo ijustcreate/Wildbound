@@ -1,3 +1,4 @@
+import {drawBiomeSprite} from './biome-sprites.mjs';
 import {dropIceRecipe} from './ice-crafting.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export const ICE_PROPS=['snow_tree','ice_rock','snow_drift','frost_shrub','ice_spire','frozen_log','winter_cache'];
@@ -58,16 +59,20 @@ export function drawSnowGround(c,g){if(!g.snowDepth)return;c.save();const depth=
 export function clipSnow(c,g,x,base,width){const d=snowAt(g,x,base)*7;if(d<.1)return;c.beginPath();c.rect(x-width/2,base-300,width,300-d);c.clip();}
 export function snowRim(c,g,x,base,width){const d=snowAt(g,x,base)*7;if(d<.1)return;c.fillStyle='#e3f0f3';c.beginPath();c.ellipse(x,base-d+1,width/2,Math.max(1,d*.3),0,0,Math.PI*2);c.fill();}
 export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return false;
- const b=iceBase(p),scale=p.size/64;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
+ const b=iceBase(p),scale=p.size/64;if(!p.falling&&!p.used&&['ice_spire','frost_shrub','frozen_log'].includes(p.kind)&&drawBiomeSprite(c,p.kind,b.x,b.y,p.size,p.kind==='ice_spire'?p.size*1.3:p.size))return true;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
  const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},poly=(points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};
  if(p.kind==='snow_tree'){
   r(-4,-35,8,35,'#665550');r(-2,-30,3,30,'#978172');
   for(let i=0;i<4;i++){const y=-61+i*12,w=9+i*5;poly([[0,y-9],[-w,y+15],[w,y+15]],'#285650');poly([[0,y-9],[-w+2,y+10],[-3,y+6],[5,y+11],[w-3,y+10]],i%2?'#d6e9eb':'#edf8f6');r(-w+3,y+13,w*2-6,2,'#86afb6');}
  }else if(['ice_rock','ice_spire'].includes(p.kind)){
-  const h=p.kind==='ice_spire'?58:32;poly([[-25,-2],[-21,-h*.55],[-8,-h],[12,-h*.9],[26,-h*.4],[23,0]],'#6ca6bd');poly([[-8,-h],[-2,-3],[12,-h*.9]],'#e1f9ff');poly([[-21,-h*.55],[-8,-h],[-2,-3],[-25,-2]],'#a1d3e3');poly([[12,-h*.9],[26,-h*.4],[-2,-3]],'#84bfd6');r(-23,-2,46,3,'#deedf0');
+  const spikes=p.kind==='ice_spire'?[[-15,7,33],[5,12,59],[22,7,26]]:[[0,23,30]];
+  for(const [x,w,h]of spikes){poly([[x-w,-2],[x-w,-h+8],[x-2,-h],[x+w,-h+5],[x+w,0]],'#669caf');poly([[x-w,-h+8],[x-2,-h],[x+2,-h+8],[x+2,-1],[x-w,-2]],'#a8d5d9');poly([[x+2,-h+8],[x+w,-h+5],[x+w,0],[x+2,-1]],'#4c849e');poly([[x-w,-h+8],[x-2,-h],[x+w,-h+5],[x+2,-h+11]],'#d1eeee');r(x-w,-h+8,2,h-11,'#bde4df');
+   for(let i=0;i<7;i++){const yy=-h+13+hash(i,p.x)*Math.max(2,h-20);r(x-w+3+hash(p.y,i)*Math.max(2,w*2-6),yy,2,2,i%2?'#75b7c3':'#c3e5de');}
+   r(x-w,-h+6,w*2,3,'#eff5e6');r(x-w+2,-h+9,3,5,'#b8d9dc');r(x+w-5,-h+8,2,8,'#d7ebde');
+  }r(-25,-2,52,4,'#dfeee5');r(-21,-3,19,2,'#f7f8e9');
  }else if(p.kind==='snow_drift'){poly([[-29,0],[-20,-9],[-4,-14],[16,-10],[29,0]],'#c1dce4');poly([[-24,-2],[-17,-8],[-4,-12],[15,-8],[25,-2]],'#edf6f6');}
- else if(p.kind==='frost_shrub'){for(let i=-2;i<=2;i++){r(i*9,-18-Math.abs(i)*3,3,22,'#718d95');r(i*9-6,-24+Math.abs(i)*4,14,7,'#b2d7da');if(!p.used)r(i*9,-15+Math.abs(i)*3,5,5,'#cd6381');}r(-22,-3,46,4,'#eaf5f3');}
- else if(p.kind==='frozen_log'){r(-28,-13,56,14,'#72615c');r(-24,-10,46,4,'#aa9380');r(-30,-17,58,6,'#e7f6f8');r(-27,-11,3,9,'#493f40');r(24,-11,3,9,'#493f40');}
+ else if(p.kind==='frost_shrub'){for(let i=-2;i<=2;i++){const x=i*9+Math.sin(time*1.4+p.x+i)*.8,y=-24+Math.abs(i)*4;r(x,-18-Math.abs(i)*3,3,22,'#6d6450');for(let j=0;j<4;j++){r(x-7+j*3,y+(j%2)*3,7,8,'#3e7370');r(x-6+j*3,y+(j%2)*3,5,3,'#91b7aa');r(x-6+j*3,y-1+(j%2)*3,4,2,'#e7f0df');}if(!p.used){r(x,y+8,4,4,'#9e4d61');r(x,y+8,2,1,'#e3a0a3');}}r(-22,-3,46,4,'#eaf5e3');}
+ else if(p.kind==='frozen_log'){r(-28,-13,56,14,'#635344');r(-25,-10,49,2,'#a38b66');r(-25,-5,49,1,'#302e2b');r(-23,-12,2,12,'#302e2b');r(19,-12,2,12,'#302e2b');r(-30,-17,58,6,'#d5e7df');r(-27,-19,44,3,'#f0f3e3');r(-27,-11,3,9,'#493f40');r(24,-11,3,9,'#493f40');for(let i=0;i<5;i++)r(-22+i*10,-12,2,3+hash(i,p.x)*5,'#b3d6d8');r(-12,-23,4,8,'#77664e');r(-12,-24,4,2,'#dfece0');}
  else if(p.kind==='winter_cache'){r(-20,-24,40,25,'#536775');r(-22,p.used?-36:-26,44,8,'#89a3ac');r(-22,p.used?-38:-28,44,4,'#e7f6f7');r(-16,-22,3,21,'#c4ad74');r(13,-22,3,21,'#c4ad74');r(-4,-18,8,8,p.used?'#283f49':'#e4c77b');}
  c.restore();return true;
 }

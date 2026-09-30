@@ -21,7 +21,7 @@ function setup(kind){
     if(kind==='stump')g.scenery=[{kind:'tree',fallen:true,depleted:true,x:300,y:280,rootY:300,size:64}];
   }
   const p=g.addPlayer('keyboard');
-  const offset=collisionOffset(g,p);
+  const offset=kind==='stump'?0:collisionOffset(g,p);
   Object.assign(p,{x:surface.x+surface.w/2,y:surface.y+surface.h/2-(kind==='board'?0:offset),groundHeight:surface.surfaceHeight,jumpHeight:0});
   return {g,p,offset,surface};
 }

@@ -1,3 +1,8 @@
+import {victoryRewards} from './victory-chest.mjs';
+import {inventoryCarryAction} from './inventory-carry.mjs';
+import {merchantAction,openMerchant} from './traveling-merchant.mjs';
+import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
+import {LOBBY_PLAYER_SIZE,PLAYER_RENDER_SIZE} from './render-settings.mjs';
 import {equipmentAction} from './equipment-actions.mjs';
 import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
 import {xpBurst,tickXPOrbs} from './xp-orbs.mjs';
@@ -220,16 +225,9 @@ export const adventureMethods = {
     this.event = null;
     this.reveal = null;
     this.victoryChest = true;
-    // The end-game chest is a concise reward for finishing the expedition:
-    // a few rare finds and one guaranteed legendary, rather than every drop.
-    const rareRewards = Array.from({ length: 3 }, () => ({
-      type: rollGear(this.random, "rare"),
-      qty: 1,
-    }));
-    this.victoryRewards = [
-      ...rareRewards,
-      { type: rollGear(this.random, "legendary"), qty: 1 },
-    ];
+    this.victoryChestOpened=false;this.victoryChestArt=null;
+    this.merchant=null;
+    this.victoryRewards=victoryRewards(this.players,this.random);
     this.loot = [];
     for (const p of this.players) {
       p.hp = p.maxHp;
@@ -269,11 +267,6 @@ export const adventureMethods = {
     this.victoryChest = (this.victoryRewards || []).some(Boolean);
     this.victoryShown = false;
     for (const [i, p] of this.players.entries()) {
-      const a = -Math.PI / 2 + (i * Math.PI) / 3;
-      p.x = 800 + Math.cos(a) * 116;
-      p.y = 789 + Math.sin(a) * 68;
-      p.faceX = -Math.cos(a);
-      p.faceY = -Math.sin(a);
       const f = initializeField(p);
       f.boon = null;
       f.boonReady = false;
@@ -289,6 +282,7 @@ export const adventureMethods = {
         p.y = 800 + Math.sin(p.id) * 130;
       }
     }
+    seatOpeningParty(this.players);
     this.message(
       env === "desert"
         ? "The board exhales heat into a new desert. Watch for quicksand."
@@ -527,6 +521,7 @@ export const adventureMethods = {
   openInventory(p, storage = null) {
     this.onSound("inventory",p);
     p.ui = { panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
+    if(storage==='victory')this.victoryChestOpened=true;
     p.ui.tab = inventoryCategory(p.inventory[0]?.type);
     p.charge = 0;
   },
@@ -570,6 +565,8 @@ export const adventureMethods = {
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    if(merchantAction(this,p,action))return;
+    if(inventoryCarryAction(this,p,action))return;
     if(equipmentAction(this,p,action))return;
     if (u.bag && !action.startsWith('select:')) {
       const state=u.bag, list=state.mode==='chest'?this.storageFor(p):p.inventory, bag=list?.[state.index], rule=ITEMS[bag?.type]?.bag;
@@ -900,6 +897,7 @@ export const adventureMethods = {
           "store",
           "drop",
           "dropOne",
+          "pick",
           "split",
           "close",
         ])
@@ -952,7 +950,7 @@ export const adventureMethods = {
           }
         }
       } else if (!p.consumeInput) {
-        if (!p.sleeping) updateAimFacing(p, i);
+        if(this.openingBoard)faceOpeningBoard(p);else if (!p.sleeping) updateAimFacing(p, i);
         p.bowAiming = !!i.block && hasAimWeapon(p) && !p.swimming && !p.sleeping && !this.openingBoard;
         if (edge("interact"))p.interactAnimation=.35;
         if (edge("summon")) this.raiseSkeleton(p);
@@ -980,7 +978,8 @@ export const adventureMethods = {
           if (p.sealHold >= rules.sealHold) this.beginSeal(p);
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
-        if (i.attack&&!p.swimming)
+        if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
+        if (!this.openingBoard&&i.attack&&!p.swimming)
           p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
         if (!i.attack && old.attack && p.charge&&!p.swimming) {
           this.attack(p, p.charge);
@@ -1000,7 +999,7 @@ export const adventureMethods = {
             const d = this.portals.find((d) => dist(p, d) < 65);
             if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
-            else if (openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}
+            else if (openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}
             else if (cutLivingVines(this,p)) { this.onSound('harvest',p); this.message('Vines cut. The path is clear.'); this.persist(); }
             else if (this.victoryChest && dist(p, { x: 800, y: 914 }) < 60)
               this.openInventory(p, "victory");
@@ -1105,7 +1104,7 @@ export const adventureMethods = {
           const impactHeight=a.z,impactX=a.x,impactY=a.y;
           a.angle=arrowVisualAngle(a);
           const prop=arrowScenery(this,impactX,impactY);
-          a.stuck=true;frostImpact(this,a);
+          a.stuck=true;a.impactTime=this.time;frostImpact(this,a);
           if(prop?.kind==='rock'&&!a.rock&&!a.ice){
             this.effects.push({x:impactX,y:impactY-impactHeight,text:'Splinter',color:'#d0b181',life:.35});
             (this.environmentParticles||=[]).push({x:impactX,y:impactY-impactHeight,kind:'tree',life:.4});
@@ -1114,8 +1113,11 @@ export const adventureMethods = {
         }
         const target = a.hostile
           ? [...this.players,...hunterPets(this)].find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
-          : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 && dist(e, a) < 19 && clearShot(this,a,e));
-        if (target && a.z < 38) {
+          : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 &&
+            (e.practiceTarget
+              ? a.z>0 && Math.hypot(a.x-e.x,(a.y-a.z)-(e.y-18))<23
+              : dist(e,a)<19 && a.z<38) && clearShot(this,a,e));
+        if (target && (target.practiceTarget || a.z < 38)) {
           this.onSound("hit",a);
           if (a.hostile || this.players.includes(target)) {
             if (this.shieldBlocks(target, a)) {
@@ -1140,7 +1142,7 @@ export const adventureMethods = {
             a.angleJitter = a.angleJitter || 0;
           }
           a.angle=arrowVisualAngle(a);a.vx=0;a.vy=0;a.vz=0;
-          a.stuck = true;
+          a.stuck = true;a.impactTime=this.time;
         } else if (
           a.z <= 0 ||
           a.x < 10 ||
@@ -1150,7 +1152,7 @@ export const adventureMethods = {
           this.projectileBlocked(a.x, a.y, 1,true)
         ) {
           a.angle=arrowVisualAngle(a);
-          a.stuck = true;
+          a.stuck = true;a.impactTime=this.time;
           a.z = 0;
           a.embedDepth = a.embedDepth || 7;
           frostImpact(this,a);
@@ -1255,7 +1257,7 @@ export const adventureMethods = {
       angleJitter = (((shotId * 17) % 9) - 4) * 0.012,
       embedDepth = Math.max(5, Math.min(30, 6 + strength * 20 + (((shotId * 13) % 7) - 3) * 0.8)),
       speed = (rules.bowSpeed + strength * rules.bowBonusSpeed)*(1+stat(p,'arrowSpeed'));
-    const tip=bowHandleWorld({...p,attack:0,charge,bowAiming:true},this.time,undefined,this.generatedEnvironment==='lobby'?96:43);
+    const tip=bowHandleWorld({...p,attack:0,charge,bowAiming:true},this.time,undefined,this.generatedEnvironment==='lobby'?LOBBY_PLAYER_SIZE:PLAYER_RENDER_SIZE);
     const z=18,origin={x:tip.x,y:tip.y+z};
     const aim = aimedDirection(this, p, origin, 0.2);
     for(const spread of stat(p,'arrowVolley')>=2?[-.16,0,.16]:[0]){

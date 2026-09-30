@@ -1,3 +1,5 @@
+import {eventHasStartingAreas,requiredSpawnSpot,unitStartingArea} from './starting-area.mjs';
+import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
 import {seedSupplyChests} from './supply-chests.mjs';
 import {enemyQuiver,retrieveEnemyArrows} from './arrow-supplies.mjs';
 import {nextCombo,loadoutKind} from './combat-combos.mjs';
@@ -10,6 +12,8 @@ import {tamePet,tickHunterPets,hunterPets,hurtPet,petPvPEvent} from './hunter-pe
 import {tickWildBatRoost} from './bat-roost.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
+import {victoryChestBlocked} from './victory-chest.mjs';
+import {catchCritter} from './living-ecosystem.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
 import {tickQuicksand} from './quicksand.mjs';
 import {tickBoardSequence} from './board-sequence.mjs';
@@ -409,14 +413,7 @@ export function cameraTarget(players, w, h, reveal = null) {
 }
 export function expeditionCameraTarget(game, w, h) {
   if (game.phase === "play" && game.openingBoard)
-    return {
-      x: CENTER,
-      y: CENTER - 12,
-      zoom: Math.min(
-        w / (TABLE.halfWidth * 2 + 12),
-        Math.max(130, h - 80) / (TABLE.halfHeight * 2 + 24),
-      ),
-    };
+    return openingCamera(w,h);
   const worldPlayers = game.players.filter((p) => !p.room);
   // Keep the world centered on players who are still playing while another
   // player has an inventory or storage panel open. This keeps multiplayer
@@ -468,6 +465,7 @@ export class Game {
     ensureNightCycle(this);
   }
   blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false, from = null) {
+    if(!flying&&victoryChestBlocked(this,x,y,radius,elevation,from))return true;
     if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile,from))return true;
     if(livingEcosystemBlocked(this,x,y,radius,flying,footOffset))return true;
     if (
@@ -503,7 +501,9 @@ export class Game {
       !flying &&
       nearbyScenery(this.scenery, x, y + footOffset, radius).some((prop) => {
         const stump=stumpShape(prop);
-        if(stump)return elevation<stump.height&&raisedSurfaceBlocked(stump,x,y+footOffset,radius,projectile?null:from,footOffset);
+        // Player rigs are anchored at their visible feet. The legacy sprite
+        // offset otherwise makes a short stump block empty ground above it.
+        if(stump){const offset=from&&!from.kind?0:footOffset;return elevation<stump.height&&raisedSurfaceBlocked(stump,x,y+offset,radius,projectile?null:from,offset);}
         return footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius);
       })
     );
@@ -695,8 +695,13 @@ export class Game {
       );
   }
   attack(p, charge = 0) {
+    if(this.openingBoard&&this.generatedEnvironment!=='lobby'&&Math.hypot(p.x-800,p.y-800)<100&&this.phase==='play'&&p.hp>0&&!p.ui&&!p.room){
+      faceOpeningBoard(p);p.attack=p.attackDuration=.34;p.attackClip='punch';this.tableShake=.2;
+      return this.hitTable(p);
+    }
     if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
     if (!["play", "won"].includes(this.phase) || p.hp <= 0 || p.room || p.ui) return false;
+    if(catchCritter(this,p))return true;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
     // Utility items do no melee damage; rifles have their own aimed shot and reload.
     if(tryEquipmentAttack(this,p,charge)){
@@ -936,6 +941,7 @@ export class Game {
           ? 0
           : Math.max(0, e.weight ?? 10);
       const sum = EVENTS.reduce((n, e) => n + weight(e), 0);
+      if(sum<=0)return;
       let choice = this.random() * sum;
       index = EVENTS.length - 1;
       for (let i = 0; i < EVENTS.length; i++) {
@@ -945,8 +951,9 @@ export class Game {
           break;
         }
       }
-      if (this.players.reduce((n, p) => n + p.rolls, 0) === 1) index = this.generatedEnvironment==="temple"?EVENTS.findIndex(e=>e.kind==="tiger"):0;
+      if (this.players.reduce((n, p) => n + p.rolls, 0) === 1) {const first=this.generatedEnvironment==="temple"?EVENTS.findIndex(e=>e.kind==="tiger"):0;if(EVENTS[first]&&eventAvailable(this,EVENTS[first]))index=first;}
     }
+    if(!EVENTS[index]||!eventHasStartingAreas(this,EVENTS[index]))return;
     this.event = EVENTS[index];
     if(!this.event||(this.event.environment&&this.event.environment!==this.generatedEnvironment))return;
     this.encounteredEvents ??= Object.create(null);
@@ -1083,13 +1090,14 @@ export class Game {
         lanternAssigned = true;
       }
       this.configureCreature(e, false);
-      Object.assign(e,spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned));
+      const spawn=requiredSpawnSpot(this,e.kind,spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned));
+      if(!spawn)continue;Object.assign(e,spawn);
       if(this.house && e.kind === "lion")this.houseLionSpawned = true;
       if(this.event.spiderNest&&first){e.x=first.x+24;e.y=first.y+24;if(this.blocked(e.x,e.y)||(this.house&&insideHouse(e.x,e.y)))Object.assign(e,{x:first.x,y:first.y});}
       e.speed *= 0.88 + this.random() * 0.24;
       e.tacticTime *=
         e.temperament === "bold" ? 0.65 : e.temperament === "patient" ? 1.5 : 1;
-      for (let tries = 0; tries < 40 && this.blocked(e.x, e.y); tries++) {
+      for (let tries = 0; tries < 40 && unitStartingArea(e.kind)==='any' && this.blocked(e.x, e.y); tries++) {
         e.x = clamp(e.x + Math.cos(tries * 1.7) * 24, 70, WORLD - 70);
         e.y = clamp(e.y + Math.sin(tries * 1.7) * 24, 70, WORLD - 70);
       }
@@ -1222,7 +1230,7 @@ export class Game {
         mx /= len;
         my /= len;
       }
-      updateAimFacing(p, input);
+      if(this.openingBoard)faceOpeningBoard(p);else updateAimFacing(p, input);
       if(!this.openingBoard&&input.jump&&!p.jumpHeld)startJump(p);
       p.jumpHeld=!!input.jump;
       if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}

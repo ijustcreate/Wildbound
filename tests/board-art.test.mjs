@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {magicParticle} from '../src/board-magic.mjs';
+import {DEFAULT_BOARD_SETTINGS,validBoardSettings} from '../src/board-settings.mjs';
+import {PAWN_ATLAS} from '../src/board-pawn-atlas.mjs';
+import {pawnFacing} from '../src/board-art.mjs';
+import {TRAIL} from '../src/board.mjs';
+test('Magic converges exactly to glyph samples without jumping at reveal start',()=>{const s=DEFAULT_BOARD_SETTINGS,goal={x:12,y:-4};for(let i=0;i<s.particles;i++){assert.deepEqual(magicParticle(i,s.particles,2,0,goal,s),magicParticle(i,s.particles,2,0,null,s));const p=magicParticle(i,s.particles,2,5,goal,s);assert.ok(Math.abs(p.x-goal.x)<1e-10);assert.ok(Math.abs(p.y-goal.y)<1e-10);}});
+test('Board settings reject malformed palettes and unbounded particle budgets',()=>{assert.ok(validBoardSettings(DEFAULT_BOARD_SETTINGS));for(const patch of [{particles:100000},{energy:'red'},{pieces:['lion']},{gatherTime:0}])assert.equal(validBoardSettings({...DEFAULT_BOARD_SETTINGS,...patch}),false);});
+test('Six animal sheets each provide eight bounded direction crops',()=>{assert.equal(Object.keys(PAWN_ATLAS).length,6);for(const frames of Object.values(PAWN_ATLAS)){assert.equal(frames.length,8);for(const r of frames){assert.ok(r.x>=0&&r.y>=0&&r.w>0&&r.h>0);assert.ok(r.x+r.w<=1448&&r.y+r.h<=1086);}}assert.deepEqual([[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1],[1,0],[1,1]].map(([x,y])=>pawnFacing(x,y)),[0,1,2,3,4,5,6,7]);assert.equal(TRAIL.length,49);assert.deepEqual(TRAIL.at(-1),{x:0,y:0});});

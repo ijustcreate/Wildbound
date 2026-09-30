@@ -29,5 +29,5 @@ export function boardDicePose(roll,index){
  const startX=(index?1:-1)*66,startY=Math.sin(phase+1)*43;
  return {x:startX+(endX-startX)*travel+Math.sin(u*9+phase)*8*energy,
  y:startY+(endY-startY)*travel-Math.abs(Math.sin(u*13))*10*energy,size:5,
- angle:Math.sin(phase)*.35+energy*energy*(12+index*3),value:roll.dice[index]};
+ angle:energy*energy*(12+index*3),value:roll.dice[index]};
 }

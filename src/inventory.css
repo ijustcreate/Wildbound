@@ -76,7 +76,7 @@
 .hero-panel.inventory-redesign .socket-summary,
 .hero-panel.inventory-redesign .set-checklist,
 .hero-panel.inventory-redesign > small { display: none; }
-.hero-panel.inventory-redesign .equipment-window { background-image: url('../assets/inventory-environments.png'); background-size: 300% 200%; background-position: 0 0; }
+.hero-panel.inventory-redesign .equipment-window { background-image: url('../assets/inventory-environments-blocky.png'); background-size: 300% 200%; background-position: 0 0; }
 .hero-panel[data-environment="forest"] .equipment-window { background-position: 50% 0; }
 .hero-panel[data-environment="desert"] .equipment-window { background-position: 100% 0; }
 .hero-panel[data-environment="ice"] .equipment-window { background-position: 0 100%; }
@@ -152,9 +152,10 @@
 .hero-panel.victory-loot-session .storage-sheet { border:1px solid #b89b5f; border-radius:4px; padding:7px; background:linear-gradient(145deg,#142c25,#0c1a16); }
 .hero-panel.victory-loot-session .storage-sheet > header { font-size:15px; padding:8px; }
 .hero-panel.victory-loot-session .inventory-window,.hero-panel.victory-loot-session .chest-window { min-width:0; }
-.victory-loot-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; flex:none; padding:8px 0 0; }
+.hero-panel .victory-loot-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; flex:none; height:auto; min-height:0; padding:8px 0 0; }
 .victory-loot-actions button { min-height:32px; border:1px solid #b89b5f; background:#234336; color:#f2e5c6; padding:6px 12px; }
 @media(max-width:720px){.hero-panel.victory-loot-session .storage-layout.has-chest{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr)!important;}}
+@container(max-width:600px){.hero-panel.victory-loot-session .storage-layout.has-chest{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1.1fr) minmax(0,1fr)!important;gap:4px;}.hero-panel.victory-loot-session .storage-sheet{padding:3px;}.hero-panel.victory-loot-session .storage-sheet>header{padding:3px 6px;font-size:12px;}}
 .hero-panel.inventory-redesign .storage-sheet > nav:not(.inventory-tabs) { display:none; }
 .hero-panel.inventory-redesign .inventory-window { grid-template-rows:auto 28px minmax(0,1fr) auto; gap:3px; }
 .hero-panel.inventory-redesign .inventory-tabs { height:28px !important; }
@@ -168,3 +169,24 @@
 .hero-panel.inventory-redesign .equipment-window {display:flex;flex-direction:column;}
 .hero-panel.inventory-redesign .equipment-window .paper-doll {flex:1;min-height:0;height:auto;}
 .hero-panel.inventory-redesign .equipment-window .inventory-actions {position:static;flex:none;justify-content:flex-end;z-index:2;padding:2px;background:#10221de8;}
+
+/* Reserve actions before sizing the bag: no implicit rows or scroll regions. */
+.hero-panel.inventory-redesign .inventory-window {display:grid;grid-template-rows:auto 26px minmax(0,1fr) auto;grid-template-areas:"heading" "tabs" "slots" "actions";min-width:0;}
+.hero-panel.inventory-redesign .inventory-window > header{grid-area:heading;}
+.hero-panel.inventory-redesign .inventory-window > .inventory-tabs{grid-area:tabs;height:26px!important;}
+.hero-panel.inventory-redesign .inventory-window > .item-grid{grid-area:slots;}
+.hero-panel.inventory-redesign .inventory-window > .inventory-actions{grid-area:actions;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll){container-type:size;overflow:clip!important;min-height:0;min-width:0;max-height:none;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button{width:min(calc((100cqw - 20px)/6),calc((100cqh - 12px)/4));height:min(calc((100cqw - 20px)/6),calc((100cqh - 12px)/4));max-width:100%;max-height:100%;min-height:0;justify-self:center;align-self:center;position:relative;overflow:hidden;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) canvas.item-icon{width:min(30px,60%);height:auto;aspect-ratio:1;max-height:80%;object-fit:contain;flex:none;}
+.hero-panel.inventory-redesign .inventory-actions{flex:none;align-self:stretch;overflow:visible;min-height:24px;}
+.hero-panel.inventory-redesign .inventory-actions button{white-space:nowrap;flex:0 1 auto;}
+.hero-panel.inventory-redesign .storage-sheet{min-height:0;min-width:0;box-sizing:border-box;}
+.hero-panel.inventory-redesign .storage-layout{overflow:clip!important;}
+.hero-panel.inventory-redesign .paper-doll canvas.item-icon{height:auto;aspect-ratio:1;flex:none;}
+.hero-panel.inventory-redesign{container-type:size;}
+.inventory-quantity{position:absolute;right:2px;bottom:1px;font:9px/1 system-ui;color:#fff4cf;text-shadow:0 1px 2px #000,1px 0 2px #000;pointer-events:none;}
+@container(max-height:540px){.hero-panel.inventory-redesign .storage-layout:not(.has-chest){grid-template-rows:minmax(0,.55fr) minmax(0,1.45fr);}.hero-panel.inventory-redesign .inventory-actions button{font-size:9px;padding:2px 3px;}.hero-panel.inventory-redesign .storage-sheet>header{padding:3px 6px;}}
+.item-tooltip::before{content:'';position:absolute;left:var(--tether-x,8px);top:-8px;width:1px;height:8px;background:#ddc477;}.item-tooltip.tooltip-above::before{top:auto;bottom:-8px;}.hero-panel.inventory-redesign .carried-source{opacity:.45;outline:1px dashed #f4cc73;}.hero-panel.inventory-redesign button.carry-target{outline:2px solid #89e4ce;background:#355849;}
+
+.merchant-workshop{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px;overflow:hidden;font:13px system-ui}.merchant-workshop h2,.merchant-workshop p{margin:0}.merchant-workshop>div:not(.merchant-grid){display:flex;gap:6px;align-items:center;flex:none}.merchant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;flex:1;min-height:0}.merchant-grid button{min-width:0;min-height:0;white-space:normal;border:1px solid #8e9c73;background:#19352c;color:#f0dfb7;padding:8px;font:12px system-ui}.merchant-grid button.selected{outline:2px solid #e5c478}.merchant-pages{justify-content:space-between}.merchant-notice{min-height:32px;color:#d3c499}

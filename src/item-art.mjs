@@ -166,6 +166,12 @@ function paintItemBase(c, type) {
     return;
   }
   switch (type) {
+    case 'critter_net':
+      line(5,23,12,11,'#a27d4f',2);line(8,3,18,3,'#c3ccb5',2);line(7,4,7,11,'#c3ccb5',2);line(19,4,19,11,'#c3ccb5',2);line(8,12,18,12,'#c3ccb5',2);for(let i=9;i<19;i+=3)line(i,4,i,11,'#8daba3');line(8,7,18,7,'#8daba3');break;
+    case 'empty_jar': case 'caught_frog': case 'caught_dragonfly': case 'caught_fairy':
+      r(7,3,10,3,'#a78a56');r(5,7,14,15,'#4b827d');r(7,7,10,14,'#9bcbc180');r(7,8,2,11,'#d0efdf');r(5,21,14,2,'#b1d8c8');if(type!=='empty_jar'){r(10,13,type==='caught_frog'?5:3,5,type==='caught_fairy'?'#c7a1dd':type==='caught_dragonfly'?'#85c6cd':'#759c51');r(10,12,1,1,'#f3eebb');r(14,12,1,1,'#f3eebb');}break;
+    case 'critter_cage': case 'caught_bird': case 'caught_white_mouse': case 'caught_scavenger':
+      r(3,7,19,15,'#493e2e');if(type!=='critter_cage')r(8,12,type==='caught_bird'?6:8,7,type==='caught_white_mouse'?'#e5e7dc':type==='caught_bird'?'#bca477':'#9b886f');for(let i=4;i<23;i+=4)r(i,7,1,15,'#bea775');r(3,6,19,2,'#bea775');r(3,21,19,2,'#bea775');r(10,3,5,3,'#bea775');break;
     case "lantern":
       r(8,2,9,2,dark); r(7,4,2,5,gold); r(16,4,2,5,gold);
       r(5,8,15,3,dark); r(6,11,13,9,gold); r(8,11,9,8,"#fff0ab");

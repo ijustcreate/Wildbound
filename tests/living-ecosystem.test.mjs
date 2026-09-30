@@ -81,8 +81,7 @@ test('ambient populations stay bounded, outside the house, and never alter core 
     const animals=livingAnimals(g);
     assert.ok(animals.length<=18);
     assert.equal(JSON.stringify([g.enemies,g.loot,g.scenery]),actors);
-    if(environment==='desert')assert.equal(animals.length,0);
-    else assert.ok(animals.length>0);
+    assert.ok(animals.length>0);
     if(environment==='house')for(const a of animals)assert.ok(!g.house.floors.some(r=>a.x>=r.x&&a.x<=r.x+r.w&&a.y>=r.y&&a.y<=r.y+r.h));
     if(environment==='forest'||environment==='house')assert.ok(animals.some(a=>a.kind==='dragonfly')&&animals.some(a=>a.kind==='frog'));
   }

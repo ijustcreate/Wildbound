@@ -10,6 +10,7 @@ export function startJump(a){
  // jumpHeight > 0 is the single airborne guard, so a second jump cannot fire.
  if(a.hp<=0||a.jumpHeight>0||a.state==='snared'||a.rooted>0||a.stun>0)return false;
  const jumpRank = a.field?.skills?.long_jump || 0;
+ if(!a.kind&&!a.groundHeight)a.trackImpulse={x:a.x,y:a.y,kind:'takeoff'};
  a.jumpHeight=(a.groundHeight||0)+.01;a.groundHeight=0;a.jumpVelocity=(a.jumpImpulse||125)*(1+jumpRank*.15);a.jumpAge=0;
  // Retained as telemetry for UI/debugging; startJump deliberately does not
  // consult it, so landing is the only gameplay gate.
@@ -26,5 +27,5 @@ export function tickJump(a,dt,g=null,offset=0){
  const previous=a.jumpHeight;
  a.jumpAge=(a.jumpAge||0)+dt;a.jumpVelocity-=360*dt;a.jumpHeight=Math.max(0,a.jumpHeight+a.jumpVelocity*dt);
  const landed=a.jumpVelocity<=0&&previous>=support&&a.jumpHeight<=support;
- if(landed||!a.jumpHeight){a.groundHeight=landed?support:0;a.jumpHeight=0;a.jumpVelocity=0;a.landTime=.22;}
+ if(landed||!a.jumpHeight){a.groundHeight=landed?support:0;a.jumpHeight=0;a.jumpVelocity=0;a.landTime=.22;if(!a.kind&&!a.groundHeight)a.trackImpulse={x:a.x,y:a.y,kind:'landing'};}
 }

@@ -9,6 +9,6 @@ export function drawLobbyBoard(c,time=0){
  const rise=b.surfaceHeight/(b.h/32);
  c.fillStyle='#5a3d28';c.fillRect(-32,-16-rise+5,64,32);
  c.fillStyle='#987047';c.fillRect(-32,-16-rise,64,32);
- c.translate(0,-rise);c.scale(60/282,28/160);
+ c.translate(0,-rise);c.scale(60/280,28/192);
  drawBoard(c,{players:[],current:null,roll:null,event:null},time);c.restore();
 }

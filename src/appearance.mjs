@@ -235,6 +235,7 @@ export function appearanceControls(root, value, changed, options = {}) {
         ["classic", "Classic"],
         ["freckles", "Freckles"],
         ["scar", "Scar"],
+        ["elf", "Elf ears"],
         ["beard", "Beard"],
       ],
     ],

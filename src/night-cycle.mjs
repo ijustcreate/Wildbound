@@ -1,3 +1,4 @@
+import {eventHasStartingAreas} from './starting-area.mjs';
 import { ITEMS } from './items.mjs';
 
 // Eight minutes of simulation time. Menus/pause never advance the sky.
@@ -46,7 +47,8 @@ export function lightAt(g, point) {
 export function eventAvailable(g, event) {
   return (!event.environment || event.environment === g.generatedEnvironment)
     && (!event.environments || event.environments.includes(g.generatedEnvironment))
-    && (!event.times || event.times.includes(timeOfDay(g)));
+    && (!event.times || event.times.includes(timeOfDay(g)))
+    && eventHasStartingAreas(g,event);
 }
 export function emitNoise(g, source, kind = 'step', radius = 100) {
   if (!source || source.room || !Number.isFinite(source.x + source.y)) return;

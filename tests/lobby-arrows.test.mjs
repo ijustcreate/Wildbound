@@ -36,3 +36,19 @@ test('Arrows attach to moving practice targets and score only once',()=>{
   assert.ok(Math.abs(shot.y-target.y-offset[1])<1e-8);
   assert.equal(shot.z,height);assert.equal(target.hits,1);assert.equal(target.score,12);
 });
+
+test('Fast elevated arrows score where their visible tip meets the target face',()=>{
+ for(const speed of [300,650,1200])for(const dt of [.016,.05,.1]){
+  const g=new LobbyPractice(),t=g.targets[0];
+  g.arrows.push({...arrow(t.x,t.y+95,0,-speed),z:65,gravity:0});
+  for(let n=0;n<30;n++)g.tickAdventure(dt,{});
+  assert.equal(t.hits,1,`speed ${speed}, dt ${dt}`);assert.equal(t.score,12);
+  assert.equal(g.arrows[0]?.enemy,t.id);
+ }
+});
+test('Arrows visually outside the target face do not score',()=>{
+ const g=new LobbyPractice(),t=g.targets[0];
+ g.arrows.push({...arrow(t.x+30,t.y+95,0,-900),z:65,gravity:0});
+ for(let n=0;n<15;n++)g.tickAdventure(.02,{});
+ assert.equal(t.hits,0);
+});

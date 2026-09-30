@@ -40,6 +40,7 @@ export function openSupplyChest(g,p){
  const chest=(g.supplyChests||[]).filter(c=>!c.opened&&Math.hypot(c.x-p.x,c.y-p.y)<60).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
  if(!chest)return false;
  chest.opened=true;
+ g.dropLoot(chest.x+20,chest.y+26,'empty_jar',1,chest.name,true);
  dropIceRecipe(g,p,chest.x,chest.y+25);
  g.dropLoot(chest.x-12,chest.y+20,'potion',chest.potions,chest.name,true);
  if(chest.reward)g.dropLoot(chest.x+15,chest.y+20,chest.reward,1,chest.name,true);

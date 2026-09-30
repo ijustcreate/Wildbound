@@ -18,3 +18,4 @@ test('One or two tumbling dice remain within the board surface',()=>{
   assert.ok(Math.abs(d.x)+radius<85);assert.ok(d.y+radius<69);assert.ok(d.y-radius>-69);
  }
 });
+test('Dice finish flat and remain motionless on their rolled result',()=>{for(let seed=0;seed<1;seed+=.1)for(let i=0;i<2;i++){const r={dice:[2,6],tossSeed:seed,elapsed:1.6},a=boardDicePose(r,i);assert.equal(a.angle,0);assert.equal(a.value,r.dice[i]);r.elapsed=8;assert.deepEqual(boardDicePose(r,i),a);}});

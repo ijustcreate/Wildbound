@@ -1,3 +1,4 @@
+import {LOBBY_PLAYER_SIZE,PLAYER_RENDER_SIZE} from '../src/render-settings.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';
 import {RANGER_SET,ITEMS,hasSetSkill,count,stat,rollGear} from '../src/items.mjs';
@@ -24,7 +25,7 @@ test('Bow arrows originate at the held handle in all directions, both scenes and
  for(const lobby of [false,true])for(let i=0;i<8;i++)for(const charge of [0,.6,1.2]){
   const {g,p}=setup();g.generatedEnvironment=lobby?'lobby':'forest';p.equipment.hand1='bow';p.inventory=[{type:'arrow',qty:1}];
   Object.assign(p,{faceX:Math.cos(i*Math.PI/4),faceY:Math.sin(i*Math.PI/4),charge,attack:.34});
-  const expected=bowHandleWorld({...p,attack:0,bowAiming:true},g.time,playerMotion,lobby?96:43);
+  const expected=bowHandleWorld({...p,attack:0,bowAiming:true},g.time,playerMotion,lobby?LOBBY_PLAYER_SIZE:PLAYER_RENDER_SIZE);
   g.fireArrow(p,charge);const a=g.arrows[0];assert.ok(Math.abs(a.x-expected.x)<1e-9);assert.ok(Math.abs(a.y-a.z-expected.y)<1e-9);
  }
 });

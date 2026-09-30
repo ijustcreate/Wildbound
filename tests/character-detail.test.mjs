@@ -15,7 +15,7 @@ function raster(){
     for(let yy=Math.round(y);yy<y+h;yy++)for(let xx=Math.round(x);xx<x+w;xx++)pixels.set(`${xx},${yy}`,this.fillStyle);
   }};
 }
-test('Profile noses protrude beyond the skull and ears survive the hair pass',()=>{
+test('Profile noses stay small and ears survive the hair pass',()=>{
   for(const d of [2,6]){
     const p=Object.fromEntries(Object.entries(model.joints).map(([key,value])=>[key,projectPoint(value.position,d)]));
     const c=raster(),visible=n=>model.visibility[n]?.[d]!==false;
@@ -23,7 +23,7 @@ test('Profile noses protrude beyond the skull and ears survive the hair pass',()
     drawHair(c,p.head,DEFAULT_APPEARANCE,d);
     drawHumanHead(c,p,d,DEFAULT_APPEARANCE.skin,DEFAULT_APPEARANCE,visible,true);
     const sign=d===2?-1:1,pal=skinPalette(DEFAULT_APPEARANCE.skin);
-    assert.equal(c.pixels.get(`${Math.round(p.head.x)+sign*6},${Math.round(p.head.y)+1}`),pal.base);
+    assert.equal(c.pixels.get(`${Math.round(p.head.x)+sign*5},${Math.round(p.head.y)+1}`),pal.light);
     assert.equal(c.pixels.get(`${Math.round(p.head.x)-sign},${Math.round(p.head.y)}`),pal.blush);
   }
 });
@@ -62,4 +62,17 @@ test('All authored clips and hairstyles render every facing without mutating the
 test('Every equipment icon renders, including the whip detail helper',()=>{
   const c=raster();
   for(const [id,item] of Object.entries(ITEMS))if(item.slot)assert.doesNotThrow(()=>paintItem(c,id),id);
+});
+
+test('Elf ears add pointed pixels beyond hair in every facing',()=>{
+ for(let d=0;d<8;d++){
+  const p=Object.fromEntries(Object.entries(model.joints).map(([key,value])=>[key,projectPoint(value.position,d)]));
+  const visible=n=>model.visibility[n]?.[d]!==false;
+  for(const hair of ['crop','long']){
+   const normal=raster(),elf=raster();
+   drawHumanHead(normal,p,d,DEFAULT_APPEARANCE.skin,{...DEFAULT_APPEARANCE,hair},visible,true);
+   drawHumanHead(elf,p,d,DEFAULT_APPEARANCE.skin,{...DEFAULT_APPEARANCE,hair,face:'elf'},visible,true);
+   assert.notDeepEqual(elf.pixels,normal.pixels,`facing ${d}, ${hair}`);
+  }
+ }
 });

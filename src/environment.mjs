@@ -1,3 +1,4 @@
+import {drawBiomeProp} from './biome-art.mjs';
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
 import {drawForestTree,drawBush,treeBase,palmBase,tickForest,drawPalmTrunk,drawPalmFronds} from './forest.mjs';
 import { emitNoise } from './night-cycle.mjs';
@@ -149,6 +150,9 @@ export function tickEnvironment(g, dt) {
       ["bat", "wasp", "snake", "vine"].includes(a.kind)
     )
       continue;
+    const feetOffset=a.kind?14:0;
+    if(a.trackImpulse){const point=a.trackImpulse;delete a.trackImpulse;const angle=Math.atan2(a.faceY||0,a.faceX||1);for(const side of [-1,1])g.footprints.push({x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,water:isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind});a.trackPosition={x:a.x,y:a.y};}
+    if(a.jumpHeight>0||a.groundHeight>0||a.swimming){a.trackPosition={x:a.x,y:a.y};continue;}
     const last = a.trackPosition;
     if (
       last &&
@@ -157,10 +161,10 @@ export function tickEnvironment(g, dt) {
     ) {
       a.trackSide = -(a.trackSide || 1);
       const angle = Math.atan2(a.y - last.y, a.x - last.x),
-        water = isShallow(waterAt(g, a.x, a.y + 14));
+        water = isShallow(waterAt(g, a.x, a.y + feetOffset));
       g.footprints.push({
         x: a.x + Math.sin(angle) * a.trackSide * 3,
-        y: a.y + 14 - Math.cos(angle) * a.trackSide * 3,
+        y: a.y + feetOffset - Math.cos(angle) * a.trackSide * 3,
         angle,
         time: g.time,
         water,
@@ -198,6 +202,7 @@ export function drawTracks(c, g) {
     } else {
       c.globalAlpha = Math.max(0, 1 - t / 18) * 0.36;
       c.rotate(f.angle);
+      if(f.scale)c.scale(f.scale,f.scale);
       c.fillStyle = f.purple ? "#bf68e8" : "#15281f";
       c.fillRect(-2, -1, f.animal ? 3 : 5, 2);
       if (f.animal) {
@@ -221,6 +226,7 @@ export function drawTracks(c, g) {
   }
 }
 export function drawProp(c, p, time,game={}) {
+  if(drawBiomeProp(c,p,time,game))return true;
   if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
   if(p.procedural&&['tree','snow_tree'].includes(p.kind)){drawForestTree(c,p,time,game);if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/90),3);}return true;}
   if(p.kind==='bush'){drawBush(c,p,time);return true;}

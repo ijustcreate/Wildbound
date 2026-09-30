@@ -1,4 +1,6 @@
 import { footprintHit, terrainHash } from './world.mjs';
+import {forestDecor} from './forest.mjs';
+import {give,take} from './items.mjs';
 import { propBase, waterAt } from './environment.mjs';
 import { nearbyScenery } from './performance.mjs';
 
@@ -15,7 +17,7 @@ import { nearbyScenery } from './performance.mjs';
  */
 export const LIVING_LIMITS = Object.freeze({ vines: 24, animals: 18, growthSeconds: 45 });
 const runtime = new WeakMap();
-const biomes = ['forest', 'temple', 'house', 'ice'];
+const biomes = ['forest', 'temple', 'house', 'ice', 'desert'];
 const finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 const biome = g => g.generatedEnvironment || g.environment || 'forest';
 const inside = (r, x, y, pad = 0) => x >= r.x-pad && y >= r.y-pad && x <= r.x+r.w+pad && y <= r.y+r.h+pad;
@@ -74,7 +76,7 @@ export function initLivingEcosystem(g) {
     return v;
   });
   const state=g.livingEcosystem={version:1,biome:biome(g),seed:finite(g.seed),
-    growth:compatible?Math.max(0,Math.min(44.999,finite(old.growth))):0,vines};
+    growth:compatible?Math.max(0,Math.min(44.999,finite(old.growth))):0,vines,caught:compatible?(old.caught||[]).filter(id=>Number.isInteger(id)&&id>=0&&id<18):[]};
   const animals=[];
   if(biomes.includes(biome(g))) {
     const species=biome(g)==='ice'?['white_mouse','fairy']:['dragonfly','frog','bird','scavenger'];
@@ -84,7 +86,13 @@ export function initLivingEcosystem(g) {
       animals.push({id:animals.length,kind:species[animals.length%species.length],x,y,homeX:x,homeY:y,phase:terrainHash(i,4)*6.28});
     }
   }
-  runtime.set(g,{state,animals,time:0,attractionIn:0,targets:new Map()});
+  const banks=[];
+  for(let ty=1;ty<49;ty++)for(let tx=1;tx<49;tx++){
+   const x=tx*32+16,y=ty*32+16;
+   if(openSpot(g,x,y,5)&&[[32,0],[-32,0],[0,32],[0,-32]].some(([dx,dy])=>['water','shallow'].includes(waterAt(g,x+dx,y+dy))))banks.push({x,y});
+  }
+  for(const a of animals.filter(a=>a.kind==='frog')){const bank=banks[(a.id*17)%banks.length];if(bank)Object.assign(a,{...bank,homeX:bank.x,homeY:bank.y,wait:a.phase});}
+  runtime.set(g,{state,animals:animals.filter(a=>(a.kind!=='frog'||banks.length)&&!state.caught.includes(a.id)),time:0,attractionIn:0,targets:new Map()});
   return state;
 }
 function ensure(g) {
@@ -134,6 +142,7 @@ export function updateLivingEcosystem(g,dt) {
     }
   }
   for(const a of r.animals) {
+    if(a.kind==='frog'){tickFrog(g,a,dt,r.time);continue;}
     // Wildlife is never a combat target, but it should feel alive when the
     // party or a hostile creature approaches. Use a soft steering force so
     // critters drift away instead of teleporting or panicking in a straight
@@ -216,7 +225,7 @@ export function drawLivingEcosystem(c,g,layer='all') {
   for(const a of r.animals) {
     const flying=['dragonfly','bird','fairy'].includes(a.kind);
     if(flying?!air:!ground)continue;
-    const x=Math.round(a.x),y=Math.round(a.y),flap=Math.sin(r.time*16+a.phase)>0?2:-1;
+    const x=Math.round(a.x),y=Math.round(a.y-(a.hopHeight||0)),flap=Math.sin(r.time*16+a.phase)>0?2:-1;
     pixel(x-3,y+2,7,2,'#20352b55');
     if(a.kind==='dragonfly'||a.kind==='fairy') {
       const fairy=a.kind==='fairy',yy=y-10-Math.round(Math.sin(r.time*3+a.phase)*2);
@@ -224,6 +233,7 @@ export function drawLivingEcosystem(c,g,layer='all') {
       pixel(x,yy-2,2,7,fairy?'#a992e3':'#467e9b');pixel(x,yy-3,2,2,'#fff0b4');
       if(fairy)pixel(x+7,yy+6,1,1,'#ffffff');
     } else if(a.kind==='frog') {
+      if(a.swimming&&!a.hop){c.strokeStyle='#a0cac088';c.lineWidth=1;c.beginPath();c.ellipse(x,y+1,8,3,0,0,7);c.stroke();pixel(x-4,y-2,8,3,'#417b52');pixel(x-4,y-4,2,2,'#dee6a2');pixel(x+2,y-4,2,2,'#dee6a2');pixel(x-6,y+2,3,1,'#749968');pixel(x+4,y+2,3,1,'#749968');continue;}
       pixel(x-5,y-2,10,4,'#3c7040');pixel(x-3,y-4,6,4,'#88aa54');
       pixel(x-4,y-5,2,2,'#e6dc87');pixel(x+2,y-5,2,2,'#e6dc87');pixel(x-6,y+1,3,2,'#628348');pixel(x+3,y+1,3,2,'#628348');
     } else if(a.kind==='bird') {
@@ -236,4 +246,23 @@ export function drawLivingEcosystem(c,g,layer='all') {
     }
   }
   c.restore();
+}
+
+function tickFrog(g,a,dt,time){
+ if(a.hop){const h=a.hop;h.t=Math.min(1,h.t+dt/.55);a.x=h.x+(h.tx-h.x)*h.t;a.y=h.y+(h.ty-h.y)*h.t;a.hopHeight=Math.sin(h.t*Math.PI)*12;if(h.t===1){a.hop=null;a.hopHeight=0;a.pad=h.pad;a.swimming=!a.pad&&['water','shallow'].includes(waterAt(g,a.x,a.y));a.wait=1.3+terrainHash(time,a.id)*2;}return;}
+ a.wait=(a.wait||0)-dt;const threat=(g.players||[]).find(p=>!p.room&&p.hp>0&&Math.hypot(p.x-a.x,p.y-a.y)<48);if(a.wait>0&&!threat)return;
+ const water=['water','shallow'].includes(waterAt(g,a.x,a.y)),pads=forestDecor(g).banks.filter(p=>p.kind==='lily'&&Math.hypot(p.x-a.x,p.y-a.y)<80);
+ const choices=[...pads.map(p=>({...p,pad:true})),{x:a.homeX,y:a.homeY},...Array.from({length:8},(_,i)=>{const angle=i*Math.PI/4;return{x:a.x+Math.cos(angle)*32,y:a.y+Math.sin(angle)*32};})];
+ const valid=choices.filter(p=>Math.hypot(p.x-a.x,p.y-a.y)>8&&Math.hypot(p.x-a.homeX,p.y-a.homeY)<110&&Array.from({length:8},(_,n)=>(n+1)/8).every(t=>!g.blocked?.(a.x+(p.x-a.x)*t,a.y+(p.y-a.y)*t,3,false,true,false,0))&&(['water','shallow'].includes(waterAt(g,p.x,p.y))||openSpot(g,p.x,p.y,3)));
+ valid.sort((a,b)=>{const score=p=>(threat?(['water','shallow'].includes(waterAt(g,p.x,p.y))?100:0):p.pad?50:water&&!['water','shallow'].includes(waterAt(g,p.x,p.y))?35:0)+terrainHash(p.x+time,p.y)*40;return score(b)-score(a);});
+ if(valid[0])a.hop={x:a.x,y:a.y,tx:valid[0].x,ty:valid[0].y,pad:valid[0].pad,t:0};else a.wait=1;
+}
+export function catchCritter(g,p){
+ if(![p.equipment?.hand1,p.equipment?.hand2].includes('critter_net'))return false;
+ const r=ensure(g),a=r.animals.filter(a=>Math.hypot(a.x-p.x,a.y-p.y)<46&&(a.x-p.x)*(p.faceX||0)+(a.y-p.y)*(p.faceY||0)>=-8).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+ if(!a){g.message('No critter within reach.');return true;}
+ const container=['frog','dragonfly','fairy'].includes(a.kind)?'empty_jar':'critter_cage',copy=structuredClone(p.inventory);
+ if(!take(copy,container)){g.message(container==='empty_jar'?'You need an empty jar.':'You need an empty cage.');return true;}
+ if(!give(copy,'caught_'+a.kind)){g.message('Make space for your new passenger.');return true;}
+ p.inventory=copy;r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught! Safely packed for the journey.');g.persist?.();return true;
 }

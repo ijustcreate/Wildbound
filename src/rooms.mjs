@@ -56,6 +56,7 @@ export function cleanInput(input) {
         "drop",
         "dropOne",
         "split",
+        "pick",
         "close",
       ].includes(key)
     )

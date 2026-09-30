@@ -1,3 +1,4 @@
+import {tickFern} from './fern-art.mjs';
 // Layered, deterministic pixel vegetation. No bitmap dependencies or per-frame random spawning.
 import {forestWind} from './forest-landscape.mjs';
 import {hasForestLandscape,drawCanopyShadow,drawLandscapeCover} from './forest-art.mjs';
@@ -158,6 +159,7 @@ export function forestDecor(g){
  cache.set(g,data);return data;
 }
 export function tickForest(g,dt){
+ for(const p of g.forestLandscape?.cover||[])if(p.kind==='fern')tickFern(p,g.players||[],dt);
  if((g.generatedEnvironment||g.environment)==='forest')for(const p of g.scenery||[])if(p.procedural&&p.kind==='fern'&&hash(p.x,p.y)>.55)p.kind='bush';
  const data=forestDecor(g),players=(g.players||[]).filter(p=>p.hp>0&&!p.room&&p.moving&&!(p.jumpHeight>0));
  for(const leaf of data.leaves){for(const p of players){const dx=leaf.x+leaf.dx-p.x,dy=leaf.y+leaf.dy-p.y,d=Math.hypot(dx,dy);if(d<18){leaf.vx+=(dx/(d||1)*65+(p.faceX||0)*15)*dt;leaf.vy+=(dy/(d||1)*50+(p.faceY||0)*15)*dt;}}

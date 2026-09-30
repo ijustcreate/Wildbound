@@ -1,4 +1,6 @@
+import {seatOpeningParty} from './src/opening-board.mjs';
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
+import {hudIcon} from './src/hud-icons.mjs';
 import {tickMeltingIce} from './src/ice-crafting.mjs';
 import {petCard} from './src/hunter-pet-ui.mjs';
 import { PlayableLobby } from './src/playable-lobby.mjs';
@@ -547,6 +549,7 @@ function startGame() {
   }
   game.spriteLibrary = assets.library;
   game.environment = $("environment").value;
+  if(game.openingBoard)seatOpeningParty(game.players);
   if (!game.start()) return;
   game.difficulty = $("difficulty").value;
   game.diceCount = Number($("dice-count").value);
@@ -602,7 +605,7 @@ function renderRoster() {
       const icon = document.createElement("i");
       icon.className = "supply-icon";
       icon.setAttribute("aria-hidden", "true");
-      icon.textContent = symbol;
+      icon.append(hudIcon(kind));
       const amount = document.createElement("b");
       amount.textContent = value;
       item.append(icon, amount);
@@ -612,11 +615,13 @@ function renderRoster() {
     addSupply("potions", "Potions", count(p, "potion"), "⚗");
     addSupply("arrows", "Arrows", count(p, "arrow"), "➶");
     const dash = document.createElement("span");
-    dash.className = "roster-dash";
-    dash.textContent = "DASH " + (p.dodge > 0 ? p.dodge.toFixed(1) + "s" : "READY");
+    dash.className = "roster-dash" + (p.dodge > 0 ? "" : " ready");
+    dash.title=p.dodge>0?'Dash ready in '+p.dodge.toFixed(1)+'s':'Dash ready';
+    if(p.staminaBoost>0)dash.title+=' · Stamina '+Math.ceil(p.staminaBoost)+'s';
+    dash.setAttribute('aria-label',dash.title);dash.setAttribute('role','img');
+    dash.append(hudIcon('dash'));
+    if(p.dodge>0){const timer=document.createElement('small');timer.textContent=p.dodge.toFixed(1);dash.append(timer);}
     supplies.append(dash);
-    if (p.staminaBoost > 0)
-      dash.textContent += " · STAMINA " + Math.ceil(p.staminaBoost) + "s";
     info.append(progress, supplies);
     const mana = document.createElement("div");
     mana.className = "mana-meter";
@@ -637,7 +642,7 @@ function renderRoster() {
       mana.append(label, track);
     }
     const portrait=document.createElement('canvas');portrait.width=96;portrait.height=112;portrait.className='roster-portrait';portrait.setAttribute('aria-label',p.name+' portrait');
-    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,157);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,faceX:0,faceY:1,animationAction:'idle'},game.time);
+    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,180);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,faceX:0,faceY:1,animationAction:'idle'},game.time);
     const minions=document.createElement('div');minions.className='roster-minions';
     for(const minion of (game.ghosts||[]).filter(a=>a.owner===p.id&&a.hp>0&&!a.pet).slice(0,3)){
       const dot=document.createElement('span');dot.className='minion-dot';dot.style.setProperty('--cooldown',Math.max(0,1-minion.cooldown)*360+'deg');dot.title=minion.cooldown>0?'Ghost attack ready in '+minion.cooldown.toFixed(1)+'s':'Ghost attack ready';dot.setAttribute('aria-label',dot.title);minions.append(dot);
@@ -814,6 +819,7 @@ function pause(reason) {
   keys.clear();
   mouse.down = false;
   const ended = ["won", "lost"].includes(game.phase);
+  $('pause-dialog').dataset.ended=String(ended);
   $("pause-eyebrow").textContent =
     game.phase === "won"
       ? "THE JUNGLE REMEMBERS YOUR NAMES"
@@ -1032,7 +1038,7 @@ window.addEventListener("keydown", (e) => {
   if(screen==='lobby' && !document.querySelector('dialog[open]')) {
     if(['Enter',' '].includes(e.key))e.preventDefault();
     if(playableLobby?.key(e)) return;
-    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','Space','KeyC','KeyQ','KeyH','KeyT','KeyI','Tab','Digit2','KeyR'].includes(e.code)||(e.code==='Enter'&&game.players.some(p=>p.device==='keyboard'&&p.ui))) {
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','KeyZ','KeyX','Space','KeyC','KeyQ','KeyH','KeyT','KeyI','Tab','Digit2','KeyR'].includes(e.code)||(e.code==='Enter'&&game.players.some(p=>p.device==='keyboard'&&p.ui))) {
       e.preventDefault();keys.add(e.code);return;
     }
   }
@@ -1333,7 +1339,7 @@ function inputFrame() {
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvB:!!pad.buttons[1]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
       previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
       continue;
     }
@@ -1390,6 +1396,7 @@ function inputFrame() {
       dropOne: !!pad.buttons[2]?.pressed && !!pad.buttons[6]?.pressed,
       offhand: !!pad.buttons[3]?.pressed,
       salvage: !!pad.buttons[7]?.pressed,
+      pick: !!pad.buttons[10]?.pressed,
       close: !!pad.buttons[1]?.pressed,
     };
     previousPads.set(
@@ -1433,6 +1440,12 @@ function inputFrame() {
         ? renderer.screenToWorld(mouse.x, mouse.y)
         : null;
   inputs.keyboard = {
+    walkX:(keys.has("KeyD")?1:0)-(keys.has("KeyA")?1:0),
+    walkY:(keys.has("KeyS")?1:0)-(keys.has("KeyW")?1:0),
+    tvLeft:keys.has("ArrowLeft"),
+    tvRight:keys.has("ArrowRight"),
+    tvA:keys.has("KeyZ"),
+    tvB:keys.has("KeyX"),
     x:
       (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) -
       (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0),
@@ -1461,6 +1474,7 @@ function inputFrame() {
     store: keys.has("KeyR"),
     offhand: keys.has("Digit2"),
     salvage: keys.has('KeyV'),
+    pick: keys.has('KeyM'),
     drop: keys.has("Delete") && !keys.has("ShiftLeft") && !keys.has("ShiftRight"),
     dropOne: keys.has("Delete") && (keys.has("ShiftLeft") || keys.has("ShiftRight")),
   };
@@ -1559,7 +1573,7 @@ function frame(now) {
         c.restore();
         $("board-caption").textContent = game.roll
           ? game.roll.resolved
-            ? "The figure has landed. The jungle answers."
+            ? [game.event?.name, game.event?.tip].filter(Boolean).join(" — ")
             : game.roll.elapsed < 1.6
               ? "The dice are rolling…"
               : "Moving space " +

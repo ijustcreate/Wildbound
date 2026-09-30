@@ -15,16 +15,19 @@ export function raisedSurfaceBlocked(rect,x,y,radius,from=null,offset=0){
 export function stumpShape(p){
   if(!p.fallen||!['tree','snow_tree','palm'].includes(p.kind))return null;
   const scale=(p.size||64)/64,base=p.rootY??p.y+(p.size||64)*(p.kind==='palm'?.19:.35);
-  return {x:p.x-7*scale,y:base-4*scale,w:14*scale,h:7*scale,height:6*scale};
+  const top=p.procedural&&p.kind!=='palm'?-6:-4;
+  return {x:p.x-7*scale,y:base+top*scale,w:14*scale,h:7*scale,height:6*scale};
 }
 export function bridgeAt(g,x,y){
+  if(g?.phase==='won')return false;
   const tx=Math.floor(x/32),ty=Math.floor(y/32);
   if(tx<0||ty<0||tx>=50||ty>=50)return false;
   return g?.terrain?.[ty*50+tx]==='bridge';
 }
 export function terrainSupport(g,a,offset=0){
   let height=bridgeAt(g,a.x,a.y)&&!a.underBridge&&!a.swimming?10:0;
-  for(const p of g?.scenery||[]){const s=stumpShape(p);if(s&&a.x>=s.x&&a.x<=s.x+s.w&&a.y+offset>=s.y&&a.y+offset<=s.y+s.h)height=Math.max(height,s.height);}
+  const feet=a.y+(a.kind?offset:0);
+  for(const p of g?.scenery||[]){const s=stumpShape(p);if(s&&a.x>=s.x&&a.x<=s.x+s.w&&feet>=s.y&&feet<=s.y+s.h)height=Math.max(height,s.height);}
   return height;
 }
 export function terrainActorDepth(g,a,depth=a.y){

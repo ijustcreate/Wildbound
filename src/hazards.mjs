@@ -1,10 +1,16 @@
 import {tickSnow,drawBlizzard} from './ice-world.mjs';
+import {tickWetWeather,clearWetWeather} from './wet-weather.mjs';
+import {spawnMerchant,tickMerchant} from './traveling-merchant.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {advanceShot,clearShot} from './navigation.mjs';
 import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
 import { creatures } from "./definitions.mjs";
 export const HAZARD_EVENTS = [
+ {name:'A bargain with the bushes',type:'merchant',kind:'merchant',count:0,weight:5,verse:'A hat, a horse, a fire so bright.\nTrade well before they leave tonight.',tip:'Marlow Moss has set up camp away from the board. He stays until this map ends.'},
+ {name:'The dunes take flight',type:'sandstorm',kind:'sandstorm',environment:'desert',count:0,weight:7,duration:45,intensity:1,verse:'The desert shakes its golden mane.\nHold fast until the dunes are tame.',tip:'Sand sweeps across the dunes. Stay together until the storm passes.'},
+ {name:'A knock from the sky',type:'thunderstorm',kind:'thunderstorm',environment:'house',count:0,weight:7,duration:50,intensity:1,verse:'Who knocks above with hands of light?\nThe thunder wants to stay the night.',tip:'Take shelter inside. Wet footprints and puddles linger after the storm.'},
+ {name:'The roof remembers rain',type:'thunderstorm',kind:'thunderstorm',environment:'temple',count:0,weight:7,duration:50,intensity:1,verse:'Old stone keeps secrets, rain slips through.\nThe roof has saved a drop for you.',tip:'The temple shelters you from rain, except beneath a few leaking stones.'},
  {name:'The white hush',type:'blizzard',kind:'blizzard',environment:'ice',count:0,weight:8,duration:50,intensity:1,hp:0,speed:0,damage:0,verse:'The sky lets fall a silent sea.\nSnow swallows root and stone and knee.',tip:'Snow slows grounded creatures and gives ice more grip. Gather frost berries and winter supplies.'},
   {
     name: "The sky breaks open",
@@ -51,6 +57,8 @@ export const HAZARD_EVENTS = [
   },
 ];
 export function initHazards(g) {
+  clearWetWeather(g);
+  g.merchant=null;
   g.weather = null;g.snowDepth=0;
   g.volcanoes = [];
   g.lava = [];
@@ -76,7 +84,8 @@ export function firePatch(g, x, y, life = 2.6, damage = 3) {
   return patch;
 }
 export function startHazard(g, event) {
-  if (event.type === "monsoon" || (event.type === "blizzard" && g.generatedEnvironment==='ice')) {
+  if(event.type==='merchant'){spawnMerchant(g);return true;}
+  if (['monsoon','sandstorm','thunderstorm','blizzard'].includes(event.type)) {
     g.weather = {
       type: event.type,
       life: event.duration || 45,
@@ -142,6 +151,7 @@ export function startHazard(g, event) {
   return false;
 }
 export function tickHazards(g, dt) {
+  tickMerchant(g,dt);
   tickSnow(g,dt);
   for (const b of g.fireballs || []) {
     if(!advanceShot(g,b,dt,3))continue;
@@ -226,6 +236,7 @@ export function tickHazards(g, dt) {
     g.weather.life -= dt;
     if (g.weather.life <= 0) g.weather = null;
   }
+  tickWetWeather(g,dt);
   for (const v of g.volcanoes) {
     v.life -= dt;
     v.timer -= dt;
@@ -350,13 +361,18 @@ export function tickHazards(g, dt) {
 export function drawWeather(ctx, g, w, h) {
   if (!g.weather) return;
   if(drawBlizzard(ctx,g,w,h))return;
+  if(g.weather.type==='sandstorm'){
+    ctx.save();ctx.fillStyle='#b28c4830';ctx.fillRect(0,0,w,h);
+    for(let i=0;i<180;i++){const x=(terrainHash(i,31)*w+g.time*(75+i%37))%w,y=terrainHash(i,71)*h+Math.sin(g.time*2+i)*5;ctx.globalAlpha=.15+terrainHash(i,9)*.35;ctx.fillStyle=i%3?'#dfbf7c':'#8a693f';ctx.fillRect(x,y,3+i%5,1);}ctx.restore();return;
+  }
   const intensity = Math.min(2, g.weather.intensity);
   ctx.fillStyle = "#10283544";
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = "#c7e5ea";
   ctx.font = "7px monospace";
   ctx.textAlign = "left";
-  ctx.fillText("MONSOON · " + Math.ceil(g.weather.life) + "s", 12, 65);
+  ctx.fillText((g.weather.type==='thunderstorm'?'THUNDERSTORM':'MONSOON')+" · " + Math.ceil(g.weather.life) + "s", 12, 65);
+  if(g.weather.type==='thunderstorm'&&(g.time%9<.08||(g.time%9>.2&&g.time%9<.25))){ctx.fillStyle='#e9f5ff30';ctx.fillRect(0,0,w,h);}
 }
 export function drawHazards(ctx, g) {
   for (const f of g.firePatches || []) {

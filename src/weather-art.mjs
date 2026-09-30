@@ -1,4 +1,5 @@
 import { nearbyScenery } from "./performance.mjs";
+import {rainActive,sheltered} from './wet-weather.mjs';
 import { sightRadius } from './night-cycle.mjs';
 import { terrainHash } from "./world.mjs";
 import { rules } from "./definitions.mjs";
@@ -73,7 +74,7 @@ export function drawFog(ctx, g, camera, w, h) {
   ctx.restore();
 }
 export function drawRain(c, g, camera, w, h) {
-  if (g.weather?.type !== "monsoon") return;
+  if (!rainActive(g)) return;
   const left = camera.x - w / camera.zoom / 2 - 100,
     top = camera.y - h / camera.zoom / 2 - 30;
   const right = left + w / camera.zoom + 200,
@@ -87,6 +88,7 @@ export function drawRain(c, g, camera, w, h) {
         phase = cycle % 1;
       const x = tx * 28 + terrainHash(tx + Math.floor(cycle), ty) * 28,
         y = ty * 28 + seed * 28;
+      if(sheltered(g,{x,y}))continue;
       let hitY = y,
         canopy = false;
       for (const p of nearbyScenery(g.scenery, x, y, 0)) {

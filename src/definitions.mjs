@@ -173,9 +173,11 @@ export function creatureDefaults(kind) {
     name: kind,
     faction: kind.startsWith("explorer") ? "ally" : "enemy",
     aiKind: kind,
+    startArea: kind === "crocodile" ? "deep_water" : "any",
     rig,
     behaviors: {
       health: true,
+      requiredStartArea: kind === "crocodile",
       loot: false,
       hunt: true,
       jump: ["monkey","lion","tiger","panther"].includes(kind),
@@ -592,6 +594,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
       throw Error("Invalid rig: " + k);
     creatures[k] = {
       ...c,
+      startArea:c.startArea||creatureDefaults(k).startArea,
       behaviors: { ...creatureDefaults(k).behaviors, ...c.behaviors },
       stats: { ...creatureDefaults(k).stats, ...c.stats },
     };
@@ -649,12 +652,15 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "spider",
           "gorilla",
           "blizzard",
+          "sandstorm",
+          "thunderstorm",
+          "merchant",
           "white_lion",
           "snow_leopard",
           "dragon",
   "fire_elemental",
   "water_elemental",
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }

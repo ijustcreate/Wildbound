@@ -1,3 +1,5 @@
+import {START_AREAS,START_AREA_LABELS,eventStartingAreas} from './starting-area.mjs';
+import {BoardEditor} from './board-editor.mjs';
 import {ComboEditor} from './combo-editor.mjs';
 import {forestSettings,saveForestSettings,TREE_TYPES,drawForestTree} from './forest.mjs';
 import {ParticleEditor} from './particle-editor.mjs';
@@ -111,6 +113,7 @@ export class Designer {
       { key: "health", title: "Health", eyebrow: "Vitals", description: "Makes this unit damageable and keeps it in the world until defeated.", icon: "♡", fields: [["Hit points", "hp", 1, 1500]] },
       { key: "loot", title: "Loot", eyebrow: "Rewards", description: "Adds a loot table with multiple drops and conditional rewards.", icon: "◇", fields: [] },
       { key: "hunt", title: "Hunt", eyebrow: "Navigation", description: "Tracks nearby targets and keeps the unit engaged.", icon: "◎", fields: [["Detection radius", "detection", 0, 1500]] },
+      { key:"requiredStartArea",title:"Required starting area",eyebrow:"Spawning",description:"Only starts on matching terrain. Events containing this unit require that area on the map.",icon:"◇",fields:[] },
       { key: "jump", title: "Jump", eyebrow: "Locomotion", description: "Adds a vertical leap to the unit's movement kit.", icon: "↟", fields: [["Jump impulse", "jumpImpulse", 0, 600]] },
       { key: "dash", title: "Dash", eyebrow: "Locomotion", description: "A fast directional burst with a tunable reach.", icon: "➜", fields: [["Cooldown", "dashCooldown", 0, 10], ["Distance", "dashDistance", 0, 500], ["Speed", "dashSpeed", 0, 1000]] },
       { key: "circle", title: "Circle", eyebrow: "Navigation", description: "Orbits the target to create a less predictable threat.", icon: "◌", fields: [["Attack range", "attackRange", 0, 500]] },
@@ -195,7 +198,8 @@ export class Designer {
       if (def.stats[key] === undefined) def.stats[key] = key === "jumpImpulse" ? 125 : key === "damage" ? def.stats.damage : 0;
       this.field(fields, label, def.stats, key, { min, max, step: key.includes("Cooldown") || key.includes("Duration") || key.includes("windup") || key.includes("recovery") ? 0.1 : 1 });
     }
-    if (!module.fields.length) fields.append(element("span", module.key === "loot" ? "Configure entries in the Loot table below" : "No tuning required"));
+    if(module.key==='requiredStartArea'){def.startArea ||= 'deep_water';this.field(fields,'Starting area',def,'startArea',{options:START_AREAS,optionLabels:START_AREA_LABELS});}
+    if (!module.fields.length&&module.key!=='requiredStartArea') fields.append(element("span", module.key === "loot" ? "Configure entries in the Loot table below" : "No tuning required"));
     card.append(fields); parent.append(card);
   }
   eventEnemyDefaults(event) {
@@ -230,11 +234,12 @@ export class Designer {
     const header=this.dialog.querySelector(':scope > header'),nav=this.dialog.querySelector(':scope > nav'),body=element('main');body.className='studio-body';body.id='studio-panel';body.setAttribute('role','tabpanel');body.setAttribute('aria-label',this.tab);
     for(const child of [...this.dialog.children])if(child!==header&&child!==nav)body.append(child);this.dialog.append(body);
     nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor jobs');
-    const labels=['Players','Creature','Rules','Items','Events','House Builder','Particles','Combos','Forest'];
+    const labels=['Players','Creature','Rules','Items','Events','House Builder','Particles','Combos','Forest','Board'];
     [...nav.children].forEach((b,i)=>{const active=labels[i]===this.tab;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(active));b.setAttribute('aria-controls','studio-panel');b.tabIndex=active?0:-1;b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?labels.length-1:(i+(e.key==='ArrowLeft'?-1:1)+labels.length)%labels.length;this.tab=labels[next];this.render();this.dialog.querySelector('[aria-selected="true"]')?.focus();};});
   }
   render() {
     this.particleEditor?.stop();
+    this.boardEditor?.stop();
     this.comboEditor?.stop();
     if (rigSubject(this.kind) && this.tab === "Rig & animation") {
       this.tab = "Players";
@@ -262,6 +267,7 @@ export class Designer {
       "Particles",
       "Combos",
       "Forest",
+      "Board",
     ])
       this.button(
         nav,
@@ -281,6 +287,7 @@ export class Designer {
       this.playerStudio.mount(root);
       this.shell();return;
     }
+    if(this.tab==='Board'){this.boardEditor ||= new BoardEditor(this.events);const root=element('section');this.dialog.append(root);this.boardEditor.mount(root);this.shell();return;}
     if(this.tab==='Forest'){
       const root=element('section');root.style.padding='20px';root.append(element('h2','Procedural forest'));
       root.append(element('p','Trees use seeded trunk, branch and foliage layers. Seasons and leaf habits apply live; save to retain them on this device.'));
@@ -768,13 +775,16 @@ export class Designer {
       const fields = element("div");
       fields.className = "studio-fields";
       const event = this.events[this.eventIndex];
+      event.requiredStartArea ||= 'any';
+      this.field(fields,'Required map area',event,'requiredStartArea',{options:START_AREAS,optionLabels:START_AREA_LABELS});
+      const required=eventStartingAreas(event);fields.append(element('p','Unit requirements are always enforced: '+(required.map(a=>START_AREA_LABELS[a]).join(', ')||'none')+'. Events are excluded when a required area is missing.'));
       event.type ??= "encounter";
       event.weight ??= 10;
       event.duration ??= 45;
       event.spread ??= 0.45;
       event.intensity ??= 1;
       this.field(fields, "Event type", event, "type", {
-        options: ["encounter", "monsoon", "blizzard", "volcano", "stampede"],
+        options: ["encounter", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede"],
       });
       for (const k of ["weight", "duration", "spread", "intensity"])
         this.field(fields, k, event, k, { min: 0, max: 1000 });

@@ -13,6 +13,15 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip and press Attack near a critter. Requires an empty jar for small creatures or a cage for birds and scavengers.'},
+  empty_jar:{name:'Empty critter jar',stack:12,color:'#abdcd9',sellPrice:2,description:'One jar holds one small critter. Use a catcher net nearby.'},
+  critter_cage:{name:'Travel cage',stack:6,color:'#b69b67',sellPrice:4,description:'Holds a caught bird, mouse or scavenger.'},
+  caught_frog:{name:'Frog in a jar',stack:1,color:'#85aa62',sellPrice:7,description:'A damp passenger with strong opinions about dinner.'},
+  caught_dragonfly:{name:'Dragonfly in a jar',stack:1,color:'#85c6cd',sellPrice:6},
+  caught_fairy:{name:'Fairy in a jar',stack:1,color:'#c7a1dd',sellPrice:12},
+  caught_bird:{name:'Bird in a cage',stack:1,color:'#bca477',sellPrice:9},
+  caught_white_mouse:{name:'Snow mouse in a cage',stack:1,color:'#e5e7dc',sellPrice:7},
+  caught_scavenger:{name:'Critter in a cage',stack:1,color:'#9b886f',sellPrice:7},
   ice_arrow:{name:'Ice arrow',stack:99,color:'#83dcff',description:'Blue-tipped ammunition. Freezes enemies and creates frost where it lands. Load into the quiver.'},
   ice_arrow_recipe:{name:'Recipe: Ice arrows',stack:1,color:'#95dfea',recipe:true,description:'Use to learn Ice arrows in the Field Guild. Makes 20: 20 arrows + 20 Magic Essence + 3 raw ice.'},
   raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'Melts after five minutes outside the ice level. Used to craft ice arrows.'},

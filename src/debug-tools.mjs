@@ -972,12 +972,13 @@ export function installDebugTools(ctx) {
       ctx.game.players[0].faceY = 1;
       fakePads[1].buttons[0].pressed = true;
       ctx.game.update(0.05, ctx.inputFrame());
-      check("Wrong controller cannot trigger board roll", () => !ctx.game.roll);
+      check("An unassigned controller can begin the opening round", () => ctx.game.roll?.playerId===ctx.game.players[1].id);
+      const firstOwner=ctx.game.roll?.playerId;
       fakePads[0].buttons[0].pressed = true;
       ctx.game.update(0.05, ctx.inputFrame());
       fakePads[0].buttons[0].pressed = false;
       ctx.game.update(0.05, ctx.inputFrame());
-      check("Current controller attack rolls the board", () => !!ctx.game.roll);
+      check("Another controller cannot replace an active roll", () => ctx.game.roll?.playerId===firstOwner);
       fakePads[0].buttons[9].pressed = true;
       ctx.inputFrame();
       check(
@@ -1378,6 +1379,7 @@ export function installDebugTools(ctx) {
       },
     );
     check("Storage walking updates facing and animation distance", () => {
+      ctx.game.roll=null;ctx.game.openingBoard=false;
       const before = p.roomStep || 0;
       ctx.game.update(0.05, { [p.device]: { x: 1, y: 0 } });
       const moving = p.roomMoving && p.faceX === 1 && p.roomStep > before;

@@ -6,9 +6,9 @@ import {navigateEnemy} from './navigation.mjs';
 export function arrowDrop(g,a,qty=1,source='Recovered arrows'){
  const type=ARROW_TYPES.includes(a.ammoType||a.type)?a.ammoType||a.type:'arrow';
  const nearby=g.loot.find(l=>l.type===type&&!!l.surfaceEmbedded===!!a.surfaceEmbedded&&Math.abs((l.z||0)-(a.z||0))<8&&Math.hypot(l.x-a.x,l.y-a.y)<24);
- if(nearby){nearby.qty+=qty;return nearby;}
+ if(nearby){nearby.qty+=qty;if(Number.isFinite(a.impactTime))nearby.impactTime=a.impactTime;return nearby;}
  const item={id:g.nextId++,x:a.x,y:a.y,z:a.z||0,type,qty,source,manualPickup:true,embedded:true,
-  angle:a.angle??0,shaftLength:a.shaftLength||24,embedDepth:a.embedDepth||5,...(a.surfaceEmbedded?{surfaceEmbedded:true}:{})};
+  angle:a.angle??0,shaftLength:a.shaftLength||24,embedDepth:a.embedDepth||5,...(Number.isFinite(a.impactTime)?{impactTime:a.impactTime}:{}),...(a.surfaceEmbedded?{surfaceEmbedded:true}:{})};
  g.loot.push(item);return item;
 }
 export function arrowScenery(g,x,y){

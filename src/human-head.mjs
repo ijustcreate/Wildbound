@@ -7,7 +7,7 @@ export function skinPalette(base) {
     palettes.set(base, { base, ink: '#302b2b',
       shadow: mixGearColor(base, '#523637', .3),
       light: mixGearColor(base, '#fff1d0', .25),
-      blush: mixGearColor(base, '#9f4d47', .27) });
+      blush: mixGearColor(base, '#e78486', .38) });
   }
   return palettes.get(base);
 }
@@ -24,7 +24,7 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
   const turn = direction === 0 || direction === 4 ? 0 : direction < 4 ? -1 : 1;
   if (!foreground) {
     r(-3,-6,7,1,p.ink); r(-4,-5,9,1,p.ink);r(-5,-4,11,6,p.ink);
-    r(-4,2,9,2,p.ink); r(-2,4,5,1,p.ink);
+    r(-4,2,9,1,p.ink); r(-3,3,7,1,p.ink);r(-1,4,3,1,p.shadow);
     r(-4,-4,9,6,p.shadow); r(-3,-5,7,1,p.base);
     r(-3,-4,6,6,p.base); r(-2,2,5,2,p.shadow);
     r(-3,-3,3,3,p.light); r(-2,2,3,1,p.base);
@@ -38,6 +38,16 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
     const dx = q.x-h.x-side*4*Math.cos(angle), dy = q.y-h.y-side*2*Math.sin(angle);
     // The near ear crosses the silhouette as the head turns, not the face edge.
     const earX = ([side*5,3,1,-4,-side*5,4,-1,-3][direction]) + dx;
+    if(look?.face==='elf'){
+      const outward=earX<0?-1:earX>0?1:side;
+      for(let n=0;n<4;n++){
+        const x=earX+outward*n;
+        r(x,dy-1-n,1,4-n,p.ink);
+        r(x,dy-n,1,Math.max(1,3-n),n>1?p.light:p.base);
+      }
+      r(earX,dy,1,1,p.blush);
+      continue;
+    }
     const covered=['bob','long','curls'].includes(look?.hair);
     if(covered&&back)continue;
     if(covered){
@@ -55,24 +65,28 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
     const x = Math.round(q.x-h.x), y = Math.round(q.y-h.y);
     if(look?.eyesClosed){r(x-1,y,2,1,p.shadow);continue;}
     r(x-1,y-2,2,1,p.shadow);
-    r(x,y,1,2,outline);
+    const pupil=profile?turn:turn?turn:0;
+    r(x-1,y,3,2,'#fff3df');
+    r(x+pupil,y,1,2,outline);
+    r(x-1,y-1,3,1,p.shadow);
+    r(x-1,y+2,2,1,p.blush);
   }
   if (visible('nose')) {
     const q = points.nose;
-    const x = Math.round(q.x-h.x) + (profile ? turn : 0);
+    const x = Math.round(q.x-h.x);
     const y = Math.round(q.y-h.y) - (profile ? 0 : 1);
     if (profile) {
-      r(x+(turn<0?-1:0),y,2,3,p.ink);
-      r(x+(turn<0?-1:0),y,2,2,p.base);
-      r(x,y,1,1,p.light);
+      r(x,y,1,2,p.base);
+      r(x,y,1,1,p.light);r(x,y+2,1,1,p.blush);
+      r(x+turn*2,y+1,1,1,p.base);
     } else {
-      r(x,y-1,1,2,p.light); r(x+1,y+1,1,1,p.shadow);
+      r(x,y,1,1,p.light);r(x,y+1,1,1,p.blush);
     }
   }
   if (visible('mouth')) {
     const x = Math.round(points.mouth.x-h.x) - (profile ? 0 : 1);
-    const y = Math.round(points.mouth.y-h.y + (profile ? 1.5 : 0));
-    r(x,y,2,1,p.shadow);
+    const y = Math.min(3,Math.round(points.mouth.y-h.y + (profile ? .5 : 0)));
+    r(x,y,profile?1:2,1,p.blush);
   }
   const cheek = profile ? turn*2 : turn ? -turn*2 : -3;
   if (look?.face === 'freckles') {

@@ -97,8 +97,20 @@ export function directionalHelmet(c, id, h, d, cosmetics = {}) {
     }
   }
   if(style==='hood') {r(-5,3,11,2,p.ink);r(-4,3,9,1,p.base);}
-  if(style==='horned') for(const x of [-8,6]) {
-    r(x,-10,3,6,p.ink);r(x+1,-10,1,5,p.shine);r(x,-6,3,1,p.trim);
+  if(style==='horned') {
+    // Horns turn with the skull: one silhouette in profile, two in front/rear.
+    const horns=side?[{x:d===2?2:-3,sign:d===2?1:-1,far:false}]:
+      [{x:-5,sign:-1,far:d===1||d===3},{x:5,sign:1,far:d===5||d===7}];
+    for(const {x,sign,far} of horns){
+      const reach=far?2:3,rise=far?4:5;
+      r(x-1,-7,3,3,p.ink);r(x,-7,1,2,p.trim);
+      for(let n=0;n<rise;n++){
+        const bend=Math.min(reach,Math.floor(n/2)),xx=x+sign*bend;
+        r(xx-1,-8-n,n===rise-1?2:3,1,p.ink);
+        r(xx,-8-n,1,1,far?p.dark:n<3?p.trim:p.shine);
+      }
+    }
+    r(front,-8,1,4,p.light);
   }
   if(style==='mask'&&!back) {
     r(-5,-2,11,6,p.ink);r(-4,-2,9,5,p.base);r(-4,-2,2,4,p.light);

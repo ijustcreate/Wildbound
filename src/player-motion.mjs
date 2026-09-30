@@ -1,3 +1,4 @@
+import {drawTorchFlame} from './torch-flame.mjs';
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
 import { fitHeroGrip } from './hero-generation.mjs';
@@ -398,6 +399,14 @@ export function bowHandleWorld(actor,time,model=playerMotion,size=43){
   return {x:actor.x+(hand.x+x*Math.cos(rotation)-y*Math.sin(rotation))*size/48,
     y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)+(hand.y+x*Math.sin(rotation)+y*Math.cos(rotation))*size/48};
 }
+// Keep a readable curve when the bow's plane is nearly edge-on to the camera.
+export function bowRigGeometry(hand,d,length=10,carried=false){
+  const bend=projectPoint([0,-4,0],d);
+  if(carried)bend.x=(Math.sign(hand.x)|| (d<4?-1:1))*4;
+  if(Math.abs(bend.x)<2.5)bend.x=(d<4?-1:1)*3.5;
+  return {top:{x:hand.x+bend.x,y:hand.y+bend.y-length},
+    mid:hand,bottom:{x:hand.x+bend.x,y:hand.y+bend.y+length}};
+}
 export function wandTipWorld(actor,slot,time,model=playerMotion,size=43){
   const d=facingIndex(actor.faceX,actor.faceY),side=slot==='hand1'?'R':'L',joint='hand'+side;
   const pose=playerPose(actor,time,model);
@@ -546,6 +555,15 @@ export function playerPose(actor,time,model=playerMotion){
   if(model.artGeneration===3)applyIK(model,pose);
   const equipment=playerEquipmentAction(actor,time,model),action=equipment.action,t=equipment.frame/(model.clips[action]?.length-1||1);
   fitCombatLoadout(pose,model,action,t,['hand1','hand2'].map(slot=>itemKind(actor.equipment?.[slot])));
+  if(itemKind(actor.equipment?.hand1)==='bow'&&['draw','ranged'].includes(action)){
+    pose.handL[0]-=2.5;applyIK(model,pose);
+  }
+  if(itemKind(actor.equipment?.hand1)==='bow'&&!['draw','ranged','death','sleep'].includes(action)){
+    // Carry away from the torso so side/rear locomotion does not swallow the bow.
+    pose.handL[0]-=3;pose.handL[1]=Math.max(6,pose.handL[1]);
+    pose.elbowL[0]-=1.5;pose.elbowL[1]+=2;
+    applyIK(model,pose);
+  }
   return fitHeroGrip(pose,actor,model,action);
 }
 export function playerEquipmentAction(actor,time,model=playerMotion){
@@ -885,7 +903,9 @@ export function drawPlayer(
         rotateJoint('hand'+side,hand,()=>wear(side === "R" ? "hand1" : "hand2", hand, () => {
           if (weapon === "lantern" || weapon === "torch") {
             drawItem(c, weaponId, hand.x, hand.y + (weapon === "lantern" ? 5 : -7), 15);
+            if(weapon === "torch")drawTorchFlame(c,hand.x,hand.y-11,time,d*.17+(side==="L"?2:0));
           }
+          if(weapon==='critter_net')drawItem(c,weaponId,hand.x,hand.y-8,24);
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
             const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
@@ -1203,20 +1223,19 @@ export function drawPlayer(
   );
   if (itemKind(gear.hand1) === "bow")
     add(
-      (p.handL.depth + p.handR.depth) / 2 + 0.2,
+      p.handL.depth + 0.6,
       () => {
         rotateJoint('handL',p.handL,()=>wear("hand1", p.handL, () => {
           const hand = p.handL;
           const style=ITEMS[gear.hand1]?.style,material=gearPalette(gear.hand1);
-          const length=style==='longbow'?10:8;
+          const length=style==='longbow'?12:10;
           const facing=d>0&&d<4?-1:1,bulge=(d===2||d===6)?3:5;
           let top = { x: hand.x + facing, y: hand.y - length },
             mid = { x: hand.x + facing*bulge, y: hand.y },
             bottom = { x: hand.x + facing, y: hand.y + length };
           const action=equipmentPose.action,aimed=['draw','ranged'].includes(action),t=equipmentPose.frame/(model.clips[action]?.length-1||1);
           if(model.combatRevision===4){
-            const a=projectPoint([0,-3,length],d),b=projectPoint([0,-3,-length],d);
-            top={x:hand.x+a.x,y:hand.y+a.y};bottom={x:hand.x+b.x,y:hand.y+b.y};mid=hand;
+            ({top,mid,bottom}=bowRigGeometry(hand,d,length,!aimed));
           }
           limb(c,top,mid,3,material.ink);limb(c,mid,bottom,3,material.ink);
           limb(c, top, mid, 1.5, ITEMS[gear.hand1]?.artColor || "#d4ac69");
@@ -1232,6 +1251,15 @@ export function drawPlayer(
           if (actor.charge > 0 || sculpted&&aimed&&!(model.combatRevision===4&&action==='ranged'&&t>.1)){
             const v=model.combatRevision===4?projectPoint([0,12,0],d):{x:facing*12,y:0};
             limb(c, p.handR, { x: hand.x + v.x, y: hand.y+v.y }, 1, "#dfc693");
+            const tip={x:hand.x+v.x,y:hand.y+v.y};
+            ellipse(c,tip.x,tip.y,1.5,1.5,'#dce7df');
+            if(actor.charge>0){
+              const power=Math.min(1,actor.charge/1.2),pulse=.5+.5*Math.sin(time*(power===1?18:10));
+              const radius=power===1?3:1+power+pulse;
+              limb(c,{x:tip.x-radius,y:tip.y},{x:tip.x+radius,y:tip.y},1,power===1?'#fff0a2':'#d5eedd');
+              limb(c,{x:tip.x,y:tip.y-radius},{x:tip.x,y:tip.y+radius},1,power===1?'#fff0a2':'#d5eedd');
+              pixel(tip.x,tip.y,1,1,'#ffffff');
+            }
           }
         }));
       },

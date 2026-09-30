@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {LOBBY_OBJECTS,LobbyState,PlayableLobby,moveLobbyCharacter} from '../src/playable-lobby.mjs';
+import {LOBBY_OBJECTS,LobbyState,PlayableLobby,moveLobbyCharacter,lobbyCamera} from '../src/playable-lobby.mjs';
 import {Game} from '../src/core.mjs';
 import {LobbyPractice} from '../src/lobby-practice.mjs';
 import {playerFrame,defaultPlayerMotion} from '../src/player-motion.mjs';
@@ -37,9 +37,9 @@ test('Interactions require a spawned character near an object; lobby positions d
   s.x=60;s.y=560;assert.equal(lobby.nearest(p),undefined);
 });
 
-test('Explorer station sits right of the target lever and opens on hold Y',()=>{
+test('Explorer station occupies the former map position and opens on hold Y',()=>{
   const lever=LOBBY_OBJECTS.find(o=>o.id==='target-lever'),station=LOBBY_OBJECTS.find(o=>o.id==='character-station');
-  assert.ok(station.x>lever.x);assert.equal(station.y,lever.y);
+  assert.equal(station.x,635);assert.equal(station.y,165);const map=LOBBY_OBJECTS.find(o=>o.id==='environment'),dice=LOBBY_OBJECTS.find(o=>o.id==='dice-count');assert.deepEqual([map.x,map.y],[625,548]);assert.deepEqual([dice.x,dice.y],[780,548]);
   const game=new Game(),p=game.addPlayer('keyboard');
   const lobby=Object.create(PlayableLobby.prototype);let opened=null;
   Object.assign(lobby,{getGame:()=>game,state:new LobbyState(),practice:new LobbyPractice(),sync(){},draw(){},area:{querySelector:()=>({textContent:''})},openCharacterStation(player){opened=player;}});
@@ -68,4 +68,14 @@ test('Lobby inventory equips the saved hero, blocks practice input, and cancels 
   tick({});tick({'pad:0':{inventory:true}});assert.equal(q.ui.panel,'pack');assert.equal(p.ui,null);
   tick({});tick({'pad:0':{inventory:true}});assert.equal(q.ui,null);
   game.start();assert.equal(p.equipment.hand1,'sword');
+});
+
+test('Lobby camera fits the room and outer station labels at common viewport sizes',()=>{
+  for(const [w,h] of [[1264,600],[1904,970],[784,470],[600,740]]){
+    const camera=lobbyCamera(w,h);
+    for(const [x,y] of [[0,6],[1024,614],...LOBBY_OBJECTS.map(o=>[o.x,o.y+58])]){
+      const sx=w/2+(x-camera.x)*camera.zoom,sy=h/2+(y-camera.y)*camera.zoom;
+      assert.ok(sx>=-.001&&sx<=w+.001&&sy>=-.001&&sy<=h+.001);
+    }
+  }
 });

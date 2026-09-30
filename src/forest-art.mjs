@@ -1,3 +1,5 @@
+import {waterAt} from './environment.mjs';
+import {drawJungleFern} from './fern-art.mjs';
 import {forestHash as hash, forestNoise as noise, forestWind, clearingDistance, routeDistance} from './forest-landscape.mjs';
 
 const rect = (c, x, y, w, h, color) => {
@@ -82,9 +84,9 @@ export function drawForestBank(c, g, x, y, kind) {
   if (!['shallow', 'water', 'floodbridge'].includes(kind)) return;
   const terrain = g.terrain, tx = x / 32, ty = y / 32;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-    if (terrain[(ty + dy) * 50 + tx + dx] !== 'grass') continue;
+    if (waterAt(g,(tx+dx)*32+16,(ty+dy)*32+16) !== 'grass') continue;
     for (let k = 0; k < 32; k += 4) {
-      const depth = 3 + Math.floor(noise((x + k) / 38, (y + k) / 38, g.seed) * (kind==='shallow'?22:4));
+      const depth = 3 + Math.floor(noise((x + k) / 38, (y + k) / 38, g.seed) * (kind==='shallow'?5:4));
       const px = dx ? x + (dx < 0 ? 0 : 32 - depth) : x + k;
       const py = dy ? y + (dy < 0 ? 0 : 32 - depth) : y + k;
       rect(c, px, py + 2, dx ? depth : 4, dy ? depth : 4, '#315b4b');
@@ -123,10 +125,7 @@ export function drawLandscapeCover(c, g, visible) {
     const wind = Math.round(forestWind(p.x, p.y, g.time) * 2);
     const shade = noise(p.x / 235, p.y / 235, plan.seed) < .45;
     if (p.kind === 'fern') {
-      for (let i = 0; i < 4; i++) for (const sign of [-1, 1]) {
-        rect(c, p.x + sign * i * 2 + wind, p.y - i * 2, 4, 2, shade ? '#447553' : '#6d9653');
-        rect(c, p.x + sign * i * 2 + wind, p.y - i * 2 - 1, 2, 1, '#a3b76b');
-      }
+        drawJungleFern(c,p,g.time);
     } else {
       for (let i = 0; i < 3; i++) {
         const height = 3 + hash(i, p.seed) * 7;

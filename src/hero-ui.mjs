@@ -1,4 +1,6 @@
 import {drawTempleRoom} from './temple.mjs';
+import {drawWetDrips} from './wet-weather.mjs';
+import {merchantPanel} from './traveling-merchant.mjs';
 import {ARROW_TYPES,quiverType} from './arrow-supplies.mjs';
 import { INVENTORY_TABS, inventoryCategory, tabIndices, bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
 import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
@@ -60,17 +62,13 @@ export class HeroUI {
       tip.hidden = false;
       const r = button.getBoundingClientRect(), pr = panel.getBoundingClientRect();
       const bx = r.left - pr.left, by = r.top - pr.top;
-      const candidates = [
-        [r.right - pr.left + 6, by],
-        [bx - tip.offsetWidth - 6, by],
-        [bx, by - tip.offsetHeight - 6],
-        [bx, r.bottom - pr.top + 6],
-      ];
-      const fits = ([x, y]) => x >= 4 && y >= 4 && x + tip.offsetWidth <= pr.width - 4 && y + tip.offsetHeight <= pr.height - 4;
-      const clear = ([x, y]) => x + tip.offsetWidth < bx - 2 || x > r.right - pr.left + 2 || y + tip.offsetHeight < by - 2 || y > r.bottom - pr.top + 2;
-      const [x, y] = candidates.find((candidate) => fits(candidate) && clear(candidate)) || candidates.find(fits) || candidates[2];
-      tip.style.left = `${Math.max(4, Math.min(pr.width - tip.offsetWidth - 4, x))}px`;
-      tip.style.top = `${Math.max(4, Math.min(pr.height - tip.offsetHeight - 4, y))}px`;
+      const gap=8,tw=tip.offsetWidth,th=tip.offsetHeight;
+      const x=Math.max(4,Math.min(pr.width-tw-4,r.right-pr.left+gap));
+      const preferred=r.bottom-pr.top+gap;
+      const y=preferred+th<=pr.height-4?preferred:Math.max(4,by-th-gap);
+      tip.style.left=x+'px';tip.style.top=y+'px';
+      tip.style.setProperty('--tether-x',Math.max(4,Math.min(tw-4,r.right-pr.left-x))+'px');
+      tip.classList.toggle('tooltip-above',y<by);
       tip.hidden = false;
     };
     const hide = () => { const tip = panel.querySelector('.item-tooltip'); if (tip) tip.hidden = true; };
@@ -117,6 +115,8 @@ export class HeroUI {
         p.ui?.shop,
         p.ui?.notice,
         p.ui?.tab,
+        p.ui?.page,game.merchant?.revision,
+        JSON.stringify(p.ui?.carry||null),
         JSON.stringify(p.ui?.split || null),
         JSON.stringify(p.ui?.bag || null),
         game.phase, game.environment,
@@ -236,6 +236,8 @@ export class HeroUI {
           ),
         );
         }
+      } else if(p.ui?.shop==='merchant'){
+        merchantPanel(panel,game,p,button);
       } else if (p.ui?.shop) {
         shopPanel(panel, game, p, button);
       } else if (p.ui && !p.ui.shop) {
@@ -260,7 +262,7 @@ export class HeroUI {
     }
     for(const panel of this.panels.values()){
       const selected=panel.querySelector('.storage-sheet.active .selected');
-      if(panel.revealSelection)selected?.scrollIntoView({block:'nearest',inline:'nearest'});
+      if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest'});
       if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split&&(panel.hero?.device!=='keyboard'||panel.revealSelection)){
         if(selected?.showItemTooltip){if(panel.tooltipSelection!==selected||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)selected.showItemTooltip();panel.tooltipSelection=selected;}
         else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
@@ -463,6 +465,8 @@ export class HeroUI {
           () => { select(mode, n); if (def?.bag) u.bag = {mode, index:n, selected:0}; },
         );
         b.classList.toggle("selected", active && n === index);
+        b.classList.toggle('carried-source',!!u.carry&&u.carry.from.mode===mode&&(gear?u.carry.from.slot===item.slot:u.carry.from.index===n));
+        b.classList.toggle('carry-target',!!u.carry&&active&&n===index);
         b.dataset.index = n;
         b.dataset.mode = mode;
         if (def?.bag) b.ondblclick = () => { select(mode, n); u.bag = {mode, index:n}; };
@@ -485,6 +489,7 @@ export class HeroUI {
         if (def) this.itemTooltip(panel, b, game, p, item);
         if (def) b.removeAttribute('title');
         if (def?.slot) b.style.color = def.color;
+        if(!gear&&item?.qty>1){b.textContent='';b.append(el('span',String(item.qty),'inventory-quantity'));}
         if (def) {
           const icon = el("canvas");
           icon.width = icon.height = 24;
@@ -547,6 +552,7 @@ export class HeroUI {
       );
       const actions = el("div", null, "inventory-actions");
       const pad=controllerButtonNames(p.controllerFamily||'generic'),keyboard=p.device==='keyboard';
+      if(active&&(def||u.carry))actions.append(button((keyboard?'M':'LS')+' · '+(u.carry?'Place':'Move'),'move-item',()=>act(mode,'pick')));
       const hints={use:keyboard?'Enter':pad[0],equip:keyboard?'Enter':pad[0],equipOffhand:keyboard?'2':pad[3],store:keyboard?'R':pad[2],split:keyboard?'2':pad[3],drop:keyboard?'Delete':pad[2],dropOne:keyboard?'Shift+Delete':'LT+'+pad[2]};
       if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)&&!(gear&&p.equipment[item.slot]==='occupied')){
         sheet.append(el('p',`${'◆'.repeat(item.sockets?.length||0)}${'◇'.repeat(Math.max(0,socketCount(item.type)-(item.sockets?.length||0)))} · Item mana +${gearStat(item.type,item.sockets,'maxMana')}`,'socket-summary'));
@@ -608,7 +614,7 @@ export class HeroUI {
     }
     const controls = this.controllerText(game, p);
     const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
-    panel.append(el('small',`${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.close}: close`,'inventory-help'));
+    panel.append(el('small',u.carry?`Moving ${u.carry.name} · ${p.device==='keyboard'?'M / Enter':'LS / A'}: place · ${controls.close}: cancel`:`${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.close}: close`,'inventory-help'));
     this.inventoryPopovers(panel, game, p, button);
   }
 
@@ -695,7 +701,7 @@ export class HeroUI {
     c.restore();
   }
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), open = game.players.filter((q) => q.ui || q.room)) {
-    if(panel.classList.contains('storage-session')&&!p.ui?.shop){
+    if(panel.classList.contains('storage-session')&&(!p.ui?.shop||p.ui.shop==='merchant')){
       const index=Math.max(0,open.findIndex(q=>q.id===p.id)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/3);
       const width=Math.min(480,(bounds.width-16)/cols-8),height=(bounds.height-16)/rows;
       const left=cols===1?8:cols===2?(index%cols===0?8:bounds.width-width-8):(index%3)*(bounds.width/3)+8;
@@ -773,7 +779,7 @@ export class HeroUI {
   }
   room(canvas, g, p, d, renderer) {
     const c = canvas.getContext("2d");
-    if(d?.temple){drawTempleRoom(c,g,p,renderer.animator);return;}
+    if(d?.temple){drawTempleRoom(c,g,p,renderer.animator);drawWetDrips(c,g,p.room);return;}
     c.imageSmoothingEnabled = false;
     c.fillStyle = "#100e20";
     c.fillRect(0, 0, 320, 240);
@@ -950,6 +956,7 @@ export class HeroUI {
       c.font = "8px monospace";
       c.fillText(q.name, q.roomX, q.roomY + 12);
     }
+    drawWetDrips(c,g,p.room);
     c.restore();
   }
 }
