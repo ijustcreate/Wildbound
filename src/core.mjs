@@ -618,12 +618,15 @@ export class Game {
     this.phase = "play";
     initLivingEcosystem(this);
     this.turnOrder = [];
+    this.repeatTurnPlayerId = null;
     this.message("The board is awake. Hit the table to roll.");
     return true;
   }
   get current() {
     return this.roll
       ? this.players.find((p) => p.id === this.roll.playerId)
+      : this.repeatTurnPlayerId != null
+        ? this.players.find(p=>p.id===this.repeatTurnPlayerId)
       : this.locked
         ? this.players.find((p) => p.id === this.turnOrder?.[this.turn]) ||
           this.players[this.turn]
@@ -853,7 +856,9 @@ export class Game {
     }
     if (
       this.phase !== "play" ||
-      (this.locked
+      (this.repeatTurnPlayerId != null
+        ? p.id !== this.repeatTurnPlayerId
+        : this.locked
         ? p !== this.current
         : (this.turnOrder || []).includes(p.id)) ||
       this.roll ||
@@ -865,7 +870,8 @@ export class Game {
       this.message("Hold Interact at the table to call WILDBOUND!");
       return false;
     }
-    if (!this.locked) (this.turnOrder ||= []).push(p.id);
+    if (!this.locked && !(this.turnOrder || []).includes(p.id)) (this.turnOrder ||= []).push(p.id);
+    this.repeatTurnPlayerId = null;
     const dice = Array.from(
       { length: this.diceCount === 1 ? 1 : 2 },
       () => 1 + Math.floor(this.random() * 6),

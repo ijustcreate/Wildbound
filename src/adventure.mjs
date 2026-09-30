@@ -241,6 +241,7 @@ export const adventureMethods = {
     this.bloom = 0;
     this.round = 1;
     this.turnOrder = [];
+    this.repeatTurnPlayerId = null;
     this.openingBoard = true;
     this.reveal = null;
     this.turn = 0;

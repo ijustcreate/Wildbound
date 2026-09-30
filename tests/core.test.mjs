@@ -28,6 +28,7 @@ function tick(g, seconds, inputs = {}) {
 test("First hits establish order, repeated rolls wait until the next round", () => {
   const g = game(),
     [a, b] = g.players;
+  g.diceCount=1;
   assert.equal(g.current, null);
   assert.ok(g.hitTable(b));
   assert.equal(g.hitTable(a), false);
@@ -42,6 +43,7 @@ test("First hits establish order, repeated rolls wait until the next round", () 
 });
 test("First round admits up to six unique devices then locks roster", () => {
   const g = game();
+  g.diceCount=1;
   assert.equal(g.addPlayer("keyboard"), null);
   for (let i = 1; i < 5; i++) assert.ok(g.addPlayer("pad:" + i));
   assert.equal(g.players.length, 6);
@@ -58,10 +60,10 @@ test("First round admits up to six unique devices then locks roster", () => {
 });
 test("Later rolls keep previously summoned creatures", () => {
   const g = game();
-  g.hitTable(g.players.find((p) => !p.rolls) || g.current);
+  g.hitTable(g.current || g.players.find((p) => !p.rolls));
   while(g.roll)tick(g,.05);
   const lionId = g.enemies[0].id;
-  g.hitTable(g.players.find((p) => !p.rolls) || g.current);
+  g.hitTable(g.current || g.players.find((p) => !p.rolls));
   while(g.roll)tick(g,.05);
   assert.ok(g.enemies.some((e) => e.id === lionId));
   assert.ok(g.enemies.length > 1);

@@ -1,3 +1,9 @@
+## 1.0.36 - Roll again on doubles
+
+- Rolling doubles with two dice grants the same hero another turn, including consecutive doubles and opening-round rolls.
+- Preserve turn order and round numbers until a non-double; save pending bonus turns and clear them on a new expedition.
+- Single-die rolls and reaching the finish do not grant an unusable bonus turn.
+
 ## 1.0.35 - Melee contact and window strikes
 
 - Test creature bodies against the whole melee sector, including overlapping targets and the cone boundary.
