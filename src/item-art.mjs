@@ -51,6 +51,22 @@ export function paintItem(c, type) {
   }
 }
 function paintItemBase(c, type) {
+  if(ITEMS[type]?.supplyOnly){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},color=ITEMS[type].artColor;
+    r(6,2,2,8,'#c7a46a');r(16,2,2,8,'#c7a46a');r(8,9,8,2,'#c7a46a');
+    r(8,12,8,8,'#283e37');r(9,13,6,6,color);
+    if(type==='fern_pendant'){r(11,11,2,10,color);r(7,13,10,2,color);r(8,16,8,2,color);}
+    if(type==='snowflake_pendant'){r(11,11,2,11,color);r(6,15,12,2,color);r(8,12,2,2,'#f0ffff');r(14,18,2,2,'#f0ffff');}
+    if(type==='sunstone_pendant'){r(11,10,2,12,color);r(6,15,12,2,color);r(10,14,4,4,'#fff0b8');}
+    if(type==='hearth_pendant'){r(7,12,10,2,color);r(10,10,4,2,color);r(11,16,2,4,'#f9deaa');}
+    if(type==='jade_pendant'){r(10,10,4,12,color);r(6,14,12,4,color);r(10,14,4,4,'#efffc3');}
+    return;
+  }
+  if(ITEMS[type]?.base==='quiver'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    for(const x of [8,12,16]){r(x,2,1,14,'#d9bd81');r(x-1,1,3,3,'#f2edcc');}
+    r(5,9,14,13,'#3e3027');r(6,10,12,11,ITEMS[type].artColor);r(6,10,12,2,'#ddc18d');r(8,15,2,5,'#c6a779');return;
+  }
   if (ITEMS[type]?.skillScroll) {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     r(5,3,14,18,'#826039');r(6,4,12,16,'#edce82');r(3,2,17,4,'#f5e4b4');r(5,18,17,4,'#d3ad66');

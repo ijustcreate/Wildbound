@@ -869,7 +869,25 @@ for (const [slot, id] of Object.entries(SAFARI_HUNTER_SET)) {
     description: "Safari hunter set · individually equippable field gear.",
   };
 }
+export const RANGER_SET=['ranger_hood','ranger_jacket','ranger_bracers','ranger_trailboots','ranger_quiver'];
+for(const [id,name,base,slot,stats] of [
+ ['ranger_hood','Ranger hood','hat','head',{bowDamage:.10}],
+ ['ranger_jacket','Ranger jacket','armor','chest',{armor:3,bowDamage:.10}],
+ ['ranger_bracers','Ranger bracers','gloves','gloves',{bowDrawSpeed:.25}],
+ ['ranger_trailboots','Ranger trail boots','boots','feet',{speedBonus:.08,arrowSpeed:.15}],
+ ['ranger_quiver','Ranger quiver','quiver','cape',{bowDrawSpeed:.15,arrowSpeed:.15}],
+])ITEMS[id]={name,base,slot,stack:1,rarity:'rare',color:'#79a56b',artColor:'#789253',set:'ranger',...stats,description:'Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).'};
+ITEMS.leather_quiver={name:'Leather quiver',base:'quiver',slot:'cape',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.15,description:'Back-slot archery gear. Draw the bow 15% faster.'};
+// Rare discoveries unique to supply chests in each environment.
+for(const [id,name,color,bonus,description] of [
+ ['fern_pendant','Fern pendant','#8fb779',{armor:2},'Woodland charm · +2 armor.'],
+ ['sunstone_pendant','Sunstone pendant','#d7b568',{bowDamage:.08},'Desert charm · +8% bow damage.'],
+ ['snowflake_pendant','Snowflake pendant','#b5e5ef',{armor:3},'Winter charm · +3 armor.'],
+ ['hearth_pendant','Hearth pendant','#c99777',{bowDrawSpeed:.12},'Homestead charm · 12% faster bow draw.'],
+ ['jade_pendant','Jade pendant','#83d4b9',{arrowSpeed:.12},'Temple charm · 12% faster arrows.'],
+])ITEMS[id]={name,base:'charm',slot:'neck',stack:1,rarity:'uncommon',color,artColor:color,...bonus,description,supplyOnly:true};
 export const GEAR_SETS={
+ ranger:{name:'Ranger',groups:RANGER_SET.map(id=>[id]),three:{arrowVolley:2},full:{},skills:['tame_pet'],threeText:'Fire three arrows in a spread for one arrow',fullText:'Tame a lion, wolf, bat, panther, or tiger with R / RB. Your companion stays when gear is removed.'},
  moon:{name:'Moonbound',groups:[['moon_circlet','moon_helm'],['moon_shoulders'],['moon_steps'],['moon_blade','moon_bow','moon_shield']],three:{maxMana:30},full:{manaRegen:4,manaDiscount:.25,castHeal:3},threeText:'+30 maximum mana',fullText:'Lunar grace: 25% cheaper spells, +4 mana/sec, heal 3 on each cast'},
  safari_hunter:{name:'Safari hunter',groups:Object.values(SAFARI_HUNTER_SET).map(id=>[id]),three:{maxHp:25},full:{hpRegen:1,speedBonus:.12},threeText:'+25 maximum health',fullText:'Trail vitality: regenerate 1 health/sec and move 12% faster'},
  sun:{name:'Sunforged',groups:[['sun_crown'],['sun_shoulders'],['sun_plate'],['sun_grips'],['sun_blade','sun_bow','sun_wand','sun_shield']],three:{maxHp:30},full:{damageBonus:8,hpRegen:2},threeText:'+30 maximum health',fullText:'Solar might: +8 attack damage and regenerate 2 health/sec'},
@@ -925,6 +943,9 @@ export function itemStats(id) {
     i.fire ? "Ignites enemies and trees · melts ice" : "",
     i.shot ? `Aimed shot · range ${i.shot.range}` : "",
     i.magic ? `Mana ${i.manaCost} per cast` : "",
+    i.bowDamage ? `Bow damage +${Math.round(i.bowDamage*100)}%` : '',
+    i.bowDrawSpeed ? `Bow draw speed +${Math.round(i.bowDrawSpeed*100)}%` : '',
+    i.arrowSpeed ? `Arrow speed +${Math.round(i.arrowSpeed*100)}%` : '',
     i.armor ? `Armor +${i.armor}` : "",
     i.maxHp ? `Health +${i.maxHp}` : '',
     i.maxMana ? `Mana +${i.maxMana}` : '',
@@ -943,7 +964,7 @@ export function rollGear(random = Math.random, minTier = null) {
   const r = random(),
     tier = minTier || (r < 0.62 ? "common" : r < 0.9 ? "rare" : "unique");
   const pool = Object.keys(ITEMS).filter(
-    (id) => ITEMS[id].slot && ITEMS[id].rarity === tier,
+    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && ITEMS[id].rarity === tier,
   );
   return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
 }

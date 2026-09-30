@@ -1,6 +1,7 @@
 import {Game} from './core.mjs';
 import {structureBlocked} from './expansion.mjs';
 import {refreshVitals} from './items.mjs';
+import {restoreHunterPet,petRecord} from './hunter-pets.mjs';
 
 export const LOBBY_FURNITURE=[
  {id:'environment',kind:'table',x:588,y:155,w:94,h:35,surfaceHeight:16,jumpable:true},
@@ -34,6 +35,7 @@ export class LobbyPractice extends Game {
     Object.assign(actor,structuredClone(player),{id:player.id,previousInput:{},ui:null,room:null,progress:0,hp:player.maxHp||100});
     this.nextId=Math.max(this.nextId,id+1,player.id+1);
     Object.assign(actor,{x:state.x,y:state.y,faceX:state.faceX,faceY:state.faceY,step:state.step});
+    actor.hunterPet=restoreHunterPet(petRecord(player.hunterPet));
     return actor;
   }
   stepPractice(dt,players,members,inputs,blocked=false){
@@ -54,6 +56,7 @@ export class LobbyPractice extends Game {
     if(this.players.length&&!blocked){this.updateTargets(dt);super.update(dt,commands);}
     for(const a of this.players){
       const s=members.get(a.id);
+      const player=players.find(p=>p.id===a.id);if(player&&(a.hunterPet||player.hunterPet))player.hunterPet=a.hunterPet;
       Object.assign(s,{x:a.x,y:a.y,step:a.step,faceX:a.faceX,faceY:a.faceY,moving:a.moving,attack:a.attack});
     }
     // Practice retains cooldowns but replenishes consumables from the selected hero.

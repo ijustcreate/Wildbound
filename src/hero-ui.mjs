@@ -26,7 +26,7 @@ export class HeroUI {
     this.panelAnchors = new Map();
   }
   controllerText(game, p) {
-    if (p.device === 'keyboard') return { accept:'A / Enter', close:'B / Esc', select:'D-pad / arrows', tabs:'LB / RB' };
+    if (p.device === 'keyboard') return { accept:'Enter', close:'Esc', select:'Arrows', tabs:'Tab' };
     const names = controllerButtonNames(p.controllerFamily || 'generic');
     return { accept:names[0], close:names[1], select:'D-pad', tabs:`${names[4]} / ${names[5]}` };
   }
@@ -509,12 +509,14 @@ export class HeroUI {
         ),
       );
       const actions = el("div", null, "inventory-actions");
+      const pad=controllerButtonNames(p.controllerFamily||'generic'),keyboard=p.device==='keyboard';
+      const hints={use:keyboard?'Enter':pad[0],equip:keyboard?'Enter':pad[0],equipOffhand:keyboard?'2':pad[3],store:keyboard?'R':pad[2],split:keyboard?'2':pad[3],drop:keyboard?'Delete':pad[2],dropOne:keyboard?'Shift+Delete':'LT+'+pad[2]};
       if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)){
         sheet.append(el('p',`${'◆'.repeat(item.sockets?.length||0)}${'◇'.repeat(Math.max(0,socketCount(item.type)-(item.sockets?.length||0)))} · Item mana +${gearStat(item.type,item.sockets,'maxMana')}`,'socket-summary'));
-        actions.append(button('Y · Trinket sockets','sockets-'+mode,()=>act(mode,'sockets')));
+        actions.append(button((keyboard?'2':pad[3])+' · Trinket sockets','sockets-'+mode,()=>act(mode,'sockets')));
       }
       const add = (label, key, action) =>
-        actions.append(button(label, key, () => act(mode, action)));
+        actions.append(button((hints[action]||'Click')+' · '+label, key, () => act(mode, action)));
       if (gear && def) add("Unequip", active ? "use" : "gear-use", "use");
       else if (mode === "pack" && def) {
         add(
@@ -536,7 +538,7 @@ export class HeroUI {
           const reason=salvageReason(p),b=button('','salvage-hold',()=>{}),ring=el('span',null,'salvage-ring');
           ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
           b.className='salvage-button';b.disabled=!!reason;
-          b.append(ring,el('span','Hold RT / V · Salvage'));
+          b.append(ring,el('span',(keyboard?'Hold V':'Hold RT')+' · Salvage'));
           b.title=reason||salvageYield(item.type).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ')+' · Socketed trinkets are returned as drops.';
           b.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);p.ui.salvagePointer=true;};
           const stop=()=>{if(p.ui)p.ui.salvagePointer=false;};b.onpointerup=stop;b.onpointercancel=stop;b.onlostpointercapture=stop;b.onblur=stop;
@@ -560,7 +562,7 @@ export class HeroUI {
     );
     const controls = this.controllerText(game, p);
     const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
-    panel.append(el('small',`${family} · ${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.accept}: use · Y: sockets / split · X: drop / transfer · ${controls.close}: close`));
+    panel.append(el('small',`${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.close}: close`,'inventory-help'));
     this.inventoryPopovers(panel, game, p, button);
   }
 

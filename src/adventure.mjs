@@ -1,5 +1,9 @@
+import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
 import { INVENTORY_TABS, inventoryCategory, tabIndices, takeFromBag } from './inventory-containers.mjs';
-import {wandTipWorld} from './player-motion.mjs';
+import {wandTipWorld,bowHandleWorld} from './player-motion.mjs';
+import {chargedProjectileRange,arrowFlightGravity} from './projectile-range.mjs';
+import {finishMagicBolt} from './magic-bolt-effects.mjs';
+import {hunterPets} from './hunter-pets.mjs';
 import {SKILLS,SCROLL_BOSSES,skillAvailable,skillScrollId} from './field-skills.mjs';
 import {hasAimWeapon, updateAimFacing} from './ranged-aim.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
@@ -232,6 +236,7 @@ export const adventureMethods = {
       resolveEnvironment(this.environment,this.seed);
     Object.assign(this, generateWorld(this.seed, env));
     this.generatedEnvironment = env;
+    seedSupplyChests(this,true);
     this.phase = "play";
     this.bloom = 0;
     this.round = 1;
@@ -871,6 +876,7 @@ export const adventureMethods = {
           "offhand",
           "store",
           "drop",
+          "dropOne",
           "split",
           "close",
         ])
@@ -952,7 +958,7 @@ export const adventureMethods = {
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if (i.attack&&!p.swimming)
-          p.charge = Math.min(1.2, (p.charge || 0) + dt);
+          p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
         if (!i.attack && old.attack && p.charge&&!p.swimming) {
           this.attack(p, p.charge);
           p.charge = 0;
@@ -967,12 +973,12 @@ export const adventureMethods = {
             p.interactUsed = true;
           }
         } else {
-          if (old.interact && p.interactTime > 0 && p.interactTime < 0.35 && !p.interactUsed && !p.sealHold) {
+          if (old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if (toggleDoor(this,p)||interactIce(this,p)) {}
-            else if (cutLivingVines(this,p)) { this.onSound('harvest',p); this.message('Vines cut. The path is clear.'); this.persist(); }
+            if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
-            else if (l) this.collect(p, l);
+            else if (openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}
+            else if (cutLivingVines(this,p)) { this.onSound('harvest',p); this.message('Vines cut. The path is clear.'); this.persist(); }
             else if (this.victoryChest && dist(p, { x: 800, y: 914 }) < 60)
               this.openInventory(p, "victory");
             else if (dist(p, { x: 800, y: 800 }) < 86)
@@ -1022,17 +1028,18 @@ export const adventureMethods = {
       bolt.life -= dt;
       const steps = Math.max(1, Math.ceil((260 * dt) / 4));
       for (let n = 0; n < steps && bolt.life > 0; n++) {
-        bolt.remaining ??= 224;
+        bolt.remaining ??= chargedProjectileRange(0);
         const speed = Math.hypot(bolt.vx, bolt.vy) || 260,
           distance = Math.min((speed * dt) / steps, bolt.remaining);
         bolt.x += (bolt.vx / speed) * distance;
         bolt.y += (bolt.vy / speed) * distance;
         bolt.remaining -= distance;
-        if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true)){bolt.life=0;break;}
+        if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true)){bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         const target = [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==bolt.owner&&!p.room):[])].find(
           (e) => e.hp > 0 && dist(e, bolt) < 16 + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
         );
         if (target) {
+          finishMagicBolt(this,bolt,true);
           if(this.players.includes(target))this.hurt(target,bolt.damage,bolt);else {damageEnemy(target,bolt.damage,bolt.fire?'fire':bolt.ice?'ice':'magic');target.killedBy=bolt.owner;target.ritualKill=false;}
           if (!target.practiceTarget && !this.players.includes(target) && bolt.friendship) { target.faction = 'ally'; target.allyOwner = bolt.owner; target.aggro = false; this.message(`${target.kind} has joined your side.`); }
           target.flash = 0.2;
@@ -1040,11 +1047,13 @@ export const adventureMethods = {
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
           if (bolt.ice && !this.players.includes(target) && this.random() < 0.35) target.frozen = 1.6;
           bolt.life = 0;
-        } else if (this.projectileBlocked(bolt.x, bolt.y, (bolt.size || 6) / 2,true))
-          bolt.life = 0;
+        } else if (this.projectileBlocked(bolt.x, bolt.y, (bolt.size || 6) / 2,true)) {
+          bolt.life = 0;finishMagicBolt(this,bolt,true);
+        }
         if (bolt.remaining <= 0) bolt.life = 0;
       }
     }
+    for(const bolt of this.spells)if(bolt.life<=0)finishMagicBolt(this,bolt,false);
     this.spells = this.spells.filter((b) => b.life > 0);
     for (const b of this.baits) b.life -= dt;
     this.baits = this.baits.filter((b) => b.life > 0);
@@ -1066,8 +1075,9 @@ export const adventureMethods = {
         const previousX=a.x,previousY=a.y;
         a.x += a.vx * s;
         a.y += a.vy * s;
-        a.z += a.vz * s;
-        a.vz -= rules.arrowGravity * s;
+        const gravity=a.gravity??rules.arrowGravity;
+        a.z += a.vz * s-.5*gravity*s*s;
+        a.vz -= gravity * s;
         if(this.projectileBlocked(a.x,a.y,1,true)){
           const impactHeight=a.z,impactX=a.x,impactY=a.y;
           a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;
@@ -1080,7 +1090,7 @@ export const adventureMethods = {
           a.remove=true;break;
         }
         const target = a.hostile
-          ? this.players.find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
+          ? [...this.players,...hunterPets(this)].find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
           : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 && dist(e, a) < 19 && clearShot(this,a,e));
         if (target && a.z < 38) {
           this.onSound("hit",a);
@@ -1195,7 +1205,7 @@ export const adventureMethods = {
       vx: aim.x * 260,
       vy: aim.y * 260,
       life: 3,
-      remaining: 224,
+      remaining: chargedProjectileRange(charge),
       size: 6 + Math.round(strength * 8),
       damage: Math.round((def.damage+stat(p,'damageBonus')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
@@ -1217,25 +1227,31 @@ export const adventureMethods = {
       shotId = this.nextId,
       angleJitter = (((shotId * 17) % 9) - 4) * 0.012,
       embedDepth = Math.max(5, Math.min(30, 6 + strength * 20 + (((shotId * 13) % 7) - 3) * 0.8)),
-      speed = rules.bowSpeed + strength * rules.bowBonusSpeed;
-    const aim = aimedDirection(this, p, p, 0.2);
+      speed = (rules.bowSpeed + strength * rules.bowBonusSpeed)*(1+stat(p,'arrowSpeed'));
+    const tip=bowHandleWorld({...p,attack:0,charge,bowAiming:true},this.time,undefined,this.generatedEnvironment==='lobby'?96:43);
+    const z=18,origin={x:tip.x,y:tip.y+z};
+    const aim = aimedDirection(this, p, origin, 0.2);
+    for(const spread of stat(p,'arrowVolley')>=2?[-.16,0,.16]:[0]){
+    const angle=Math.atan2(aim.y,aim.x)+spread;
     this.arrows.push({
       owner:p.id,
       id: this.nextId++,
-      x: p.x + p.faceX * 20,
-      y: p.y + p.faceY * 20,
-      z: 18,
-      vx: aim.x * speed,
-      vy: aim.y * speed,
-      angle: Math.atan2(aim.y, aim.x),
+      x: origin.x,
+      y: origin.y,
+      z,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      angle,
       vz: 20 + strength * 70,
+      gravity:arrowFlightGravity(speed,charge,z),
       strength,
       embedDepth,
       angleJitter,
       damage:
-        ((ITEMS[p.equipment.hand1]?.damage || 18)+stat(p,'damageBonus')) * (2 / 3 + (strength * 4) / 3),
+        ((ITEMS[p.equipment.hand1]?.damage || 18)+stat(p,'damageBonus')) * (2 / 3 + (strength * 4) / 3)*(1+stat(p,'bowDamage')),
       owner: p.id,
     });
+    }
     this.persist();
     return true;
   },

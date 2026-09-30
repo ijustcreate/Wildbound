@@ -1,3 +1,4 @@
+import {withCompanionClips} from './companion-motion.mjs';
 import { paintLayers } from "./render-order.mjs";
 import { validateSprite } from "./pixels.mjs";
 import {
@@ -250,7 +251,7 @@ export function defaultLionMotion() {
     for (const key of clip.keys)
       for (const name of LION_PARTS)
         key.joints[name] = [...(key.joints.head || [0, 0, 0])];
-  return model;
+  return withCompanionClips(model);
 }
 export const lionMotion = defaultLionMotion();
 // Tiger uses the same quadruped rig topology, but owns an independent model.
@@ -259,6 +260,7 @@ export const tigerMotion = defaultLionMotion();
 export function upgradeLionMotion(input) {
   const m = structuredClone(input);
   if (!m?.joints || !m.clips) return m;
+  withCompanionClips(m);
   if (LION_PARTS.every((n) => !m.joints[n]) && m.joints.head?.position) {
     for (const n of LION_PARTS) {
       const [, ...rest] = LION_JOINTS[n];

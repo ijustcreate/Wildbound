@@ -1,5 +1,10 @@
 import {applyCelShading} from './cel-shading.mjs';
 import {drawEmbeddedArrow,drawLodgedArrow} from './embedded-arrow.mjs';
+import {drawMagicBolt} from './magic-bolt-render.mjs';
+import {drawMagicBurst} from './magic-bolt-effects.mjs';
+import {take} from './items.mjs';
+import {drawHunterPet} from './hunter-pet-render.mjs';
+import {petCard} from './hunter-pet-ui.mjs';
 import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
@@ -77,6 +82,8 @@ export class LobbyState {
 export class PlayableLobby {
   constructor({root,game,profiles,start,sound}){
     Object.assign(this,{root,getGame:game,profiles,start,sound});this.state=new LobbyState();this.nodes=new Map();this.practice=new LobbyPractice();this.practice.onSound=sound;
+    this.practice.persist=()=>{for(const a of this.practice.players){const p=this.getGame().players.find(p=>p.id===a.id);if(p)p.hunterPet=a.hunterPet;}this.getGame().persist();};
+    this.practice.onPetFeed=(a,food)=>{const p=this.getGame().players.find(p=>p.id===a.id);return !!p&&take(p.inventory,food);};
     this.difficultyArt=new Image();this.difficultyArt.src=new URL('../assets/difficulty-icons.png',import.meta.url).href;
     this.mapArt=new Image();this.mapArt.src=new URL('../assets/map-icons.png',import.meta.url).href;
     root.classList.add('playable-lobby');
@@ -311,6 +318,12 @@ export class PlayableLobby {
       s.held={...input};
     }
     this.practice.stepPractice(dt,players,this.state.members,inputs,blocked);
+    this.petHudClock=(this.petHudClock||0)+dt;
+    if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
+      this.petHudClock=0;let hud=this.area.querySelector('.lobby-pets');
+      if(!hud){hud=document.createElement('div');hud.className='lobby-pets';this.area.append(hud);}
+      if(!hud.contains(document.activeElement)){hud.replaceChildren();for(const a of this.practice.players){const card=petCard(this.practice,a);if(card){const owner=document.createElement('small');owner.textContent=a.name+"’s companion";card.prepend(owner);hud.append(card);}}}
+    }
     if(!blocked&&this.state.tick(dt,players))this.start();
     this.draw();
     this.area.querySelector('.lobby-countdown').textContent=this.state.countdown!==null?`The board opens in ${Math.max(1,Math.ceil(this.state.countdown))}…`:'';
@@ -321,8 +334,8 @@ export class PlayableLobby {
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
     for(const a of this.practice.loot)if(a.embedded&&a.type==='arrow')drawEmbeddedArrow(c,a);
     for(const a of this.practice.arrows){if(a.stuck){drawLodgedArrow(c,a);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(a.angle??Math.atan2(a.vy,a.vx));c.fillStyle='#ba9763';c.fillRect(-10,-1,20,2);c.fillStyle='#f0e7cd';c.fillRect(-10,-3,5,6);c.restore();}
-    for(const b of this.practice.spells){c.fillStyle=b.color||'#ace3ff';c.beginPath();c.arc(b.x,b.y-16,b.size||6,0,Math.PI*2);c.fill();}
-    for(const f of this.practice.effects){if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';c.fillText(f.text,f.x,f.y);}
+    for(const b of this.practice.spells)drawMagicBolt(c,b);
+    for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';c.fillText(f.text,f.x,f.y);}
     c.restore();
   }
   drawDifficulty(c,value,x,y,size){
@@ -383,6 +396,7 @@ export class PlayableLobby {
       c.fillStyle='#f2efdf';c.font='15px system-ui';c.fillText(o.name,o.x,o.y+(o.id==='target-lever'?27:44));
       if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'Hold Y · change hero':document.getElementById(o.id).selectedOptions[0].text;c.fillText(detail,o.x,o.y+(o.id==='target-lever'||o.id==='character-station'?40:61),o.id==='target-lever'||o.id==='character-station'?150:140);}
     }
+    for(const a of this.practice.players)if(a.hunterPet)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
     this.drawPractice(c);
     for(const t of this.practice.targets)for(const f of [...t.combatText].reverse()){
       c.save();c.globalAlpha=Math.min(1,f.life/.12);c.translate(t.x,t.y-42-f.age*34-f.offset);

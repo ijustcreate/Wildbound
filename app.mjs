@@ -1,4 +1,5 @@
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
+import {petCard} from './src/hunter-pet-ui.mjs';
 import { PlayableLobby } from './src/playable-lobby.mjs';
 import {loadHouseStorage} from './src/house-design.mjs';
 import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
@@ -641,6 +642,7 @@ function renderRoster() {
     const portraitWrap=document.createElement('div');portraitWrap.className='roster-portrait-wrap';
     const portraitGlow=document.createElement('span');portraitGlow.className='roster-portrait-glow';portraitGlow.setAttribute('aria-hidden','true');
     portraitWrap.append(portraitGlow,portrait);
+    const companion=petCard(game,p);if(companion)minions.append(companion);
     el.append(portraitWrap,name, health, info, mana,minions);
     const existing = [...$("roster").children].find((card) => card.hero === p);
     if (existing) {
@@ -1260,7 +1262,7 @@ function inputFrame() {
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
       previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
       continue;
     }
@@ -1313,7 +1315,8 @@ function inputFrame() {
       down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
       panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
       use: !!pad.buttons[0]?.pressed,
-      store: !!pad.buttons[2]?.pressed,
+      store: !!pad.buttons[2]?.pressed && !pad.buttons[6]?.pressed,
+      dropOne: !!pad.buttons[2]?.pressed && !!pad.buttons[6]?.pressed,
       offhand: !!pad.buttons[3]?.pressed,
       salvage: !!pad.buttons[7]?.pressed,
       close: !!pad.buttons[1]?.pressed,
@@ -1387,7 +1390,8 @@ function inputFrame() {
     store: keys.has("KeyR"),
     offhand: keys.has("Digit2"),
     salvage: keys.has('KeyV'),
-    drop: keys.has("Delete"),
+    drop: keys.has("Delete") && !keys.has("ShiftLeft") && !keys.has("ShiftRight"),
+    dropOne: keys.has("Delete") && (keys.has("ShiftLeft") || keys.has("ShiftRight")),
   };
   return inputs;
 }

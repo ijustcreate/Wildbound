@@ -104,7 +104,7 @@ test("Stamina potion halves dash cooldown for 30 seconds then restores it", () =
   g.update(0.05, { keyboard: { x: 1, dodge: true } });
   assert.equal(p.dodge, rules.dashCooldown);
 });
-test("Wand charge grows size and doubles damage but retains speed and exactly seven-square travel", () => {
+test("Wand charge grows size, damage and range while retaining projectile speed", () => {
   for (const charge of [0, 1.2]) {
     const { g, p } = setup();
     g.leaveRoom(p);
@@ -114,12 +114,12 @@ test("Wand charge grows size and doubles damage but retains speed and exactly se
     g.fireSpell(p, charge);
     const bolt = g.spells[0],
       start = bolt.x;
-    assert.equal(bolt.remaining, 224);
+    assert.equal(bolt.remaining, charge ? 560 : 280);
     assert.equal(bolt.vx, 260);
     assert.equal(bolt.size, charge ? 14 : 6);
     assert.equal(bolt.damage, ITEMS.wand.damage * (charge ? 2 : 1));
-    for (let i = 0; i < 30; i++) g.tickAdventure(0.05, {});
-    assert.ok(Math.abs(bolt.x - start - 224) < 0.0001);
+    for (let i = 0; i < 50; i++) g.tickAdventure(0.05, {});
+    assert.ok(Math.abs(bolt.x - start - (charge ? 560 : 280)) < 0.0001);
     assert.equal(g.spells.length, 0);
   }
 });

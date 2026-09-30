@@ -33,6 +33,7 @@ export function cleanInput(input) {
     else if (
       [
         "attack",
+        "summon",
         "dodge",
         "jump",
         "loot",
@@ -53,6 +54,8 @@ export function cleanInput(input) {
         "offhand",
         "salvage",
         "drop",
+        "dropOne",
+        "split",
         "close",
       ].includes(key)
     )

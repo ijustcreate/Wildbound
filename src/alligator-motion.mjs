@@ -10,6 +10,7 @@ import {
 } from "./player-motion.mjs";
 export function defaultAlligatorMotion() {
   const m = defaultLionMotion();
+  delete m.clips.sit;
   m.type = "crocodile";
   m.name = "Alligator";
   m.palette = {

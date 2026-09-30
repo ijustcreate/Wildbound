@@ -83,3 +83,18 @@
   .hero-panel.inventory-redesign > header { font-size: 13px; }
   .hero-panel.inventory-redesign .paper-doll canvas.item-icon { width: 18px; height: 18px; }
 }
+
+/* Fixed capacity: the entire inventory scales within its assigned screen area. */
+.hero-panel.inventory-redesign { display:flex !important; flex-direction:column; overflow:hidden !important; box-sizing:border-box; }
+.hero-panel.inventory-redesign > header { margin:0; flex:none; }
+.hero-panel.inventory-redesign > .coin-balance { margin:0; flex:none; }
+.hero-panel.inventory-redesign .storage-layout { grid-template-rows:minmax(0, .9fr) minmax(0, 1.1fr); }
+.hero-panel.inventory-redesign .storage-layout.has-chest { grid-template-rows:minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr); }
+.hero-panel.inventory-redesign .storage-sheet > nav:not(.inventory-tabs) { display:none; }
+.hero-panel.inventory-redesign .inventory-window { grid-template-rows:auto 28px minmax(0,1fr) auto; gap:3px; }
+.hero-panel.inventory-redesign .inventory-tabs { height:28px !important; }
+.hero-panel.inventory-redesign .inventory-actions { gap:2px; margin:0; }
+.hero-panel.inventory-redesign .inventory-actions button { margin:0; min-height:21px; padding:2px 4px; font-size:10px; }
+.hero-panel.inventory-redesign > small.inventory-help { display:block; flex:none; font-size:10px; margin:0; }
+.hero-panel.inventory-redesign .storage-notice:empty { display:none; }
+.hero-panel.inventory-redesign .chest-window .item-grid { flex:1; }

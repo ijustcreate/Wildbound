@@ -1,4 +1,5 @@
 import {defaultLionMotion, lionAction, lionFrame} from './lion-motion.mjs';
+import {withCompanionClips} from './companion-motion.mjs';
 import {poseAt, projectPoint, facingIndex, limb, ellipse, validateMotion} from './player-motion.mjs';
 import {paintLayers} from './render-order.mjs';
 
@@ -32,11 +33,11 @@ export function defaultWolfMotion() {
   return m;
 }
 export const wolfMotion = defaultWolfMotion();
-export const validateWolfMotion = m => validateMotion(m, defaultWolfMotion());
+export const validateWolfMotion = m => validateMotion(withCompanionClips(structuredClone(m)), defaultWolfMotion());
 export function replaceWolfMotion(m) {
   if (!validateWolfMotion(m)) throw Error('Invalid wolf rig');
   for (const key of Object.keys(wolfMotion)) delete wolfMotion[key];
-  Object.assign(wolfMotion, structuredClone(m));
+  Object.assign(wolfMotion, withCompanionClips(structuredClone(m)));
 }
 export function drawWolf(c, actor, time, model=wolfMotion, suppliedPose=null) {
   const d=facingIndex(actor.faceX,actor.faceY), pose=suppliedPose || poseAt(model,lionAction(actor),lionFrame(actor,time,model));

@@ -10,6 +10,7 @@ import {
 } from "./player-motion.mjs";
 export function defaultRhinoMotion() {
   const m = defaultLionMotion();
+  delete m.clips.sit;
   m.type = "rhino";
   m.name = "Rhino";
   m.palette = {

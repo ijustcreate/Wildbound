@@ -1,3 +1,8 @@
+import {drawSupplyChest} from './supply-chests.mjs';
+import {drawMagicBolt} from "./magic-bolt-render.mjs";
+import {drawMagicBurst} from './magic-bolt-effects.mjs';
+import {hunterPets} from './hunter-pets.mjs';
+import {drawHunterPet} from './hunter-pet-render.mjs';
 import {applyCelShading} from './cel-shading.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
@@ -285,58 +290,7 @@ export class Renderer {
       ctx.fillRect(b.x - 4, b.y - 3, 8, 6);
     }
     for (const bolt of game.spells || []) {
-      if (!this.visible(bolt, w, h, 80) || !canSee(game, bolt)) continue;
-      ctx.fillStyle = bolt.color;
-      const size = bolt.size || 6;
-      if (bolt.fire || bolt.water) {
-        for (let i = 3; i >= 0; i--)
-          ellipse(
-            ctx,
-            bolt.x - bolt.vx * Math.min(bolt.age??1,i*0.012),
-            bolt.y - 16 - bolt.vy * Math.min(bolt.age??1,i*0.012),
-            Math.max(1, size * 0.7 - i),
-            Math.max(1, size * 0.7 - i),
-            bolt.water
-              ? i > 1
-                ? "#237e9b"
-                : "#55d5db"
-              : i > 1
-                ? "#bb3928"
-                : "#ff782b",
-          );
-        ellipse(
-          ctx,
-          bolt.x,
-          bolt.y - 16,
-          size * 0.4,
-          size * 0.4,
-          bolt.water ? "#d8ffff" : "#ffd654",
-        );
-        ellipse(
-          ctx,
-          bolt.x + 1,
-          bolt.y - 17,
-          size * 0.18,
-          size * 0.18,
-          "#fff3b0",
-        );
-        continue;
-      }
-      ctx.fillRect(
-        Math.round(bolt.x - size / 2),
-        Math.round(bolt.y - 16 - size / 2),
-        size,
-        size,
-      );
-      ctx.fillStyle = "#f2efff";
-      ctx.fillRect(Math.round(bolt.x) - 1, Math.round(bolt.y) - 17, 2, 2);
-      ctx.fillStyle = bolt.color;
-      ctx.fillRect(
-        Math.round(bolt.x - bolt.vx * 0.03) - 1,
-        Math.round(bolt.y - bolt.vy * 0.03) - 17,
-        2,
-        2,
-      );
+      if (this.visible(bolt,w,h,80) && canSee(game,bolt)) drawMagicBolt(ctx,bolt);
     }
     for (const a of game.arrows) {
       if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
@@ -476,6 +430,8 @@ export class Renderer {
     this.boardBase(ctx, game);
     const actors = this.actorQueue;
     actors.length = 0;
+    for(const chest of game.supplyChests||[])actors.push({...chest,isSupplyChest:true,drawDepth:chest.y});
+    for(const pet of hunterPets(game))if(Number.isFinite(pet.x))actors.push({...pet,drawDepth:pet.y+(pet.roostHeight>0?1:0)});
     for (const p of game.players)
       if (!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
     for (const e of game.enemies)
@@ -507,6 +463,7 @@ export class Renderer {
     actors.push({ isBoard: true, drawDepth: boardTableDepth() });
     actors.sort((a, b) => a.drawDepth - b.drawDepth);
     for (const a of actors) {
+      if(a.isSupplyChest){drawSupplyChest(ctx,game,a);continue;}
       if (a.isBoard) {
         this.boardTop(ctx, game);
         continue;
@@ -528,6 +485,7 @@ export class Renderer {
         ctx.restore();snowRim(ctx,game,a.x,base.y,a.size*.5);
         continue;
       }
+      if(a.hunterPet===true){const owner=game.players.find(p=>p.id===a.owner);if(owner)drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);continue;}
       const player = a.isPlayer,
         size = player
           ? 43
@@ -792,7 +750,8 @@ export class Renderer {
       ctx.globalAlpha = Math.min(1, fx.life * 2);
       ctx.fillStyle = fx.color;
       ctx.strokeStyle = fx.color;
-      if(fx.particle){drawParticleEffect(ctx,fx.particle,fx.x,fx.y,Math.max(0,fx.duration-fx.life),Number(fx.seed)||0);
+      if(fx.magicBolt){drawMagicBurst(ctx,fx);
+      }else if(fx.particle){drawParticleEffect(ctx,fx.particle,fx.x,fx.y,Math.max(0,fx.duration-fx.life),Number(fx.seed)||0);
       } else if (fx.text) {
         ctx.textAlign = "center";
         ctx.font = "bold 7px monospace";

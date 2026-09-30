@@ -1,9 +1,12 @@
+import {seedSupplyChests} from './supply-chests.mjs';
 import {nextCombo,loadoutKind} from './combat-combos.mjs';
 import {ensureNightCycle, tickNightCycle, movementNoise, emitNoise, eventAvailable, rewardNightHunts} from './night-cycle.mjs';
 import {initLivingEcosystem, updateLivingEcosystem, livingEcosystemBlocked, cutLivingVines} from './living-ecosystem.mjs';
 import {NIGHT_EVENTS, tickNightEnemy, tickNightEnemyHazards, startNightEvent, hitNightEnemyVines} from './night-enemies.mjs';
 import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equipment.mjs';
 import {startJump,tickJump} from './jumping.mjs';
+import {tamePet,tickHunterPets,hunterPets,hurtPet,petPvPEvent} from './hunter-pets.mjs';
+import {tickWildBatRoost} from './bat-roost.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
@@ -611,6 +614,7 @@ export class Game {
       Object.assign(this, generateWorld(this.seed, env));
       this.generatedEnvironment = env;
     }
+    seedSupplyChests(this);
     this.phase = "play";
     initLivingEcosystem(this);
     this.turnOrder = [];
@@ -630,6 +634,7 @@ export class Game {
     this.log = this.log.slice(0, 5);
   }
   hurt(p, amount, source) {
+    if(p.hunterPet===true){hurtPet(this,p,amount);return;}
     if (p.hp <= 0 || p.invuln > 0 || p.room || p.invincible) return;
     if (this.shieldBlocks(p, source)) {
       record(p, "damagePrevented", amount);
@@ -640,6 +645,7 @@ export class Game {
       this.onSound("trap");
       return;
     }
+    petPvPEvent(this,p,source);
     record(p, "damageTaken", amount);
     if (
       this.players.some(
@@ -790,6 +796,7 @@ export class Game {
     return true;
   }
   raiseSkeleton(p) {
+    if(hasSetSkill(p,'tame_pet'))return tamePet(this,p);
     if (!hasSetSkill(p, 'necromancer_pet')) {
       this.message('Equip the Necromancer dagger and wand to raise a skeleton.');
       return false;
@@ -1125,6 +1132,7 @@ export class Game {
     this.tickAdventure(dt, inputs);
     if(this.roll)return;
     tickGhosts(this,dt);
+    tickHunterPets(this,dt,inputs);
     tickField(this, dt, inputs);
     tickHazards(this, dt);
     tickEnvironment(this, dt);
@@ -1245,9 +1253,10 @@ export class Game {
         }
       }
     }
-    const alive = this.players.filter((p) => p.hp > 0 && !p.room);
+    const alive = [...this.players,...hunterPets(this)].filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
       if(e.practiceTarget)continue;
+      if(tickWildBatRoost(this,e,dt,alive))continue;
       tickJump(e,dt,this,collisionOffset(this,e));
       if (e.hp <= 0 || ((e.stampeding || e.kind === "rhino") && !e.aggro)) continue;
       if(creatures[e.kind]?.behaviors.jump&&e.state==='hunt'){

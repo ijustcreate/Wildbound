@@ -1,3 +1,4 @@
+import {petRecord,restoreHunterPet} from './hunter-pets.mjs';
 import { freshCharacter, ITEMS, SLOTS, migrateEquipment, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
 export const cleanCharacterName = (name) =>
@@ -83,6 +84,7 @@ export class Profiles {
     );
     p.profileId = h.id;
     p.name = h.name;
+    p.hunterPet=restoreHunterPet(h.hunterPet);
     p.appearance = structuredClone(h.appearance || null);
     p.inventory = structuredClone(h.inventory);
     p.equipment = { ...h.equipment };
@@ -116,6 +118,7 @@ export class Profiles {
       Object.assign(h, {
         field: structuredClone(p.field || {}),
         name: p.name,
+        hunterPet:petRecord(p.hunterPet),
         appearance: structuredClone(p.appearance || null),
         inventory: structuredClone(p.inventory),
         equipment: { ...p.equipment },

@@ -2103,3 +2103,14 @@ dialog h2 {
 }
 
 .ps-doll .ps-gear-icon { display:block; width:32px; height:32px; margin:0 auto 3px; image-rendering:pixelated; background:#162c2c; border-radius:3px; }
+.hunter-pet-card {display:flex;align-items:center;gap:8px;border-top:1px solid var(--pet-color,#79c79c);padding:5px 0;margin-top:6px;min-width:0;pointer-events:auto;}
+.hunter-pet-card canvas {width:48px;height:43px;flex:none;}
+.hunter-pet-card strong,.hunter-pet-card small {display:block;font-size:11px;line-height:1.4;}
+.hunter-pet-card progress {display:block;width:90px;height:7px;accent-color:var(--pet-color,#79c79c);}
+.hunter-pet-card button {padding:5px;font-size:10px;min-height:28px;}
+.roster-minions:has(.hunter-pet-card) {display:block;grid-column:1/-1;}
+.lobby-pets {position:absolute;left:12px;right:12px;top:8px;display:flex;flex-wrap:wrap;gap:12px;pointer-events:none;}
+.lobby-pets .hunter-pet-card {background:#102822ed;color:#f3e7c8;padding:5px 9px;border-radius:5px;}
+.pet-care-dialog {max-width:420px;}
+.pet-care-dialog label {display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0;}
+.pet-care-dialog button {margin:5px;}

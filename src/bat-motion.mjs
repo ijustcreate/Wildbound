@@ -1,3 +1,4 @@
+import {withCompanionClips} from './companion-motion.mjs';
 import { paintLayers } from "./render-order.mjs";
 import {
   poseAt,
@@ -71,7 +72,7 @@ export function defaultBatMotion() {
     v[1] += 3;
   }
   hurt.joints.wingTipL[2] -= 8;
-  return {
+  return withCompanionClips({
     version: 1,
     type: "flying",
     name: "Bat",
@@ -135,10 +136,11 @@ export function defaultBatMotion() {
         keys: Array.from({ length: 8 }, (_, i) => wingbeat(i, 0.15, true)),
       },
     },
-  };
+  },true);
 }
 export const batMotion = defaultBatMotion();
 export function validateBatMotion(m) {
+  m=withCompanionClips(structuredClone(m),true);
   return (
     m?.type === "flying" &&
     validateMotion(m, defaultBatMotion()) &&
@@ -153,7 +155,7 @@ export function validateBatMotion(m) {
 export function replaceBatMotion(m) {
   if (!validateBatMotion(m))
     throw Error("Invalid bat rig or animation clips. Nothing imported.");
-  Object.assign(batMotion, structuredClone(m));
+  Object.assign(batMotion, withCompanionClips(structuredClone(m),true));
 }
 export function batAction(a) {
   if (a.animationAction)

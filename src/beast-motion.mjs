@@ -1,4 +1,5 @@
 import { defaultLionMotion, drawLion } from "./lion-motion.mjs";
+import {withCompanionClips} from './companion-motion.mjs';
 import { paintLayers } from "./render-order.mjs";
 import { defaultRhinoMotion, drawRhino } from "./rhino-motion.mjs";
 import {
@@ -160,6 +161,7 @@ export const beastMotions = Object.fromEntries(
   BEAST_KINDS.map((k) => [k, defaultBeastMotion(k)]),
 );
 export function validateBeastMotion(kind, m) {
+  if(['panther','white_lion','snow_leopard'].includes(kind))m=withCompanionClips(structuredClone(m));
   return (
     m?.type === kind &&
     validateMotion(m, defaultBeastMotion(kind)) &&
@@ -172,7 +174,7 @@ export function validateBeastMotion(kind, m) {
 }
 export function replaceBeastMotion(kind, m) {
   if (!validateBeastMotion(kind, m)) throw Error("Invalid " + kind + " rig");
-  Object.assign(beastMotions[kind], structuredClone(m));
+  Object.assign(beastMotions[kind], ['panther','white_lion','snow_leopard'].includes(kind)?withCompanionClips(structuredClone(m)):structuredClone(m));
 }
 export function drawBeast(
   c,

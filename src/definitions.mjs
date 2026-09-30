@@ -269,6 +269,7 @@ for (const name of [
 for(const [kind,base] of [['tiger','lion'],['gorilla','golem'],['white_lion','lion'],['snow_leopard','panther'],['spider','beetle'],['baby_spider','beetle'],['spider_egg','beetle']]){
   creatures[kind]=creatureDefaults(base);creatures[kind].name=kind;creatures[kind].aiKind=base;
 }
+for(const kind of ['lion','wolf','bat','panther','tiger'])creatures[kind].tamable=true;
 for (const kind of ["skeleton_unarmed", "skeleton_boss"]) {
   creatures[kind] = creatureDefaults("skeleton");
   creatures[kind].name = kind;

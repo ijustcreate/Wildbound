@@ -1,3 +1,12 @@
+## 1.0.34 - Ranger companions and expedition supplies
+
+- Add five Ranger armor/quiver pieces: three grant a one-ammo spread volley; five grant Tame. Each hero keeps one named, colored companion after removing the set.
+- Support lions, wolves, panthers, tigers and bats, companion combat/following, food and natural healing, a 60-second revive window, idle sitting or bat roosting, portraits and lobby persistence.
+- Match wand and arrow range at 280 units basic / 560 fully charged. Fire arrows from the drawn bow handle. Share magic trails between lobby and level, with impact sparks and missed-shot fizzles.
+- Fix medium-length Interact potion pickups and prioritize visible loot. Add heavier snow on winter tree branches.
+- Place 1–3 reachable supply chests per expedition, each with 1–3 health potions and a 12% chance of a unique pendant for its environment. Persist opened chests.
+- Keep the backpack at 24 slots without scrolling and label keyboard/controller actions, including single-item dropping.
+
 ## 1.0.33 - Persistent lobby arrows
 
 - Render embedded arrows on the lobby floor and props; preserve the contact point and shaft direction on prop impacts.

@@ -48,6 +48,7 @@ export class Animator {
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
+    if(actor.kind==='bat'&&actor.roostHeight>0)actor={...actor,y:actor.y-actor.roostHeight};
     if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
     if (this.metrics?.enabled)
       return this.metrics.measure("animation", () =>

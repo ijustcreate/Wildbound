@@ -102,7 +102,19 @@ function paintTreeFoliage(c,p,time,g){
     rect(c,x+lx-1,y+ly-2,w*.6,5,color);rect(c,x+lx-3,y+ly,w,3,color);
     if(lit&&n%4===0){rect(c,x+lx-2+sway,y+ly-2,3,2,colors[3]);rect(c,x+lx-3+sway,y+ly,2,2,colors[3]);}
   }
-  if(season==='winter')crown(c,x-2,y-7,rx*.7,3,'#dceae4',seed+i);
+
+ });
+ if(season==='winter')clusters.forEach(([cx,cy,rx,ry],i)=>{
+  const x=cx*treeStructure(p).branchSpread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
+  if(season==='winter'){
+    // Broad, layered caps cover the top of every branch tier, with cool shaded
+    // undersides and small overhanging drifts. Cached with the foliage.
+    crown(c,x,y-ry*.38,rx*.96,ry*.48,'#8caeb9',seed+i);
+    crown(c,x-1,y-ry*.53,rx*.90,ry*.40,'#d3e8eb',seed+i);
+    crown(c,x-2,y-ry*.66,rx*.73,ry*.27,'#f0faf5',seed+i);
+    for(let n=0;n<4;n++){const dx=(n/3-.5)*rx*1.45,depth=2+hash(n+i,seed)*3;
+      rect(c,x+dx-2,y-ry*.24,4,depth,'#d3e8eb');}
+  }
  });
 }
 export function drawForestTree(c,p,time,g={}){

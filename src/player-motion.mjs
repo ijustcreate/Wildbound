@@ -387,6 +387,16 @@ function posedWandTip(actor,time,model,d,side,visual){
   const t=action.frame/(model.clips.cast.length-1);
   return projectPoint(castWandVector(t,side),d);
 }
+export function bowHandleWorld(actor,time,model=playerMotion,size=43){
+  const d=facingIndex(actor.faceX,actor.faceY),pose=playerPose(actor,time,model),v=[...pose.handL];
+  if(actor.appearance?.build==='broad')v[0]*=1.12;
+  else if(actor.appearance?.build&&actor.appearance.build!=='standard')v[0]*=.9;
+  const hand=projectPoint(v,d),visual=model.wearables?.[actor.equipment?.hand1]?.[d];
+  const rotation=playerJointAngle(actor,time,model,d,'handL')*Math.PI/180;
+  const x=visual?.x||0,y=visual?.y||0;
+  return {x:actor.x+(hand.x+x*Math.cos(rotation)-y*Math.sin(rotation))*size/48,
+    y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)+(hand.y+x*Math.sin(rotation)+y*Math.cos(rotation))*size/48};
+}
 export function wandTipWorld(actor,slot,time,model=playerMotion,size=43){
   const d=facingIndex(actor.faceX,actor.faceY),side=slot==='hand1'?'R':'L',joint='hand'+side;
   const pose=playerPose(actor,time,model);
@@ -696,7 +706,11 @@ export function drawPlayer(
       },
       "Stowed weapon",
     );
-  if (gear.cape) {
+  if(itemKind(gear.cape)==='quiver')add(p.chest.depth+(back?1:-1),()=>{
+    const x=p.chest.x+(back?-5:5),y=p.chest.y-2;
+    c.save();c.translate(x,y);c.rotate(-.25);drawItem(c,gear.cape,0,0,17);c.restore();
+  },'Quiver');
+  if (gear.cape && itemKind(gear.cape)!=='quiver') {
     const top = positions.shoulderL.map((v,i)=>(v+positions.shoulderR[i])/2),
       bottom = positions.pelvis;
     const left = projectPoint([top[0] - 4, top[1] - 3, top[2]], d),

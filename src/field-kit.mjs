@@ -3,6 +3,9 @@ import { ITEMS, SLOTS, give, take, equip, itemStats } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { drawPlayer, directionVector } from "./player-motion.mjs";
 import {skillAvailable,trainSkill} from './field-skills.mjs';
+import {hasSetSkill} from './items.mjs';
+import {tamePet} from './hunter-pets.mjs';
+import {openPetCare} from './hunter-pet-ui.mjs';
 import { appearanceControls, DEFAULT_APPEARANCE } from "./appearance.mjs";
 import {
   SYMBOLS,
@@ -535,6 +538,9 @@ export class FieldKit {
     });
   }
   skills(g, p, f) {
+    const ranger=node('article',null,'field-card');ranger.append(node('h3','Ranger · Tame companion'),node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.'));
+    const tame=this.action('Tame nearby animal',()=>{tamePet(g,p);return 'Use R / RB while near a wild animal.';},ranger);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
+    if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},ranger);this.body.append(ranger);
     this.body.append(node("p", `Spend XP on permanent field skills. XP: ${p.xp || 0} · Next level: ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} to go.`, "field-card"));
     for (const s of SKILLS) {
       const rank = f.skills?.[s.id] || 0;
@@ -708,11 +714,14 @@ export class FieldKit {
     this.select(
       "Event messages",
       [
+        ["1", "Instant · 1 second"],
+        ["3", "Quick · 3 seconds"],
+        ["5", "Short · 5 seconds"],
         ["7", "Brief · 7 seconds"],
         ["12", "Comfortable · 12 seconds"],
         ["20", "Extended · 20 seconds"],
       ],
-      localStorage.getItem("wildbound-event-duration") || "7",
+      localStorage.getItem("wildbound-event-duration") || "5",
       (v) => {
         localStorage.setItem("wildbound-event-duration", v);
         g.eventDuration = +v;
