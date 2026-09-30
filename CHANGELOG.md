@@ -1,3 +1,38 @@
+## 1.0.23 - Lobby layout and consolidated desktop build
+
+- Match the reference lobby with a tiled floor, center divider, five oriented target tracks, and rearranged stations.
+- Update target movement, furniture collision positions, and nearest-station interaction selection.
+- Include all current gameplay, editor, animation, and authored rig changes in a fresh desktop build.
+- Verified with 401 automated tests and a rendered lobby layout check.
+
+## 1.0.22 — Hold-to-salvage and consolidated test build
+
+- Hold RT / V, or the backpack Salvage button, for 1.25 seconds. A filling ring previews the hold; release or change selection to cancel. Each item requires a fresh hold.
+- Gear and relics yield sellable Relic Dust; magical or above-common items also yield Magic Essence. Legendary items yield Legendary Essence instead. Each material stacks to 999; overflow creates another stack.
+- Materials fall at the player's feet and require manual pickup. Socketed trinkets drop intact. Favorites, equipped gear, GM items and storage-room items are protected.
+- A dedicated, editable Salvage clip brings the hands together around the selected item. Hand particles use the particle engine, followed by a short release pose and completion burst. Both the world character and inventory preview animate.
+- Includes all current local gameplay, editor, gear and art changes in a fresh versioned desktop package.
+- Verified with 400 automated tests and a focused Electron hold-ring / animation / drop check.
+
+## 1.0.21 — Gear progression, trinket sockets and animation layers
+
+- Levels add 8 maximum health and 6 maximum mana; armor contributes health and Moon equipment contributes mana.
+- Moonbound, Safari hunter and Sunforged sets show green equipped-piece checklists with three-piece and complete-set bonuses.
+- Azure bead, Moon prism and Starheart add 15, 25 and 40 mana when socketed into equipped gear. Craft them in Field Kit or find them in enemy loot.
+- Controller-first socket selection, confirmation and free extraction; gems persist on the specific item across inventory, storage, loadouts and profiles. Item creator exposes 0–3 sockets.
+- Airborne melee, bow and spell actions overlay upper-body combat while retaining the jumping legs. Weapon anchors use the composed pose.
+- Player Rig Studio → Layers supports condition, base/overlay clip, custom joint mask, weight, order and combined preview; rules save/export with the rig.
+- Includes the tabletop and paused-board fixes from 1.0.20. Older builds and saves are preserved.
+
+## 1.0.20 — Tabletop sorting and paused board sequence
+
+- Keep actors on or jumping above the board table visible over its back half instead of drawing the tabletop over their feet.
+- Preserve floor-level occlusion behind the table and falling only after leaving the support footprint.
+- Scale dice with the board so they fit the tabletop, including while tumbling.
+- Pause world simulation during rolls; show a large centered board, move the pawn, reveal the event in its green center for five seconds, then resume automatically.
+- Replace the separate popup for board-generated events; preserve direct event notifications.
+- Validate tabletop ordering and the board sequence; all 375 automated tests pass.
+
 ## 1.0.19 — Consolidated test build
 
 - Package all current gameplay, art, animation and editor changes for a fresh test build.

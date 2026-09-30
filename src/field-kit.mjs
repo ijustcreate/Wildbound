@@ -389,7 +389,7 @@ export class FieldKit {
             row.list !== c.list &&
             row.list.includes(row.item) &&
             !protectedItem(p, row.item.type) &&
-            give(c.list, row.item.type, row.item.qty, c.capacity)
+            give(c.list, row.item.type, row.item.qty, c.capacity,row.item)
           ) {
             row.list[row.list.indexOf(row.item)] = null;
             n++;

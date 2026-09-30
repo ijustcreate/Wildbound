@@ -1,7 +1,10 @@
-import { ITEMS, SLOTS, give, take, equip, stat, itemKind } from "./items.mjs";
+import { ITEMS, SLOTS, give, take, equip, stat, itemKind,refreshVitals,clearSlot,gearStat } from "./items.mjs";
 
 export const SYMBOLS = ["◆", "●", "▲", "✦", "■", "✚"];
 export const RECIPES = [
+  {id:'azure_bead',name:'Azure bead (+15 mana)',ingredients:{stone:3,bone_shard:1},output:'azure_bead',qty:1},
+  {id:'moon_prism',name:'Moon prism (+25 mana)',ingredients:{azure_bead:2,golem_core:1},output:'moon_prism',qty:1},
+  {id:'starheart',name:'Starheart (+40 mana)',ingredients:{moon_prism:2,golem_core:2},output:'starheart',qty:1},
   { id: 'torch', name: 'Trail torch', ingredients: { stick: 2 }, output: 'torch', qty: 1 },
   {
     id: "arrow",
@@ -92,7 +95,7 @@ export function category(type) {
     ? "Relics"
     : i?.slot
       ? "Equipment"
-      : ["stick", "log", "stone", "bone_shard", "golem_core", "web_silk", "beast_fang", "frost_berry"].includes(type)
+      : i?.material || ["stick", "log", "stone", "bone_shard", "golem_core", "web_silk", "beast_fang", "frost_berry"].includes(type)
         ? "Materials"
         : "Supplies";
 }
@@ -150,7 +153,7 @@ export function transferBatch(
     left = 0;
   from.forEach((item, index) => {
     if (!item || protectedItem(p, item.type) || !predicate(item)) return;
-    if (give(to, item.type, item.qty, capacity)) {
+    if (give(to, item.type, item.qty, capacity,item)) {
       from[index] = null;
       moved++;
     } else left++;
@@ -189,8 +192,8 @@ export function applyLoadout(g, p, index) {
   const containers = allContainers(g, p);
   const draft = containers.map((c) => structuredClone(c.list));
   const actor = { inventory: [], equipment: {} };
-  for (const type of Object.values(p.equipment))
-    if (type && type !== "occupied") give(actor.inventory, type, 1, Infinity);
+  for (const [slot,type] of Object.entries(p.equipment))
+    if (type && type !== "occupied") give(actor.inventory, type, 1, Infinity,{sockets:p.equipmentSockets?.[slot]});
   for (const slot of SLOTS) {
     const type = wanted.gear[slot];
     if (!type || type === "occupied") continue;
@@ -199,18 +202,19 @@ export function applyLoadout(g, p, index) {
       const source = draft.find((a) => a.some((v) => v?.type === type));
       if (!source)
         return `Missing ${ITEMS[type]?.name || type}; nothing changed.`;
-      take(source, type);
-      actor.inventory.push({ type, qty: 1 });
+      const sourceIndex=source.findIndex(item=>item?.type===type),stored=source[sourceIndex];const sockets=structuredClone(stored.sockets||[]);if(--stored.qty===0)clearSlot(source,sourceIndex);
+      actor.inventory.push({ type, qty: 1,sockets });
       i = actor.inventory.length - 1;
     }
     if (!equip(actor, i, slot))
       return "Loadout is incompatible; nothing changed.";
   }
   for (const item of actor.inventory.filter(Boolean))
-    if (!give(draft[0], item.type, item.qty))
+    if (!give(draft[0], item.type, item.qty,24,item))
       return "Backpack needs room for the unequipped gear; nothing changed.";
   containers.forEach((c, i) => c.list.splice(0, c.list.length, ...draft[i]));
   p.equipment = actor.equipment;
+  p.equipmentSockets=actor.equipmentSockets||{};refreshVitals(p);
   return `${wanted.name} equipped.`;
 }
 export function compareItem(p, type) {
@@ -219,7 +223,7 @@ export function compareItem(p, type) {
   const notes = [];
   if (d.slot) {
     const current = ITEMS[p.equipment[d.slot]] || {};
-    for (const key of ["damage", "armor", "punch", "reach", "resistance"]) {
+    for (const key of ["damage", "armor", "punch", "reach", "resistance","maxHp","maxMana"]) {
       const n = (d[key] || 0) - (current[key] || 0);
       if (n) notes.push(`${key} ${n > 0 ? "+" : ""}${n}`);
     }
@@ -238,12 +242,12 @@ export function compareItem(p, type) {
     );
   return notes.join(" · ") || "No stat change";
 }
-export function itemStatDelta(p, type) {
+export function itemStatDelta(p, type, sockets=[]) {
   const d = ITEMS[type];
   if (!d?.slot) return [];
-  const current = ITEMS[p.equipment[d.slot]] || {};
-  return [['damage','Damage'],['armor','Armor'],['punch','Fists'],['reach','Reach'],['magnet','Loot reach']]
-    .map(([key,label]) => ({ key, label, value:(d[key] || 0) - (current[key] || 0), next:d[key] || 0, current:current[key] || 0 }))
+  const current = p.equipment[d.slot];
+  return [['damage','Damage'],['armor','Armor'],['punch','Fists'],['reach','Reach'],['magnet','Loot reach'],['maxHp','Health'],['maxMana','Mana']]
+    .map(([key,label]) => {const next=gearStat(type,sockets,key),was=gearStat(current,p.equipmentSockets?.[d.slot],key);return {key,label,value:next-was,next,current:was};})
     .filter((entry) => entry.value !== 0);
 }
 export function record(p, key, amount = 1) {

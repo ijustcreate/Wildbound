@@ -27,7 +27,8 @@ test('combo loadout profiles distinguish supported hand combinations',()=>{
 test('wand origin follows fit, rotation, scaling and jump height',()=>{
  const {p}=setup();p.equipment.hand1='wand';p.attack=.34;p.attackClip='cast';const m=defaultPlayerMotion(),plain=wandTipWorld(p,'hand1',0,m);
  m.wearables.wand={0:{x:3,y:-2,rotation:90,scale:2}};const fitted=wandTipWorld(p,'hand1',0,m);assert.notDeepEqual(fitted,plain);
- p.jumpHeight=25;p.jumpAge=.2;p.jumpVelocity=1;const airborne=wandTipWorld(p,'hand1',0,m);const grounded=wandTipWorld({...p,jumpHeight:0,animationAction:'jump_air'},'hand1',0,m);assert.equal(airborne.y,grounded.y-25);
+ p.jumpHeight=25;p.jumpAge=.2;p.jumpVelocity=1;const airborne=wandTipWorld(p,'hand1',0,m);
+ const grounded=wandTipWorld({...p,jumpHeight:0,animationAction:'jump_air',layerPreview:{index:0,base:'jump_air',overlay:'cast'}},'hand1',0,m);assert.equal(airborne.y,grounded.y-25);
 });
 test('melee and unarmed combo orders, finisher strength and timeout reset',()=>{
  for(const [kind,expected]of [['melee',['swipe_one','swipe_two','swipe_big']],['unarmed',['punch_left','punch_right','punch_left','punch_right','uppercut']]]){

@@ -6,6 +6,7 @@ import {
   playerMotionRevision,
   playerFrame,
   playerAction,
+  playerLayers,
 } from "./player-motion.mjs";
 import {
   lionAction,
@@ -98,7 +99,7 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
-        playerAction(actor) === "idle"
+        playerAction(actor) === "idle" && !playerLayers(actor,time).length
       ) {
         if (this.playerRevision !== playerMotionRevision) {
           this.playerFrames.clear();

@@ -152,7 +152,7 @@ export function creatureDefaults(kind) {
   const night = NIGHT_CREATURE_DEFAULTS[kind];
   const type =
     kind.startsWith("explorer") ||
-    ["skeleton", "archer", "skeleton_wizard", "golem", "monkey", "hunter"].includes(kind)
+    ["skeleton", "skeleton_caster", "skeleton_wizard", "necromancer", "archer", "golem", "monkey", "hunter"].includes(kind)
       ? "humanoid"
       : ["vine", "carnivorous_flower", "mimic_vine", "poison_pod"].includes(kind)
         ? "plant"
@@ -251,6 +251,8 @@ for (const name of [
   "golem",
   "monkey",
   "skeleton",
+  "skeleton_caster",
+  "necromancer",
   "archer",
   "rhino",
   "dragon",
@@ -271,6 +273,19 @@ for (const kind of ["skeleton_unarmed", "skeleton_boss"]) {
   creatures[kind] = creatureDefaults("skeleton");
   creatures[kind].name = kind;
   creatures[kind].aiKind = "skeleton";
+}
+for (const [kind, stats] of [['skeleton_caster',{hp:92,speed:38,damage:16}],['necromancer',{hp:300,speed:35,damage:24}]]) {
+  creatures[kind] = creatureDefaults('skeleton');
+  creatures[kind].name = kind;
+  creatures[kind].aiKind = kind;
+  creatures[kind].stats = {...creatures[kind].stats,...stats,attackRange:68,rangedCooldown:2.8};
+  creatures[kind].lootDrops = kind === 'necromancer' ? [] : [{item:'bone_shard',qty:1,chance:100}];
+  if (kind === 'necromancer') creatures[kind].necromancerLoot = {
+    pieces: ['necromancer_dagger','necromancer_wand'],
+    chance: .9,
+    sharedPieceChance: .28,
+    onePerPlayer: true,
+  };
 }
 creatures.skeleton_wizard = creatureDefaults("skeleton_wizard");
 creatures.skeleton_wizard.name = "skeleton_wizard";
@@ -315,7 +330,7 @@ for (const [name, c] of Object.entries(creatures)) {
         p.views.right.x = p.name.endsWith("L") ? -3 : 2;
       }
     }
-  } else if (["skeleton", "archer", "skeleton_wizard"].includes(name)) {
+  } else if (["skeleton", "skeleton_caster", "necromancer", "archer", "skeleton_wizard"].includes(name)) {
     for (const p of c.rig.parts)
       p.color = p.name.includes("foot") ? "#8c8871" : "#ddd7af";
     if (name === "skeleton_wizard")
@@ -324,6 +339,16 @@ for (const [name, c] of Object.entries(creatures)) {
         if (p.name.startsWith("arm")) p.color = "#7189c3";
         if (p.name === "head") p.color = "#d9d7be";
       }
+    if (name === "skeleton_caster") for (const p of c.rig.parts) {
+      if (p.name === 'body') p.color = '#655478';
+      if (p.name.startsWith('arm')) p.color = '#8c6aa8';
+    }
+    if (name === "necromancer") for (const p of c.rig.parts) {
+      if (p.name === 'body') p.color = '#4d315f';
+      if (p.name.startsWith('arm')) p.color = '#704678';
+      if (p.name === 'head') p.color = '#d7c4e3';
+      if (p.name.includes('foot')) p.color = '#6b3e7b';
+    }
   } else if (["lion", "panther", "boar", "crocodile", "wolf"].includes(name)) {
     const head = c.rig.parts.find((p) => p.name === "head");
     head.source = name === "wolf" ? "panther" : name;

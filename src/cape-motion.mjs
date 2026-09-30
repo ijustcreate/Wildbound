@@ -5,14 +5,16 @@ export function capeRows(top,bottom,actor,time,style='',shoulders){
  const drive=actor.dashTime>0||actor.animationAction==='dash'?2.5:moving?1:0;
   const motion=0.6;
  const airborne=Math.min(1,(actor.jumpHeight||0)/30);
+ const descent=Math.min(1,Math.max(0,-(actor.jumpVelocity||0))/190)*airborne;
  const length=style==='tattered'?1.35:['short','pointed'].includes(style)?.5:1;
  const hems=style==='tattered'?[1,.62,.86,1]:null;
  return Array.from({length:25},(_,i)=>{
   const t=i/24,free=Math.sin(t*Math.PI/2),phase=time*(drive?10:3.5)-t*5;
   const wave=Math.sin(phase)+.35*Math.sin(phase*1.8+.7);
   const sway=free*wave*(.8+drive*2)*motion;
-  const trail=free*(drive*7*motion+airborne*5+wave*(.7+drive*1.2)*motion)*length;
-  const z=top[2]+(Math.max(3,bottom[2]-11)-top[2])*t*length+free*(drive*5*motion+airborne*7+Math.sin(phase+.8)*(1+drive*3)*motion)*length;
+  const fallLag=free*free*descent;
+  const trail=free*(drive*7*motion+airborne*5+wave*(.7+drive*1.2)*motion)*length+fallLag*2.5*length;
+  const z=top[2]+(Math.max(3,bottom[2]-11)-top[2])*t*length+free*(drive*5*motion+airborne*7+Math.sin(phase+.8)*(1+drive*3)*motion)*length+fallLag*6*length;
   const x=top[0]+(bottom[0]-top[0])*t+sway,y=top[1]-3+(bottom[1]-top[1]-1)*t-trail;
   const width=style==='pointed'?Math.max(.15,4*(1-t)):4+2*t;
   const left=[x-width,y,z+free*Math.sin(phase+.5)*(.4+drive)],right=[x+width,y,z-free*Math.sin(phase+.5)*(.4+drive)];

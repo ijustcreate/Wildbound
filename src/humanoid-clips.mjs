@@ -22,6 +22,13 @@ export function humanoidClips(base){
   swipe_one:sweep(1),swipe_two:sweep(-1),swipe_big:sweep(1,true),
   punch_left:punch('L'),punch_right:punch('R'),uppercut:punch('R',true),
   cast:clip([{handL:[1,5,8],handR:[-1,5,8],elbowL:[0,2,4],elbowR:[0,2,4]},{handL:[1,8,10],handR:[-1,8,10]},{}],7),
+  salvage:clip([
+    {handL:[3,4,7],handR:[-3,4,7],elbowL:[1,2,3],elbowR:[-1,2,3]},
+    {handL:[4,6,10],handR:[-4,6,10],elbowL:[2,3,5],elbowR:[-2,3,5],head:[0,1,-1]},
+    {handL:[3,5,9],handR:[-3,7,11],elbowL:[2,3,5],elbowR:[-2,3,5],head:[0,1,-1]},
+    {handL:[5,6,11],handR:[-5,6,11],elbowL:[2,3,5],elbowR:[-2,3,5]},
+    {handL:[-2,6,8],handR:[2,6,8],elbowL:[0,2,3],elbowR:[0,2,3]},{}
+  ],12),
   jump_takeoff:clip([crouch,air],4),jump_air:clip([air],4,true),jump_fall:clip([{...air,handL:[-4,1,8],handR:[4,1,8],footL:[0,0,3],footR:[0,0,3]}],4,true),land:clip([crouch,{}],5),
   interact:clip([{}, {chest:[0,4,-3],head:[0,4,-3],handL:[2,9,1],handR:[-2,9,1]},{}],8),
   pickup:clip([down,{...down,handL:[-3,7,2],handR:[3,7,2]},itemUp,{}],9),

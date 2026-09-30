@@ -60,11 +60,11 @@ export function installDebugTools(ctx) {
     lobby.state.members.get(q.id).focus=1;pad.buttons[0].pressed=true;ctx.lobbyController(pad,[]);
     assert(lobby.state.members.get(q.id).panel==='create','Controller owns its creation panel');
     document.querySelector('[data-owner-device="pad:7"] input').value='Other '+Date.now().toString().slice(-6);click('pad:7','Create & join');
-    const s=lobby.state.members.get(p.id);s.x=230;s.y=220;
+    const s=lobby.state.members.get(p.id);s.x=635;s.y=210;
     lobby.update(.01,{keyboard:{interact:true}});
     assert(s.panel==='environment','E opens nearby map object');
     p.ready=true;q.ready=true;click('keyboard','Forest');assert(!p.ready&&!q.ready,'Changing map resets everyone');
-    const interactBoard=player=>{const m=lobby.state.members.get(player.id);m.x=510;m.y=325;m.held={};lobby.update(.01,{[player.device]:{interact:true}});assert(m.panel==='board','Board opens prompt');click(player.device,'Ready');};
+    const interactBoard=player=>{const m=lobby.state.members.get(player.id);m.x=770;m.y=420;m.held={};lobby.update(.01,{[player.device]:{interact:true}});assert(m.panel==='board','Board opens prompt');click(player.device,'Ready');};
     interactBoard(p);assert(!q.ready,'Readiness is per player');interactBoard(q);
     lobby.update(1,{});assert(lobby.state.countdown>0,'All ready starts countdown');
     p.ready=false;lobby.update(.01,{});assert(lobby.state.countdown===null,'Cancel aborts countdown');

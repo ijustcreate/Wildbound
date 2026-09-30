@@ -1,6 +1,11 @@
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
 export const DEFAULT_EFFECTS={
+  'salvage-hands':{name:'Salvage hand sparks',count:6,life:.45,speedX:0,speedY:-5,spread:4,gravity:2,size:1,orbit:2,shape:'square',blend:'lighter',start:'#e7f8de',end:'#7dcdd8'},
+  'salvage-burst':{name:'Salvage completion burst',count:12,life:.3,speedX:0,speedY:-9,spread:12,gravity:22,size:1,orbit:3,shape:'star',blend:'lighter',start:'#fff0be',end:'#cbb17e'},
+  'purple-aura':{name:'Necromancer purple aura',count:28,life:1.2,speedX:0,speedY:-8,spread:38,gravity:-4,size:3,orbit:14,shape:'star',blend:'lighter',start:'#f2b4ff',end:'#6e2eaa'},
+  'purple-eyes':{name:'Warlock eyes',count:8,life:.7,speedX:0,speedY:-2,spread:12,gravity:0,size:2,orbit:5,shape:'star',blend:'lighter',start:'#fff0ff',end:'#a936e8'},
+  'pink-sparkle':{name:'GM item sparkle',count:10,life:1,speedX:0,speedY:-9,spread:18,gravity:0,size:2,orbit:9,shape:'star',blend:'lighter',start:'#fff0ff',end:'#ff63bb'},
   splash:{name:'Water entry splash',count:24,life:.8,speedX:0,speedY:-32,spread:28,gravity:95,size:3,orbit:7,shape:'square',blend:'source-over',start:'#e3fffa',end:'#4da8c1'},
   bubbles:{name:'Diving bubbles',count:7,life:.65,speedX:0,speedY:-12,spread:12,gravity:0,size:2,orbit:3,shape:'square',blend:'source-over',start:'#dbfff9',end:'#6ab8ce'},
   'swim-wake':{name:'Swimming wake',count:10,life:.65,speedX:0,speedY:2,spread:20,gravity:0,size:2,orbit:8,shape:'square',blend:'source-over',start:'#b5f4e9',end:'#3c91a7'},

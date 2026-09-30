@@ -30,7 +30,7 @@ test('Joining, settings changes, selection panels, and disconnection cancel the 
 });
 test('Interactions require a spawned character near an object; lobby positions do not move game spawn',()=>{
   const lobby=new LobbyState(),p={id:1,x:1000,y:1000};lobby.sync([p]);
-  const s=lobby.members.get(1);s.x=510;s.y=280;assert.equal(lobby.nearest(p),null);
+  const s=lobby.members.get(1);s.x=770;s.y=420;assert.equal(lobby.nearest(p),null);
   s.spawned=true;assert.equal(lobby.nearest(p).id,'board');assert.equal(p.x,1000);
   s.x=60;s.y=560;assert.equal(lobby.nearest(p),undefined);
 });

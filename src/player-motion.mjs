@@ -1,5 +1,8 @@
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
+import {drawParticleEffect} from './particles.mjs';
+import {SALVAGE_SECONDS} from './salvage.mjs';
+import {defaultAnimationLayers,validAnimationLayers,blendJointMask} from './animation-layers.mjs';
 import { capeRows } from './cape-motion.mjs';
 import { wearableDetails, directionalHelmet } from "./wearable-art.mjs";
 import { gearPalette, fittedGear, fittedShield, withBootPose } from './gear-art.mjs';
@@ -214,6 +217,7 @@ export function defaultPlayerMotion() {
     },
   };
   Object.assign(model.clips,humanoidClips(model.clips));
+  model.animationLayers=defaultAnimationLayers(model);
   model.clips.sleep = {
     fps: 4, length: 2, loop: true,
     keys: [
@@ -264,6 +268,7 @@ export function upgradePlayerMotion(input) {
     }
   }
   const defaults=defaultPlayerMotion();
+  m.animationLayers ??= clone(defaults.animationLayers);
   // Upgrade only the untouched shipping stroke, never a user-authored swim clip.
   const rest=Object.fromEntries(Object.keys(JOINTS).map(n=>[n,[0,0,0]]));
   const legacySwim={fps:16,length:8,loop:true,keys:[
@@ -293,6 +298,7 @@ export function validatePlayerMotion(m) {
 export function validateMotion(m, template) {
   if (m?.version !== 1 || !m.joints || !m.clips || !m.palette) return false;
   if(!validAngles(m.jointAngles,m.joints))return false;
+  if(!validAnimationLayers(m))return false;
   if(m.ik!==undefined){
     if(!m.ik||typeof m.ik!=='object'||Array.isArray(m.ik))return false;
     for(const [key,c] of Object.entries(m.ik))if(!c||key!==c.end||!m.joints[c.root]||m.joints[c.mid]?.parent!==c.root||m.joints[c.end]?.parent!==c.mid||![1,-1].includes(c.bend)||typeof c.enabled!=='boolean')return false;
@@ -373,12 +379,12 @@ export function wandLocalTip(visual, direction=0, side='R') {
 }
 export function wandTipWorld(actor,slot,time,model=playerMotion,size=43){
   const d=facingIndex(actor.faceX,actor.faceY),side=slot==='hand1'?'R':'L',joint='hand'+side;
-  const pose=poseAt(model,playerAction(actor),playerFrame(actor,time,model));
+  const pose=playerPose(actor,time,model);
   const v=[...pose[joint]];if(actor.appearance?.build==='broad')v[0]*=1.12;else if(actor.appearance?.build&&actor.appearance.build!=='standard')v[0]*=.9;
   const hand=projectPoint(v,d),visual=model.wearables?.[actor.equipment?.[slot]]?.[d],tip=wandLocalTip(visual,d,side);
   const angle=(visual?.rotation||0)*Math.PI/180,scale=visual?.scale||1;
   let x=(tip.x*Math.cos(angle)-tip.y*Math.sin(angle))*scale+(visual?.x||0),y=(tip.x*Math.sin(angle)+tip.y*Math.cos(angle))*scale+(visual?.y||0);
-  const rotation=jointAngle(model,playerAction(actor),playerFrame(actor,time,model),d,joint,actor.angleRestOnly)*Math.PI/180;
+  const rotation=playerJointAngle(actor,time,model,d,joint)*Math.PI/180;
   const rx=x*Math.cos(rotation)-y*Math.sin(rotation),ry=x*Math.sin(rotation)+y*Math.cos(rotation);
   return {x:actor.x+(hand.x+rx)*size/48,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)+(hand.y+ry)*size/48};
 }
@@ -447,6 +453,7 @@ export function playerAction(actor) {
   if(actor.hp<=0)return 'death';
   if(actor.sleeping > 0)return 'sleep';
   if (actor.hit > 0) return "hurt";
+  if((actor.salvageHold?.elapsed>0&&!actor.salvageHold.latched)||actor.salvageFinish>0)return 'salvage';
   if(actor.jumpHeight>0)return actor.jumpAge<.1?'jump_takeoff':actor.jumpVelocity>0?'jump_air':'jump_fall';
   if(actor.swimming)return actor.moving?'swim':'idle';
   if(actor.landTime>0)return 'land';
@@ -468,11 +475,12 @@ export function playerAction(actor) {
   if (actor.charge > 0) return "punch";
   return actor.moving ? actor.walking?"walk":"run" : "idle";
 }
-export function playerFrame(actor, time, model = playerMotion) {
-  const action = playerAction(actor),
+export function playerFrame(actor, time, model = playerMotion, action = playerAction(actor)) {
+  const
     clip = model.clips[action] || model.clips.idle;
   if (Number.isFinite(actor.playerFrame)) return actor.playerFrame;
   if (actor.poseTime !== undefined) return actor.poseTime * (clip.length - 1);
+  if(action==='salvage')return (actor.salvageFinish>0?8+(1-actor.salvageFinish/.3)*3:Math.min(8,(actor.salvageHold?.elapsed||0)/SALVAGE_SECONDS*8))/11*(clip.length-1);
   if (action === "run" || action === "walk")
     // Core accumulates 0.13 radians per world pixel. Keep footsteps tied to
     // distance, with an 88px stride (about 1.5 cycles/sec at normal speed).
@@ -485,12 +493,41 @@ export function playerFrame(actor, time, model = playerMotion) {
   if(action==='get_up')return (1-(actor.getUpTime||0)/.4)*(clip.length-1);
   if(action==='land')return (1-(actor.landTime||0)/.22)*(clip.length-1);
   if(actor.attack>0&&actor.attackClip===action)return Math.max(0,1-actor.attack/(actor.attackDuration||.34))*(clip.length-1);
-  if (actor.charge > 0) return 0;
-  if (["punch", "slash"].includes(action))
+  if (actor.charge > 0 && !action.startsWith('jump')) return 0;
+  if (["punch", "slash", "ranged"].includes(action))
     return (1 - (actor.attack || 0) / 0.34) * (clip.length - 1);
   if (action === "hurt")
     return Math.max(0, (0.2 - (actor.hit || 0)) / 0.2) * (clip.length - 1);
   return time * clip.fps;
+}
+export function playerLayers(actor,time,model=playerMotion){
+ const current=playerAction(actor),preview=actor.layerPreview;
+ if(actor.angleRestOnly||(!preview&&(actor.animationAction||actor.hp<=0||actor.hit>0)))return [];
+ const combat=actor.attack>0||actor.charge>0||actor.bowAiming||actor.blocking;
+ const combatActor={...actor,animationAction:null,jumpHeight:0,swimming:false,landTime:0,foundUnique:0,pickupTime:0,gatherTime:0,carryingItem:false,parry:0};
+ return (model.animationLayers||[]).flatMap((layer,index)=>{
+  if(!layer.enabled||layer.weight<=0||(preview&&preview.index!==index))return [];
+  if(!preview&&!(layer.condition==='always'||layer.condition==='airborne'&&actor.jumpHeight>0||layer.condition==='moving'&&actor.moving||layer.condition==='combat'&&combat))return [];
+  if(!preview&&layer.overlay==='$combat'&&!combat)return [];
+  const base=preview?.base||(layer.base==='$current'?current:layer.base),overlay=preview?.overlay||(layer.overlay==='$combat'?playerAction(combatActor):layer.overlay);
+  return [{...layer,base,overlay,baseFrame:playerFrame(actor,time,model,base),overlayFrame:preview?time*(model.clips[overlay]?.fps||12):playerFrame(combatActor,time,model,overlay)}];
+ });
+}
+export function playerPose(actor,time,model=playerMotion){
+ let pose=poseAt(model,playerAction(actor),playerFrame(actor,time,model));
+ for(const layer of playerLayers(actor,time,model)){
+  if(layer.base!=='$current'&&layer.base!==playerAction(actor))pose=poseAt(model,layer.base,layer.baseFrame);
+  pose=blendJointMask(pose,poseAt(model,layer.overlay,layer.overlayFrame),layer);
+ }
+ return pose;
+}
+export function playerJointAngle(actor,time,model,d,joint){
+ let angle=jointAngle(model,playerAction(actor),playerFrame(actor,time,model),d,joint,actor.angleRestOnly);
+ for(const layer of playerLayers(actor,time,model)){
+  if(layer.base!==playerAction(actor))angle=jointAngle(model,layer.base,layer.baseFrame,d,joint);
+  if(layer.joints.includes(joint)){const target=jointAngle(model,layer.overlay,layer.overlayFrame,d,joint);angle+=(((target-angle+540)%360)-180)*layer.weight;}
+ }
+ return angle;
 }
 // Raster primitives only write whole pixels; no filtered rotations or antialiased seams.
 export function ellipse(c, x, y, rx, ry, color) {
@@ -532,7 +569,7 @@ export function drawPlayer(
   const d = facingIndex(actor.faceX, actor.faceY),
     positions = suppliedPose
       ? { ...suppliedPose }
-      : poseAt(model, playerAction(actor), playerFrame(actor, time, model));
+      : playerPose(actor,time,model);
   if (actor.appearance?.build && actor.appearance.build !== "standard")
     for (const [key, v] of Object.entries(positions))
       positions[key] = [
@@ -546,8 +583,10 @@ export function drawPlayer(
   const pal = { ...model.palette },
     gear = { ...actor.equipment },
     back = d >= 3 && d <= 5;
+  const salvaging=playerAction(actor)==='salvage';
+  if(salvaging){gear.hand1=null;gear.hand2=null;}
   const rotateJoint = (joint,anchor,paint) => {
-    const angle=jointAngle(model,playerAction(actor),playerFrame(actor,time,model),d,joint,actor.angleRestOnly);
+    const angle=playerJointAngle(actor,time,model,d,joint);
     if(!angle)return paint();
     c.save();c.translate(anchor.x,anchor.y);c.rotate(angle*Math.PI/180);c.translate(-anchor.x,-anchor.y);
     try {paint();} finally {c.restore();}
@@ -1074,6 +1113,10 @@ export function drawPlayer(
     );
   paintLayers(queue, model, d, c, p);
   wearableDetails(c, p, {}, look, d, time, cosmetics);
+  if(salvaging){
+    if(actor.salvageHold?.type&&!actor.salvageHold.latched)drawItem(c,actor.salvageHold.type,(p.handL.x+p.handR.x)/2,(p.handL.y+p.handR.y)/2,10);
+    for(const [index,hand] of [p.handL,p.handR].entries())drawParticleEffect(c,actor.salvageFinish>0?'salvage-burst':'salvage-hands',hand.x,hand.y,actor.salvageFinish>0?.3-actor.salvageFinish:actor.salvageHold?.elapsed||time,index+17);
+  }
   return p;
 }
 export function descendants(model, joint) {

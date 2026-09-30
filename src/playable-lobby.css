@@ -1,6 +1,6 @@
 body[data-screen="lobby"]{overflow:hidden}
-#lobby.playable-lobby{padding:0 24px 12px;background:#252c30;height:100dvh;min-height:0}
-#lobby.playable-lobby .party-banner{height:64px;background:none;border-bottom:1px solid #475052;margin:0}
+#lobby.playable-lobby{padding:0 24px 12px;background:#20292d;height:100dvh;min-height:0}
+#lobby.playable-lobby .party-banner{height:92px;background:none;border-bottom:1px solid #30393d;margin:0}
 #lobby.playable-lobby .party-banner::after{display:none}
 #lobby.playable-lobby .party-banner>img{display:none}
 #lobby.playable-lobby .party-topbar{position:static;height:100%;align-items:center;padding:0}

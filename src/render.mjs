@@ -26,7 +26,7 @@ import {
 import { propDepth, isOccluded } from "./world.mjs";
 import { Animator } from "./animation.mjs";
 import { drawBoard } from "./board.mjs";
-import {BOARD_TABLE} from './board-table.mjs';
+import {BOARD_TABLE,boardActorDepth,boardTableDepth} from './board-table.mjs';
 import { canSee, VISION } from "./adventure.mjs";
 import { ITEMS } from "./items.mjs";
 import { drawHazards, drawWeather } from "./hazards.mjs";
@@ -247,7 +247,11 @@ export class Renderer {
       }
       if (l.embedded && l.type === "arrow") {
         drawEmbeddedArrow(ctx,l);
-      } else drawItem(ctx, l.type, l.x, l.y - 3, 24);
+      } else {
+        if (ITEMS[l.type]?.gmOnly) drawParticleEffect(ctx,'pink-sparkle',l.x,l.y-8,game.time,l.id);
+        const fall=l.salvageBorn===undefined?0:Math.max(0,1-(game.time-l.salvageBorn)/.55);
+        drawItem(ctx, l.type, l.x, l.y - 3 - Math.sin(fall*Math.PI/2)*24, 24);
+      }
       if (ITEMS[l.type]?.slot) {
         ctx.fillStyle = ITEMS[l.type].color;
         ctx.fillRect(l.x - 8, l.y + 9, 16, 1);
@@ -459,7 +463,7 @@ export class Renderer {
     const actors = this.actorQueue;
     actors.length = 0;
     for (const p of game.players)
-      if (!p.room) actors.push({ ...p, isPlayer: true, drawDepth: p.y });
+      if (!p.room) actors.push({ ...p, isPlayer: true, drawDepth: boardActorDepth(game,p) });
     for (const e of game.enemies)
       if (pull || (canSee(game, e) && this.visible(e, w, h, 180))) {
         const actor = pull
@@ -471,7 +475,7 @@ export class Renderer {
           : e;
         actors.push({
           ...actor,
-          drawDepth: actor.y + (rigSubject(e.kind) ? 0 : 14),
+          drawDepth: boardActorDepth(game,actor,actor.y + (rigSubject(e.kind) ? 0 : 14)),
         });
       }
     for (const d of this.decor)
@@ -485,9 +489,9 @@ export class Renderer {
           isScenery: true,
           drawDepth: iceSolid(d)?iceBase(d).y:propDepth(d, this.assets.library[d.kind]),
         });
-    // The tabletop is a depth-sorted occluder: actors behind it are painted
-    // first, while actors in front remain visible over its front edge.
-    actors.push({ isBoard: true, drawDepth: BOARD_TABLE.y + BOARD_TABLE.h / 2 });
+    // Floor-level actors behind the table are occluded. Supported/airborne
+    // actors over its footprint are drawn above it, including the back half.
+    actors.push({ isBoard: true, drawDepth: boardTableDepth() });
     actors.sort((a, b) => a.drawDepth - b.drawDepth);
     for (const a of actors) {
       if (a.isBoard) {
@@ -613,6 +617,11 @@ export class Renderer {
       const grounded=!['bat','wasp','bee','dragon','pelican'].includes(a.kind),snowBase=a.y+(player||rigSubject(a.kind)?1:14);
       if(grounded)clipSnow(ctx,game,a.x,snowBase,200);
       if (a.invuln > 0 && Math.floor(this.age * 15) % 2) ctx.globalAlpha *= 0.5;
+      if (!player && a.kind === 'necromancer') {
+        drawParticleEffect(ctx,'purple-aura',a.x,a.y-22,game.time,a.id);
+        drawParticleEffect(ctx,'purple-eyes',a.x,a.y-37,game.time,a.id+17);
+      }
+      if (!player && a.summonFootprint) drawParticleEffect(ctx,'purple-eyes',a.x,a.y-32,game.time,a.id+31);
       const dead = !player && a.hp <= 0;
       if (dead) {
         drawCorpse(ctx,a,rigSubject(a.sprite||a.kind)?.data,contact,size,
@@ -673,6 +682,7 @@ export class Renderer {
         ctx.fillStyle = "#a3ab99";
         ctx.fillRect(a.x - 4, a.y - 34, 5, 3);
       }
+      if (!player && a.summonPulse > 0) drawParticleEffect(ctx,'purple-aura',a.x,a.y-18,game.time,a.id+43);
       if (!player && a.state === "rocklift") {
         ctx.fillStyle = "#5d655b88";
         ctx.beginPath();
@@ -702,6 +712,7 @@ export class Renderer {
         const direction=a.attackClip==='swipe_two'?-1:1,center=angle+direction*(progress-.5)*half;
         ctx.strokeStyle=big?'#ffcd70':'#ffe5a3';ctx.lineWidth=big?6:3;ctx.beginPath();
         ctx.arc(a.x,a.y-(a.jumpHeight||0)-(a.groundHeight||0)-(upper?progress*22:0),radius,center-half*.65,center+half*.65);ctx.stroke();
+        if (ITEMS[a.equipment?.hand1]?.truthSword || ITEMS[a.equipment?.hand2]?.truthSword) { ctx.strokeStyle='#ff8fc8';ctx.lineWidth=3;ctx.globalAlpha=.55;ctx.beginPath();ctx.arc(a.x,a.y,radius+10,center-half,center+half);ctx.stroke();ctx.globalAlpha=1; }
 
       }
       if (a.state === "snared") {
@@ -757,23 +768,6 @@ export class Renderer {
         f.smoke ? 4 : 3,
         f.smoke ? 4 : 5,
       );
-    }
-    if (game.roll) {
-      const t = game.roll.elapsed;
-      for (let i = 0; i < game.roll.dice.length; i++) {
-        const bounce =
-          t < 1.6 ? Math.abs(Math.sin(t * 14 + i)) * (1.6 - t) * 10 : 0;
-        drawDie(
-          ctx,
-          CENTER +
-            (i ? 12 : -12) +
-            (t < 1.6 ? Math.sin(t * 10 + i) * 7 * (1.6 - t) : 0),
-          CENTER - bounce,
-          7,
-          game.roll.dice[i],
-          t < 1.6 ? t * 8 + i : 0,
-        );
-      }
     }
     for (const fx of game.effects) {
       ctx.globalAlpha = Math.min(1, fx.life * 2);
@@ -1162,7 +1156,7 @@ export class Renderer {
     );
     // Full board (including both leaves) fits on a two-tile tabletop.
     ctx.scale(60 / 282, 28 / 160);
-    drawBoard(ctx, game, this.age);
+    drawBoard(ctx, game, game.roll?.elapsed??this.age,{drawDie});
     ctx.restore();
   }
   minimap(ctx, game, w, h) {

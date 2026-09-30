@@ -1,4 +1,7 @@
 import {drawTempleRoom} from './temple.mjs';
+import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
+import {drawSocketWorkshop} from './socket-workshop.mjs';
+import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
 import { compareItem, itemStatDelta } from "./field-systems.mjs";
 import { controllerButtonNames, CONTROLLER_NAMES } from "./controls.mjs";
 import { chestName } from "./items.mjs";
@@ -37,7 +40,7 @@ export class HeroUI {
       const stats = el('div', null, 'item-tooltip-stats');
       const base = itemStats(item.type);
       if (base) stats.append(el('span', base, 'item-tooltip-base'));
-      for (const delta of itemStatDelta(p, item.type)) {
+      for (const delta of itemStatDelta(p, item.type,item.sockets)) {
         const sign = delta.value > 0 ? '+' : '';
         stats.append(el('span', `${delta.label} ${sign}${delta.value}  (${delta.current} → ${delta.next})`, delta.value > 0 ? 'stat-up' : 'stat-down'));
       }
@@ -96,10 +99,12 @@ export class HeroUI {
         p.ui?.storage,
         p.ui?.shop,
         p.ui?.notice,
+        JSON.stringify(p.ui?.socket||null),
         (p.vendingOrders || []).map((o) => o.ready).join(","),
         portal?.closing == null ? "" : Math.ceil(portal.closing),
       ].join("|");
       this.preview(panel, p, game.time);
+      panel.querySelectorAll('.salvage-ring').forEach(r=>{const progress=salvageProgress(p);r.style.setProperty('--salvage-fill',progress*360+'deg');r.setAttribute('aria-valuenow',String(Math.round(progress*100)));});
       // Keep interactive nodes alive between pointerdown and pointerup.
       // Recreating buttons every animation frame prevents native clicks.
       if (panel.uiSignature === signature && panel.hero === p) {
@@ -143,7 +148,8 @@ export class HeroUI {
           p.ui ? "Close inventory" : p.room === "temple-upper" ? "Return downstairs" : p.room ? "Return through portal" : "Close",
           "close",
           () => {
-            if (p.ui) p.ui = null;
+            if (p.ui?.socket)game.inventoryAction(p,'close');
+            else if (p.ui) p.ui = null;
             else if (p.room) game.leaveRoom(p);
           },
         ),
@@ -221,6 +227,7 @@ export class HeroUI {
     for(const panel of this.panels.values())if(panel.revealSelection){panel.querySelector('.storage-sheet.active .selected')?.scrollIntoView({block:'nearest',inline:'nearest'});panel.revealSelection=false;}
   }
   storagePanels(panel, game, p, button) {
+    if(p.ui.socket){drawSocketWorkshop(panel,game,p,button,el);return;}
     const u = p.ui,
       storage = game.storageFor(p),
       layout = el("div", null, "storage-layout");
@@ -268,6 +275,7 @@ export class HeroUI {
         ),
       );
       if (gear) {
+        sheet.append(el('p',`Health ${Math.ceil(p.hp)} / ${p.maxHp} · Mana ${Math.ceil(p.mana)} / ${p.maxMana}`,'hero-vitals'));
         const portrait = el("canvas");
         portrait.width = 140;
         portrait.height = 180;
@@ -328,7 +336,7 @@ export class HeroUI {
       }
       sheet.append(controls);
       const list = gear
-        ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot], qty: 1 }))
+        ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[slot]||[] }))
         : mode === "pack"
           ? p.inventory
           : storage;
@@ -462,6 +470,15 @@ export class HeroUI {
         ),
       );
       const actions = el("div", null, "inventory-actions");
+      if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)){
+        sheet.append(el('p',`${'◆'.repeat(item.sockets?.length||0)}${'◇'.repeat(Math.max(0,socketCount(item.type)-(item.sockets?.length||0)))} · Item mana +${gearStat(item.type,item.sockets,'maxMana')}`,'socket-summary'));
+        actions.append(button('Y · Trinket sockets','sockets-'+mode,()=>act(mode,'sockets')));
+      }
+      if(def?.set&&GEAR_SETS[def.set]){
+        const set=setProgress(p,def.set),checklist=el('section',null,'set-checklist');checklist.append(el('strong',`${set.name} · ${set.count}/${set.checks.length}`));
+        for(const part of set.checks)checklist.append(el('div',(part.equipped?'✓ ':'○ ')+part.ids.map(id=>ITEMS[id].name).join(' / '),part.equipped?'set-active':'set-missing'));
+        checklist.append(el('p','3 pieces · '+set.threeText,set.count>=3?'set-active':'set-missing'),el('p','Complete · '+set.fullText,set.complete?'set-active':'set-missing'));sheet.append(checklist);
+      }
       const add = (label, key, action) =>
         actions.append(button(label, key, () => act(mode, action)));
       if (gear && def) add("Unequip", active ? "use" : "gear-use", "use");
@@ -472,7 +489,7 @@ export class HeroUI {
           "equip",
         );
         if (def.slot === "hand1" && !def.twoHanded)
-          add("Equip hand 2", "offhand", "offhand");
+          add("Equip hand 2", "offhand", "equipOffhand");
         if (storage) add("Store selected →", "transfer-pack", "store");
         if (item?.qty > 1)
           add("Split stack", storage ? "split-pack" : "split", "split");
@@ -495,6 +512,17 @@ export class HeroUI {
           add("Drop one", "dropOne", "dropOne");
           add("Drop stack", "drop", "drop");
         }
+        if(active&&salvageYield(item?.type).length){
+          const reason=salvageReason(p),b=button('','salvage-hold',()=>{}),ring=el('span',null,'salvage-ring');
+          ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
+          b.className='salvage-button';b.disabled=!!reason;
+          b.append(ring,el('span','Hold RT / V · Salvage'));
+          b.title=reason||salvageYield(item.type).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ')+' · Socketed trinkets are returned as drops.';
+          b.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);p.ui.salvagePointer=true;};
+          const stop=()=>{if(p.ui)p.ui.salvagePointer=false;};b.onpointerup=stop;b.onpointercancel=stop;b.onlostpointercapture=stop;b.onblur=stop;
+          b.onkeydown=e=>{if(['Space','Enter'].includes(e.code)){e.preventDefault();e.stopPropagation();p.ui.salvagePointer=true;}};b.onkeyup=stop;
+          actions.append(b,el('small',reason||b.title,'salvage-description'));
+        }
       } else if (mode === "chest" && def) {
         add("← Take selected", "transfer-chest", "store");
         add("Split stack", "split-chest", "split");
@@ -512,7 +540,7 @@ export class HeroUI {
     );
     const controls = this.controllerText(game, p);
     const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
-    panel.append(el('small',`${family} · ${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.accept}: use · Y: split / offhand · X: drop / transfer · ${controls.close}: close`));
+    panel.append(el('small',`${family} · ${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.accept}: use · Y: sockets / split · X: drop / transfer · ${controls.close}: close`));
   }
 
   preview(panel, p, time) {
@@ -529,7 +557,7 @@ export class HeroUI {
         ...p,
         faceX: 0,
         faceY: 1,
-        animationAction: "idle",
+        animationAction: (p.salvageHold?.elapsed>0&&!p.salvageHold.latched)||p.salvageFinish>0?'salvage':'idle',
         moving: false,
         playerFrame: undefined,
       },

@@ -164,6 +164,7 @@ export function tickEnvironment(g, dt) {
         time: g.time,
         water,
         animal: !!a.kind,
+        purple: a.kind === 'necromancer' || !!a.summonFootprint,
       });
       a.trackPosition = { x: a.x, y: a.y };
     } else if (!last || Math.hypot(a.x - last.x, a.y - last.y) >= 100)
@@ -196,7 +197,7 @@ export function drawTracks(c, g) {
     } else {
       c.globalAlpha = Math.max(0, 1 - t / 18) * 0.36;
       c.rotate(f.angle);
-      c.fillStyle = "#15281f";
+      c.fillStyle = f.purple ? "#bf68e8" : "#15281f";
       c.fillRect(-2, -1, f.animal ? 3 : 5, 2);
       if (f.animal) {
         c.fillRect(2, -2, 1, 1);

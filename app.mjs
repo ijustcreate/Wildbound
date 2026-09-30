@@ -15,7 +15,7 @@ import { MUSIC_TRACKS, musicTrack } from "./src/music.mjs";
 import { mountMusicPicker } from './src/music-picker.mjs';
 import { Game, CENTER, EVENTS, FINISH, cameraTarget } from "./src/core.mjs";
 import { Assets } from "./src/assets.mjs";
-import { Renderer, drawMenu } from "./src/render.mjs";
+import { Renderer, drawMenu,drawDie } from "./src/render.mjs";
 import { drawBoard } from "./src/board.mjs";
 import { Animator } from "./src/animation.mjs";
 import { ITEM_ART_TYPES, drawItem } from "./src/item-art.mjs";
@@ -48,6 +48,7 @@ import {
 import { count, give, equip, ITEMS } from "./src/items.mjs";
 import { Designer } from "./src/designer.mjs";
 import { loadDefinitions, creatures } from "./src/definitions.mjs";
+import { createGameDebug } from './src/game-debug.mjs';
 loadDefinitions(EVENTS, ITEMS);
 await (await import('./src/project-rigs.mjs')).loadProjectRigs(EVENTS, ITEMS);
 let designer;
@@ -64,6 +65,7 @@ const $ = (id) => document.getElementById(id);
 const assets = new Assets();
 const lobbyAnimator = new Animator(assets);
 let playableLobby;
+let gameDebug;
 
 let game = new Game(),
   screen = "home",
@@ -84,6 +86,21 @@ const keys = new Set(),
   controllerLastSeen = new Map();
 const controllerClaimKey = (pad) =>
   `${pad.index}|${pad.id || "unknown"}|${pad.mapping || ""}`;
+const debugSequence = [];
+const debugCode = ['up','down','left','right','a','b','a','b','select','start'];
+let debugSequenceAt=0;
+function feedDebugCode(token){
+  const now=performance.now();
+  if(now-debugSequenceAt>3500)debugSequence.length=0;
+  debugSequenceAt=now;
+  debugSequence.push(token);
+  while(debugSequence.length>debugCode.length)debugSequence.shift();
+  if(debugSequence.length===debugCode.length&&debugSequence.every((v,i)=>v===debugCode[i])){
+    debugSequence.length=0;
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
+    gameDebug.open();
+  }
+}
 function requestControllerClaim(pad, key) {
   if (!window.desktop?.claimController || pendingControllerClaims.has(key)) return;
   pendingControllerClaims.add(key);
@@ -615,7 +632,7 @@ function updateHud() {
     $("game-toast").textContent = "SAVE FAILED: " + profiles.error;
   $("event-card").classList.toggle(
     "hidden",
-    !game.event || game.eventTime <= 0,
+    !!game.roll || !!game.eventOnBoard || !game.event || game.eventTime <= 0,
   );
   if (game.event) {
     $("event-card").style.opacity = String(
@@ -745,6 +762,7 @@ $("nav-workshop").onclick = () => {
 $("pause-button").onclick = () => pause();
 $("board-button").onclick = () => (boardPinned = !boardPinned);
 $("close-board").onclick = () => {
+  if(game.roll)return;
   boardPinned = false;
   boardDismissedRoll = game.roll;
 };
@@ -858,6 +876,10 @@ for (const [action, value] of Object.entries(mapping)) {
   $("mapping-fields").append(label);
 }
 window.addEventListener("keydown", (e) => {
+  if(screen==='play'&&!document.querySelector('dialog[open]')){
+    const token={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyA:'a',KeyB:'b',Backspace:'select',Enter:'start'}[e.code];
+    if(token&&!e.repeat)feedDebugCode(token);
+  }
   if (
     screen === "play" &&
     (e.code === "AltLeft" || e.code === "AltRight") &&
@@ -1164,6 +1186,10 @@ function inputFrame() {
       }
     }
     const pressed = (key) => !joinedNow && (pad.buttons[mapping[key]]?.pressed || false);
+    if (screen === 'play' && !modal && !joinedNow) {
+      const debugButtons = [[12,'up'],[13,'down'],[14,'left'],[15,'right'],[0,'a'],[1,'b'],[8,'select'],[9,'start']];
+      for (const [index,token] of debugButtons) if (pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token);
+    }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
       inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0};
@@ -1207,7 +1233,8 @@ function inputFrame() {
       dodge: pressed("dodge") || pad.buttons[7]?.pressed,
       trap: pressed("trap"),
       interact: pressed("interact"),
-      potion: pressed("potion"),
+      summon: !!pad.buttons[5]?.pressed,
+      potion: pressed("potion") && !pad.buttons[5]?.pressed,
       block: pressed("block"),
       inventory: pressed("inventory"),
       portal: pressed("portal"),
@@ -1220,6 +1247,7 @@ function inputFrame() {
       use: !!pad.buttons[0]?.pressed,
       store: !!pad.buttons[2]?.pressed,
       offhand: !!pad.buttons[3]?.pressed,
+      salvage: !!pad.buttons[7]?.pressed,
       close: !!pad.buttons[1]?.pressed,
     };
     previousPads.set(
@@ -1277,6 +1305,7 @@ function inputFrame() {
     trap: keys.has("KeyQ"),
     interact: keys.has("KeyE"),
     potion: keys.has("KeyH"),
+    summon: keys.has("KeyR"),
     block: keys.has("KeyC"),
     inventory: keys.has("KeyI"),
     portal: keys.has("KeyP"),
@@ -1289,6 +1318,7 @@ function inputFrame() {
     use: keys.has("Enter"),
     store: keys.has("KeyR"),
     offhand: keys.has("Digit2"),
+    salvage: keys.has('KeyV'),
     drop: keys.has("Delete"),
   };
   return inputs;
@@ -1365,16 +1395,19 @@ function frame(now) {
       );
       fieldKit.tick(now / 1000);
       const boardVisible =
-        boardPinned || (!!game.roll && game.roll !== boardDismissedRoll);
+        boardPinned || !!game.roll;
+      if(game.roll){boardPinned=false;$('event-card').classList.add('hidden');}
       $("board-panel").classList.toggle("hidden", !boardVisible);
+      $("board-panel").classList.toggle('board-sequence',!!game.roll);
+      $('close-board').disabled=!!game.roll;
       if (boardVisible) {
         const c = $("board-closeup").getContext("2d");
         c.imageSmoothingEnabled = false;
         c.clearRect(0, 0, 560, 380);
         c.save();
         c.translate(280, 185);
-        c.scale(2, 2);
-        drawBoard(c, game, game.time, { closeup: true });
+        c.scale(1.9, 1.9);
+        drawBoard(c, game, game.roll?.elapsed??game.time, { closeup: true,drawDie });
         c.restore();
         $("board-caption").textContent = game.roll
           ? game.roll.resolved
@@ -1382,7 +1415,7 @@ function frame(now) {
             : game.roll.elapsed < 1.6
               ? "The dice are rolling…"
               : "Moving space " +
-                Math.min(48, Math.ceil(game.current.boardProgress)) +
+                Math.min(48, Math.ceil(game.players.find(p=>p.id===game.roll.playerId)?.boardProgress||0)) +
                 " · " +
                 game.roll.total +
                 " rolled"

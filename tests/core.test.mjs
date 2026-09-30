@@ -31,10 +31,10 @@ test("First hits establish order, repeated rolls wait until the next round", () 
   assert.equal(g.current, null);
   assert.ok(g.hitTable(b));
   assert.equal(g.hitTable(a), false);
-  tick(g, 5);
+  while(g.roll)tick(g,.05);
   assert.equal(g.hitTable(b), false);
   assert.ok(g.hitTable(a));
-  tick(g, 5);
+  while(g.roll)tick(g,.05);
   assert.deepEqual(g.turnOrder, [b.id, a.id]);
   assert.equal(g.current, b);
   assert.equal(g.hitTable(a), false);
@@ -48,7 +48,7 @@ test("First round admits up to six unique devices then locks roster", () => {
   assert.equal(g.addPlayer("extra"), null);
   for (let i = 0; i < 6; i++) {
     g.hitTable(g.players[i]);
-    tick(g, 5);
+    while(g.roll)tick(g,.05);
     for (const p of g.players) p.hp = 100;
   }
   assert.equal(g.round, 2);
@@ -59,10 +59,10 @@ test("First round admits up to six unique devices then locks roster", () => {
 test("Later rolls keep previously summoned creatures", () => {
   const g = game();
   g.hitTable(g.players.find((p) => !p.rolls) || g.current);
-  tick(g, 5);
+  while(g.roll)tick(g,.05);
   const lionId = g.enemies[0].id;
   g.hitTable(g.players.find((p) => !p.rolls) || g.current);
-  tick(g, 5);
+  while(g.roll)tick(g,.05);
   assert.ok(g.enemies.some((e) => e.id === lionId));
   assert.ok(g.enemies.length > 1);
 });

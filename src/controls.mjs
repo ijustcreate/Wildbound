@@ -63,7 +63,7 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
       `Controller ${row.pad.index+1} · ${CONTROLLER_NAMES[controllerFamily(row.pad)]} · ${row.pad.id} · ${row.pad.mapping==='standard'?'standard layout':'device-specific button layout'}`:
       row.device.startsWith('pad:')?'Controller disconnected':row.device;card.append(desc);
     const list=document.createElement('dl');
-    const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
+    const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'RB · raise skeleton',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
     for(const [action,key] of Object.entries(bindings)){const term=document.createElement('dt'),value=document.createElement('dd');term.textContent=action;value.textContent=key;list.append(term,value);}
     card.append(list);root.append(card);
   }
@@ -83,6 +83,7 @@ export const KEYS = {
   pause: "Esc",
   bait: "V",
   field: "G",
+  summon: "R · raise skeleton",
 };
 export function controlLabels(mapping) {
   return Object.fromEntries(

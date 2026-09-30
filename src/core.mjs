@@ -6,8 +6,9 @@ import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equ
 import {startJump,tickJump} from './jumping.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
 import {tickQuicksand} from './quicksand.mjs';
+import {tickBoardSequence} from './board-sequence.mjs';
 import {tickWolf, wolfPack} from './wolf-pack.mjs';
-import {ensureTemple,tickGorilla,tickGhosts,summonGhost} from './temple.mjs';
+import {ensureTemple,tickGorilla,tickGhosts,summonGhost,summonNecromancerPet} from './temple.mjs';
 import { creatureCue } from './sound-bank.mjs';
 import {iceMotion,snowAt} from './ice-world.mjs';
 import {collisionOffset, actorRadius, clearShot, navigateEnemy} from './navigation.mjs';
@@ -29,7 +30,7 @@ import {
 } from "./hazards.mjs";
 import { TABLE, footprintHit, crossesTable, generateWorld } from "./world.mjs";
 import { initAdventure, initHero, adventureMethods } from "./adventure.mjs";
-import { ITEMS, stat, give, itemKind } from "./items.mjs";
+import { ITEMS, stat, give, itemKind, hasSetSkill } from "./items.mjs";
 import { rules, creatures } from "./definitions.mjs";
 export const TILE = 32,
   MAP_SIZE = 50,
@@ -312,6 +313,11 @@ EVENTS.push(
     verse:
       "A crown of horns, a rusted throne.\nThe king returns to claim his own.",
     tip: "Flank the shield. Dodge his sword and punish recovery. A unique reward awaits.",
+  },
+  {
+    name: "The purple warlock", kind: "necromancer", count: 1, hp: 300, speed: 35, damage: 24, weight: 1.5,
+    verse: "A purple crown, a staff of bone. Four dead answer when it calls its own.",
+    tip: "Interrupt the warlock before it heals its dead or summons another guard.",
   },
 );
 EVENTS.push(
@@ -617,7 +623,7 @@ export class Game {
     this.log = this.log.slice(0, 5);
   }
   hurt(p, amount, source) {
-    if (p.hp <= 0 || p.invuln > 0 || p.room) return;
+    if (p.hp <= 0 || p.invuln > 0 || p.room || p.invincible) return;
     if (this.shieldBlocks(p, source)) {
       record(p, "damagePrevented", amount);
       if (source?.kind && source.state === "windup") {
@@ -694,19 +700,23 @@ export class Game {
     if (magicSlots.length) {
       const spellCombo=nextCombo(p,loadoutKind(p),this.time);
       p.attackClip=spellCombo.clip==='cast'?'cast':'cast';
-      for (const slot of magicSlots) this.fireSpell(p, charge, slot, spellCombo.damage);
-      return true;
+      let cast = false;
+      for (const slot of magicSlots) cast = this.fireSpell(p, charge, slot, spellCombo.damage) || cast;
+      if (cast || !magicSlots.some(slot => ITEMS[p.equipment[slot]]?.base === 'staff')) return true;
     }
     if (itemKind(p.equipment.hand1) === "bow") {
       this.fireArrow(p, charge);
       return true;
     }
-    const hands = [ITEMS[p.equipment.hand1], ITEMS[p.equipment.hand2]].filter(i=>i?.damage && !i.magic && !i.ranged);
+    const hands = [ITEMS[p.equipment.hand1], ITEMS[p.equipment.hand2]].filter(i=>i?.damage && (!i.magic || i.base === 'staff') && !i.ranged);
     const weapon = hands[0], off = hands[1];
     const combo=nextCombo(p,loadoutKind(p),this.time);
     p.attackClip=combo.clip;p.attack=p.attackDuration=combo.duration;p.attackArc=combo.arc;p.attackReach=combo.reach;
+    if (ITEMS[p.equipment.hand1]?.truthSword || ITEMS[p.equipment.hand2]?.truthSword) {
+      p.attackClip = 'swipe_big'; p.attackReach = 2; p.attackArc = 120; p.attackDuration = p.attack = .5; p.spin = .5;
+    }
     const damage = combo.damage * (
-      (weapon?.damage || 12 + stat(p, "punch")) +
+      (weapon?.damage || 12 + stat(p, "punch")) + stat(p,'damageBonus') +
       (off && off.damage && !off.magic
         ? Math.round(off.damage * 0.5)
         : 0) +
@@ -773,6 +783,32 @@ export class Game {
       }
     }
     return true;
+  }
+  raiseSkeleton(p) {
+    if (!hasSetSkill(p, 'necromancer_pet')) {
+      this.message('Equip the Necromancer dagger and wand to raise a skeleton.');
+      return false;
+    }
+    if ((p.necromancerCooldown || 0) > 0) {
+      this.message(`Raise Skeleton ready in ${Math.ceil(p.necromancerCooldown)}s.`);
+      return false;
+    }
+    return summonNecromancerPet(this, p);
+  }
+  summonNecromancerMinions(e) {
+    const alive = this.enemies.filter(q => q.hp > 0 && q.summonedBy === e.id).length;
+    if (alive >= 4 || (e.summonCooldown || 0) > 0) return false;
+    const kinds = ['skeleton', 'skeleton_unarmed', 'skeleton_wizard', 'skeleton_caster'];
+    const kind = kinds[Math.floor(this.random() * kinds.length)], cfg = creatures[kind];
+    const angle = this.random() * Math.PI * 2, d = 42 + this.random() * 18;
+    const minion = {...e, ...cfg.stats, kind, aiKind: kind, id: this.nextId++, group: e.group,
+      summonedBy: e.id, x: e.x + Math.cos(angle) * d, y: e.y + Math.sin(angle) * d,
+      hp: cfg.stats.hp, maxHp: cfg.stats.hp, state: 'hunt', timer: 1, cooldown: 1,
+      flash: 0, step: 0, faceX: Math.cos(angle), faceY: Math.sin(angle), moving: false,
+      equipment: {hand1: kind === 'skeleton_caster' ? 'staff' : kind === 'skeleton_wizard' ? 'wand' : kind === 'skeleton_unarmed' ? null : 'sword'},
+      faction: 'enemy', summonFootprint: true};
+    this.configureCreature(minion, false); this.enemies.push(minion);
+    e.summonCooldown = 7.5; e.summonPulse = .8; this.onSound('magic', e); return true;
   }
   canHitBoard(p) {
     const dx =
@@ -871,6 +907,7 @@ export class Game {
         this.dropLoot(800, 800, reward.item, Math.max(1, Number(reward.qty) || 1), event.name + " reward", true);
   }
   spawnEvent(index) {
+    this.eventOnBoard=false;
     if (index === undefined) {
       const weight = (e) =>
         !eventAvailable(this, e)
@@ -1013,6 +1050,11 @@ export class Game {
             ? "tiger"
             : spawnedKind,
       };
+      if (spawnedKind === 'necromancer') {
+        e.equipment = {hand1:'staff'}; e.maxMana = 120; e.mana = 120; e.summonCooldown = 2;
+        e.summonKinds = ['skeleton','skeleton_unarmed','skeleton_wizard','skeleton_caster'];
+      }
+      if (spawnedKind === 'skeleton_caster') { e.equipment = {hand1:'staff'}; e.maxMana = 70; e.mana = 70; }
       if (spawnedKind === "skeleton" && !lanternAssigned) {
         e.lanternBearer = true;
         e.equipment = { hand1: "lantern" };
@@ -1072,9 +1114,11 @@ export class Game {
     }
     if (!["play", "won"].includes(this.phase)) return;
     dt = Math.min(dt, 0.05);
+    if(tickBoardSequence(this,dt,inputs))return;
     tickNightCycle(this, dt);
     ensureTemple(this);
     this.tickAdventure(dt, inputs);
+    if(this.roll)return;
     tickGhosts(this,dt);
     tickField(this, dt, inputs);
     tickHazards(this, dt);
@@ -1095,32 +1139,6 @@ export class Game {
     if (this.reveal) {
       this.reveal.life -= dt;
       if (this.reveal.life <= 0) this.reveal = null;
-    }
-    if (this.roll) {
-      this.roll.elapsed += dt;
-      const owner = this.players.find((p) => p.id === this.roll.playerId);
-      if (this.roll.elapsed >= 1.6 && !this.roll.resolved) {
-        owner.boardProgress = Math.min(
-          this.roll.targetProgress,
-          this.roll.startProgress + (this.roll.elapsed - 1.6) / 0.16,
-        );
-      }
-      if (this.roll.elapsed >= this.roll.landingAt) this.resolveRoll();
-      if (this.roll.elapsed >= this.roll.landingAt + 0.65) {
-        this.roll = null;
-        if (!this.locked) {
-          if (this.players.every((p) => this.turnOrder.includes(p.id))) {
-            this.locked = true;
-            this.turn = 0;
-            this.round = 2;
-          }
-        } else this.turn++;
-        if (this.turn >= this.players.length) {
-          this.turn = 0;
-          this.round++;
-          this.locked = true;
-        }
-      }
     }
     for (const p of this.players) {
       tickJump(p,dt,this,collisionOffset(this,p));
@@ -1207,7 +1225,7 @@ export class Game {
           ? rules.dashSpeed
           : p.rooted > 0
             ? 55
-            : 133 * (p.field?.boon === "scout" ? 1.12 : 1);
+            : 133 * (p.field?.boon === "scout" ? 1.12 : 1)*(1+stat(p,'speedBonus'));
       if (p.dashTime > 0) {
         mx = p.dashX;
         my = p.dashY;
@@ -1241,13 +1259,13 @@ export class Game {
         beh = cfg?.behaviors || {};
       const aiKind = cfg?.aiKind || e.kind;
       if (cfg?.faction === "neutral") continue;
-      if (cfg?.faction === "ally") {
+      if (cfg?.faction === "ally" || e.faction === "ally") {
         const target = this.enemies
           .filter(
             (q) =>
               q !== e &&
               q.hp > 0 &&
-              creatures[q.kind]?.faction !== "ally" &&
+              q.faction !== "ally" && q.faction !== "neutral" &&
               creatures[q.kind]?.faction !== "neutral",
           )
           .sort((a, b) => distance(e, a) - distance(e, b))[0];
@@ -1269,6 +1287,8 @@ export class Game {
       e.x = clamp(e.x, 24, WORLD - 24);
       e.y = clamp(e.y, 24, WORLD - 24);
       e.flash = Math.max(0, e.flash - dt);
+      e.summonPulse = Math.max(0, (e.summonPulse || 0) - dt);
+      if (e.maxMana) e.mana = Math.min(e.maxMana, (e.mana ?? e.maxMana) + dt * (e.manaRegen ?? 5));
       e.frozen = Math.max(0, (e.frozen || 0) - dt);
       if (e.frozen > 0) { e.moving = false; continue; }
       e.attack = Math.max(0, (e.attack || 0) - dt);
@@ -1467,6 +1487,30 @@ export class Game {
           }
           continue;
         }
+      }
+      if (aiKind === 'necromancer' || aiKind === 'skeleton_caster') {
+        if (aiKind === 'necromancer') {
+          e.summonCooldown = Math.max(0, (e.summonCooldown || 0) - dt);
+          if (e.summonCooldown <= 0 && this.summonNecromancerMinions(e)) continue;
+        }
+        e.healCooldown = (e.healCooldown ?? 2) - dt;
+        const ally = this.enemies.filter(q => q !== e && q.hp > 0 && q.group === e.group && q.hp < q.maxHp)
+          .sort((a,b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+        const manaCost = 12, targetDistance = ally ? distance(e, ally) : Infinity;
+        if (ally && e.healCooldown <= 0 && (e.mana ?? 0) >= manaCost && targetDistance < 390) {
+          ally.hp = Math.min(ally.maxHp, ally.hp + (aiKind === 'necromancer' ? 34 : 22));
+          e.mana -= manaCost; e.healCooldown = aiKind === 'necromancer' ? 8 : 6; e.healEffect = .8;
+          this.effects.push({x:ally.x,y:ally.y,radius:28,color:'#d77cff',life:.8,text:'+'});
+          this.onSound('magic',e); continue;
+        }
+        const close = rangeToTarget < 72;
+        if (close && e.cooldown <= 0) {
+          e.attack = .34; e.cooldown = 1.15; this.hurt(p, e.damage, e); continue;
+        }
+        if ((e.mana ?? 0) < manaCost && rangeToTarget > 72 && beh.hunt) this.moveActor(e, aimX * e.speed * dt, aimY * e.speed * dt);
+        else if (rangeToTarget < 145) this.moveActor(e, -aimX * 38 * dt, -aimY * 38 * dt);
+        else if (rangeToTarget > 300 && beh.hunt) this.moveActor(e, aimX * e.speed * dt, aimY * e.speed * dt);
+        continue;
       }
       if (aiKind === "skeleton_wizard") {
         e.healCooldown = (e.healCooldown ?? 2) - dt;

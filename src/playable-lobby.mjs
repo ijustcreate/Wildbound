@@ -4,13 +4,15 @@ import {drawBowAim} from './bow-aim.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { controllerButtonNames } from './controls.mjs';
+import { give, canGive } from './items.mjs';
 
 export const LOBBY_OBJECTS = [
-  {id:'environment',name:'Map table',x:230,y:190},
-  {id:'difficulty',name:'Difficulty totem',x:800,y:190},
-  {id:'dice-count',name:'Dice tray',x:800,y:440},
-  {id:'board',name:'Closed board',x:510,y:280},
-  {id:'target-lever',name:'Target lever',x:930,y:325},
+  {id:'environment',name:'Map table',x:635,y:165},
+  {id:'difficulty',name:'Difficulty totem',x:925,y:165},
+  {id:'dice-count',name:'Dice tray',x:780,y:165},
+  {id:'board',name:'Closed board',x:770,y:375},
+  {id:'target-lever',name:'Target lever',x:465,y:548},
+  {id:'starter-chest',name:'Starter chest',x:950,y:520},
 ];
 const LOOK_PRESETS = [
   { skin:'#d9ab76', shirt:'#39745b', pants:'#665b87', shoes:'#49372d', hair:'crop', hairColor:'#593923' },
@@ -52,12 +54,12 @@ export class LobbyState {
     let changed=false;
     for(const id of this.members.keys())if(!ids.has(id)){this.members.delete(id);changed=true;}
     for(const [i,p] of players.entries())if(!this.members.has(p.id)){
-      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[]});changed=true;
+      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[],starterClaimed:false});changed=true;
     }
     if(changed)this.invalidate(players);
   }
   invalidate(players){for(const p of players)p.ready=false;this.countdown=null;}
-  nearest(p){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.find(o=>Math.hypot(s.x-o.x,s.y-o.y)<100):null;}
+  nearest(p){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
   tick(dt,players){
     const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.lobbyDisconnected);
     if(!ready){this.countdown=null;return false;}
@@ -85,7 +87,7 @@ export class PlayableLobby {
       const o=LOBBY_OBJECTS.find(o=>Math.hypot(o.x-x,o.y-y)<65);
       if(o&&this.state.nearest(p)===o)this.open(p,o.id);
     };
-    for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
+    for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
   reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.nodes.clear();this.panels.replaceChildren();}
   sync(){
@@ -173,6 +175,14 @@ export class PlayableLobby {
         this.profiles.assign(p,this.profiles.create(input.value,look));s.spawned=true;this.state.invalidate(this.getGame().players);this.close(p);this.refreshChoosers();
       });
       button('Back',()=>{s.panel='choose';s.focus=0;this.renderPanel(p);});
+    }else if(s.panel==='starter-chest'){
+      heading.textContent='Starter chest';
+      const intro=document.createElement('p');intro.textContent='Take one of each basic weapon, or claim the complete starter kit. Your kit includes eight starter arrows.';panel.append(intro);
+      const items=[['starter_wand','Starter wand',1],['starter_bow','Starter bow',1],['starter_arrow','Starter arrows',8],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1]];
+      const claim=(type,qty)=>{if(!canGive(p.inventory||[],type,qty)){error.textContent='Your pack is full.';return;}p.inventory||=[];give(p.inventory,type,qty);s.starterClaimed=true;this.sound?.('loot');this.renderPanel(p);};
+      for(const [type,label,qty] of items)button(`Take ${label}${qty>1?' · '+qty:''}`,()=>claim(type,qty));
+      button(s.starterClaimed?'Starter kit claimed':'Take complete starter kit',()=>{if(!p.inventory)p.inventory=[];let ok=true;for(const [type,,qty] of items)if(canGive(p.inventory,type,qty))give(p.inventory,type,qty);else ok=false;s.starterClaimed=ok;if(!ok)error.textContent='Some starter items could not fit in your pack.';this.renderPanel(p);});
+      button('Close',()=>this.close(p));
     }else if(s.panel==='board'){
       heading.textContent='Ready to begin?';
       const info=document.createElement('div');info.className='board-menu-summary';
@@ -271,16 +281,28 @@ export class PlayableLobby {
     const index={random:0,forest:1,desert:2,ice:3,house:4,temple:5}[value]??0,w=this.mapArt.naturalWidth/6;
     c.drawImage(this.mapArt,index*w,0,w,this.mapArt.naturalHeight,x,y,size,size);
   }
+  drawBackdrop(c){
+    c.fillStyle='#505659';c.fillRect(0,0,1024,620);
+    for(let y=68;y<590;y+=42){
+      for(let x=16;x<1010;x+=42){
+        c.fillStyle=(Math.floor(x/42)+Math.floor(y/42))%3===0?'#62686a':'#656b6d';
+        c.fillRect(x,y,40,40);
+      }
+    }
+    c.fillStyle='#343d40';c.fillRect(529,68,5,522);
+    c.fillRect(8,58,1008,11);c.fillRect(8,590,1008,12);
+    c.fillRect(8,68,7,522);c.fillRect(1010,68,7,522);
+  }
   draw(){
-    const c=this.canvas.getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#50565a';c.fillRect(0,0,1024,620);
-    for(let y=65;y<590;y+=42)for(let x=30;x<1000;x+=42){c.fillStyle=((x-30)/42+(y-65)/42)%2?'#686d70':'#62676a';c.fillRect(x,y,40,40);}
-    c.fillStyle='#343a3e';c.fillRect(20,55,984,10);c.fillRect(20,590,984,12);
+    const c=this.canvas.getContext('2d');c.imageSmoothingEnabled=false;this.drawBackdrop(c);
     c.textAlign='center';
     for(const t of this.practice.targets){
-      c.fillStyle='#3b3832';c.fillRect(t.homeX-65,89,130,5);c.fillStyle='#96958b';c.fillRect(t.homeX-61,90,122,1);
-      c.fillStyle='#74604a';c.fillRect(t.x-3,93,6,19);
-      for(const [radius,color] of [[23,'#8d744a'],[20,'#dbca99'],[16,'#e5e1ca'],[12,'#36464c'],[9,'#598ea6'],[6,'#bf5948'],[3,'#e8bf52']]){c.fillStyle=t.flash>0&&radius===23?'#fff5b2':color;c.beginPath();c.arc(t.x,t.y-18,radius,0,Math.PI*2);c.fill();}
-      c.fillStyle='#ede7d6';c.font='10px system-ui';c.fillText(t.hits+' hits · '+t.score+' pts',t.homeX,153);
+      c.save();c.translate(t.homeX,t.homeY-18);c.rotate(t.angle);
+      const travel=(t.x-t.homeX)*Math.cos(t.angle)+(t.y-t.homeY)*Math.sin(t.angle);
+      c.fillStyle='#3b3832';c.fillRect(-65,-22,130,5);c.fillStyle='#96958b';c.fillRect(-61,-21,122,1);
+      c.fillStyle='#74604a';c.fillRect(travel-3,-18,6,19);
+      for(const [radius,color] of [[23,'#8d744a'],[20,'#dbca99'],[16,'#e5e1ca'],[12,'#36464c'],[9,'#598ea6'],[6,'#bf5948'],[3,'#e8bf52']]){c.fillStyle=t.flash>0&&radius===23?'#fff5b2':color;c.beginPath();c.arc(travel,0,radius,0,Math.PI*2);c.fill();}
+      c.fillStyle='#ede7d6';c.font='10px system-ui';c.fillText(t.hits+' hits · '+t.score+' pts',0,46);c.restore();
     }
     for(const o of LOBBY_OBJECTS){
       c.fillStyle='#42474a';c.beginPath();c.ellipse(o.x,o.y+12,58,18,0,0,Math.PI*2);c.fill();
@@ -292,13 +314,15 @@ export class PlayableLobby {
         this.drawDifficulty(c,document.getElementById('difficulty').value,o.x-28,o.y-147,56);
       }else if(o.id==='dice-count'){
         c.fillStyle='#785a46';c.fillRect(o.x-43,o.y-34,86,47);for(const x of lobbyDiceOffsets(document.getElementById('dice-count').value)){c.fillStyle='#ede5cc';c.fillRect(o.x+x,o.y-25,24,24);c.fillStyle='#333';c.fillRect(o.x+x+5,o.y-20,4,4);c.fillRect(o.x+x+15,o.y-10,4,4);}
+      }else if(o.id==='starter-chest'){
+        c.fillStyle='#4b3527';c.fillRect(o.x-58,o.y-28,116,48);c.fillStyle='#8e623a';c.fillRect(o.x-55,o.y-32,110,44);c.fillStyle='#cfa85e';c.fillRect(o.x-5,o.y-10,10,13);c.strokeStyle='#e0bf73';c.lineWidth=2;c.strokeRect(o.x-55,o.y-32,110,44);c.fillStyle='#f1dfaa';c.font='bold 13px Georgia';c.fillText('STARTER',o.x,o.y-8);
       }else if(o.id==='target-lever'){
         c.fillStyle='#574a38';c.fillRect(o.x-15,o.y-12,30,18);c.strokeStyle='#c0b497';c.lineWidth=5;c.beginPath();c.moveTo(o.x,o.y);c.lineTo(o.x+(this.practice.targetsMoving?10:-10),o.y-29);c.stroke();c.fillStyle=this.practice.targetsMoving?'#8dc99a':'#b66b4e';c.fillRect(o.x+(this.practice.targetsMoving?5:-15),o.y-34,11,9);
       }else{
         c.fillStyle='#523c2b';c.fillRect(o.x-60,o.y-37,120,57);c.fillStyle='#9b7041';c.fillRect(o.x-56,o.y-40,112,48);c.strokeStyle='#d6b569';c.lineWidth=2;c.strokeRect(o.x-49,o.y-34,98,36);c.fillStyle='#2f3d2b';c.font='bold 15px Georgia';c.fillText('WILDBOUND',o.x,o.y-11);c.fillStyle='#e2bf6c';c.fillRect(o.x-6,o.y+6,12,8);
       }
-      c.fillStyle='#f2efdf';c.font='15px system-ui';c.fillText(o.name,o.x,o.y+44);
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';c.fillText(o.id==='target-lever'?(this.practice.targetsMoving?'Moving · pull to stop':'Stopped · pull to move'):document.getElementById(o.id).selectedOptions[0].text,o.x,o.y+61);}
+      c.fillStyle='#f2efdf';c.font='15px system-ui';c.fillText(o.name,o.x,o.y+(o.id==='target-lever'?27:44));
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':document.getElementById(o.id).selectedOptions[0].text;c.fillText(detail,o.x,o.y+(o.id==='target-lever'?40:61),o.id==='target-lever'?130:140);}
     }
     this.drawPractice(c);
     for(const p of [...this.getGame().players].sort((a,b)=>this.state.members.get(a.id).y-this.state.members.get(b.id).y)){

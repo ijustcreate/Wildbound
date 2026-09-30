@@ -51,12 +51,32 @@ export function paintItem(c, type) {
   }
 }
 function paintItemBase(c, type) {
+  if(['relic_dust','magic_essence','legendary_essence'].includes(type)){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    if(type==='relic_dust'){r(4,15,16,5,'#776650');r(7,11,10,7,'#b4a17a');r(10,7,4,9,'#ddc99c');r(3,7,2,2,'#c4af87');r(18,4,2,2,'#ddc99c');}
+    else {const legendary=type==='legendary_essence',color=legendary?'#efb456':'#58bedb';r(8,6,8,14,color);r(6,11,12,6,color);r(10,2,4,19,legendary?'#fff2b4':'#cef8ff');r(3,8,2,3,color);if(legendary){r(17,3,3,3,'#fced8a');r(17,18,4,2,color);}else r(18,7,2,2,color);}
+    return;
+  }
+  // Training equipment keeps its familiar base silhouette with a copper tag.
+  if(type.startsWith('starter_')&&ITEMS[type.slice(8)]){
+    paintItemBase(c,type.slice(8));c.fillStyle='#644b31';c.fillRect(2,19,6,4);c.fillStyle='#d2aa70';c.fillRect(3,20,4,2);return;
+  }
   if(paintGearIcon(c,type))return;
   const r = (x, y, w, h, color) => {
     c.fillStyle = color;
     c.fillRect(x, y, w, h);
   };
+  if(type==='azure_bead'){r(10,2,4,4,'#b8a578');r(6,7,12,12,'#256981');r(4,10,16,6,'#256981');r(8,8,8,9,'#68d9ed');r(8,8,3,3,'#ddfaff');r(10,19,4,2,'#184c65');return;}
+  if(type==='moon_prism'){for(let y=3;y<22;y++){const w=Math.max(1,7-Math.abs(y-12)*.7)|0;r(12-w,y,w*2+1,1,y<12?'#a8a0ee':'#625baf');}r(11,5,2,12,'#e0dbff');return;}
+  if(type==='starheart'){r(10,2,4,20,'#5cb9a0');r(2,10,20,4,'#5cb9a0');r(6,6,12,12,'#5cb9a0');r(8,8,8,8,'#a2f3d4');r(10,6,3,10,'#efffea');r(6,10,11,3,'#efffea');return;}
   if(type==='ritual_dagger'){r(11,2,3,12,'#91efcf');r(9,5,2,7,'#3e9b89');r(8,13,9,3,'#ddb457');r(11,16,3,5,'#78563f');r(10,20,5,2,'#eabf5c');return;}
+  if(type==='necromancer_dagger'){r(11,1,3,11,'#b36de0');r(9,4,2,9,'#6e3f9d');r(8,12,9,3,'#8fd3bd');r(11,15,3,7,'#352541');r(9,20,7,2,'#cf8cff');r(6,7,3,2,'#cf8cff');return;}
+  if(type==='friendship_wand'){r(11,3,3,17,'#ff8fc8');r(7,2,11,4,'#ffb4df');r(5,4,4,4,'#ffb4df');r(15,4,4,4,'#ffb4df');r(10,7,5,5,'#fff0ff');return;}
+  if(type==='sword_of_a_thousand_truths'){r(10,1,5,15,'#fff0ff');r(7,5,11,4,'#ff8fc8');r(10,15,5,7,'#8e5ad4');r(7,20,11,3,'#ffb4df');return;}
+  if(type==='staff'){r(11,1,3,19,'#9d7cc8');r(8,2,9,4,'#d8adff');r(7,4,11,7,'#6a467a');r(10,8,5,5,'#f0c9ff');return;}
+  if(type==='mana_rune'){r(10,3,5,18,'#78d6e8');r(6,8,13,5,'#b7f7ff');r(8,5,9,12,'#347d9c');r(10,8,4,6,'#e2ffff');return;}
+  if(type==='void_sigil'){r(5,6,14,13,'#422466');r(8,3,8,18,'#9f82e8');r(3,10,18,4,'#cbb0ff');r(10,9,4,5,'#1e1237');return;}
+  if(type==='astral_heart'){r(6,5,5,5,'#e48cff');r(13,5,5,5,'#e48cff');r(5,9,14,9,'#ffb5ff');r(9,17,6,4,'#c74ee9');r(10,8,4,5,'#fff0ff');return;}
   if (type === "barricade") {
     for (let n = 0; n < 3; n++) {
       r(4 + n * 6, 3, 3, 19, "#9d7549");

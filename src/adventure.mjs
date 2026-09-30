@@ -15,6 +15,9 @@ import {
 } from "./field-systems.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
 import { clearSlot } from "./items.mjs";
+import {refreshVitals} from './items.mjs';
+import {socketAction} from './socket-workshop.mjs';
+import {tickSalvage} from './salvage.mjs';
 import {
   roomBlocked,
   purchaseVending,
@@ -280,7 +283,7 @@ export const adventureMethods = {
     this.persist();
     return true;
   },
-  dropLoot(x, y, type, qty = 1, source = "Ground loot", manualPickup = false) {
+  dropLoot(x, y, type, qty = 1, source = "Ground loot", manualPickup = false,metadata={}) {
     this.onSound("drop",{x,y});
     const position = lootSpot(this, x, y);
     this.loot.push({
@@ -290,6 +293,7 @@ export const adventureMethods = {
       qty,
       source,
       manualPickup,
+      ...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),
     });
   },
   dropXP(x, y, amount = 10) {
@@ -325,6 +329,7 @@ export const adventureMethods = {
       while (hero.xp >= hero.level * 50) {
         hero.xp -= hero.level * 50;
         hero.level++;
+        hero.hp+=8;hero.mana=(hero.mana||0)+6;refreshVitals(hero);
         this.message(hero.name + " reached level " + hero.level);
       }
     }
@@ -373,7 +378,7 @@ export const adventureMethods = {
   collect(p, l, quick = false) {
     if (!l || !this.loot.includes(l) || dist(p, l) > 65 + stat(p, "magnet"))
       return false;
-    if (!give(p.inventory, l.type, l.qty)) {
+    if (!give(p.inventory, l.type, l.qty,24,l)) {
       this.inventoryFullNotice(p, l.id ?? l.type);
       return false;
     }
@@ -535,6 +540,9 @@ export const adventureMethods = {
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    if(p.salvageHold)p.salvageHold={latched:true};
+    u.salvagePointer=false;
+    if(socketAction(this,p,action))return;
     const storage = this.storageFor(p);
     const selected = p.inventory[u.index];
     if (
@@ -698,7 +706,7 @@ export const adventureMethods = {
     }
     if (action === "offhand" && u.panel === "chest")
       this.inventoryAction(p, "split");
-    if (action === "offhand" && u.panel === "pack") {
+    if ((action === "offhand"||action==='equipOffhand') && u.panel === "pack") {
       if (p.inventory[u.index]?.qty > 1) this.inventoryAction(p, "split");
       else equip(p, u.index, "hand2");
     }
@@ -720,6 +728,7 @@ export const adventureMethods = {
           action === "dropOne" ? 1 : item.qty,
           p.name + " dropped",
           true,
+          item,
         );
         if (action === "dropOne" && item.qty > 1) item.qty--;
         else clearSlot(p.inventory, u.index);
@@ -742,6 +751,8 @@ export const adventureMethods = {
         old = p.previousInput || {},
         edge = (k) => !!i[k] && !old[k];
       p.staminaBoost = Math.max(0, (p.staminaBoost || 0) - dt);
+      p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
+      p.necromancerCooldown = Math.max(0, (p.necromancerCooldown || 0) - dt);
       for (const order of p.vendingOrders || []) {
         if (!order.ready) {
           order.elapsed += dt;
@@ -751,10 +762,11 @@ export const adventureMethods = {
           }
         }
       }
-      p.maxMana ||= 100;
+      refreshVitals(p);
+      if(p.hp>0)p.hp=Math.min(p.maxHp,p.hp+dt*stat(p,'hpRegen'));
       p.mana = Math.min(
         p.maxMana,
-        (p.mana ?? p.maxMana) + (p.hp > 0 ? dt * 8 : 0),
+        (p.mana ?? p.maxMana) + (p.hp > 0 ? dt * (8+stat(p,'manaRegen')) : 0),
       );
       if (!p.room && !p.ui && p.hp > 0) {
         for (const door of this.portals) {
@@ -769,6 +781,7 @@ export const adventureMethods = {
       }
       p.consumeInput = !!p.ui || !!p.room;
       if (p.hp <= 0 || p.stun > 0) {
+        tickSalvage(this,p,false,dt);
         p.charge = 0;
         p.previousInput = { ...i };
         continue;
@@ -778,6 +791,7 @@ export const adventureMethods = {
         if (p.ui) p.ui = null;
         else this.openInventory(p);
       }
+      if(!p.ui)tickSalvage(this,p,false,dt);
       if (p.ui) {
         p.consumeInput = true;
         p.charge = 0;
@@ -803,7 +817,9 @@ export const adventureMethods = {
           this.inventoryAction(p, direction);
           p.menuRepeat = 0.24;
         }
+        tickSalvage(this,p,!!i.salvage||!!p.ui?.salvagePointer,dt);
       } else if (p.room) {
+        tickSalvage(this,p,false,dt);
         if(templeRoomStep(this,p,i,dt)){p.previousInput={...i};continue;}
         const beforeX = p.roomX,
           beforeY = p.roomY;
@@ -844,6 +860,7 @@ export const adventureMethods = {
         }
       } else if (!p.consumeInput) {
         if (edge("interact"))p.interactAnimation=.35;
+        if (edge("summon")) this.raiseSkeleton(p);
         if (edge("potion")) this.usePotion(p);
         p.blocking = !!i.block && itemKind(p.equipment.hand1) !== 'bow' && itemKind(p.equipment.hand2) === "shield";
         if (
@@ -951,6 +968,7 @@ export const adventureMethods = {
         );
         if (target) {
           if(this.players.includes(target))this.hurt(target,bolt.damage,bolt);else {target.hp-=bolt.damage;target.killedBy=bolt.owner;target.ritualKill=false;}
+          if (!this.players.includes(target) && bolt.friendship) { target.faction = 'ally'; target.allyOwner = bolt.owner; target.aggro = false; this.message(`${target.kind} has joined your side.`); }
           target.flash = 0.2;
           target.aggro = true;
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
@@ -1091,9 +1109,11 @@ export const adventureMethods = {
   fireSpell(p, charge = 0, slot = "hand1", comboDamage = 1) {
     emitNoise(this, p, 'magic', 260);
     const def = ITEMS[p.equipment[slot]];
-    if (!def?.magic || (p.mana ?? 100) < def.manaCost) return false;
+    const cost=(def?.manaCost||0)*(1-Math.min(.75,stat(p,'manaDiscount')));
+    if (!def?.magic || (p.mana ?? 100) < cost) return false;
     this.onSound("magic",p);
-    p.mana = (p.mana ?? 100) - def.manaCost;
+    p.mana = (p.mana ?? 100) - cost;
+    if(p.hp>0)p.hp=Math.min(p.maxHp,p.hp+stat(p,'castHeal'));
     this.spells ||= [];
     const strength = Math.max(0, Math.min(1, charge / 1.2));
     const tip=wandTipWorld(p,slot,this.time);
@@ -1107,17 +1127,18 @@ export const adventureMethods = {
       life: 3,
       remaining: 224,
       size: 6 + Math.round(strength * 8),
-      damage: Math.round(def.damage * (1 + strength) * Math.max(.1, comboDamage || 1)),
+      damage: Math.round((def.damage+stat(p,'damageBonus')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
       fire: def.spellType === "fire",
       ice: def.spellType === "ice",
+      friendship: !!def.friendship,
       burnDamage: def.spellType === "fire" ? 3 : 0,
     });
     return true;
   },
   fireArrow(p, charge) {
     emitNoise(this, p, 'bow', 150);
-    if (!take(p.inventory, "arrow")) {
+    if (!take(p.inventory, "arrow") && !take(p.inventory, "starter_arrow")) {
       this.message("No arrows. Recover shafts or find a quiver.");
       return false;
     }
@@ -1142,7 +1163,7 @@ export const adventureMethods = {
       embedDepth,
       angleJitter,
       damage:
-        (ITEMS[p.equipment.hand1]?.damage || 18) * (2 / 3 + (strength * 4) / 3),
+        ((ITEMS[p.equipment.hand1]?.damage || 18)+stat(p,'damageBonus')) * (2 / 3 + (strength * 4) / 3),
       owner: p.id,
     });
     this.persist();
@@ -1190,6 +1211,18 @@ export const adventureMethods = {
       if (this.random() < 0.1) this.dropLoot(...args);
     };
     const cfg = creatures[e.kind], difficulty = cfg?.stats?.hp || e.maxHp || 20;
+    if (e.kind === 'necromancer') {
+      const settings = {...(cfg.necromancerLoot || {}), ...(e.necromancerLoot || {})};
+      const pieces = Array.isArray(settings.pieces) ? settings.pieces.filter(type => ITEMS[type]) : [];
+      const ownedBy = type => this.players.some(p => Object.values(p.equipment || {}).includes(type) || (p.inventory || []).some(i => i?.type === type && i.qty > 0));
+      for (const player of this.players) {
+        const missing = pieces.filter(type => !Object.values(player.equipment || {}).includes(type) && !(player.inventory || []).some(i => i?.type === type && i.qty > 0));
+        if (!missing.length) continue;
+        const type = missing[Math.floor(this.random() * missing.length)];
+        const chance = ownedBy(type) ? Number(settings.sharedPieceChance ?? .25) : Number(settings.chance ?? 1);
+        if (this.random() < Math.max(0, Math.min(1, chance))) this.dropLoot(e.x + (this.random()-.5)*32, e.y + (this.random()-.5)*32, type, 1, 'Necromancer set piece', true);
+      }
+    }
     if(e.kind==='hunter') {
       const worn=[...new Set(Object.values(e.equipment||{}))].filter(type=>ITEMS[type]?.slot);
       for(const [i,type] of worn.entries())this.dropLoot(e.x+(i%3-1)*22,e.y+Math.floor(i/3)*22,type,1,'Hunter equipment',true);
@@ -1208,6 +1241,7 @@ export const adventureMethods = {
     if (this.random() < (e.kind === "skeleton_boss" ? 0.35 : 0.08))
       drop(e.x - 18, e.y + 12, rollRelic(this.random), 1, "Relic");
     const config = creatures[e.kind];
+    if(this.random()<.1){const n=this.random();drop(e.x+12,e.y+12,n<.65?'azure_bead':n<.92?'moon_prism':'starheart',1,'Mana trinket');}
     const lootDrops = config?.lootDrops || [];
     for (const entry of lootDrops) {
       if (!entry?.item || !this.lootConditionMet(entry.condition)) continue;

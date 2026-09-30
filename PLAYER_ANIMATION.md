@@ -1,5 +1,15 @@
 # Shared rig studio — 0.3.8
 
+## Upper/lower-body layers (1.0.21)
+
+In the Player rig, open **Layers** beside Rig, Clips and IK. The default **Airborne combat** rule uses Current locomotion as its base and Current combat action as its overlay, replacing only the upper-body joint mask at strength 1. Jumping legs and pelvis keep their jump pose while melee, bow, spell or block actions affect the upper body. Combat and locomotion use separate playback clocks; fitted weapon angles and projectile origins follow the composed pose.
+
+To author your own rule, Add layer, choose its condition (airborne, moving, combat or always), select base/overlay clips, and choose Upper-body, Lower-body or a custom joint checklist. Strength 0 disables its effect and 1 fully replaces selected joints. Later rules override earlier rules; Move layer earlier changes priority. Explicit base clips replace the base pose before applying the mask. Overlay positions are aligned to the base pelvis to retain body translation.
+
+Under Combined preview, pick a base and overlay clip, enable Preview this layer, then Play or scrub the timeline. Preview bypasses the condition but respects the mask, strength and enabled setting. Turn preview off before editing pose keys. Save rig to game or Export rig preserves the rules; edits support Undo/Redo. Removing every rule disables layering without restoring the shipping default. Older player rigs without layer data receive the default rule while retaining their authored clips.
+
+Layers currently target the player rig, not the creature rigs. These are masked replacement layers, not an additive animation/state-machine editor.
+
 **Rhino / quadruped** is also available. Edit the legs, head, ears, eyes, short tail, hornBase/hornTip and smallHornBase/smallHornTip. Horns and facial parts support per-facing visibility. Body width, head radius, leg width, tail width and horn width are adjustable. Idle/walk/run, charge, windup, recover, hurt and snared clips share the same timeline tools. The existing twenty-rhino stampede uses the charge clip with distance-driven gait.
 
 The Rig studio selector now includes **Player, Lion, Bat, Snake, Monkey, Snapping plant, Golem and Trap**. All use one editor and pose evaluator. Select a joint to drag or rotate, choose Setup joints for rest positions or Animate for clip keys, and use the timeline to scrub, play, retime and copy keys. Save rig to game updates runtime rendering; Export rig exports the selected model. Each subject retains its own undo history. Imported packages are checked against the selected skeleton.

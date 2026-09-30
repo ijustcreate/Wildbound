@@ -1,0 +1,30 @@
+const {app,BrowserWindow}=require('electron');const fs=require('node:fs'),path=require('node:path');const root=path.resolve(__dirname,'..'),out=path.join(root,'test-output');fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'gear-layers-')));app.disableHardwareAcceleration();
+app.whenReady().then(async()=>{const win=new BrowserWindow({show:false,width:1440,height:1000,webPreferences:{offscreen:true,backgroundThrottling:false}});await win.loadFile(path.join(root,'index.html'));
+await win.webContents.executeJavaScript(`(async()=>{
+ const {RigStudio}=await import('./src/player-studio.mjs');const {validatePlayerMotion}=await import('./src/player-motion.mjs');
+ const host=document.createElement('div');host.id='test-layer-host';host.style='position:fixed;inset:0;overflow:auto;z-index:999999;background:#263234;padding:12px';document.body.append(host);
+ let saved;const studio=new RigStudio(async()=>{saved=JSON.parse(JSON.stringify(studio.model));});studio.mount(host);host.querySelector('[data-browser-tab="layers"]').click();
+ const layerPanel=host.querySelector('.ps-motion-layers');if(!layerPanel.textContent.includes('Airborne combat'))throw Error('Layer controls missing');
+ const weight=[...layerPanel.querySelectorAll('input')].find(e=>e.type==='number');weight.value='.75';weight.dispatchEvent(new Event('change'));if(studio.model.animationLayers[0].weight!==.75)throw Error('Blend strength not authored');
+ await studio.command('undo');if(studio.model.animationLayers[0].weight!==1)throw Error('Layer undo failed');
+ studio.previewMotionLayer=true;studio.layerBase='jump_air';studio.layerOverlay='slash';studio.clip='jump_air';studio.frame=2;studio.refresh();studio.animate(0);await studio.command('save');if(!validatePlayerMotion(saved))throw Error('Layer save is invalid');
+ window.testStudio=studio;window.testHost=host;
+})()`);
+await win.webContents.executeJavaScript('new Promise(resolve=>setTimeout(resolve,350))');
+fs.writeFileSync(path.join(out,'animation-layers-editor.png'),(await win.webContents.capturePage()).toPNG());
+await win.webContents.executeJavaScript(`(async()=>{
+ window.testStudio.resizeObserver?.disconnect();window.testHost.remove();
+ const {HeroUI}=await import('./src/hero-ui.mjs'),{Game}=await import('./src/core.mjs'),{give,refreshVitals}=await import('./src/items.mjs');
+ const host=document.createElement('div');host.id='test-gear-host';host.style='position:fixed;inset:0;z-index:999999;background:#182820';document.body.append(host);
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.persist=()=>{};p.name='Socket test';p.level=7;p.equipment={head:'moon_circlet',shoulders:'moon_shoulders',feet:'moon_steps',hand1:'moon_blade'};p.inventory=[];give(p.inventory,'azure_bead');give(p.inventory,'moon_prism');give(p.inventory,'starheart');refreshVitals(p);g.openInventory(p);p.ui.panel='gear';p.ui.index=8;
+ const ui=new HeroUI(host);ui.draw(g,{});if(!host.querySelector('.set-checklist .set-active'))throw Error('Set checklist missing');
+ g.inventoryAction(p,'offhand');ui.draw(g,{});if(!host.querySelector('.socket-workshop'))throw Error('Socket controller entry missing');
+ g.inventoryAction(p,'down');g.inventoryAction(p,'use');ui.draw(g,{});if(!host.textContent.includes('Confirm insertion'))throw Error('Confirmation missing');
+ g.inventoryAction(p,'use');ui.draw(g,{});if(p.equipmentSockets.hand1[0]!=='moon_prism')throw Error('Controller inserted wrong gem');
+ const r=host.querySelector('.socket-workshop').getBoundingClientRect();if(r.right>innerWidth||r.left<0)throw Error('Socket screen exceeds viewport');
+ window.testGear={g,p,ui,host};
+})()`);
+await win.webContents.executeJavaScript('new Promise(resolve=>setTimeout(resolve,350))');
+fs.writeFileSync(path.join(out,'trinket-sockets.png'),(await win.webContents.capturePage()).toPNG());
+console.log('Editor author/undo/save/preview and controller socket/confirmation/checklist passed');app.exit(0);
+}).catch(e=>{console.error(e);app.exit(1);});

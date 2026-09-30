@@ -88,6 +88,8 @@ test("Figure movement completes before event and next turn", () => {
   for (let i = 0; i < 45; i++) g.update(0.05);
   assert.equal(g.players[0].progress, 8);
   assert.ok(g.enemies.length);
+    assert.ok(g.roll.resolved,'Event is revealed on the board before play resumes');
+    for(let i=0;i<120&&g.roll;i++)g.update(.05);
   assert.equal(g.roll, null);
 });
 test("Cat circles before pounce and recovers after charging", () => {

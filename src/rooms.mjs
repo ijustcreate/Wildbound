@@ -46,6 +46,7 @@ export function cleanInput(input) {
         "use",
         "store",
         "offhand",
+        "salvage",
         "drop",
         "close",
       ].includes(key)

@@ -1,4 +1,4 @@
-import { freshCharacter, ITEMS, SLOTS, migrateEquipment } from "./items.mjs";
+import { freshCharacter, ITEMS, SLOTS, migrateEquipment, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
 export const cleanCharacterName = (name) =>
   String(name || "")
@@ -86,6 +86,7 @@ export class Profiles {
     p.appearance = structuredClone(h.appearance || null);
     p.inventory = structuredClone(h.inventory);
     p.equipment = { ...h.equipment };
+    p.equipmentSockets=structuredClone(h.equipmentSockets||{});
     p.chests = structuredClone(h.chests);
     p.chestNames = structuredClone(
       h.chestNames || ["Chest 1", "Chest 2", "Chest 3"],
@@ -98,6 +99,7 @@ export class Profiles {
     p.vendingOrders = structuredClone(h.vendingOrders || []);
     p.nextVendingId = h.nextVendingId || 0;
     migrateEquipment(p);
+    refreshVitals(p);
   }
   async remove(id) {
     if(!this.data.heroes.some(h=>h.id===id))throw Error('Character no longer exists.');
@@ -117,6 +119,7 @@ export class Profiles {
         appearance: structuredClone(p.appearance || null),
         inventory: structuredClone(p.inventory),
         equipment: { ...p.equipment },
+        equipmentSockets:structuredClone(p.equipmentSockets||{}),
         chests: structuredClone(p.chests),
         chestNames: structuredClone(p.chestNames || []),
         level: p.level,

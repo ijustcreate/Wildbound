@@ -1,4 +1,5 @@
 import { terrainHash } from "./world.mjs";
+import {boardDicePose} from './board-sequence.mjs';
 const knots = [
   [-72, -53],
   [-72, -22],
@@ -112,7 +113,7 @@ export function drawCarvedPawn(c, x, y, i, color, hop = 0) {
   c.fillRect(1, -7, 1, 1);
   c.restore();
 }
-export function drawBoard(c, game, time = 0, { closeup = false } = {}) {
+export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
   c.save();
   c.fillStyle = "#081c1699";
   c.fillRect(-140, -72, 282, 160);
@@ -320,6 +321,16 @@ export function drawBoard(c, game, time = 0, { closeup = false } = {}) {
       c.stroke();
     }
     drawCarvedPawn(c, a.x, a.y, a.i, a.p.color, a.hop);
+  }
+  if(game.roll&&drawDie)for(let i=0;i<game.roll.dice.length;i++){const d=boardDicePose(game.roll,i);drawDie(c,d.x,d.y,d.size,d.value,d.angle);}
+  if(closeup&&game.roll?.resolved&&game.event){
+    c.save();c.fillStyle='#092a20';c.strokeStyle='#84cd88';c.lineWidth=1.5;c.beginPath();c.arc(0,0,64,0,Math.PI*2);c.fill();c.stroke();c.clip();
+    const wrap=(text,max)=>String(text||'').split(/\s+/).reduce((lines,word)=>{if(lines.length&&lines.at(-1).length+word.length+1<=max)lines[lines.length-1]+=' '+word;else lines.push(word);return lines;},[]);
+    c.textAlign='center';c.fillStyle='#dbffd1';c.font='bold 5.5px monospace';
+    wrap(game.event.name.toUpperCase(),25).slice(0,3).forEach((line,i)=>c.fillText(line,0,-39+i*7));
+    c.font='4.5px monospace';c.fillStyle='#b9e6ad';
+    wrap(game.event.verse,32).slice(0,7).forEach((line,i)=>c.fillText(line,0,-15+i*6));
+    c.font='3.5px monospace';c.fillStyle='#f0d391';wrap(game.event.tip,35).slice(0,3).forEach((line,i)=>c.fillText(line,0,35+i*5));c.restore();
   }
   c.fillStyle = "#d3b57b";
   c.textAlign = "center";

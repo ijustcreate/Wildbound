@@ -11,6 +11,9 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  relic_dust:{name:'Relic Dust',stack:999,color:'#c6b38d',material:true,sellPrice:1,description:'Salvaged from unwanted gear. Sell later; stacks to 999.'},
+  magic_essence:{name:'Magic Essence',stack:999,color:'#77d9ec',material:true,sellPrice:2,description:'Salvaged from magical or uncommon gear. Stacks to 999.'},
+  legendary_essence:{name:'Legendary Essence',stack:999,color:'#f4bd62',material:true,sellPrice:10,description:'Salvaged from legendary gear. Stacks to 999.'},
   lantern: {
     name: "Trail lantern", slot: "hand1", eitherHand: true, damage: 0,
     utility: true, stack: 1, color: "#edc776",
@@ -214,6 +217,13 @@ export const ITEMS = {
     color: "#ddd5ae",
     description: "Consumed when fired; recover from ground or enemy loot.",
   },
+  starter_arrow: {
+    base: "arrow",
+    name: "Starter arrow",
+    stack: 99,
+    color: "#ddd5ae",
+    description: "Starter ammunition for the starter bow.",
+  },
   fruit: {
     name: "Sweet fruit",
     stack: 20,
@@ -239,6 +249,14 @@ export const ITEMS = {
     color: "#c9d5d7",
     description: "A balanced blade. Charge to interrupt and shove.",
   },
+  starter_sword: {
+    base: "sword",
+    name: "Starter sword",
+    slot: "hand1",
+    damage: 18,
+    color: "#aebfc0",
+    description: "A dependable starter blade.",
+  },
   dagger: {
     name: "Jungle knife",
     slot: "hand1",
@@ -247,12 +265,29 @@ export const ITEMS = {
     color: "#b7d9ca",
     description: "Light weapon; equip a second in hand 2.",
   },
+  starter_dagger: {
+    base: "dagger",
+    name: "Starter dagger",
+    slot: "hand1",
+    damage: 12,
+    light: true,
+    color: "#9fc6b5",
+    description: "A light starter blade.",
+  },
   shield: {
     name: "Carved shield",
     slot: "hand2",
     armor: 2,
     color: "#9fba85",
     description: "Hold LT / C to block frontal blows and catch arrows.",
+  },
+  starter_shield: {
+    base: "shield",
+    name: "Starter shield",
+    slot: "hand2",
+    armor: 1,
+    color: "#849e7e",
+    description: "A simple starter shield.",
   },
   bow: {
     name: "Reed bow",
@@ -261,6 +296,15 @@ export const ITEMS = {
     damage: 18,
     color: "#d9b77c",
     description: "Uses both hands. Hold attack to draw, release to shoot.",
+  },
+  starter_bow: {
+    base: "bow",
+    name: "Starter bow",
+    slot: "hand1",
+    twoHanded: true,
+    damage: 14,
+    color: "#c6a46c",
+    description: "A simple bow with starter arrows in the lobby chest.",
   },
   hat: { name: "Scout hat", slot: "head", armor: 2, color: "#ceb379" },
   shoulder_armor: {
@@ -299,6 +343,45 @@ export const ITEMS = {
     description:
       "Release attack to cast 7 squares. Hold for a larger, harder-hitting bolt; range and speed stay fixed.",
   },
+  staff: {
+    name: "Ashen staff", slot: "hand1", magic: true, damage: 18, manaCost: 10,
+    color: "#9d7cc8", description: "Heals allies at range; strikes enemies up close or when mana is empty.",
+  },
+  starter_wand: {
+    base: "wand",
+    name: "Starter wand",
+    slot: "hand1",
+    magic: true,
+    damage: 16,
+    manaCost: 10,
+    color: "#86b5df",
+    description: "A simple wand for learning to cast.",
+  },
+  necromancer_wand: {
+    base: "wand",
+    name: "Necromancer wand",
+    slot: "hand1",
+    magic: true,
+    damage: 24,
+    manaCost: 12,
+    color: "#9b7bd4",
+    artColor: "#cf8cff",
+    rarity: "unique",
+    description: "Set piece · channels the bond with a summoned skeleton.",
+  },
+  necromancer_dagger: {
+    base: "dagger",
+    name: "Necromancer dagger",
+    slot: "hand1",
+    damage: 22,
+    light: true,
+    color: "#8fd3bd",
+    artColor: "#b36de0",
+    rarity: "unique",
+    description: "Set piece · its edge carries a whisper from beyond the veil.",
+  },
+  friendship_wand: { name: "Friendship wand", slot: "hand1", magic: true, friendship: true, damage: 1, manaCost: 0, rarity: "gm", gmOnly: true, color: "#ff8fc8", artColor: "#ffb4df", description: "GM item · hearts turn a struck enemy into your ally until it dies." },
+  sword_of_a_thousand_truths: { name: "Sword of a Thousand Truths", slot: "hand1", damage: 1000, rarity: "gm", gmOnly: true, color: "#ff8fc8", artColor: "#fff0ff", truthSword: true, description: "GM item · enormous, glowing, and leaves a truth trail on every swing." },
   fire_wand: {
     base: "wand",
     name: "Cinder wand",
@@ -335,6 +418,7 @@ export const RARITIES = {
   rare: "#68aaff",
   unique: "#c58bfa",
   legendary: "#ffad4f",
+  gm: "#ff8fc8",
 };
 const gearVariants = [
   ['tattered_cape','Wayfarer’s tattered cape','cape','rare','#aa6855',{armor:4},'tattered'],
@@ -777,6 +861,40 @@ for (const [slot, id] of Object.entries(SAFARI_HUNTER_SET)) {
     description: "Safari hunter set · individually equippable field gear.",
   };
 }
+export const GEAR_SETS={
+ moon:{name:'Moonbound',groups:[['moon_circlet','moon_helm'],['moon_shoulders'],['moon_steps'],['moon_blade','moon_bow','moon_shield']],three:{maxMana:30},full:{manaRegen:4,manaDiscount:.25,castHeal:3},threeText:'+30 maximum mana',fullText:'Lunar grace: 25% cheaper spells, +4 mana/sec, heal 3 on each cast'},
+ safari_hunter:{name:'Safari hunter',groups:Object.values(SAFARI_HUNTER_SET).map(id=>[id]),three:{maxHp:25},full:{hpRegen:1,speedBonus:.12},threeText:'+25 maximum health',fullText:'Trail vitality: regenerate 1 health/sec and move 12% faster'},
+ sun:{name:'Sunforged',groups:[['sun_crown'],['sun_shoulders'],['sun_plate'],['sun_grips'],['sun_blade','sun_bow','sun_wand','sun_shield']],three:{maxHp:30},full:{damageBonus:8,hpRegen:2},threeText:'+30 maximum health',fullText:'Solar might: +8 attack damage and regenerate 2 health/sec'},
+ necromancer:{name:'Necromancer',groups:[['necromancer_dagger'],['necromancer_wand']],skills:['necromancer_pet'],full:{},fullText:'Complete set: unlocks the Raise Skeleton companion skill.'},
+};
+for(const [set,def] of Object.entries(GEAR_SETS))for(const group of def.groups)for(const id of group)ITEMS[id].set=set;
+for(const [id,item] of Object.entries(ITEMS))if(item.slot){
+ item.maxHp??=Math.max(0,Number(item.armor)||0)*2;
+ if(id.startsWith('moon_'))item.maxMana=id.includes('blade')||id.includes('bow')?20:15;
+ if(['sword','dagger','bow','wand','shield','armor','hat','charm'].includes(item.base||id)&&!item.utility)item.sockets??=item.twoHanded?2:1;
+}
+for(const [id,name,mana,regen,rarity,color] of [['azure_bead','Azure bead',15,0,'common','#70c9ec'],['moon_prism','Moon prism',25,0,'rare','#b49cfa'],['starheart','Starheart',40,0,'unique','#80f4d5'],['mana_rune','Mana rune',0,1,'common','#78d6e8'],['void_sigil','Void sigil',0,2,'rare','#9f82e8'],['astral_heart','Astral heart',0,3,'unique','#e48cff']])ITEMS[id]={name,base:'trinket',trinket:true,maxMana:mana,manaRegen:regen,stack:1,rarity,color,artColor:color,description:`Socket into compatible gear: +${regen?regen+' mana/sec':mana+' maximum mana'}. No bonus while loose in your bag.`};
+export const socketCount=type=>ITEMS[type]?.slot&&!ITEMS[type]?.trinket?Math.max(0,Math.min(3,Math.floor(Number(ITEMS[type].sockets)||0))):0;
+export function setProgress(p,id){const def=GEAR_SETS[id];if(!def)return null;const worn=new Set(Object.values(p.equipment||{}));const checks=def.groups.map(group=>({ids:group,equipped:group.some(type=>worn.has(type))}));const count=checks.filter(g=>g.equipped).length;return {...def,id,checks,count,complete:count===checks.length};}
+export function setStat(p,key){let n=0;for(const id of Object.keys(GEAR_SETS)){const s=setProgress(p,id);if(s.count>=3)n+=s.three[key]||0;if(s.complete)n+=s.full[key]||0;}return n;}
+export function hasSetSkill(p,skill){return Object.entries(GEAR_SETS).some(([id,def])=>def.skills?.includes(skill)&&setProgress(p,id).complete);}
+export function gearStat(type,sockets,key){return (Number(ITEMS[type]?.[key])||0)+(sockets||[]).reduce((n,id)=>n+(ITEMS[id]?.trinket?Number(ITEMS[id][key])||0:0),0);}
+export function refreshVitals(p){
+ const level=Math.max(1,Number(p.level)||1);p.maxHp=100+(level-1)*8+stat(p,'maxHp');p.maxMana=100+(level-1)*6+stat(p,'maxMana');
+ p.hp=Math.min(p.hp??p.maxHp,p.maxHp);p.mana=Math.min(p.mana??p.maxMana,p.maxMana);
+}
+export function socketTrinket(p,target,index){
+ const gear=target.mode==='gear'?{type:p.equipment[target.slot],sockets:p.equipmentSockets?.[target.slot]||[]}:p.inventory[target.index];
+ const gem=p.inventory[index];if(!gear||(gear.qty||1)!==1||!ITEMS[gem?.type]?.trinket||(gear.sockets||[]).length>=socketCount(gear.type))return false;
+ const gems=[...(gear.sockets||[]),gem.type];
+ if(target.mode==='gear'){p.equipmentSockets||={};p.equipmentSockets[target.slot]=gems;}else gear.sockets=gems;
+ if(--gem.qty===0)clearSlot(p.inventory,index);refreshVitals(p);return true;
+}
+export function removeTrinket(p,target,index){
+ const type=target.mode==='gear'?p.equipment[target.slot]:p.inventory[target.index]?.type;
+ const gems=target.mode==='gear'?p.equipmentSockets?.[target.slot]:p.inventory[target.index]?.sockets;
+ if(!type||!gems?.[index]||!give(p.inventory,gems[index]))return false;gems.splice(index,1);refreshVitals(p);return true;
+}
 for (const [id, item] of Object.entries(ITEMS)) {
   item.base ??= id;
   item.rarity ??= "common";
@@ -795,6 +913,10 @@ export function itemStats(id) {
     i.shot ? `Aimed shot · range ${i.shot.range}` : "",
     i.magic ? `Mana ${i.manaCost} per cast` : "",
     i.armor ? `Armor +${i.armor}` : "",
+    i.maxHp ? `Health +${i.maxHp}` : '',
+    i.maxMana ? `Mana +${i.maxMana}` : '',
+    i.manaRegen ? `Mana regen +${i.manaRegen}/sec` : '',
+    socketCount(id) ? `${socketCount(id)} trinket socket${socketCount(id)>1?'s':''}` : '',
     i.punch ? `Fists +${i.punch}` : "",
     i.magnet ? `Loot reach +${i.magnet}` : "",
     i.rootResist ? "Root resist" : "",
@@ -823,15 +945,15 @@ export const count = (p, id) =>
   p.inventory.filter((i) => i?.type === id).reduce((n, i) => n + i.qty, 0);
 export function canGive(list, type, qty = 1, slots = 24) {
   if (!ITEMS[type] || qty <= 0) return false;
-  const max = ITEMS[type].stack || 1;
+  const max = socketCount(type)?1:ITEMS[type].stack || 1;
   const capacity =
     list.reduce((n, i) => n + (i?.type === type ? max - i.qty : 0), 0) +
     Math.max(0, slots - list.filter(Boolean).length) * max;
   return capacity >= qty;
 }
-export function give(list, type, qty = 1, slots = 24) {
+export function give(list, type, qty = 1, slots = 24, metadata = {}) {
   if (!canGive(list, type, qty, slots)) return false;
-  const max = ITEMS[type].stack || 1;
+  const max = socketCount(type)?1:ITEMS[type].stack || 1;
   for (const i of list)
     if (i?.type === type && i.qty < max) {
       const n = Math.min(qty, max - i.qty);
@@ -841,8 +963,9 @@ export function give(list, type, qty = 1, slots = 24) {
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    if (hole >= 0) list[hole] = { type, qty: n };
-    else list.push({ type, qty: n });
+    const item={type,qty:n,...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{})};
+    if (hole >= 0) list[hole] = item;
+    else list.push(item);
     qty -= n;
   }
   return true;
@@ -878,7 +1001,7 @@ export function equip(p, index, preferred) {
   let slot = preferred || def.slot;
   if (!fitsSlot(item.type, slot)) return false;
   const pack = structuredClone(p.inventory),
-    gear = { ...p.equipment };
+    gear = { ...p.equipment },socketGear=structuredClone(p.equipmentSockets||{});
   if (--pack[index].qty === 0) clearSlot(pack, index);
   const clear = new Set([slot]);
   if (
@@ -889,13 +1012,16 @@ export function equip(p, index, preferred) {
     clear.add("hand2");
   }
   for (const s of clear) {
-    if (gear[s] && gear[s] !== "occupied" && !give(pack, gear[s])) return false;
+    if (gear[s] && gear[s] !== "occupied" && !give(pack, gear[s],1,24,{sockets:socketGear[s]})) return false;
     gear[s] = null;
+    delete socketGear[s];
   }
   gear[slot] = item.type;
+  socketGear[slot]=[...(item.sockets||[])];
   if (def.twoHanded) gear.hand2 = "occupied";
   p.inventory = pack;
   p.equipment = gear;
+  p.equipmentSockets=socketGear;refreshVitals(p);
   return true;
 }
 export function unequip(p, slot) {
@@ -903,27 +1029,29 @@ export function unequip(p, slot) {
   if (!type) return false;
   if (type === "occupied") slot = "hand1";
   const id = p.equipment[slot];
-  if (!give(p.inventory, id)) return false;
+  if (!give(p.inventory, id,1,24,{sockets:p.equipmentSockets?.[slot]})) return false;
+  if(p.equipmentSockets)delete p.equipmentSockets[slot];
   p.equipment[slot] = null;
   if (ITEMS[id].twoHanded) p.equipment.hand2 = null;
+  refreshVitals(p);
   return true;
 }
 export function transfer(from, to, index, slots = 24) {
   const i = from[index];
-  if (!i || !give(to, i.type, i.qty, slots)) return false;
+  if (!i || !give(to, i.type, i.qty, slots,i)) return false;
   clearSlot(from, index);
   return true;
 }
 export function stat(p, key) {
-  const equipped = Object.values(p.equipment || {}).reduce(
-    (n, t) => n + (ITEMS[t]?.[key] || 0),
+  const equipped = Object.entries(p.equipment || {}).reduce(
+    (n, [slot,t]) => n + gearStat(t,p.equipmentSockets?.[slot],key),
     0,
   );
   const carriedRelics = (p.inventory || []).reduce((n, item) => {
     const def = ITEMS[item?.type];
     return n + (def?.relic ? (def[key] || 0) * (item.qty || 1) : 0);
   }, 0);
-  return equipped + carriedRelics;
+  return equipped + carriedRelics + setStat(p,key);
 }
 export function freshCharacter(id, name) {
   return {
@@ -958,12 +1086,12 @@ export function migrateEquipment(p) {
   p.coins = Math.max(0, Math.floor(Number(p.coins) || 0));
 }
 export const sellValue = (type) =>
-  ITEMS[type]?.slot || ITEMS[type]?.relic
+  ITEMS[type]?.sellPrice ?? (ITEMS[type]?.slot || ITEMS[type]?.relic
     ? { common: 8, rare: 24, unique: 60, legendary: 150 }[ITEMS[type].rarity] ||
       8
     : { stamina_potion: 5, potion: 3, trap: 2, arrow: 1, fruit: 1, meat: 1 }[
         type
-      ] || 1;
+      ] || 1);
 export function splitStack(list, index, amount, slots = 24) {
   const item = list[index];
   if (!item || list.filter(Boolean).length >= slots || item.qty < 2)
@@ -980,7 +1108,7 @@ export function splitStack(list, index, amount, slots = 24) {
 export function sellStack(p, index, stock = (p.robotStock ||= [])) {
   const item = p.inventory[index];
   if (!item || p.field?.favorites?.includes(item.type)) return false;
-  if (!give(stock, item.type, item.qty, 120)) return false;
+  if (!give(stock, item.type, item.qty, 120,item)) return false;
   p.coins = (p.coins || 0) + sellValue(item.type) * item.qty;
   clearSlot(p.inventory, index);
   return true;
@@ -999,6 +1127,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
   const actor = {
       inventory: structuredClone(p.inventory),
       equipment: { ...p.equipment },
+      equipmentSockets:structuredClone(p.equipmentSockets||{}),
     },
     chest = storage ? structuredClone(storage) : null;
   const list = (mode) =>
@@ -1014,6 +1143,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
     let slot = from.slot;
     if (actor.equipment[slot] === "occupied") slot = "hand1";
     const type = actor.equipment[slot];
+    const sockets=actor.equipmentSockets[slot]||[];
     if (!ITEMS[type]) return false;
     if (to.mode === "gear") {
       if (!fitsSlot(type, to.slot)) return false;
@@ -1028,10 +1158,12 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
       ) {
         actor.equipment[slot] = other;
         actor.equipment[to.slot] = type;
+        actor.equipmentSockets[slot]=actor.equipmentSockets[to.slot]||[];actor.equipmentSockets[to.slot]=sockets;
       } else {
         actor.equipment[slot] = null;
+        delete actor.equipmentSockets[slot];
         if (ITEMS[type].twoHanded) actor.equipment.hand2 = null;
-        actor.inventory.push({ type, qty: 1 });
+        actor.inventory.push({ type, qty: 1,sockets });
         if (!equip(actor, actor.inventory.length - 1, to.slot)) return false;
       }
     } else {
@@ -1044,8 +1176,9 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
         return false;
       const target = dest[to.index];
       if (target) return false;
-      placeAt(dest, to.index, { type, qty: 1 });
+      placeAt(dest, to.index, { type, qty: 1,...(sockets.length?{sockets}: {}) });
       actor.equipment[slot] = null;
+      delete actor.equipmentSockets[slot];
       if (ITEMS[type].twoHanded) actor.equipment.hand2 = null;
     }
   } else {
@@ -1059,7 +1192,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
         item.qty--;
         const type = item.type;
         if (!item.qty) clearSlot(source, from.index);
-        actor.inventory.push({ type, qty: 1 });
+        actor.inventory.push({ type, qty: 1,...(item.sockets?.length?{sockets:[...item.sockets]}:{}) });
         if (!equip(actor, actor.inventory.length - 1, to.slot)) return false;
       }
     } else if (!dest) return false;
@@ -1072,7 +1205,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
         return false;
       if (source === dest && from.index === to.index) return true;
       const target = dest[to.index];
-      if (target?.type === item.type && ITEMS[item.type].stack) {
+      if (target?.type === item.type && ITEMS[item.type].stack>1&&!socketCount(item.type)&&!item.sockets?.length&&!target.sockets?.length) {
         const qty = Math.min(item.qty, ITEMS[item.type].stack - target.qty);
         if (!qty) return false;
         target.qty += qty;
@@ -1088,6 +1221,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
   if (actor.inventory.length > 24) return false;
   p.inventory = actor.inventory;
   p.equipment = actor.equipment;
+  p.equipmentSockets=actor.equipmentSockets;refreshVitals(p);
   if (storage) storage.splice(0, storage.length, ...chest);
   return true;
 }

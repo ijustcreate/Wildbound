@@ -29,6 +29,14 @@ test('Cape shoulders stay pinned while running hem trails, curls and changes wit
  assert.ok(run.at(-1).left[1]<idle.at(-1).left[1]);
  assert.ok(run.flatMap(r=>[...r.left,...r.right]).every(Number.isFinite));
 });
+test('Falling cape hem lags behind while shoulders stay pinned',()=>{
+ const top=[0,0,23],bottom=[0,0,15],actor={jumpHeight:24};
+ const rising=capeRows(top,bottom,{...actor,jumpVelocity:90},0);
+ const falling=capeRows(top,bottom,{...actor,jumpVelocity:-140},0);
+ assert.deepEqual(falling[0],rising[0]);
+ assert.ok(falling.at(-1).left[1]<rising.at(-1).left[1]);
+ assert.ok(falling.at(-1).left[2]>rising.at(-1).left[2]);
+});
 test('New cape silhouettes have distinct lengths, ragged hems and pointed tips',()=>{
  const top=[0,0,23],bottom=[0,0,15];
  const standard=capeRows(top,bottom,{},0),short=capeRows(top,bottom,{},0,'short'),long=capeRows(top,bottom,{},0,'tattered'),pointed=capeRows(top,bottom,{},0,'pointed');

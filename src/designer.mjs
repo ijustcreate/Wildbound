@@ -696,11 +696,12 @@ export class Designer {
       this.field(controls, "Item name", item, "name");
       for (const k of ["description", "color", "artColor"])
         this.field(fields, k, item, k);
-      for (const k of ["damage", "armor", "stack", "punch", "magnet"]) {
+      for (const k of ["damage", "armor", "stack", "punch", "magnet","maxHp","maxMana"]) {
         item[k] ??= 0;
         this.field(fields, k, item, k, { min: 0, max: 999 });
       }
       item.slot ??= "";
+      item.sockets??=0;this.field(fields,'Trinket sockets (0 = none)',item,'sockets',{min:0,max:3,step:1});
       this.field(fields, "Equipment slot", item, "slot", {
         options: [
           "",

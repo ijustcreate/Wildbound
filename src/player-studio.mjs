@@ -1,5 +1,6 @@
 import {drawItem} from './item-art.mjs';
 import { ikChain, solveTwoBone } from './ik.mjs';
+import {refreshLayerEditor} from './animation-layer-ui.mjs';
 import {
   playerMotion,
   defaultPlayerMotion,
@@ -9,6 +10,7 @@ import {
   projectPoint,
   screenDelta,
   poseAt,
+  playerPose,
   drawPlayer,
   descendants,
   setJointKey,
@@ -436,10 +438,11 @@ export class RigStudio {
     const tabs=document.createElement('div');tabs.className='ps-browser-tabs';
     const rig=document.createElement('div');rig.dataset.browser='rig';
     for(const child of [...tree.children])if(child!==clips&&child!==box&&!child.matches('.ps-render-order'))rig.append(child);
-    const sections={rig,clips,constraints:box,order:this.$('.ps-render-order')};
-    for(const [id,label] of [['rig','Rig'],['clips','Clips'],['constraints','IK'],['order','Order']]){
+    const motionLayers=document.createElement('div');motionLayers.className='ps-motion-layers';
+    const sections={rig,clips,constraints:box,layers:motionLayers,order:this.$('.ps-render-order')};
+    for(const [id,label] of [['rig','Rig'],['clips','Clips'],['constraints','IK'],['layers','Layers'],['order','Order']]){
       const button=document.createElement('button');button.textContent=label;button.dataset.browserTab=id;
-      button.onclick=()=>{for(const [key,panel] of Object.entries(sections))panel.hidden=key!==id;for(const b of tabs.children)b.classList.toggle('active',b===button);};tabs.append(button);
+      button.onclick=()=>{for(const [key,panel] of Object.entries(sections))panel.hidden=key!==id;for(const b of tabs.children)b.classList.toggle('active',b===button);this.root.classList.toggle('show-motion-layers',id==='layers');};tabs.append(button);
     }
     tree.replaceChildren(tabs,...Object.values(sections));tabs.firstChild.click();
     this.$('[data-do="ik"]').onclick=()=>{this.command('ik');tabs.querySelector('[data-browser-tab="constraints"]').click();};
@@ -613,6 +616,7 @@ export class RigStudio {
     this.animate(0);
   }
   pose() {
+    if(this.subject==='player'&&this.previewMotionLayer&&this.mode==='animate')return playerPose(this.actor(),this.frame/this.model.clips[this.clip].fps,this.model);
     return this.mode === "setup"
       ? Object.fromEntries(
           Object.entries(this.model.joints).map(([n, j]) => [
@@ -655,6 +659,7 @@ export class RigStudio {
       animationAction: this.mode === "setup" ? "idle" : this.clip,
       playerFrame: this.frame,
       angleRestOnly:this.mode==='setup',
+      layerPreview:this.subject==='player'&&this.previewMotionLayer&&this.mode==='animate'?{index:this.motionLayerIndex||0,base:this.layerBase||'jump_air',overlay:this.layerOverlay||'slash'}:null,
       equipment: this.equipment(),
       appearance: this.previewAppearance,
       attack: ["punch", "slash"].includes(this.clip)
@@ -667,6 +672,7 @@ export class RigStudio {
     };
   }
   refresh() {
+    refreshLayerEditor(this);
     if (!this.root?.isConnected) return;
     this.root.dataset.mode=this.mode;
     if(this.$('.ps-mode-label'))this.$('.ps-mode-label').textContent=this.mode==='setup'?'SETUP · Rest skeleton':'ANIMATE · '+this.clip;
@@ -741,6 +747,7 @@ export class RigStudio {
     $('[data-do="play"]').textContent = this.playing ? "Pause" : "Play";
   }
   async command(action) {
+    if(this.subject==='player'&&this.previewMotionLayer&&['key','paste','delete'].includes(action)){this.message('Turn off combined preview in Layers before editing pose keys.');return;}
     if (action === "zoom-in" || action === "zoom-out") {
       this.zoomAt(action === "zoom-in" ? 1.25 : 0.8);
       return;
@@ -860,6 +867,7 @@ export class RigStudio {
     this.animate(0);
   }
   startDrag(e) {
+    if(this.previewMotionLayer&&this.subject==='player'&&this.mode==='animate'&&this.tool!=='pan'){this.message('Turn off combined preview in Layers before editing pose keys.');return;}
     if (e.button === 1 || (e.button === 0 && this.tool === "pan")) {
       const canvas = this.$(".ps-canvas");
       this.panning = {

@@ -2,17 +2,17 @@ import {Game} from './core.mjs';
 import {structureBlocked} from './expansion.mjs';
 
 export const LOBBY_FURNITURE=[
- {id:'environment',kind:'table',x:183,y:180,w:94,h:35,surfaceHeight:16,jumpable:true},
- {id:'dice-count',kind:'table',x:757,y:430,w:86,h:25,surfaceHeight:16,jumpable:true},
- {id:'board',kind:'table',x:450,y:270,w:120,h:30,surfaceHeight:16,jumpable:true},
+ {id:'environment',kind:'table',x:588,y:155,w:94,h:35,surfaceHeight:16,jumpable:true},
+ {id:'dice-count',kind:'table',x:737,y:155,w:86,h:25,surfaceHeight:16,jumpable:true},
+ {id:'board',kind:'table',x:710,y:365,w:120,h:30,surfaceHeight:16,jumpable:true},
 ];
 
 // A separate simulation uses the real combat/movement code without touching saves.
 export class LobbyPractice extends Game {
   constructor(){
     super();this.phase='play';this.openingBoard=false;this.generatedEnvironment='lobby';
-    this.house={walls:[{x:779,y:180,w:42,h:24}],doors:[],furniture:structuredClone(LOBBY_FURNITURE),pools:[],floors:[],rooms:[],trees:[]};this.scenery=[];this.terrain.fill('grass');this.pickups=[];
-    this.targetsMoving=false;this.targetClock=0;this.targets=[350,520,690].map((x,i)=>({id:i,homeX:x,x,y:125,hits:0,score:0,flash:0}));
+    this.house={walls:[{x:904,y:155,w:42,h:24}],doors:[],furniture:structuredClone(LOBBY_FURNITURE),pools:[],floors:[],rooms:[],trees:[]};this.scenery=[];this.terrain.fill('grass');this.pickups=[];
+    this.targetsMoving=false;this.targetClock=0;this.targets=[{x:280,y:125,angle:0},{x:455,y:125,angle:0},{x:120,y:178,angle:-Math.PI/4},{x:52,y:350,angle:-Math.PI/2},{x:52,y:520,angle:-Math.PI/2}].map((t,i)=>({...t,id:i,homeX:t.x,homeY:t.y,hits:0,score:0,flash:0}));
   }
   blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0){return x-radius<47||x+radius>978||y-radius<92||y+radius>568||structureBlocked(this,x,y,radius,false,offset,elevation);}
   projectileBlocked(x,y,radius=1,impact=false){
@@ -23,7 +23,7 @@ export class LobbyPractice extends Game {
     return true;
   }
   toggleTargets(){this.targetsMoving=!this.targetsMoving;return this.targetsMoving;}
-  updateTargets(dt){if(this.targetsMoving)this.targetClock+=dt;for(const t of this.targets){if(this.targetsMoving)t.x=t.homeX+Math.sin(this.targetClock*1.4+t.id*Math.PI*.5)*42;t.flash=Math.max(0,t.flash-dt);}}
+  updateTargets(dt){if(this.targetsMoving)this.targetClock+=dt;for(const t of this.targets){if(this.targetsMoving){const travel=Math.sin(this.targetClock*1.4+t.id*Math.PI*.5)*42;t.x=t.homeX+Math.cos(t.angle)*travel;t.y=t.homeY+Math.sin(t.angle)*travel;}t.flash=Math.max(0,t.flash-dt);}}
   canHitBoard(){return false;}
   portal(){return false;}
   beginSeal(){return false;}

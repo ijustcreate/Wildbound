@@ -23,11 +23,20 @@ export function summonGhost(g,e){
  g.ghosts??=[];const owned=g.ghosts.filter(a=>a.owner===owner.id);if(owned.length>=6)g.ghosts=g.ghosts.filter(a=>a!==owned[0]);
  g.ghosts.push({...e,id:g.nextId++,owner:owner.id,ghost:true,hp:1,life:30,cooldown:0,damage:Math.min(30,Math.max(8,e.damage||10)),speed:100,state:'hunt',attack:0});g.onSound('magic',e);
 }
+export function summonNecromancerPet(g,owner){
+ if(!owner||owner.hp<=0||owner.room)return false;
+ g.ghosts??=[];
+ if(g.ghosts.some(a=>a.pet&&a.owner===owner.id&&a.hp>0)){g.message('Your skeleton is already beside you.');return false;}
+ const faceX=owner.faceX||1,faceY=owner.faceY||0;
+ const pet={id:g.nextId++,kind:'skeleton',owner:owner.id,pet:true,faction:'ally',ghost:true,hp:120,maxHp:120,life:Infinity,cooldown:0,damage:20,speed:78,state:'hunt',attack:0,x:owner.x-faceX*38,y:owner.y-faceY*38,faceX,faceY,equipment:{hand1:'sword'},moving:false,step:0};
+ g.ghosts.push(pet);owner.necromancerCooldown=18;g.message('Raise Skeleton: your sword-wielding companion answers the call.');g.onSound('magic',pet);return true;
+}
 export function tickGhosts(g,dt){
  for(const a of g.ghosts||[]){a.life-=dt;a.cooldown-=dt;a.attack=Math.max(0,(a.attack||0)-dt);const owner=g.players.find(p=>p.id===a.owner);if(!owner||owner.hp<=0||owner.room){a.moving=false;continue;}
- const target=g.enemies.filter(e=>e.hp>0&&e.faction!=="ally"&&e.faction!=="neutral").sort((x,y)=>Math.hypot(x.x-a.x,x.y-a.y)-Math.hypot(y.x-a.x,y.y-a.y))[0];const goal=target||owner,d=Math.hypot(goal.x-a.x,goal.y-a.y)||1;a.faceX=(goal.x-a.x)/d;a.faceY=(goal.y-a.y)/d;a.moving=d>35;
+ const candidates=g.enemies.filter(e=>e.hp>0&&e.faction!=="ally"&&e.faction!=="neutral"&&(!a.pet||Math.hypot(e.x-owner.x,e.y-owner.y)<=180));
+ const target=candidates.sort((x,y)=>Math.hypot(x.x-a.x,x.y-a.y)-Math.hypot(y.x-a.x,y.y-a.y))[0];const goal=target||owner,d=Math.hypot(goal.x-a.x,goal.y-a.y)||1;a.faceX=(goal.x-a.x)/d;a.faceY=(goal.y-a.y)/d;a.moving=d>35;
  if(d>35)navigateEnemy(g,a,goal,dt);if(target&&d<60&&a.cooldown<=0&&clearShot(g,a,target)){target.hp-=a.damage;target.ritualKill=false;target.killedBy=null;target.flash=.2;a.attack=.3;a.cooldown=1;g.onSound('magic',a);}
- }g.ghosts=(g.ghosts||[]).filter(a=>a.life>0);
+ }g.ghosts=(g.ghosts||[]).filter(a=>a.life>0&&a.hp>0);
 }
 export function tickGorilla(g,e,dt){
  if(e.kind!=='gorilla')return false;e.cooldown=Math.max(0,(e.cooldown||0)-dt);e.attack=Math.max(0,(e.attack||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);
@@ -50,6 +59,6 @@ export function drawTemple(c,g,animator){
  }
  if(g.generatedEnvironment==='temple'){const s=TEMPLE_STAIRS;c.fillStyle='#bcb18b';c.fillRect(s.x-32,s.y-32,64,64);for(let i=0;i<8;i++){c.fillStyle=i%2?'#6e7863':'#bcb18b';c.fillRect(s.x-30,s.y-30+i*8,60,4);}c.fillStyle='#ffe9ad';c.font='12px sans-serif';c.textAlign='center';c.fillText('STAIRS · UPPER SANCTUM',s.x,s.y-43);
  for(const [x,y] of [[536,640],[1064,640],[536,920],[1064,920]]){c.fillStyle='#455f44';c.fillRect(x-13,y-24,26,40);c.fillStyle='#d7b975';c.fillRect(x-8,y-19,5,6);c.fillRect(x+3,y-19,5,6);c.fillRect(x-6,y-5,12,4);}}
- for(const a of g.ghosts||[]){c.save();c.globalAlpha=Math.min(.55,a.life/4);c.filter='sepia(1) hue-rotate(100deg) saturate(2)';animator.draw(c,a,g.time,48);c.filter='none';c.fillStyle='#a0fff1';c.font='10px sans-serif';c.textAlign='center';c.fillText('ALLY · '+Math.ceil(a.life)+'s',a.x,a.y-48);c.restore();}
+ for(const a of g.ghosts||[]){c.save();c.globalAlpha=a.pet?.82:Math.min(.55,a.life/4);c.filter=a.pet?'sepia(.8) saturate(1.6) hue-rotate(300deg)':'sepia(1) hue-rotate(100deg) saturate(2)';animator.draw(c,a,g.time,48);c.filter='none';c.fillStyle=a.pet?'#d8b4ff':'#a0fff1';c.font='10px sans-serif';c.textAlign='center';c.fillText(a.pet?'PET · SKELETON':'ALLY · '+Math.ceil(a.life)+'s',a.x,a.y-48);c.restore();}
 }
 export function drawTempleRoom(c,g,p,animator){c.fillStyle='#102821';c.fillRect(0,0,320,240);c.fillStyle='#6d7861';c.fillRect(16,32,288,192);c.strokeStyle='#3c5143';for(let y=32;y<224;y+=24)for(let x=16;x<304;x+=32)c.strokeRect(x,y,32,24);c.fillStyle='#d5ba6a';c.fillRect(142,66,36,23);c.fillStyle='#503e25';c.fillRect(144,74,32,5);c.fillStyle='#e8e6b5';c.font='11px sans-serif';c.textAlign='center';c.fillText('UPPER SANCTUM',160,20);c.fillText('Ritual chest · Interact',160,57);c.fillStyle='#203c32';c.fillRect(140,204,40,30);c.fillStyle='#f2d78e';c.fillText('↓ Return downstairs',160,236);for(const q of g.players.filter(q=>q.room===p.room))animator.draw(c,{...q,x:q.roomX,y:q.roomY,moving:q.roomMoving,step:q.roomStep},g.time,48);}
