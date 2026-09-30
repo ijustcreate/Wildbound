@@ -1,4 +1,5 @@
 import {seedSupplyChests} from './supply-chests.mjs';
+import {enemyQuiver,retrieveEnemyArrows} from './arrow-supplies.mjs';
 import {nextCombo,loadoutKind} from './combat-combos.mjs';
 import {ensureNightCycle, tickNightCycle, movementNoise, emitNoise, eventAvailable, rewardNightHunts} from './night-cycle.mjs';
 import {initLivingEcosystem, updateLivingEcosystem, livingEcosystemBlocked, cutLivingVines} from './living-ecosystem.mjs';
@@ -881,6 +882,7 @@ export class Game {
       dice,
       total,
       elapsed: 0,
+      tossSeed: this.random(),
       playerId: p.id,
       resolved: false,
       startProgress: p.progress,
@@ -950,7 +952,7 @@ export class Game {
     this.encounteredEvents ??= Object.create(null);
     this.encounteredEvents[this.event.name] = true;
     this.openingBoard = false;
-    this.eventTime = this.eventDuration || 7;
+    this.eventTime = this.eventDuration || 5;
     this.eventActionRun = new Set();
     this.event.chainRuntime = 0;
     this.runEventActions("start");
@@ -1631,6 +1633,8 @@ export class Game {
         }
       }
       if (beh.ranged) {
+        enemyQuiver(e);
+        if(e.state!=='snared'&&retrieveEnemyArrows(this,e,dt))continue;
         const d = distance(e, p) || 1;
         e.faceX = (p.x - e.x) / d;
         e.faceY = (p.y - e.y) / d;
@@ -1640,8 +1644,9 @@ export class Game {
           continue;
         }
         if (e.state === 'snared') { e.timer -= dt; if(e.timer<=0)e.hp=0; continue; }
-        if (e.cooldown <= 0) {
+        if (e.cooldown <= 0 && e.arrowsLeft>0) {
           this.arrows.push({
+            ammoType:e.iceArrowsLeft>0?'ice_arrow':'arrow',shaftLength:24,
             id: this.nextId++,
             x: e.x,
             y: e.y,
@@ -1652,6 +1657,8 @@ export class Game {
             damage: e.damage,
             hostile: true,
           });
+          e.arrowsLeft--;
+          if(e.iceArrowsLeft>0)e.iceArrowsLeft--;
           e.cooldown = cfg?.stats.rangedCooldown || 2.3;
           e.attack = 0.34;
         }

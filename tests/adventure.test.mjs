@@ -213,7 +213,7 @@ test("Embedded arrows transfer to enemy loot on death", () => {
   g.arrows = [{ enemy: 55, stuck: true }];
   g.enemyLoot(e);
   assert.ok(g.loot.some((l) => l.type === "arrow"));
-  assert.ok(g.xpOrbs.some((orb) => orb.amount === 10));
+  assert.equal(g.xpOrbs.reduce((sum,orb)=>sum+orb.amount,0),10);
   assert.equal(g.arrows.length, 0);
 });
 test("Shield blocks front but not rear", () => {

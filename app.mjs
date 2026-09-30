@@ -1,4 +1,5 @@
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
+import {tickMeltingIce} from './src/ice-crafting.mjs';
 import {petCard} from './src/hunter-pet-ui.mjs';
 import { PlayableLobby } from './src/playable-lobby.mjs';
 import {loadHouseStorage} from './src/house-design.mjs';
@@ -39,6 +40,7 @@ import {
 import { Workshop } from "./src/workshop.mjs";
 import { convertRegion, validateSprite } from "./src/pixels.mjs";
 import { HeroUI } from "./src/hero-ui.mjs";
+if(window.desktop?.version)document.title=`Wildbound ${window.desktop.preview?'· Night Hunt Preview · ': '• The Living Board · '}v${window.desktop.version}`;
 import { RIG_SUBJECTS } from "./src/rig-subjects.mjs";
 import { FrameWorkshop } from "./src/frame-workshop.mjs";
 let framesWorkshop;
@@ -164,7 +166,7 @@ function wireGame() {
   game.environment = $("environment").value;
   game.sharedStash = structuredClone(profiles.data.sharedStash || []);
   game.eventDuration = Number(
-    localStorage.getItem("wildbound-event-duration") || 7,
+    localStorage.getItem("wildbound-event-duration") || 5,
   );
   game.persist = () => {
     game.uiRevision = (game.uiRevision || 0) + 1;
@@ -569,7 +571,8 @@ function renderRoster() {
       p.hp > 0
         ? Math.ceil(p.hp) +
           " HP" +
-          (p.stun > 0 ? " · STUN " + p.stun.toFixed(1) + "s" : "")
+          (p.stun > 0 ? " · STUN " + p.stun.toFixed(1) + "s" : "") +
+          (p.scaredTime > 0 ? " · SCARED " + Math.ceil(p.scaredTime) + "s" : "")
         : "DOWN";
     name.append(b, span);
     const health = document.createElement("div");
@@ -634,7 +637,7 @@ function renderRoster() {
       mana.append(label, track);
     }
     const portrait=document.createElement('canvas');portrait.width=96;portrait.height=112;portrait.className='roster-portrait';portrait.setAttribute('aria-label',p.name+' portrait');
-    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,145);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,faceX:0,faceY:1,animationAction:'idle'},game.time);
+    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,157);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,faceX:0,faceY:1,animationAction:'idle'},game.time);
     const minions=document.createElement('div');minions.className='roster-minions';
     for(const minion of (game.ghosts||[]).filter(a=>a.owner===p.id&&a.hp>0&&!a.pet).slice(0,3)){
       const dot=document.createElement('span');dot.className='minion-dot';dot.style.setProperty('--cooldown',Math.max(0,1-minion.cooldown)*360+'deg');dot.title=minion.cooldown>0?'Ghost attack ready in '+minion.cooldown.toFixed(1)+'s':'Ghost attack ready';dot.setAttribute('aria-label',dot.title);minions.append(dot);
@@ -696,7 +699,7 @@ function updateHud() {
         0,
         Math.min(
           1,
-          ((game.eventDuration || 7) - game.eventTime) / 0.4,
+          ((game.eventDuration || 5) - game.eventTime) / 0.4,
           game.eventTime / 1.1,
         ),
       ),
@@ -704,7 +707,7 @@ function updateHud() {
     $("event-name").textContent = game.event.name;
     $("event-verse").textContent = game.event.verse;
     $("event-tip").textContent = game.event.tip;
-    $('event-progress').style.transform='scaleX('+Math.max(0,game.eventTime/(game.eventDuration||7))+')';
+    $('event-progress').style.transform='scaleX('+Math.max(0,game.eventTime/(game.eventDuration||5))+')';
     if($('event-portrait').dataset.event!==game.event.name){
       const canvas=$('event-portrait'),c=canvas.getContext('2d');canvas.dataset.event=game.event.name;c.clearRect(0,0,144,144);c.imageSmoothingEnabled=false;
       c.strokeStyle='#c6ad6560';c.lineWidth=1;c.beginPath();c.arc(72,72,62,0,Math.PI*2);c.stroke();
@@ -734,6 +737,74 @@ function disconnected() {
     (p) => p.device.startsWith("pad:") && !pads[Number(p.device.split(":")[1])],
   );
 }
+function showVictoryResults() {
+  const dialog = $("victory-results");
+  const summary = $("victory-summary");
+  summary.textContent = `${game.cleared} creatures cleared · Round ${game.round} · ${game.players.length} explorer${game.players.length === 1 ? "" : "s"} returned`;
+  const report = $("victory-report");
+  report.replaceChildren();
+  const heading = document.createElement("h3");
+  heading.textContent = "EXPEDITION REPORT";
+  report.append(heading);
+  const table = document.createElement("table");
+  table.innerHTML = "<thead><tr><th>Explorer</th><th>Loot</th><th>Damage</th><th>Rescues</th><th>Objectives</th></tr></thead>";
+  const body = document.createElement("tbody");
+  for (const player of game.debrief || []) {
+    const row = document.createElement("tr");
+    for (const value of [player.name, player.lootRecovered || 0, player.damageTaken || 0, player.rescues || 0, player.objectives || 0]) {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.append(cell);
+    }
+    body.append(row);
+  }
+  table.append(body);
+  report.append(table);
+  if (!dialog.open) dialog.showModal();
+}
+$("victory-results").addEventListener("cancel", (event) => event.preventDefault());
+$("victory-chest-button").onclick = () => {
+  $("victory-results").close();
+  const p = game.players[0];
+  if (p) game.openInventory(p, "victory");
+};
+function restartSameLevel() {
+  const level = { seed: game.seed, environment: game.environment, difficulty: game.difficulty, diceCount: game.diceCount };
+  const party = game.players.map((p) => ({
+    device: p.device, name: p.name, profileId: p.profileId,
+    controllerFamily: p.controllerFamily, controllerName: p.controllerName,
+  }));
+  $("victory-results").close();
+  heroRoot.replaceChildren();
+  heroUI.panels.clear();
+  game = new Game();
+  game.seed = level.seed;
+  game.environment = level.environment;
+  game.generatedEnvironment = "";
+  game.difficulty = level.difficulty;
+  game.diceCount = level.diceCount;
+  for (const saved of party) {
+    const p = game.addPlayer(saved.device, saved.name);
+    if (!p) continue;
+    const hero = profiles.data.heroes.find((entry) => entry.id === saved.profileId);
+    if (hero) profiles.assign(p, hero);
+    p.controllerFamily = saved.controllerFamily;
+    p.controllerName = saved.controllerName;
+  }
+  $("environment").value = level.environment;
+  $("difficulty").value = level.difficulty;
+  $("dice-count").value = String(level.diceCount);
+  startGame();
+}
+$("victory-restart-button").onclick = restartSameLevel;
+$("victory-lobby-button").onclick = () => {
+  $("victory-results").close();
+  newLobby({ keepParty: true });
+};
+heroRoot.addEventListener('victory-action', (event) => {
+  if(event.detail==='restart') restartSameLevel();
+  else if(event.detail==='lobby') newLobby({keepParty:true});
+});
 function pause(reason) {
   if (screen !== "play") return;
   pauseCheat.reset();
@@ -885,7 +956,7 @@ $("ui-scale").value = localStorage.getItem("wildbound-ui-scale") || "1";
 $("ui-scale").onchange = e => { localStorage.setItem("wildbound-ui-scale", e.target.value); document.documentElement.style.setProperty("--ui-scale", e.target.value); };
 $("board-size").value = localStorage.getItem("wildbound-board-size") || "compact";
 $("board-size").onchange = e => { localStorage.setItem("wildbound-board-size", e.target.value); document.body.dataset.boardSize = e.target.value; };
-$("event-duration").value = localStorage.getItem("wildbound-event-duration") || "7";
+$("event-duration").value = localStorage.getItem("wildbound-event-duration") || "5";
 $("event-duration").onchange = e => { localStorage.setItem("wildbound-event-duration", e.target.value); game.eventDuration = Number(e.target.value); };
 $("pvp-toggle").checked=game.pvp;
 $("pvp-toggle").onchange=e=>{game.pvp=e.target.checked;localStorage.setItem("wildbound-pvp",game.pvp?"on":"off");game.persist();};
@@ -1481,7 +1552,9 @@ function frame(now) {
         c.clearRect(0, 0, 560, 380);
         c.save();
         c.translate(280, 185);
-        c.scale(1.9, 1.9);
+        const reveal=game.roll?.resolved?Math.min(1,Math.max(0,(game.roll.elapsed-game.roll.landingAt)/.45)):0;
+        const boardScale=1.9+5.9*(reveal*reveal*(3-2*reveal));
+        c.scale(boardScale, boardScale);
         drawBoard(c, game, game.roll?.elapsed??game.time, { closeup: true,drawDie });
         c.restore();
         $("board-caption").textContent = game.roll
@@ -1504,11 +1577,12 @@ function frame(now) {
       if (game.phase === "won" && !game.victoryShown) {
         game.victoryShown = true;
         boardPinned = false;
+        showVictoryResults();
       }
       if (game.phase === "lost" && !paused) pause();
     }
   }
-  if (ready && screen === "lobby") rooms.tick(game, dt, {});
+  if (ready && screen === "lobby") {rooms.tick(game, dt, {});if(rooms.role!=='client')tickMeltingIce(game,dt,'lobby');}
   if(!audio.unlocked&&Array.from(navigator.getGamepads?.()||[]).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
   routeMusic(); audio.update(game,screen==="play"&&!paused);
   requestAnimationFrame(frame);

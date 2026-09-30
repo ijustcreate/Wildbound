@@ -1,6 +1,6 @@
 import {drawLobbyBoard} from './lobby-board.mjs';
 import {applyCelShading} from './cel-shading.mjs';
-import {drawEmbeddedArrow,drawLodgedArrow} from './embedded-arrow.mjs';
+import {drawEmbeddedArrow,drawLodgedArrow,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {take} from './items.mjs';
@@ -13,6 +13,7 @@ import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { controllerButtonNames } from './controls.mjs';
 import { give, canGive } from './items.mjs';
+import { loadQuiver } from './arrow-supplies.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 
 export const LOBBY_OBJECTS = [
@@ -211,11 +212,12 @@ export class PlayableLobby {
       button('Back',()=>{s.panel='choose';s.focus=0;this.renderPanel(p);});
     }else if(s.panel==='starter-chest'){
       heading.textContent='Starter chest';
-      const intro=document.createElement('p');intro.textContent='Take one of each basic weapon, or claim the complete starter kit. Your kit includes eight starter arrows.';panel.append(intro);
-      const items=[['starter_wand','Starter wand',1],['starter_bow','Starter bow',1],['starter_arrow','Starter arrows',8],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1]];
-      const claim=(type,qty)=>{if(!canGive(p.inventory||[],type,qty)){error.textContent='Your pack is full.';return;}p.inventory||=[];give(p.inventory,type,qty);s.starterClaimed=true;this.sound?.('loot');this.renderPanel(p);};
+      const intro=document.createElement('p');intro.textContent='Choose your starter gear, or claim the complete kit. The starter quiver comes loaded with eight arrows.';panel.append(intro);
+      const items=[['starter_bow','Starter bow',1],['starter_quiver','Starter quiver · 8 arrows',1],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1]];
+      const addStarter=(list,type,qty)=>type==='starter_quiver'?give(list,'starter_quiver',1)&&give(list,'starter_arrow',8)&&loadQuiver(p,'starter_arrow'):give(list,type,qty);
+      const claim=(type,qty)=>{const inventory=structuredClone(p.inventory||[]);if(!addStarter(inventory,type,qty)){error.textContent='Your pack is full.';return;}p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');this.renderPanel(p);};
       for(const [type,label,qty] of items)button(`Take ${label}${qty>1?' · '+qty:''}`,()=>claim(type,qty));
-      button(s.starterClaimed?'Starter kit claimed':'Take complete starter kit',()=>{if(!p.inventory)p.inventory=[];let ok=true;for(const [type,,qty] of items)if(canGive(p.inventory,type,qty))give(p.inventory,type,qty);else ok=false;s.starterClaimed=ok;if(!ok)error.textContent='Some starter items could not fit in your pack.';this.renderPanel(p);});
+      button(s.starterClaimed?'Starter kit claimed':'Take complete starter kit',()=>{const inventory=structuredClone(p.inventory||[]);let ok=true;for(const [type,,qty] of items)if(!addStarter(inventory,type,qty)){ok=false;break;}if(ok){p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');}else error.textContent='The complete starter kit needs more backpack space.';this.renderPanel(p);});
       button('Close',()=>this.close(p));
     }else if(s.panel==='board'){
       heading.textContent='Ready to begin?';
@@ -334,7 +336,7 @@ export class PlayableLobby {
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
     for(const a of this.practice.loot)if(a.embedded&&a.type==='arrow')drawEmbeddedArrow(c,a);
-    for(const a of this.practice.arrows){if(a.stuck){drawLodgedArrow(c,a);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(a.angle??Math.atan2(a.vy,a.vx));c.fillStyle='#ba9763';c.fillRect(-10,-1,20,2);c.fillStyle='#f0e7cd';c.fillRect(-10,-3,5,6);c.restore();}
+    for(const a of this.practice.arrows){if(a.stuck){drawLodgedArrow(c,a);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
     for(const b of this.practice.spells)drawMagicBolt(c,b);
     for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';c.fillText(f.text,f.x,f.y);}
     c.restore();

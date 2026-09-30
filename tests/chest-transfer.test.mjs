@@ -21,6 +21,8 @@ test("Chest transfers move stacks both ways through A/Enter and shoulder/Tab act
   g.inventoryAction(p, "panel");
   assert.equal(p.ui.panel, "gear");
   g.inventoryAction(p, "panel");
+  assert.equal(p.ui.panel, "quiver");
+  g.inventoryAction(p, "panel");
   assert.equal(p.ui.panel, "chest");
   g.inventoryAction(p, "use");
   assert.equal(count(p, "potion"), 6);
@@ -63,6 +65,7 @@ test("Shared and victory chests use the same two-way transfer actions", () => {
     g.openInventory(p, source);
     g.inventoryAction(p, "store");
     assert.equal(count(p, "trap"), 0);
+    g.inventoryAction(p, "panel");
     g.inventoryAction(p, "panel");
     g.inventoryAction(p, "panel");
     g.inventoryAction(p, "use");

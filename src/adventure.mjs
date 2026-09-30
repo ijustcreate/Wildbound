@@ -1,5 +1,10 @@
 import {equipmentAction} from './equipment-actions.mjs';
 import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
+import {xpBurst,tickXPOrbs} from './xp-orbs.mjs';
+import {equipmentNeighbor} from './equipment-navigation.mjs';
+import {arrowVisualAngle} from './embedded-arrow.mjs';
+import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,loadQuiver,quiverType,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
+import {learnIceRecipe,tickMeltingIce} from './ice-crafting.mjs';
 import { INVENTORY_TABS, inventoryCategory, tabIndices, takeFromBag } from './inventory-containers.mjs';
 import {wandTipWorld,bowHandleWorld} from './player-motion.mjs';
 import {chargedProjectileRange,arrowFlightGravity} from './projectile-range.mjs';
@@ -11,7 +16,7 @@ import {damageEnemy} from './enemy-damage.mjs';
 import {sightRadius, emitNoise} from './night-cycle.mjs';
 import {cutLivingVines} from './living-ecosystem.mjs';
 import {lightTorchFire} from './night-equipment.mjs';
-import {templeRoomStep} from './temple.mjs';
+import {templeRoomStep,summonTempleTigers} from './temple.mjs';
 import {interactIce} from './ice-world.mjs';
 import {clearShot} from './navigation.mjs';
 import {resolveEnvironment,toggleDoor} from './expansion.mjs';
@@ -58,6 +63,12 @@ import {
   rollRelic,
 } from "./items.mjs";
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function onChestItemTaken(g,p,storage,type,fromMode){
+  if(storage==='temple'&&fromMode==='chest'&&type==='ritual_dagger'&&!g.templeTigersSummoned){
+    g.templeTigersSummoned=true;
+    summonTempleTigers(g,p);
+  }
+}
 function aimedDirection(g, p, origin, strength = 0.2) {
   const length = Math.hypot(p.faceX ?? 0, p.faceY ?? 0);
   const fx = length ? p.faceX / length : 0, fy = length ? p.faceY / length : 1, fl = 1;
@@ -88,6 +99,7 @@ export function initAdventure(g) {
   initHazards(g);
   g.portals = [];
   g.arrows = [];
+  g.arrowIcePatches=[];
   g.spells = [];
   g.baits = [];
   g.loot = [];
@@ -198,6 +210,7 @@ export const adventureMethods = {
     this.scenery = [];
     this.enemies = [];
     this.arrows = [];
+    this.arrowIcePatches=[];
     this.traps = [];
     this.baits = [];
     // Dropped items belong to the party; sealing removes the jungle, not loot.
@@ -226,6 +239,7 @@ export const adventureMethods = {
     this.message(
       "WILDBOUND! The jungle sleeps. Interact at the table for the shared reward chest. Strike the board to begin again.",
     );
+    this.onSound("win");
     this.persist();
   },
   newExpedition() {
@@ -236,6 +250,7 @@ export const adventureMethods = {
     const env =
       resolveEnvironment(this.environment,this.seed);
     Object.assign(this, generateWorld(this.seed, env));
+    this.templeTigersSummoned = false;
     this.generatedEnvironment = env;
     seedSupplyChests(this,true);
     this.phase = "play";
@@ -298,6 +313,10 @@ export const adventureMethods = {
   },
   dropLoot(x, y, type, qty = 1, source = "Ground loot", manualPickup = false,metadata={}) {
     this.onSound("drop",{x,y});
+    if(ARROW_TYPES.includes(type)){
+      const near=this.loot.find(l=>l.type===type&&!l.surfaceEmbedded&&Math.hypot(l.x-x,l.y-y)<24);
+      return arrowDrop(this,{...(near?{x:near.x,y:near.y}:lootSpot(this,x,y)),type,...metadata},qty,source);
+    }
     const position = lootSpot(this, x, y);
     this.loot.push({
       id: this.nextId++,
@@ -306,26 +325,14 @@ export const adventureMethods = {
       qty,
       source,
       manualPickup,
+      ...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),
       ...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),
       ...(ITEMS[type]?.bag?{contents:structuredClone(metadata.contents||[])}:{}),
     });
   },
   dropXP(x, y, amount = 10) {
     const position = lootSpot(this, x, y);
-    const nearby = this.xpOrbs.find((o) => dist(o, position) < 18);
-    if (nearby) {
-      nearby.amount += amount;
-      return;
-    }
-    this.xpOrbs.push({
-      id: this.nextId++,
-      ...position,
-      amount,
-      originX: x,
-      originY: y,
-      bornAt: this.time,
-      readyAt: this.time + 0.35,
-    });
+    xpBurst(this,position,amount);
   },
   collectXP(p, orb) {
     if (
@@ -373,7 +380,7 @@ export const adventureMethods = {
   },
   collectArrow(p, arrow) {
     if (!arrow || !this.arrows.includes(arrow) || dist(p, arrow) > 65) return false;
-    if (!give(p.inventory, "arrow", 1)) {
+    if (!give(p.inventory, arrow.ammoType||"arrow", 1)) {
       this.inventoryFullNotice(p, "arrow");
       return false;
     }
@@ -491,6 +498,7 @@ export const adventureMethods = {
     p.roomStep = 0;
     p.charge = 0;
     p.ui = null;
+    if(p.hunterPet?.spiritGhost){p.hunterPet.room=door.id;p.hunterPet.roomX=p.roomX+24;p.hunterPet.roomY=p.roomY+12;}
     if (p.id === door.owner) {
       door.closing = null;
       door.entered = true;
@@ -505,6 +513,7 @@ export const adventureMethods = {
     p.ui = null;
     p.x = d.x;
     p.y = d.y;
+    if(p.hunterPet?.spiritGhost){p.hunterPet.room=null;p.hunterPet.x=d.x-24;p.hunterPet.y=d.y+12;}
     d.entryReady = (d.entryReady || []).filter((id) => id !== p.id);
     if (forced) {
       p.hp = Math.max(0, p.hp - p.maxHp * rules.portalDamage);
@@ -541,6 +550,7 @@ export const adventureMethods = {
       return false;
     const movingType =
       from.mode === "pack" ? p.inventory[from.index]?.type : null;
+    const chestType=from.mode==='chest'?this.storageFor(p)?.[from.index]?.type:null;
     if (movingType && protectedItem(p, movingType) && to.mode === "chest")
       return false;
     const ok = moveInventoryItem(
@@ -553,7 +563,7 @@ export const adventureMethods = {
     p.ui.notice = ok
       ? "Item moved."
       : "That item cannot go there, or there is not enough room.";
-    if (ok) {this.onSound("loot",p);this.persist();}
+    if (ok) {onChestItemTaken(this,p,p.ui.storage,chestType,from.mode);this.onSound("loot",p);this.persist();}
     return ok;
   },
   inventoryAction(p, action) {
@@ -588,6 +598,11 @@ export const adventureMethods = {
     if(p.salvageHold)p.salvageHold={latched:true};
     u.salvagePointer=false;
     if(socketAction(this,p,action))return;
+    if(action.startsWith('quiver:')){if(loadQuiver(p,action.slice(7)))this.persist();return;}
+    if(u.panel==='quiver'&&['next','prev','down','up','use','equip'].includes(action)){
+      const step=['prev','up'].includes(action)?-1:1;
+      loadQuiver(p,ARROW_TYPES[(ARROW_TYPES.indexOf(quiverType(p))+step+ARROW_TYPES.length)%ARROW_TYPES.length]);this.persist();return;
+    }
     const storage = this.storageFor(p);
     const selected = p.inventory[u.index];
     if (!u.shop && u.panel === 'pack' && u.tab && selected && inventoryCategory(selected.type) !== u.tab && ['use','equip','equipOffhand','offhand','drop','dropOne','store','split'].includes(action.split(':')[0])) {
@@ -691,10 +706,12 @@ export const adventureMethods = {
       const from = u.panel === "chest" ? storage : p.inventory,
         to = u.panel === "chest" ? p.inventory : storage;
       if (!from || !to || !from[u.index]) return;
-      const name = ITEMS[from[u.index].type]?.name || "Item";
+      const takenType=from[u.index].type,
+        name = ITEMS[takenType]?.name || "Item";
       if (transfer(from, to, u.index, storageCapacity(this, p, to))) {
         u.notice = name + (u.panel === "chest" ? " taken." : " stored.");
         u.index = Math.max(0, Math.min(u.index, from.length - 1));
+        onChestItemTaken(this,p,u.storage,takenType,u.panel);
       } else
         u.notice =
           (u.panel === "chest" ? "Backpack" : "Chest") +
@@ -716,7 +733,7 @@ export const adventureMethods = {
       );
     if (
       action.startsWith("panel:") &&
-      ["pack", "gear", "chest"].includes(action.slice(6))
+      ["pack", "gear", "chest", "quiver"].includes(action.slice(6))
     ) {
       switchPanel(action.slice(6));
     }
@@ -729,7 +746,7 @@ export const adventureMethods = {
         u.tab = INVENTORY_TABS[INVENTORY_TABS.indexOf(u.tab) + 1];
         u.index = tabIndices(p.inventory, u.tab)[0] ?? 0;
       } else {
-        const panels = storage ? ["pack", "gear", "chest"] : ["pack", "gear"];
+        const panels = storage ? ["pack", "gear", "quiver", "chest"] : ["pack", "gear", "quiver"];
         switchPanel(panels[(panels.indexOf(u.panel) + 1) % panels.length]);
         if (u.panel === 'pack') {
           if (storage) u.tab = inventoryCategory(p.inventory[u.index]?.type);
@@ -751,9 +768,7 @@ export const adventureMethods = {
       const pos=Math.max(0,indices.indexOf(u.index)),step=action==='next'?1:action==='prev'?-1:action==='down'?6:-6;
       if(indices.length)u.index=indices[(pos+step+indices.length*6)%indices.length];
     }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
-      const order=['head','cape','neck','chest','shoulders','gloves','hand1','hand2','pants','feet'];
-      const i=order.indexOf(SLOTS[u.index]),step=action==='next'?1:action==='prev'?-1:action==='down'?2:-2;
-      u.index=SLOTS.indexOf(order[(i+step+10)%10]);
+      u.index=SLOTS.indexOf(equipmentNeighbor(SLOTS[u.index],action));
     }else{
       if (action === "next") u.index = (u.index + 1) % limit;
       if (action === "prev") u.index = (u.index + limit - 1) % limit;
@@ -769,7 +784,9 @@ export const adventureMethods = {
       else if (storage && action === "use") moveItem();
       else {
         const item = p.inventory[u.index];
-        if (item?.type === "stamina_potion") useStamina(p);
+        if(item?.type==='ice_arrow_recipe'){u.notice=learnIceRecipe(p)?'Ice arrows added to the Field Guild.':'Recipe already learned.';}
+        else if(ARROW_TYPES.includes(item?.type)){loadQuiver(p,item.type);u.notice=ITEMS[item.type].name+' loaded in quiver.';}
+        else if (item?.type === "stamina_potion") useStamina(p);
         else if (item?.type === "potion") this.usePotion(p);
         else if (item?.type === "coconut") this.useCoconut(p);
         else if (item?.type === "trap" && !p.room) this.trap(p);
@@ -809,6 +826,9 @@ export const adventureMethods = {
     this.persist();
   },
   tickAdventure(dt, inputs) {
+    tickXPOrbs(this,dt);
+    tickMeltingIce(this,dt);tickArrowIce(this,dt);
+    if(this.time>=(this.arrowCompactAt||0)){compactArrowDrops(this);this.arrowCompactAt=this.time+1;}
     for (const d of [...this.portals])
       if (d.closing !== null) {
         d.closing -= dt;
@@ -1062,7 +1082,7 @@ export const adventureMethods = {
     this.baits = this.baits.filter((b) => b.life > 0);
     for (const a of this.arrows) {
       if (a.stuck) {
-        if (a.enemy) {
+        if (a.enemy!==undefined&&a.enemy!==null) {
           const e = this.enemies.find((e) => e.id === a.enemy);
           if (e) {
             a.x = e.x + (a.hitOffsetX || 0);
@@ -1083,13 +1103,13 @@ export const adventureMethods = {
         a.vz -= gravity * s;
         if(this.projectileBlocked(a.x,a.y,1,true)){
           const impactHeight=a.z,impactX=a.x,impactY=a.y;
-          a.x=previousX;a.y=previousY;a.stuck=true;a.z=0;
-          a.angle=Math.atan2(a.vy,a.vx);
-          this.dropLoot(a.x,a.y,"arrow",1,"Embedded arrow",true);
-          Object.assign(this.loot.at(-1),{embedded:true,angle:a.angle,embedDepth:a.embedDepth||7,angleJitter:a.angleJitter||0});
-          // Practice props need the actual contact point, not lootSpot's nearby
-          // walkable placement, so the shaft stays attached to what it hit.
-          if(this.generatedEnvironment==='lobby')Object.assign(this.loot.at(-1),{x:impactX,y:impactY,z:Math.max(0,impactHeight),surfaceEmbedded:true});
+          a.angle=arrowVisualAngle(a);
+          const prop=arrowScenery(this,impactX,impactY);
+          a.stuck=true;frostImpact(this,a);
+          if(prop?.kind==='rock'&&!a.rock&&!a.ice){
+            this.effects.push({x:impactX,y:impactY-impactHeight,text:'Splinter',color:'#d0b181',life:.35});
+            (this.environmentParticles||=[]).push({x:impactX,y:impactY-impactHeight,kind:'tree',life:.4});
+          }else if(!a.rock&&!a.ice){arrowDrop(this,{...a,x:impactX,y:impactY,z:Math.max(0,impactHeight),surfaceEmbedded:true});}
           a.remove=true;break;
         }
         const target = a.hostile
@@ -1100,16 +1120,18 @@ export const adventureMethods = {
           if (a.hostile || this.players.includes(target)) {
             if (this.shieldBlocks(target, a)) {
               this.onSound("shield",target);
-              give(target.inventory, "arrow");
+              give(target.inventory, a.ammoType||"arrow");
               a.remove = true;
             } else {
               this.hurt(target, a.damage, a);
+              frostImpact(this,a,target);
               a.remove = true;
             }
           } else {
             target.aggro = true;
             damageEnemy(target,a.damage,a.ice?'ice':'physical');target.killedBy=a.owner;target.ritualKill=false;
             target.flash = 0.2;
+            frostImpact(this,a,target);
             if (a.ice && this.random() < 0.35) target.frozen = 1.6;
             a.enemy = target.id;
             a.hitOffsetX = a.x - target.x;
@@ -1117,6 +1139,7 @@ export const adventureMethods = {
             a.embedDepth = a.embedDepth || 7;
             a.angleJitter = a.angleJitter || 0;
           }
+          a.angle=arrowVisualAngle(a);a.vx=0;a.vy=0;a.vz=0;
           a.stuck = true;
         } else if (
           a.z <= 0 ||
@@ -1126,12 +1149,12 @@ export const adventureMethods = {
           a.y > 1590 ||
           this.projectileBlocked(a.x, a.y, 1,true)
         ) {
+          a.angle=arrowVisualAngle(a);
           a.stuck = true;
           a.z = 0;
-          a.angle = Math.atan2(a.vy, a.vx);
           a.embedDepth = a.embedDepth || 7;
-          this.dropLoot(a.x, a.y, "arrow", 1, "Embedded arrow", true);
-          Object.assign(this.loot.at(-1),{embedded:true,angle:a.angle,embedDepth:a.embedDepth,angleJitter:a.angleJitter||0});
+          frostImpact(this,a);
+          if(!a.rock&&!a.ice)arrowDrop(this,a);
           a.remove = true;
         }
       }
@@ -1221,8 +1244,9 @@ export const adventureMethods = {
   },
   fireArrow(p, charge) {
     emitNoise(this, p, 'bow', 150);
-    if (!take(p.inventory, "arrow") && !take(p.inventory, "starter_arrow")) {
-      this.message("No arrows. Recover shafts or find a quiver.");
+    const ammoType=consumeQuiver(p);
+    if (!ammoType) {
+      this.message("Quiver empty. Load another arrow type in your backpack.");
       return false;
     }
     this.onSound("bow",p);
@@ -1238,6 +1262,7 @@ export const adventureMethods = {
     const angle=Math.atan2(aim.y,aim.x)+spread;
     this.arrows.push({
       owner:p.id,
+      ammoType,shaftLength:24,
       id: this.nextId++,
       x: origin.x,
       y: origin.y,
@@ -1326,7 +1351,7 @@ export const adventureMethods = {
       for(const [i,type] of worn.entries())this.dropLoot(e.x+(i%3-1)*22,e.y+Math.floor(i/3)*22,type,1,'Hunter equipment',true);
       this.dropLoot(e.x,e.y+60,'cartridge',12,'Hunter ammunition',true);
     }
-    const xpValue = e.kind === "skeleton" ? 10 : Math.max(1, Math.min(10, Math.round(difficulty / 10)));
+    const xpValue = e.kind === "skeleton" ? 10 : Math.max(4, Math.min(80, Math.round(difficulty / 5)));
     this.dropXP(e.x, e.y, xpValue);
     if (this.random() < 0.4 || e.kind === "skeleton_boss")
       drop(
@@ -1366,7 +1391,11 @@ export const adventureMethods = {
       this.dropLoot(e.x, e.y - 18, "lantern", 1, "Skeleton lantern", true);
     if (e.kind === "archer") {
       drop(e.x, e.y, "bow", 1, "Archer drop");
-      drop(e.x + 12, e.y, "arrow", 8, "Archer drop");
+    }
+    if(cfg?.behaviors?.ranged&&(cfg.aiKind||e.kind)!=='skeleton_wizard'){
+      const remaining=enemyQuiver(e),ice=Math.min(remaining,e.iceArrowsLeft||0);
+      if(remaining>ice)arrowDrop(this,{x:e.x,y:e.y,type:'arrow'},remaining-ice,'Enemy quiver');
+      if(ice>0)arrowDrop(this,{x:e.x,y:e.y,type:'ice_arrow'},ice,'Enemy quiver');e.arrowsLeft=0;e.iceArrowsLeft=0;
     }
     if (e.kind === "skeleton_boss")
       for (const type of ["moon_blade", "moon_shield", "moon_circlet"])
@@ -1382,7 +1411,7 @@ export const adventureMethods = {
         "Enemy drop",
       );
     for (const a of this.arrows.filter((a) => a.enemy === e.id)) {
-      this.dropLoot(e.x + (a.hitOffsetX || 0), e.y + (a.hitOffsetY || 0), "arrow", 1, "Recovered arrow", true);
+      if(!a.rock&&!a.ice)arrowDrop(this,{...a,x:e.x+(a.hitOffsetX||0),y:e.y+(a.hitOffsetY||0),z:0},1,'Recovered arrow');
     }
     this.arrows = this.arrows.filter((a) => a.enemy !== e.id);
     this.persist();

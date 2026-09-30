@@ -48,6 +48,7 @@ export class LobbyPractice extends Game {
       // Lobby position remains owned by its member state (also used by diagnostics).
       a.x=s.x;a.y=s.y;
       a.equipment=structuredClone(p.equipment);a.inventory=structuredClone(p.inventory);
+      (a.field||={}).quiver=p.field?.quiver;
       a.equipmentSockets=structuredClone(p.equipmentSockets||{});refreshVitals(a);
       const active=!blocked&&!s.panel&&!p.ui&&!s.inventoryRelease&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
       commands[p.device]=active?{...inputs[p.device],inventory:false,portal:false}:{};

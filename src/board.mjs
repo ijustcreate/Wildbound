@@ -1,5 +1,7 @@
 import { terrainHash } from "./world.mjs";
 import {boardDicePose} from './board-sequence.mjs';
+const inlay=typeof Image==='undefined'?null:new Image();
+if(inlay)inlay.src=new URL('../assets/board-jungle-inlay.png',import.meta.url).href;
 const knots = [
   [-72, -53],
   [-72, -22],
@@ -67,6 +69,12 @@ function makeTrail() {
   });
 }
 export const TRAIL = makeTrail();
+// Shared cross-sections join neighboring stones without overlapping corners.
+export const TRAIL_EDGES=TRAIL.map((p,i)=>{
+  const a=TRAIL[Math.max(0,i-1)],b=TRAIL[Math.min(48,i+1)];
+  const length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+  return {left:{x:p.x-(b.y-a.y)/length*4.7,y:p.y+(b.x-a.x)/length*4.7},right:{x:p.x+(b.y-a.y)/length*4.7,y:p.y-(b.x-a.x)/length*4.7}};
+});
 export function boardPoint(progress) {
   const v = Math.max(0, Math.min(48, progress)),
     i = Math.floor(v),
@@ -174,7 +182,10 @@ export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
   c.strokeRect(-87, -71, 174, 138);
   c.strokeStyle = "#392b19";
   c.strokeRect(-83, -67, 166, 130);
-  for (let i = 0; i < 145; i++) {
+  if(inlay?.complete&&inlay.naturalWidth){
+    c.save();c.imageSmoothingEnabled=true;c.drawImage(inlay,-82,-66,164,130);c.restore();
+  }
+  for (let i = 0; i < (inlay?.naturalWidth?0:145); i++) {
     const x = terrainHash(i, 3) * 160 - 80,
       y = terrainHash(i, 7) * 124 - 62;
     c.save();
@@ -197,24 +208,20 @@ export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
     c.restore();
   }
   for (let i = 0; i < 48; i++) {
-    const a = TRAIL[i],
-      b = TRAIL[i + 1],
-      dx = b.x - a.x,
-      dy = b.y - a.y,
-      d = Math.hypot(dx, dy) || 1,
-      nx = (-dy / d) * 4.7,
-      ny = (dx / d) * 4.7;
-    c.fillStyle = i % 6 === 0 ? "#ebd49b" : i % 2 ? "#d8bf85" : "#e2c991";
-    c.strokeStyle = "#80643b";
-    c.lineWidth = 0.55;
+    const a=TRAIL_EDGES[i],b=TRAIL_EDGES[i+1];
+    c.fillStyle = ["#dbc990","#c7bd99","#ddd1aa","#c9bd88","#bdc5a5","#e4d7ac"][i%6];
+    c.strokeStyle = "#69583a";
+    c.lineWidth = 0.4;
     c.beginPath();
-    c.moveTo(a.x + nx, a.y + ny);
-    c.lineTo(b.x + nx, b.y + ny);
-    c.lineTo(b.x - nx, b.y - ny);
-    c.lineTo(a.x - nx, a.y - ny);
+    c.moveTo(a.left.x,a.left.y);
+    c.lineTo(b.left.x,b.left.y);
+    c.lineTo(b.right.x,b.right.y);
+    c.lineTo(a.right.x,a.right.y);
     c.closePath();
     c.fill();
     c.stroke();
+    c.strokeStyle='#fff2c377';c.lineWidth=.22;c.beginPath();
+    c.moveTo(a.left.x,a.left.y);c.lineTo(b.left.x,b.left.y);c.stroke();
   }
   c.fillStyle = "#674c27";
   c.beginPath();
@@ -246,21 +253,19 @@ export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
   c.beginPath();
   c.arc(0, 0, 18, 0, Math.PI * 2);
   c.clip();
-  for (let i = 0; i < 7; i++) {
-    c.strokeStyle = "#68d88618";
-    c.lineWidth = 1;
-    c.beginPath();
-    c.ellipse(
-      Math.sin(time * 0.8 + i) * 4,
-      2,
-      16 - i,
-      6 + i * 0.8,
-      time * 0.15 + i * 0.3,
-      0,
-      Math.PI * 2,
-    );
-    c.stroke();
+  for(let i=0;i<9;i++){
+    const phase=time*.65+i*2.1;
+    for(let layer=0;layer<3;layer++){
+      c.strokeStyle=['#74d4b010','#80e8c10e','#cbfbc916'][layer];
+      c.filter=closeup?(layer===0?'blur(5px)':layer===1?'blur(2px)':'none'):'none';
+      c.lineWidth=[3.7,1.6,.22][layer];c.beginPath();
+      for(let j=0;j<=38;j++){
+        const y=21-j*1.15,x=Math.sin(j*.13+phase)*(4+j*.17)+Math.cos(j*.27-phase)*2+Math.sin(j*.48+phase)*.6;
+        if(j===0)c.moveTo(x,y);else c.lineTo(x,y);
+      }c.stroke();
+    }
   }
+  c.filter='none';
   c.fillStyle = "#caffbc";
   c.textAlign = "center";
   c.font = "bold 3px monospace";
@@ -280,7 +285,7 @@ export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
               return a;
             }, [])
         : ["WILDBOUND"];
-  message
+  (closeup&&game.roll?.resolved?[]:message)
     .slice(0, 4)
     .forEach((s, i) =>
       c.fillText(s, 0, (i - (message.length - 1) / 2) * 4 + 1),
@@ -324,13 +329,17 @@ export function drawBoard(c, game, time = 0, { closeup = false,drawDie } = {}) {
   }
   if(game.roll&&drawDie)for(let i=0;i<game.roll.dice.length;i++){const d=boardDicePose(game.roll,i);drawDie(c,d.x,d.y,d.size,d.value,d.angle);}
   if(closeup&&game.roll?.resolved&&game.event){
-    c.save();c.fillStyle='#092a20';c.strokeStyle='#84cd88';c.lineWidth=1.5;c.beginPath();c.arc(0,0,64,0,Math.PI*2);c.fill();c.stroke();c.clip();
-    const wrap=(text,max)=>String(text||'').split(/\s+/).reduce((lines,word)=>{if(lines.length&&lines.at(-1).length+word.length+1<=max)lines[lines.length-1]+=' '+word;else lines.push(word);return lines;},[]);
-    c.textAlign='center';c.fillStyle='#f4fff0';c.font='bold 7px system-ui';
-    wrap(game.event.name.toUpperCase(),24).slice(0,2).forEach((line,i)=>c.fillText(line,0,-39+i*9,92));
-    c.font='6px system-ui';c.fillStyle='#e7f5df';
-    wrap(game.event.verse,31).slice(0,5).forEach((line,i)=>c.fillText(line,0,-15+i*8,110));
-    c.font='bold 5.5px system-ui';c.fillStyle='#ffe4a3';wrap(game.event.tip,32).slice(0,3).forEach((line,i)=>c.fillText(line,0,32+i*7,96));c.restore();
+    c.save();c.beginPath();c.arc(0,0,18,0,Math.PI*2);c.clip();
+    const rise=Math.min(1,Math.max(0,(game.roll.elapsed-game.roll.landingAt)/.45));
+    c.globalAlpha=rise;c.translate(0,(1-rise)*7);c.textAlign='center';
+    c.shadowColor='#001710';c.shadowBlur=3;
+    const wrap=(text,width)=>String(text||'').split(/\s+/).reduce((lines,word)=>{const last=lines.at(-1);if(last&&c.measureText(last+' '+word).width<=width)lines[lines.length-1]+=' '+word;else lines.push(word);return lines;},[]);
+    const sections=[{text:game.event.name.toUpperCase(),font:'bold 2px system-ui',color:'#f2ffed',width:25,step:2.5},{text:game.event.verse,font:'1.7px system-ui',color:'#eefbe7',width:30,step:2.2},{text:game.event.tip,font:'bold 1.6px system-ui',color:'#ffe7a1',width:27,step:2.1}];
+    for(const s of sections){c.font=s.font;s.lines=wrap(s.text,s.width);}
+    const height=sections.reduce((n,s)=>n+s.lines.length*s.step,0)+2;
+    const fit=Math.min(1,27/height);c.scale(fit,fit);let y=-height/2+1.8;
+    for(const s of sections){c.font=s.font;c.fillStyle=s.color;for(const line of s.lines){c.fillText(line,0,y,s.width);y+=s.step;}y+=1;}
+    c.restore();
   }
   c.fillStyle = "#d3b57b";
   c.textAlign = "center";

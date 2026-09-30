@@ -378,6 +378,18 @@
         Return to landing screen
       </button>
     </dialog>
+    <dialog id="victory-results" aria-labelledby="victory-title">
+      <div class="victory-kicker">EXPEDITION COMPLETE</div>
+      <div class="victory-stamp" aria-hidden="true">WILDBOUND!</div>
+      <h2 id="victory-title">The jungle remembers your names.</h2>
+      <p id="victory-summary"></p>
+      <div id="victory-report" class="victory-report"></div>
+      <div class="victory-actions">
+        <button id="victory-chest-button" class="primary">OPEN VICTORY CHEST</button>
+        <button id="victory-restart-button" class="small-button">RESTART THIS LEVEL</button>
+        <button id="victory-lobby-button" class="text-button">RETURN TO LOBBY</button>
+      </div>
+    </dialog>
     <dialog id="settings-dialog">
       <header class="settings-heading">
         <div>
@@ -403,7 +415,7 @@
               <label class="field-label" for="board-size">BOARD VIEW</label>
               <select id="board-size"><option value="compact">Compact</option><option value="expanded">Expanded</option></select>
               <label class="field-label" for="event-duration">EVENT MESSAGES</label>
-              <select id="event-duration"><option value="7">Brief · 7 seconds</option><option value="12">Comfortable · 12 seconds</option><option value="20">Extended · 20 seconds</option></select>
+              <select id="event-duration"><option value="1">Instant · 1 second</option><option value="3">Quick · 3 seconds</option><option value="5" selected>Short · 5 seconds</option><option value="7">Brief · 7 seconds</option><option value="12">Comfortable · 12 seconds</option><option value="20">Extended · 20 seconds</option></select>
             </div>
             <div class="settings-card settings-audio-card">
               <div class="panel-title">SOUND</div>

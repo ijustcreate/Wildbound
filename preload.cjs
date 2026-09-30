@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("desktop", {
+  version: process.argv.find(arg => arg.startsWith('--wildbound-version='))?.slice('--wildbound-version='.length),
+  preview: process.argv.includes('--preview'),
   testMode: process.argv.includes("--wildbound-test"),
   reportDiagnostics: (data) => ipcRenderer.send('live-diagnostics', data),
   loadProjectRigs: () => ipcRenderer.invoke('project-rigs-load'),

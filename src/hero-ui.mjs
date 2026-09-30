@@ -1,4 +1,5 @@
 import {drawTempleRoom} from './temple.mjs';
+import {ARROW_TYPES,quiverType} from './arrow-supplies.mjs';
 import { INVENTORY_TABS, inventoryCategory, tabIndices, bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
 import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
 import {drawSocketWorkshop} from './socket-workshop.mjs';
@@ -11,7 +12,7 @@ import { robotRig, drawRobotPortrait } from "./robot-art.mjs";
 import { drawPortal } from "./portal-art.mjs";
 import { shopPanel, drawVending } from "./shop-ui.mjs";
 import { defaultPlayerMotion, drawPlayer } from "./player-motion.mjs";
-import { ITEMS, SLOTS, count, itemStats, sellValue } from "./items.mjs";
+import { ITEMS, SLOTS, count, itemKind, itemStats, sellValue } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 const el = (tag, text, cls) => {
   const e = document.createElement(tag);
@@ -77,6 +78,7 @@ export class HeroUI {
     button.addEventListener('pointerleave', hide, { passive:true });
     button.addEventListener('focus', show);
     button.addEventListener('blur', hide);
+    button.showItemTooltip=show;
   }
   draw(game, renderer, onlyId = null) {
     const wanted = new Set();
@@ -104,6 +106,9 @@ export class HeroUI {
         game.uiRevision || 0,
         p.name,
         p.level,
+        p.xp,
+        p.field?.quiver,
+        ARROW_TYPES.map(t=>count(p,t)).join(','),
         p.coins,
         p.room,
         p.ui?.panel,
@@ -143,18 +148,28 @@ export class HeroUI {
         !!(p.ui && p.ui.shop !== "vending"),
       );
       panel.classList.toggle("vending-panel", p.ui?.shop === "vending");
-      panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop && !p.ui.socket);
+      panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop);
+      panel.classList.toggle('victory-loot-session', p.ui?.storage === 'victory');
+      panel.classList.toggle('socket-session',!!p.ui?.socket);
       panel.replaceChildren();
       panel.style.borderColor = p.color;
       const head = el(
         "header",
         p.name +
           " · " +
-          (p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
+          (p.ui?.storage === "victory" ? "VICTORY SPOILS" : p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
           " · LV " +
           p.level,
       );
-      panel.append(head, el("p", (p.coins || 0) + " GOLD", "coin-balance"));
+      const progressRow=el('div','','inventory-progress-row');
+      const xp=el('div','','inventory-xp'),needed=Math.max(1,p.level||1)*50;
+      xp.setAttribute('role','progressbar');xp.setAttribute('aria-label','Experience to next level');
+      xp.setAttribute('aria-valuemin','0');xp.setAttribute('aria-valuemax',String(needed));
+      xp.setAttribute('aria-valuenow',String(p.xp||0));
+      const fill=el('span','','inventory-xp-fill');fill.style.width=Math.min(100,Math.max(0,(p.xp||0)/needed*100))+'%';
+      xp.append(fill,el('span',`${p.xp||0} / ${needed} XP`, 'inventory-xp-label'));
+      progressRow.append(el('span',(p.coins||0)+' GOLD','coin-balance'),xp);
+      panel.append(head,progressRow);
       const button = (text, action, fn) => {
         const b = el("button", text);
         b.dataset.action = action;
@@ -243,13 +258,29 @@ export class HeroUI {
       for (const p of open) this.place(this.panels.get(p.id), p, game, renderer, bounds, open);
       this.layoutKey = layoutKey;
     }
-    for(const panel of this.panels.values())if(panel.revealSelection){panel.querySelector('.storage-sheet.active .selected')?.scrollIntoView({block:'nearest',inline:'nearest'});panel.revealSelection=false;}
+    for(const panel of this.panels.values()){
+      const selected=panel.querySelector('.storage-sheet.active .selected');
+      if(panel.revealSelection)selected?.scrollIntoView({block:'nearest',inline:'nearest'});
+      if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split&&(panel.hero?.device!=='keyboard'||panel.revealSelection)){
+        if(selected?.showItemTooltip){if(panel.tooltipSelection!==selected||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)selected.showItemTooltip();panel.tooltipSelection=selected;}
+        else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
+      }
+      panel.revealSelection=false;
+    }
   }
   storagePanels(panel, game, p, button) {
     if(p.ui.socket){drawSocketWorkshop(panel,game,p,button,el);return;}
     const u = p.ui,
       storage = game.storageFor(p),
       layout = el("div", null, "storage-layout");
+    const victoryStorage=u.storage==='victory';
+    const quiver=el('div',null,'quiver-slot');quiver.classList.toggle('selected',u.panel==='quiver');
+    const label=el('label','QUIVER'),selectAmmo=el('select');selectAmmo.setAttribute('aria-label','Quiver ammunition');
+    for(const type of ARROW_TYPES){const option=el('option',`${ITEMS[type].name} (${count(p,type)})`);option.value=type;selectAmmo.append(option);}
+    selectAmmo.value=quiverType(p);selectAmmo.onchange=()=>game.inventoryAction(p,'quiver:'+selectAmmo.value);
+    selectAmmo.onfocus=()=>{if(p.ui)p.ui.panel='quiver';};
+    label.append(selectAmmo);const ammoIcon=el('canvas');ammoIcon.width=ammoIcon.height=24;drawItem(ammoIcon.getContext('2d'),quiverType(p),12,12,24);
+    quiver.append(ammoIcon,label);if(!victoryStorage)panel.append(quiver);
     layout.classList.toggle("has-chest", !!storage);
     const select = (mode, index) => {
       game.inventoryAction(p, "panel:" + mode);
@@ -269,7 +300,7 @@ export class HeroUI {
           : (owner?.name || p.name) +
             " · " +
             chestName(owner, Number(u.storage));
-    for (const mode of ["gear", "pack", ...(storage ? ["chest"] : [])]) {
+    for (const mode of [...(victoryStorage ? [] : ["gear"]), "pack", ...(storage ? ["chest"] : [])]) {
       const active = u.panel === mode,
         gear = mode === "gear";
       const sheet = el(
@@ -461,6 +492,12 @@ export class HeroUI {
           drawItem(icon.getContext("2d"), item.type, 12, 12, 24);
           b.prepend(icon);
         }
+        if(gear&&itemKind(item.type)==='quiver'){
+          const ammo=el('span',null,'quiver-ammo-indicator'),loaded=Math.min(3,count(p.inventory,quiverType(p)));
+          ammo.setAttribute('aria-label',`${count(p.inventory,quiverType(p))} arrows loaded`);
+          for(let arrow=0;arrow<loaded;arrow++)ammo.append(el('i','➶'));
+          b.append(ammo);
+        }
         b.draggable = !!def || item?.type === "occupied";
         b.ondragstart = (e) => {
           this.dragItem = {
@@ -523,7 +560,7 @@ export class HeroUI {
       }
       else if (mode === "pack" && def) {
         add(
-          "Use / Equip",
+          ARROW_TYPES.includes(item.type)?"Load quiver":def.recipe?"Learn recipe":"Use / Equip",
           storage ? "storage-equip" : active ? "use" : "pack-use",
           "equip",
         );
@@ -563,6 +600,12 @@ export class HeroUI {
         "storage-notice",
       ),
     );
+    if(victoryStorage){
+      const endActions=el('nav',null,'victory-loot-actions');
+      const restart=button('Restart this level','victory-restart',()=>panel.dispatchEvent(new CustomEvent('victory-action',{bubbles:true,detail:'restart'})));
+      const lobby=button('Return to lobby','victory-lobby',()=>panel.dispatchEvent(new CustomEvent('victory-action',{bubbles:true,detail:'lobby'})));
+      endActions.append(restart,lobby);panel.append(endActions);
+    }
     const controls = this.controllerText(game, p);
     const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
     panel.append(el('small',`${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.close}: close`,'inventory-help'));

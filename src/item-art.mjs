@@ -51,6 +51,15 @@ export function paintItem(c, type) {
   }
 }
 function paintItemBase(c, type) {
+  if(type==='ice_arrow'){
+    paintItemBase(c,'arrow');c.fillStyle='#397cba';c.fillRect(16,1,6,5);c.fillStyle='#b6f4ff';c.fillRect(18,2,4,2);c.fillStyle='#70d7ff';c.fillRect(20,4,2,5);c.fillRect(13,2,2,2);return;
+  }
+  if(type==='raw_ice'){
+    c.fillStyle='#559bb9';c.fillRect(5,9,14,12);c.fillRect(8,5,9,4);c.fillStyle='#91d5e9';c.fillRect(6,10,11,9);c.fillRect(9,6,7,4);c.fillStyle='#defbff';c.fillRect(7,10,3,7);c.fillRect(10,6,2,4);return;
+  }
+  if(type==='ice_arrow_recipe'){
+    c.fillStyle='#947a50';c.fillRect(4,3,16,19);c.fillStyle='#e5dcad';c.fillRect(5,4,14,17);c.fillStyle='#eafaff';c.fillRect(3,2,17,3);c.fillStyle='#368cb2';c.fillRect(11,7,2,11);c.fillRect(8,11,8,2);c.fillRect(9,8,6,2);c.fillRect(8,16,2,3);return;
+  }
   if(ITEMS[type]?.supplyOnly){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},color=ITEMS[type].artColor;
     r(6,2,2,8,'#c7a46a');r(16,2,2,8,'#c7a46a');r(8,9,8,2,'#c7a46a');
@@ -65,7 +74,7 @@ function paintItemBase(c, type) {
   if(ITEMS[type]?.base==='quiver'){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     for(const x of [8,12,16]){r(x,2,1,14,'#d9bd81');r(x-1,1,3,3,'#f2edcc');}
-    r(5,9,14,13,'#3e3027');r(6,10,12,11,ITEMS[type].artColor);r(6,10,12,2,'#ddc18d');r(8,15,2,5,'#c6a779');return;
+    r(5,9,14,13,'#3e3027');r(6,10,12,11,ITEMS[type].artColor);r(6,10,12,2,'#ddc18d');r(8,15,2,5,'#c6a779');if(type==='starter_quiver')r(13,14,3,3,'#e6d79a');return;
   }
   if (ITEMS[type]?.skillScroll) {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};

@@ -90,13 +90,13 @@ app.whenReady().then(async () => {
     minHeight: 700,
     show: false,
     backgroundColor: "#101e1b",
-    title: preview ? "Wildbound · Night Hunt Preview" : "Wildbound • The Living Board",
+    title: preview
+      ? `Wildbound · Night Hunt Preview · v${app.getVersion()}`
+      : `Wildbound • The Living Board · v${app.getVersion()}`,
     icon: path.join(__dirname, 'assets', 'wildbound-icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
-      additionalArguments: process.argv.includes("--smoke-test")
-        ? ["--wildbound-test"]
-        : [],
+      additionalArguments: [`--wildbound-version=${app.getVersion()}`, ...(preview ? ["--preview"] : []), ...(process.argv.includes("--smoke-test") ? ["--wildbound-test"] : [])],
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,

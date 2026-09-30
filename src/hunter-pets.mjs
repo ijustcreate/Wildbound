@@ -22,12 +22,22 @@ export function restoreHunterPet(record){
   hunterPet:true,faction:'ally',equipment:{},inventory:[],state:'idle',step:0,faceX:0,faceY:1,cooldown:0};
 }
 export function nearestTamable(g,p){
- return g.enemies.filter(e=>e.hp>0&&!e.defeated&&creatures[e.kind]?.tamable&&distance(e,p)<=90&&clearShot(g,p,e)).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+ const spirit=(g.ghosts||[]).filter(a=>a.ritualTiger&&a.wildTiger&&a.hp>0&&((p.room&&a.room===p.room)?Math.hypot(a.roomX-p.roomX,a.roomY-p.roomY):(!p.room&&!a.room?distance(a,p):Infinity))<=90).sort((a,b)=>((p.room&&a.room===p.room)?Math.hypot(a.roomX-p.roomX,a.roomY-p.roomY):distance(a,p))-((p.room&&b.room===p.room)?Math.hypot(b.roomX-p.roomX,b.roomY-p.roomY):distance(b,p)))[0];
+ const animal=p.room?null:g.enemies.filter(e=>e.hp>0&&!e.defeated&&creatures[e.kind]?.tamable&&distance(e,p)<=90&&clearShot(g,p,e)).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+ return spirit&&(!animal||((p.room&&spirit.room===p.room)?Math.hypot(spirit.roomX-p.roomX,spirit.roomY-p.roomY):distance(spirit,p))<distance(animal,p))?spirit:animal;
 }
 export function tamePet(g,p,target=nearestTamable(g,p)){
  if(!hasSetSkill(p,'tame_pet')){g.message('Equip all five Ranger pieces to use Tame.');return false;}
- if(p.hp<=0||p.room)return false;
+ if(p.hp<=0)return false;
  if(p.hunterPet){g.message('This hero already has a companion.');return false;}
+ if(target?.ritualTiger&&target.wildTiger&&g.ghosts?.includes(target)){
+  const d=p.room&&target.room===p.room?Math.hypot(target.roomX-p.roomX,target.roomY-p.roomY):!p.room&&!target.room?distance(p,target):Infinity;
+  if(d>90){g.message('Get closer to the ghost tiger to tame it.');return false;}
+  const pet=restoreHunterPet({kind:'tiger',name:'Ghost Tiger',collar:p.color});
+  Object.assign(pet,{id:g.nextId++,owner:p.id,x:target.x,y:target.y,hp:pet.maxHp,spiritGhost:true,ghost:true,room:target.room,roomX:target.roomX,roomY:target.roomY});
+  g.ghosts=g.ghosts.filter(a=>a!==target);p.hunterPet=pet;g.message('The ghost tiger accepts your call and becomes your companion.');g.onSound('magic',pet);g.persist();return true;
+ }
+ if(p.room)return false;
  if(!target||!g.enemies.includes(target)||!creatures[target.kind]?.tamable||target.hp<=0||distance(p,target)>90||!clearShot(g,p,target)){g.message('Approach a living lion, wolf, bat, panther, or tiger to tame it.');return false;}
  const pet=restoreHunterPet({kind:target.kind,name:target.kind[0].toUpperCase()+target.kind.slice(1),collar:p.color});
  Object.assign(pet,{id:g.nextId++,owner:p.id,x:target.x,y:target.y,hp:pet.maxHp});
@@ -83,7 +93,7 @@ export function tickHunterPets(g,dt,inputs={}){
    if(pet.revive>=1.6){pet.hp=Math.ceil(pet.maxHp*.4);pet.downedRemaining=undefined;pet.revive=0;pet.invuln=2;pet.heartTime=2;g.onSound('heal',pet);g.persist();}
    continue;
   }
-  if(p.room){pet.moving=false;pet.pvpTarget=null;continue;}
+  if(p.room){if(pet.spiritGhost&&p.room==='temple-upper'){const tx=p.roomX-(p.faceX||0)*25,ty=p.roomY-(p.faceY||1)*10,dx=tx-(pet.roomX??tx),dy=ty-(pet.roomY??ty),d=Math.hypot(dx,dy)||1;pet.room=p.room;pet.moving=d>4;if(pet.moving){pet.roomX+=(dx/d)*Math.min(d,pet.speed*dt);pet.roomY+=(dy/d)*Math.min(d,pet.speed*dt);}}pet.moving=pet.spiritGhost?pet.moving:false;pet.pvpTarget=null;continue;}
   const moved=pet.ownerX===undefined?0:Math.hypot(p.x-pet.ownerX,p.y-pet.ownerY);
   pet.ownerIdle=moved>.1||p.attack>0||p.charge>0?0:(pet.ownerIdle||0)+dt;pet.ownerX=p.x;pet.ownerY=p.y;
   if(distance(p,pet)>320){placeNearOwner(g,p,pet);pet.pvpTarget=null;}

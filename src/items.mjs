@@ -3,6 +3,7 @@ export const SLOTS = [
   "head",
   "neck",
   "cape",
+  "back",
   "shoulders",
   "chest",
   "gloves",
@@ -12,6 +13,9 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  ice_arrow:{name:'Ice arrow',stack:99,color:'#83dcff',description:'Blue-tipped ammunition. Freezes enemies and creates frost where it lands. Load into the quiver.'},
+  ice_arrow_recipe:{name:'Recipe: Ice arrows',stack:1,color:'#95dfea',recipe:true,description:'Use to learn Ice arrows in the Field Guild. Makes 20: 20 arrows + 20 Magic Essence + 3 raw ice.'},
+  raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'Melts after five minutes outside the ice level. Used to craft ice arrows.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Stored relics grant no passive bonuses.' },
   crafting_bag: { name: 'Crafting Pouch', stack: 1, color: '#83bb92', bag: { slots: 1, category: 'crafting' }, description: 'One crafting supply slot. Holds one stack.' },
@@ -875,9 +879,10 @@ for(const [id,name,base,slot,stats] of [
  ['ranger_jacket','Ranger jacket','armor','chest',{armor:3,bowDamage:.10}],
  ['ranger_bracers','Ranger bracers','gloves','gloves',{bowDrawSpeed:.25}],
  ['ranger_trailboots','Ranger trail boots','boots','feet',{speedBonus:.08,arrowSpeed:.15}],
- ['ranger_quiver','Ranger quiver','quiver','cape',{bowDrawSpeed:.15,arrowSpeed:.15}],
-])ITEMS[id]={name,base,slot,stack:1,rarity:'rare',color:'#79a56b',artColor:'#789253',set:'ranger',...stats,description:'Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).'};
-ITEMS.leather_quiver={name:'Leather quiver',base:'quiver',slot:'cape',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.15,description:'Back-slot archery gear. Draw the bow 15% faster.'};
+ ['ranger_quiver','Ranger quiver','quiver','back',{bowDrawSpeed:.2,arrowSpeed:.1}],
+])ITEMS[id]={name,base,slot,stack:1,rarity:'rare',color:'#79a56b',artColor:'#789253',set:'ranger',...stats,description:`${base==='quiver'?'Back-slot quiver · arrows travel 10% faster · bow charges 20% faster. Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).':'Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).'}`};
+ITEMS.leather_quiver={name:'Leather quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · arrows travel 10% faster · bow charges 20% faster.'};
+ITEMS.starter_quiver={name:'Starter quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · includes eight starter arrows · arrows travel 10% faster · bow charges 20% faster.'};
 // Rare discoveries unique to supply chests in each environment.
 for(const [id,name,color,bonus,description] of [
  ['fern_pendant','Fern pendant','#8fb779',{armor:2},'Woodland charm · +2 armor.'],
@@ -992,12 +997,13 @@ export function give(list, type, qty = 1, slots = 24, metadata = {}) {
     if (i?.type === type && i.qty < max) {
       const n = Math.min(qty, max - i.qty);
       i.qty += n;
+      if(type==='raw_ice'&&n>0)i.meltRemaining=Math.min(i.meltRemaining??300,metadata.meltRemaining??300);
       qty -= n;
     }
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    const item={type,qty:n,...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
+    const item={type,qty:n,...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
     if (hole >= 0) list[hole] = item;
     else list.push(item);
     qty -= n;
@@ -1113,6 +1119,10 @@ export function freshCharacter(id, name) {
 export function migrateEquipment(p) {
   p.equipment ||= {};
   for (const slot of SLOTS) p.equipment[slot] ??= null;
+  if (itemKind(p.equipment.cape) === "quiver") {
+    if (!p.equipment.back) { p.equipment.back = p.equipment.cape; p.equipment.cape = null; }
+    else if (give(p.inventory ||= [], p.equipment.cape, 1, 24)) p.equipment.cape = null;
+  }
   if (itemKind(p.equipment.head) === "charm" && !p.equipment.neck) {
     p.equipment.neck = p.equipment.head;
     p.equipment.head = null;
@@ -1135,8 +1145,9 @@ export function splitStack(list, index, amount, slots = 24) {
     return false;
   item.qty -= amount;
   const hole = list.findIndex((i) => !i);
-  if (hole >= 0) list[hole] = { type: item.type, qty: amount };
-  else list.push({ type: item.type, qty: amount });
+  const split={...structuredClone(item),qty:amount};
+  if (hole >= 0) list[hole] = split;
+  else list.push(split);
   return true;
 }
 export function sellStack(p, index, stock = (p.robotStock ||= [])) {

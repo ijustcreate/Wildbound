@@ -94,7 +94,7 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 .hero-panel.storage-session .equipment-window,.hero-panel.storage-session .inventory-window { position:relative; }
 .hero-panel.storage-session .equipment-window > nav,.hero-panel.storage-session .inventory-window > nav { display:none; }
 .hero-panel.storage-session .equipment-preview { position:absolute; top:31px; left:50%; transform:translateX(-50%); width:90px; height:150px; object-fit:cover; background:#17382c; border-radius:8px; }
-.hero-panel.storage-session .paper-doll { display:grid; grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr); grid-template-rows:repeat(5,30px); gap:3px; margin:0; max-height:none; overflow:visible; background:transparent; padding:0; }
+.hero-panel.storage-session .paper-doll { display:grid; grid-template-columns:minmax(0,1fr) 84px minmax(0,1fr); grid-template-rows:repeat(6,30px); gap:3px; margin:0; max-height:none; overflow:visible; background:transparent; padding:0; }
 .hero-panel.storage-session .paper-doll button[data-slot] { min-height:0; height:30px; padding:2px; display:flex; align-items:center; justify-content:center; gap:3px; font-size:8px; border-radius:4px; background:#243f35; color:#ecedce !important; border-bottom-width:2px; }
 .hero-panel.storage-session .paper-doll canvas.item-icon { width:19px; height:19px; margin:0; }
 .hero-panel.storage-session .paper-doll [data-slot="head"] {grid-area:1 / 1;}
@@ -102,11 +102,12 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 .hero-panel.storage-session .paper-doll [data-slot="shoulders"] {grid-area:3 / 1;}
 .hero-panel.storage-session .paper-doll [data-slot="hand1"] {grid-area:4 / 1;}
 .hero-panel.storage-session .paper-doll [data-slot="pants"] {grid-area:5 / 1;}
-.hero-panel.storage-session .paper-doll [data-slot="cape"] {grid-area:1 / 3;}
-.hero-panel.storage-session .paper-doll [data-slot="chest"] {grid-area:2 / 3;}
-.hero-panel.storage-session .paper-doll [data-slot="gloves"] {grid-area:3 / 3;}
-.hero-panel.storage-session .paper-doll [data-slot="hand2"] {grid-area:4 / 3;}
-.hero-panel.storage-session .paper-doll [data-slot="feet"] {grid-area:5 / 3;}
+.hero-panel.storage-session .paper-doll [data-slot="feet"] {grid-area:6 / 1;}
+.hero-panel.storage-session .paper-doll [data-slot="back"] {grid-area:1 / 3;}
+.hero-panel.storage-session .paper-doll [data-slot="cape"] {grid-area:2 / 3;}
+.hero-panel.storage-session .paper-doll [data-slot="chest"] {grid-area:3 / 3;}
+.hero-panel.storage-session .paper-doll [data-slot="gloves"] {grid-area:4 / 3;}
+.hero-panel.storage-session .paper-doll [data-slot="hand2"] {grid-area:5 / 3;}
 .hero-panel.storage-session .storage-sheet:not(.active) > .storage-detail,.hero-panel.storage-session .storage-sheet:not(.active) > .inventory-actions { display:none; }
 .hero-panel.storage-session .storage-detail { font:11px/1.3 system-ui; min-height:0; margin:6px 0; }
 .hero-panel.storage-session .inventory-actions { position:static; background:transparent; padding:0; gap:4px; }
@@ -232,7 +233,7 @@ body[data-screen="lobby"] #site-header { display:none !important; }
   border-radius:12px; z-index:0;
 }
 .hero-panel.storage-session .equipment-window .paper-doll {
-  position:relative; display:block; height:202px; margin:0; padding:0;
+  position:relative; display:block; height:236px; margin:0; padding:0;
   background:radial-gradient(ellipse at center,#31584766 0 38%,transparent 39%);
   overflow:visible; z-index:1;
 }
@@ -247,11 +248,12 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 .hero-panel.storage-session .paper-doll button[data-slot="shoulders"] { left:0; top:70px; }
 .hero-panel.storage-session .paper-doll button[data-slot="hand1"] { left:0; top:104px; }
 .hero-panel.storage-session .paper-doll button[data-slot="pants"] { left:0; top:138px; }
-.hero-panel.storage-session .paper-doll button[data-slot="cape"] { right:0; top:2px; }
-.hero-panel.storage-session .paper-doll button[data-slot="chest"] { right:0; top:36px; }
-.hero-panel.storage-session .paper-doll button[data-slot="gloves"] { right:0; top:70px; }
-.hero-panel.storage-session .paper-doll button[data-slot="hand2"] { right:0; top:104px; }
-.hero-panel.storage-session .paper-doll button[data-slot="feet"] { right:0; top:138px; }
+.hero-panel.storage-session .paper-doll button[data-slot="back"] { right:0; top:2px; }
+.hero-panel.storage-session .paper-doll button[data-slot="cape"] { right:0; top:36px; }
+.hero-panel.storage-session .paper-doll button[data-slot="chest"] { right:0; top:70px; }
+.hero-panel.storage-session .paper-doll button[data-slot="gloves"] { right:0; top:104px; }
+.hero-panel.storage-session .paper-doll button[data-slot="hand2"] { right:0; top:138px; }
+.hero-panel.storage-session .paper-doll button[data-slot="feet"] { right:0; top:172px; }
 .hero-panel.storage-session .paper-doll button.selected { outline:2px solid #f4d17e; }
 .hero-panel.storage-session .paper-doll canvas.item-icon { width:19px; height:19px; image-rendering:pixelated; }
 .item-tooltip { position:absolute; z-index:20; width:min(235px,calc(100% - 8px)); padding:9px 10px; pointer-events:none; background:#101d1cfa; border:1px solid #d7b96c; border-radius:6px; box-shadow:0 6px 18px #000b; color:#f2e7c9; font:11px/1.3 system-ui; }

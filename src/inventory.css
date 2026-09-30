@@ -1,4 +1,57 @@
 /* Inventory chrome is independent of the couch menu's compact legacy layout. */
+.quiver-slot { display:flex; align-items:center; gap:8px; flex:none; padding:3px 6px; border:1px solid #617562; background:#172f29; }
+.quiver-slot.selected { outline:2px solid #f4cc73; outline-offset:-2px; }
+.quiver-slot canvas { width:24px; height:24px; image-rendering:pixelated; }
+.quiver-slot label { display:flex; align-items:center; gap:10px; flex:1; min-width:0; font:10px system-ui; color:#d9ca9f; }
+.quiver-slot select { flex:1; min-width:0; padding:3px; font:11px system-ui; color:#e0f1de; background:#1a332b; border:1px solid #667a62; border-radius:2px; }
+.inventory-progress-row { display:flex; align-items:center; gap:12px; flex:none; min-width:0; }
+.inventory-progress-row .coin-balance { margin:0; color:#e3bd63; font:11px system-ui; white-space:nowrap; }
+.inventory-xp { position:relative; flex:1; height:16px; min-width:0; overflow:hidden; border:1px solid #608e9a; background:#0b1b24; }
+.inventory-xp-fill { position:absolute; inset:0 auto 0 0; background:linear-gradient(90deg,#307eab,#80dcd6); transition:width .18s ease; }
+.inventory-xp-label { position:absolute; inset:0; display:grid; place-items:center; color:#f2ffff; font:10px/14px system-ui; text-shadow:0 1px 2px #00111c,1px 0 2px #00111c; white-space:nowrap; }
+.hero-panel.socket-session .socket-workshop { display:flex; flex-direction:column; flex:1; min-height:0; gap:8px; padding:8px 0 0; background:transparent; border:0; }
+.socket-workshop .socket-heading { display:flex; align-items:center; gap:12px; flex:none; padding:8px 0; border-bottom:1px solid #637450; }
+.socket-workshop .socket-heading h2 { font:bold 18px Georgia,serif; margin:3px 0; overflow-wrap:anywhere; }
+.socket-heading small,.socket-heading span { font:11px system-ui; color:#bbccb8; }
+.socket-workshop canvas { width:32px; height:32px; flex:none; image-rendering:pixelated; }
+.socket-workshop .socket-heading canvas { width:48px; height:48px; }
+.socket-workshop .socket-slots { display:flex; gap:6px; flex-wrap:wrap; margin:0; flex:none; }
+.socket-slot { display:flex; align-items:center; flex:1; min-width:110px; gap:8px; border:1px solid #687a62; padding:6px; background:#18352f; font:11px system-ui; }
+.socket-slot .socket-empty { display:grid; place-items:center; width:32px; height:32px; flex:none; font:24px system-ui; color:#8bb1a1; border:1px dashed #687a62; }
+.socket-list-heading { display:flex; align-items:center; justify-content:space-between; font:12px system-ui; background:#1a322a; padding:6px 8px; flex:none; }
+.socket-workshop .socket-choices { display:flex; flex-direction:column; gap:4px; flex:1; min-height:50px; max-height:none; overflow-y:auto; padding:2px; }
+.socket-workshop .socket-choices button { display:flex; align-items:center; gap:8px; min-height:54px; flex:none; text-align:left; width:100%; padding:7px; border:1px solid #64765c; border-radius:2px; background:#172d27; color:#e5eddd; }
+.socket-workshop .socket-choices button.selected { outline:2px solid #f4cc73; outline-offset:-2px; background:#304838; }
+.socket-choice-name { flex:1; min-width:0; overflow-wrap:anywhere; }
+.socket-choice-name strong,.socket-choice-name small { display:block; font:12px system-ui; }
+.socket-choice-name small { font-size:10px; color:#b4c5b1; margin-top:3px; }
+.socket-delta { font:11px system-ui; color:#9bdbe7; white-space:nowrap; }
+.socket-workshop .socket-preview { display:flex; justify-content:space-between; padding:9px 0; border-block:1px solid #486554; font:12px system-ui; color:#a8e3ee; flex:none; background:transparent; }
+.socket-workshop .socket-actions { display:flex; gap:6px; flex:none; }
+.socket-actions button { flex:1; min-height:36px; font:12px system-ui; border-radius:2px; padding:6px; }
+.socket-actions button:first-child { border-color:#c9aa63; background:#345443; }
+.socket-workshop .socket-confirmation { padding:6px; margin:0; border-left:2px solid #e5c474; font:12px system-ui; color:#ffe5ab; }
+.socket-workshop .socket-notice,.socket-empty-state { font:11px system-ui; margin:0; color:#cbd8c1; }
+.socket-notice:empty { display:none; }
+.socket-workshop,.socket-workshop * { box-sizing:border-box; }
+.socket-workshop .socket-slots span { padding:0; border:0; color:inherit; background:transparent; }
+.socket-workshop .socket-choices { margin:0; overflow-x:hidden; }
+.socket-workshop .socket-preview { margin:0; }
+@media (max-height:500px) {
+ .hero-panel.socket-session .socket-workshop { gap:3px; padding-top:2px; }
+ .socket-workshop .socket-heading { padding:2px 0; gap:7px; }
+ .socket-workshop .socket-heading h2 { font-size:14px; margin:0; }
+ .socket-workshop .socket-heading small,.socket-heading span { font-size:9px; }
+ .socket-workshop .socket-heading canvas { width:30px; height:30px; }
+ .socket-workshop .socket-slot { padding:2px 4px; min-width:90px; }
+ .socket-slot canvas,.socket-slot .socket-empty { width:24px; height:24px; }
+ .socket-list-heading { padding:3px 6px; font-size:11px; }
+ .socket-workshop .socket-choices { min-height:36px; }
+ .socket-workshop .socket-choices button { min-height:36px; padding:3px; }
+ .socket-workshop .socket-preview { padding:4px 0; }
+ .socket-actions button { min-height:28px; padding:3px; }
+ .socket-workshop .socket-confirmation { padding:2px 4px; font-size:11px; }
+}
 .hero-panel.inventory-redesign {
   --gold: #c9aa63;
   padding: 12px !important;
@@ -36,6 +89,7 @@
 .hero-panel.inventory-redesign .paper-doll button[data-slot="head"] { left: 41%; top: 1%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="neck"] { left: 19%; top: 19%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="cape"] { right: 19%; top: 19%; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot="back"] { right: 0; top: 1%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="shoulders"] { left: 14%; top: 38%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="chest"] { right: 14%; top: 38%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="hand1"] { left: 14%; top: 57%; }
@@ -56,6 +110,9 @@
 .hero-panel.inventory-redesign .item-grid:not(.paper-doll) canvas.item-icon { width: 30px; height: 30px; max-height: 95%; max-width: 70%; object-fit: contain; image-rendering: pixelated; margin: 0; }
 .hero-panel.inventory-redesign button:hover { border-color: #ffe2a0; background-color: #304c39; }
 .hero-panel.inventory-redesign button.selected, .hero-panel.inventory-redesign button:focus-visible { outline: 2px solid #f4cc73; outline-offset: -2px; }
+.paper-doll button[data-slot="back"] { position:relative; }
+.quiver-ammo-indicator { position:absolute; right:1px; top:1px; display:flex; gap:0; color:#ffe195; font:8px/1 system-ui; text-shadow:0 1px 2px #000; }
+.quiver-ammo-indicator i { font-style:normal; }
 .hero-panel.inventory-redesign .inventory-actions { position: static; display: flex; flex-wrap: wrap; background: transparent; padding: 2px 0; gap: 4px; }
 .hero-panel.inventory-redesign .inventory-actions button { font: 10px system-ui; padding: 4px 6px; min-height: 24px; }
 .hero-panel.inventory-redesign .salvage-description { display: none; }
@@ -90,6 +147,14 @@
 .hero-panel.inventory-redesign > .coin-balance { margin:0; flex:none; }
 .hero-panel.inventory-redesign .storage-layout { grid-template-rows:minmax(0, .9fr) minmax(0, 1.1fr); }
 .hero-panel.inventory-redesign .storage-layout.has-chest { grid-template-rows:minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr); }
+.hero-panel.victory-loot-session .storage-layout.has-chest { grid-template-columns:repeat(2,minmax(0,1fr))!important; grid-template-rows:minmax(0,1fr)!important; gap:10px; }
+.hero-panel.victory-loot-session .equipment-window,.hero-panel.victory-loot-session .quiver-slot { display:none; }
+.hero-panel.victory-loot-session .storage-sheet { border:1px solid #b89b5f; border-radius:4px; padding:7px; background:linear-gradient(145deg,#142c25,#0c1a16); }
+.hero-panel.victory-loot-session .storage-sheet > header { font-size:15px; padding:8px; }
+.hero-panel.victory-loot-session .inventory-window,.hero-panel.victory-loot-session .chest-window { min-width:0; }
+.victory-loot-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; flex:none; padding:8px 0 0; }
+.victory-loot-actions button { min-height:32px; border:1px solid #b89b5f; background:#234336; color:#f2e5c6; padding:6px 12px; }
+@media(max-width:720px){.hero-panel.victory-loot-session .storage-layout.has-chest{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr)!important;}}
 .hero-panel.inventory-redesign .storage-sheet > nav:not(.inventory-tabs) { display:none; }
 .hero-panel.inventory-redesign .inventory-window { grid-template-rows:auto 28px minmax(0,1fr) auto; gap:3px; }
 .hero-panel.inventory-redesign .inventory-tabs { height:28px !important; }

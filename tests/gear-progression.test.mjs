@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {freshCharacter,ITEMS,refreshVitals,stat,equip,unequip,give,socketTrinket,removeTrinket,transfer,setProgress,moveInventoryItem,hasSetSkill} from '../src/items.mjs';
+import {SLOTS,freshCharacter,ITEMS,refreshVitals,stat,equip,unequip,give,socketTrinket,removeTrinket,transfer,setProgress,moveInventoryItem,hasSetSkill} from '../src/items.mjs';
 import {summonNecromancerPet,tickGhosts} from '../src/temple.mjs';
 import {Profiles} from '../src/profiles.mjs';
 import {applyLoadout,initializeField} from '../src/field-systems.mjs';
@@ -50,7 +50,7 @@ test('loadout selection consumes the exact matching socketed instance',()=>{
  assert.match(applyLoadout(g,p,0),/equipped/);assert.deepEqual(p.equipmentSockets.hand1,['starheart']);assert.deepEqual(p.inventory.find(Boolean).sockets,['azure_bead']);
 });
 test('controller socket workflow requires confirm, supports cancel and removal',()=>{
- const p=hero();p.equipment.hand1='sword';give(p.inventory,'azure_bead');p.ui={panel:'gear',index:8};const g={persist(){}};
+ const p=hero();p.equipment.hand1='sword';give(p.inventory,'azure_bead');p.ui={panel:'gear',index:SLOTS.indexOf('hand1')};const g={persist(){}};
  assert.ok(socketAction(g,p,'offhand'));assert.ok(p.ui.socket);socketAction(g,p,'use');assert.ok(p.ui.socket.confirm);socketAction(g,p,'close');assert.equal(p.inventory[0].type,'azure_bead');
  socketAction(g,p,'use');socketAction(g,p,'use');assert.deepEqual(p.equipmentSockets.hand1,['azure_bead']);socketAction(g,p,'use');socketAction(g,p,'use');assert.equal(p.inventory[0].type,'azure_bead');assert.deepEqual(p.equipmentSockets.hand1,[]);
 });

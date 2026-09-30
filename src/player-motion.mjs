@@ -12,9 +12,10 @@ import {drawHeroTorso,withPixelRotation,unrotateFace} from './hero-art.mjs';
 import { gearPalette, fittedGear, fittedShield, withBootPose } from './gear-art.mjs';
 import { paintLayers } from "./render-order.mjs";
 import { jointAngle, validAngles } from "./joint-angles.mjs";
-import { ITEMS, itemKind } from "./items.mjs";
+import { ITEMS, count, itemKind } from "./items.mjs";
 import { drawItem, paintItem } from "./item-art.mjs";
 import { shade, drawHair, DEFAULT_APPEARANCE } from "./appearance.mjs";
+import { quiverType } from './quiver.mjs';
 // One player definition, pose evaluator and pixel renderer for both game and studio.
 // Coordinates are model-space pixels: x across shoulders, y forward, z height.
 export const DIRECTIONS = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"];
@@ -706,11 +707,15 @@ export function drawPlayer(
       },
       "Stowed weapon",
     );
-  if(itemKind(gear.cape)==='quiver')add(p.chest.depth+(back?1:-1),()=>{
+  if(itemKind(gear.back)==='quiver')add(p.chest.depth+(back?4:-1),()=>{
     const x=p.chest.x+(back?-5:5),y=p.chest.y-2;
-    c.save();c.translate(x,y);c.rotate(-.25);drawItem(c,gear.cape,0,0,17);c.restore();
+    const ammo=Math.min(3,count(actor.inventory||[],quiverType(actor)));
+    c.save();c.translate(x,y);c.rotate(-.25);drawItem(c,gear.back,0,0,17);
+    c.fillStyle='#f2d37e';c.strokeStyle='#30251a';c.lineWidth=.7;
+    for(let arrow=0;arrow<ammo;arrow++){const ax=-4+arrow*3;c.strokeRect(ax,-9,1,5);c.fillRect(ax-1,-9,3,1);}
+    c.restore();
   },'Quiver');
-  if (gear.cape && itemKind(gear.cape)!=='quiver') {
+  if (gear.cape) {
     const top = positions.shoulderL.map((v,i)=>(v+positions.shoulderR[i])/2),
       bottom = positions.pelvis;
     const left = projectPoint([top[0] - 4, top[1] - 3, top[2]], d),

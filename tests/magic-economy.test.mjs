@@ -41,7 +41,7 @@ test("Head, neck and cape equip independently; old head charms migrate", () => {
   assert.equal(p.equipment.head, "hat");
   assert.equal(p.equipment.neck, "charm");
   assert.equal(p.equipment.cape, "cape");
-  assert.equal(SLOTS.length, 10);
+  assert.equal(SLOTS.length, 11);
 });
 test("Wands consume mana, reject exhausted shots, hit enemies and regenerate", () => {
   const { g, p } = setup();

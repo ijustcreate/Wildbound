@@ -27,7 +27,7 @@ test("XP remains in collectible orbs, survives saving, ignores full bags and is 
   g.enemyLoot({ kind: "skeleton", id: 901, x: 400, y: 400 });
   assert.equal(g.loot.length, 0);
   assert.equal(g.players[0].xp, 0);
-  assert.equal(g.xpOrbs.length, 1);
+  assert.equal(g.xpOrbs.length, 5);
   const loaded = restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
   const p = loaded.players[0],
     orb = loaded.xpOrbs[0];
@@ -37,6 +37,7 @@ test("XP remains in collectible orbs, survives saving, ignores full bags and is 
   assert.equal(loaded.collectXP(p, orb), false);
   p.hp = 100;
   assert.equal(loaded.collectXP(p, orb), true);
+  for(const other of [...loaded.xpOrbs]){p.x=other.x;p.y=other.y;loaded.collectXP(p,other);}
   assert.equal(loaded.xpOrbs.length, 0);
   assert.equal(p.inventory.length, 24);
   assert.ok(loaded.players.every((p) => p.xp === 10));
@@ -44,7 +45,7 @@ test("XP remains in collectible orbs, survives saving, ignores full bags and is 
   assert.ok(loaded.players.every((p) => p.xp === 10));
 });
 
-test("Collecting a large combined orb can award multiple levels", () => {
+test("Collecting an XP shower can award multiple levels without losing value", () => {
   const g = new Game(() => 0.5),
     p = g.addPlayer("keyboard");
   g.start();
@@ -52,7 +53,7 @@ test("Collecting a large combined orb can award multiple levels", () => {
   const orb = g.xpOrbs[0];
   Object.assign(p, { x: orb.x, y: orb.y });
   g.time = 1;
-  assert.ok(g.collectXP(p, orb));
+  for(const other of [...g.xpOrbs]){p.x=other.x;p.y=other.y;assert.ok(g.collectXP(p,other));}
   assert.equal(p.level, 4);
   assert.equal(p.xp, 0);
 });

@@ -87,7 +87,7 @@ export function harvest(g, p, damage, range, onHit) {
       s.harvest -= 36;
       s.chunks--;
       s.chipped = (s.chipped || 0) + 1;
-      drop("stone", 1);
+      drop(["ice_rock","ice_spire"].includes(s.kind)?"raw_ice":"stone", 1);
       if (s.chunks <= 0) {
         s.depleted = true;
         s.falling = 0.001;

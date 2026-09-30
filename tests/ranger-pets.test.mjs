@@ -17,7 +17,7 @@ test('Ranger requires five compatible pieces to tame, and three to get a one-amm
  assert.equal(hasSetSkill(p,'tame_pet'),false);assert.ok(stat(p,'bowDamage')>0);
  g.fireArrow(p,1.2);assert.equal(g.arrows.length,3);assert.equal(count(p,'arrow'),1);
  const angles=g.arrows.map(a=>a.angle);assert.ok(angles[0]<angles[1]&&angles[1]<angles[2]);
- ranger(p);assert.equal(hasSetSkill(p,'tame_pet'),true);assert.equal(ITEMS.ranger_quiver.slot,'cape');
+ ranger(p);assert.equal(hasSetSkill(p,'tame_pet'),true);assert.equal(ITEMS.ranger_quiver.slot,'back');
  assert.ok(Object.keys(ITEMS).filter(id=>ITEMS[id].rarity==='rare').includes('ranger_quiver'));
 });
 test('Bow arrows originate at the held handle in all directions, both scenes and charged poses',()=>{

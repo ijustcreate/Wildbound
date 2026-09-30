@@ -1,3 +1,8 @@
+## 1.0.39
+
+- Publish pending board artwork, event controls, XP effects, minimap, inventory and socket UI, quiver ammunition, ice crafting, temple and victory updates.
+- Integrate the back equipment slot with controller navigation and fix sandboxed desktop version reporting.
+
 ## 1.0.38 - Equipment removal controls
 
 - Explain full-backpack unequip failures and confirm successful removal.

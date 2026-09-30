@@ -3,6 +3,7 @@ import {drawMagicBolt} from "./magic-bolt-render.mjs";
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {hunterPets} from './hunter-pets.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
+import {drawFearFace} from './temple.mjs';
 import {applyCelShading} from './cel-shading.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
@@ -44,7 +45,7 @@ import { rigSubject } from "./rig-subjects.mjs";
 import { ellipse } from "./player-motion.mjs";
 import { actorContact } from './contact-shadow.mjs';
 import {drawCorpse} from './corpse-pose.mjs';
-import {drawEmbeddedArrow} from './embedded-arrow.mjs';
+import {drawEmbeddedArrow,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
 import {drawForestGround,drawFallingLeaves} from './forest.mjs';
 import {hasForestLandscape,drawLandscapeGround,drawForestBank} from './forest-art.mjs';
 import {meleeProfile} from './melee-geometry.mjs';
@@ -207,6 +208,11 @@ export class Renderer {
     this.floor(ctx, w, h, game);
     drawBridges(ctx,game);
     drawSnowGround(ctx,game);
+    for(const patch of game.arrowIcePatches||[]){
+      ctx.save();ctx.globalAlpha=Math.min(.7,patch.life/2);ctx.fillStyle='#97dcf0';ctx.beginPath();
+      for(let i=0;i<7;i++){const a=i*Math.PI*2/6,x=patch.x+Math.cos(a)*patch.radius,y=patch.y+Math.sin(a)*patch.radius*.55;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.fill();
+      ctx.strokeStyle='#e2ffff';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(patch.x-17,patch.y+5);ctx.lineTo(patch.x+9,patch.y-6);ctx.stroke();ctx.restore();
+    }
     drawExpansion(ctx,game);
     drawForestGround(ctx,game,p=>this.visible(p,w,h,160));
     drawTemple(ctx,game,this.animator);
@@ -236,12 +242,13 @@ export class Renderer {
     }
     for (const orb of game.xpOrbs || []) {
       if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;
-      const pop = Math.min(1, Math.max(0, (game.time - (orb.bornAt || game.time)) / 0.35));
-      const y = orb.y - 5 + (1 - pop) * 10 + Math.sin(game.time * 3 + orb.id) * 2;
-      ellipse(ctx, orb.x, orb.y + 3, 6, 2, "#071b2377");
-      ellipse(ctx, orb.x, y, 7, 7, "#53b4ef33");
-      ellipse(ctx, orb.x, y, 4, 4, "#647adc");
-      ellipse(ctx, orb.x, y, 3, 3, "#83d8f0");
+      const y = orb.y - 5 - (orb.z||0) + Math.sin(game.time * 3 + orb.id) * 1.2;
+      const size=orb.amount>4?3:2;
+      if(orb.attracted){ctx.strokeStyle='#80e5ef77';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(orb.x,y);ctx.lineTo(orb.x-(orb.vx||0)*.035,y-(orb.vy||0)*.035);ctx.stroke();}
+      ellipse(ctx, orb.x, orb.y + 3, size+1, 1, "#071b2377");
+      ellipse(ctx, orb.x, y, size+3, size+3, "#53b4ef33");
+      ellipse(ctx, orb.x, y, size, size, "#647adc");
+      ellipse(ctx, orb.x, y, size-1, size-1, "#83d8f0");
       ctx.fillStyle = "#e0ffff";
       ctx.fillRect(Math.round(orb.x - 1), Math.round(y - 2), 2, 2);
     }
@@ -294,10 +301,10 @@ export class Renderer {
     }
     for (const a of game.arrows) {
       if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
-      if(a.stuck&&!a.enemy&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a);continue;}
+      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a);continue;}
       ctx.save();
       ctx.translate(a.x, a.y - (a.z || 0));
-      ctx.rotate(a.angle ?? Math.atan2(a.vy, a.vx));
+      ctx.rotate(a.rock||a.ice?(a.angle??Math.atan2(a.vy,a.vx)):arrowVisualAngle(a));
       if (a.rock) {
         ctx.fillStyle = "#45564e";
         ctx.beginPath();
@@ -317,17 +324,7 @@ export class Renderer {
         ctx.fillStyle = "#e5fcff";
         ctx.fillRect(-1, -3, 2, 6);
       } else {
-        ctx.fillStyle = "#ba9763";
-        const depth = Math.max(5, Math.min(30, a.embedDepth || 7));
-        ctx.fillRect(a.stuck ? -depth - 7 : -9, -1, a.stuck ? depth + 19 : 17, 2);
-        ctx.fillStyle = "#f0e7cd";
-        ctx.fillRect(a.stuck ? depth + 8 : 6, -2, 4, 4);
-        if (a.stuck) {
-          ctx.fillStyle = "#d7bd78";
-          ctx.fillRect(-depth - 9, -2, 3, 4);
-          ctx.fillStyle = "#e8d6a1";
-          ctx.fillRect(-depth - 8, -1, 2, 2);
-        }
+        drawFlyingArrow(ctx,a,game.time);
       }
       if (a.rock) {
         ctx.fillStyle = "#839187";
@@ -434,6 +431,7 @@ export class Renderer {
     for(const pet of hunterPets(game))if(Number.isFinite(pet.x))actors.push({...pet,drawDepth:pet.y+(pet.roostHeight>0?1:0)});
     for (const p of game.players)
       if (!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
+    for(const ghost of game.ghosts||[])if(!ghost.room)actors.push({...ghost,isGhostActor:true,drawDepth:terrainActorDepth(game,ghost,boardActorDepth(game,ghost))});
     for (const e of game.enemies)
       if (pull || (canSee(game, e) && this.visible(e, w, h, 180))) {
         const actor = pull
@@ -485,7 +483,7 @@ export class Renderer {
         ctx.restore();snowRim(ctx,game,a.x,base.y,a.size*.5);
         continue;
       }
-      if(a.hunterPet===true){const owner=game.players.find(p=>p.id===a.owner);if(owner)drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);continue;}
+      if(a.hunterPet===true){const owner=game.players.find(p=>p.id===a.owner);if(owner){ctx.save();if(a.spiritGhost){ctx.globalAlpha=.78;ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);ctx.restore();}continue;}
       const player = a.isPlayer,
         size = player
           ? 43
@@ -495,7 +493,8 @@ export class Renderer {
               ? 34
               : 47;
       ctx.save();
-      ctx.globalAlpha *= player ? 1 : Math.min(enemyVisibility(game, a), nightEnemyOpacity(game, a));
+      ctx.globalAlpha *= player || a.isGhostActor ? (a.isGhostActor ? .78 : 1) : Math.min(enemyVisibility(game, a), nightEnemyOpacity(game, a));
+      if(a.isGhostActor)ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';
       const contact=actorContact(game,a,size,player||!!rigSubject(a.kind));
       ctx.fillStyle = `rgba(9,28,22,${a.swimming?0:contact.alpha*(1-Math.min(1,(a.sink||0)/48))})`;
       ctx.beginPath();
@@ -616,6 +615,7 @@ export class Renderer {
         );
       }
       ctx.restore();
+      if(player&&a.scaredTime>0)drawFearFace(ctx,a.x,a.y-(a.jumpHeight||a.groundHeight||0)-43);
       if(player)drawBowAim(ctx,a,1,game.time);
       if (!player && a.hp>0 && (a.frostMage || (a.kind === "skeleton" && a.frostBound))) {
         ctx.fillStyle = "#8cecff";
@@ -1130,6 +1130,7 @@ export class Renderer {
     ctx.restore();
   }
   minimap(ctx, game, w, h) {
+    ctx.save();
     const s = 65,
       x = w - s - 14,
       y = h - s - 65;
@@ -1180,27 +1181,6 @@ export class Renderer {
     }
     ctx.fillStyle = "#d4ba72";
     ctx.fillRect(x + s / 2 - 1.5, y + s / 2 - 1.5, 3, 3);
-    for (const p of game.players) {
-      const mx = x + (p.x / WORLD) * s,
-        my = y + (p.y / WORLD) * s;
-      if (p.room) {
-        ctx.strokeStyle = "#cc81ff";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(mx, my, 2, 3, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (p.hp <= 0) {
-        ctx.fillStyle = "#ffdda4";
-        ctx.shadowColor = "#ffba65";
-        ctx.shadowBlur = 4 + 3 * Math.sin(this.age * 6);
-        ctx.fillRect(mx - 2, my - 2, 4, 4);
-        ctx.shadowBlur = 0;
-      } else {
-        ctx.fillStyle = p.color;
-        ctx.font = "6px monospace";
-        ctx.textAlign = "center";
-      }
-    }
     ctx.fillStyle = "#a4b58e";
     ctx.font = "4px monospace";
     ctx.textAlign = "center";
@@ -1227,6 +1207,36 @@ export class Renderer {
       );
       ctx.stroke();
     }
+    // Party markers stay above terrain, treasure, portals and pings.
+    for (const p of game.players) {
+      const mx = x + (p.x / WORLD) * s,
+        my = y + (p.y / WORLD) * s;
+      if (p.room) {
+        ctx.strokeStyle = "#cc81ff";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(mx, my, 2, 3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (p.hp <= 0) {
+        ctx.fillStyle = "#ffdda4";
+        ctx.shadowColor = "#ffba65";
+        ctx.shadowBlur = 4 + 3 * Math.sin(this.age * 6);
+        ctx.fillRect(mx - 2, my - 2, 4, 4);
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.beginPath();
+        ctx.arc(mx, my, 2.3, 0, Math.PI * 2);
+        ctx.fillStyle = p.color || "#75e6c6";
+        ctx.fill();
+        ctx.strokeStyle = "#071b16";
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.strokeStyle = "#f0fff3";
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 }
 function trailPoint(i) {

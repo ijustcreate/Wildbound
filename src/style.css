@@ -817,6 +817,24 @@ dialog h2 {
 #settings-dialog {
   width: 540px;
 }
+#victory-results{width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 36px);overflow:auto;padding:clamp(16px,3vw,32px);border:2px solid #d8bd78;background:radial-gradient(ellipse at 50% 0,#29513e 0,#132b24 54%,#0c1b17 100%);color:#f2e8cb;box-shadow:inset 0 0 0 4px #d7b76b25,0 20px 90px #000d;text-align:center}
+.victory-kicker{color:#e2c775;font:11px Georgia,serif;letter-spacing:.24em}
+.victory-stamp{position:relative;margin:8px 0 2px;color:#f7da85;font:bold clamp(42px,9vw,82px)/1 Georgia,serif;letter-spacing:.025em;text-shadow:0 3px #6d401d,0 0 18px #ffd76eaa,0 0 50px #e6a34488;animation:victory-arrive .9s cubic-bezier(.15,.8,.25,1) both}
+.victory-stamp::after{content:"✦     ✧     ✦";position:absolute;inset:0;color:#fff4c9;font:14px system-ui;letter-spacing:clamp(30px,11vw,100px);animation:victory-sparkle 2.8s ease-in-out infinite}
+#victory-title{margin:6px 0 4px;color:#d7efc9;font:clamp(17px,3vw,24px) Georgia,serif}
+#victory-summary{margin:4px 0 18px;color:#d8c995;font:12px system-ui}
+.victory-report{margin:0 auto 18px;max-width:100%;overflow-x:auto;text-align:left;border-block:1px solid #c6aa5c66;padding:12px 0}
+.victory-report h3{margin:0 0 8px;color:#f0d78f;font:12px Georgia,serif;letter-spacing:.16em}
+.victory-report table{width:100%;border-collapse:collapse;font:12px system-ui}
+.victory-report th,.victory-report td{padding:7px 10px;border-bottom:1px solid #d9d0a51e;text-align:right;white-space:nowrap}
+.victory-report th:first-child,.victory-report td:first-child{text-align:left;color:#f1e7c8}
+.victory-report th{color:#a8c5ac;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.victory-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.victory-actions button{min-height:42px;padding:10px 16px;border:1px solid #c4a65a;background:#244437;color:#f7eac5;font:bold 12px system-ui;letter-spacing:.04em}
+.victory-actions #victory-chest-button{background:linear-gradient(#eed58b,#bd8d3f);color:#242819;border-color:#ffe6a1;box-shadow:0 0 18px #e6c26855}
+@keyframes victory-arrive{0%{opacity:0;transform:translateY(18px) scale(.76)}65%{transform:translateY(-3px) scale(1.04)}100%{opacity:1;transform:none}}
+@keyframes victory-sparkle{0%,100%{opacity:.18;transform:scale(.9)}50%{opacity:.9;transform:scale(1.06)}}
+@media(prefers-reduced-motion:reduce){.victory-stamp,.victory-stamp::after{animation:none}}
 .rules {
   padding-left: 20px;
   line-height: 1.8;

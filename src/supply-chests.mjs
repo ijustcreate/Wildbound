@@ -1,3 +1,4 @@
+import {dropIceRecipe} from './ice-crafting.mjs';
 // A small, seeded supply route, selected from ground reachable from the board.
 export const LEVEL_SUPPLIES = {
  forest: {item:'fern_pendant',name:'Woodland supplies',color:'#8fb779'},
@@ -39,6 +40,7 @@ export function openSupplyChest(g,p){
  const chest=(g.supplyChests||[]).filter(c=>!c.opened&&Math.hypot(c.x-p.x,c.y-p.y)<60).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
  if(!chest)return false;
  chest.opened=true;
+ dropIceRecipe(g,p,chest.x,chest.y+25);
  g.dropLoot(chest.x-12,chest.y+20,'potion',chest.potions,chest.name,true);
  if(chest.reward)g.dropLoot(chest.x+15,chest.y+20,chest.reward,1,chest.name,true);
  g.onSound('loot',chest);g.message(chest.name+' opened. Collect the supplies with Interact.');g.persist();return true;

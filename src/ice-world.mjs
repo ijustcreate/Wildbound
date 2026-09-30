@@ -1,3 +1,4 @@
+import {dropIceRecipe} from './ice-crafting.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export const ICE_PROPS=['snow_tree','ice_rock','snow_drift','frost_shrub','ice_spire','frozen_log','winter_cache'];
 export const iceSolid=p=>['snow_tree','ice_rock','ice_spire','frozen_log','winter_cache'].includes(p.kind);
@@ -47,6 +48,7 @@ export function interactIce(g,p){
  const prop=g.scenery.filter(s=>!s.used&&['frost_shrub','winter_cache'].includes(s.kind)).map(s=>({s,b:iceBase(s)})).filter(({b})=>Math.hypot(p.x-b.x,p.y+14-b.y)<48).sort((a,b)=>Math.hypot(p.x-a.b.x,p.y-a.b.y)-Math.hypot(p.x-b.b.x,p.y-b.b.y))[0]?.s;
  if(!prop)return false;prop.used=true;
  const cache=prop.kind==='winter_cache';
+ if(cache)dropIceRecipe(g,p,p.x,p.y+20);
  if(cache){const potions=1+Math.floor(g.random()*2);g.dropLoot(p.x,p.y+18,'potion',potions,'Winter supplies');if(g.random()<.1)g.dropLoot(p.x+14,p.y+4,'santa_hat',1,'Winter supplies');}
  else g.dropLoot(p.x,p.y+18,'frost_berry',3,'Frost berries');
  g.message(cache?'Winter cache opened — supplies found.':'Frost berries gathered — three frost berries.');g.onSound('loot');g.persist();return true;

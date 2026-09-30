@@ -505,6 +505,7 @@ export class FieldKit {
       ),
     );
     for (const r of RECIPES) {
+      if(r.unlock&&!p.field?.recipes?.[r.unlock])continue;
       const card = node("article", null, "field-card"),
         icon = node("canvas");
       icon.width = icon.height = 24;
