@@ -28,6 +28,8 @@ Over time, the project is intended to become a standalone game that is easy to m
 
 ## Play the build
 
+**Developing on another computer or account?** Start with the [development handoff guide](docs/DEVELOPMENT_HANDOFF.md). It explains the Electron launch path, rebuilding desktop shortcuts, and which saves/editor data GitHub does not transfer. Coding agents should also read [AGENTS.md](AGENTS.md).
+
 1. Launch the versioned desktop shortcut generated below for the packaged version in `dist/<package.json version>/Wildbound-win32-x64/` (currently 1.0.31).
 2. To preview the web version locally, run **[Play Wildbound Browser.cmd](Play%20Wildbound%20Browser.cmd)**. The hosted web build is at [ijustcreate.github.io/Wildbound](https://ijustcreate.github.io/Wildbound/).
 3. Keep the complete packaged folder together when moving or sharing an Electron build.
