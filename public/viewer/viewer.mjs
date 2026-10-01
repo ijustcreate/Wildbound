@@ -253,9 +253,14 @@ $('feedback-form').addEventListener('submit',async event=>{
 });
 
 try{
-  const [rigText]=await Promise.all([fetch('./authored/rigs.json').then(response=>{if(!response.ok)throw Error('Shared rigs could not be loaded');return response.text();}),assets.load()]);
+  const sourcePaths=['./authored/rigs.json','./src/player-motion.mjs','./src/human-head.mjs','./src/ik.mjs'];
+  const [sourceTexts]=await Promise.all([
+    Promise.all(sourcePaths.map(async path=>{const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw Error('Rig source could not be loaded');return response.text();})),
+    assets.load(),
+  ]);
+  const [rigText]=sourceTexts;
   const rigs=JSON.parse(rigText);
-  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(rigText));
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(sourceTexts.join('\n---rig-source---\n')));
   rigRevision=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('').slice(0,16);
   applyDefinitions(rigs,[],{},{spriteOverrides:false});
   $('roster-count').textContent=`${units.length} units`;

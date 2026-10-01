@@ -24,7 +24,12 @@ export function applyIK(model,pose){
   const {root,mid,end}=chain;if(!pose[root]||!pose[mid]||!pose[end]||model.joints[mid]?.parent!==root||model.joints[end]?.parent!==mid)continue;
   const rest=model.joints, lengths=[len(sub(rest[mid].position,rest[root].position)),len(sub(rest[end].position,rest[mid].position))];
   // Authored middle-joint keys provide the pole. End-joint keys are targets.
-  const result=solveTwoBone(pose[root],pose[mid],pose[end],pose[end],lengths,chain.bend);
+  // Sculpted humanoid legs bend through the walking plane. Lateral knee keys
+  // were making the work poses bow outward when viewed from the side.
+  const pole=model.artGeneration===3&&mid.startsWith('knee')
+   ? [(pose[root][0]+pose[end][0])/2,pose[mid][1],pose[mid][2]]
+   : pose[mid];
+  const result=solveTwoBone(pose[root],pole,pose[end],pose[end],lengths,chain.bend);
   for(const joint of [mid,end]){
    const delta=sub(result[joint===mid?'mid':'end'],pose[joint]);
    pose[joint]=result[joint===mid?'mid':'end'];
