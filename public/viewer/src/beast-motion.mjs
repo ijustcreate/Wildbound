@@ -34,6 +34,10 @@ function addPantherClips(model) {
 export function defaultBeastMotion(kind) {
   if(kind==='white_lion'||kind==='snow_leopard'){
     const m=kind==='white_lion'?defaultLionMotion():defaultBeastMotion('panther');m.type=kind;m.name=kind==='white_lion'?'White lion':'Snow leopard';
+    if(kind==='snow_leopard'){
+      for(const clip of ['prowl','booty_shake','crouch','lie','branch_lie','climb','swipe_left','swipe_right','swoop'])delete m.clips[clip];
+      for(const color of ['highlight','rosette','claw'])delete m.palette[color];
+    }
     Object.assign(m.palette,{body:'#dce7e7',bodyShade:'#a0b7c4',head:'#edf0e6',headShade:'#adc3cd',mane:'#f5f3de',maneShade:'#b9cbd0',legs:'#d5e1e6',legShade:'#93acbc',tail:'#c4d4da',outline:'#294b60',muzzle:'#f8f4e6'});
     return m;
   }
