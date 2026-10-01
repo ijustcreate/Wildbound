@@ -12,7 +12,7 @@ import {
   validateMotion,
 } from "./player-motion.mjs";
 export const BEAST_KINDS = ["panther", "boar", "beetle", "white_lion", "snow_leopard", "spider"];
-const pantherPose = (model, frame, changes = {}) => ({frame, joints: Object.fromEntries(Object.keys(model.joints).map(name => [name, changes[name] || [0,0,0]]))});
+const pantherPose = (model, frame, changes = {}) => ({frame, joints: Object.fromEntries(Object.keys(model.joints).map(name => [name, changes[name] || (['face','eyeL','eyeR','earL','earR','muzzle','nose'].includes(name) ? changes.head : null) || [0,0,0]]))});
 function pantherClip(model, fps, length, loop, frames) {
   return {fps,length,loop,keys:frames.map(([frame,joints])=>pantherPose(model,frame,joints))};
 }
@@ -22,9 +22,9 @@ function addPantherClips(model) {
   model.clips.prowl=pantherClip(model,10,8,true,Array.from({length:8},(_,i)=>{const a=i*Math.PI/4,w=Math.sin(a)*2.8,l=Math.max(0,Math.cos(a))*2;return [i,{pelvis:[0,0,-1+Math.sin(a*2)*.4],chest:[0,0,-1],head:[0,-1,-1],frontPawL:[0,w,l],frontPawR:[0,-w,-l*.5],rearPawL:[0,-w,l*.5],rearPawR:[0,w,l],tailMid:[Math.sin(a)*2,0,0],tailTip:[Math.sin(a-.5)*4,0,0]}]}));
   model.clips.booty_shake=pantherClip(model,9,8,true,Array.from({length:8},(_,i)=>[i,{...front(-2),...rear(-2),pelvis:[Math.sin(i*Math.PI/2)*4,0,-2],tailBase:[Math.sin(i*Math.PI/2)*3,0,1],tailMid:[Math.sin(i*Math.PI/2+.7)*6,0,1],tailTip:[Math.sin(i*Math.PI/2+1.3)*8,0,1]}]));
   model.clips.crouch=pantherClip(model,10,6,false,[[0,{}],[3,{...front(-4),...rear(-3),head:[0,2,-4],tailTip:[3,0,0]}],[5,{...front(-5),...rear(-4),head:[0,2,-5],tailTip:[-3,0,1]}]]);
-  model.clips.sit=pantherClip(model,8,8,true,[[0,{}],[3,{...rear(-7,3),...front(0,-2),tailMid:[4,1,-2],tailTip:[6,4,-3]}],[7,{...rear(-7,3),...front(0,-2),head:[0,0,-1],tailMid:[4,1,-2],tailTip:[7,4,-3]}]]);
-  model.clips.lie=pantherClip(model,8,8,true,[[0,{...rear(-7,3),...front(-7,1),neck:[0,2,-7],head:[0,4,-8],tailMid:[4,3,-3],tailTip:[8,5,-4]}],[4,{...rear(-7,3),...front(-7,1),neck:[0,2,-8],head:[0,4,-9],tailMid:[4,3,-3],tailTip:[8,5,-4]}]]);
-  model.clips.branch_lie=pantherClip(model,8,8,true,[[0,{...rear(-6,2),...front(-7,1),frontPawL:[0,7,-3],frontPawR:[0,7,-3],rearPawL:[0,-3,-4],tailBase:[0,-2,-2],tailMid:[2,-2,-8],tailTip:[3,-3,-13]}],[4,{...rear(-6,2),...front(-7,1),frontPawL:[0,7,-3],frontPawR:[0,7,-3],rearPawL:[0,-3,-4],tailBase:[0,-2,-2],tailMid:[2,-2,-8],tailTip:[5,-3,-13]}]]);
+  model.clips.sit=pantherClip(model,8,8,true,[[0,{}],[3,{...rear(-9,6),...front(1,-2),head:[0,-2,2],tailBase:[0,0,-5],tailMid:[4,1,-8],tailTip:[6,4,-10]}],[7,{...rear(-9,6),...front(1,-2),head:[0,-2,1],tailBase:[0,0,-5],tailMid:[4,1,-8],tailTip:[7,4,-10]}]]);
+  model.clips.lie=pantherClip(model,8,8,true,[[0,{...rear(-10,3),...front(-11,1),neck:[0,3,-11],head:[0,5,-12],tailBase:[0,0,-10],tailMid:[3,2,-14],tailTip:[7,5,-15]}],[4,{...rear(-10,3),...front(-11,1),neck:[0,3,-12],head:[0,5,-13],tailBase:[0,0,-10],tailMid:[3,2,-14],tailTip:[7,5,-15]}]]);
+  model.clips.branch_lie=pantherClip(model,8,8,true,[[0,{...rear(-10,2),...front(-11,1),neck:[0,3,-11],head:[0,5,-12],frontPawL:[0,7,-3],frontPawR:[0,7,-3],rearPawL:[0,-3,-4],tailBase:[0,-2,-8],tailMid:[2,-2,-12],tailTip:[3,-3,-17]}],[4,{...rear(-10,2),...front(-11,1),neck:[0,3,-12],head:[0,5,-13],frontPawL:[0,7,-3],frontPawR:[0,7,-3],rearPawL:[0,-3,-4],tailBase:[0,-2,-8],tailMid:[2,-2,-12],tailTip:[5,-3,-17]}]]);
   model.clips.climb=pantherClip(model,10,8,false,[[0,{...front(-2),...rear(-2)}],[3,{...front(3),...rear(1),frontPawL:[0,9,10],frontPawR:[0,5,7],rearPawL:[0,-5,7],rearPawR:[0,-2,4],tailTip:[3,-4,2]}],[7,{...front(1),...rear(1),frontPawL:[0,8,3],frontPawR:[0,8,3],tailTip:[4,-4,-5]}]]);
   for(const [side,sign] of [['left',-1],['right',1]])model.clips['swipe_'+side]=pantherClip(model,16,6,false,[[0,{...front(-2)}],[2,{chest:[sign*2,2,0],head:[sign*2,3,0],['shoulder'+(sign<0?'L':'R')]:[sign*3,5,2],['elbow'+(sign<0?'L':'R')]:[sign*5,8,6],['frontPaw'+(sign<0?'L':'R')]:[sign*8,12,7]}],[4,{chest:[-sign*2,1,0],head:[-sign*1,2,0],['frontPaw'+(sign<0?'L':'R')]:[-sign*5,13,2]}],[5,{}]]);
   model.clips.bite=pantherClip(model,16,6,false,[[0,{...front(-2)}],[2,{neck:[0,5,0],head:[0,9,-2],muzzle:[0,9,-2],nose:[0,9,-2],frontPawL:[0,4,2],frontPawR:[0,4,2]}],[4,{head:[0,7,-1],muzzle:[0,7,-1]}],[5,{}]]);
