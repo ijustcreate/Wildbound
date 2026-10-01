@@ -4,6 +4,13 @@ import {LOBBY_OBJECTS,LobbyState,PlayableLobby,moveLobbyCharacter,lobbyCamera} f
 import {Game} from '../src/core.mjs';
 import {LobbyPractice} from '../src/lobby-practice.mjs';
 import {playerFrame,defaultPlayerMotion} from '../src/player-motion.mjs';
+import {controllerButtonNames,controllerFamily} from '../src/controls.mjs';
+
+test('Switch Pro controllers use Nintendo face-button labels',()=>{
+  const pad={id:'Nintendo Co., Ltd. Pro Controller (057e/2009)',mapping:'standard'};
+  assert.equal(controllerFamily(pad),'switch');
+  assert.deepEqual([controllerButtonNames(pad)[0],controllerButtonNames(pad)[1]],['B','A']);
+});
 
 test('Lobby footsteps match gameplay distance and stop advancing against room boundaries',()=>{
   const s={x:300,y:300,step:0};moveLobbyCharacter(s,{x:1,y:0},88/180);
@@ -37,16 +44,14 @@ test('Interactions require a spawned character near an object; lobby positions d
   s.x=60;s.y=560;assert.equal(lobby.nearest(p),undefined);
 });
 
-test('Explorer station occupies the former map position and opens on hold Y',()=>{
+test('Explorer station occupies the former map position and opens with the lobby interact button',()=>{
   const lever=LOBBY_OBJECTS.find(o=>o.id==='target-lever'),station=LOBBY_OBJECTS.find(o=>o.id==='character-station');
   assert.equal(station.x,635);assert.equal(station.y,165);const map=LOBBY_OBJECTS.find(o=>o.id==='environment'),dice=LOBBY_OBJECTS.find(o=>o.id==='dice-count');assert.deepEqual([map.x,map.y],[625,548]);assert.deepEqual([dice.x,dice.y],[780,548]);
   const game=new Game(),p=game.addPlayer('keyboard');
   const lobby=Object.create(PlayableLobby.prototype);let opened=null;
   Object.assign(lobby,{getGame:()=>game,state:new LobbyState(),practice:new LobbyPractice(),sync(){},draw(){},area:{querySelector:()=>({textContent:''})},openCharacterStation(player){opened=player;}});
   lobby.state.sync(game.players);Object.assign(lobby.state.members.get(p.id),{spawned:true,panel:null,x:station.x,y:station.y});
-  lobby.update(.3,{keyboard:{offhand:true}});
-  assert.equal(opened,null);
-  lobby.update(.36,{keyboard:{offhand:true}});
+  lobby.update(.01,{keyboard:{lobbyInteract:true}});
   assert.equal(opened,p);
 });
 

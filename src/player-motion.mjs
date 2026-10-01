@@ -727,7 +727,8 @@ export function drawPlayer(
     );
   if(itemKind(gear.back)==='quiver')add(p.chest.depth+(back?4:-1),()=>{
     const x=p.chest.x+(back?-5:5),y=p.chest.y-2;
-    const ammo=Math.min(3,count(actor.inventory||[],quiverType(actor)));
+    const carrier={...actor,inventory:actor.inventory||[]};
+    const ammo=Math.min(3,count(carrier,quiverType(carrier)));
     c.save();c.translate(x,y);c.rotate(-.25);drawItem(c,gear.back,0,0,17);
     c.fillStyle='#f2d37e';c.strokeStyle='#30251a';c.lineWidth=.7;
     for(let arrow=0;arrow<ammo;arrow++){const ax=-4+arrow*3;c.strokeRect(ax,-9,1,5);c.fillRect(ax-1,-9,3,1);}

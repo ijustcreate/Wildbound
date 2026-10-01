@@ -26,6 +26,18 @@ test('All hairstyles render in eight directions and equipment adjustments round-
   }
   assert.ok(pixels>100);
 });
+test('Equipped quivers render saved heroes and inventory-free previews in all directions', (t) => {
+  const c=new Proxy({}, {get:(target,key)=>target[key]??(()=>{}),set:(target,key,value)=>{target[key]=value;return true;}});
+  const originalDocument=globalThis.document;
+  globalThis.document={createElement:()=>({getContext:()=>c})};
+  t.after(()=>{if(originalDocument===undefined)delete globalThis.document;else globalThis.document=originalDocument;});
+  const model=defaultPlayerMotion();
+  for(const inventory of [undefined,[],[{type:'arrow',qty:8}],[{type:'starter_arrow',qty:8}]])for(let d=0;d<8;d++){
+    const [faceX,faceY]=directionVector(d);
+    assert.doesNotThrow(()=>drawPlayer(c,{faceX,faceY,inventory,equipment:{back:'starter_quiver'},appearance:DEFAULT_APPEARANCE},0,model));
+  }
+});
+
 test('New studios and newly selected rigs start paused', () => {
   const studio=new RigStudio(()=>{});
   assert.equal(studio.playing,false);

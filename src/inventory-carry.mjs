@@ -8,7 +8,7 @@ export function inventoryCarryAction(g,p,action){
     if(!['pack','gear','chest'].includes(u.panel)){u.notice='Choose an inventory or equipment slot.';return true;}
     const to={mode:u.panel,...(u.panel==='gear'?{slot:SLOTS[u.index]}:{index:u.index})};
     if(!u.carry){const item=source(g,p,to);const type=typeof item==='string'?item:item?.type;
-      if(!item||type==='occupied'||u.panel==='pack'&&u.tab&&inventoryCategory(type)!==u.tab){u.notice='Choose an item to move.';return true;}
+      if(!item||type==='occupied'){u.notice='Choose an item to move.';return true;}
       u.carry={from:to,snapshot:JSON.stringify(item),name:ITEMS[type]?.name||type};u.notice='Moving '+u.carry.name+' · Select a slot, then place. B / Esc cancels.';
     }else{
       if(JSON.stringify(source(g,p,u.carry.from))!==u.carry.snapshot){delete u.carry;u.notice='The original item changed. Pick it up again.';return true;}

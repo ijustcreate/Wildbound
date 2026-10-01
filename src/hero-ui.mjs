@@ -2,12 +2,12 @@ import {drawTempleRoom} from './temple.mjs';
 import {drawWetDrips} from './wet-weather.mjs';
 import {merchantPanel} from './traveling-merchant.mjs';
 import {ARROW_TYPES,quiverType} from './arrow-supplies.mjs';
-import { INVENTORY_TABS, inventoryCategory, tabIndices, bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
+import { bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
 import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
 import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
 import { compareItem, itemStatDelta, canAccess, protectedItem } from "./field-systems.mjs";
-import { controllerButtonNames, CONTROLLER_NAMES } from "./controls.mjs";
+import { controllerButtonNames, controllerFamily, CONTROLLER_NAMES } from "./controls.mjs";
 import { chestName } from "./items.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
 import { robotRig, drawRobotPortrait } from "./robot-art.mjs";
@@ -22,6 +22,14 @@ const el = (tag, text, cls) => {
   if (cls) e.className = cls;
   return e;
 };
+function liveControllerFamily(player) {
+  if (player?.device?.startsWith('pad:')) {
+    const index = Number(player.device.slice(4));
+    const pad = Array.from(globalThis.navigator?.getGamepads?.() || []).find(item => item?.index === index);
+    if (pad) return controllerFamily(pad);
+  }
+  return player?.controllerFamily || 'generic';
+}
 export class HeroUI {
   constructor(root) {
     this.root = root;
@@ -30,7 +38,7 @@ export class HeroUI {
   }
   controllerText(game, p) {
     if (p.device === 'keyboard') return { accept:'Enter', close:'Esc', select:'Arrows', tabs:'Tab' };
-    const names = controllerButtonNames(p.controllerFamily || 'generic');
+    const names = controllerButtonNames(liveControllerFamily(p));
     return { accept:names[0], close:names[1], select:'D-pad', tabs:`${names[4]} / ${names[5]}` };
   }
   itemTooltip(panel, button, game, p, item) {
@@ -103,6 +111,7 @@ export class HeroUI {
       const signature = [
         game.uiRevision || 0,
         p.name,
+        liveControllerFamily(p),
         p.level,
         p.xp,
         p.field?.quiver,
@@ -388,15 +397,6 @@ export class HeroUI {
       }
       sheet.append(controls);
       if (mode === 'pack') {
-        u.tab ||= inventoryCategory(p.inventory[u.index]?.type);
-        const tabs = el('nav', null, 'inventory-tabs');
-        tabs.setAttribute('role', 'tablist');
-        for (const tab of INVENTORY_TABS) {
-          const b = button(tab[0].toUpperCase() + tab.slice(1), 'tab-' + tab, () => game.inventoryAction(p, 'tab:' + tab));
-          b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(u.tab === tab));
-          tabs.append(b);
-        }
-        sheet.append(tabs);
         sheet.querySelector('header').append(el('span', `${p.inventory.filter(Boolean).length} / 24`, 'pack-capacity'));
       }
       const list = gear
@@ -450,7 +450,7 @@ export class HeroUI {
         };
       };
       if (!gear) dropTarget(grid, { mode, index: list.length });
-      const indices = mode === 'pack' ? tabIndices(list, u.tab) : Array.from({length:gear ? SLOTS.length : 24}, (_, i) => page * 24 + i);
+      const indices = Array.from({length:gear ? SLOTS.length : 24}, (_, i) => page * 24 + i);
       for (const n of indices) {
         const item = list[n],
           def = ITEMS[item?.type];
@@ -499,8 +499,8 @@ export class HeroUI {
           b.prepend(icon);
         }
         if(gear&&itemKind(item.type)==='quiver'){
-          const ammo=el('span',null,'quiver-ammo-indicator'),loaded=Math.min(3,count(p.inventory,quiverType(p)));
-          ammo.setAttribute('aria-label',`${count(p.inventory,quiverType(p))} arrows loaded`);
+          const ammo=el('span',null,'quiver-ammo-indicator'),loaded=Math.min(3,count(p,quiverType(p)));
+          ammo.setAttribute('aria-label',`${count(p,quiverType(p))} arrows loaded`);
           for(let arrow=0;arrow<loaded;arrow++)ammo.append(el('i','➶'));
           b.append(ammo);
         }
@@ -552,7 +552,7 @@ export class HeroUI {
         ),
       );
       const actions = el("div", null, "inventory-actions");
-      const pad=controllerButtonNames(p.controllerFamily||'generic'),keyboard=p.device==='keyboard';
+      const pad=controllerButtonNames(liveControllerFamily(p)),keyboard=p.device==='keyboard';
       if(active&&(def||u.carry))actions.append(button((keyboard?'M':'LS')+' · '+(u.carry?'Place':'Move'),'move-item',()=>act(mode,'pick')));
       const hints={use:keyboard?'Enter':pad[0],equip:keyboard?'Enter':pad[0],equipOffhand:keyboard?'2':pad[3],store:keyboard?'R':pad[2],split:keyboard?'2':pad[3],drop:keyboard?'Delete':pad[2],dropOne:keyboard?'Shift+Delete':'LT+'+pad[2]};
       if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)&&!(gear&&p.equipment[item.slot]==='occupied')){
@@ -614,7 +614,8 @@ export class HeroUI {
       endActions.append(restart,lobby);panel.append(endActions);
     }
     const controls = this.controllerText(game, p);
-    const family = p.device === 'keyboard' ? 'Keyboard + mouse' : (p.controllerName || CONTROLLER_NAMES[p.controllerFamily] || 'Game controller');
+    const detectedFamily = liveControllerFamily(p);
+    const family = p.device === 'keyboard' ? 'Keyboard + mouse' : CONTROLLER_NAMES[detectedFamily] || 'Game controller';
     panel.append(el('small',u.carry?`Moving ${u.carry.name} · ${p.device==='keyboard'?'M / Enter':'LS / A'}: place · ${controls.close}: cancel`:`${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.close}: close`,'inventory-help'));
     this.inventoryPopovers(panel, game, p, button);
   }

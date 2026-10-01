@@ -1,4 +1,8 @@
 const masks=new Map();
+// Inner edge of the stone well in the 1516 x 1038 board artwork.
+// Keep a small inset so glow rectangles cannot paint over its rim.
+export const BOARD_WELL_CLIP=[[704,404],[819,404],[894,460],[894,566],[824,610],[704,610],[637,555],[637,463]]
+  .map(([x,y])=>[x/1516*280-140,y/1038*192-96]);
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 export function magicParticle(index,count,time,age,goal,settings){
   const u=index/count,angle=u*Math.PI*8-time*settings.swirlSpeed,r=2+19*Math.sqrt(u);
@@ -30,9 +34,9 @@ export function drawBoardMagic(c,time,settings,{title='',warning='',age=0}={}){
   const mask=title?textMask(title,warning,settings.textSize,settings.letters):null;
   const points=mask?.points||[],count=settings.particles;
   c.save();c.beginPath();
-  for(const [i,[x,y]]of [[-18,-20],[18,-20],[25,-14],[25,14],[18,20],[-18,20],[-25,14],[-25,-14]].entries())i?c.lineTo(x,y):c.moveTo(x,y);
+  for(const [i,[x,y]]of BOARD_WELL_CLIP.entries())i?c.lineTo(x,y):c.moveTo(x,y);
   c.closePath();c.clip();
-  const well=c.createRadialGradient(-3,-4,1,0,0,27);well.addColorStop(0,'#0c5946');well.addColorStop(1,'#032a24');c.fillStyle=well;c.fillRect(-26,-21,52,42);
+  const well=c.createRadialGradient(-3,-4,1,0,0,27);well.addColorStop(0,'#0c5946');well.addColorStop(1,'#032a24');c.fillStyle=well;c.fillRect(-30,-30,60,60);
   // A readable spiral anchors the free particles; no random allocations per frame.
   c.strokeStyle=settings.energy;c.globalAlpha=title.length ? .18 : .52;c.lineWidth=.7;
   c.beginPath();for(let n=0;n<100;n++){const t=n/99,r=1+t*17,a=t*Math.PI*4-(reduced?0:time*settings.swirlSpeed*.25);const x=Math.cos(a)*r,y=Math.sin(a)*r*.78;n?c.lineTo(x,y):c.moveTo(x,y);}c.stroke();

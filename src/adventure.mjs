@@ -10,7 +10,7 @@ import {equipmentNeighbor} from './equipment-navigation.mjs';
 import {arrowVisualAngle} from './embedded-arrow.mjs';
 import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,loadQuiver,quiverType,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
 import {learnIceRecipe,tickMeltingIce} from './ice-crafting.mjs';
-import { INVENTORY_TABS, inventoryCategory, tabIndices, takeFromBag } from './inventory-containers.mjs';
+import { takeFromBag } from './inventory-containers.mjs';
 import {wandTipWorld,bowHandleWorld} from './player-motion.mjs';
 import {chargedProjectileRange,arrowFlightGravity} from './projectile-range.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
@@ -522,7 +522,6 @@ export const adventureMethods = {
     this.onSound("inventory",p);
     p.ui = { panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
     if(storage==='victory')this.victoryChestOpened=true;
-    p.ui.tab = inventoryCategory(p.inventory[0]?.type);
     p.charge = 0;
   },
   storageFor(p) {
@@ -565,6 +564,7 @@ export const adventureMethods = {
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    delete u.tab; // Old category selections must not hide or disable saved items.
     if(merchantAction(this,p,action))return;
     if(inventoryCarryAction(this,p,action))return;
     if(equipmentAction(this,p,action))return;
@@ -587,25 +587,18 @@ export const adventureMethods = {
       if (action === 'use') { action = 'split:' + u.split.amount; }
       else { u.split.amount = Math.max(1, Math.min(qty - 1, u.split.amount + (['up', 'next'].includes(action) ? 1 : -1))); return; }
     }
-    if (action.startsWith('tab:') && INVENTORY_TABS.includes(action.slice(4))) {
-      u.tab = action.slice(4); u.panel = 'pack'; u.index = tabIndices(p.inventory, u.tab)[0] ?? 0;
-      delete u.split; delete u.bag; u.notice = ''; return;
-    }
     if(this.phase==='lobby'&&(['drop','dropOne','store'].includes(action)||(['use','equip'].includes(action)&&p.inventory[u.index]?.type==='trap'&&u.panel==='pack'))){u.notice='Use this item in an expedition.';return;}
     if(p.salvageHold)p.salvageHold={latched:true};
     u.salvagePointer=false;
     if(socketAction(this,p,action))return;
     if(action.startsWith('quiver:')){if(loadQuiver(p,action.slice(7)))this.persist();return;}
     if(u.panel==='quiver'&&['next','prev','down','up','use','equip'].includes(action)){
+      if(action==='down'){u.panel='gear';u.index=SLOTS.indexOf('head');return;}
       const step=['prev','up'].includes(action)?-1:1;
       loadQuiver(p,ARROW_TYPES[(ARROW_TYPES.indexOf(quiverType(p))+step+ARROW_TYPES.length)%ARROW_TYPES.length]);this.persist();return;
     }
     const storage = this.storageFor(p);
     const selected = p.inventory[u.index];
-    if (!u.shop && u.panel === 'pack' && u.tab && selected && inventoryCategory(selected.type) !== u.tab && ['use','equip','equipOffhand','offhand','drop','dropOne','store','split'].includes(action.split(':')[0])) {
-      u.notice = 'Select an item in this tab.';
-      return;
-    }
     if (
       protectedItem(p, selected?.type) &&
       u.panel === "pack" &&
@@ -739,17 +732,8 @@ export const adventureMethods = {
       return;
     }
     if (action === "panel") {
-      if (!storage && u.panel === 'pack' && u.tab && u.tab !== 'other') {
-        u.tab = INVENTORY_TABS[INVENTORY_TABS.indexOf(u.tab) + 1];
-        u.index = tabIndices(p.inventory, u.tab)[0] ?? 0;
-      } else {
         const panels = storage ? ["pack", "gear", "quiver", "chest"] : ["pack", "gear", "quiver"];
         switchPanel(panels[(panels.indexOf(u.panel) + 1) % panels.length]);
-        if (u.panel === 'pack') {
-          if (storage) u.tab = inventoryCategory(p.inventory[u.index]?.type);
-          else { u.tab = 'gear'; u.index = tabIndices(p.inventory, u.tab)[0] ?? 0; }
-        }
-      }
     }
     const limit =
         u.shop === "vending"
@@ -761,11 +745,13 @@ export const adventureMethods = {
               : 24,
       stride = u.shop === "vending" || u.panel === "gear" ? 3 : 6;
     if(u.panel==='pack'&&!u.shop&&['next','prev','down','up'].includes(action)){
-      const indices=tabIndices(p.inventory,u.tab||inventoryCategory(p.inventory[u.index]?.type));
-      const pos=Math.max(0,indices.indexOf(u.index)),step=action==='next'?1:action==='prev'?-1:action==='down'?6:-6;
-      if(indices.length)u.index=indices[(pos+step+indices.length*6)%indices.length];
+      const step=action==='next'?1:action==='prev'?-1:action==='down'?6:-6;
+      if(action==='up'&&u.index<6){switchPanel('gear');u.index=SLOTS.indexOf('feet');}
+      else u.index=(u.index+step+24)%24;
     }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
-      u.index=SLOTS.indexOf(equipmentNeighbor(SLOTS[u.index],action));
+      if(action==='down'&&['feet','gloves','pants'].includes(SLOTS[u.index])){switchPanel('pack');u.index=0;}
+      else if(action==='up'&&['head','back'].includes(SLOTS[u.index]))switchPanel('quiver');
+      else u.index=SLOTS.indexOf(equipmentNeighbor(SLOTS[u.index],action));
     }else{
       if (action === "next") u.index = (u.index + 1) % limit;
       if (action === "prev") u.index = (u.index + limit - 1) % limit;
@@ -979,7 +965,12 @@ export const adventureMethods = {
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
-        if (!this.openingBoard&&i.attack&&!p.swimming)
+        if (!this.openingBoard && (edge('interact') || (p.device?.startsWith('pad:') && edge('attack'))) && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
+          const opened = openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p);
+          if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
+        }
+        if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
+        if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui)
           p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
         if (!i.attack && old.attack && p.charge&&!p.swimming) {
           this.attack(p, p.charge);

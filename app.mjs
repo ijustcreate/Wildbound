@@ -90,6 +90,7 @@ const keys = new Set(),
   mouse = { x: 0, y: 0, down: false, active: false },
   previousPads = new Map(),
   controllerClaims = new Map(),
+  pendingControllerJoins = new Set(),
   pendingControllerClaims = new Set(),
   controllerLastSeen = new Map();
 const controllerClaimKey = (pad) =>
@@ -109,11 +110,14 @@ function feedDebugCode(token){
     gameDebug.open();
   }
 }
-function requestControllerClaim(pad, key) {
+function requestControllerClaim(pad, key, joinRequested = false) {
   if (!window.desktop?.claimController || pendingControllerClaims.has(key)) return;
   pendingControllerClaims.add(key);
   window.desktop.claimController(key).then((claimed) => {
-    if (claimed) controllerClaims.set(pad.index, key);
+    if (claimed) {
+      controllerClaims.set(pad.index, key);
+      if(joinRequested && screen==='lobby')pendingControllerJoins.add(key);
+    }
   }).catch(() => {}).finally(() => pendingControllerClaims.delete(key));
 }
 function releaseControllerClaim(key) {
@@ -121,6 +125,7 @@ function releaseControllerClaim(key) {
   for (const [index, owned] of controllerClaims)
     if (owned === key) controllerClaims.delete(index);
   controllerLastSeen.delete(key);
+  pendingControllerJoins.delete(key);
 }
 let soundEnabled = localStorage.getItem('wildbound-sound') !== 'off';
 let musicVolume = Number(localStorage.getItem('wildbound-music-volume') ?? .45);
@@ -1282,7 +1287,7 @@ function inputFrame() {
     if (ownedKey === claimKey) {
       seenControllerClaims.add(claimKey);
     } else if (claimSupported) {
-      if (active && document.hasFocus()) requestControllerClaim(pad, claimKey);
+      if (active && document.hasFocus()) requestControllerClaim(pad, claimKey, rising && screen==='lobby' && !modal);
       previousPads.set(pad.index, pad.buttons.map((b) => b.pressed));
       continue;
     }
@@ -1317,14 +1322,17 @@ function inputFrame() {
       continue;
     }
     if (
-      rising &&
+      (rising || pendingControllerJoins.has(claimKey)) &&
       !joinedNow &&
       rooms.role !== "client" &&
       (screen === "lobby" || (screen === "play" && !game.locked && pad.buttons[9]?.pressed && !previous[9])) &&
       !modal
     ) {
       const joined = game.addPlayer("pad:" + pad.index);
+      pendingControllerJoins.delete(claimKey);
       if (joined) {
+        joined.controllerFamily=controllerFamily(pad);
+        joined.controllerName=CONTROLLER_NAMES[joined.controllerFamily];
         joinedNow = true;
         if (screen === "play") nameNewCharacter(joined);
         sound("heal");
@@ -1339,7 +1347,7 @@ function inputFrame() {
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvB:!!pad.buttons[1]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvB:!!pad.buttons[1]?.pressed,lobbyInteract:!!pad.buttons[0]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
       previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
       continue;
     }
@@ -1379,7 +1387,7 @@ function inputFrame() {
       jump: pressed("jump"),
       dodge: pressed("dodge") || pad.buttons[7]?.pressed,
       trap: pressed("trap"),
-      interact: pressed("interact"),
+      interact: pressed("interact") || (!!controllerPlayer?.room && !!pad.buttons[0]?.pressed),
       summon: !!pad.buttons[5]?.pressed,
       potion: pressed("potion") && !pad.buttons[5]?.pressed,
       block: pressed("block"),
@@ -1458,6 +1466,7 @@ function inputFrame() {
     jump: keys.has("KeyJ"),
     dodge: keys.has("Space") || mouse.dash,
     trap: keys.has("KeyQ"),
+    lobbyInteract: keys.has("KeyE"),
     interact: keys.has("KeyE"),
     potion: keys.has("KeyH"),
     summon: keys.has("KeyR"),

@@ -122,11 +122,11 @@ export function drawLandscapeCover(c, g, visible) {
   const plan = g.forestLandscape;
   for (const p of plan.cover) {
     if (!visible(p) || (g.bloom < 3 && Math.hypot(p.x - 800, p.y - 800) > g.bloom * 430)) continue;
-    const wind = Math.round(forestWind(p.x, p.y, g.time) * 2);
-    const shade = noise(p.x / 235, p.y / 235, plan.seed) < .45;
     if (p.kind === 'fern') {
         drawJungleFern(c,p,g.time);
     } else {
+      const wind = Math.round(forestWind(p.x, p.y, g.time) * 2);
+      const shade = noise(p.x / 235, p.y / 235, plan.seed) < .45;
       for (let i = 0; i < 3; i++) {
         const height = 3 + hash(i, p.seed) * 7;
         rect(c, p.x + i * 3, p.y - height / 2, 1, height / 2, '#526f40');

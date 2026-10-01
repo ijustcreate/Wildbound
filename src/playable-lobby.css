@@ -68,7 +68,7 @@ body[data-screen="lobby"] #hero-overlays{position:fixed;inset:104px 24px 28px}
 #lobby.playable-lobby{background:radial-gradient(ellipse at 50% 0,#254536,#132820 66%);color:#ede5c9}#lobby.playable-lobby .party-heading h1{font:25px/1.15 Georgia,serif;color:#eee3be}#lobby.playable-lobby .party-heading p{color:#c3cdb6}#lobby.playable-lobby .party-topbar{border-bottom:1px solid #a18b4c55}#lobby.playable-lobby .party-topbar>span{border:1px solid #7c7545;background:#122e24;color:#d6c48d;border-radius:2px}#lobby.playable-lobby .party-menu button{min-height:40px;border:1px solid #8e8551;border-radius:2px;background:#18392c;color:#e8dfbd}#lobby.playable-lobby .party-menu button:focus-visible{outline:3px solid #83dfbc;outline-offset:3px}#lobby.playable-lobby .party-help{color:#becab5;font:11px/1.4 system-ui;padding:6px 10px}#lobby.playable-lobby .lobby-world{border:1px solid #a68d5266;box-shadow:0 8px 30px #06171066}@media(max-height:600px){#lobby.playable-lobby .party-heading{margin:5px 0}#lobby.playable-lobby .party-heading h1{font-size:20px}#lobby.playable-lobby .party-help{font-size:10px;padding:3px}}
 
 /* Reserve controls first; the room uses the remaining viewport. */
-#lobby.playable-lobby{display:flex;flex-direction:column;padding:0 8px 4px;gap:0;box-sizing:border-box;overflow:hidden}
+#lobby.playable-lobby.active{display:flex;flex-direction:column;padding:0 8px 4px;gap:0;box-sizing:border-box;overflow:hidden}
 #lobby.playable-lobby .party-banner{height:52px;flex:0 0 52px}
 #lobby.playable-lobby .party-heading{flex:0 0 auto;margin:5px 0;min-height:28px}
 #lobby.playable-lobby .party-heading h1{font-size:21px}

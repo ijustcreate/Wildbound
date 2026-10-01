@@ -96,10 +96,10 @@ export class PlayableLobby {
     this.mapArt=new Image();this.mapArt.src=new URL('../assets/map-icons.png',import.meta.url).href;
     root.classList.add('playable-lobby');
     const area=document.createElement('div');area.className='lobby-world';
-    area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or Y interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
+    area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
     root.querySelector('.party-heading h1').textContent='Gather around the board';
-    root.querySelector('.party-help').textContent='Enter / A: join · WASD / left stick: move · E / Y: interact · F / A: attack · J / B: jump · TV: A to play, D-pad move, A jump, B run; walk away to leave';
+    root.querySelector('.party-help').textContent='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: A / B to play, D-pad move, A jump, B run; walk away to leave';
     this.canvas.onclick=e=>{
       const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return;
       const r=this.canvas.getBoundingClientRect(),view=this.view||{x:512,y:310,zoom:r.width/1024};
@@ -246,6 +246,7 @@ export class PlayableLobby {
   controller(pad,previous){
     const p=this.getGame().players.find(p=>p.device==='pad:'+pad.index);if(!p)return;
     const s=this.state.members.get(p.id);if(!s)return;
+    if(s.panel)s.held.lobbyInteract=!!pad.buttons[0]?.pressed;
     const x=Math.abs(pad.axes[0]||0)>.6?Math.sign(pad.axes[0]):0,y=Math.abs(pad.axes[1]||0)>.6?Math.sign(pad.axes[1]):0;
     const repeat=s.panel==='create'&&performance.now()>(s.nextCreationMove||0);
     const dx=pad.buttons[14]?.pressed?-1:pad.buttons[15]?.pressed?1:x,dy=pad.buttons[12]?.pressed?-1:pad.buttons[13]?.pressed?1:y;
@@ -273,24 +274,23 @@ export class PlayableLobby {
           if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
         }else{
           const o=this.state.nearest(p);
-          if(o?.id==='character-station'&&input.offhand){
-            s.characterHold=(s.characterHold||0)+dt;
-            input.offhand=false;
-            if(s.characterHold>=.65)this.openCharacterStation(p);
-          }else s.characterHold=0;
+          if(o?.id==='character-station'&&edge('lobbyInteract'))this.openCharacterStation(p);
           if(this.television?.players.has(p.id)){
             if(edge('interact'))this.television.leave(p.id);
-          }else if((edge('tvA')||edge('interact'))&&o?.id==='television')this.open(p,'television');
-          else if(input.interact&&!s.held.interact&&o?.id!=='character-station'){
+          }else if((edge('tvA')||edge('lobbyInteract'))&&o?.id==='television')this.open(p,'television');
+          else if(edge('lobbyInteract')&&o?.id!=='character-station'){
             if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}
             else if(o)this.open(p,o.id);
           }
+          if(o&&input.lobbyInteract)s.stationPress=true;
+          if(!input.lobbyInteract)s.stationPress=false;
         }
       }else s.moving=false;
       if(!p.ui&&!['inventory','use','close','interact','attack','jump','dodge','block','trap','potion','bait','offhand','panel'].some(key=>input[key]))s.inventoryRelease=false;
       s.held={...input};
     }
     const practiceInputs={...inputs},tvCommands={};
+    for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
     for(const p of players)if(this.television?.players.has(p.id)){
       const input=inputs[p.device]||{};
       tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,run:!!input.tvB};
@@ -385,7 +385,7 @@ export class PlayableLobby {
         drawLobbyBoard(c,this.practice.time);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';this.label(o.name,o.x,o.y+(o.id==='target-lever'?27:44),15,'#f4efdc',650);
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'Hold Y · change hero':o.id==='television'?(this.television.players.size?'D-pad · A jump · B run':'A · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad · A jump · B run':'A / B · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
     }
     for(const a of this.practice.players)if(a.hunterPet)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
     this.drawPractice(c);
@@ -401,7 +401,7 @@ export class PlayableLobby {
       this.animator.draw(c,{...actor,kind:'player'},this.practice.time,LOBBY_PLAYER_SIZE);
       drawBowAim(c,actor,LOBBY_PLAYER_SIZE/48,this.practice.time);
       c.font='13px system-ui';c.fillStyle=p.ready?'#a8f4c9':p.color;this.label((p.ready?'✓ ':'')+p.name+(p.lobbyDisconnected?' · disconnected':''),s.x,s.y+27,14,p.ready?'#a8f4c9':p.color,650);
-      const o=this.state.nearest(p);if(o&&!s.panel&&!p.ui){const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3],prompt=o.id==='character-station'?(p.device==='keyboard'?'Hold 2':'Hold '+names[3])+' · '+o.name:o.id==='television'?(this.television.players.has(p.id)?'Walk away · leave':(p.device==='keyboard'?'Z / E':'A')+' · play TV'):interact+' · '+o.name;// TV prompts belong below the cabinet and its controls, never above the player.
+      const o=this.state.nearest(p);if(o&&!s.panel&&!p.ui){const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[0],prompt=o.id==='character-station'?interact+' · '+o.name:o.id==='television'?(this.television.players.has(p.id)?'Walk away · leave':interact+' · play TV'):interact+' · '+o.name;// TV prompts belong below the cabinet and its controls, never above the player.
         const promptX=o.id==='television'?o.x:s.x,promptY=o.id==='television'?o.y+80:s.y-95;
         c.fillStyle='#182326';c.fillRect(promptX-75,promptY,150,24);
         c.fillStyle='#fff';c.font='12px system-ui';this.label(prompt,promptX,promptY+12,13);}

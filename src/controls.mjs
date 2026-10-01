@@ -19,7 +19,9 @@ export const PAD_NAMES = [
 export const DEFAULT_MAPPING = {attack:0,jump:1,dodge:7,loot:2,trap:10,interact:3,pause:9,board:4,potion:5,block:6,inventory:8,portal:12,bait:13,field:11};
 export function controllerFamily(pad) {
   const id = String(pad?.id || '').toLowerCase();
-  if (/switch|nintendo|joy[- ]?con|pro controller/.test(id)) return 'switch';
+  const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id);
+  if(['switch','xbox','playstation','generic'].includes(override))return override;
+  if (/switch|nintendo|joy[- ]?con|pro controller|057e/.test(id)) return 'switch';
   if (/xbox|xinput|360/.test(id)) return 'xbox';
   if (/dualsense|dualshock|playstation|ps[345]|sony/.test(id)) return 'playstation';
   return 'generic';
@@ -34,7 +36,8 @@ const FACE_NAMES = {
 export function controllerButtonNames(padOrFamily) {
   const family = typeof padOrFamily === 'string' ? padOrFamily : controllerFamily(padOrFamily);
   const faces = FACE_NAMES[family] || FACE_NAMES.generic;
-  return { ...Object.fromEntries(faces.map((name, i) => [i, name])), 4:'LB', 5:'RB', 6:'LT', 7:'RT', 8:'View', 9:'Menu', 10:'L3', 11:'R3', 12:'D-up', 13:'D-down', 14:'D-left', 15:'D-right' };
+  const extra=family==='switch'?{4:'L',5:'R',6:'ZL',7:'ZR',8:'−',9:'+'}:family==='playstation'?{4:'L1',5:'R1',6:'L2',7:'R2',8:'Share',9:'Options'}:{};
+  return { ...Object.fromEntries(faces.map((name, i) => [i, name])), 4:'LB', 5:'RB', 6:'LT', 7:'RT', 8:'View', 9:'Menu', 10:'L3', 11:'R3', 12:'D-up', 13:'D-down', 14:'D-left', 15:'D-right', ...extra };
 }
 export function labelsForController(mapping, padOrFamily) {
   const family = typeof padOrFamily === 'string' ? padOrFamily : controllerFamily(padOrFamily);
@@ -66,6 +69,15 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
     const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'RB · set skill: Tame / Raise Skeleton',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
     for(const [action,key] of Object.entries(bindings)){const term=document.createElement('dt'),value=document.createElement('dd');term.textContent=action;value.textContent=key;list.append(term,value);}
     card.append(list);root.append(card);
+    if(row.pad){
+      const label=document.createElement('label');label.textContent='Controller button labels ';
+      const select=document.createElement('select');
+      for(const [value,text] of Object.entries({auto:'Automatic detection',...CONTROLLER_NAMES}))select.add(new Option(text,value));
+      const key='wildbound-controller-family:'+String(row.pad.id).toLowerCase();
+      select.value=globalThis.localStorage?.getItem(key)||'auto';
+      select.onchange=()=>{if(select.value==='auto')localStorage.removeItem(key);else localStorage.setItem(key,select.value);renderPlayerMappings(root,game,mapping,pads);};
+      label.append(select);card.append(label);
+    }
   }
 }
 export const KEYS = {

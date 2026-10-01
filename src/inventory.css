@@ -171,7 +171,7 @@
 .hero-panel.inventory-redesign .equipment-window .inventory-actions {position:static;flex:none;justify-content:flex-end;z-index:2;padding:2px;background:#10221de8;}
 
 /* Reserve actions before sizing the bag: no implicit rows or scroll regions. */
-.hero-panel.inventory-redesign .inventory-window {display:grid;grid-template-rows:auto 26px minmax(0,1fr) auto;grid-template-areas:"heading" "tabs" "slots" "actions";min-width:0;}
+.hero-panel.inventory-redesign .inventory-window {display:grid;grid-template-rows:30px minmax(0,1fr) 56px;grid-template-areas:"heading" "slots" "actions";min-width:0;}
 .hero-panel.inventory-redesign .inventory-window > header{grid-area:heading;}
 .hero-panel.inventory-redesign .inventory-window > .inventory-tabs{grid-area:tabs;height:26px!important;}
 .hero-panel.inventory-redesign .inventory-window > .item-grid{grid-area:slots;}
@@ -179,12 +179,21 @@
 .hero-panel.inventory-redesign .item-grid:not(.paper-doll){container-type:size;overflow:clip!important;min-height:0;min-width:0;max-height:none;}
 .hero-panel.inventory-redesign .item-grid:not(.paper-doll) button{width:min(calc((100cqw - 20px)/6),calc((100cqh - 12px)/4));height:min(calc((100cqw - 20px)/6),calc((100cqh - 12px)/4));max-width:100%;max-height:100%;min-height:0;justify-self:center;align-self:center;position:relative;overflow:hidden;}
 .hero-panel.inventory-redesign .item-grid:not(.paper-doll) canvas.item-icon{width:min(30px,60%);height:auto;aspect-ratio:1;max-height:80%;object-fit:contain;flex:none;}
-.hero-panel.inventory-redesign .inventory-actions{flex:none;align-self:stretch;overflow:visible;min-height:24px;}
+.hero-panel.inventory-redesign .inventory-actions{flex:none;align-self:stretch;overflow:auto;min-height:0;height:56px;box-sizing:border-box;align-content:flex-start;scrollbar-gutter:stable;}
 .hero-panel.inventory-redesign .inventory-actions button{white-space:nowrap;flex:0 1 auto;}
 .hero-panel.inventory-redesign .storage-sheet{min-height:0;min-width:0;box-sizing:border-box;}
 .hero-panel.inventory-redesign .storage-layout{overflow:clip!important;}
 .hero-panel.inventory-redesign .paper-doll canvas.item-icon{height:auto;aspect-ratio:1;flex:none;}
 .hero-panel.inventory-redesign{container-type:size;}
+/* Selection must never resize the doll or the bag. Only viewport/party changes do. */
+.hero-panel.inventory-redesign .storage-sheet:not(.active) > .inventory-actions{display:flex;visibility:hidden;}
+.hero-panel.inventory-redesign .equipment-window .inventory-actions{height:30px;min-height:30px;max-height:30px;flex:0 0 30px;}
+.hero-panel.inventory-redesign > .storage-notice,
+.hero-panel.inventory-redesign > .storage-notice:empty,
+.hero-panel.inventory-redesign > .storage-notice:not(:empty){display:block;height:26px;min-height:26px;max-height:26px;flex:0 0 26px;margin:0;overflow:auto;line-height:13px;}
+.hero-panel.inventory-redesign .equipment-window{background-color:#172b25;background-blend-mode:soft-light;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button{background:linear-gradient(145deg,#203b31,#132820);border:1px solid #5d7563;box-shadow:inset 0 1px #b1c39b12;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button.selected{background:#36513b;border-color:#ebc875;outline:2px solid #ebc875;outline-offset:-2px;}
 .inventory-quantity{position:absolute;right:2px;bottom:1px;font:9px/1 system-ui;color:#fff4cf;text-shadow:0 1px 2px #000,1px 0 2px #000;pointer-events:none;}
 @container(max-height:540px){.hero-panel.inventory-redesign .storage-layout:not(.has-chest){grid-template-rows:minmax(0,.55fr) minmax(0,1.45fr);}.hero-panel.inventory-redesign .inventory-actions button{font-size:9px;padding:2px 3px;}.hero-panel.inventory-redesign .storage-sheet>header{padding:3px 6px;}}
 .item-tooltip::before{content:'';position:absolute;left:var(--tether-x,8px);top:-8px;width:1px;height:8px;background:#ddc477;}.item-tooltip.tooltip-above::before{top:auto;bottom:-8px;}.hero-panel.inventory-redesign .carried-source{opacity:.45;outline:1px dashed #f4cc73;}.hero-panel.inventory-redesign button.carry-target{outline:2px solid #89e4ce;background:#355849;}
