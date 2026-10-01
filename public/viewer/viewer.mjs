@@ -95,7 +95,7 @@ function selectUnit(index){
   $('unit-kind').textContent=subject?.name || unit.family;
   $('position-label').textContent=`${String(chosen+1).padStart(2,'0')} / ${String(units.length).padStart(2,'0')}`;
   select.replaceChildren(...clipsFor(unit).map(name=>new Option(label(name),name)));
-  select.value=clipsFor(unit).includes(subject?.clip)?subject.clip:clipsFor(unit)[0];
+  select.value=unit.id==='panther'?'prowl':clipsFor(unit).includes(subject?.clip)?subject.clip:clipsFor(unit)[0];
   $('status').textContent='';
   setPressed('mark-button',false);$('mark-layer').classList.remove('active');$('mark-hint').textContent='SELECT A UNIT BELOW';
   pendingRegion=null;reviewRegion=null;showRegion();resetFeedbackForm();
@@ -264,5 +264,5 @@ try{
   rigRevision=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('').slice(0,16);
   applyDefinitions(rigs,[],{},{spriteOverrides:false});
   $('roster-count').textContent=`${units.length} units`;
-  makeCards();selectUnit(0);requestAnimationFrame(tick);
+  makeCards();selectUnit(Math.max(0,units.findIndex(unit=>unit.id===(new URLSearchParams(location.search).get('unit')||'panther'))));requestAnimationFrame(tick);
 }catch(error){$('unit-name').textContent='Viewer could not load';$('status').textContent=error.message;console.error(error);}
