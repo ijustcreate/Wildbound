@@ -20,6 +20,20 @@
           <div class="stage-label"><span>RIG PREVIEW</span><span id="facing-label">FRONT</span></div>
           <canvas id="stage" width="960" height="560" aria-label="Selected Wildbound character animation"></canvas>
           <div id="mark-layer" class="mark-layer" aria-label="Drag to mark an area of the preview"><div id="mark-box" class="mark-box" hidden></div></div>
+          <div class="stage-tags" aria-label="Frame feedback tags">
+            <fieldset class="stage-tag-group good"><legend>Good</legend><div class="tag-row" id="good-tags">
+              <button type="button" data-tag="silhouette" aria-pressed="false">Silhouette</button>
+              <button type="button" data-tag="motion" aria-pressed="false">Motion</button>
+              <button type="button" data-tag="timing" aria-pressed="false">Timing</button>
+              <button type="button" data-tag="detail" aria-pressed="false">Detail</button>
+            </div></fieldset>
+            <fieldset class="stage-tag-group bad"><legend>Needs work</legend><div class="tag-row bad" id="bad-tags">
+              <button type="button" data-tag="pose" aria-label="Awkward pose" aria-pressed="false">Pose</button>
+              <button type="button" data-tag="clipping" aria-pressed="false">Clipping</button>
+              <button type="button" data-tag="jitter" aria-pressed="false">Jitter</button>
+              <button type="button" data-tag="readability" aria-label="Hard to read" aria-pressed="false">Readability</button>
+            </div></fieldset>
+          </div>
           <div class="stage-bottom"><span id="frame-label">FRAME 01</span><span id="mark-hint">SELECT A UNIT BELOW</span></div>
         </div>
         <div class="stage-tools" aria-label="Preview controls">
@@ -53,19 +67,7 @@
       <div class="feedback-heading"><div><p class="eyebrow">FRAME NOTES</p><h2>Animation feedback</h2><p id="feedback-context">Select a unit and animation, then choose a frame.</p></div><span id="feedback-count" class="feedback-count">0 notes</span></div>
       <div class="feedback-grid">
         <form id="feedback-form" class="feedback-form">
-          <p class="feedback-tip">Choose tags, add a comment, or mark the exact area on the preview. Feedback saves with this unit, animation, frame, and facing.</p>
-          <fieldset><legend>What looks good</legend><div class="tag-row" id="good-tags">
-            <button type="button" data-tag="silhouette" aria-pressed="false">Silhouette</button>
-            <button type="button" data-tag="motion" aria-pressed="false">Motion</button>
-            <button type="button" data-tag="timing" aria-pressed="false">Timing</button>
-            <button type="button" data-tag="detail" aria-pressed="false">Detail</button>
-          </div></fieldset>
-          <fieldset><legend>What needs work</legend><div class="tag-row bad" id="bad-tags">
-            <button type="button" data-tag="pose" aria-pressed="false">Awkward pose</button>
-            <button type="button" data-tag="clipping" aria-pressed="false">Clipping</button>
-            <button type="button" data-tag="jitter" aria-pressed="false">Jitter</button>
-            <button type="button" data-tag="readability" aria-pressed="false">Hard to read</button>
-          </div></fieldset>
+          <p class="feedback-tip">Tap tags beside the rig, add a comment, or mark an area on the preview. Feedback saves with this unit, animation, frame, and facing.</p>
           <label for="feedback-comment">Comment</label>
           <textarea id="feedback-comment" rows="4" maxlength="2000" placeholder="What should change at this frame?"></textarea>
           <div class="form-bottom"><span id="region-summary">No area marked</span><button id="save-feedback" type="submit">Save feedback</button></div>
