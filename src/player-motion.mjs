@@ -609,6 +609,16 @@ export function limb(c, a, b, width, color) {
       color,
     );
 }
+export function quiverPose(positions,direction){
+  const normalize=v=>{const n=Math.hypot(...v)||1;return v.map(x=>x/n);};
+  const up=normalize(positions.chest.map((v,i)=>v-positions.pelvis[i]));
+  const right=normalize(positions.shoulderR.map((v,i)=>v-positions.shoulderL[i]));
+  const rear=normalize([right[1]*up[2]-right[2]*up[1],right[2]*up[0]-right[0]*up[2],right[0]*up[1]-right[1]*up[0]]);
+  const attach=(joint,side,height)=>projectPoint(joint.map((v,i)=>v+rear[i]*4+right[i]*side+up[i]*height),direction);
+  const top=attach(positions.chest,3,3),bottom=attach(positions.pelvis,-1,-2);
+  const rearDepth=projectPoint(rear,direction).depth;
+  return {top,bottom,width:4,depth:projectPoint(positions.chest,direction).depth+rearDepth*4,behind:rearDepth<=0.001};
+}
 export function drawPlayer(
   c,
   actor,
@@ -725,15 +735,25 @@ export function drawPlayer(
       },
       "Stowed weapon",
     );
-  if(itemKind(gear.back)==='quiver')add(p.chest.depth+(back?4:-1),()=>{
-    const x=p.chest.x+(back?-5:5),y=p.chest.y-2;
+  if(itemKind(gear.back)==='quiver'){
+    const q=quiverPose(positions,d);
+    add(q.depth,()=>{
     const carrier={...actor,inventory:actor.inventory||[]};
     const ammo=Math.min(3,count(carrier,quiverType(carrier)));
-    c.save();c.translate(x,y);c.rotate(-.25);drawItem(c,gear.back,0,0,17);
-    c.fillStyle='#f2d37e';c.strokeStyle='#30251a';c.lineWidth=.7;
-    for(let arrow=0;arrow<ammo;arrow++){const ax=-4+arrow*3;c.strokeRect(ax,-9,1,5);c.fillRect(ax-1,-9,3,1);}
-    c.restore();
-  },'Quiver');
+    const dx=q.bottom.x-q.top.x,dy=q.bottom.y-q.top.y,length=Math.hypot(dx,dy)||1;
+    const nx=-dy/length,ny=dx/length;
+    for(let arrow=0;arrow<ammo;arrow++){
+      const offset=arrow-1,base={x:q.top.x+nx*offset,y:q.top.y+ny*offset},tip={x:base.x-dx/length*(5+arrow%2),y:base.y-dy/length*(5+arrow%2)};
+      limb(c,base,tip,1,'#d9bd81');limb(c,{x:tip.x-nx,y:tip.y-ny},{x:tip.x+nx,y:tip.y+ny},1,'#f2edcc');
+    }
+    limb(c,q.top,q.bottom,q.width+2,'#30251a');
+    limb(c,q.top,q.bottom,q.width,ITEMS[gear.back].artColor||'#96643e');
+    limb(c,{x:q.top.x+nx,y:q.top.y+ny},{x:q.bottom.x+nx,y:q.bottom.y+ny},1,'#c6a779');
+    limb(c,{x:q.top.x-nx*2,y:q.top.y-ny*2},{x:q.top.x+nx*2,y:q.top.y+ny*2},2,'#ddc18d');
+  },'Quiver',['chest','pelvis']);
+    // A back attachment must not become a foreground overlay in saved rig orders.
+    queue.at(-1).attachmentOrder={anchors:['Body and pelvis','Cape'],behind:q.behind};
+  }
   if (gear.cape) {
     const top = positions.shoulderL.map((v,i)=>(v+positions.shoulderR[i])/2),
       bottom = positions.pelvis;

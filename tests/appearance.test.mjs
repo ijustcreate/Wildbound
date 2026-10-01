@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Profiles } from '../src/profiles.mjs';
 import { DEFAULT_APPEARANCE, HAIR_STYLES } from '../src/appearance.mjs';
-import { drawPlayer, defaultPlayerMotion, directionVector, validatePlayerMotion } from '../src/player-motion.mjs';
+import { drawPlayer, defaultPlayerMotion, directionVector, validatePlayerMotion,playerPose,quiverPose } from '../src/player-motion.mjs';
+import {renderLayers} from '../src/render-order.mjs';
 import { RigStudio } from '../src/player-studio.mjs';
 test('Appearance persists with a character independently of stat-bearing gear', () => {
   const profiles = new Profiles(); profiles.save = () => {};
@@ -44,4 +45,19 @@ test('New studios and newly selected rigs start paused', () => {
   studio.setSubject('water_elemental');
   assert.equal(studio.playing,false);
   assert.ok(studio.model.joints[studio.selected]);
+});
+
+test('Slim quiver follows animated torso and stays on its back despite saved layer orders',()=>{
+ const c=new Proxy({}, {get:(target,key)=>target[key]??(()=>{}),set:(target,key,value)=>{target[key]=value;return true;}});
+ const model=defaultPlayerMotion();
+ for(const action of ['idle','walk','run','draw','ranged','dash','mine','carry','death','sleep'])for(let d=0;d<8;d++)for(const time of [0,.3,.7]){
+  const [faceX,faceY]=directionVector(d),actor={faceX,faceY,animationAction:action,hp:100,equipment:{back:'starter_quiver'},inventory:[{type:'arrow',qty:3}]};
+  const q=quiverPose(playerPose(actor,time,model),d);
+  assert.ok(Object.values(q.top).every(Number.isFinite));assert.equal(q.width,4);
+  model.renderOrder={[d]:['Body and pelvis','Head','Quiver']};
+  drawPlayer(c,actor,time,model);const order=renderLayers(model,d);
+  assert.equal(order.indexOf('Quiver')<order.indexOf('Body and pelvis'),q.behind,`${action} ${d} ${time}`);
+ }
+ const actor={animationAction:'idle'},q=quiverPose(playerPose(actor,0,model),0);
+ assert.ok(Math.hypot(q.top.x-q.bottom.x,q.top.y-q.bottom.y)>q.width*3);
 });

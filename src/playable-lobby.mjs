@@ -99,7 +99,7 @@ export class PlayableLobby {
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
     root.querySelector('.party-heading h1').textContent='Gather around the board';
-    root.querySelector('.party-help').textContent='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: A / B to play, D-pad move, A jump, B run; walk away to leave';
+    root.querySelector('.party-help').textContent='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: D-pad / arrows move; right face / X jumps twice; bottom face / Z runs; down enters pipes; walk away to leave';
     this.canvas.onclick=e=>{
       const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return;
       const r=this.canvas.getBoundingClientRect(),view=this.view||{x:512,y:310,zoom:r.width/1024};
@@ -293,7 +293,7 @@ export class PlayableLobby {
     for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
     for(const p of players)if(this.television?.players.has(p.id)){
       const input=inputs[p.device]||{};
-      tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,run:!!input.tvB};
+      tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvB,run:!!input.tvA,down:!!input.tvDown,up:!!input.tvUp};
       practiceInputs[p.device]={x:input.walkX||0,y:input.walkY||0};
     }
     this.practice.stepPractice(dt,players,this.state.members,practiceInputs,blocked);
@@ -385,7 +385,7 @@ export class PlayableLobby {
         drawLobbyBoard(c,this.practice.time);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';this.label(o.name,o.x,o.y+(o.id==='target-lever'?27:44),15,'#f4efdc',650);
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad · A jump · B run':'A / B · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad move · Down: pipe':'Interact · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
     }
     for(const a of this.practice.players)if(a.hunterPet)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
     this.drawPractice(c);

@@ -73,8 +73,8 @@ function paintItemBase(c, type) {
   }
   if(ITEMS[type]?.base==='quiver'){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
-    for(const x of [8,12,16]){r(x,2,1,14,'#d9bd81');r(x-1,1,3,3,'#f2edcc');}
-    r(5,9,14,13,'#3e3027');r(6,10,12,11,ITEMS[type].artColor);r(6,10,12,2,'#ddc18d');r(8,15,2,5,'#c6a779');if(type==='starter_quiver')r(13,14,3,3,'#e6d79a');return;
+    for(const x of [10,12,14]){r(x,1,1,12,'#d9bd81');r(x-1,0,2,2,'#f2edcc');}
+    r(8,6,8,18,'#3e3027');r(9,7,6,16,ITEMS[type].artColor);r(8,6,8,2,'#ddc18d');r(10,10,1,11,'#c6a779');if(type==='starter_quiver')r(12,13,2,3,'#e6d79a');return;
   }
   if (ITEMS[type]?.skillScroll) {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};

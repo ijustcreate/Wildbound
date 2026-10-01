@@ -29,8 +29,15 @@ export function paintLayers(queue, model, direction, context, joints) {
   const sorted = queue.map((part,i)=>({...part,id:part.id || `Layer ${i+1}`})).sort((a,b)=>a.depth-b.depth);
   const defaultOrder = sorted.map(p=>p.id);
   const all = [...new Set([...order.filter(id=>defaultOrder.includes(id)), ...defaultOrder])];
-  const views=layers.get(model)||{}; views[direction]=all; layers.set(model,views);
   if (order.length) sorted.sort((a,b)=>all.indexOf(a.id)-all.indexOf(b.id));
+  for(const part of sorted.filter(p=>p.attachmentOrder)){
+    const {anchors,behind}=part.attachmentOrder;
+    sorted.splice(sorted.indexOf(part),1);
+    const indices=sorted.flatMap((p,i)=>anchors.includes(p.id)?[i]:[]);
+    const index=indices.length?(behind?Math.min(...indices):Math.max(...indices)+1):sorted.length;
+    sorted.splice(index,0,part);
+  }
+  const views=layers.get(model)||{}; views[direction]=sorted.map(p=>p.id); layers.set(model,views);
   const captured=[];
   sorted.forEach(part=>{
     const bones = part.bones?.length ? part.bones : inferredBones(part.id, joints);
