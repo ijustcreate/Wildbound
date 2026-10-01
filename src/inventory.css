@@ -190,3 +190,14 @@
 .item-tooltip::before{content:'';position:absolute;left:var(--tether-x,8px);top:-8px;width:1px;height:8px;background:#ddc477;}.item-tooltip.tooltip-above::before{top:auto;bottom:-8px;}.hero-panel.inventory-redesign .carried-source{opacity:.45;outline:1px dashed #f4cc73;}.hero-panel.inventory-redesign button.carry-target{outline:2px solid #89e4ce;background:#355849;}
 
 .merchant-workshop{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px;overflow:hidden;font:13px system-ui}.merchant-workshop h2,.merchant-workshop p{margin:0}.merchant-workshop>div:not(.merchant-grid){display:flex;gap:6px;align-items:center;flex:none}.merchant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;flex:1;min-height:0}.merchant-grid button{min-width:0;min-height:0;white-space:normal;border:1px solid #8e9c73;background:#19352c;color:#f0dfb7;padding:8px;font:12px system-ui}.merchant-grid button.selected{outline:2px solid #e5c478}.merchant-pages{justify-content:space-between}.merchant-notice{min-height:32px;color:#d3c499}
+
+.hero-panel.merchant-session{display:flex!important;flex-direction:column;overflow:hidden!important;box-sizing:border-box;background:linear-gradient(145deg,#19382d,#0e201b);border:2px solid #b99c5f!important;border-radius:6px;color:#f1e6c8;padding:12px;gap:6px}
+.hero-panel.merchant-session>header{font:bold 16px Georgia,serif;flex:none;margin:0;padding-right:28px}
+.hero-panel.merchant-session>button[data-action="close"]{position:absolute;right:8px;top:7px;width:26px;height:26px;padding:0}
+.merchant-session .merchant-workshop h2{font:25px/1.1 Georgia,serif;color:#e6ca8b}
+.merchant-session .merchant-workshop>p{font:12px/1.3 system-ui;flex:none}
+.merchant-session .merchant-workshop small{font:10px/1.3 system-ui;flex:none;color:#becdbb}
+.merchant-session .merchant-workshop button{border:1px solid #899371;background:#214537;color:#eee1bc;border-radius:3px;box-shadow:none;line-height:1.2;min-height:30px}
+.merchant-session .merchant-grid button{font-size:12px;padding:4px;min-height:0}
+.merchant-session .merchant-workshop button:focus-visible{outline:2px solid #92e4ba;outline-offset:1px}
+.merchant-session .merchant-workshop button:disabled{opacity:.3}

@@ -76,3 +76,14 @@ test('Elf ears add pointed pixels beyond hair in every facing',()=>{
   }
  }
 });
+
+test('Every face-facing angle retains light eye whites and dark pupils after the nose pass',()=>{
+ for(const d of [0,1,2,6,7]){
+  const p=Object.fromEntries(Object.entries(model.joints).map(([key,value])=>[key,projectPoint(value.position,d)]));
+  const c=raster(),visible=n=>model.visibility[n]?.[d]!==false;
+  drawHumanHead(c,p,d,DEFAULT_APPEARANCE.skin,DEFAULT_APPEARANCE,visible,true);
+  assert.ok([...c.pixels.values()].includes('#fff3df'));
+  assert.ok([...c.pixels.values()].includes('#302b2b'));
+  if(d===2||d===6){const sign=d===2?-1:1;assert.equal(c.pixels.get((sign*4)+','+(Math.round(p.head.y)-1)),'#302b2b');}
+ }
+});

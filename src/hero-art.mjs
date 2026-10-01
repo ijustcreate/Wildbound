@@ -15,6 +15,10 @@ export function drawHeroTorso(c,p,d,color,skin,back){
       if(!back&&Math.abs(x)<=1&&y<length-2)shade=y<2?skin:y<length*.55?'#d1bd88':mat.dark;
       if(!back&&Math.abs(x)>=3&&Math.abs(x)<=4&&y>=3&&y<=5)shade=y===3?mat.trim:mat.dark;
       if(!back&&y===0&&Math.abs(x)>=2&&Math.abs(x)<=4)shade=mat.light;
+      // A one-pixel neckline separates exposed skin from the tunic in every facing.
+      const collarHalf=d===2||d===6?1:2;
+      if(back&&y===-1&&Math.abs(x)<=collarHalf)shade=mat.ink;
+      if(!back&&((y>=-1&&y<=0&&Math.abs(x)===collarHalf)||(y===1&&Math.abs(x)<collarHalf)))shade=mat.ink;
       if(y>=length-1&&Math.abs(x)<half-1)shade=!back&&Math.abs(x)<1?mat.trim:mat.leather;
       c.fillStyle=shade;c.fillRect(Math.round(top.x+x),Math.round(top.y+y),1,1);
     }

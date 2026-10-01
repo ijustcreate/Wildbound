@@ -24,7 +24,7 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
   const turn = direction === 0 || direction === 4 ? 0 : direction < 4 ? -1 : 1;
   if (!foreground) {
     r(-3,-6,7,1,p.ink); r(-4,-5,9,1,p.ink);r(-5,-4,11,6,p.ink);
-    r(-4,2,9,1,p.ink); r(-3,3,7,1,p.ink);r(-1,4,3,1,p.shadow);
+    r(-4,2,9,1,p.ink); r(-3,3,7,1,p.ink);r(profile?turn-1:back?-1:-2,4,profile||back?3:5,1,p.ink);
     r(-4,-4,9,6,p.shadow); r(-3,-5,7,1,p.base);
     r(-3,-4,6,6,p.base); r(-2,2,5,2,p.shadow);
     r(-3,-3,3,3,p.light); r(-2,2,3,1,p.base);

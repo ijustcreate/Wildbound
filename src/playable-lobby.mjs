@@ -401,7 +401,10 @@ export class PlayableLobby {
       this.animator.draw(c,{...actor,kind:'player'},this.practice.time,LOBBY_PLAYER_SIZE);
       drawBowAim(c,actor,LOBBY_PLAYER_SIZE/48,this.practice.time);
       c.font='13px system-ui';c.fillStyle=p.ready?'#a8f4c9':p.color;this.label((p.ready?'✓ ':'')+p.name+(p.lobbyDisconnected?' · disconnected':''),s.x,s.y+27,14,p.ready?'#a8f4c9':p.color,650);
-      const o=this.state.nearest(p);if(o&&!s.panel&&!p.ui){const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3],prompt=o.id==='character-station'?(p.device==='keyboard'?'Hold 2':'Hold '+names[3])+' · '+o.name:o.id==='television'?(this.television.players.has(p.id)?'Walk away · leave':(p.device==='keyboard'?'Z / E':'A')+' · play TV'):interact+' · '+o.name;c.fillStyle='#182326';c.fillRect(s.x-75,s.y-95,150,24);c.fillStyle='#fff';c.font='12px system-ui';this.label(prompt,s.x,s.y-79,13);}
+      const o=this.state.nearest(p);if(o&&!s.panel&&!p.ui){const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3],prompt=o.id==='character-station'?(p.device==='keyboard'?'Hold 2':'Hold '+names[3])+' · '+o.name:o.id==='television'?(this.television.players.has(p.id)?'Walk away · leave':(p.device==='keyboard'?'Z / E':'A')+' · play TV'):interact+' · '+o.name;// TV prompts belong below the cabinet and its controls, never above the player.
+        const promptX=o.id==='television'?o.x:s.x,promptY=o.id==='television'?o.y+80:s.y-95;
+        c.fillStyle='#182326';c.fillRect(promptX-75,promptY,150,24);
+        c.fillStyle='#fff';c.font='12px system-ui';this.label(prompt,promptX,promptY+12,13);}
     }
     applyCelShading(c);
     // Typography is drawn at display resolution after scene shading, never pixel-scaled.

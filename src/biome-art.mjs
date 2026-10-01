@@ -8,15 +8,15 @@ export function drawBiomeTile(c,g,kind,x,y){
   const env=g.generatedEnvironment,r=hash(x+(g.seed||0),y);
   if(env==='desert'&&kind==='sand'){
     const palettes=['#b99059','#c69d61','#d3ad6c','#dfbc7b','#e8ca8b'];
-    for(let yy=0;yy<32;yy+=4){const phase=(y+yy)*.032+Math.sin(x*.007)*2+Math.sin(x*.025)*.35,n=(Math.sin(phase)+1)*.5;rect(c,x,y+yy,32,4,palettes[Math.min(4,Math.floor(n*5))]);}
+    for(let yy=0;yy<32;yy+=4){const phase=(y+yy)*.032+Math.sin(x*.007)*2+Math.sin(x*.025)*.35,n=(Math.sin(phase)+1)*.5;rect(c,x,y+yy,32.5,4.5,palettes[Math.min(4,Math.floor(n*5))]);}
     for(let i=0;i<3;i++)rect(c,x+hash(x,i)*28,y+hash(y,i)*28,2,1,i%2?'#f0d69b':'#b08b56');return true;
   }
   if(env==='ice'&&['snow','ice'].includes(kind)){
     if(kind==='snow'){
-      const n=(Math.sin(x*.013)+Math.cos(y*.017)+2)/4;rect(c,x,y,32,32,['#bacfdc','#c9dce5','#d8e8ec','#e7f0ef'][Math.min(3,Math.floor(n*4))]);
+      const n=(Math.sin(x*.013)+Math.cos(y*.017)+2)/4;rect(c,x,y,32.5,32.5,['#bacfdc','#c9dce5','#d8e8ec','#e7f0ef'][Math.min(3,Math.floor(n*4))]);
       for(let i=0;i<3;i++){const yy=y+i*10+Math.sin(x*.025+i)*3;rect(c,x+3,yy,15+r*10,1,i===1?'#a6c4d03d':'#f6ffff66');}
     }else{
-      for(let yy=0;yy<32;yy+=4)for(let xx=0;xx<32;xx+=4){const n=(Math.sin((x+xx)*.021+(y+yy)*.009)+Math.sin((y+yy)*.027)+2)/4;rect(c,x+xx,y+yy,4,4,['#6598b2','#6da1ba','#77acc2','#82b6c9','#90c1d0'][Math.min(4,Math.floor(n*5))]);}
+      for(let yy=0;yy<32;yy+=4)for(let xx=0;xx<32;xx+=4){const n=(Math.sin((x+xx)*.021+(y+yy)*.009)+Math.sin((y+yy)*.027)+2)/4;rect(c,x+xx,y+yy,4.5,4.5,['#6598b2','#6da1ba','#77acc2','#82b6c9','#90c1d0'][Math.min(4,Math.floor(n*5))]);}
       if(r>.72)poly(c,[[x+3,y+6],[x+26,y+2],[x+20,y+12],[x+5,y+18]],'#d1f6f51a');
       if(r>.78){c.strokeStyle='#d7fbfa88';c.lineWidth=.7;c.beginPath();c.moveTo(x,y+16);c.lineTo(x+12,y+10);c.lineTo(x+19,y+17);c.lineTo(x+32,y+16);c.moveTo(x+19,y+17);c.lineTo(x+24,y+25);c.stroke();}
       rect(c,x+4+r*20,y+4+r*15,2,1,'#e8ffff');

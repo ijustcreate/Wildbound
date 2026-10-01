@@ -148,6 +148,7 @@ export class HeroUI {
         !!(p.ui && p.ui.shop !== "vending"),
       );
       panel.classList.toggle("vending-panel", p.ui?.shop === "vending");
+      panel.classList.toggle("merchant-session", p.ui?.shop === "merchant");
       panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop);
       panel.classList.toggle('victory-loot-session', p.ui?.storage === 'victory');
       panel.classList.toggle('socket-session',!!p.ui?.socket);
@@ -157,7 +158,7 @@ export class HeroUI {
         "header",
         p.name +
           " · " +
-          (p.ui?.storage === "victory" ? "VICTORY SPOILS" : p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
+          (p.ui?.shop === "merchant" ? "TRADING POST" : p.ui?.storage === "victory" ? "VICTORY SPOILS" : p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
           " · LV " +
           p.level,
       );
