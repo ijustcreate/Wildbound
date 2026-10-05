@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';
-import {LobbyPractice,lobbyDiceOffsets} from '../src/lobby-practice.mjs';
-import {LobbyState} from '../src/playable-lobby.mjs';
+import {LobbyPractice,LOBBY_FIXTURES,lobbyDiceOffsets} from '../src/lobby-practice.mjs';
+import {LOBBY_OBJECTS,LobbyState} from '../src/playable-lobby.mjs';
 import {playerAction} from '../src/player-motion.mjs';
 import {startJump,tickJump} from '../src/jumping.mjs';
 const setup=()=>{const game=new Game(),p=game.addPlayer('keyboard'),lobby=new LobbyState(),practice=new LobbyPractice();lobby.sync([p]);Object.assign(lobby.members.get(p.id),{spawned:true,panel:null});const tick=input=>practice.stepPractice(.05,[p],lobby.members,{keyboard:input});return {p,practice,lobby,tick};};
@@ -24,6 +24,27 @@ test('Lobby tables block walking, support jumps and allow walking off; totem sta
  const {practice,tick}=setup();tick({});const p=practice.players[0];
  for(const table of practice.house.furniture){Object.assign(p,{x:table.x-20,y:table.y+12,groundHeight:0,jumpHeight:0});practice.moveActor(p,35,0);assert.ok(p.x<table.x);startJump(p);for(let i=0;i<12;i++)tickJump(p,.02,practice);practice.moveActor(p,35,0);assert.ok(p.x>table.x);for(let i=0;i<50;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,table.surfaceHeight);practice.moveActor(p,-60,0);for(let i=0;i<30;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,0);}
  assert.equal(practice.blocked(925,165,8,false,false,false,0,40),true);
+});
+test('Every lobby object has a solid visible footprint and remains reachable for interaction',()=>{
+ const {practice,lobby,tick,p}=setup();tick({});const actor=practice.players[0];
+ const solids=[...practice.house.furniture,...practice.house.walls];
+ assert.deepEqual(solids.map(s=>s.id).sort(),LOBBY_OBJECTS.map(o=>o.id).sort());
+ for(const solid of solids){
+   const object=LOBBY_OBJECTS.find(o=>o.id===solid.id);
+   const x=solid.x+solid.w/2;
+   assert.equal(practice.blocked(x,solid.y+solid.h/2,8),true,`${solid.id} blocks movement`);
+   assert.equal(practice.projectileBlocked(x,solid.y+solid.h/2),true,`${solid.id} blocks shots`);
+   const fromBelow=solid.y<200;
+   Object.assign(actor,{x,y:fromBelow?solid.y+solid.h+10:solid.y-10,groundHeight:0,jumpHeight:0});
+   practice.moveActor(actor,0,fromBelow?-25:25);
+   assert.ok(fromBelow?actor.y>=solid.y+solid.h+8:actor.y<=solid.y-8,`${solid.id} stops an approaching player`);
+   const state=lobby.members.get(p.id);Object.assign(state,{x:actor.x,y:actor.y});
+   assert.equal(lobby.nearest(p)?.id,object.id,`${solid.id} remains usable from outside`);
+ }
+ for(const fixture of LOBBY_FIXTURES){
+   const x=fixture.x+fixture.w/2,y=fixture.y+fixture.h/2;
+   assert.equal(practice.blocked(x,y,8,false,false,false,0,50),true,`${fixture.id} cannot be jumped through`);
+ }
 });
 test('Target lever toggles motion; actual arrows and spells score without hurting saved heroes',()=>{
  const {practice,tick}=setup();tick({});const t=practice.targets[0],x=t.x;practice.updateTargets(1);assert.equal(t.x,x);practice.toggleTargets();practice.updateTargets(.5);assert.notEqual(t.x,x);practice.toggleTargets();const stopped=t.x;practice.updateTargets(1);assert.equal(t.x,stopped);

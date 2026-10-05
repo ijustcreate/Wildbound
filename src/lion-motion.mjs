@@ -362,6 +362,7 @@ export function drawLion(
     pal = actor.skin==="tiger"||actor.kind==="tiger" ? {...model.palette,body:"#db8737",bodyShade:"#925022",head:"#eda349",headShade:"#aa602d",legs:"#d48c43",legShade:"#97552e",tail:"#392b28",muzzle:"#eee1c2"} : model.palette,
     s = model.shape;
   const tiger=actor.skin==="tiger"||actor.kind==="tiger";
+  const panther=model.type==='panther' || actor.kind==='panther';
   const stripe=(a,b,width=1.5)=>limb(c,a,b,width,"#302b29");
   const queue = [],
     add = (depth, fn, id, bone, bones) => queue.push({ depth, fn, id, bone, bones });
@@ -372,6 +373,7 @@ export function drawLion(
   ])
     add((p[start].depth + p[end].depth) / 2, () => {
       limb(c, p[start], p[end], width, pal.body);
+      if(panther){c.fillStyle=pal.highlight||'#65727b';c.fillRect(Math.round((p[start].x+p[end].x)/2),Math.round((p[start].y+p[end].y)/2)-1,2,1);}
       if(tiger)for(let i=1;i<5;i++){const t=i/5,x=p[start].x+(p[end].x-p[start].x)*t,y=p[start].y+(p[end].y-p[start].y)*t;stripe({x:x-2,y},{x:x+2,y});}
       if (end === "tailTip" && !tiger)
         ellipse(c, p[end].x, p[end].y, s.tuftSize, s.tuftSize * 1.2, pal.tail);
@@ -398,6 +400,7 @@ export function drawLion(
           raw = pose[names.at(-1)],
           toe = projectPoint([raw[0], raw[1] + 2, raw[2]], direction);
         limb(c, foot, toe, s.legWidth + 1, far ? pal.legShade : pal.head);
+        if(panther){c.fillStyle=pal.claw||'#d9d2b9';for(let claw=-1;claw<=1;claw++)c.fillRect(Math.round(toe.x)+claw*2,Math.round(toe.y)+1,1,2);}
       }, (names[0].startsWith("shoulder") ? "Front leg " : "Rear leg ") + side, names[0], names);
     }
   }
@@ -411,8 +414,19 @@ export function drawLion(
       pal.body,
     );
     limb(c, p.chest, p.neck, s.bodyRadius * 1.5, pal.body);
+    if(panther){
+      const ax=p.pelvis.x,ay=p.pelvis.y,bx=p.chest.x,by=p.chest.y;
+      c.fillStyle=pal.highlight||'#66727a';
+      for(let i=1;i<=5;i++){const t=i/6;c.fillRect(Math.round(ax+(bx-ax)*t)-2,Math.round(ay+(by-ay)*t)-4,3,1);}
+      c.fillStyle=pal.rosette||'#222c36';
+      for(let i=1;i<=4;i++){const t=i/5,x=Math.round(ax+(bx-ax)*t),y=Math.round(ay+(by-ay)*t);c.fillRect(x+(i%2?2:-3),y+2,2,1);}
+    }
     if(tiger)for(let i=1;i<6;i++){const t=i/6,x=p.pelvis.x+(p.chest.x-p.pelvis.x)*t,y=p.pelvis.y+(p.chest.y-p.pelvis.y)*t;stripe({x:x-4,y:y-2},{x:x+3,y:y+2},1.6); }
   }, "Body", "chest", ["pelvis","chest","neck"]);
+  if(panther)add((p.pelvis.depth+p.chest.depth)/2+.02,()=>{
+    c.fillStyle=pal.highlight||'#66727a';
+    for(const [x,y] of [[-4,-3],[2,-4],[-2,1],[4,2]])c.fillRect(Math.round(p.chest.x)+x,Math.round(p.chest.y)+y,2,1);
+  },'Panther markings','chest',['chest','pelvis']);
   const headDepth = direction === 6 ? Math.max(p.head.depth, (p.pelvis.depth+p.chest.depth)/2 + 0.2) : p.head.depth;
   if(!tiger)add(headDepth, () => {
     const h = p.head,
@@ -445,6 +459,7 @@ export function drawLion(
         s.headRadius * 1.05,
         pal.headShade,
       );
+      if(panther){c.fillStyle=pal.highlight||'#66727a';c.fillRect(Math.round(face.x)-2,Math.round(face.y)-3,4,1);c.fillStyle=pal.headShade;c.fillRect(Math.round(face.x)-4,Math.round(face.y)+1,2,2);c.fillRect(Math.round(face.x)+3,Math.round(face.y)+1,2,2);}
       ellipse(
         c,
         face.x - 0.5,
@@ -458,6 +473,7 @@ export function drawLion(
     const muzzle = p.muzzle;
     if (visible("muzzle"))
       ellipse(c, muzzle.x, muzzle.y, 2.8, 2.1, pal.muzzle || "#f7d997");
+    if(panther&&visible('muzzle')){c.fillStyle=pal.claw||'#d9d2b9';for(const side of [-1,1]){c.fillRect(Math.round(muzzle.x)+side*4,Math.round(muzzle.y),3,1);c.fillRect(Math.round(muzzle.x)+side*4,Math.round(muzzle.y)+2,2,1);}}
     for (const name of ["eyeL", "eyeR"])
       if (visible(name)) {
         c.fillStyle = pal.outline;

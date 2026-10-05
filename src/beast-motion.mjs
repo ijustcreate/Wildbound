@@ -1,6 +1,7 @@
 import { defaultLionMotion, drawLion } from "./lion-motion.mjs";
 import {withCompanionClips} from './companion-motion.mjs';
 import { paintLayers } from "./render-order.mjs";
+import {validateSprite} from './pixels.mjs';
 import { defaultRhinoMotion, drawRhino } from "./rhino-motion.mjs";
 import {
   poseAt,
@@ -11,9 +12,32 @@ import {
   validateMotion,
 } from "./player-motion.mjs";
 export const BEAST_KINDS = ["panther", "boar", "beetle", "white_lion", "snow_leopard", "spider"];
+const pantherPose = (model, frame, changes = {}) => ({frame, joints: Object.fromEntries(Object.keys(model.joints).map(name => [name, changes[name] || (['face','eyeL','eyeR','earL','earR','muzzle','nose'].includes(name) ? changes.head : null) || [0,0,0]]))});
+function pantherClip(model, fps, length, loop, frames) {
+  return {fps,length,loop,keys:frames.map(([frame,joints])=>pantherPose(model,frame,joints))};
+}
+function addPantherClips(model) {
+  const rear = (z,y=0)=>({pelvis:[0,y,z],hipL:[0,0,z],hipR:[0,0,z],kneeL:[0,3,-z*.5],kneeR:[0,3,-z*.5],hockL:[0,5,-z*.5],hockR:[0,5,-z*.5],rearPawL:[0,7,0],rearPawR:[0,7,0]});
+  const front = (z,y=0)=>({chest:[0,y,z],neck:[0,y,z],head:[0,y,z],shoulderL:[0,0,z],shoulderR:[0,0,z],elbowL:[0,2,-z*.5],elbowR:[0,2,-z*.5],frontPawL:[0,4,0],frontPawR:[0,4,0]});
+  model.clips.prowl=pantherClip(model,10,8,true,Array.from({length:8},(_,i)=>{const a=i*Math.PI/4,w=Math.sin(a)*2.8,l=Math.max(0,Math.cos(a))*2;return [i,{pelvis:[0,0,-1+Math.sin(a*2)*.4],chest:[0,0,-1],head:[0,-1,-1],frontPawL:[0,w,l],frontPawR:[0,-w,-l*.5],rearPawL:[0,-w,l*.5],rearPawR:[0,w,l],tailMid:[Math.sin(a)*2,0,0],tailTip:[Math.sin(a-.5)*4,0,0]}]}));
+  model.clips.booty_shake=pantherClip(model,9,8,true,Array.from({length:8},(_,i)=>[i,{...front(-2),...rear(-2),pelvis:[Math.sin(i*Math.PI/2)*4,0,-2],tailBase:[Math.sin(i*Math.PI/2)*3,0,1],tailMid:[Math.sin(i*Math.PI/2+.7)*6,0,1],tailTip:[Math.sin(i*Math.PI/2+1.3)*8,0,1]}]));
+  model.clips.crouch=pantherClip(model,10,6,false,[[0,{}],[3,{...front(-4),...rear(-3),head:[0,2,-4],tailTip:[3,0,0]}],[5,{...front(-5),...rear(-4),head:[0,2,-5],tailTip:[-3,0,1]}]]);
+  model.clips.sit=pantherClip(model,8,8,true,[[0,{}],[3,{...rear(-9,6),...front(1,-2),head:[0,-2,2],tailBase:[0,0,-5],tailMid:[4,1,-8],tailTip:[6,4,-10]}],[7,{...rear(-9,6),...front(1,-2),head:[0,-2,1],tailBase:[0,0,-5],tailMid:[4,1,-8],tailTip:[7,4,-10]}]]);
+  model.clips.lie=pantherClip(model,8,8,true,[[0,{...rear(-10,3),...front(-11,1),neck:[0,3,-11],head:[0,5,-12],tailBase:[0,0,-10],tailMid:[3,2,-14],tailTip:[7,5,-15]}],[4,{...rear(-10,3),...front(-11,1),neck:[0,3,-12],head:[0,5,-13],tailBase:[0,0,-10],tailMid:[3,2,-14],tailTip:[7,5,-15]}]]);
+  model.clips.branch_lie=pantherClip(model,8,8,true,[[0,{...rear(-10,2),...front(-11,1),neck:[0,3,-11],head:[0,5,-12],frontPawL:[0,7,-3],frontPawR:[0,7,-3],rearPawL:[0,-3,-4],tailBase:[0,-2,-8],tailMid:[2,-2,-12],tailTip:[3,-3,-17]}],[4,{...rear(-10,2),...front(-11,1),neck:[0,3,-12],head:[0,5,-13],frontPawL:[0,7,-3],frontPawR:[0,7,-3],rearPawL:[0,-3,-4],tailBase:[0,-2,-8],tailMid:[2,-2,-12],tailTip:[5,-3,-17]}]]);
+  model.clips.climb=pantherClip(model,10,8,false,[[0,{...front(-2),...rear(-2)}],[3,{...front(3),...rear(1),frontPawL:[0,9,10],frontPawR:[0,5,7],rearPawL:[0,-5,7],rearPawR:[0,-2,4],tailTip:[3,-4,2]}],[7,{...front(1),...rear(1),frontPawL:[0,8,3],frontPawR:[0,8,3],tailTip:[4,-4,-5]}]]);
+  for(const [side,sign] of [['left',-1],['right',1]])model.clips['swipe_'+side]=pantherClip(model,16,6,false,[[0,{...front(-2)}],[2,{chest:[sign*2,2,0],head:[sign*2,3,0],['shoulder'+(sign<0?'L':'R')]:[sign*3,5,2],['elbow'+(sign<0?'L':'R')]:[sign*5,8,6],['frontPaw'+(sign<0?'L':'R')]:[sign*8,12,7]}],[4,{chest:[-sign*2,1,0],head:[-sign*1,2,0],['frontPaw'+(sign<0?'L':'R')]:[-sign*5,13,2]}],[5,{}]]);
+  model.clips.bite=pantherClip(model,16,6,false,[[0,{...front(-2)}],[2,{neck:[0,5,0],head:[0,9,-2],muzzle:[0,9,-2],nose:[0,9,-2],frontPawL:[0,4,2],frontPawR:[0,4,2]}],[4,{head:[0,7,-1],muzzle:[0,7,-1]}],[5,{}]]);
+  model.clips.swoop=pantherClip(model,14,6,false,[[0,{...front(-5),...rear(-4)}],[2,{pelvis:[0,4,6],chest:[0,8,8],head:[0,11,8],frontPawL:[-2,14,8],frontPawR:[2,14,8],rearPawL:[0,-7,6],rearPawR:[0,-7,6],tailTip:[0,-9,6]}],[4,{pelvis:[0,7,4],chest:[0,12,5],head:[0,15,4],frontPawL:[-3,18,3],frontPawR:[3,18,3]}],[5,{...front(-3),...rear(-2)}]]);
+  return model;
+}
 export function defaultBeastMotion(kind) {
   if(kind==='white_lion'||kind==='snow_leopard'){
     const m=kind==='white_lion'?defaultLionMotion():defaultBeastMotion('panther');m.type=kind;m.name=kind==='white_lion'?'White lion':'Snow leopard';
+    if(kind==='snow_leopard'){
+      for(const clip of ['prowl','booty_shake','crouch','lie','branch_lie','climb','swipe_left','swipe_right','swoop'])delete m.clips[clip];
+      for(const color of ['highlight','rosette','claw'])delete m.palette[color];
+    }
     Object.assign(m.palette,{body:'#dce7e7',bodyShade:'#a0b7c4',head:'#edf0e6',headShade:'#adc3cd',mane:'#f5f3de',maneShade:'#b9cbd0',legs:'#d5e1e6',legShade:'#93acbc',tail:'#c4d4da',outline:'#294b60',muzzle:'#f8f4e6'});
     return m;
   }
@@ -22,25 +46,12 @@ export function defaultBeastMotion(kind) {
     m.type = kind;
     m.name = "Panther";
     Object.assign(m.palette, {
-      body: "#414650",
-      bodyShade: "#252b36",
-      head: "#555a65",
-      headShade: "#303640",
-      mane: "#414650",
-      maneShade: "#272d39",
-      legs: "#424953",
-      legShade: "#252b36",
-      tail: "#343b45",
-      outline: "#dbca69",
-      muzzle: "#72737a",
+      body: "#303941", bodyShade: "#171f2a", head: "#3c4850", headShade: "#1e2732",
+      mane: "#303941", maneShade: "#1e2732", legs: "#323e47", legShade: "#1a2430",
+      tail: "#202c36", outline: "#d8c471", muzzle: "#69737a", highlight: "#66727a", rosette: "#222c36", claw: "#d9d2b9",
     });
     Object.assign(m.shape, {
-      maneRadius: 5,
-      headRadius: 4.5,
-      bodyRadius: 6,
-      legWidth: 3,
-      tailWidth: 2,
-      tuftSize: 0.7,
+      maneRadius: 5, headRadius: 5, bodyRadius: 7, legWidth: 3.5, tailWidth: 2.3, tuftSize: 1.5,
     });
     for (const n of ["earL", "earR"]) m.joints[n].position[2] -= 3;
     m.joints.tailTip.position = [4, -36, 17];
@@ -49,7 +60,7 @@ export function defaultBeastMotion(kind) {
         v[1] *= 0.65;
         v[2] *= 0.65;
       }
-    return m;
+    return addPantherClips(m);
   }
   if (kind === "boar") {
     const m = defaultRhinoMotion();
@@ -164,6 +175,7 @@ export function validateBeastMotion(kind, m) {
   if(['panther','white_lion','snow_leopard'].includes(kind))m=withCompanionClips(structuredClone(m));
   return (
     m?.type === kind &&
+    (!m.boneSprites || Object.values(m.boneSprites).every(views=>views && Object.entries(views).every(([d,s])=>Number.isInteger(Number(d)) && Number(d)>=0 && Number(d)<8 && validateSprite(s) && Number.isFinite(s.x) && Number.isFinite(s.y)))) &&
     validateMotion(m, defaultBeastMotion(kind)) &&
     Object.keys(defaultBeastMotion(kind).visibility).every(
       (n) =>

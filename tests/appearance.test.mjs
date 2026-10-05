@@ -61,3 +61,20 @@ test('Slim quiver follows animated torso and stays on its back despite saved lay
  const actor={animationAction:'idle'},q=quiverPose(playerPose(actor,0,model),0);
  assert.ok(Math.hypot(q.top.x-q.bottom.x,q.top.y-q.bottom.y)>q.width*3);
 });
+
+test('shields and wands follow their holding arms at every viewing angle',()=>{
+ const c=new Proxy({}, {get:(target,key)=>target[key]??(()=>{}),set:(target,key,value)=>{target[key]=value;return true;}});
+ const model=defaultPlayerMotion();
+ for(const action of ['idle','walk','run','cast','block'])for(let d=0;d<8;d++){
+  const [faceX,faceY]=directionVector(d);
+  const actor={faceX,faceY,appearance:DEFAULT_APPEARANCE,equipment:{hand1:'starter_wand',hand2:'starter_shield'},animationAction:action,hp:100};
+  model.renderOrder={[d]:['Held item L','Held item R','Body and pelvis','Arm L','Arm R']};
+  drawPlayer(c,actor,.32,model);
+  const order=renderLayers(model,d);
+  for(const side of ['L','R']){
+   const arm=order.indexOf(`Arm ${side}`),held=order.indexOf(`Held item ${side}`);
+   assert.ok(arm>=0&&held>=0,`${action} ${d} ${side} drawn`);
+   assert.equal(held,arm+1,`${action} ${d} ${side} item paints directly after its arm`);
+  }
+ }
+});

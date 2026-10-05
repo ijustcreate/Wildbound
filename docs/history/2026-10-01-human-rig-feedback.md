@@ -1,0 +1,9 @@
+# October 1, 2026: human rig review pass
+
+The separate Character Viewer recorded four broad Player rig notes: eye jitter in run, an eye reaching the hair in side-view walk, and bowed knees in mine and woodcut. The recorded frames are examples rather than the full scope of the feedback.
+
+The sculpted human renderer now positions eyes from editable rest anchors, avoiding drift from older animation eye keys and lowering them within the face at side angles. Sculpted knee IK uses a sagittal pole, and mine/woodcut rendering narrows projected knee bow while leaving the 3D pose and limb lengths intact. The same `player-motion.mjs` and `ik.mjs` are copied into the separate Viewer Site; its feedback revision includes renderer source so a new review pass can be identified. Existing D1 notes remain intact.
+
+Checks: 583 Node tests passed; Site build passed; local viewer rendered Player run and mine; Site deployment succeeded at `https://wildbound-character-viewer.felix13.chatgpt.site` from Site source commit `72d339ef686ec319ad6677c62baad5b49bef1b5f`. Live `feedback` table still has four earlier notes. The desktop rebuild script passed tests and packaging and made `dist/1.0.50/Wildbound-win32-x64/Wildbound.exe`; `Play Wildbound.cmd --check` reports build time `2026-10-01T21:08:08.000Z`, source commit `3c3fe40274558d9f62c0c8d62c9b1944e9c02eb0` plus modified tracked source. Desktop shortcut `C:\Users\mAIn User\Desktop\Wildbound Latest (1.0.50).lnk` targets this checkout's `Play Wildbound.cmd` and uses the normal Electron profile.
+
+The game checkout contains other uncommitted work; no game commit or push was made. An older Electron source process (`--smoke-test`, 1.0.39) was already running, so this pass did not confirm the new rig by opening the packaged game. Do not stop that process without checking with its user. The next review pass should be checked in the published Character Viewer.

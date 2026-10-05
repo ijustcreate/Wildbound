@@ -5,16 +5,24 @@ import {refreshVitals} from './items.mjs';
 import {restoreHunterPet,petRecord} from './hunter-pets.mjs';
 
 export const LOBBY_FURNITURE=[
- {id:'environment',kind:'table',x:588,y:155,w:94,h:35,surfaceHeight:16,jumpable:true},
- {id:'dice-count',kind:'table',x:737,y:155,w:86,h:25,surfaceHeight:16,jumpable:true},
+ // Match the visible lower-row tables; the old footprints were on the top wall.
+ {id:'environment',kind:'table',x:578,y:513,w:94,h:56,surfaceHeight:16,jumpable:true},
+ {id:'dice-count',kind:'table',x:737,y:514,w:86,h:55,surfaceHeight:16,jumpable:true},
  {...LOBBY_BOARD},
+];
+export const LOBBY_FIXTURES=[
+ {id:'character-station',x:593,y:127,w:84,h:59},
+ {id:'television',x:709,y:101,w:152,h:94},
+ {id:'difficulty',x:904,y:100,w:42,h:76},
+ {id:'target-lever',x:450,y:514,w:30,h:41},
+ {id:'starter-chest',x:892,y:488,w:116,h:52},
 ];
 
 // A separate simulation uses the real combat/movement code without touching saves.
 export class LobbyPractice extends Game {
   constructor(){
     super();this.phase='play';this.openingBoard=false;this.generatedEnvironment='lobby';
-    this.house={walls:[{x:904,y:155,w:42,h:24}],doors:[],furniture:structuredClone(LOBBY_FURNITURE),pools:[],floors:[],rooms:[],trees:[]};this.scenery=[];this.terrain.fill('grass');this.pickups=[];
+    this.house={walls:structuredClone(LOBBY_FIXTURES),doors:[],furniture:structuredClone(LOBBY_FURNITURE),pools:[],floors:[],rooms:[],trees:[]};this.scenery=[];this.terrain.fill('grass');this.pickups=[];
     this.targetsMoving=false;this.targetClock=0;this.targets=[{x:280,y:125,angle:0},{x:455,y:125,angle:0},{x:120,y:178,angle:-Math.PI/4},{x:52,y:350,angle:-Math.PI/2},{x:52,y:520,angle:-Math.PI/2}].map((t,i)=>({...t,id:i,homeX:t.x,homeY:t.y,hits:0,score:0,flash:0}));
     for(const t of this.targets)Object.assign(t,{id:this.nextId++,kind:'practice_target',practiceTarget:true,hp:1e9,maxHp:1e9,combatText:[],state:'idle',speed:0,damage:0});
     this.enemies=this.targets;
@@ -22,8 +30,6 @@ export class LobbyPractice extends Game {
   blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0,projectile=false,from=null){return x-radius<47||x+radius>978||y-radius<92||y+radius>568||structureBlocked(this,x,y,radius,false,offset,elevation,projectile,from);}
   projectileBlocked(x,y,radius=1,impact=false){
     if(x<48||x>978||y<92||y>568||structureBlocked(this,x,y,radius,false,0,0,true))return true;
-    // These cabinets are painted lobby objects, separate from jumpable tables.
-    if([{x:892,y:492,w:116,h:48},{x:583,y:515,w:84,h:54}].some(b=>x+radius>=b.x&&x-radius<=b.x+b.w&&y+radius>=b.y&&y-radius<=b.y+b.h))return true;
     return false;
   }
   toggleTargets(){this.targetsMoving=!this.targetsMoving;return this.targetsMoving;}

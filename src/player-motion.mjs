@@ -619,6 +619,26 @@ export function quiverPose(positions,direction){
   const rearDepth=projectPoint(rear,direction).depth;
   return {top,bottom,width:4,depth:projectPoint(positions.chest,direction).depth+rearDepth*4,behind:rearDepth<=0.001};
 }
+export function stabilizeSculptedEyes(points,model,d){
+  const head=model.joints.head.position;
+  const lower=d===2||d===6?3:d===1||d===7?2:1;
+  for(const name of ['eyeL','eyeR']){
+    const eye=model.joints[name]?.position;
+    if(!eye)continue;
+    const offset=projectPoint(eye.map((value,i)=>value-head[i]),d);
+    const inward=d===2?1:d===6?-1:0;
+    points[name]={...points[name],x:points.head.x+offset.x+inward,y:points.head.y+offset.y+lower};
+  }
+  return points;
+}
+export function alignWorkKnees(points,action){
+  if(!['mine','woodcut'].includes(action))return points;
+  for(const side of ['L','R']){
+    const center=(points['hip'+side].x+points['foot'+side].x)/2;
+    points['knee'+side].x=center+(points['knee'+side].x-center)*.2;
+  }
+  return points;
+}
 export function drawPlayer(
   c,
   actor,
@@ -671,6 +691,7 @@ export function drawPlayer(
   }
   const human = !model.skeleton && !model.robot;
   const sculpted=human&&model.artGeneration===3;
+  if(sculpted){stabilizeSculptedEyes(p,model,d);alignWorkKnees(p,playerAction(actor));}
   const equipmentPose=playerEquipmentAction(actor,time,model);
   const look = actor.appearance || (human ? DEFAULT_APPEARANCE : null);
   const ink = human ? "#302b2b" : pal.outline;
@@ -1041,6 +1062,10 @@ export function drawPlayer(
       "Held item " + side,
       ['hand'+side],
     );
+    // The grip is part of this arm. A projected hand depth can fall behind
+    // its own forearm in profile poses, hiding a shield or wand in the sleeve.
+    if(['shield','wand'].includes(itemKind(gear[side === 'R' ? 'hand1' : 'hand2'])))
+      queue.at(-1).attachmentOrder={anchors:['Arm '+side],behind:false};
   }
   add(
     p.chest.depth,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {drawHumanHead,skinPalette} from '../src/human-head.mjs';
 import {drawHair,DEFAULT_APPEARANCE,HAIR_STYLES} from '../src/appearance.mjs';
-import {drawPlayer,directionVector,projectPoint} from '../src/player-motion.mjs';
+import {drawPlayer,directionVector,projectPoint,playerPose,stabilizeSculptedEyes,alignWorkKnees} from '../src/player-motion.mjs';
 import {paintItem} from '../src/item-art.mjs';
 import {ITEMS} from '../src/items.mjs';
 
@@ -25,6 +25,30 @@ test('Profile noses stay small and ears survive the hair pass',()=>{
     const sign=d===2?-1:1,pal=skinPalette(DEFAULT_APPEARANCE.skin);
     assert.equal(c.pixels.get(`${Math.round(p.head.x)+sign*4},${Math.round(p.head.y)}`),pal.light);
     assert.equal(c.pixels.get(`${Math.round(p.head.x)-sign},${Math.round(p.head.y)}`),pal.blush);
+  }
+});
+test('Sculpted eyes remain on the face when old animation tracks drift',()=>{
+  for(const d of [0,1,2,6,7]){
+    const points=Object.fromEntries(Object.entries(model.joints).map(([key,value])=>[key,projectPoint(value.position,d)]));
+    const drifted=structuredClone(points),visible=n=>model.visibility[n]?.[d]!==false;
+    for(const name of ['eyeL','eyeR']){drifted[name].x+=4;drifted[name].y-=5;}
+    const a=raster(),b=raster();
+    stabilizeSculptedEyes(points,model,d);stabilizeSculptedEyes(drifted,model,d);
+    drawHumanHead(a,points,d,DEFAULT_APPEARANCE.skin,DEFAULT_APPEARANCE,visible,true);
+    drawHumanHead(b,drifted,d,DEFAULT_APPEARANCE.skin,DEFAULT_APPEARANCE,visible,true);
+    assert.deepEqual(a.pixels,b.pixels,`facing ${d}`);
+  }
+});
+test('Mining and woodcutting knees stay aligned between hips and feet',()=>{
+  for(const action of ['mine','woodcut'])for(let frame=0;frame<model.clips[action].length;frame++)for(let d=0;d<8;d++){
+    const [faceX,faceY]=directionVector(d);
+    const pose=playerPose({animationAction:action,playerFrame:frame,faceX,faceY,equipment:{}},0,model);
+    const points=Object.fromEntries(Object.entries(pose).map(([name,value])=>[name,projectPoint(value,d)]));
+    alignWorkKnees(points,action);
+    for(const side of ['L','R']){
+      const hip=points['hip'+side].x,knee=points['knee'+side].x,foot=points['foot'+side].x;
+      assert.ok(Math.abs(knee-(hip+foot)/2)<1.1,`${action} frame ${frame} facing ${d} leg ${side}`);
+    }
   }
 });
 test('Long hair follows the frame clock, while static poses remain static',()=>{

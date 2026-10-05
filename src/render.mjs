@@ -713,11 +713,16 @@ export class Renderer {
         );
       }
       if (!player && a.hp > 0 && a.hp < a.maxHp) {
-        const healthY = a.y - (a.kind === "lion" ? 49 : 31);
+        const healthY = a.y - (a.kind === 'panther' ? 53 + (a.groundHeight||0) : a.kind === "lion" ? 49 : 31);
         ctx.fillStyle = "#182f21";
         ctx.fillRect(a.x - 15, healthY, 30, 3);
         ctx.fillStyle = "#df9a70";
         ctx.fillRect(a.x - 15, healthY, (30 * a.hp) / a.maxHp, 3);
+      }
+      if (!player && a.kind === 'panther' && a.hp > 0 && (a.pantherEnergy??100) < (a.pantherEnergyMax||100)-1) {
+        const energyY=a.y-48-(a.groundHeight||0),energy=Math.max(0,Math.min(a.pantherEnergyMax||100,a.pantherEnergy));
+        ctx.fillStyle='#14242b';ctx.fillRect(a.x-15,energyY,30,3);
+        ctx.fillStyle=energy>=(a.pantherEnergyMax||100)*.48?'#d8c471':'#8bafad';ctx.fillRect(a.x-15,energyY,30*energy/(a.pantherEnergyMax||100),3);
       }
       if (player) {
         drawBreath(ctx,a);

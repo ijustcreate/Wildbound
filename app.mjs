@@ -1347,7 +1347,7 @@ function inputFrame() {
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvB:!!pad.buttons[1]?.pressed,lobbyInteract:!!pad.buttons[0]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:!!pad.buttons[0]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
       inputs[device].tvDown=!!pad.buttons[13]?.pressed;
       inputs[device].tvUp=!!pad.buttons[12]?.pressed;
       previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
@@ -1457,7 +1457,7 @@ function inputFrame() {
     tvDown:keys.has("ArrowDown"),
     tvUp:keys.has("ArrowUp"),
     tvA:keys.has("KeyZ"),
-    tvB:keys.has("KeyX"),
+    tvX:keys.has("KeyX"),
     x:
       (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) -
       (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0),

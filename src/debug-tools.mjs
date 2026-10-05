@@ -1,6 +1,20 @@
 import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyTvWildboundFlow=()=>{
+    ctx.newLobby();
+    const game=ctx.game,lobby=ctx.playableLobby;
+    const heroes=[game.addPlayer('keyboard','Scout'),game.addPlayer('preview:1','Ember')];
+    lobby.sync();
+    for(const hero of heroes){const state=lobby.state.members.get(hero.id);state.spawned=true;state.x=785;state.y=165;lobby.close(hero);lobby.television.join(hero.id);}
+    lobby.television.nextLevel();lobby.television.nextLevel();
+    if(!lobby.television.completed)throw Error('TV level 2 did not finish');
+    lobby.update(.016,{});
+    if(!lobby.tvWildbound||lobby.tvWildbound.players.size!==2||game.phase!=='lobby')throw Error('TV did not transfer both players into a separate lobby mode');
+    for(let i=0;i<57;i++)lobby.tvWildbound.step(.05,{});
+    lobby.draw();
+    return {players:lobby.tvWildbound.players.size,phase:game.phase,png:lobby.canvas.toDataURL('image/png')};
+  };
   window.previewGhostMinions=async()=>{
     await window.showcase('game');
     const {summonGhost}=await import('./temple.mjs');
@@ -22,6 +36,23 @@ export function installDebugTools(ctx) {
     lobby.open(p,'difficulty');
     if(lobby.nodes.get(p.id).querySelectorAll('canvas').length!==3)throw Error('Missing difficulty icons');
     lobby.close(p);lobby.draw();return {passed:3};
+  };
+  window.verifyLobbyCollision=()=>{
+    ctx.newLobby();
+    const p=ctx.game.addPlayer('keyboard','Collision check');
+    p.profileId='collision-check';
+    const lobby=ctx.playableLobby;lobby.sync();
+    const state=lobby.state.members.get(p.id);state.spawned=true;state.panel=null;
+    for(const solid of [...lobby.practice.house.furniture,...lobby.practice.house.walls]){
+      const fromBelow=solid.y<200;
+      state.x=solid.x+solid.w/2;
+      state.y=fromBelow?solid.y+solid.h+10:solid.y-10;
+      for(let i=0;i<15;i++)lobby.update(.05,{keyboard:{y:fromBelow?-1:1}});
+      const stopped=fromBelow?state.y>=solid.y+solid.h+8:state.y<=solid.y-8;
+      if(!stopped||lobby.state.nearest(p)?.id!==solid.id)throw Error('Lobby collision or interaction failed: '+solid.id);
+    }
+    lobby.draw();
+    return {objects:lobby.practice.house.furniture.length+lobby.practice.house.walls.length,canvas:[lobby.canvas.width,lobby.canvas.height]};
   };
   window.verifyInputOwnership=()=>{
     ctx.newLobby();
