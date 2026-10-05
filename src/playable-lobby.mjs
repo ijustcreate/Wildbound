@@ -18,6 +18,7 @@ import { loadQuiver } from './arrow-supplies.mjs';
 import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision} from './lobby-tv.mjs';
+import {TvWildbound} from './tv-wildbound.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
@@ -104,7 +105,8 @@ export class PlayableLobby {
     modeButton.onclick=()=>{const g=this.getGame();g.houseWorldsEnabled=!g.houseWorldsEnabled;modeButton.textContent=`House worlds mode: ${g.houseWorldsEnabled?'On — roll 5 or 8 to travel':'Off'}`;modeButton.setAttribute('aria-pressed',String(g.houseWorldsEnabled));this.state.invalidate(g.players);};
     area.after(modeButton);
     root.querySelector('.party-heading h1').textContent='Gather around the board';
-    root.querySelector('.party-help').textContent='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: D-pad / arrows move; right face / X jumps twice; bottom face / Z runs; down enters pipes; walk away to leave';
+    this.defaultHelp='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: D-pad / arrows move; A (Z key) jumps twice; X runs (X key); down enters pipes; walk away to leave';
+    root.querySelector('.party-help').textContent=this.defaultHelp;
     this.canvas.onclick=e=>{
       const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return;
       const r=this.canvas.getBoundingClientRect(),view=this.view||{x:512,y:310,zoom:r.width/1024};
@@ -114,7 +116,7 @@ export class PlayableLobby {
     };
     for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest','character-station','television'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
-  reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.nodes.clear();this.panels.replaceChildren();}
+  reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
   keepSelectedPlayers(players=this.getGame().players){
     this.state.sync(players);
     for(const [i,p] of players.entries()){
@@ -264,6 +266,17 @@ export class PlayableLobby {
   }
   update(dt,inputs,blocked=false){
     this.sync();const players=this.getGame().players;
+    if(this.tvWildbound){
+      const commands={};
+      for(const [id] of this.tvWildbound.players){
+        const hero=players.find(p=>p.id===id),input=hero?inputs[hero.device]||{}:{};
+        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,attack:!!input.tvX||!!input.attack,run:!!input.block};
+        if(this.tvWildbound.won&&input.lobbyInteract){this.reset();this.draw();return;}
+      }
+      if(!blocked)this.tvWildbound.step(dt,commands);
+      this.draw();return;
+    }
+    const joinedTv=new Set();
     for(const p of players){
       const s=this.state.members.get(p.id),input=players.find(q=>q.device===p.device)===p?(inputs[p.device]||{}):{};
       if(this.television?.players.has(p.id)&&(blocked||!s.spawned||p.lobbyDisconnected||Math.hypot(s.x-785,s.y-165)>103||p.ui))this.television.leave(p.id);
@@ -282,7 +295,7 @@ export class PlayableLobby {
           if(o?.id==='character-station'&&edge('lobbyInteract'))this.openCharacterStation(p);
           if(this.television?.players.has(p.id)){
             if(edge('interact'))this.television.leave(p.id);
-          }else if((edge('tvA')||edge('lobbyInteract'))&&o?.id==='television')this.open(p,'television');
+          }else if((edge('tvA')||edge('lobbyInteract'))&&o?.id==='television'){this.open(p,'television');joinedTv.add(p.id);}
           else if(edge('lobbyInteract')&&o?.id!=='character-station'){
             if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}
             else if(o)this.open(p,o.id);
@@ -298,7 +311,7 @@ export class PlayableLobby {
     for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
     for(const p of players)if(this.television?.players.has(p.id)){
       const input=inputs[p.device]||{};
-      tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvB,run:!!input.tvA,down:!!input.tvDown,up:!!input.tvUp};
+      tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA&&!joinedTv.has(p.id),joinHeld:joinedTv.has(p.id),run:!!input.tvX,down:!!input.tvDown,up:!!input.tvUp};
       practiceInputs[p.device]={x:input.walkX||0,y:input.walkY||0};
     }
     this.practice.stepPractice(dt,players,this.state.members,practiceInputs,blocked);
@@ -306,13 +319,19 @@ export class PlayableLobby {
       const s=this.state.members.get(p.id);if(Math.hypot(s.x-785,s.y-165)>103)this.television.leave(p.id);
     }
     if(!blocked)this.television?.step(dt,tvCommands);
+    if(this.television?.completed){
+      const party=players.filter(p=>this.television.players.has(p.id));
+      this.tvWildbound=new TvWildbound(party,this.television.seed);
+      this.panels?.replaceChildren();
+      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · Arrows / D-pad: move · Z / A: jump · X / X: hit enemies and the board to roll · Hit the board until all 30 spaces glow';
+    }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
       this.petHudClock=0;let hud=this.area.querySelector('.lobby-pets');
       if(!hud){hud=document.createElement('div');hud.className='lobby-pets';this.area.append(hud);}
       if(!hud.contains(document.activeElement)){hud.replaceChildren();for(const a of this.practice.players){const card=petCard(this.practice,a);if(card){const owner=document.createElement('small');owner.textContent=a.name+"’s companion";card.prepend(owner);hud.append(card);}}}
     }
-    if(!blocked&&this.state.tick(dt,players))this.start();
+    if(!this.tvWildbound&&!blocked&&this.state.tick(dt,players))this.start();
     this.draw();
     this.area.querySelector('.lobby-countdown').textContent=this.state.countdown!==null?`The board opens in ${Math.max(1,Math.ceil(this.state.countdown))}…`:'';
   }
@@ -350,6 +369,7 @@ export class PlayableLobby {
   }
   draw(){
     const c=this.canvas.getContext('2d'),{w,h,scale}=resizeGameSurface(this.canvas,c);
+    if(this.tvWildbound){this.tvWildbound.draw(c,w,h,this.animator);return;}
     // Fit the room, totem card, and lower captions. Joining never crops stations.
     this.view=lobbyCamera(w*2,h*2);
     const view=this.view;this.labels=[];

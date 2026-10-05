@@ -10,6 +10,7 @@ import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equ
 import {startJump,tickJump} from './jumping.mjs';
 import {tamePet,tickHunterPets,hunterPets,hurtPet,petPvPEvent} from './hunter-pets.mjs';
 import {tickWildBatRoost} from './bat-roost.mjs';
+import {tickPanther} from './panther-ai.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
 import {victoryChestBlocked} from './victory-chest.mjs';
@@ -162,7 +163,7 @@ export const EVENTS = [
     speed: 85,
     damage: 15,
     verse: "A silver fruit, a shadow near.\nWin the clearing. Lose your fear.",
-    tip: "Defeat the panther for healing fruit for the whole party.",
+    tip: "Watch its crouch before the swoop. Its attacks tire it; a snare buys breathing room.",
   },
   {name:"Stripes in the sanctum",kind:"tiger",environment:"temple",count:2,hp:105,speed:76,damage:18,weight:18,verse:"Orange shadows cross the stone.\nThe temple is not yours alone.",tip:"Watch for jumping tigers. Dodge their pounce, then strike."}
 
@@ -1289,7 +1290,7 @@ export class Game {
       if(tickWildBatRoost(this,e,dt,alive))continue;
       tickJump(e,dt,this,collisionOffset(this,e));
       if (e.hp <= 0 || ((e.stampeding || e.kind === "rhino") && !e.aggro)) continue;
-      if(creatures[e.kind]?.behaviors.jump&&e.state==='hunt'){
+      if(e.kind !== 'panther' && creatures[e.kind]?.behaviors.jump&&e.state==='hunt'){
         const target=alive.reduce((best,p)=>!best||distance(e,p)<distance(e,best)?p:best,null);
         if(target&&distance(e,target)>65&&distance(e,target)<180&&clearShot(this,e,target))startJump(e);
       }
@@ -1349,6 +1350,7 @@ export class Game {
       if (aiKind === "vine")
         p = this.baits.find((b) => distance(b, e) < 180) || p;
       if (!p) continue;
+      if (aiKind === 'panther') { tickPanther(this,e,p,dt,cfg?.stats); continue; }
 
       if (cfg?.stats?.detection && distance(e, p) > (this.house?2200:cfg.stats.detection))
         continue;

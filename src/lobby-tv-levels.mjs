@@ -1,5 +1,7 @@
 // Every section has safe, flat entrance/exit tiles. Distances are tile columns.
 export const TV_SECTION_TILES=28;
+// Short test course: one familiar starter section and four shuffled sections.
+export const TV_SCENES_PER_LEVEL=5;
 const scene=(name,gaps,bricks,pipes,enemies,mushroom)=>Object.freeze({name,gaps,bricks,pipes,enemies,mushroom});
 export const TV_SCENES=Object.freeze([
  scene('Classic',[13,14,15],[[6,72],[7,72],[20,72],[21,72]],[[22,32],[23,48]],[10,25],8),
@@ -17,6 +19,16 @@ export const TV_SCENES=Object.freeze([
  scene('Broken bridge',[10,11,12,17,18],[[8,72],[13,72],[14,72],[15,72],[20,72]],[[24,32]],[6,22],4),
  scene('Treasure approach',[],[[7,64],[8,64],[9,64],[15,80],[16,80],[20,56]],[[23,48]],[12,25],5),
 ]);
+// The second course uses the same safe section seams, but its own jumps,
+// platforms, and enemy positions. The pipe rooms are separate bonus areas.
+export const TV_CAVERN_SCENES=Object.freeze(TV_SCENES.map((s,i)=>scene(
+ `Blue cavern ${i+1}`,
+ s.gaps.map(c=>Math.max(6,Math.min(21,c+(i%2?1:-1)))),
+ s.bricks.map(([c,y])=>[c,Math.max(40,Math.min(88,y+(i%3-1)*8))]),
+ s.pipes.map(([c,h])=>[c,h]),
+ s.enemies.map(c=>Math.max(6,Math.min(25,c+(i%2?-1:1)))),
+ s.mushroom
+)));
 export function tvSceneIndex(section,seed){
  if(section===0)return 0;
  // Seeded bags include each variation once, instead of repeating a fixed scene.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {LobbyTelevision} from '../src/lobby-tv.mjs';
 import {LobbyState,PlayableLobby} from '../src/playable-lobby.mjs';
 import {Game} from '../src/core.mjs';
-import {TV_SCENES,tvSceneIndex} from '../src/lobby-tv-levels.mjs';
+import {TV_SCENES,TV_CAVERN_SCENES,TV_SCENES_PER_LEVEL,TV_SECTION_TILES,tvSceneIndex} from '../src/lobby-tv-levels.mjs';
 
 test('the lobby TV accepts two players and pauses when both walk away',()=>{
   const tv=new LobbyTelevision();
@@ -24,10 +24,12 @@ test('A at the TV takes input from practice and walking away releases it',()=>{
   lobby.update(.05,{'pad:0':{tvA:true,attack:true}});
   assert.equal(television.players.has(player.id),true);
   assert.deepEqual(practiceInput,{x:0,y:0});
-  lobby.update(.016,{'pad:0':{tvB:true}});
-  assert.equal(television.players.get(player.id).jumps,1,'right face button now jumps');
-  lobby.update(.016,{'pad:0':{tvA:true,tvRight:true}});
-  assert.equal(television.players.get(player.id).vx,105,'bottom face button now runs');
+  assert.equal(television.players.get(player.id).jumps,0,'joining does not spend a jump');
+  lobby.update(.016,{'pad:0':{tvA:false}});
+  lobby.update(.016,{'pad:0':{tvA:true}});
+  assert.equal(television.players.get(player.id).jumps,1,'bottom face button jumps');
+  lobby.update(.016,{'pad:0':{tvX:true,tvRight:true}});
+  assert.equal(television.players.get(player.id).vx,105,'left face button runs');
   lobby.update(.05,{'pad:0':{tvA:false,walkX:1}});
   assert.equal(television.players.has(player.id),false);
 });
@@ -42,6 +44,9 @@ test('endless terrain, breakable bricks, enemies and respawn remain available',(
   Object.assign(player,{x:brick.x+2,y:brick.y+brick.h+1,vy:-120});
   tv.move(player,.02,true);
   assert.equal(tv.broken.has(brick.key),true);
+  assert.equal(tv.particles.length,8,'broken brick emits fragments');
+  for(let i=0;i<20;i++)tv.step(.05,{});
+  assert.equal(tv.particles.length,0,'fragments expire');
   tv.die(player);assert.equal(player.alive,false);
   for(let i=0;i<24;i++)tv.step(.05,{});
   assert.equal(player.alive,true);
@@ -50,10 +55,34 @@ test('endless terrain, breakable bricks, enemies and respawn remain available',(
 
 test('14 distinct scenes shuffle reproducibly with safe seams',()=>{
  assert.equal(TV_SCENES.length,14);assert.equal(new Set(TV_SCENES.map(s=>JSON.stringify(s))).size,14);
+ assert.equal(TV_CAVERN_SCENES.length,14);assert.notDeepEqual(TV_CAVERN_SCENES[0].gaps,TV_SCENES[0].gaps);
  const bag=Array.from({length:14},(_,i)=>tvSceneIndex(i+1,42));assert.equal(new Set(bag).size,14);
  assert.deepEqual(bag,Array.from({length:14},(_,i)=>tvSceneIndex(i+1,42)));
  assert.notDeepEqual(bag,Array.from({length:14},(_,i)=>tvSceneIndex(i+1,123)));
  for(const s of TV_SCENES){assert.ok(s.gaps.every(c=>c>=6&&c<=21));assert.ok(s.pipes.length);}
+});
+
+test('five sections per level lead to a jumped flag and timed castle entry on both courses',()=>{
+ const tv=new LobbyTelevision(42);tv.join('one');tv.join('two');
+ assert.equal(TV_SCENES_PER_LEVEL,5);
+ const [a,b]=[...tv.players.values()],flag=TV_SCENES_PER_LEVEL*TV_SECTION_TILES*16+17*16;
+ assert.equal(tv.terrain(TV_SCENES_PER_LEVEL*TV_SECTION_TILES+13),'ground');
+ assert.ok(tv.blocks(flag-220,flag).some(v=>v.kind==='hill'));
+ tv.camera=flag-150;Object.assign(a,{x:flag-10,y:104,vy:0,invulnerable:10});
+ tv.step(.016,{});assert.equal(tv.finishTimer,0,'walking under the flag does not finish');
+ Object.assign(a,{x:flag-10,y:80,vy:0,invulnerable:10});
+ tv.step(.016,{});assert.ok(tv.flagged.has('one'));assert.ok(tv.finishTimer>0);
+ Object.assign(b,{x:flag-10,y:80,vy:0,invulnerable:10});
+ tv.step(.016,{});assert.ok(tv.flagged.has('two'));
+ for(let i=0;i<45;i++)tv.step(.05,{});
+ assert.ok(a.x>flag+80&&b.x>flag+80,'both flagged players walk into the castle');
+ for(let i=0;i<123;i++)tv.step(.05,{});
+ assert.equal(tv.level,2);assert.equal(tv.camera,0);assert.ok(tv.stageNotice>0);assert.equal(tv.flagged.size,0);
+ assert.notDeepEqual(tv.scene(0),TV_SCENES[0]);
+ tv.camera=flag-150;Object.assign(a,{x:flag-10,y:80,vy:0,invulnerable:10});
+ tv.step(.016,{});assert.ok(tv.finishTimer>0);
+ for(let i=0;i<123;i++)tv.step(.05,{});
+ assert.equal(tv.level,2);assert.equal(tv.completed,true,'the second castle enters TV Wildbound');
 });
 test('two separate jump presses work; holding or pressing a third time cannot fly',()=>{
  const tv=new LobbyTelevision(42);tv.join('one');const p=tv.players.get('one');
@@ -75,9 +104,15 @@ test('coins collect once and mushrooms absorb an enemy hit',()=>{
  const tv=new LobbyTelevision(42);tv.join('one');const p=tv.players.get('one');
  const coin=tv.pickups().find(v=>v.kind==='coin');Object.assign(p,{x:coin.x,y:coin.y});tv.step(.016,{});
  assert.equal(tv.coins,1);assert.ok(!tv.pickups().some(v=>v.key===coin.key));tv.step(.016,{});assert.equal(tv.coins,1);
- const mushroom=tv.pickups().find(v=>v.kind==='mushroom');Object.assign(p,{x:mushroom.x,y:mushroom.y,vy:0});tv.step(.016,{});assert.equal(p.powered,true);
+ assert.equal(tv.pickups().some(v=>v.kind==='mushroom'),false,'mushrooms begin inside question blocks');
+ const box=tv.blocks(0,200).find(v=>v.kind==='question');assert.ok(box);
+ Object.assign(p,{x:box.x+2,y:box.y+box.h+1,vy:-120,grounded:false});tv.move(p,.02,true);
+ assert.ok(tv.released.has(box.section));
+ const mushroom=tv.pickups().find(v=>v.kind==='mushroom');assert.ok(mushroom.y<box.y);
+ Object.assign(p,{x:mushroom.x,y:mushroom.y,vy:0});tv.step(.016,{});assert.equal(p.powered,true);
+ assert.deepEqual([p.w,p.h],[14,20]);
  Object.assign(p,{x:32,y:104,vy:0,invulnerable:0});tv.enemies.set('test',{x:32,y:108,w:13,h:12,vx:0,vy:0,alive:true});tv.step(.016,{});
- assert.equal(p.alive,true);assert.equal(p.powered,false);assert.ok(p.invulnerable>1);
+ assert.equal(p.alive,true);assert.equal(p.powered,false);assert.deepEqual([p.w,p.h],[12,16]);assert.ok(p.invulnerable>1);
 });
 test('stomping defeats a goomba and bounces the player',()=>{
  const tv=new LobbyTelevision(42);tv.join('one');const p=tv.players.get('one');Object.assign(p,{x:32,y:91,vy:50,grounded:false});
@@ -93,4 +128,5 @@ test('pipes take both players underground and return to the same pipe without re
  assert.equal(tv.area,'overworld');assert.equal(tv.camera,200);assert.equal(p.x,pipe.x);assert.ok([...tv.players.values()].every(p=>p.alive&&p.y+p.h===pipe.y));
  tv.enterPipe(pipe);assert.equal(tv.pickups().length,23);
  tv.reset();assert.equal(tv.area,'overworld');assert.equal(tv.coins,0);assert.equal(tv.collected.size,0);
+ assert.equal(tv.released.size,0);
 });

@@ -15,11 +15,11 @@ Over time, the project is intended to become a standalone game that is easy to m
 <img src="assets/wildbound-header-v2.png" alt="Wildbound jungle adventure banner" width="100%">
 
 <p>
-  <strong>Latest build: 1.0.31 development build</strong><br>
+  <strong>Current desktop build comes from the local checkout</strong><br>
   Living expeditions · expanded rigs · night-hunt systems · Field Kit systems
 </p>
 
-<a href="RELEASE_REPORT_1.0.31.md">Release notes</a> ·
+<a href="docs/DEVELOPMENT_HANDOFF.md">Desktop build and handoff guide</a> ·
 <a href="CHANGELOG.md">Changelog</a> ·
 <a href="PLAYER_ANIMATION.md">Animation guide</a> ·
 <a href="assets/FIELD_KIT_ASSETS.md">Asset manifest</a>
@@ -30,7 +30,7 @@ Over time, the project is intended to become a standalone game that is easy to m
 
 **Developing on another computer or account?** Start with the [development handoff guide](docs/DEVELOPMENT_HANDOFF.md). It explains the Electron launch path, rebuilding desktop shortcuts, and which saves/editor data GitHub does not transfer. Coding agents should also read [AGENTS.md](AGENTS.md).
 
-1. Launch the versioned desktop shortcut generated below for the packaged version in `dist/<package.json version>/Wildbound-win32-x64/` (currently 1.0.31).
+1. Run `Play Wildbound.cmd --check` to verify the packaged build matches this checkout, then launch the refreshed versioned desktop shortcut. A new checkout needs a local rebuild.
 2. To preview the web version locally, run **[Play Wildbound Browser.cmd](Play%20Wildbound%20Browser.cmd)**. The hosted web build is at [ijustcreate.github.io/Wildbound](https://ijustcreate.github.io/Wildbound/).
 3. Keep the complete packaged folder together when moving or sharing an Electron build.
 4. Gather 1–6 local players, choose explorers and difficulty, then open the board and strike the table to roll.
@@ -41,13 +41,13 @@ Reach space 48, hold Interact near the table to seal the jungle, and collect the
 
 ### Creating the Windows desktop shortcut
 
-After packaging, run this from the project root:
+Run this from the project root after a pull or source changes:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\rebuild-desktop.ps1
 ```
 
-The script reads the version from `package.json`, requires the matching `dist/<version>/Wildbound-win32-x64/Wildbound.exe`, and creates or refreshes `Wildbound Latest (<version>).lnk` on the current user's Desktop. It uses `assets/wildbound-icon.ico` and points the shortcut at the packaged executable.
+The script tests, packages, records the source commit beside the executable, and creates or refreshes `Wildbound Latest (<version>).lnk` on the current user's Desktop. The shortcut uses `assets/wildbound-icon.ico` and targets the repository launcher, which refuses an old package after a pull instead of silently opening it.
 
 ## What’s in the current build
 

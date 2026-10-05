@@ -216,6 +216,7 @@ export function creatureDefaults(kind) {
       dashCooldown: kind === "panther" ? 0.65 : 1.8,
       dashDistance: kind === "panther" ? 80 : 163,
       dashSpeed: 340,
+      ...(kind === 'panther' ? {energyMax:100,energyRegen:16,restEnergyRegen:22,swipeEnergy:18,biteEnergy:25,swoopEnergy:48} : {}),
       rangedCooldown: 2.3,
       dropChance: 1,
       bananaCooldown: 2.5,

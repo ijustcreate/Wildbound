@@ -17,6 +17,18 @@ export const CUES={
 export const FAMILIES={gorilla:[9,.65],lion:[1,.75],tiger:[1,.7],white_lion:[1,.66],panther:[2,.85],snow_leopard:[2,.78],wolf:[3,1],crocodile:[4,.65],boar:[5,.9],snake:[6,1.5],bat:[7,1.9],beetle:[8,1.6],wasp:[8,2.2],bee:[8,2.3],vine:[6,.65],golem:[9,.5],monkey:[0,1],skeleton:[10,1.1],skeleton_unarmed:[10,1.2],skeleton_boss:[10,.65],archer:[10,1.05],skeleton_wizard:[10,.85],rhino:[5,.6],dragon:[9,.55],fire_elemental:[6,.65],spider:[8,1.25],baby_spider:[8,1.8],spider_egg:[8,.8]};
 export function creatureCue(kind,action){
  if(kind==='wolf')return {files:[`assets/sfx/wolf/${action==='spawn'?'howl':action==='death'?'whimper':action==='hurt'?'yelp':'snarl'}.wav`],rate:1,gain:action==='spawn'?.23:.28,maxDuration:action==='spawn'?2.4:1};
+ if(kind==='panther'){
+  const panther={
+   spawn:{files:['assets/sfx/creatures/monster-2.wav'],rate:.78,gain:.17,maxDuration:1.1},
+   windup:{files:['assets/sfx/creatures/snarl.ogg'],rate:.7,gain:.18,maxDuration:.48},
+   swoop:{files:['assets/sfx/rpg/cloth3.ogg','assets/sfx/rpg/cloth4.ogg'],rate:.7,gain:.33,maxDuration:.36},
+   swipe:{files:['assets/sfx/rpg/knifeSlice.ogg','assets/sfx/rpg/knifeSlice2.ogg'],rate:.83,gain:.3,maxDuration:.36},
+   bite:{files:['assets/sfx/creatures/snarl.ogg'],rate:.9,gain:.28,maxDuration:.48},
+   hurt:{files:['assets/sfx/creatures/monster-2.wav'],rate:1.2,gain:.19,maxDuration:.45},
+   death:{files:['assets/sfx/creatures/monster-2.wav'],rate:.62,gain:.23,maxDuration:1.4},
+  };
+  return panther[action] || panther.bite;
+ }
  const [n,rate]=FAMILIES[kind]||FAMILIES.lion;
  let sources=n?[`assets/sfx/creatures/monster-${n}.wav`]:files('creatures','monkey-1,monkey-2,monkey-3');
  if(n===8)sources=files('creatures','tiny0,tiny1,tiny2');

@@ -14,7 +14,7 @@ git fetch origin
 git log -3 --oneline
 ```
 
-The project remote is `https://github.com/ijustcreate/Wildbound`. Inspect outstanding local work before pulling. On a clean checkout tracking the intended branch, use `git pull --ff-only`. If it cannot fast-forward, reconcile the branches deliberately; do not reset away work. Read `AGENTS.md` and the latest relevant handoff in `docs/history/`.
+The project remote is `https://github.com/ijustcreate/Wildbound`. Inspect outstanding local work before pulling. On a clean checkout tracking the intended branch, use `git pull --ff-only`. If it cannot fast-forward, reconcile the branches deliberately; do not reset away work. Read `AGENTS.md` and the latest relevant handoff in `docs/history/`. Record the receiving checkout's commit with `git rev-parse HEAD`.
 
 ## 2. Run the desktop source build
 
@@ -29,22 +29,21 @@ npm start
 
 ## 3. Build and recreate the shortcut on this computer
 
-Close the old build before replacing its versioned output, after checking with anyone using it. From the checkout:
-
-```sh
-node --test tests/*.test.mjs
-node scripts/package.cjs
-```
-
-Only after packaging succeeds, run in PowerShell:
+First check what the repository launcher would run:
 
 ```powershell
-& ./scripts/create-desktop-shortcut.ps1 -DesktopPath ([Environment]::GetFolderPath('Desktop'))
+& '.\Play Wildbound.cmd' --check
 ```
 
-The script targets `dist/<package.json version>/Wildbound-win32-x64/Wildbound.exe` and assigns the project icon. Verify the shortcut target and working directory and launch it to confirm the intended game loads. Do not carry `.lnk` files with another user's absolute paths to the new machine.
+It reports the exact executable, source commit and build time. If it reports a missing or mismatched build, the pulled source is newer than the package. Do not use an old desktop shortcut as evidence that the pull worked. Close the target build before replacing it, after checking with anyone using it. Then run from the checkout:
 
-For non-overwriting test builds, `node scripts/package.cjs --preview` creates a timestamped `dist/night-hunt-...` folder. The existing shortcut script does **not** select these folders: a test shortcut must explicitly target the exact successful output. This packaging flag names the output; it does not itself add the runtime `--preview` argument.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\rebuild-desktop.ps1
+```
+
+This single step runs the Node tests, packages the current source, writes `wildbound-build.json` beside the executable, and creates or refreshes the versioned Desktop shortcut. It checks for the local Electron dependencies and stops if the target game is running. The shortcut targets this checkout's `Play Wildbound.cmd`, which checks the build each time before opening `dist/<package.json version>/Wildbound-win32-x64/Wildbound.exe`; it uses the project icon. Run `Play Wildbound.cmd --check` again, inspect the shortcut target and working directory, and launch it to confirm the intended game loads. Replace old shortcuts that target an executable directly. Do not carry `.lnk` files with another user's absolute paths to the new machine. If the Desktop is redirected, pass `-DesktopPath` to the rebuild script.
+
+For non-overwriting test builds, `node scripts/package.cjs --preview` creates a timestamped `dist/night-hunt-...` folder. The normal launcher and shortcut do **not** select these folders: a test shortcut must explicitly target the exact successful output. This packaging flag names the output; it does not itself add the runtime `--preview` argument. The normal launcher does not pass `--preview`, so it uses the normal Electron profile.
 
 Keep the entire packaged directory together when distributing a playable build. `dist/` is ignored by Git. Rebuild on the destination or deliberately transfer a complete release; pulling source alone is not enough.
 
@@ -67,4 +66,4 @@ If the house looks old, establish which profile/origin/computer holds the intend
 
 Inspect local live diagnostics (see `docs/live-diagnostics.md`) and renderer errors when the game freezes, ignores input, or leaves the lobby on screen. Confirm the launched executable corresponds to the new build. For inventory layout changes, `npx electron scripts/verify-inventory-sizing.cjs` uses an isolated test profile to check selection stability.
 
-Before a requested push, inspect the diff and tests. Add a handoff with the source commit, symptoms and observations, implemented fixes, test results, unverified behavior and outstanding user questions. Push without forcing, then verify the remote revision. Source pushes, GitHub Pages deployments and release uploads are separate actions.
+Before a requested push, inspect the diff and tests. Add a handoff with the source commit, symptoms and observations, implemented fixes, test results, unverified behavior and outstanding user questions. Push without forcing, then verify the remote revision. The receiving machine should check four identities: remote commit, local HEAD, `wildbound-build.json` source commit, and desktop shortcut target. A source push cannot update the other machine's package or `.lnk`; run the rebuild there. Read the packaged smoke report's `failed` count when one is run; a process exit alone is insufficient. Source pushes, GitHub Pages deployments and release uploads are separate actions.
