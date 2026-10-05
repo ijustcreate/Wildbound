@@ -1,0 +1,3 @@
+# Arrow stack visuals
+
+Ground stacks display up to three slightly fanned shafts and a bordered, content-sized ×quantity badge anchored below the visible shaft rather than the ground coordinate. This also keeps elevated impact labels attached. Lobby target arrows group visually by target and ammunition type without changing individual projectile/pickup records. Counts of one are unlabelled. Tests cover grouping, record preservation, ammo separation and target id zero. Electron preview covers four directions, quantities 1/5/10/100 and elevated impacts. Includes unpushed 1.0.48–1.0.50 work; no Git push.

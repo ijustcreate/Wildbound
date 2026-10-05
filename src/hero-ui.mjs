@@ -3,7 +3,7 @@ import {drawWetDrips} from './wet-weather.mjs';
 import {merchantPanel} from './traveling-merchant.mjs';
 import {ARROW_TYPES,quiverType} from './arrow-supplies.mjs';
 import { bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
-import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
+import {GEAR_SETS,setProgress,socketCount,gearStat,RARITIES} from './items.mjs';
 import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
 import { compareItem, itemStatDelta, canAccess, protectedItem } from "./field-systems.mjs";
@@ -47,7 +47,9 @@ export class HeroUI {
     const show = () => {
       let tip = panel.querySelector('.item-tooltip');
       if (!tip) { tip = el('div', null, 'item-tooltip'); panel.append(tip); }
-      tip.replaceChildren(el('strong', def.name));
+      const name=el('strong',def.name,'item-name');
+      name.style.color=RARITIES[def.rarity]||RARITIES.common;
+      tip.replaceChildren(name);
       if (def.description) tip.append(el('p', def.description));
       const stats = el('div', null, 'item-tooltip-stats');
       const base = itemStats(item.type);
@@ -69,14 +71,30 @@ export class HeroUI {
       }
       tip.hidden = false;
       const r = button.getBoundingClientRect(), pr = panel.getBoundingClientRect();
-      const bx = r.left - pr.left, by = r.top - pr.top;
+      const scale=pr.width/panel.offsetWidth||1;
+      const panelWidth=panel.clientWidth,panelHeight=panel.clientHeight;
       const gap=8,tw=tip.offsetWidth,th=tip.offsetHeight;
-      const x=Math.max(4,Math.min(pr.width-tw-4,r.right-pr.left+gap));
-      const preferred=r.bottom-pr.top+gap;
-      const y=preferred+th<=pr.height-4?preferred:Math.max(4,by-th-gap);
+      const left=(r.left-pr.left)/scale,right=(r.right-pr.left)/scale,top=(r.top-pr.top)/scale,bottom=(r.bottom-pr.top)/scale;
+      const sideRight=right+gap,sideLeft=left-tw-gap;
+      const centeredX=Math.max(4,Math.min(panelWidth-tw-4,(left+right-tw)/2));
+      const belowY=bottom+gap,aboveY=top-th-gap;
+      const candidates=[
+        {x:sideRight,y:Math.max(4,Math.min(panelHeight-th-4,(top+bottom-th)/2)),side:'right',fits:sideRight+tw<=panelWidth-4},
+        {x:sideLeft,y:Math.max(4,Math.min(panelHeight-th-4,(top+bottom-th)/2)),side:'left',fits:sideLeft>=4},
+        {x:centeredX,y:belowY,side:'bottom',fits:belowY+th<=panelHeight-4},
+        {x:centeredX,y:aboveY,side:'top',fits:aboveY>=4},
+      ];
+      // Keep bag contents visible; equipment details preferentially use the portrait side.
+      if(button.dataset.mode==='pack'||button.dataset.mode==='chest') candidates.sort((a,b)=>(a.side==='top'?-1:0)-(b.side==='top'?-1:0));
+      const placement=candidates.find(candidate=>candidate.fits)||candidates.reduce((best,candidate)=>{
+        const visible=Math.max(0,Math.min(panelWidth,candidate.x+tw)-Math.max(0,candidate.x))*Math.max(0,Math.min(panelHeight,candidate.y+th)-Math.max(0,candidate.y));
+        return !best||visible>best.visible?{...candidate,visible}:best;
+      },null);
+      const x=Math.max(4,Math.min(panelWidth-tw-4,placement.x));
+      const y=Math.max(4,Math.min(panelHeight-th-4,placement.y));
       tip.style.left=x+'px';tip.style.top=y+'px';
       tip.style.setProperty('--tether-x',Math.max(4,Math.min(tw-4,r.right-pr.left-x))+'px');
-      tip.classList.toggle('tooltip-above',y<by);
+      tip.classList.toggle('tooltip-above',placement.side==='top');
       tip.hidden = false;
     };
     const hide = () => { const tip = panel.querySelector('.item-tooltip'); if (tip) tip.hidden = true; };
@@ -341,7 +359,13 @@ export class HeroUI {
         portrait.width = 140;
         portrait.height = 180;
         portrait.className = "equipment-preview";
-        sheet.append(portrait);
+        const previewFrame=el('div',null,'inventory-character');
+        const rotate=delta=>{u.previewDirection=((u.previewDirection||0)+delta+8)%8;};
+        const previous=button('‹','preview-left',()=>rotate(-1));
+        const next=button('›','preview-right',()=>rotate(1));
+        previous.setAttribute('aria-label','Rotate character left');next.setAttribute('aria-label','Rotate character right');
+        previous.className='preview-turn preview-turn-left';next.className='preview-turn preview-turn-right';
+        previewFrame.append(portrait,previous,next);sheet.append(previewFrame);
       }
       const controls = el("nav");
       controls.append(
@@ -460,7 +484,7 @@ export class HeroUI {
             ? "item" + n
             : mode + "-item" + n;
         const b = button(
-          (gear ? item.slot.toUpperCase().replace('HAND', 'HAND ') : (item?.type === "occupied" ? "BOTH" : def ? "" : "—")) +
+          (gear ? item.slot.toUpperCase().replace('HAND', 'HAND ') : (item?.type === "occupied" ? "BOTH" : "")) +
             (item?.qty > 1 ? " ×" + item.qty : ""),
           action,
           () => { select(mode, n); if (def?.bag) u.bag = {mode, index:n, selected:0}; },
@@ -597,6 +621,7 @@ export class HeroUI {
         add("Split stack", "split-chest", "split");
       }
       sheet.append(actions);
+      if(active) actions.classList.add('current-inventory-actions');
       layout.append(sheet);
     }
     panel.append(
@@ -607,6 +632,8 @@ export class HeroUI {
         "storage-notice",
       ),
     );
+    const currentActions=layout.querySelector('.current-inventory-actions');
+    if(currentActions) panel.append(currentActions);
     if(victoryStorage){
       const endActions=el('nav',null,'victory-loot-actions');
       const restart=button('Restart this level','victory-restart',()=>panel.dispatchEvent(new CustomEvent('victory-action',{bubbles:true,detail:'restart'})));
@@ -638,7 +665,9 @@ export class HeroUI {
       if (!item || item.qty < 2) { delete u.split; return; }
       const popup = el('form', null, 'inventory-popover split-popover');
       popup.setAttribute('aria-label', 'Split stack');
-      popup.append(el('strong', 'Split ' + ITEMS[item.type].name));
+      const splitName=el('strong','Split '+ITEMS[item.type].name);
+      splitName.style.color=RARITIES[ITEMS[item.type].rarity]||RARITIES.common;
+      popup.append(splitName);
       const row = el('div', null, 'split-stepper'), amount = el('input');
       amount.type = 'number'; amount.min = 1; amount.max = item.qty - 1; amount.value = s.amount;
       amount.setAttribute('aria-label', 'Amount to split');
@@ -656,7 +685,9 @@ export class HeroUI {
       if (!rule) { delete u.bag; return; }
       const popup = el('section', null, 'inventory-popover bag-popover');
       popup.setAttribute('aria-label', ITEMS[bag.type].name);
-      popup.append(el('strong', ITEMS[bag.type].name), button('\u00d7', 'bag-close', () => { delete u.bag; panel.uiSignature = null; }));
+      const bagName=el('strong',ITEMS[bag.type].name);
+      bagName.style.color=RARITIES[ITEMS[bag.type].rarity]||RARITIES.common;
+      popup.append(bagName, button('\u00d7', 'bag-close', () => { delete u.bag; panel.uiSignature = null; }));
       const grid = el('div', null, 'bag-grid');
       const changed = ok => { u.notice = ok ? 'Item moved.' : 'No room, or this bag cannot hold that item.'; game.persist(); panel.uiSignature = null; };
       const canStore = item => !protectedItem(p, item?.type) && (s.mode !== 'chest' || canAccess(game, p, false));
@@ -683,6 +714,8 @@ export class HeroUI {
   preview(panel, p, time) {
     const canvas = panel.querySelector(".equipment-preview");
     if (!canvas) return;
+    // Preview keeps breathing even while the lobby/game simulation is paused.
+    time=performance.now()/1000;
     const c = canvas.getContext("2d");
     c.clearRect(0, 0, canvas.width, canvas.height);
     c.save();
@@ -692,9 +725,10 @@ export class HeroUI {
       c,
       {
         ...p,
-        faceX: 0,
-        faceY: 1,
-        animationAction: (p.salvageHold?.elapsed>0&&!p.salvageHold.latched)||p.salvageFinish>0?'salvage':'idle',
+        faceX: Math.sin((p.ui?.previewDirection||0)*Math.PI/4),
+        faceY: Math.cos((p.ui?.previewDirection||0)*Math.PI/4),
+        animationAction: 'idle',
+        attack:0,spin:0,charge:0,bowAiming:false,bowAimBlend:0,gatherTime:0,
         moving: false,
         playerFrame: undefined,
       },
@@ -705,7 +739,7 @@ export class HeroUI {
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), open = game.players.filter((q) => q.ui || q.room)) {
     if(panel.classList.contains('storage-session')&&(!p.ui?.shop||p.ui.shop==='merchant')){
       const index=Math.max(0,open.findIndex(q=>q.id===p.id)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/3);
-      const width=Math.min(480,(bounds.width-16)/cols-8),height=(bounds.height-16)/rows;
+      const width=Math.min(520,(bounds.width-16)/cols-8),height=Math.min(760,(bounds.height-16)/rows);
       const left=cols===1?8:cols===2?(index%cols===0?8:bounds.width-width-8):(index%3)*(bounds.width/3)+8;
       panel.classList.toggle('party-panel',open.length>1);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=left+'px';panel.style.top=8+Math.floor(index/3)*height+'px';return;
     }

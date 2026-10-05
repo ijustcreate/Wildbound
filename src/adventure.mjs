@@ -16,7 +16,7 @@ import {chargedProjectileRange,arrowFlightGravity} from './projectile-range.mjs'
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {hunterPets} from './hunter-pets.mjs';
 import {SKILLS,SCROLL_BOSSES,skillAvailable,skillScrollId} from './field-skills.mjs';
-import {hasAimWeapon, updateAimFacing} from './ranged-aim.mjs';
+import {hasAimWeapon, updateAimFacing,updateBowAimBlend} from './ranged-aim.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {sightRadius, emitNoise} from './night-cycle.mjs';
 import {cutLivingVines} from './living-ecosystem.mjs';
@@ -938,6 +938,7 @@ export const adventureMethods = {
       } else if (!p.consumeInput) {
         if(this.openingBoard)faceOpeningBoard(p);else if (!p.sleeping) updateAimFacing(p, i);
         p.bowAiming = !!i.block && hasAimWeapon(p) && !p.swimming && !p.sleeping && !this.openingBoard;
+        updateBowAimBlend(p,this.openingBoard?{}:i,dt);
         if (edge("interact"))p.interactAnimation=.35;
         if (edge("summon")) this.raiseSkeleton(p);
         if (edge("potion")) this.usePotion(p);

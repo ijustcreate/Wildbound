@@ -1,4 +1,5 @@
 import {finishBoardTurn} from './board-turns.mjs';
+import {travelHouseWorlds} from './house-worlds.mjs';
 export const BOARD_REVEAL_SECONDS=5;
 export const EVENT_DURATIONS=[1,3,5,7,12,20];
 export const eventDuration=value=>EVENT_DURATIONS.includes(Number(value))?Number(value):BOARD_REVEAL_SECONDS;
@@ -17,6 +18,7 @@ export function tickBoardSequence(g,dt,inputs={}){
  if(dismiss||r.elapsed>=r.landingAt+eventDuration(g.eventDuration)){
   g.roll=null;g.eventTime=0;
   finishBoardTurn(g,r);
+  travelHouseWorlds(g,r.total);
  }
  return true;
 }

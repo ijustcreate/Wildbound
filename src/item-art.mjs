@@ -24,6 +24,7 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if(type==='stick')return paintItemBase(c,type);
   if (!ITEMS[type]?.slot && !ITEMS[type]?.relic) return paintItemBase(c,type);
   const pixels = Array(576).fill(null);
   const raster = {fillStyle:'#302b2b',fillRect(x,y,w,h) {
@@ -146,7 +147,7 @@ function paintItemBase(c, type) {
     green = "#82aa63";
   const def = ITEMS[type],
     originalType = type;
-  type = itemKind(type);
+  type = originalType==='stick'?'stick':itemKind(type);
   if (def?.style === "safari") {
     const khaki = def.artColor, trim = "#74553c", pale = "#eee0b0";
     if (type === "hat") {

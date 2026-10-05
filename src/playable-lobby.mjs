@@ -3,7 +3,7 @@ import { Animator } from './animation.mjs';
 import {resizeGameSurface,LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 import {drawLobbyBoard} from './lobby-board.mjs';
 import {applyCelShading} from './cel-shading.mjs';
-import {drawEmbeddedArrow,drawLodgedArrow,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {take} from './items.mjs';
@@ -15,6 +15,7 @@ import {drawBowAim} from './bow-aim.mjs';
 import { controllerButtonNames } from './controls.mjs';
 import { give, canGive } from './items.mjs';
 import { loadQuiver } from './arrow-supplies.mjs';
+import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision} from './lobby-tv.mjs';
 
@@ -98,6 +99,10 @@ export class PlayableLobby {
     const area=document.createElement('div');area.className='lobby-world';
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
+    const modeButton=document.createElement('button');
+    modeButton.textContent='House worlds mode: Off';modeButton.setAttribute('aria-pressed','false');
+    modeButton.onclick=()=>{const g=this.getGame();g.houseWorldsEnabled=!g.houseWorldsEnabled;modeButton.textContent=`House worlds mode: ${g.houseWorldsEnabled?'On — roll 5 or 8 to travel':'Off'}`;modeButton.setAttribute('aria-pressed',String(g.houseWorldsEnabled));this.state.invalidate(g.players);};
+    area.after(modeButton);
     root.querySelector('.party-heading h1').textContent='Gather around the board';
     root.querySelector('.party-help').textContent='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: D-pad / arrows move; right face / X jumps twice; bottom face / Z runs; down enters pipes; walk away to leave';
     this.canvas.onclick=e=>{
@@ -315,8 +320,8 @@ export class PlayableLobby {
     c.save();
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
-    for(const a of this.practice.loot)if(a.embedded&&a.type==='arrow')drawEmbeddedArrow(c,a,this.practice.time);
-    for(const a of this.practice.arrows){if(a.stuck){drawLodgedArrow(c,a,this.practice.time);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
+    for(const a of this.practice.loot)if(a.embedded&&ARROW_TYPES.includes(a.type))drawEmbeddedArrow(c,a,this.practice.time);
+    for(const a of groupLodgedArrows(this.practice.arrows)){if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
     for(const b of this.practice.spells)drawMagicBolt(c,b);
     for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';this.label(f.text,f.x,f.y,14,f.color||'#fff');}
     c.restore();

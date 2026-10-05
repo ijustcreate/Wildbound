@@ -65,9 +65,13 @@ export const ITEMS = {
   },
   stick: {
     name: "Stick",
+    base: "sword",
+    slot: "hand1",
+    damage: 8,
+    artColor: "#a78652",
     stack: 99,
     color: "#a78652",
-    description: "Gathered by striking trees. Crafting material.",
+    description: "Crafting material or improvised sword. Equip one from a stack. Small chance to break on a hit (1 in 20 / 5%); equip another stick if it breaks.",
   },
   log: {
     name: "Log",
@@ -436,6 +440,7 @@ export const ITEMS = {
 };
 export const RARITIES = {
   common: "#d2d8d2",
+  uncommon: "#79d88b",
   rare: "#68aaff",
   unique: "#c58bfa",
   legendary: "#ffad4f",

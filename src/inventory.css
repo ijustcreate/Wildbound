@@ -210,3 +210,73 @@
 .merchant-session .merchant-grid button{font-size:12px;padding:4px;min-height:0}
 .merchant-session .merchant-workshop button:focus-visible{outline:2px solid #92e4ba;outline-offset:1px}
 .merchant-session .merchant-workshop button:disabled{opacity:.3}
+
+/* Paper doll preview follows the compact character-left, equipment-right layout. */
+.hero-panel.inventory-redesign .storage-layout{grid-template-rows:minmax(205px,1.05fr) minmax(170px,1fr)!important;gap:6px;}
+.hero-panel.inventory-redesign .equipment-window{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:5px;padding:5px;background:#111f1b!important;border:1px solid #536b5e;}
+.hero-panel.inventory-redesign .equipment-window .equipment-preview{position:static;grid-column:1;grid-row:1;width:100%;height:100%;min-width:0;object-fit:contain;background:#101a18;border:1px solid #43594f;z-index:auto;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll{grid-column:2;grid-row:1;position:relative;width:100%;height:100%;max-width:none;min-width:0;overflow:hidden;background:#88795c;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot]{width:31%;height:18%;max-width:none;max-height:none;left:auto;right:auto;top:auto;position:absolute;padding:1px;gap:0;font-size:clamp(6px,1.2cqw,9px);background:#101d1bef;border-color:#8f8059;box-shadow:inset 0 0 0 1px #352f21;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="head"]{left:34.5%;top:0%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="neck"]{left:34.5%;top:20%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="shoulders"]{left:1%;top:20%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="cape"]{left:68%;top:20%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="chest"]{left:34.5%;top:40%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="gloves"]{left:1%;top:40%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="back"]{left:68%;top:40%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="hand1"]{left:1%;top:60%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="pants"]{left:34.5%;top:60%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="hand2"]{left:68%;top:60%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot="feet"]{left:34.5%;top:80%;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll canvas.item-icon{width:clamp(15px,4cqw,30px);height:auto;max-height:68%;}
+.hero-panel.inventory-redesign .equipment-window .inventory-actions{display:none!important;}
+.hero-panel.inventory-redesign .inventory-window{grid-template-rows:28px minmax(0,1fr) 42px;}
+.hero-panel.inventory-redesign .inventory-window>.inventory-actions{height:42px;max-height:42px;padding:1px;}
+.hero-panel.inventory-redesign .inventory-window>.storage-detail{display:none;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button{background:#18332a;border:1px solid #526c5d;border-radius:1px;box-shadow:none;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button.selected{background:#314739;border-color:#e3bf65;outline:2px solid #e3bf65;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) canvas.item-icon{width:min(38px,75%);height:auto;aspect-ratio:1;image-rendering:pixelated;}
+.hero-panel.inventory-redesign .item-tooltip{max-width:min(260px,calc(100% - 16px));padding:9px 11px;background:#0d1c18f5;border:1px solid #c6a75e;border-radius:3px;box-shadow:0 5px 18px #000b;}
+
+.controller-directions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid #52695d;}
+.controller-directions-group{min-width:125px;flex:1 1 125px;}
+.controller-directions-group>strong{display:block;margin-bottom:3px;color:#c6d2c4;font-size:10px;letter-spacing:.06em;}
+.controller-direction-icons{display:flex;align-items:center;gap:2px;}
+.controller-direction-cell{display:flex;flex-direction:column;align-items:center;min-width:28px;color:#a9b9ad;font-size:9px;}
+.controller-direction-cell .controller-glyph{width:34px;height:34px;image-rendering:auto;}
+.controller-direction-cell small{font-size:9px;}
+#settings-controls #player-mappings{max-height:40vh;overflow:auto;}
+.inventory-character{position:relative;grid-column:1;grid-row:1;min-width:0;min-height:0;overflow:hidden;}
+.hero-panel.inventory-redesign .inventory-character .preview-turn{position:absolute;top:50%;transform:translateY(-50%);width:22px;height:32px;min-height:0;padding:0;font:26px/1 system-ui;background:#12251edc;border:1px solid #73866a;border-radius:3px;color:#e8d6a4;z-index:2;}
+.preview-turn-left{left:2px;}.preview-turn-right{right:2px;}
+/* One stable inventory surface: portrait, anatomical equipment, then the full bag. */
+.hero-panel.inventory-redesign .storage-layout{grid-template-rows:minmax(0,1fr) minmax(0,1fr)!important;gap:10px;}
+.hero-panel.inventory-redesign .storage-layout.has-chest{grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;}
+.hero-panel.inventory-redesign .equipment-window{grid-template-columns:minmax(0,.8fr) minmax(0,1fr);gap:12px;padding:8px;background:#14251f!important;}
+.hero-panel.inventory-redesign .equipment-window .equipment-preview{transform:none!important;position:static!important;inset:auto!important;align-self:stretch;width:100%!important;height:100%!important;object-fit:contain;background:radial-gradient(ellipse at 50% 70%,#2d4435,#0e1b17 75%);border:0;box-sizing:border-box;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll{background:transparent;margin:0;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot]{border:1px solid #6c8069;background:linear-gradient(#22392f,#14271f);border-radius:3px;font:9px system-ui;justify-content:center;gap:3px;box-shadow:none;overflow:hidden;}
+.hero-panel.inventory-redesign .equipment-window .paper-doll canvas.item-icon{width:34px;max-width:65%;max-height:65%;object-fit:contain;image-rendering:pixelated;}
+.hero-panel.inventory-redesign .inventory-window,.hero-panel.inventory-redesign .chest-window{display:grid;grid-template-rows:28px minmax(0,1fr);grid-template-areas:"heading" "slots";gap:6px;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll){display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:5px;padding:0;container-type:normal;align-items:stretch;justify-items:stretch;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) button{width:100%;height:100%;min-width:0;max-width:none;max-height:none;justify-self:stretch;align-self:stretch;margin:0;padding:4px;display:flex;align-items:center;justify-content:center;color:#76907f;font-size:12px;}
+.hero-panel.inventory-redesign .item-grid:not(.paper-doll) canvas.item-icon{width:48px;max-width:80%;max-height:85%;object-fit:contain;image-rendering:pixelated;}
+.hero-panel.inventory-redesign .inventory-quantity{right:4px;bottom:3px;font:bold 12px/1 system-ui;background:#102019cc;padding:2px 3px;border-radius:2px;}
+.hero-panel.inventory-redesign .storage-sheet>.inventory-actions{display:none!important;}
+.hero-panel.inventory-redesign>.current-inventory-actions{display:flex!important;visibility:visible!important;height:68px;min-height:68px;max-height:68px;margin:0;padding:6px 0 0;gap:5px;border-top:1px solid #53694e;overflow:auto;flex-wrap:wrap;align-content:flex-start;}
+.hero-panel.inventory-redesign>.current-inventory-actions button{font:11px system-ui;height:24px;min-height:24px;max-height:24px;padding:3px 7px;box-sizing:border-box;}
+.hero-panel.inventory-redesign>.current-inventory-actions .salvage-ring{width:16px;height:16px;flex:0 0 16px;}
+.hero-panel.inventory-redesign>.storage-notice{height:16px!important;min-height:16px!important;max-height:16px!important;flex-basis:16px!important;font:10px system-ui;}
+.hero-panel.inventory-redesign>.inventory-help{font:10px system-ui;color:#b4c5b8;line-height:16px;}
+.hero-panel.inventory-redesign .current-inventory-actions .salvage-description{display:none;}
+@media(max-height:700px){.hero-panel.inventory-redesign .storage-layout{grid-template-rows:minmax(120px,1fr) minmax(145px,1.15fr)!important;}.hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot]{height:18%;}.hero-panel.inventory-redesign .inventory-window{grid-template-rows:25px minmax(0,1fr) 38px;}.hero-panel.inventory-redesign .inventory-window>.inventory-actions{height:38px;max-height:38px;}}
+@container(max-height:540px){
+ .hero-panel.inventory-redesign .storage-layout{grid-template-rows:minmax(0,.9fr) minmax(0,1.1fr)!important;gap:5px;}
+ .hero-panel.inventory-redesign .equipment-window{padding:3px;gap:5px;}
+ .hero-panel.inventory-redesign .equipment-window .paper-doll button[data-slot]{font-size:7px;gap:0;}
+ .hero-panel.inventory-redesign .equipment-window .paper-doll canvas.item-icon{width:22px;max-height:55%;}
+ .hero-panel.inventory-redesign>.current-inventory-actions{height:48px;min-height:48px;max-height:48px;gap:3px;padding-top:3px;}
+ .hero-panel.inventory-redesign>.current-inventory-actions button{font-size:9px;height:19px;min-height:19px;max-height:19px;padding:2px 4px;}
+ .hero-panel.inventory-redesign .inventory-window{grid-template-rows:22px minmax(0,1fr);gap:3px;}
+ .hero-panel.inventory-redesign .item-grid:not(.paper-doll){gap:3px;}
+}

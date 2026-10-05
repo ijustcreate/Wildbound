@@ -170,7 +170,7 @@ function wireGame() {
   game.pvp=localStorage.getItem("wildbound-pvp")==="on";
   game.controlLabels = controlLabels(mapping);
   game.spriteLibrary = assets.library;
-  game.environment = $("environment").value;
+  game.environment = game.houseWorldsEnabled?'house':$("environment").value;
   game.sharedStash = structuredClone(profiles.data.sharedStash || []);
   game.eventDuration = Number(
     localStorage.getItem("wildbound-event-duration") || 5,

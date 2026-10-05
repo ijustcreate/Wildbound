@@ -751,13 +751,13 @@ export class Game {
       );
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
-    harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
-    hitNightEnemyVines(this,p,damage,melee.range);
-    if(cutLivingVines(this,p,melee.range))this.persist();
+    let stickHit=harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
+    if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
+    if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
     for(const pane of this.house?.walls||[]){
       if(pane.kind!=='window'||pane.broken)continue;
       const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
-      if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35))breakWindow(this,x,y,2);
+      if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35)){stickHit=true;breakWindow(this,x,y,2);}
     }
     for (const e of [...this.enemies,...(this.pvp?this.players.filter(q=>q!==p&&q.hp>0&&!q.room):[])]) {
       const dx = e.x - p.x,
@@ -768,6 +768,7 @@ export class Game {
           !this.projectileBlocked(point.x,point.y,.5) &&
           clearShot(this,p,point,.5) && clearShot(this,e,point,.5))
       ) {
+        stickHit=true;
         if(this.players.includes(e)){this.hurt(e,damage,p);continue;}
         e.killedBy=p.id;e.ritualKill=[p.equipment.hand1,p.equipment.hand2].includes('ritual_dagger');
         e.aggro = true;
@@ -803,6 +804,15 @@ export class Game {
           life: 0.5,
         });
       }
+    }
+    if(stickHit)for(const slot of ['hand1','hand2']){
+      if(p.equipment[slot]!=='stick'||this.random()>=.05)continue;
+      p.equipment[slot]=null;
+      if(p.equipmentSockets)delete p.equipmentSockets[slot];
+      (p.brokenStickSlots||=[]).push(slot);
+      this.effects.push({x:p.x,y:p.y-30,text:'Stick broke!',color:'#e1bf85',life:1});
+      this.uiRevision=(this.uiRevision||0)+1;
+      this.persist();
     }
     return true;
   }
@@ -914,7 +924,9 @@ export class Game {
     this.message(
       p.name + " rolled " + r.total + " · trail " + p.progress + "/" + FINISH,
     );
-    this.spawnEvent();
+    if(this.houseWorldsEnabled&&[5,8].includes(r.total)){
+      this.message('Five or eight — the whole party will travel when the dice settle.');
+    }else this.spawnEvent();
   }
   runEventActions(trigger) {
     const event = this.event;

@@ -61,3 +61,16 @@ test('Slim quiver follows animated torso and stays on its back despite saved lay
  const actor={animationAction:'idle'},q=quiverPose(playerPose(actor,0,model),0);
  assert.ok(Math.hypot(q.top.x-q.bottom.x,q.top.y-q.bottom.y)>q.width*3);
 });
+
+test('Bow ready pose keeps hands forward, feet planted, and correct saved-order occlusion',()=>{
+ const c=new Proxy({}, {get:(target,key)=>target[key]??(()=>{}),set:(target,key,value)=>{target[key]=value;return true;}});
+ const model=defaultPlayerMotion();
+ for(let d=0;d<8;d++)for(const inventory of [[],[{type:'arrow',qty:3}]]){
+  const [faceX,faceY]=directionVector(d),actor={faceX,faceY,hp:100,animationAction:'idle',equipment:{hand1:'bow'},inventory};
+  const pose=playerPose(actor,0,model);assert.ok(pose.handL[1]>pose.chest[1]);assert.ok(pose.handR[1]>pose.chest[1]);
+  assert.ok(pose.footR[0]>pose.footL[0]);model.renderOrder={[d]:['Body and pelvis','Bow']};
+  drawPlayer(c,actor,0,model);const order=renderLayers(model,d);
+  if(d>=3&&d<=5)assert.ok(order.indexOf('Bow')<order.indexOf('Body and pelvis'));
+  if(d===0)assert.ok(order.indexOf('Bow')>order.indexOf('Body and pelvis'));
+ }
+});

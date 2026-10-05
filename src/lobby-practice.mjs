@@ -59,6 +59,7 @@ export class LobbyPractice extends Game {
     for(const a of this.players){
       const s=members.get(a.id);
       const player=players.find(p=>p.id===a.id);if(player&&(a.hunterPet||player.hunterPet))player.hunterPet=a.hunterPet;
+      if(player&&a.brokenStickSlots?.length){for(const slot of a.brokenStickSlots)if(player.equipment[slot]==='stick'){player.equipment[slot]=null;if(player.equipmentSockets)delete player.equipmentSockets[slot];}a.brokenStickSlots=[];}
       Object.assign(s,{x:a.x,y:a.y,step:a.step,faceX:a.faceX,faceY:a.faceY,moving:a.moving,attack:a.attack});
     }
     // Practice retains cooldowns but replenishes consumables from the selected hero.

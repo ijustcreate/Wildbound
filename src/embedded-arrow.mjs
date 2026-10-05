@@ -34,9 +34,29 @@ export function drawEmbeddedArrow(c,a,time=0){
  c.save();
  if(!a.surfaceEmbedded&&!a.enemy){c.fillStyle='#07100d66';c.beginPath();c.ellipse(a.x,a.y+1,2,1,0,0,Math.PI*2);c.fill();}
  const bundle=Math.min(3,a.qty||1);
- for(let i=bundle-1;i>=0;i--){c.save();c.translate(i*1.5,-i*.7);drawLodgedArrow(c,a,time);c.restore();}
- if((a.qty||1)>1){c.font='bold 8px system-ui';c.textAlign='center';c.fillStyle='#102c25';c.fillRect(a.x-9,a.y+3,18,10);c.fillStyle='#fff0ca';c.fillText(String(a.qty),a.x,a.y+11,16);}
+ // A small fan communicates a bundle without hiding the impact point.
+ for(let i=bundle-1;i>=0;i--)drawLodgedArrow(c,{...a,angle:(a.angle??0)+(i-(bundle-1)/2)*.13,shaftLength:(a.shaftLength||24)+i*2},time);
+ if((a.qty||1)>1){
+  const p=embeddedArrowGeometry(a,time),label=`×${a.qty}`,x=Math.round((p.x+p.tailX)/2),y=Math.round(Math.max(p.y,p.tailY)+7);
+  c.font='bold 9px system-ui';c.textAlign='center';c.textBaseline='middle';
+  const width=Math.ceil(c.measureText(label).width)+8;
+  c.fillStyle='#0c211dee';c.fillRect(x-width/2,y,width,13);
+  c.strokeStyle='#80957b';c.lineWidth=1;c.strokeRect(x-width/2+.5,y+.5,width-1,12);
+  c.fillStyle='#fff0ca';c.fillText(label,x,y+6.5);
+ }
  c.restore();
+}
+// Visual-only grouping: preserve individual projectile records and recoverable ammo.
+export function groupLodgedArrows(arrows){
+ const groups=new Map(),result=[];
+ for(const a of arrows){
+  if(!a.stuck||a.enemy==null||a.rock||a.ice){result.push(a);continue;}
+  const key=`${a.enemy}:${a.ammoType||'arrow'}`;
+  const group=groups.get(key);
+  if(group){group.qty+=(a.qty||1);if((a.impactTime??0)>(group.impactTime??0))Object.assign(group,{impactTime:a.impactTime});}
+  else {const copy={...a,qty:a.qty||1};groups.set(key,copy);result.push(copy);}
+ }
+ return result;
 }
 export function drawLodgedArrow(c,a,time=0){
  const p=embeddedArrowGeometry(a,time);
