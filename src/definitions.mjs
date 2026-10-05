@@ -661,7 +661,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "dragon",
   "fire_elemental",
   "water_elemental",
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || e.type==='mystery'&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }

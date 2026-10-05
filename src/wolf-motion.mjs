@@ -63,4 +63,5 @@ export function drawWolf(c, actor, time, model=wolfMotion, suppliedPose=null) {
   });
   paintLayers(q,model,d,c,p);
   c.restore();
+  return p;
 }

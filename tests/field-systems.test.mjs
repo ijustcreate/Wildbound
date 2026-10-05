@@ -200,7 +200,7 @@ test("Bramble slows walkers without consuming the trap; flash creates recovery",
   assert.equal(enemy.state, "recover");
   assert.ok(enemy.timer > 1);
 });
-test("Rescue objective requires nearby living interaction and pays once", () => {
+test("Rescue objective advances near a living player without a button and pays once", () => {
   const { g, p } = setup();
   p.x = 400;
   p.y = 400;
@@ -214,7 +214,7 @@ test("Rescue objective requires nearby living interaction and pays once", () => 
     done: false,
   };
   g.update(0.03, {});
-  assert.equal(g.objective.progress, 0);
+  assert.ok(g.objective.progress > 0);
   g.update(0.03, { keyboard: { interact: true } });
   g.update(0.03, { keyboard: { interact: true } });
   assert.equal(g.objective.done, true);

@@ -1,4 +1,5 @@
 import {START_AREAS,START_AREA_LABELS,eventStartingAreas} from './starting-area.mjs';
+import {MYSTERY_EVENTS} from './mysteries.mjs';
 import {BoardEditor} from './board-editor.mjs';
 import {ComboEditor} from './combo-editor.mjs';
 import {forestSettings,saveForestSettings,TREE_TYPES,drawForestTree} from './forest.mjs';
@@ -757,6 +758,7 @@ export class Designer {
         this.render();
       };
       controls.append(select);
+      this.button(controls,'Add two-stage mystery',()=>{this.events.push(structuredClone({...MYSTERY_EVENTS[0],name:'New mystery'}));this.eventIndex=this.events.length-1;this.render();});
       this.button(controls, "Add event", () => {
         this.events.push({
           ...this.events[0],
@@ -784,11 +786,29 @@ export class Designer {
       event.spread ??= 0.45;
       event.intensity ??= 1;
       this.field(fields, "Event type", event, "type", {
-        options: ["encounter", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede"],
+        options: ["encounter", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede"],
+        change:()=>{this.render();return true;},
       });
       for (const k of ["weight", "duration", "spread", "intensity"])
         this.field(fields, k, event, k, { min: 0, max: 1000 });
       for (const k of ["name", "verse", "tip"]) this.field(fields, k, event, k);
+      if(event.type==='mystery'){
+        const m=event.mystery??=structuredClone(MYSTERY_EVENTS[0].mystery);
+        const section=element('section');section.className='event-builder-section';section.append(element('h3','Two-stage mystery'),element('p','Stage 1 spawns a target at a safe point near these map coordinates. Stage 2 creates an investigation object near the game board. Rewards only unlock after investigation.'));
+        this.field(section,'First objective',m,'goal',{options:['defeat','recover']});
+        this.field(section,'Target creature',m,'enemy',{options:Object.keys(creatures)});
+        this.field(section,'Clue item appearance',m,'item',{options:Object.keys(this.items)});
+        for(const key of ['targetName','location','stageOne','stageTwo','finalName'])this.field(section,key,m,key);
+        for(const key of ['x','y'])this.field(section,key,m,key,{min:64,max:1536,step:16});
+        m.finalOffsetX??=0;m.finalOffsetY??=120;m.finalItem??='';
+        for(const key of ['finalOffsetX','finalOffsetY'])this.field(section,key,m,key,{min:-180,max:180,step:16});
+        this.field(section,'Final object appearance',m,'finalItem',{options:['',...Object.keys(this.items)]});
+        this.field(section,'Target count',m,'count',{min:1,max:20,step:1});
+        for(const key of ['hp','speed','damage'])this.field(section,key,m,key,{min:1,max:1500});
+        this.field(section,'Completion reward',m,'reward',{options:Object.keys(this.items)});
+        this.field(section,'Reward quantity',m,'qty',{min:1,max:99,step:1});
+        this.dialog.append(section);
+      }
       this.field(fields, "Creature", event, "kind", {
         options: Object.keys(creatures),
       });

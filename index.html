@@ -15,6 +15,9 @@
     <link rel="stylesheet" href="src/studio-tools.css" />
     <link rel="stylesheet" href="src/playable-lobby.css" />
     <link rel="stylesheet" href="src/inventory.css" />
+    <link rel="stylesheet" href="src/parchment-ui.css" />
+    <link rel="stylesheet" href="src/inventory-polish.css" />
+    <link rel="stylesheet" href="src/inventory-workbench.css" />
   </head>
   <body>
     <div id="loading">
@@ -364,10 +367,21 @@
       </ol>
       <button id="close-info" class="primary compact">GOT IT →</button>
     </dialog>
-    <dialog id="pause-dialog">
+    <dialog id="pause-dialog" aria-label="Pause and game options">
       <div class="eyebrow" id="pause-eyebrow">TAKE A BREATH</div>
       <h2 id="pause-title">The jungle can wait.</h2>
       <p id="pause-text">Your expedition is paused.</p>
+      <div class="pause-options">
+        <button id="pause-fullscreen" type="button">Toggle fullscreen</button>
+        <button id="pause-pvp" type="button">PvP: off</button>
+        <button id="pause-difficulty" type="button">Difficulty: Adventure</button>
+        <button id="pause-mute" type="button">Mute all audio</button>
+        <div class="pause-volume-row"><button id="pause-music-down" type="button" aria-label="Lower music volume">Music −</button><output id="pause-music-value"></output><button id="pause-music-up" type="button" aria-label="Raise music volume">Music +</button></div>
+        <div class="pause-volume-row"><button id="pause-sfx-down" type="button" aria-label="Lower sound effects volume">SFX −</button><output id="pause-sfx-value"></output><button id="pause-sfx-up" type="button" aria-label="Raise sound effects volume">SFX +</button></div>
+        <button id="pause-settings" type="button">More game options</button>
+        <button id="pause-dev" type="button">Dev cheat menu</button>
+      </div>
+      <p class="pause-control-help">Start / +: resume · D-pad / stick: select · bottom face button: confirm</p>
       <button id="resume-button" class="primary full">
         BACK TO THE JUNGLE →</button
       ><button id="reassign-button" class="small-button full hidden">
@@ -378,6 +392,7 @@
         Return to landing screen
       </button>
     </dialog>
+    <div id="pvp-safe-indicator" role="status" aria-label="PvP off: players cannot damage each other" hidden>♜ PvP OFF</div>
     <dialog id="victory-results" aria-labelledby="victory-title">
       <div class="victory-kicker">EXPEDITION COMPLETE</div>
       <div class="victory-stamp" aria-hidden="true">WILDBOUND!</div>

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SLOTS,freshCharacter,ITEMS,refreshVitals,stat,equip,unequip,give,socketTrinket,removeTrinket,transfer,setProgress,moveInventoryItem,hasSetSkill} from '../src/items.mjs';
-import {summonNecromancerPet,tickGhosts} from '../src/temple.mjs';
+import {summonNecromancerPet,tickGhosts,summonNecromancerOnKill} from '../src/temple.mjs';
+import {Game} from '../src/core.mjs';
 import {Profiles} from '../src/profiles.mjs';
 import {applyLoadout,initializeField} from '../src/field-systems.mjs';
 import {socketAction} from '../src/socket-workshop.mjs';
@@ -27,6 +28,19 @@ test('Necromancer set unlocks a sword-wielding skeleton companion',()=>{
 test('Necromancer summon requires both set pieces',()=>{
  const p=hero();p.equipment.hand1='necromancer_dagger';assert.equal(hasSetSkill(p,'necromancer_pet'),false);
 });
+test('Necromancer kills summon once, require both equipped pieces, and replace a dead skeleton without cooldown',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard'),q=g.addPlayer('pad:0');
+ const kill={hp:0,kind:'wolf',killedBy:p.id};
+ p.inventory=[{type:'necromancer_wand',qty:1}];p.equipment.hand1='necromancer_dagger';
+ assert.equal(summonNecromancerOnKill(g,kill),false);
+ p.equipment.hand2='necromancer_wand';assert.equal(summonNecromancerOnKill(g,{...kill,killedBy:q.id}),false);
+ assert.equal(summonNecromancerOnKill(g,{...kill,hp:1}),false);
+ assert.equal(summonNecromancerOnKill(g,kill),true);const first=g.ghosts.find(a=>a.pet);
+ assert.equal(first.owner,p.id);assert.equal(summonNecromancerOnKill(g,kill),false);
+ g.hurt(first,200,{kind:'wolf'});assert.equal(first.hp,0);assert.ok(p.necromancerCooldown>0);
+ assert.equal(summonNecromancerOnKill(g,kill),true);assert.equal(g.ghosts.filter(a=>a.pet&&a.hp>0).length,1);
+ p.equipment.hand2=null;g.ghosts.forEach(a=>a.hp=0);assert.equal(summonNecromancerOnKill(g,kill),false);
+});
 test('three mana trinkets only grant stats inside equipped gear',()=>{
  const p=hero();for(const type of ['azure_bead','moon_prism','starheart'])give(p.inventory,type);refreshVitals(p);assert.equal(p.maxMana,100);
  p.equipment.hand1='bow';assert.equal(socketTrinket(p,{mode:'gear',slot:'hand1'},0),true);assert.equal(p.maxMana,115);assert.equal(p.inventory[0],null);
@@ -51,6 +65,6 @@ test('loadout selection consumes the exact matching socketed instance',()=>{
 });
 test('controller socket workflow requires confirm, supports cancel and removal',()=>{
  const p=hero();p.equipment.hand1='sword';give(p.inventory,'azure_bead');p.ui={panel:'gear',index:SLOTS.indexOf('hand1')};const g={persist(){}};
- assert.ok(socketAction(g,p,'offhand'));assert.ok(p.ui.socket);socketAction(g,p,'use');assert.ok(p.ui.socket.confirm);socketAction(g,p,'close');assert.equal(p.inventory[0].type,'azure_bead');
+ assert.equal(socketAction(g,p,'offhand'),false);assert.ok(socketAction(g,p,'sockets'));assert.ok(p.ui.socket);socketAction(g,p,'use');assert.ok(p.ui.socket.confirm);socketAction(g,p,'close');assert.equal(p.inventory[0].type,'azure_bead');
  socketAction(g,p,'use');socketAction(g,p,'use');assert.deepEqual(p.equipmentSockets.hand1,['azure_bead']);socketAction(g,p,'use');socketAction(g,p,'use');assert.equal(p.inventory[0].type,'azure_bead');assert.deepEqual(p.equipmentSockets.hand1,[]);
 });

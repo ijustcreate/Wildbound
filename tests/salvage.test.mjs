@@ -53,3 +53,9 @@ test('salvage animates the hands, completes with a short release and upgrades ol
  for(let i=0;i<8;i++)g.tickAdventure(.05,{keyboard:{}});assert.notEqual(playerAction(p),'salvage');
  delete m.clips.salvage;assert.ok(upgradePlayerMotion(m).clips.salvage);
 });
+test('lobby salvage returns materials and sockets directly, and full backpacks fail atomically',()=>{
+ const {g,p}=setup('moon_blade');g.phase='lobby';p.inventory[0].sockets=['azure_bead'];hold(g,p);
+ assert.equal(g.loot.length,0);assert.ok(p.inventory.some(i=>i?.type==='relic_dust'));assert.ok(p.inventory.some(i=>i?.type==='magic_essence'));assert.ok(p.inventory.some(i=>i?.type==='azure_bead'));
+ const second=setup('moon_blade');second.g.phase='lobby';second.p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));second.p.inventory[0]={type:'moon_blade',qty:1,sockets:['starheart']};const before=structuredClone(second.p.inventory);
+ hold(second.g,second.p);assert.deepEqual(second.p.inventory,before);assert.equal(second.g.loot.length,0);assert.match(second.p.ui.notice,/space|full/i);
+});

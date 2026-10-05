@@ -28,6 +28,12 @@ export const contains=(r,x,y)=>x>=r.x&&y>=r.y&&x<r.x+r.w&&y<r.y+r.h;
 export const LOW_FURNITURE={bed:12,table:16,desk:16,sofa:10,chair:8,bench:8,counter:16};
 export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
 export function upgradeHouseFeatures(h){
+ if(!h.lightingVersion){
+  h.lightingVersion=1;
+  if(!(h.furniture||[]).some(f=>['lamp','ceiling_light'].includes(f.kind)))for(const floor of h.floors||[]){
+   for(const [dx,dy]of [[24,24],[floor.w-48,floor.h-48]]){const x=floor.x+dx,y=floor.y+dy;if(x<900&&x+24>700&&y<878&&y+24>700)continue;if((h.furniture||[]).some(f=>x<f.x+f.w&&x+24>f.x&&y<f.y+f.h&&y+24>f.y))continue;h.furniture.push({kind:'lamp',x,y,w:24,h:24,lightMode:'auto',lightRadius:180});}
+  }
+ }
  for(const p of h.pools||[])p.waterType='pool';
  for(const f of h.furniture||[])if(LOW_FURNITURE[f.kind]&&f.jumpable===undefined){f.jumpable=true;f.surfaceHeight=LOW_FURNITURE[f.kind];}
  if(h.featuresVersion>=1)return h;

@@ -93,7 +93,7 @@ test("Mining awards one chunk per completed progress bar and eventually depletes
   assert.ok(rock.depleted);
   assert.equal(g.loot.length, 2);
 });
-test("Footprints follow actual travel, water makes ripples and flying animals leave no prints", () => {
+test("Footprints follow actual travel; water and flying animals leave no prints", () => {
   const { g, p } = setup();
   tickEnvironment(g, 0.01);
   p.x += 16;
@@ -103,15 +103,20 @@ test("Footprints follow actual travel, water makes ripples and flying animals le
     "shallow";
   p.x += 16;
   tickEnvironment(g, 0.01);
-  assert.equal(g.footprints.at(-1).water, true);
+  assert.equal(g.footprints.length, 1);
   g.enemies = [{ id: 8, kind: "bat", hp: 20, x: 400, y: 400 }];
   tickEnvironment(g, 0.01);
   g.enemies[0].x += 20;
   tickEnvironment(g, 0.01);
-  assert.equal(g.footprints.length, 2);
+  assert.equal(g.footprints.length, 1);
   g.time = 20;
   tickEnvironment(g, 0.01);
   assert.equal(g.footprints.length, 0);
+});
+test('grounded followers leave tracks while ghost followers do not',()=>{
+ const {g,p}=setup();p.hunterPet={id:900,kind:'wolf',hp:50,x:400,y:400};p.ritualPet={id:901,kind:'tiger',hp:50,x:500,y:400,spiritGhost:true};
+ tickEnvironment(g,.016);p.hunterPet.x+=20;p.ritualPet.x+=20;tickEnvironment(g,.016);
+ assert.equal(g.footprints.length,1);assert.equal(g.footprints[0].animal,true);
 });
 
 test("Storage portal exits on touch without instant bounce on arrival", () => {

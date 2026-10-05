@@ -11,6 +11,18 @@ const setup = () => {
   g.openInventory(p, 0);
   return { g, p };
 };
+test('Separate storage popup deposits, withdraws and handles empty contents without losing metadata',()=>{
+ const {g,p}=setup();p.inventory=[{type:'sword',qty:1,sockets:['azure_bead']},{type:'potion',qty:4}];p.chests[0]=[];
+ p.ui.loot=true;p.ui.panel='chest';g.inventoryAction(p,'down');assert.equal(p.ui.index,0);
+ g.inventoryAction(p,'panel');assert.equal(p.ui.panel,'pack');g.inventoryAction(p,'lootAll');assert.equal(p.inventory.filter(Boolean).length,0);assert.equal(p.chests[0].filter(Boolean).length,2);
+ assert.deepEqual(p.chests[0][0].sockets,['azure_bead']);g.inventoryAction(p,'panel');g.inventoryAction(p,'lootAll');assert.equal(p.chests[0].filter(Boolean).length,0);assert.equal(count(p,'potion'),4);
+ g.inventoryAction(p,'close');assert.equal(p.ui,null);assert.ok(p.room);
+});
+test('Storage popup respects locked stacks and full backpacks',()=>{
+ const {g,p}=setup();p.ui.loot=true;p.ui.panel='pack';p.field.favorites=['trap'];const before=JSON.stringify(p.inventory);
+ g.inventoryAction(p,'use');assert.equal(JSON.stringify(p.inventory),before);assert.match(p.ui.notice,/Unlock/);
+ p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));p.chests[0]=[{type:'sword',qty:1}];g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'use');assert.equal(p.chests[0][0].type,'sword');assert.match(p.ui.notice,/full/);
+});
 test("Chest transfers move stacks both ways through A/Enter and shoulder/Tab actions", () => {
   const { g, p } = setup();
   give(p.inventory, "potion", 4);

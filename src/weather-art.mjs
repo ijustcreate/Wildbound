@@ -1,6 +1,7 @@
 import { nearbyScenery } from "./performance.mjs";
 import {rainActive,sheltered} from './wet-weather.mjs';
 import { sightRadius } from './night-cycle.mjs';
+import {houseLightSources} from './house-lights.mjs';
 import { terrainHash } from "./world.mjs";
 import { rules } from "./definitions.mjs";
 import { waterAt, isShallow } from "./environment.mjs";
@@ -66,6 +67,10 @@ export function drawFog(ctx, g, camera, w, h) {
     c.beginPath();
     c.arc(x, y, radius, 0, Math.PI * 2);
     c.fill();
+  }
+  for(const source of houseLightSources(g)){
+    const radius=source.radius*camera.zoom,x=w/2+(source.x-camera.x)*camera.zoom,y=h/2+(source.y-camera.y)*camera.zoom;
+    const glow=c.createRadialGradient(x,y,0,x,y,radius);glow.addColorStop(0,'#000');glow.addColorStop(.55,'#000c');glow.addColorStop(1,'#0000');c.fillStyle=glow;c.beginPath();c.arc(x,y,radius,0,Math.PI*2);c.fill();
   }
   c.globalCompositeOperation = "source-over";
   ctx.save();

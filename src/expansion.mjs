@@ -82,7 +82,7 @@ export function spiderNest(g,anchor,group){
   }
 }
 const lineClear=(g,a,b)=>{const n=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/12);for(let i=1;i<n;i++)if(structureBlocked(g,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,2))return false;return true;};
-export function tickSpider(g,e,dt){
+export function tickSpider(g,e,dt,visiblePlayers=g.players){
   if(e.kind==='spider_egg'){
     e.hatchIn-=dt;
     if(e.hatchIn<=0){Object.assign(e,{kind:'baby_spider',sprite:'spider',hp:28,maxHp:28,speed:95,damage:5,state:'hunt',timer:0,cooldown:.8,step:0});g.message('Spider eggs are hatching!');}
@@ -91,7 +91,7 @@ export function tickSpider(g,e,dt){
   const spider=isSpider(e),insect=['wasp','bee','beetle'].includes(e.kind);
   if(!spider&&!insect)return false;
   const opponents=g.enemies.filter(q=>q!==e&&q.hp>0&&(spider?['wasp','bee','beetle'].includes(q.kind):isSpider(q))&&Math.hypot(q.x-e.x,q.y-e.y)<300&&lineClear(g,e,q));
-  const targets=opponents.length?opponents:spider?g.players.filter(p=>p.hp>0&&!p.room):[];
+  const targets=opponents.length?opponents:spider?visiblePlayers.filter(p=>p.hp>0&&!p.room):[];
   if(!spider&&!targets.length)return false;
   e.cooldown=Math.max(0,(e.cooldown||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.attack=Math.max(0,(e.attack||0)-dt);e.moving=false;
   if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}

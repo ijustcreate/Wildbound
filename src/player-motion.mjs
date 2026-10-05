@@ -1,4 +1,5 @@
 import {drawTorchFlame} from './torch-flame.mjs';
+import {drawWhip} from './whip-visual.mjs';
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
 import { fitHeroGrip } from './hero-generation.mjs';
@@ -968,6 +969,7 @@ export function drawPlayer(
             if(weapon === "torch")drawTorchFlame(c,hand.x,hand.y-11,time,d*.17+(side==="L"?2:0));
           }
           if(weapon==='critter_net')drawItem(c,weaponId,hand.x,hand.y-8,24);
+          if(weapon==='boomerang')drawItem(c,weaponId,hand.x,hand.y+3,19);
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
             const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
@@ -983,28 +985,9 @@ export function drawPlayer(
           }
           if (weapon === "sword" || weapon === "dagger") {
             const style=ITEMS[weaponId]?.style;
-            if(style==='whip'&&model.combatRevision===4){
-              const action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1),active=SWING_ACTIONS.includes(action),phase=combatPhase(action,t);
-              const extension=active?Math.max(.18,Math.sin(Math.PI*Math.min(1,phase.t/ .85))):.15;
-              const reach=13+extension*27,sign=phase.reverse?-1:1;
-              let last=hand;
-              for(let n=1;n<=12;n++){
-                const u=n/12,lag=(1-u)*.2,v=active?combatWeaponVector(action,Math.max(0,t-lag),'sword',side):[4,3,-13];
-                const scale=reach/Math.hypot(...v),curve=Math.sin(u*Math.PI)*(1-extension)*10*sign;
-                const q=projectPoint([v[0]*scale*u+curve,v[1]*scale*u,v[2]*scale*u-(1-extension)*u*u*12],d);
-                const next={x:hand.x+q.x,y:hand.y+q.y};
-                limb(c,last,next,n===12?1:2,n%2?weaponColor||'#d35b54':gearPalette(weaponId).light);last=next;
-              }
-            }else if(style==='whip'){
-              const length = actor.attack > 0 ? 27 + (1 - actor.attack / (actor.attackDuration || .34)) * 34 : 27;
-              const dx = actor.faceX || 0, dy = actor.faceY || -1, px = -dy, py = dx;
-              let last = hand;
-              for(let n=1;n<=7;n++){
-                const t=n/7,bend=Math.sin(t*Math.PI)*(actor.attack>0?(actor.attackClip==='swipe_two'?-1:1):.35)*(5+t*8);
-                const next={x:hand.x+dx*length*t+px*bend,y:hand.y+dy*length*t+py*bend};
-                limb(c,last,next,n===7?2:2.5-t*.8,n%2?weaponColor||'#d35b54':gearPalette(weaponId).light);last=next;
-              }
-              ellipse(c,last.x,last.y,2.5,2.5,gearPalette(weaponId).trim);
+            if(style==='whip'){
+              const action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1);
+              drawWhip(c,hand,action,t,side,d,projectPoint,weaponColor);
             } else {
             const attack =
               actor.attack > 0 || actor.animationAction === "slash";

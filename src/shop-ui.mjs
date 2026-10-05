@@ -19,116 +19,44 @@ export function shopPanel(panel, game, p, button) {
   const owner = game.shopOwner(p),
     u = p.ui;
   if (u.shop === "robot") {
-    const intro = node("div", null, "robot-intro"),
-      portrait = node("canvas", null, "robot-portrait");
-    portrait.width = 96;
-    portrait.height = 80;
-    portrait.setAttribute(
-      "aria-label",
-      "Portrait of SCRAP-9, the robot merchant",
-    );
-    drawRobotPortrait(portrait, game.time);
-    const greeting = node("div");
-    greeting.append(
-      node("strong", "SCRAP-9"),
-      node(
-        "p",
-        "Salvage accepted. Gold delivered. Select an item below to sell.",
-      ),
-    );
-    intro.append(portrait, greeting);
-    panel.append(intro);
-    const layout = node("div", null, "storage-layout robot-trade");
-    const bag = node("section", null, "storage-sheet inventory-window"),
-      stock = node("section", null, "storage-sheet robot-stock");
-    bag.append(node("header", "Your backpack"));
-    stock.append(node("header", "SCRAP-9 · Purchased items"));
-    const grid = node("div", null, "item-grid"),
-      goods = node("div", null, "item-grid");
-    const detail = node("p", null, "sale-detail");
-    let selected = u.index;
-    const sell = button("Sell", "use", () => {
-      u.index = selected;
-      game.inventoryAction(p, "use");
-    });
-    function highlight(i) {
-      selected = i;
-      const item = p.inventory[i];
-      detail.textContent = item
-        ? ITEMS[item.type].name +
-          " ×" +
-          item.qty +
-          " · " +
-          sellValue(item.type) +
-          " gold each · " +
-          sellValue(item.type) * item.qty +
-          " gold total"
-        : "Select an item to sell.";
-      sell.disabled = !item;
-      sell.textContent = item
-        ? "Sell for " + sellValue(item.type) * item.qty + " gold"
-        : "Sell";
-      grid
-        .querySelectorAll("button")
-        .forEach((b, n) => b.classList.toggle("selected", n === i));
+    const purchased=u.robotView==='stock', list=purchased?(owner.robotStock||[]):p.inventory;
+    panel.classList.add('scrap-shop');
+    const intro=node('div',null,'robot-intro'),portrait=node('canvas',null,'robot-portrait');
+    portrait.width=96;portrait.height=80;portrait.setAttribute('aria-label','SCRAP-9 portrait');drawRobotPortrait(portrait,game.time);
+    const greeting=node('div');greeting.append(node('strong','SCRAP-9'),node('p','Scrap in. Gold out. Select a stack, then confirm the sale.'));intro.append(portrait,greeting);panel.append(intro);
+    const tabs=node('nav',null,'scrap-tabs');
+    for(const [label,view]of [['Sell items','sell'],['Purchased items','stock']]){
+      const b=button(label,'robot-view-'+view,()=>game.inventoryAction(p,'robotView:'+view));b.classList.toggle('selected',(u.robotView||'sell')===view);tabs.append(b);
+    }panel.append(tabs);
+    const perPage=8,pages=Math.max(1,Math.ceil(list.length/perPage)),page=Math.min(pages-1,purchased?(u.robotStockPage||0):Math.floor(u.index/perPage));
+    const grid=node('div',null,'scrap-item-list');
+    for(let i=page*perPage;i<Math.min(list.length,(page+1)*perPage);i++){
+      const item=list[i];if(!item)continue;
+      const b=purchased?node('div',null,'scrap-item-row'):button('','item'+i,()=>{u.index=i;game.uiRevision=(game.uiRevision||0)+1;});b.classList.add('scrap-item-row');
+      b.dataset.index=i;b.classList.toggle('selected',!purchased&&u.index===i);
+      const c=icon(item.type);c.width=c.height=48;drawItem(c.getContext('2d'),item.type,24,24,42);
+      const text=node('span',null,'scrap-item-copy'),name=node('strong',ITEMS[item.type]?.name||item.type);
+      text.append(name,node('span','Stack ×'+item.qty),node('b',sellValue(item.type)*item.qty+' gold'+(purchased?' paid':' total'),'scrap-price'));
+      b.append(c,text);grid.append(b);
     }
-    for (let i = 0; i < 24; i++) {
-      const item = p.inventory[i];
-      const b = button(
-        item ? ITEMS[item.type].name + " ×" + item.qty : "—",
-        "item" + i,
-        () => {
-          u.index = i;
-          highlight(i);
-        },
-      );
-      if (item) {
-        b.prepend(icon(item.type));
-        b.title =
-          "Sell " +
-          item.qty +
-          " for " +
-          sellValue(item.type) * item.qty +
-          " gold";
-        b.onpointerenter = () => highlight(i);
-        b.onfocus = () => highlight(i);
-      }
-      grid.append(b);
-    }
-    for (const item of owner.robotStock || []) {
-      const tile = node(
-        "div",
-        ITEMS[item.type].name + " ×" + item.qty,
-        "merchant-item",
-      );
-      tile.prepend(icon(item.type));
-      goods.append(tile);
-    }
-    if (!owner.robotStock?.length)
-      goods.append(node("p", "Items you sell appear here."));
-    bag.append(
-      grid,
-      detail,
-      sell,
-      button("Split stack", "split", () => {
-        u.index = selected;
-        game.inventoryAction(p, "split");
-      }),
-    );
-    stock.append(goods);
-    layout.append(bag, stock);
-    panel.append(
-      layout,
-      node(
-        "p",
-        u.notice ||
-          "Hover or select an item to see its sell price. Sales transfer the selected stack to SCRAP-9.",
-        "storage-notice",
-      ),
-    );
-    highlight(selected);
+    if(!grid.children.length)grid.append(node('p',purchased?'Nothing purchased yet. Your sold items appear here.':'No items on this page.','scrap-empty'));panel.append(grid);
+    const pager=node('nav',null,'scrap-pager');
+    const setPage=next=>{if(purchased)u.robotStockPage=next;else u.index=next*perPage;game.uiRevision=(game.uiRevision||0)+1;};
+    const prev=button('Previous','robot-prev',()=>setPage(page-1)),next=button('Next','robot-next',()=>setPage(page+1));prev.disabled=page===0;next.disabled=page>=pages-1;
+    pager.append(prev,node('span','Page '+(page+1)+' / '+pages),next);panel.append(pager);
+    const item=p.inventory[u.index],actions=node('footer',null,'scrap-sale-actions');
+    if(!purchased){
+      actions.append(node('p',item?(ITEMS[item.type]?.name||item.type)+' · '+sellValue(item.type)+' gold each':'Select a stack to sell.','sale-detail'));
+      const sell=button(item?'Sell stack · '+sellValue(item.type)*item.qty+' gold':'Sell stack','use',()=>game.inventoryAction(p,'use'));sell.disabled=!item;
+      const split=button('Split stack','split',()=>game.inventoryAction(p,'split'));split.disabled=!(item?.qty>1);actions.append(sell,split);
+    }else actions.append(node('p','Purchased items are a sales record, not a buyback shop.'));
+    panel.append(actions,node('p',u.notice||'Sales transfer the whole selected stack to SCRAP-9.','storage-notice'));
+    if(u.split){const pop=node('div',null,'scrap-split');const amount=node('input');amount.type='number';amount.min=1;amount.max=Math.max(1,(item?.qty||1)-1);amount.value=u.split.amount;amount.oninput=()=>u.split.amount=Math.max(1,Math.min(Number(amount.max),Number(amount.value)||1));
+      pop.append(node('strong','Split stack'),amount,button('Confirm split','split-confirm',()=>game.inventoryAction(p,'use')),button('Cancel','split-cancel',()=>game.inventoryAction(p,'close')));panel.append(pop);}
   } else {
+    panel.classList.add('vending-refresh');
     panel.append(node("h3", "BETWEEN-MART · Potion dispenser"));
+    const catalog=node('div',null,'vending-catalog');
     const machine = node("div", null, "vending-machine"),
       canvas = node("canvas");
     canvas.className = "vending-canvas";
@@ -138,21 +66,17 @@ export function shopPanel(panel, game, p, button) {
     const slots = node("div", null, "vending-slots");
     owner.vendingStock.forEach((item, i) => {
       const b = button(
-        ITEMS[item.type].name +
-          " · " +
-          item.price +
-          " gold · " +
-          item.qty +
-          " left",
+        '',
         "vend-" + i,
         () => game.purchaseVending(p, i),
       );
+      b.append(icon(item.type),node('strong',ITEMS[item.type].name,'vending-item-name'),node('span',item.price+' gold','vending-price'),node('small',item.qty?'Stock: '+item.qty:'Sold out','vending-stock'));
       b.classList.toggle("selected", u.index === i);
-      b.disabled = !item.qty;
+      b.disabled = !item.qty||(p.coins||0)<item.price;
       b.title = "Buy " + ITEMS[item.type].name;
       slots.append(b);
     });
-    machine.append(slots);
+    catalog.append(machine,slots);
     const tray = node("div", null, "vending-tray");
     const orders = (p.vendingOrders || []).filter(
       (o) => o.owner === (owner.profileId || owner.id),
@@ -169,13 +93,13 @@ export function shopPanel(panel, game, p, button) {
       tray.append(
         node("span", orders.length ? "Dispensing…" : "COLLECTION TRAY"),
       );
-    machine.append(tray);
     const falling = node("canvas", null, "vending-falling");
     falling.width = 360;
     falling.height = 520;
     machine.append(falling);
     panel.append(
-      machine,
+      catalog,
+      tray,
       node(
         "p",
         u.notice ||
@@ -189,9 +113,9 @@ export function shopPanel(panel, game, p, button) {
     node(
       "small",
       (() => {
-        if (p.device === 'keyboard') return u.shop === "robot" ? "D-pad / arrows: select · A / Enter: sell · Y / 2: split · B / Esc: room" : "D-pad / arrows: select slot · A / Enter: buy · Y / 2: collect tray · B / Esc: room";
+        if (p.device === 'keyboard') return u.shop === "robot" ? "Arrows: select · Enter: sell · 2: split · Tab: switch view · Esc: room" : "Arrows: select slot · Enter: buy · 2: collect tray · Esc: room";
         const n = controllerButtonNames(p.controllerFamily || 'generic');
-        return u.shop === "robot" ? `D-pad: select · ${n[0]}: sell · ${n[2]}: split · ${n[1]}: room` : `D-pad: select slot · ${n[0]}: buy · ${n[2]}: collect tray · ${n[1]}: room`;
+        return u.shop === "robot" ? `D-pad: select · ${n[0]}: sell · ${n[3]}: split · LB / RB: switch view · ${n[1]}: room` : `D-pad: select slot · ${n[0]}: buy · ${n[3]}: collect tray · ${n[1]}: room`;
       })(),
     ),
   );

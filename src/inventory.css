@@ -280,3 +280,15 @@
  .hero-panel.inventory-redesign .inventory-window{grid-template-rows:22px minmax(0,1fr);gap:3px;}
  .hero-panel.inventory-redesign .item-grid:not(.paper-doll){gap:3px;}
 }
+.hero-panel.inventory-redesign.loot-popup{display:flex;flex-direction:column;gap:12px;padding:18px;overflow:auto;}
+.hero-panel.loot-popup .loot-rows{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow:auto;}
+.hero-panel.loot-popup .loot-rows button{display:flex;align-items:center;gap:12px;min-height:56px;text-align:left;background:#14291f;border:1px solid #6c7550;}
+.hero-panel.loot-popup .loot-rows button.selected{border:2px solid #f1cf73;background:#243e2e;}
+.hero-panel.loot-popup .loot-rows canvas{flex:0 0 40px;image-rendering:pixelated;}
+.hero-panel.loot-popup .loot-notice{min-height:24px;color:#d9d4be;}
+.hero-panel.loot-popup .inventory-progress-row{display:none;}
+.hero-panel.loot-popup .storage-transfer-nav{display:flex;gap:8px;flex:none;height:40px;min-height:40px;max-height:40px;}
+.hero-panel.loot-popup .storage-transfer-nav button{flex:1;min-height:36px;}
+.hero-panel.loot-popup .storage-transfer-nav button.selected{border-color:#efcf73;background:#294331;}
+.hero-panel.loot-popup>header{white-space:normal;line-height:1.25;padding-right:30px;font-size:18px;}
+.hero-panel.inventory-redesign.loot-popup>small{display:block;flex:none;font-size:11px;color:#bccbbb;}

@@ -6,7 +6,7 @@ import {damageEnemy} from './enemy-damage.mjs';
 import {nearbyRoost,moveBatToRoost} from './bat-roost.mjs';
 
 export const TAMABLE_KINDS=['lion','wolf','bat','panther','tiger'];
-export const hunterPets=g=>g.players.filter(p=>!p.room).map(p=>p.hunterPet).filter(Boolean);
+export const hunterPets=g=>g.players.filter(p=>!p.room).flatMap(p=>[p.hunterPet,p.ritualPet]).filter(Boolean);
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function petRecord(pet){
  if(!pet||!TAMABLE_KINDS.includes(pet.kind))return null;
@@ -78,6 +78,7 @@ function placeNearOwner(g,p,pet){
  pet.x=p.x;pet.y=p.y;
 }
 export function tickHunterPets(g,dt,inputs={}){
+ tickRitualPets(g,dt);
  for(const p of g.players){
   const pet=p.hunterPet;if(!pet)continue;
   pet.hunterPet=true;pet.owner=p.id;pet.id??=g.nextId++;pet.equipment??={};pet.inventory??=[];
@@ -129,5 +130,26 @@ export function tickHunterPets(g,dt,inputs={}){
    if(pet.happyClock>=9){pet.happyClock=0;g.effects.push({x:pet.x,y:pet.y-36,text:'☺',color:'#ffe9a1',life:1.5});}
   }
   if(pet.kind!=='bat')tickJump(pet,dt,g,collisionOffset(g,pet));
+ }
+}
+export function tickRitualPets(g,dt){
+ for(const p of g.players){
+  if(![p.equipment?.hand1,p.equipment?.hand2].includes('ritual_dagger')||p.hp<=0){delete p.ritualPet;continue;}
+  const pet=p.ritualPet??=Object.assign(restoreHunterPet({kind:'tiger',name:'Ghost Tiger',collar:p.color}),{id:g.nextId++,owner:p.id,spiritGhost:true,ritualPet:true,x:p.x,y:p.y});
+  pet.attack=Math.max(0,(pet.attack||0)-dt);pet.cooldown=Math.max(0,(pet.cooldown||0)-dt);
+  pet.room=p.room||null;
+  if(p.room){
+   pet.roomX=p.roomX+24;pet.roomY=p.roomY+10;pet.faceX=p.faceX;pet.faceY=p.faceY;pet.moving=!!p.roomMoving;pet.step=(pet.step||0)+(pet.moving?dt*12:0);
+   const foe=(g.ghosts||[]).find(a=>a.wildTiger&&a.hp>0&&a.room===p.room&&(a.killedBy===p.id||a.attack>0)&&Math.hypot(a.roomX-p.roomX,a.roomY-p.roomY)<80);
+   if(foe&&pet.cooldown<=0){damageEnemy(foe,pet.damage,'spectral');pet.attack=.34;pet.cooldown=.85;}
+   pet.state='hunt';pet.animationAction=pet.attack>0?'bite':null;continue;
+  }
+  if(distance(p,pet)>240)placeNearOwner(g,p,pet);
+  const target=g.enemies.filter(e=>e.hp>0&&!e.defeated&&e.faction!=='ally'&&e.faction!=='neutral'&&distance(p,e)<200&&(e.killedBy===p.id||e.id===p.ritualAttackerId)).sort((a,b)=>distance(pet,a)-distance(pet,b))[0];
+  const goal=target||{x:p.x-(p.faceX||0)*40,y:p.y-(p.faceY||1)*40},d=distance(pet,goal)||1;
+  pet.moving=false;pet.faceX=(goal.x-pet.x)/d;pet.faceY=(goal.y-pet.y)/d;
+  if(d>(target?30:8))navigateEnemy(g,pet,goal,dt);
+  if(target&&d<45&&pet.cooldown<=0&&clearShot(g,pet,target)){damageEnemy(target,pet.damage,'spectral');target.killedBy=p.id;pet.attack=.34;pet.cooldown=.85;g.onSound('hit',target);}
+  pet.state='hunt';pet.timer=pet.attack;pet.animationAction=pet.attack>0?'bite':null;
  }
 }

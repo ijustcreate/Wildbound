@@ -33,20 +33,23 @@ export function drawFieldWorld(c, g) {
     }
     c.strokeStyle = o.kind === "ritual" ? "#c78bea" : "#7ed8ae";
     c.beginPath();
-    c.arc(x, y, 30 + Math.sin(g.time * 3) * 2, 0, Math.PI * 2);
+    c.arc(x, y, o.kind==='protect'?70:65, 0, Math.PI * 2);
     c.stroke();
     c.font = "7px monospace";
     c.textAlign = "center";
     c.fillStyle = "#eef0d7";
     c.fillText(
       o.kind === "protect"
-        ? `RELIC ${Math.ceil(o.health)}%`
+        ? `DEFEND TOTEM · ${Math.ceil(o.health)}% HEALTH`
         : o.kind === "ritual"
-          ? "HOLD INTERACT · DISRUPT"
-          : "HOLD INTERACT · RESCUE",
+          ? "STAND IN CIRCLE · DISRUPT RITUAL"
+          : "STAND IN CIRCLE · RESCUE EXPLORER",
       x,
       y + 17,
     );
+    r(x-36,y+24,72,5,'#14261e');
+    r(x-36,y+24,72*Math.max(0,Math.min(1,(o.progress||0)/o.target)),5,o.kind==='ritual'?'#c78bea':'#7ed8ae');
+    c.fillText(o.kind==='protect'?'AUTO · KEEP ENEMIES AWAY':`${Math.ceil(Math.max(0,o.target-(o.progress||0)))}s remaining · no button needed`,x,y+39);
   }
   for (const p of g.players) {
     if (p.room) continue;

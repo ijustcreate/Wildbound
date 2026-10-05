@@ -1,0 +1,32 @@
+/* Book-reference finish: quiet parchment, crisp wells, art before ornament. */
+.hero-panel.inventory-redesign:not(.loot-popup){
+ border-image:none!important;border:4px solid #4e3929!important;border-radius:4px;
+ background:linear-gradient(90deg,#ddcca0 0%,#e6d8b5 47%,#c2ae80 49.5%,#eadcbb 52%,#decea5 100%)!important;
+ box-shadow:inset 0 0 0 2px #b69a64,inset 0 0 0 5px #ffffff17,0 12px 30px #0008;
+ padding:14px!important;color:#302e22;
+}
+.hero-panel.inventory-redesign:not(.loot-popup)>header{font:700 20px/1.25 Georgia,serif!important;letter-spacing:.02em;margin-bottom:3px;}
+.hero-panel.inventory-redesign:not(.loot-popup)>header::before{display:none;}
+.hero-panel.inventory-redesign:not(.loot-popup) .equipment-window{background:#c4b48c!important;border:1px solid #8d7951;border-radius:2px;padding:8px;gap:12px;}
+.hero-panel.inventory-redesign:not(.loot-popup) .inventory-character{background:#223b2d url('../assets/inventory-environments-blocky.png') 0 0/300% 200%;border:1px solid #8b7f58;}
+.hero-panel.inventory-redesign:not(.loot-popup) .equipment-preview{background:linear-gradient(#101c1855,#08181188)!important;}
+.hero-panel.inventory-redesign[data-environment="forest"] .inventory-character{background-position:50% 0;}
+.hero-panel.inventory-redesign[data-environment="desert"] .inventory-character{background-position:100% 0;}
+.hero-panel.inventory-redesign[data-environment="ice"] .inventory-character{background-position:0 100%;}
+.hero-panel.inventory-redesign[data-environment="temple"] .inventory-character{background-position:50% 100%;}
+.hero-panel.inventory-redesign[data-environment="house"] .inventory-character{background-position:100% 100%;}
+.hero-panel.inventory-redesign:not(.loot-popup) .paper-doll button[data-slot]{
+ background:linear-gradient(145deg,#d7c99f,#b7a781)!important;border:2px solid #786c4d!important;
+ box-shadow:inset 0 0 0 1px #e8dcb8;color:#302e22!important;border-radius:1px;font:650 clamp(8px,1.65cqw,10px)/1.1 system-ui!important;
+}
+.hero-panel.inventory-redesign:not(.loot-popup) .item-grid:not(.paper-doll) button{
+ background:linear-gradient(145deg,#c8b890,#ac9e79)!important;border:2px solid #827450!important;box-shadow:inset 0 0 0 1px #dfd0aa;border-radius:1px;
+}
+.hero-panel.inventory-redesign:not(.loot-popup) :is(.paper-doll,.item-grid) button:is(.selected,:focus-visible){
+ background:linear-gradient(145deg,#e9d99d,#c8b276)!important;border-color:#41654b!important;outline:2px solid #41654b;outline-offset:-2px;
+}
+.hero-panel.inventory-redesign:not(.loot-popup) .inventory-window>header{background:#bcad87;border:1px solid #8d7951;color:#342f23;font:bold 15px Georgia,serif;padding:5px 8px;}
+.hero-panel.inventory-redesign .pack-capacity{color:#493f2c;font-size:12px;}
+.hero-panel.inventory-redesign:not(.loot-popup)>.current-inventory-actions button{border-image:none!important;border:1px solid #6c7954;border-radius:3px;background:#456b4b;color:#fff0cd;font:600 12px/1.2 system-ui;height:auto;min-height:30px;max-height:none;padding:5px 8px;}
+.hero-panel.inventory-redesign:not(.loot-popup) .inventory-quantity{background:#3c3a2de8;color:#fff3d5;font-size:13px;}
+.hero-panel.inventory-redesign:not(.loot-popup) .inventory-help{padding-top:4px;border-top:1px solid #a38d61;font-size:11px!important;}

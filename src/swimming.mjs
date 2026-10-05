@@ -8,8 +8,11 @@ export function tickSwimming(g,p,input,dt){
  if(onBridge&&!p.underBridge&&!(p.jumpHeight>0))p.groundHeight=10;
  const deep=inDeepWater(g,p),airborne=(p.jumpHeight||0)>0||(p.groundHeight||0)>0;
  const wasSwimming=!!p.swimming;p.swimming=deep&&!airborne&&p.hp>0;
+ const jumpWater=!airborne&&p.landTime>0&&!!p.wasWaterAirborne&&['water','shallow'].includes(waterAt(g,p.x,p.y));
+ p.wasWaterAirborne=airborne;
+ if(jumpWater){g.effects||=[];g.effects.push({particle:'jump-splash',x:p.x,y:p.y,life:1,duration:1,seed:p.id||0});g.onSound?.('splash',p);}
  p.breath=Number.isFinite(p.breath)?p.breath:BREATH_SECONDS;
- if((p.swimming&&!wasSwimming)||(wasSwimming&&!p.swimming&&waterAt(g,p.x,p.y)==='shallow'&&!airborne)){
+ if(!jumpWater&&((p.swimming&&!wasSwimming)||(wasSwimming&&!p.swimming&&waterAt(g,p.x,p.y)==='shallow'&&!airborne))){
   g.effects||=[];g.effects.push({particle:'splash',x:p.x,y:p.y,life:.8,duration:.8,seed:p.id||0});
   g.onSound?.('splash',p);
  }

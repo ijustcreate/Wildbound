@@ -11,6 +11,7 @@ import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
 import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES } from "./src/controls.mjs";
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
+import { dialogNeighbour,focusDialogControl } from './src/dialog-navigation.mjs';
 import { FieldKit } from "./src/field-kit.mjs";
 import { FrameMetrics, FixedClock } from "./src/performance.mjs";
 import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
@@ -98,16 +99,19 @@ const controllerClaimKey = (pad) =>
 const trackDebugCode = createDebugCodeTracker();
 const pauseCheat = createPauseCheatTracker();
 const pauseCheatActive = () => screen==='play' && game.phase==='play' && paused && $('pause-dialog').open && [...document.querySelectorAll('dialog[open]')].at(-1)===$('pause-dialog');
-function pressPauseCheat(){
+function pressPauseCheat(device='keyboard'){
   if(pauseCheat.press(pauseCheatActive())){
+    const owner=game.players.find(p=>p.device===device);
+    if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
     gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
     gameDebug.open($('pause-dialog'));
   }
 }
-function feedDebugCode(token){
+function feedDebugCode(token,device='keyboard'){
   if(trackDebugCode(token)){
     gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
-    gameDebug.open();
+    pause(undefined,device);
+    gameDebug.open($('pause-dialog'));
   }
 }
 function requestControllerClaim(pad, key, joinRequested = false) {
@@ -815,8 +819,11 @@ heroRoot.addEventListener('victory-action', (event) => {
   if(event.detail==='restart') restartSameLevel();
   else if(event.detail==='lobby') newLobby({keepParty:true});
 });
-function pause(reason) {
+function pause(reason,device) {
+  refreshPauseOptions();
   if (screen !== "play") return;
+  const owner=game.players.find(p=>p.device===(device||'keyboard'))||game.current||game.players[0];
+  if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
   pauseCheat.reset();
   paused = true;
   persistSession();
@@ -854,7 +861,8 @@ function pause(reason) {
     $("pause-dialog").showModal();
     const initial =
       game.phase === "play" ? $("resume-button") : $("restart-button");
-    initial.focus();
+    focusDialogControl($('pause-dialog'),initial);
+    initial.scrollIntoView({block:'nearest'});
   }
 }
 function resume() {
@@ -902,6 +910,24 @@ $("nav-workshop").onclick = () => {
   show("workshop");
 };
 $("pause-button").onclick = () => pause();
+function refreshPauseOptions(){
+ $('pause-pvp').textContent='PvP: '+(game.pvp?'ON':'OFF');
+ $('pause-difficulty').textContent='Difficulty: '+(game.difficulty||'adventure');
+ $('pause-pvp').disabled=$('pause-difficulty').disabled=rooms.role==='client';
+ $('pause-music-value').textContent=Math.round(musicVolume*100)+'%';
+ $('pause-sfx-value').textContent=Math.round(audio.settings.sfx*100)+'%';
+ $('pause-mute').textContent=soundEnabled?'Mute all audio':'Unmute audio';
+}
+$('pause-fullscreen').onclick=()=>$('fullscreen-button').click();
+$('pause-pvp').onclick=()=>{$('pvp-toggle').checked=!game.pvp;$('pvp-toggle').dispatchEvent(new Event('change'));refreshPauseOptions();};
+$('pause-difficulty').onclick=()=>{const modes=['gentle','adventure','wild'];game.difficulty=modes[(modes.indexOf(game.difficulty)+1)%modes.length];$('difficulty').value=game.difficulty;game.persist();refreshPauseOptions();};
+$('pause-mute').onclick=()=>{$('sound-toggle').checked=!soundEnabled;$('sound-toggle').dispatchEvent(new Event('change'));refreshPauseOptions();};
+for(const sign of ['down','up']){
+ $('pause-music-'+sign).onclick=()=>{$('music-volume').value=Math.max(0,Math.min(1,musicVolume+(sign==='up'?.1:-.1)));$('music-volume').dispatchEvent(new Event('input'));refreshPauseOptions();};
+ $('pause-sfx-'+sign).onclick=()=>{audio.set('sfx',audio.settings.sfx+(sign==='up'?.1:-.1));$('sfx-volume').value=audio.settings.sfx;refreshPauseOptions();};
+}
+$('pause-settings').onclick=()=>$('settings-button').click();
+$('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});gameDebug.open($('pause-dialog'));};
 $("board-button").onclick = () => (boardPinned = !boardPinned);
 $("close-board").onclick = () => {
   if(game.roll)return;
@@ -909,6 +935,12 @@ $("close-board").onclick = () => {
   boardDismissedRoll = game.roll;
 };
 $("resume-button").onclick = resume;
+// Gamepads focus controls programmatically; :focus-visible is not guaranteed.
+$('pause-dialog').addEventListener('focusin', e => {
+  for (const el of $('pause-dialog').querySelectorAll('.menu-focus')) el.classList.remove('menu-focus');
+  e.target.closest('button,input,select,summary')?.classList.add('menu-focus');
+});
+$('pause-dialog').addEventListener('focusout', e => e.target.classList.remove('menu-focus'));
 $("pause-dialog").addEventListener("cancel", (e) => {
   e.preventDefault();
   if (game.phase === "play") resume();
@@ -926,8 +958,10 @@ $("quit-button").onclick = () => {
 };
 $("reassign-button").onclick = () => {
   const p = disconnected()[0];
-  if (p && !game.players.some((q) => q.device === "keyboard"))
+  if (p && !game.players.some((q) => q.device === "keyboard")){
     p.device = "keyboard";
+    if(p.ui)p.ui.ownerDevice='keyboard';
+  }
   pause("Keyboard assigned. Press Back to the Jungle to continue.");
 };
 const settingsTabNames = ['display', 'explorer', 'controls'];
@@ -1159,7 +1193,7 @@ const previousDialogAxes = new Map();
 function dialogController(pad, previous) {
   const dialog = [...document.querySelectorAll("dialog[open]")].at(-1);
   if (!dialog) return;
-  if(dialog.dataset.ownerDevice?.startsWith('pad:') && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
+  if(dialog.dataset.ownerDevice && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
   const controls = Array.from(
     (dialog.querySelector('.game-debug-console')||dialog).querySelectorAll(
       "button:not(:disabled), select:not(:disabled), input:not(:disabled), summary",
@@ -1229,6 +1263,9 @@ function dialogController(pad, previous) {
   if (active < 0 && (left || right || up || down || accept)) {
     selected = controls[0];
     selected.focus();
+  } else if (active >= 0 && dialog.id==='pause-dialog' && (left||right||up||down) && !(selected instanceof HTMLSelectElement) && !dialog.querySelector('.game-debug-console')) {
+    selected = dialogNeighbour(controls,selected,left?-1:right?1:0,up?-1:down?1:0);
+    selected.focus();
   } else if (active >= 0 && (up || down)) {
     selected =
       controls[(active + (down ? 1 : controls.length - 1)) % controls.length];
@@ -1240,8 +1277,13 @@ function dialogController(pad, previous) {
       selected.options.length;
     selected.dispatchEvent(new Event("change", { bubbles: true }));
   }
+  if(dialog.id==='pause-dialog'&&selected&&!selected.classList.contains('menu-focus'))focusDialogControl(dialog,selected);
   selected?.scrollIntoView({block:'nearest'});
   if (accept) {
+    if(dialog.id==='pause-dialog'&&selected?.id==='pause-dev'){
+      const owner=game.players.find(p=>p.device==='pad:'+pad.index);
+      if(owner)dialog.dataset.debugOwnerId=String(owner.id);
+    }
     if(selected.matches?.('input[name="characterName"]')) openControllerKeyboard(selected);
     else if(selected instanceof HTMLSelectElement){selected.selectedIndex=(selected.selectedIndex+1)%selected.options.length;selected.dispatchEvent(new Event('change',{bubbles:true}));}
     else selected?.click();
@@ -1294,8 +1336,8 @@ function inputFrame() {
     if (active && screen === "play" && rooms.role !== "client" &&
         !game.players.some((p) => p.device === device)) {
       const connected = new Set(pads.map((p) => "pad:" + p.index));
-      const missing = game.players.find((p) => p.device.startsWith("pad:") && !connected.has(p.device));
-      const solo = !modal && game.players.length === 1 && game.players[0].device === "keyboard" &&
+      const missing = game.players.find((p) => p.device.startsWith("pad:") && !connected.has(p.device)&&!p.ui);
+      const solo = !modal && game.players.length === 1 && !game.players[0].ui && game.players[0].device === "keyboard" &&
         !pad.buttons[9]?.pressed ? game.players[0] : null;
       const reclaim = (!modal || $("pause-dialog").open) && (missing || solo);
       if (reclaim) {
@@ -1312,6 +1354,7 @@ function inputFrame() {
       screen === "play" &&
       game.players.some((p) => p.device === device) &&
       pad.buttons[mapping.field]?.pressed &&
+      !playerForPad?.ui &&
       !previous[mapping.field]
     ) {
       fieldKit.open(game.players.find((p) => p.device === "pad:" + pad.index));
@@ -1340,16 +1383,18 @@ function inputFrame() {
       }
     }
     const pressed = (key) => !joinedNow && (pad.buttons[mapping[key]]?.pressed || false);
-    if(!joinedNow && pad.buttons[3]?.pressed && !previous[3] && pauseCheatActive())pressPauseCheat();
+    if(!joinedNow && pad.buttons[3]?.pressed && !previous[3] && pauseCheatActive())pressPauseCheat(device);
     if (screen === 'play' && !modal && !joinedNow) {
       const debugButtons = [[12,'up'],[13,'down'],[14,'left'],[15,'right'],[0,'a'],[1,'b'],[8,'select'],[9,'start']];
-      for (const [index,token] of debugButtons) if (pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token);
+      for (const [index,token] of debugButtons) if (pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token,device);
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:!!pad.buttons[0]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:!!pad.buttons[0]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
       inputs[device].tvDown=!!pad.buttons[13]?.pressed;
       inputs[device].tvUp=!!pad.buttons[12]?.pressed;
+      inputs[device].salvage=!!pad.buttons[7]?.pressed;
+      inputs[device].store=!!pad.buttons[2]?.pressed&&!pad.buttons[6]?.pressed;
       previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
       continue;
     }
@@ -1376,7 +1421,7 @@ function inputFrame() {
     }
     if (pressed("pause") && !previous[mapping.pause] && screen === "play" && game.players.some((p) => p.device === device)) {
       if (paused && $("pause-dialog").open && game.phase === "play") resume();
-      else if (!modal) pause();
+      else if (!modal) pause(undefined,device);
     }
     const dead = (v) => (Math.abs(v || 0) < 0.18 ? 0 : v);
     inputs["pad:" + pad.index] = {
@@ -1397,14 +1442,14 @@ function inputFrame() {
       portal: pressed("portal"),
       bait: pressed("bait"),
       next: !!pad.buttons[15]?.pressed || dead(pad.axes[0]) > 0.5,
-      prev: lootTogglePressed ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
+      prev: lootTogglePressed&&!controllerPlayer?.ui ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
       up: !!pad.buttons[12]?.pressed || dead(pad.axes[1]) < -0.5,
       down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
       panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
       use: !!pad.buttons[0]?.pressed,
       store: !!pad.buttons[2]?.pressed && !pad.buttons[6]?.pressed,
       dropOne: !!pad.buttons[2]?.pressed && !!pad.buttons[6]?.pressed,
-      offhand: !!pad.buttons[3]?.pressed,
+      offhand: !!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed, sockets: !!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,
       salvage: !!pad.buttons[7]?.pressed,
       pick: !!pad.buttons[10]?.pressed,
       close: !!pad.buttons[1]?.pressed,
@@ -1485,7 +1530,7 @@ function inputFrame() {
     panel: keys.has("Tab"),
     use: keys.has("Enter"),
     store: keys.has("KeyR"),
-    offhand: keys.has("Digit2"),
+    offhand: keys.has("Digit2"), sockets: keys.has("KeyT"),
     salvage: keys.has('KeyV'),
     pick: keys.has('KeyM'),
     drop: keys.has("Delete") && !keys.has("ShiftLeft") && !keys.has("ShiftRight"),
@@ -1611,6 +1656,7 @@ function frame(now) {
   }
   if (ready && screen === "lobby") {rooms.tick(game, dt, {});if(rooms.role!=='client')tickMeltingIce(game,dt,'lobby');}
   if(!audio.unlocked&&Array.from(navigator.getGamepads?.()||[]).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
+  $('pvp-safe-indicator').hidden=screen!=='play'||game.pvp;
   routeMusic(); audio.update(game,screen==="play"&&!paused);
   requestAnimationFrame(frame);
 }
@@ -1674,6 +1720,7 @@ try {
     }
   };
   playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
+  playableLobby.showLootDetails=()=>lootDetailsVisible;
   ready = true;
   newLobby();
   $("loading").classList.add("done");

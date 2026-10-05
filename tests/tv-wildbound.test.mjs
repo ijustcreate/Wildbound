@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LobbyTelevision} from '../src/lobby-tv.mjs';
 import {TV_CAVERN_SCENES,TV_SCENES_PER_LEVEL,TV_SECTION_TILES} from '../src/lobby-tv-levels.mjs';
-import {TvWildbound,TV_WILDBOUND_GOAL,TV_WILDBOUND_WIDTH} from '../src/tv-wildbound.mjs';
+import {TvWildbound,TV_WILDBOUND_GOAL,TV_WILDBOUND_WIDTH,TV_BOARD_X} from '../src/tv-wildbound.mjs';
 import {Game} from '../src/core.mjs';
 import {LobbyState,PlayableLobby} from '../src/playable-lobby.mjs';
 
@@ -26,10 +26,10 @@ test('2D board rolls on a fresh hit and remains isolated from the normal game',(
   mode.step(2.8);assert.equal(mode.ready,false,'intro advances with bounded frame time');
   for(let i=0;i<56;i++)mode.step(.05);
   assert.equal(mode.ready,true);
-  p.x=235;mode.step(.016,{one:{attack:true}});
+  p.x=TV_BOARD_X;mode.step(.016,{one:{attack:true}});
   assert.ok(mode.progress>=1&&mode.progress<=6);const progress=mode.progress;
   mode.step(.016,{one:{attack:true}});assert.equal(mode.progress,progress,'holding hit does not reroll');
-  for(let i=0;i<16;i++)mode.step(.05,{one:{attack:false}});
+  for(let i=0;i<90;i++)mode.step(.05,{one:{attack:false}});
   mode.step(.016,{one:{attack:true}});
   assert.ok(mode.progress>progress);
   assert.deepEqual(new Set(mode.enemies.map(e=>e.kind)),new Set(['goomba','skeleton','skeleton_unarmed','archer','lion','tiger','bat']));

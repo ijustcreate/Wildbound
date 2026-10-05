@@ -30,13 +30,13 @@ export function drawFlyingArrow(c,a={},time=0){
   for(let i=0;i<3;i++){const phase=time*9+i*2.1;c.fillRect(-3-Math.abs(Math.sin(phase))*6,Math.cos(phase)*4,1,1);}
  }
 }
-export function drawEmbeddedArrow(c,a,time=0){
+export function drawEmbeddedArrow(c,a,time=0,showQuantity=false){
  c.save();
  if(!a.surfaceEmbedded&&!a.enemy){c.fillStyle='#07100d66';c.beginPath();c.ellipse(a.x,a.y+1,2,1,0,0,Math.PI*2);c.fill();}
  const bundle=Math.min(3,a.qty||1);
  // A small fan communicates a bundle without hiding the impact point.
  for(let i=bundle-1;i>=0;i--)drawLodgedArrow(c,{...a,angle:(a.angle??0)+(i-(bundle-1)/2)*.13,shaftLength:(a.shaftLength||24)+i*2},time);
- if((a.qty||1)>1){
+ if(showQuantity&&(a.qty||1)>1){
   const p=embeddedArrowGeometry(a,time),label=`×${a.qty}`,x=Math.round((p.x+p.tailX)/2),y=Math.round(Math.max(p.y,p.tailY)+7);
   c.font='bold 9px system-ui';c.textAlign='center';c.textBaseline='middle';
   const width=Math.ceil(c.measureText(label).width)+8;

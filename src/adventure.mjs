@@ -1,5 +1,11 @@
 import {victoryRewards} from './victory-chest.mjs';
+import {waterAt} from './environment.mjs';
+import {tickBoomerangs} from './boomerang.mjs';
+import {interactMystery} from './mysteries.mjs';
+import {toggleHouseLight} from './house-lights.mjs';
 import {inventoryCarryAction} from './inventory-carry.mjs';
+import {playerInput} from './inventory-input.mjs';
+import {magicBoltGlow} from './magic-bolt-render.mjs';
 import {merchantAction,openMerchant} from './traveling-merchant.mjs';
 import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
 import {LOBBY_PLAYER_SIZE,PLAYER_RENDER_SIZE} from './render-settings.mjs';
@@ -18,8 +24,9 @@ import {hunterPets} from './hunter-pets.mjs';
 import {SKILLS,SCROLL_BOSSES,skillAvailable,skillScrollId} from './field-skills.mjs';
 import {hasAimWeapon, updateAimFacing,updateBowAimBlend} from './ranged-aim.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
+import {befriendCreature} from './friendly-creatures.mjs';
 import {sightRadius, emitNoise} from './night-cycle.mjs';
-import {cutLivingVines} from './living-ecosystem.mjs';
+import {cutLivingVines,releaseCritter} from './living-ecosystem.mjs';
 import {lightTorchFire} from './night-equipment.mjs';
 import {templeRoomStep,summonTempleTigers} from './temple.mjs';
 import {interactIce} from './ice-world.mjs';
@@ -262,6 +269,8 @@ export const adventureMethods = {
     this.roll = null;
     this.deck = [];
     this.objective = null;
+    this.mystery = null;
+    this.rollCooldown = 0;
     this.locked = false;
     this.explored = new Set();
     this.victoryChest = (this.victoryRewards || []).some(Boolean);
@@ -519,8 +528,9 @@ export const adventureMethods = {
     this.persist();
   },
   openInventory(p, storage = null) {
+    if(storage==='temple'&&!this.templeTigersSummoned){this.templeTigersSummoned=true;summonTempleTigers(this,p);}
     this.onSound("inventory",p);
-    p.ui = { panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
+    p.ui = { ownerDevice:p.device,panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
     if(storage==='victory')this.victoryChestOpened=true;
     p.charge = 0;
   },
@@ -564,7 +574,28 @@ export const adventureMethods = {
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    if(u.loot){
+      if(action==='closeStorage'){p.ui=null;return;}
+      const reusable=Number.isInteger(u.storage)||u.storage==='shared';
+      if(reusable&&(action==='panel'||['panel:pack','panel:chest'].includes(action))){u.panel=action==='panel'?(u.panel==='chest'?'pack':'chest'):action.slice(6);const source=u.panel==='pack'?p.inventory:this.storageFor(p);u.index=Math.max(0,source?.findIndex(Boolean)??0);u.notice='';return;}
+      if(!reusable)u.panel='chest';
+      const list=(u.panel==='pack'?p.inventory:this.storageFor(p))||[],occupied=list.map((item,index)=>item?index:-1).filter(index=>index>=0);
+      if(['up','prev','down','next'].includes(action)){
+        if(reusable){const limit=Math.max(24,Math.ceil(list.length/24)*24),step=action==='down'?4:action==='up'?-4:action==='next'?1:-1;u.index=list.some(Boolean)?(u.index+step+limit)%limit:0;}
+        else {const at=occupied.indexOf(u.index),step=['up','prev'].includes(action)?-1:1;u.index=occupied[(at<0?(step>0?0:occupied.length-1):(at+step+occupied.length)%occupied.length)]??0;}
+        return;
+      }
+      if(action==='panel'||action.startsWith('panel:'))return;
+      if(action==='lootAll'){for(const index of occupied){u.index=index;this.inventoryAction(p,'use');}return;}
+      if(action==='use')action='store';
+    }
     delete u.tab; // Old category selections must not hide or disable saved items.
+    if(u.shop==='robot'&&!u.split){
+      if(action==='offhand')action='split';
+      if(action==='panel'||action.startsWith('robotView:')){u.robotView=action==='panel'?(u.robotView==='stock'?'sell':'stock'):action.slice(10);u.notice='';this.uiRevision=(this.uiRevision||0)+1;return;}
+      if(u.robotView==='stock'&&action!=='close'){if(['next','down','prev','up'].includes(action)){const pages=Math.max(1,Math.ceil((this.shopOwner(p)?.robotStock?.length||0)/8));u.robotStockPage=((u.robotStockPage||0)+(['next','down'].includes(action)?1:-1)+pages)%pages;this.uiRevision=(this.uiRevision||0)+1;}return;}
+      if(['next','down','prev','up'].includes(action)){const occupied=p.inventory.flatMap((item,index)=>item?[index]:[]),at=occupied.indexOf(u.index),step=action==='down'?2:action==='up'?-2:action==='next'?1:-1;u.index=occupied[at<0?(step>0?0:occupied.length-1):(at+step+occupied.length)%occupied.length]??0;return;}
+    }
     if(merchantAction(this,p,action))return;
     if(inventoryCarryAction(this,p,action))return;
     if(equipmentAction(this,p,action))return;
@@ -587,7 +618,7 @@ export const adventureMethods = {
       if (action === 'use') { action = 'split:' + u.split.amount; }
       else { u.split.amount = Math.max(1, Math.min(qty - 1, u.split.amount + (['up', 'next'].includes(action) ? 1 : -1))); return; }
     }
-    if(this.phase==='lobby'&&(['drop','dropOne','store'].includes(action)||(['use','equip'].includes(action)&&p.inventory[u.index]?.type==='trap'&&u.panel==='pack'))){u.notice='Use this item in an expedition.';return;}
+    if(this.phase==='lobby'&&(['drop','dropOne'].includes(action)||(action==='store'&&!this.storageFor(p))||(['use','equip'].includes(action)&&p.inventory[u.index]?.type==='trap'&&u.panel==='pack'))){u.notice='Use this item in an expedition.';return;}
     if(p.salvageHold)p.salvageHold={latched:true};
     u.salvagePointer=false;
     if(socketAction(this,p,action))return;
@@ -680,6 +711,7 @@ export const adventureMethods = {
             ? "Sold for gold."
             : "Select an item to sell."
           : "Choose a vending slot to purchase.";
+      if(u.shop==='robot'&&!p.inventory[u.index])u.index=Math.max(0,p.inventory.findIndex(Boolean));
       this.persist();
       return;
     }
@@ -749,8 +781,8 @@ export const adventureMethods = {
       if(action==='up'&&u.index<6){switchPanel('gear');u.index=SLOTS.indexOf('feet');}
       else u.index=(u.index+step+24)%24;
     }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
-      if(action==='down'&&['feet','gloves','pants'].includes(SLOTS[u.index])){switchPanel('pack');u.index=0;}
-      else if(action==='up'&&['head','back'].includes(SLOTS[u.index]))switchPanel('quiver');
+      if(action==='down'&&SLOTS[u.index]==='feet'){switchPanel('pack');u.index=0;}
+      else if(action==='up'&&['head','neck'].includes(SLOTS[u.index]))switchPanel('quiver');
       else u.index=SLOTS.indexOf(equipmentNeighbor(SLOTS[u.index],action));
     }else{
       if (action === "next") u.index = (u.index + 1) % limit;
@@ -767,7 +799,8 @@ export const adventureMethods = {
       else if (storage && action === "use") moveItem();
       else {
         const item = p.inventory[u.index];
-        if(item?.type==='ice_arrow_recipe'){u.notice=learnIceRecipe(p)?'Ice arrows added to the Field Guild.':'Recipe already learned.';}
+        if(item?.type?.startsWith('caught_'))releaseCritter(this,p,u.index);
+        else if(item?.type==='ice_arrow_recipe'){u.notice=learnIceRecipe(p)?'Ice arrows added to the Field Guild.':'Recipe already learned.';}
         else if(ARROW_TYPES.includes(item?.type)){loadQuiver(p,item.type);u.notice=ITEMS[item.type].name+' loaded in quiver.';}
         else if (item?.type === "stamina_potion") useStamina(p);
         else if (item?.type === "potion") this.usePotion(p);
@@ -781,6 +814,19 @@ export const adventureMethods = {
     if ((action === "offhand"||action==='equipOffhand') && u.panel === "pack") {
       if (p.inventory[u.index]?.qty > 1) this.inventoryAction(p, "split");
       else equip(p, u.index, "hand2");
+    }
+    if ((action==='drop'||(action==='store'&&!storage&&!u.shop))&&u.panel==='gear'&&!p.room&&this.phase==='play') {
+      let slot=SLOTS[u.index];
+      if(p.equipment[slot]==='occupied')slot='hand1';
+      const type=p.equipment[slot];
+      if(type&&protectedItem(p,type)){u.notice='Unlock this item in Field Kit first.';return;}
+      if(type&&ITEMS[type]){
+        this.dropLoot(p.x,p.y,type,1,p.name+' dropped',true,{sockets:p.equipmentSockets?.[slot]});
+        p.equipment[slot]=null;
+        if(p.equipmentSockets)delete p.equipmentSockets[slot];
+        if(ITEMS[type].twoHanded)p.equipment.hand2=null;
+        refreshVitals(p);u.notice=ITEMS[type].name+' dropped on the ground.';
+      }
     }
     if (action === "store" && storage && ["pack", "chest"].includes(u.panel))
       moveItem();
@@ -822,7 +868,7 @@ export const adventureMethods = {
         }
       }
     for (const p of this.players) {
-      const i = inputs[p.device] || {},
+      const i = playerInput(this.players,p,inputs),
         old = p.previousInput || {},
         edge = (k) => !!i[k] && !old[k];
       p.staminaBoost = Math.max(0, (p.staminaBoost || 0) - dt);
@@ -880,6 +926,7 @@ export const adventureMethods = {
           "panel",
           "use",
           "offhand",
+          "sockets",
           "store",
           "drop",
           "dropOne",
@@ -989,7 +1036,8 @@ export const adventureMethods = {
         } else {
           if (old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if (l) this.collect(p, l);
+            if(interactMystery(this,p)||toggleHouseLight(this,p)){}
+            else if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}
             else if (cutLivingVines(this,p)) { this.onSound('harvest',p); this.message('Vines cut. The path is clear.'); this.persist(); }
@@ -1055,9 +1103,9 @@ export const adventureMethods = {
         if (target) {
           finishMagicBolt(this,bolt,true);
           if(this.players.includes(target))this.hurt(target,bolt.damage,bolt);else {damageEnemy(target,bolt.damage,bolt.fire?'fire':bolt.ice?'ice':'magic');target.killedBy=bolt.owner;target.ritualKill=false;}
-          if (!target.practiceTarget && !this.players.includes(target) && bolt.friendship) { target.faction = 'ally'; target.allyOwner = bolt.owner; target.aggro = false; this.message(`${target.kind} has joined your side.`); }
+          if (!this.players.includes(target) && bolt.friendship&&befriendCreature(target,bolt.owner))this.message(`${target.kind} has joined your side.`);
           target.flash = 0.2;
-          target.aggro = true;
+          target.aggro = target.faction!=='ally';
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
           if (bolt.ice && !this.players.includes(target) && this.random() < 0.35) target.frozen = 1.6;
           bolt.life = 0;
@@ -1071,6 +1119,7 @@ export const adventureMethods = {
     this.spells = this.spells.filter((b) => b.life > 0);
     for (const b of this.baits) b.life -= dt;
     this.baits = this.baits.filter((b) => b.life > 0);
+    tickBoomerangs(this,dt);
     for (const a of this.arrows) {
       if (a.stuck) {
         if (a.enemy!==undefined&&a.enemy!==null) {
@@ -1104,7 +1153,7 @@ export const adventureMethods = {
           a.remove=true;break;
         }
         const target = a.hostile
-          ? [...this.players,...hunterPets(this)].find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
+          ? [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(p=>p.pet)].find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
           : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 &&
             (e.practiceTarget
               ? a.z>0 && Math.hypot(a.x-e.x,(a.y-a.z)-(e.y-18))<23
@@ -1147,8 +1196,13 @@ export const adventureMethods = {
           a.stuck = true;a.impactTime=this.time;
           a.z = 0;
           a.embedDepth = a.embedDepth || 7;
-          frostImpact(this,a);
-          if(!a.rock&&!a.ice)arrowDrop(this,a);
+          if(!a.rock&&!a.ice&&['water','shallow','floodbridge'].includes(waterAt(this,a.x,a.y))){
+            this.effects.push({particle:'arrow-splash',x:a.x,y:a.y,life:.4,duration:.4,seed:a.owner||0});
+            this.onSound('splash',a);
+          }else{
+            frostImpact(this,a);
+            if(!a.rock&&!a.ice)arrowDrop(this,a);
+          }
           a.remove = true;
         }
       }
@@ -1229,6 +1283,7 @@ export const adventureMethods = {
       size: 6 + Math.round(strength * 8),
       damage: Math.round((def.damage+stat(p,'damageBonus')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
+      glow: magicBoltGlow(def),
       fire: def.spellType === "fire",
       ice: def.spellType === "ice",
       friendship: !!def.friendship,

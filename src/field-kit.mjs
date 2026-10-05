@@ -84,6 +84,7 @@ export class FieldKit {
     if (this.dialog.open || document.querySelector("dialog[open]")) return;
     this.player = player || this.game().players[0];
     if (!this.player) return;
+    this.dialog.dataset.ownerDevice=this.player.device;
     initializeField(this.player);
     this.page = 0;
     this.onPause();

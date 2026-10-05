@@ -1,0 +1,14 @@
+# House lights, mysteries, water and UI ownership — 1.0.56
+
+Pulled origin/main 944dafc and merged it with local 9480178, preserving both sets of changes. Merge commit: 1891708. Resolved version-only package conflicts by retaining 1.0.55, and preserved both appearance tests. New feature changes remain uncommitted and unpushed.
+
+- House lamps default to automatic night operation; interaction switches them on/off. Manual off persists across day/night and session snapshots. Light radius and auto/on/off settings are in House Builder; lamp and ceiling-light types are available. Existing house layouts gain lamps only at unobstructed, board-safe positions during the feature upgrade. House-light sources illuminate the night fog mask as well as the lighting overlay.
+- No new footprints or landing tracks on water/shallow water/flooded bridges. Existing wet footprints are hidden. Water jump landings use a larger separate jump-splash particle preset, editable in Particles.
+- Three original mysteries inspired by classic haunted knight, phantom organ and disguised miner themes. Events draw them with weights; only one can be active. Stage one spawns tagged enemies or an interactable clue at a safe location. Stage two spawns an investigation object near the board. Completion drops a unique necklace reward once. A persistent screen tracker gives objective, stage and search location. Mystery state is included in normal session/world snapshots.
+- Events editor can add a two-stage mystery and edit goal, creature/clue, target count/stats/location, objective text, final object name/appearance/board offsets, and reward/quantity. Existing definition packs retain newly added mystery defaults. Clues are quest interactions rather than inventory items requiring free pack space.
+- Dice cooldown: 1.25 seconds after a reveal closes, including world travel.
+- Player panel navigation checks the owning device; owned modal dialogs reject every other controller, including keyboard-owned dialogs. Synthetic two-controller checks passed; actual reported hardware behavior needs playtesting.
+
+Verification: full serial suite passed 602/602 after updating obsolete immediate-reroll/water-track expectations and distinguishing reward icons. An additional new-expedition reset test was added afterward; all six mystery/house/water focused tests passed. Real Electron boot, mystery-editor edit, synthetic controller isolation and night-house render passed again after that reset change. Screenshot inspected at test-output/mystery-house.png (ignored). Earlier packaged smoke failures and lack of physical controller playtesting are not superseded.
+
+Electron package: dist/night-hunt-2026-10-05T18-03-59-913Z/Wildbound-win32-x64. Build identity references merge commit 1891708 with modified source. Desktop shortcut uses the exact executable, normal profile, no runtime --preview. No saves, local house drafts, or Windows security settings were replaced.

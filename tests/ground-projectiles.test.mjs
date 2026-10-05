@@ -15,7 +15,7 @@ test('Arrow impact freezes the projected incoming angle including descent',()=>{
  assert.equal(arrowVisualAngle(a),before);assert.equal(before,Math.atan2(130,300));
 });
 test('Ground impacts keep their actual contact point and incoming slope',()=>{
- const g=new Game(()=>.5);g.addPlayer('keyboard');g.start();g.enemies=[];g.scenery=[];g.projectileBlocked=()=>false;
+ const g=new Game(()=>.5);g.addPlayer('keyboard');g.start();g.enemies=[];g.scenery=[];g.terrain.fill('grass');g.house=null;g.weather=null;g.projectileBlocked=()=>false;
  const a={x:400,y:400,vx:300,vy:100,vz:-60,z:1,gravity:0,damage:1,embedDepth:7};g.arrows=[a];
  g.tickAdventure(.05,{});assert.equal(g.arrows.length,0);
  const loot=g.loot.find(l=>l.embedded);assert.ok(loot);assert.equal(loot.x,a.x);assert.equal(loot.y,a.y);assert.equal(loot.angle,Math.atan2(160,300));

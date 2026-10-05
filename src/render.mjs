@@ -5,12 +5,13 @@ import {clipRiverTile,drawDepthCorners} from './river-edges.mjs';
 import {drawSupplyChest} from './supply-chests.mjs';
 import {resizeGameSurface,PLAYER_RENDER_SIZE} from './render-settings.mjs';
 import {drawMagicBolt} from "./magic-bolt-render.mjs";
+import {drawFriendshipHearts} from './friendship-hearts.mjs';
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {hunterPets} from './hunter-pets.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawFearFace} from './temple.mjs';
 import {applyCelShading} from './cel-shading.mjs';
-import {drawParticleEffect} from './particles.mjs';
+import {drawParticleEffect,beginParticleFrame} from './particles.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {drawBridges} from './bridges.mjs';
 import {terrainActorDepth} from './terrain-support.mjs';
@@ -18,6 +19,8 @@ import {drawSwimmer,drawBreath} from './swim-render.mjs';
 import {drawBowAim} from './bow-aim.mjs';
 import {drawSinking} from './quicksand.mjs';
 import {drawNightLight, drawNightStatus, enemyVisibility} from './night-cycle.mjs';
+import {drawMysteryWorld,drawMysteryTracker} from './mysteries.mjs';
+import {drawHouseLights} from './house-lights.mjs';
 import {drawLivingEcosystem} from './living-ecosystem.mjs';
 import {drawNightEnemyEffects, nightEnemyOpacity} from './night-enemies.mjs';
 import {drawNightEquipment} from './night-equipment.mjs';
@@ -27,6 +30,7 @@ import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt,dra
 import { drawFieldWorld } from "./field-art.mjs";
 import {drawExpansion,drawTreeWeb} from './expansion.mjs';
 import { waterAt, isShallow, drawTracks, drawProp } from "./environment.mjs";
+import {renderLOD,DecorationCache,ActorPoseCache} from './render-lod.mjs';
 import { drawRain, drawFog } from "./weather-art.mjs";
 import {drawPuddles,drawWetDrips} from './wet-weather.mjs';
 import { drawPortal } from "./portal-art.mjs";
@@ -52,6 +56,7 @@ import { ellipse } from "./player-motion.mjs";
 import { actorContact } from './contact-shadow.mjs';
 import {drawCorpse} from './corpse-pose.mjs';
 import {drawEmbeddedArrow,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawBoomerang} from './boomerang.mjs';
 import {drawForestGround,drawFallingLeaves} from './forest.mjs';
 import {hasForestLandscape,drawLandscapeGround,drawForestBank} from './forest-art.mjs';
 import {meleeProfile} from './melee-geometry.mjs';
@@ -163,6 +168,12 @@ export class Renderer {
     };
   }
   draw(game, dt) {
+    this.lod=renderLOD(this.camera.zoom);
+    this.decorationCache ||= new DecorationCache();
+    this.actorPoseCache ||= new ActorPoseCache();
+    const cacheWorld=game.seed+':'+game.generatedEnvironment;
+    if(this.cacheWorld!==cacheWorld){this.decorationCache=new DecorationCache();this.actorPoseCache=new ActorPoseCache();this.cacheWorld=cacheWorld;}
+    beginParticleFrame(this.ctx,{budget:this.lod===2?128:this.lod===1?256:384,quality:this.lod===2?.3:this.lod===1?.6:1});
     const { w, h } = this.resize(),
       ctx = this.ctx;
     this.age += dt;
@@ -226,9 +237,9 @@ export class Renderer {
       ctx.strokeStyle='#e2ffff';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(patch.x-17,patch.y+5);ctx.lineTo(patch.x+9,patch.y-6);ctx.stroke();ctx.restore();
     }
     drawExpansion(ctx,game);
-    drawForestGround(ctx,game,p=>this.visible(p,w,h,160));
+    drawForestGround(ctx,game,p=>this.visible(p,w,h,160)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
     drawTemple(ctx,game,this.animator);
-    drawBiomeAccents(ctx,game,p=>this.visible(p,w,h,120));
+    drawBiomeAccents(ctx,game,p=>this.visible(p,w,h,120)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
     drawTracks(ctx, game);
     drawLivingEcosystem(ctx, game, 'ground');
     ctx.save();
@@ -272,7 +283,7 @@ export class Renderer {
         ctx.stroke();
       }
       if (l.embedded && l.type === "arrow") {
-        drawEmbeddedArrow(ctx,l,game.time);
+        drawEmbeddedArrow(ctx,l,game.time,this.showLootDetails);
       } else {
         if (ITEMS[l.type]?.gmOnly) drawParticleEffect(ctx,'pink-sparkle',l.x,l.y-8,game.time,l.id);
         const fall=l.salvageBorn===undefined?0:Math.max(0,1-(game.time-l.salvageBorn)/.55);
@@ -298,9 +309,10 @@ export class Renderer {
     for (const bolt of game.spells || []) {
       if (this.visible(bolt,w,h,80) && canSee(game,bolt)) drawMagicBolt(ctx,bolt);
     }
+    for(const b of game.boomerangs||[])if(this.visible(b,w,h,80)&&canSee(game,b))drawBoomerang(ctx,b,game.time);
     for (const a of game.arrows) {
       if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
-      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time);continue;}
+      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time,this.showLootDetails);continue;}
       ctx.save();
       ctx.translate(a.x, a.y - (a.z || 0));
       ctx.rotate(a.rock||a.ice?(a.angle??Math.atan2(a.vy,a.vx)):arrowVisualAngle(a));
@@ -348,8 +360,8 @@ export class Renderer {
         this.visible(d, w, h)
       ) {
         ctx.save();const base=iceBase(d);clipSnow(ctx,game,d.x,base.y,d.size*2);
-        drawProp(ctx, d, game.time,game) ||
-          this.assets.draw(ctx, d.kind, d.x, d.y, d.size);
+        this.decorationCache.draw(ctx,d,this.lod,c=>drawProp(c, d, this.lod?0:game.time,game) ||
+          this.assets.draw(c, d.kind, d.x, d.y, d.size));
         drawTreeWeb(ctx,d);ctx.restore();snowRim(ctx,game,d.x,base.y,d.size*.5);
       }
     for (const p of game.pickups)
@@ -480,13 +492,13 @@ export class Renderer {
         this.canopyAlpha.set(alphaKey, alpha);
         ctx.save();
         ctx.globalAlpha = alpha;const base=iceBase(a);clipSnow(ctx,game,a.x,base.y,a.size*2);
-        drawProp(ctx, a, game.time,game) ||
-          this.assets.draw(ctx, a.kind, a.x, a.y, a.size);
+        this.decorationCache.draw(ctx,a,this.lod,c=>drawProp(c, a, this.lod?0:game.time,game) ||
+          this.assets.draw(c, a.kind, a.x, a.y, a.size));
         drawTreeWeb(ctx,a);
         ctx.restore();snowRim(ctx,game,a.x,base.y,a.size*.5);
         continue;
       }
-      if(a.hunterPet===true){const owner=game.players.find(p=>p.id===a.owner);if(owner){ctx.save();if(a.spiritGhost){ctx.globalAlpha=.78;ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);ctx.restore();}continue;}
+      if(a.hunterPet===true){const owner=game.players.find(p=>p.id===a.owner);if(owner){ctx.save();if(a.spiritGhost){ctx.globalAlpha=.78;ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}if(a.ritualPet)this.animator.draw(ctx,a,game.time,43);else drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);ctx.restore();}continue;}
       const player = a.isPlayer,
         size = player
           ? PLAYER_RENDER_SIZE
@@ -610,12 +622,8 @@ export class Renderer {
       } else if (a.kind === "tsetse") {
         drawMosquito(ctx, a, game.time);
       } else {
-        this.animator.draw(
-          ctx,
-          a.sink ? { ...a, y: a.y + a.sink } : a,
-          game.time,
-          size,
-        );
+        this.actorPoseCache.draw(ctx,a.sink?{...a,y:a.y+a.sink}:a,this.lod,game.time,size,
+          (c,actor,time)=>this.animator.draw(c,actor,time,size));
       }
       ctx.restore();
       if(player&&a.scaredTime>0)drawFearFace(ctx,a.x,a.y-(a.jumpHeight||a.groundHeight||0)-43);
@@ -712,6 +720,7 @@ export class Renderer {
           48,
         );
       }
+      if(!player)drawFriendshipHearts(ctx,a,game.time);
       if (!player && a.hp > 0 && a.hp < a.maxHp) {
         const healthY = a.y - (a.kind === 'panther' ? 53 + (a.groundHeight||0) : a.kind === "lion" ? 49 : 31);
         ctx.fillStyle = "#182f21";
@@ -776,11 +785,14 @@ export class Renderer {
     drawWetDrips(ctx,game);
     drawFallingLeaves(ctx,game,p=>this.visible(p,w,h,160));
     drawBiomeAir(ctx,game,p=>this.visible(p,w,h,30));
+    drawMysteryWorld(ctx,game);
+    drawHouseLights(ctx,game);
     ctx.restore();
     drawFog(ctx, game, this.camera, w, h);
     drawNightLight(ctx, game, this.camera, w, h);
     drawWeather(ctx, game, w, h);
     drawNightStatus(ctx, game, w, h);
+    drawMysteryTracker(ctx,game,w);
     this.lootPrompts(game, w, h);
     if (pull) {
       ctx.textAlign = "center";

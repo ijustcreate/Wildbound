@@ -4,7 +4,9 @@ import {resizeGameSurface,LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 import {drawLobbyBoard} from './lobby-board.mjs';
 import {applyCelShading} from './cel-shading.mjs';
 import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawBoomerang} from './boomerang.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
+import {playerInput} from './inventory-input.mjs';
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {take} from './items.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
@@ -19,6 +21,7 @@ import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision} from './lobby-tv.mjs';
 import {TvWildbound} from './tv-wildbound.mjs';
+import {tickSalvage} from './salvage.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
@@ -101,6 +104,7 @@ export class PlayableLobby {
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
     const modeButton=document.createElement('button');
+    modeButton.id='house-worlds-toggle';
     modeButton.textContent='House worlds mode: Off';modeButton.setAttribute('aria-pressed','false');
     modeButton.onclick=()=>{const g=this.getGame();g.houseWorldsEnabled=!g.houseWorldsEnabled;modeButton.textContent=`House worlds mode: ${g.houseWorldsEnabled?'On — roll 5 or 8 to travel':'Off'}`;modeButton.setAttribute('aria-pressed',String(g.houseWorldsEnabled));this.state.invalidate(g.players);};
     area.after(modeButton);
@@ -178,7 +182,7 @@ export class PlayableLobby {
     }else if(s.panel==='starter-chest'){
       heading.textContent='Starter chest';
       const intro=document.createElement('p');intro.textContent='Choose your starter gear, or claim the complete kit. The starter quiver comes loaded with eight arrows.';panel.append(intro);
-      const items=[['starter_bow','Starter bow',1],['starter_quiver','Starter quiver · 8 arrows',1],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1]];
+      const items=[['starter_bow','Starter bow',1],['starter_quiver','Starter quiver · 8 arrows',1],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1],['starter_boomerang','Starter boomerang',1]];
       const addStarter=(list,type,qty)=>type==='starter_quiver'?give(list,'starter_quiver',1)&&give(list,'starter_arrow',8)&&loadQuiver(p,'starter_arrow'):give(list,type,qty);
       const claim=(type,qty)=>{const inventory=structuredClone(p.inventory||[]);if(!addStarter(inventory,type,qty)){error.textContent='Your pack is full.';return;}p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');this.renderPanel(p);};
       for(const [type,label,qty] of items)button(`Take ${label}${qty>1?' · '+qty:''}`,()=>claim(type,qty));
@@ -219,8 +223,9 @@ export class PlayableLobby {
   }
   refreshChoosers(){for(const p of this.getGame().players)if(this.state.members.get(p.id)?.panel==='choose')this.renderPanel(p);}
   highlight(p){const s=this.state.members.get(p.id),buttons=[...this.nodes.get(p.id)?.querySelectorAll('button')||[]];s.focus=Math.max(0,Math.min(s.focus,buttons.length-1));buttons.forEach((b,i)=>b.classList.toggle('lobby-focus',i===s.focus));}
-  navigate(p,{x=0,y=0,accept=false,back=false,adjust=false}){
+  navigate(p,{x=0,y=0,accept=false,back=false,adjust=false},device=p.device){
     const s=this.state.members.get(p.id),panel=this.nodes.get(p.id);if(!panel)return;
+    if(device!==p.device||panel.dataset.ownerDevice!==device)return;
     if(panel.creationNavigate){panel.creationNavigate({x,y,accept,back,adjust});return;}
     if(back){if(s.spawned)this.close(p);else if(s.panel==='create'){s.panel='choose';this.renderPanel(p);}else {this.getGame().players=this.getGame().players.filter(q=>q!==p);this.sync();}return;}
     const buttons=[...panel.querySelectorAll('button')];
@@ -278,7 +283,7 @@ export class PlayableLobby {
     }
     const joinedTv=new Set();
     for(const p of players){
-      const s=this.state.members.get(p.id),input=players.find(q=>q.device===p.device)===p?(inputs[p.device]||{}):{};
+      const s=this.state.members.get(p.id),input=playerInput(players,p,inputs);
       if(this.television?.players.has(p.id)&&(blocked||!s.spawned||p.lobbyDisconnected||Math.hypot(s.x-785,s.y-165)>103||p.ui))this.television.leave(p.id);
       if(!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected){
         const game=this.getGame(),edge=key=>input[key]&&!s.held[key];
@@ -286,7 +291,7 @@ export class PlayableLobby {
         if(edge('inventory')){if(p.ui)p.ui=null;else{game.openInventory(p);this.state.invalidate(players);}}
         if(p.ui){
           s.inventoryRelease=true;
-          for(const action of ['next','prev','up','down','panel','use','offhand','pick','close'])if(edge(action))game.inventoryAction(p,action);
+          for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close'])if(edge(action))game.inventoryAction(p,action);
           const direction=['next','prev','up','down'].find(key=>input[key]);
           s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
           if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
@@ -304,6 +309,8 @@ export class PlayableLobby {
           if(!input.lobbyInteract)s.stationPress=false;
         }
       }else s.moving=false;
+      p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
+      tickSalvage(this.getGame(),p,!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected&&!!p.ui&&(!!input.salvage||!!p.ui.salvagePointer),dt);
       if(!p.ui&&!['inventory','use','close','interact','attack','jump','dodge','block','trap','potion','bait','offhand','panel'].some(key=>input[key]))s.inventoryRelease=false;
       s.held={...input};
     }
@@ -322,8 +329,9 @@ export class PlayableLobby {
     if(this.television?.completed){
       const party=players.filter(p=>this.television.players.has(p.id));
       this.tvWildbound=new TvWildbound(party,this.television.seed);
+      this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
-      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · Arrows / D-pad: move · Z / A: jump · X / X: hit enemies and the board to roll · Hit the board until all 30 spaces glow';
+      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · Directional movement · Jump to break question blocks · Attack the central board to roll · Explore both directions';
     }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
@@ -336,11 +344,12 @@ export class PlayableLobby {
     this.area.querySelector('.lobby-countdown').textContent=this.state.countdown!==null?`The board opens in ${Math.max(1,Math.ceil(this.state.countdown))}…`:'';
   }
   drawPractice(c){
+    for(const b of this.practice.boomerangs||[])drawBoomerang(c,b,this.practice.time);
     c.save();
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
-    for(const a of this.practice.loot)if(a.embedded&&ARROW_TYPES.includes(a.type))drawEmbeddedArrow(c,a,this.practice.time);
-    for(const a of groupLodgedArrows(this.practice.arrows)){if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
+    for(const a of this.practice.loot)if(a.embedded&&ARROW_TYPES.includes(a.type))drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());
+    for(const a of groupLodgedArrows(this.practice.arrows)){if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
     for(const b of this.practice.spells)drawMagicBolt(c,b);
     for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';this.label(f.text,f.x,f.y,14,f.color||'#fff');}
     c.restore();

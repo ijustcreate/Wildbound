@@ -7,12 +7,12 @@ import {tickXPOrbs} from '../src/xp-orbs.mjs';
 import {equipmentNeighbor} from '../src/equipment-navigation.mjs';
 import {SLOTS} from '../src/items.mjs';
 
-test('Equipment navigation reaches every slot and follows glove placement',()=>{
- assert.equal(equipmentNeighbor('hand1','down'),'gloves');assert.equal(equipmentNeighbor('feet','prev'),'gloves');
+test('Equipment navigation reaches every slot and follows the two-column equipment list',()=>{
+ assert.equal(equipmentNeighbor('hand1','up'),'gloves');assert.equal(equipmentNeighbor('feet','prev'),'hand1');
  const seen=new Set(['head']),queue=['head'];
  while(queue.length){const slot=queue.shift();for(const d of ['up','down','next','prev']){const next=equipmentNeighbor(slot,d);assert.ok(SLOTS.includes(next));if(!seen.has(next)){seen.add(next);queue.push(next);}}}
  assert.equal(seen.size,SLOTS.length);
- const g=new Game(),p=g.addPlayer('pad:0');g.start();g.openInventory(p);p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');g.inventoryAction(p,'down');assert.equal(SLOTS[p.ui.index],'gloves');
+ const g=new Game(),p=g.addPlayer('pad:0');g.start();g.openInventory(p);p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');g.inventoryAction(p,'up');assert.equal(SLOTS[p.ui.index],'gloves');
 });
 
 function rolling(){

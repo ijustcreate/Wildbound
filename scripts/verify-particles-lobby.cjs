@@ -22,7 +22,7 @@ app.whenReady().then(async()=>{const w=new BrowserWindow({show:false,width:1440,
   [...document.querySelectorAll('#party-menu button')].find(b=>b.textContent==='Rig studio').click();
   [...document.querySelectorAll('dialog[open] nav button')].find(b=>b.textContent==='Particles').click();
   const root=document.querySelector('.particle-editor');if(!root)throw Error('No particle tab');
-  const size=root.querySelector('[aria-label="Size"]');size.value='5';size.dispatchEvent(new Event('input'));root.querySelector('[data-action="save"]').click();
+  const effect=root.querySelector('[aria-label="Particle effect"]');effect.value='torch';effect.dispatchEvent(new Event('change'));const size=document.querySelector('.particle-editor [aria-label="Size"]');size.value='5';size.dispatchEvent(new Event('input'));document.querySelector('.particle-editor [data-action="save"]').click();
   const {effects}=await import('./src/particles.mjs');if(effects.torch.size!==5||!localStorage.getItem('wildbound-particles-v1'))throw Error('Effect save failed');
   return 'Particle tab, live controls and saved gameplay preset verified';
  })()`));

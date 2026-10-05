@@ -19,6 +19,7 @@ export function tickBoardSequence(g,dt,inputs={}){
   g.roll=null;g.eventTime=0;
   finishBoardTurn(g,r);
   travelHouseWorlds(g,r.total);
+  g.rollCooldown=1.25;
  }
  return true;
 }

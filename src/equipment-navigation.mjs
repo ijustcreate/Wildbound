@@ -1,15 +1,15 @@
-// Matches the displayed paper doll, including the lower-left glove slot.
+// Matches the compact two-column equipment list; feet spans the last row.
 export const EQUIPMENT_NEIGHBORS={
- head:{up:'feet',down:'neck',prev:'neck',next:'back'},
- back:{up:'head',down:'cape',prev:'head',next:'neck'},
- neck:{up:'head',down:'shoulders',prev:'cape',next:'cape'},
- cape:{up:'head',down:'chest',prev:'neck',next:'neck'},
- shoulders:{up:'neck',down:'hand1',prev:'chest',next:'chest'},
- chest:{up:'cape',down:'hand2',prev:'shoulders',next:'shoulders'},
- hand1:{up:'shoulders',down:'gloves',prev:'hand2',next:'hand2'},
- hand2:{up:'chest',down:'pants',prev:'hand1',next:'hand1'},
- gloves:{up:'hand1',down:'feet',prev:'pants',next:'feet'},
- pants:{up:'hand2',down:'feet',prev:'feet',next:'gloves'},
- feet:{up:'gloves',down:'head',prev:'gloves',next:'pants'},
+ head:{up:'feet',down:'shoulders',prev:'neck',next:'neck'},
+ neck:{up:'feet',down:'cape',prev:'head',next:'head'},
+ shoulders:{up:'head',down:'chest',prev:'cape',next:'cape'},
+ cape:{up:'neck',down:'back',prev:'shoulders',next:'shoulders'},
+ chest:{up:'shoulders',down:'gloves',prev:'back',next:'back'},
+ back:{up:'cape',down:'pants',prev:'chest',next:'chest'},
+ gloves:{up:'chest',down:'hand1',prev:'pants',next:'pants'},
+ pants:{up:'back',down:'hand2',prev:'gloves',next:'gloves'},
+ hand1:{up:'gloves',down:'feet',prev:'hand2',next:'hand2'},
+ hand2:{up:'pants',down:'feet',prev:'hand1',next:'hand1'},
+ feet:{up:'hand1',down:'head',prev:'hand1',next:'hand2'},
 };
 export const equipmentNeighbor=(slot,direction)=>EQUIPMENT_NEIGHBORS[slot]?.[direction]||'head';

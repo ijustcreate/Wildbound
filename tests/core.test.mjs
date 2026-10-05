@@ -33,9 +33,11 @@ test("First hits establish order, repeated rolls wait until the next round", () 
   assert.ok(g.hitTable(b));
   assert.equal(g.hitTable(a), false);
   while(g.roll)tick(g,.05);
+  while(g.rollCooldown>0)tick(g,.05);
   assert.equal(g.hitTable(b), false);
   assert.ok(g.hitTable(a));
   while(g.roll)tick(g,.05);
+  while(g.rollCooldown>0)tick(g,.05);
   assert.deepEqual(g.turnOrder, [b.id, a.id]);
   assert.equal(g.current, b);
   assert.equal(g.hitTable(a), false);
@@ -51,6 +53,7 @@ test("First round admits up to six unique devices then locks roster", () => {
   for (let i = 0; i < 6; i++) {
     g.hitTable(g.players[i]);
     while(g.roll)tick(g,.05);
+    while(g.rollCooldown>0)tick(g,.05);
     for (const p of g.players) p.hp = 100;
   }
   assert.equal(g.round, 2);
@@ -63,6 +66,7 @@ test("Later rolls keep previously summoned creatures", () => {
   g.hitTable(g.current || g.players.find((p) => !p.rolls));
   while(g.roll)tick(g,.05);
   const lionId = g.enemies[0].id;
+  while(g.rollCooldown>0)tick(g,.05);
   g.hitTable(g.current || g.players.find((p) => !p.rolls));
   while(g.roll)tick(g,.05);
   assert.ok(g.enemies.some((e) => e.id === lionId));
@@ -84,8 +88,15 @@ test("All events have working spawns, including mixed squads", () => {
   const g = game();
   for (let i = 0; i < EVENTS.length; i++) {
     g.enemies = [];
+    g.mystery=null;
     g.generatedEnvironment=EVENTS[i].environment||'forest';
     g.spawnEvent(i);
+    if(EVENTS[i].type==='mystery'){
+      assert.equal(g.mystery.stage,1);
+      assert.equal(g.enemies.length,EVENTS[i].mystery.goal==='recover'?0:EVENTS[i].mystery.count);
+      if(EVENTS[i].mystery.goal==='recover')assert.ok(g.mystery.object);
+      continue;
+    }
     assert.equal(g.enemies.length, EVENTS[i].count+(EVENTS[i].spiderNest?3:0));
     if(EVENTS[i].spiderNest)g.enemies=g.enemies.filter(e=>e.kind!=='spider_egg');
     assert.ok(g.enemies.every((e) => e.hp > 0 && (EVENTS[i].squad ? EVENTS[i].squad.includes(e.kind) : EVENTS[i].mixedSkeletons ? ["skeleton","archer"].includes(e.kind) : EVENTS[i].wizardEscort ? ["skeleton_wizard","skeleton"].includes(e.kind) : e.kind === EVENTS[i].kind)));

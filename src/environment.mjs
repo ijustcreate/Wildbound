@@ -1,9 +1,11 @@
 import {drawBiomeProp} from './biome-art.mjs';
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
-import {drawForestTree,drawBush,treeBase,palmBase,tickForest,drawPalmTrunk,drawPalmFronds} from './forest.mjs';
+import {drawForestTree,drawPalmTree,drawBush,treeBase,palmBase,tickForest} from './forest.mjs';
 import { emitNoise } from './night-cycle.mjs';
 import {drawForestRuin} from './forest-art.mjs';
 import { terrainHash } from "./world.mjs";
+import {hunterPets} from './hunter-pets.mjs';
+import {releasedCritters} from './living-ecosystem.mjs';
 export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
@@ -142,15 +144,17 @@ export function tickEnvironment(g, dt) {
       s.harvest = 0;
     }
   }
-  g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
-  for (const a of [...g.players, ...g.enemies]) {
+  if(g.scenery.some(s=>s.falling>=1.5))g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
+  for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
     if (
       a.room ||
       a.hp <= 0 ||
-      ["bat", "wasp", "snake", "vine"].includes(a.kind)
+      a.spiritGhost || a.ghost ||
+      ["bat", "wasp", "snake", "vine", "dragonfly", "fairy", "bird", "tsetse"].includes(a.kind)
     )
       continue;
     const feetOffset=a.kind?14:0;
+    if(['water','shallow','floodbridge'].includes(waterAt(g,a.x,a.y+feetOffset))){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if(a.trackImpulse){const point=a.trackImpulse;delete a.trackImpulse;const angle=Math.atan2(a.faceY||0,a.faceX||1);for(const side of [-1,1])g.footprints.push({x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,water:isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind});a.trackPosition={x:a.x,y:a.y};}
     if(a.jumpHeight>0||a.groundHeight>0||a.swimming){a.trackPosition={x:a.x,y:a.y};continue;}
     const last = a.trackPosition;
@@ -180,6 +184,7 @@ export function tickEnvironment(g, dt) {
 }
 export function drawTracks(c, g) {
   for (const f of g.footprints || []) {
+    if(['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
     const t = g.time - f.time;
     c.save();
     c.translate(f.x, f.y);
@@ -228,7 +233,10 @@ export function drawTracks(c, g) {
 export function drawProp(c, p, time,game={}) {
   if(drawBiomeProp(c,p,time,game))return true;
   if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
-  if(p.procedural&&['tree','snow_tree'].includes(p.kind)){drawForestTree(c,p,time,game);if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/90),3);}return true;}
+  if(p.procedural&&['tree','snow_tree','palm'].includes(p.kind)){
+    if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game);
+    if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
+  }
   if(p.kind==='bush'){drawBush(c,p,time);return true;}
   if(drawIceProp(c,p,time))return true;
   if (!p.procedural) return false;
@@ -291,8 +299,6 @@ export function drawProp(c, p, time,game={}) {
         r(lx, ly, 2, 1, n % 2 ? "#436943" : "#789154");
       }
     }
-  } else if (p.kind === "palm") {
-    drawPalmTrunk(c,p);drawPalmFronds(c,p,time);
   } else if (p.kind === "cactus") {
     r(-4, -31, 8, 31, "#4f7049");
     r(-12, -21, 8, 5, "#5f8251");

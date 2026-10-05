@@ -1,6 +1,51 @@
 import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyInventoryControllerIsolation=async()=>{
+    await window.showcase('game');ctx.paused=true;
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller','Sony DualSense'].map((id,index)=>({index,id,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();ctx.keys.clear();
+    try{
+      const g=new ctx.Game(()=>.5);g.phase='play';g.openingBoard=false;g.scenery=[];g.house=null;g.terrain.fill('grass');ctx.game=g;
+      const heroes=pads.map(pad=>g.addPlayer('pad:'+pad.index));
+      for(const p of heroes){p.inventory=[{type:'sword',qty:1},{type:'phantom_charm',qty:1},{type:'stick',qty:2}];g.openInventory(p);}
+      const step=()=>{g.tickAdventure(.05,ctx.inputFrame());ctx.heroUI.draw(g,ctx.renderer);};
+      const press=(index,button)=>{pads[index].buttons[button]={pressed:true,value:1};step();pads[index].buttons[button]={pressed:false,value:0};step();};
+      step();
+      // Deliberately put browser focus in a different player's UI for every press.
+      for(let i=0;i<3;i++){
+        ctx.heroUI.panels.get(heroes[(i+1)%3].id).querySelector('button').focus();
+        press(i,15);if(heroes.some((p,j)=>p.ui.index!==(j<=i?1:0)))throw Error('Navigation leaked across controller inventories');
+      }
+      for(let i=0;i<3;i++){
+        heroes[i].ui.index=0;press(i,0);
+        if(heroes[i].equipment.hand1!=='sword'||heroes.some((p,j)=>j>i&&p.equipment.hand1==='sword'))throw Error('Equip routed through global focus');
+      }
+      const p=heroes[1];p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');press(1,2);
+      if(p.equipment.hand1||g.loot.length!==1||g.loot[0].type!=='sword'||heroes[0].equipment.hand1!=='sword')throw Error('Controller gear drop wrong owner');
+      press(2,1);if(heroes[2].ui||!heroes[0].ui||!heroes[1].ui)throw Error('Controller close leaked');
+      return 'Actual inputFrame: Xbox/Switch/PlayStation inventories navigate, equip, drop gear and close independently even with focus in another player panel';
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();}
+  };
+  window.verifyDevOwnerRouting=async()=>{
+    await window.showcase('game');
+    for(const menu of ctx.$('pause-dialog').querySelectorAll('.game-debug-console'))menu.remove();
+    const [first,second]=ctx.game.players;first.inventory=[];second.inventory=[];second.device='pad:1';
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pad={index:1,id:'Xbox ownership check',mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[pad]});
+    try{
+      ctx.inputFrame();pad.buttons[9].pressed=true;ctx.inputFrame();pad.buttons[9].pressed=false;ctx.inputFrame();
+      const dialog=ctx.$('pause-dialog');
+      if(!dialog.open||dialog.dataset.debugOwnerId!==String(second.id))throw Error('Start did not capture the pausing player');
+      ctx.$('pause-dev').focus();pad.buttons[0].pressed=true;ctx.inputFrame();pad.buttons[0].pressed=false;ctx.inputFrame();
+      const consoleEl=dialog.querySelector('.game-debug-console');if(!consoleEl)throw Error('Controller did not open the dev menu');
+      consoleEl.querySelector('[data-debug=item]').value='sword_of_a_thousand_truths';consoleEl.querySelector('[data-debug-spawn=inventory]').click();
+      if(first.inventory.some(i=>i?.type==='sword_of_a_thousand_truths')||!second.inventory.some(i=>i?.type==='sword_of_a_thousand_truths'))throw Error('Controller item routed to wrong explorer');
+      consoleEl.remove();dialog.close();return 'Real Start → pause → controller confirm → dev item went only to the opening player';
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;}
+  };
   window.verifyTvWildboundFlow=()=>{
     ctx.newLobby();
     const game=ctx.game,lobby=ctx.playableLobby;
