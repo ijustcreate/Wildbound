@@ -13,6 +13,8 @@ import {equipmentAction} from './equipment-actions.mjs';
 import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
 import {xpBurst,tickXPOrbs} from './xp-orbs.mjs';
 import {equipmentNeighbor} from './equipment-navigation.mjs';
+import {tickStorageRoom} from './storage-room.mjs';
+import {canDropInventoryItem,dropInventoryItem} from './inventory-world.mjs';
 import {arrowVisualAngle} from './embedded-arrow.mjs';
 import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,loadQuiver,quiverType,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
 import {learnIceRecipe,tickMeltingIce} from './ice-crafting.mjs';
@@ -39,13 +41,11 @@ import {
   canAccess,
   record,
 } from "./field-systems.mjs";
-import { ROOM_STATIONS } from "./shops.mjs";
 import { clearSlot } from "./items.mjs";
 import {refreshVitals} from './items.mjs';
 import {socketAction} from './socket-workshop.mjs';
 import {tickSalvage} from './salvage.mjs';
 import {
-  roomBlocked,
   purchaseVending,
   collectVending,
   useStamina,
@@ -532,11 +532,16 @@ export const adventureMethods = {
     this.onSound("inventory",p);
     p.ui = { ownerDevice:p.device,panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
     if(storage==='victory')this.victoryChestOpened=true;
+    if(storage==='tv-victory'&&this.tvWorld?.won&&this.tvWorld.players.has(p.id)){
+      this.tvWorld.victoryChestOpened=true;
+      Object.assign(p.ui,{panel:'chest',loot:true,index:Math.max(0,this.tvWorld.victoryRewards.findIndex(Boolean))});
+    }
     p.charge = 0;
   },
   storageFor(p) {
     if(p.ui?.storage==="temple")return this.templeChest;
     if (p.ui?.storage === "victory") return this.victoryRewards;
+    if(p.ui?.storage==='tv-victory'&&this.tvWorld?.won&&this.tvWorld.players.has(p.id))return this.tvWorld.victoryRewards;
     if (p.ui?.storage === "shared") return this.sharedStash;
     if (Number.isInteger(p.ui?.storage)) {
       const d = this.portals.find((d) => d.id === p.room),
@@ -575,6 +580,10 @@ export const adventureMethods = {
     const u = p.ui;
     if (!u) return;
     if(u.loot){
+      if(u.storage==='tv-victory'&&['tvReturn','use'].includes(action)&&!this.storageFor(p)?.some(Boolean)){
+        if(this.tvWorld?.won&&this.tvWorld.players.has(p.id))this.tvWorld.requestLobbyReturn=true;
+        return;
+      }
       if(action==='closeStorage'){p.ui=null;return;}
       const reusable=Number.isInteger(u.storage)||u.storage==='shared';
       if(reusable&&(action==='panel'||['panel:pack','panel:chest'].includes(action))){u.panel=action==='panel'?(u.panel==='chest'?'pack':'chest'):action.slice(6);const source=u.panel==='pack'?p.inventory:this.storageFor(p);u.index=Math.max(0,source?.findIndex(Boolean)??0);u.notice='';return;}
@@ -618,7 +627,7 @@ export const adventureMethods = {
       if (action === 'use') { action = 'split:' + u.split.amount; }
       else { u.split.amount = Math.max(1, Math.min(qty - 1, u.split.amount + (['up', 'next'].includes(action) ? 1 : -1))); return; }
     }
-    if(this.phase==='lobby'&&(['drop','dropOne'].includes(action)||(action==='store'&&!this.storageFor(p))||(['use','equip'].includes(action)&&p.inventory[u.index]?.type==='trap'&&u.panel==='pack'))){u.notice='Use this item in an expedition.';return;}
+    if(this.phase==='lobby'&&((!canDropInventoryItem(this,p)&&(['drop','dropOne'].includes(action)||(action==='store'&&!this.storageFor(p))))||(['use','equip'].includes(action)&&p.inventory[u.index]?.type==='trap'&&u.panel==='pack'))){u.notice='Use this item in an expedition.';return;}
     if(p.salvageHold)p.salvageHold={latched:true};
     u.salvagePointer=false;
     if(socketAction(this,p,action))return;
@@ -815,13 +824,13 @@ export const adventureMethods = {
       if (p.inventory[u.index]?.qty > 1) this.inventoryAction(p, "split");
       else equip(p, u.index, "hand2");
     }
-    if ((action==='drop'||(action==='store'&&!storage&&!u.shop))&&u.panel==='gear'&&!p.room&&this.phase==='play') {
+    if ((action==='drop'||(action==='store'&&!storage&&!u.shop))&&u.panel==='gear'&&canDropInventoryItem(this,p)) {
       let slot=SLOTS[u.index];
       if(p.equipment[slot]==='occupied')slot='hand1';
       const type=p.equipment[slot];
       if(type&&protectedItem(p,type)){u.notice='Unlock this item in Field Kit first.';return;}
       if(type&&ITEMS[type]){
-        this.dropLoot(p.x,p.y,type,1,p.name+' dropped',true,{sockets:p.equipmentSockets?.[slot]});
+        dropInventoryItem(this,p,type,1,{sockets:p.equipmentSockets?.[slot]});
         p.equipment[slot]=null;
         if(p.equipmentSockets)delete p.equipmentSockets[slot];
         if(ITEMS[type].twoHanded)p.equipment.hand2=null;
@@ -839,13 +848,10 @@ export const adventureMethods = {
     ) {
       const item = p.inventory[u.index];
       if (item) {
-        this.dropLoot(
-          p.x,
-          p.y,
+        dropInventoryItem(
+          this,p,
           item.type,
           action === "dropOne" ? 1 : item.qty,
-          p.name + " dropped",
-          true,
           item,
         );
         if (action === "dropOne" && item.qty > 1) item.qty--;
@@ -945,43 +951,7 @@ export const adventureMethods = {
       } else if (p.room) {
         tickSalvage(this,p,false,dt);
         if(templeRoomStep(this,p,i,dt)){p.previousInput={...i};continue;}
-        const beforeX = p.roomX,
-          beforeY = p.roomY;
-        const nx = Math.max(25, Math.min(295, p.roomX + (i.x || 0) * 90 * dt)),
-          ny = Math.max(45, Math.min(218, p.roomY + (i.y || 0) * 90 * dt));
-        if (!roomBlocked(nx, p.roomY)) p.roomX = nx;
-        if (!roomBlocked(p.roomX, ny)) p.roomY = ny;
-        const dx = p.roomX - beforeX,
-          dy = p.roomY - beforeY;
-        const distance = Math.hypot(dx, dy);
-        p.roomMoving = distance > 0.001;
-        p.roomStep = (p.roomStep || 0) + distance * 0.13;
-        if (p.roomMoving) {
-          p.faceX = dx / distance;
-          p.faceY = dy / distance;
-        }
-        if (Math.hypot(p.roomX - 160, p.roomY - 214) < 18) {
-          this.leaveRoom(p);
-          continue;
-        }
-        if (edge("interact")) {
-          if (p.roomY > 192 && Math.abs(p.roomX - 160) < 40) this.leaveRoom(p);
-          else if (
-            Math.hypot(
-              p.roomX - ROOM_STATIONS.robot.x,
-              p.roomY - ROOM_STATIONS.robot.y,
-            ) < 35
-          )
-            this.openShop(p, "robot");
-          else if (Math.hypot(p.roomX - 255, p.roomY - 158) < 35)
-            this.openShop(p, "vending");
-          else {
-            const n = [60, 160, 260].findIndex(
-              (x) => Math.hypot(x - p.roomX, 80 - p.roomY) < 50,
-            );
-            if (n >= 0) this.openInventory(p, n);
-          }
-        }
+        tickStorageRoom(this,p,i,dt,edge('interact'));
       } else if (!p.consumeInput) {
         if(this.openingBoard)faceOpeningBoard(p);else if (!p.sleeping) updateAimFacing(p, i);
         p.bowAiming = !!i.block && hasAimWeapon(p) && !p.swimming && !p.sleeping && !this.openingBoard;

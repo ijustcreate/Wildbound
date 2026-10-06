@@ -1,6 +1,44 @@
 import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyLobbyStorageAndTvControls=async()=>{
+    ctx.newLobby();
+    const {TvWildbound,TV_BOARD_X}=await import('./tv-wildbound.mjs');
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller'].map((id,index)=>({index,id,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();ctx.keys.clear();
+    try{
+      const game=ctx.game,lobby=ctx.playableLobby,heroes=[game.addPlayer('keyboard'),...pads.map(pad=>game.addPlayer('pad:'+pad.index))];
+      lobby.sync();for(const [i,p]of heroes.entries()){p.profileId='tv-controls-'+i;p.inventory=[{type:'sword',qty:1},{type:'potion',qty:3}];const s=lobby.state.members.get(p.id);Object.assign(s,{spawned:true,panel:null,x:300+i*200,y:350});}
+      const step=()=>{lobby.update(.05,ctx.inputFrame());ctx.heroUI.draw(game,ctx.renderer);};
+      const press=(index,button)=>{pads[index].buttons[button]={pressed:true,value:1};step();pads[index].buttons[button]={pressed:false,value:0};step();};
+      step();press(0,12);const owner=heroes[1],door=game.portals.find(d=>d.owner===owner.id);if(!door?.lobby)throw Error('Actual D-pad up did not open lobby portal');
+      Object.assign(lobby.state.members.get(owner.id),{x:door.x,y:door.y});step();if(owner.room!==door.id)throw Error('Lobby portal cannot be entered');
+      owner.chests[0]=[{type:'potion',qty:5}];Object.assign(owner,{roomX:60,roomY:115});press(0,0);
+      if(owner.ui?.storage!==0||ctx.heroUI.panels.get(owner.id).querySelectorAll('[data-container="chest"] .item-icon').length!==1)throw Error('Real lobby chest UI did not show stored items');
+      if(owner.chests[0][0]?.qty!==5)throw Error('Opening input also withdrew chest item');press(0,1);press(0,12);if(owner.room)throw Error('Controller could not return to lobby');
+      lobby.tvWildbound=new TvWildbound(heroes,12);const mode=lobby.tvWildbound;mode.intro=2.8;mode.enemies=[];step();
+      ctx.keys.add('KeyI');step();ctx.keys.delete('KeyI');step();if(!heroes[0].ui)throw Error('Keyboard I did not open TV inventory');
+      press(0,8);press(1,8);if(heroes.some(p=>!p.ui))throw Error('TV controller inventory did not open');
+      ctx.heroUI.panels.get(heroes[0].id).querySelector('button').focus();press(1,15);
+      if(heroes[2].ui.index!==1||heroes[1].ui.index!==0||heroes[0].ui.index!==0)throw Error('TV inventory ownership leaked');
+      press(0,0);if(owner.equipment.hand1!=='sword'||mode.progress)throw Error('TV Equip jumped or rolled board');
+      owner.ui.panel='gear';owner.ui.index=SLOTS.indexOf('hand1');press(0,2);if(owner.equipment.hand1||mode.loot.at(-1)?.type!=='sword'||game.loot.length)throw Error('TV gear drop did not stay in TV world');
+      press(0,1);press(1,1);ctx.keys.add('KeyI');step();ctx.keys.delete('KeyI');step();if(heroes.some(p=>p.ui))throw Error('TV inventory could not close independently');
+      const actor=mode.players.get(owner.id);Object.assign(actor,{x:TV_BOARD_X,y:437,vy:0,grounded:true,face:1});press(0,0);if(mode.progress||actor.vy>=0)throw Error('Jump still attacks TV board');
+      Object.assign(actor,{x:TV_BOARD_X,y:437,vy:0,grounded:true,face:1});press(0,2);if(!mode.progress||mode.rollView?.playerId!==owner.id)throw Error('TV left-face attack failed to roll for its owner');
+      mode.rollView=null;mode.progress=48;Object.assign(actor,{x:4790,y:437,vy:0});step();if(!mode.won||!mode.victoryRewards.length)throw Error('TV finish did not create treasure');
+      const rewards=mode.victoryRewards,total=rewards.length;press(0,3);
+      if(owner.ui?.storage!=='tv-victory'||rewards.filter(Boolean).length!==total)throw Error('Finish interaction skipped or auto-looted treasure');
+      const panel=ctx.heroUI.panels.get(owner.id);if(panel.querySelectorAll('[data-container="chest"] .item-icon').length!==total||!panel.querySelector('[data-action="tvReturn"]').disabled)throw Error('Treasure chest UI/return safety broken');
+      press(0,0);if(rewards.filter(Boolean).length!==total-1)throw Error('Controller could not loot reward');press(0,1);press(1,3);
+      if(heroes[2].ui?.storage!=='tv-victory'||game.storageFor(heroes[2])!==rewards)throw Error('Party treasure was regenerated on reopen');
+      ctx.heroUI.panels.get(heroes[2].id).querySelector('[data-action="lootAll"]').click();step();
+      if(rewards.some(Boolean)||ctx.heroUI.panels.get(heroes[2].id).querySelector('[data-action="tvReturn"]').disabled)throw Error('Loot-all/return button broken');
+      press(1,0);if(lobby.tvWildbound||game.tvWorld||heroes.some(p=>p.ui)||heroes.some(p=>!lobby.state.members.get(p.id)?.spawned))throw Error('Treasure return lost lobby heroes');
+      return 'Actual inputFrame: lobby portal/chest/return; three owned TV inventories; equip/drop/close; distinct jump/attack; finish treasure, co-op loot, safe return with heroes retained';
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();ctx.keys.clear();}
+  };
   window.verifyInventoryControllerIsolation=async()=>{
     await window.showcase('game');ctx.paused=true;
     const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
@@ -1208,7 +1246,7 @@ export function installDebugTools(ctx) {
     check("Inventory window and all paper-doll slots exist", () => {
       ctx.game.inventoryAction(p, "panel:gear");
       ctx.heroUI.draw(ctx.game, ctx.renderer);
-      return ctx.heroRoot.querySelectorAll(".paper-doll button").length === SLOTS.length;
+      return ctx.heroRoot.querySelectorAll(".paper-doll button[data-slot]").length === SLOTS.length;
     });
     check(
       "Equipment sits above backpack; drag equips offhand and rejects invalid slots",

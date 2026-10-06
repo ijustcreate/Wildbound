@@ -1,9 +1,9 @@
-// Matches the compact two-column equipment list; feet spans the last row.
+// Walk the ring around the central portrait, never jump through the paper doll.
 export const EQUIPMENT_NEIGHBORS={
- head:{up:'feet',down:'shoulders',prev:'neck',next:'neck'},
- neck:{up:'feet',down:'cape',prev:'head',next:'head'},
- shoulders:{up:'head',down:'chest',prev:'cape',next:'cape'},
- cape:{up:'neck',down:'back',prev:'shoulders',next:'shoulders'},
+ head:{up:'feet',down:'chest',prev:'shoulders',next:'neck'},
+ neck:{up:'feet',down:'back',prev:'head',next:'cape'},
+ shoulders:{up:'head',down:'chest',prev:'cape',next:'head'},
+ cape:{up:'neck',down:'back',prev:'neck',next:'shoulders'},
  chest:{up:'shoulders',down:'gloves',prev:'back',next:'back'},
  back:{up:'cape',down:'pants',prev:'chest',next:'chest'},
  gloves:{up:'chest',down:'hand1',prev:'pants',next:'pants'},

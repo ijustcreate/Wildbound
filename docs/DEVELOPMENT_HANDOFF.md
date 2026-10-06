@@ -1,6 +1,6 @@
 # Moving Wildbound development between computers
 
-Latest work: [1.0.65 inventory, controller ownership, companions and spell visuals](history/2026-10-05-inventory-companions-1.0.65.md). This release also preserves and includes the preceding uncommitted 1.0.56–1.0.64 game/UI/assets work. Always use `Play Wildbound.cmd` and rebuild on a receiving computer; a source push does not transfer the packaged executable.
+Latest work: [1.0.66 paper doll, lobby storage, TV controls/parallax and victory treasure](history/2026-10-06-paper-doll-tv-treasure-1.0.66.md). This builds on [1.0.65 inventory, controller ownership, companions and spell visuals](history/2026-10-05-inventory-companions-1.0.65.md), including the preceding 1.0.56–1.0.64 game/UI/assets work. Always use `Play Wildbound.cmd` and rebuild on a receiving computer; a source push does not transfer the packaged executable.
 
 This repository carries the game source and shared authored rig artwork. A desktop shortcut, packaged build, browser save and Electron profile are separate things. Pulling Git does not update them automatically.
 

@@ -6,7 +6,7 @@ app.setPath('userData',path.join(root,'test-output/inventory-sizing-profile'));
 app.whenReady().then(async()=>{
  const w=new BrowserWindow({show:false,width:1280,height:900,webPreferences:{offscreen:true}});
  try{
-  await w.loadFile(path.join(root,'index.html'));
+  await w.loadFile(path.join(process.env.WILDBOUND_VERIFY_APP||root,'index.html'));
   await w.webContents.executeJavaScript('window.wildboundBoot.ready');
   const result=await w.webContents.executeJavaScript(`(async()=>{
    const {Game}=await import('./src/core.mjs');

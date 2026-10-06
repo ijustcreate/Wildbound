@@ -13,7 +13,7 @@ export const LOBBY_FURNITURE=[
 export const LOBBY_FIXTURES=[
  {id:'character-station',x:593,y:127,w:84,h:59},
  {id:'television',x:709,y:101,w:152,h:94},
- {id:'difficulty',x:904,y:100,w:42,h:76},
+ {id:'difficulty',x:934,y:100,w:42,h:76},
  {id:'target-lever',x:450,y:514,w:30,h:41},
  {id:'starter-chest',x:892,y:488,w:116,h:52},
 ];
@@ -56,7 +56,7 @@ export class LobbyPractice extends Game {
       a.equipment=structuredClone(p.equipment);a.inventory=structuredClone(p.inventory);
       (a.field||={}).quiver=p.field?.quiver;
       a.equipmentSockets=structuredClone(p.equipmentSockets||{});refreshVitals(a);
-      const active=!blocked&&!s.panel&&!p.ui&&!s.inventoryRelease&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
+      const active=!blocked&&!s.panel&&!p.ui&&!p.room&&!s.inventoryRelease&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
       commands[p.device]=active?{...inputs[p.device],inventory:false,portal:false}:{};
       if(!active){a.charge=0;a.queuedAttack=null;a.previousInput={};a.dashTime=0;a.bowAiming=false;a.blocking=false;}
       a.consumeInput=false;

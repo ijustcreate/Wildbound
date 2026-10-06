@@ -8,6 +8,7 @@ import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
 import {inventoryToolbar} from './inventory-toolbar.mjs';
 import {guardInventoryKeys} from './inventory-input.mjs';
+import {Animator} from './animation.mjs';
 import { compareItem, itemStatDelta, canAccess, protectedItem } from "./field-systems.mjs";
 import { controllerButtonNames, controllerFamily, CONTROLLER_NAMES } from "./controls.mjs";
 import { chestName } from "./items.mjs";
@@ -90,7 +91,12 @@ export class HeroUI {
         {x:centeredX,y:belowY,side:'bottom',fits:belowY+th<=panelHeight-4},
         {x:centeredX,y:aboveY,side:'top',fits:aboveY>=4},
       ];
-      // Keep bag contents visible; equipment details preferentially use the portrait side.
+      // Gear details sit over the bag, leaving the central paper doll visible.
+      if(button.dataset.mode==='gear'&&panel.classList.contains('inventory-workbench')){
+        const sheet=button.closest('.equipment-window').getBoundingClientRect(),gearBottom=(sheet.bottom-pr.top)/scale-panel.clientTop+gap;
+        candidates.unshift({x:centeredX,y:gearBottom,side:'bottom',fits:gearBottom+th<=panelHeight-4});
+      }
+      // Keep bag contents visible when inspecting backpack/chest items.
       if(button.dataset.mode==='pack'||button.dataset.mode==='chest') candidates.sort((a,b)=>(a.side==='top'?-1:0)-(b.side==='top'?-1:0));
       const placement=candidates.find(candidate=>candidate.fits)||candidates.reduce((best,candidate)=>{
         const visible=Math.max(0,Math.min(panelWidth,candidate.x+tw)-Math.max(0,candidate.x))*Math.max(0,Math.min(panelHeight,candidate.y+th)-Math.max(0,candidate.y));
@@ -191,6 +197,7 @@ export class HeroUI {
       panel.classList.toggle("merchant-session", p.ui?.shop === "merchant");
       panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop);
       panel.classList.toggle('victory-loot-session', p.ui?.storage === 'victory');
+      panel.classList.toggle('tv-victory-loot',p.ui?.storage==='tv-victory');
       panel.classList.toggle('loot-popup',!!game.storageFor(p));
       panel.classList.toggle('socket-session',!!p.ui?.socket);
       panel.classList.toggle('inventory-workbench',!!p.ui&&!p.ui.shop&&!p.ui.socket&&!game.storageFor(p));
@@ -358,12 +365,17 @@ export class HeroUI {
     panel.append(surface);
     const deposit=u.panel==='pack',list=deposit?p.inventory:storage,item=list[u.index],allowed=canAccess(game,p,!deposit)&&!(deposit&&protectedItem(p,item?.type));
     const controls=this.controllerText(game,p),actions=el('nav',null,'storage-popup-actions');
-    const primary=button(controls.accept+' · '+(deposit?'Deposit selected →':'← Withdraw selected'),'storage-transfer',()=>game.inventoryAction(p,'use'));
+    const primary=button(controls.accept+' · '+(deposit?'Deposit selected →':reusable?'← Withdraw selected':'Take selected'),'storage-transfer',()=>game.inventoryAction(p,'use'));
     primary.disabled=!item||!allowed;actions.append(primary);
     const all=button(deposit?'Deposit all':reusable?'Withdraw all':'Loot all','lootAll',()=>game.inventoryAction(p,'lootAll'));all.disabled=!list.some(Boolean)||!canAccess(game,p,!deposit);actions.append(all);
     panel.append(actions,el('p',u.notice||(!storage.some(Boolean)?reusable?'Chest empty. Select an item in your backpack to deposit.':'No loot remaining.':item?(ITEMS[item.type]?.name||item.type)+' ×'+item.qty:'Select an item to transfer.'),'loot-notice'));
     panel.append(el('small',reusable?`${controls.select}: select · ${controls.tabs}: switch container · ${controls.accept}: transfer · ${controls.close}: close`:`${controls.select}: select · ${controls.accept}: take · ${controls.close}: close`,'storage-help'));
     if(u.storage==='victory'){const nav=el('nav',null,'victory-loot-actions');for(const [text,action]of [['Restart this level','restart'],['Return to lobby','lobby']])nav.append(button(text,'victory-'+action,()=>panel.dispatchEvent(new CustomEvent('victory-action',{bubbles:true,detail:action}))));panel.append(nav);}
+    if(u.storage==='tv-victory'){
+      const nav=el('nav',null,'victory-loot-actions'),back=button(controls.accept+' · Return to lobby','tvReturn',()=>game.inventoryAction(p,'tvReturn'));
+      back.disabled=storage.some(Boolean);nav.append(back);panel.append(nav);
+      panel.append(el('small',storage.some(Boolean)?'Shared party treasure · loot before leaving. Backpack full? Close this chest and open your inventory to make room.':'Treasure collected. Confirm to return to the lobby.','storage-help'));
+    }
   }
   storagePanels(panel, game, p, button) {
     if(p.ui.socket){drawSocketWorkshop(panel,game,p,button,el);return;}
@@ -420,18 +432,19 @@ export class HeroUI {
           gear ? "Paper doll" : mode === "pack" ? "Backpack" : title,
         ),
       );
+      let previewFrame;
       if (gear) {
         const portrait = el("canvas");
         portrait.width = 140;
         portrait.height = 180;
         portrait.className = "equipment-preview";
-        const previewFrame=el('div',null,'inventory-character');
+        previewFrame=el('div',null,'inventory-character');
         const rotate=delta=>{u.previewDirection=((u.previewDirection||0)+delta+8)%8;};
         const previous=button('‹','preview-left',()=>rotate(-1));
         const next=button('›','preview-right',()=>rotate(1));
         previous.setAttribute('aria-label','Rotate character left');next.setAttribute('aria-label','Rotate character right');
         previous.className='preview-turn preview-turn-left';next.className='preview-turn preview-turn-right';
-        previewFrame.append(portrait,previous,next);sheet.append(previewFrame);
+        previewFrame.append(portrait,previous,next);
       }
       const controls = el("nav");
       controls.append(
@@ -510,6 +523,7 @@ export class HeroUI {
       }
       const grid = el("div", null, "item-grid " + (gear ? "paper-doll" : ""));
       grid.dataset.container = mode;
+      if (previewFrame) grid.append(previewFrame);
       const dropTarget = (node, to) => {
         node.ondragover = (e) => {
           if (this.dragItem?.player === p) {
@@ -676,7 +690,8 @@ export class HeroUI {
       const b=button('',option.id,()=>game.inventoryAction(p,option.action));
       b.disabled=!!option.reason;b.setAttribute('aria-label',option.label+' · '+option.key+(option.reason?' · '+option.reason:''));b.title=option.reason||option.label+' · '+option.key;
       const badge=option.key.replace(/Triangle/g,'△').replace(/Square/g,'□').replace(/Circle/g,'○').replace(/Cross/g,'×').replace(/Shift\+Del/g,'⇧Del');
-      b.append(el('span',badge,'inventory-key'),el('span',option.label,'inventory-action-label'));
+      const compactLabel={'Next arrows':'Arrows','Load quiver':'Load','Learn recipe':'Learn'}[option.label]||option.label;
+      b.append(el('span',badge,'inventory-key'),el('span',compactLabel,'inventory-action-label'));
       if(option.id==='salvage-hold'){
         const ring=el('span',null,'salvage-ring');ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
         b.className='salvage-button';b.append(ring);b.onclick=()=>{};
@@ -786,7 +801,7 @@ export class HeroUI {
     if(p.ui?.loot){const index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(620,bounds.width/cols-16),height=Math.min(740,bounds.height/rows-16);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*(bounds.width/cols)+'px';panel.style.top=8+Math.floor(index/cols)*(bounds.height/rows)+'px';return;}
     if(panel.classList.contains('storage-session')&&(!p.ui?.shop||p.ui.shop==='merchant')){
       const index=Math.max(0,open.findIndex(q=>q.id===p.id)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/3);
-      const width=Math.min(560,(bounds.width-16)/cols-8),height=Math.min(800,(bounds.height-16)/rows);
+      const width=Math.min(panel.classList.contains('inventory-workbench')?480:560,(bounds.width-16)/cols-8),height=Math.min(800,(bounds.height-16)/rows);
       panel.classList.toggle('inventory-compact',height<=580);
       panel.classList.toggle('inventory-tight',height<=460);
       panel.classList.toggle('inventory-narrow',width<=380);
@@ -865,7 +880,9 @@ export class HeroUI {
   }
   room(canvas, g, p, d, renderer) {
     const c = canvas.getContext("2d");
-    if(d?.temple){drawTempleRoom(c,g,p,renderer.animator);drawWetDrips(c,g,p.room);return;}
+    // Lobby storage can open before the main expedition renderer exists.
+    const animator=renderer?.animator||(this.roomAnimator||=new Animator());
+    if(d?.temple){drawTempleRoom(c,g,p,animator);drawWetDrips(c,g,p.room);return;}
     c.imageSmoothingEnabled = false;
     c.fillStyle = "#100e20";
     c.fillRect(0, 0, 320, 240);
@@ -1025,7 +1042,7 @@ export class HeroUI {
       c.beginPath();
       c.ellipse(q.roomX, q.roomY + 1, 18, 8, 0, 0, Math.PI * 2);
       c.stroke();
-      renderer.animator.draw(
+      animator.draw(
         c,
         {
           ...q,

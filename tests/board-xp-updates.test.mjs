@@ -7,7 +7,9 @@ import {tickXPOrbs} from '../src/xp-orbs.mjs';
 import {equipmentNeighbor} from '../src/equipment-navigation.mjs';
 import {SLOTS} from '../src/items.mjs';
 
-test('Equipment navigation reaches every slot and follows the two-column equipment list',()=>{
+test('Equipment navigation follows the ring around the central paper doll and reaches every slot',()=>{
+ assert.equal(equipmentNeighbor('shoulders','next'),'head');assert.equal(equipmentNeighbor('head','next'),'neck');assert.equal(equipmentNeighbor('neck','next'),'cape');
+ assert.equal(equipmentNeighbor('head','down'),'chest');assert.equal(equipmentNeighbor('neck','down'),'back');
  assert.equal(equipmentNeighbor('hand1','up'),'gloves');assert.equal(equipmentNeighbor('feet','prev'),'hand1');
  const seen=new Set(['head']),queue=['head'];
  while(queue.length){const slot=queue.shift();for(const d of ['up','down','next','prev']){const next=equipmentNeighbor(slot,d);assert.ok(SLOTS.includes(next));if(!seen.has(next)){seen.add(next);queue.push(next);}}}

@@ -22,10 +22,12 @@ import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision} from './lobby-tv.mjs';
 import {TvWildbound} from './tv-wildbound.mjs';
 import {tickSalvage} from './salvage.mjs';
+import {tickLobbyStorage} from './lobby-storage.mjs';
+import {drawPortal} from './portal-art.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
-  {id:'difficulty',name:'Difficulty totem',x:925,y:165},
+  {id:'difficulty',name:'Difficulty totem',x:955,y:165},
   {id:'dice-count',name:'Dice tray',x:780,y:548},
   {id:'board',name:'Gameboard',x:770,y:375},
   {id:'target-lever',name:'Target lever',x:465,y:548},
@@ -82,7 +84,7 @@ export class LobbyState {
   invalidate(players){for(const p of players)p.ready=false;this.countdown=null;}
   nearest(p){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
   tick(dt,players){
-    const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.lobbyDisconnected);
+    const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.room&&!p.lobbyDisconnected);
     if(!ready){this.countdown=null;return false;}
     if(this.started)return false;
     this.countdown=(this.countdown??3)-dt;
@@ -120,7 +122,12 @@ export class PlayableLobby {
     };
     for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest','character-station','television'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
-  reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
+  reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
+  returnFromTv(){
+    const game=this.getGame();
+    for(const p of game.players)if(this.tvWildbound?.players.has(p.id))p.ui=null;
+    game.persist();this.reset();this.keepSelectedPlayers();this.draw();
+  }
   keepSelectedPlayers(players=this.getGame().players){
     this.state.sync(players);
     for(const [i,p] of players.entries()){
@@ -272,15 +279,38 @@ export class PlayableLobby {
   update(dt,inputs,blocked=false){
     this.sync();const players=this.getGame().players;
     if(this.tvWildbound){
+      const game=this.getGame();
+      // Runtime link is deliberately non-enumerable: never save the TV simulation.
+      if(game.tvWorld!==this.tvWildbound)Object.defineProperty(game,'tvWorld',{value:this.tvWildbound,writable:true,configurable:true});
       const commands={};
       for(const [id] of this.tvWildbound.players){
-        const hero=players.find(p=>p.id===id),input=hero?inputs[hero.device]||{}:{};
-        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,attack:!!input.tvX||!!input.attack,run:!!input.block};
-        if(this.tvWildbound.won&&input.lobbyInteract){this.reset();this.draw();return;}
+        const hero=players.find(p=>p.id===id);if(!hero)continue;
+        const s=this.state.members.get(id),input=playerInput(players,hero,inputs),edge=key=>!!input[key]&&!s.held[key];
+        if(!blocked&&!hero.lobbyDisconnected){
+          if(edge('inventory')){if(hero.ui)hero.ui=null;else game.openInventory(hero);s.inventoryRelease=true;}
+          if(hero.ui){
+            for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close','drop','dropOne'])if(edge(action))game.inventoryAction(hero,action);
+            const direction=['next','prev','up','down'].find(key=>input[key]);s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
+            if(direction&&s.menuRepeat>.35){game.inventoryAction(hero,direction);s.menuRepeat=.24;}
+            s.inventoryRelease=true;
+          }
+          tickSalvage(game,hero,!!hero.ui&&(!!input.salvage||!!hero.ui.salvagePointer),dt);
+        }
+        if(!hero.ui&&!['inventory','use','close','interact','lobbyInteract','attack','tvA','tvX','block','salvage'].some(key=>input[key]))s.inventoryRelease=false;
+        // TV jump and attack are distinct. The normal game's bottom-face attack
+        // binding must not leak into the TV's bottom-face jump binding.
+        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,attack:!!input.tvX||(hero.device==='keyboard'&&!!input.attack),run:!!input.block,loot:!!input.interact,paused:blocked||!!hero.ui||!!s.inventoryRelease||!!hero.lobbyDisconnected};
+        if(!blocked&&!hero.lobbyDisconnected&&this.tvWildbound.won&&!hero.ui&&!s.inventoryRelease&&(edge('lobbyInteract')||edge('interact'))){
+          if(this.tvWildbound.victoryRewards.some(Boolean))game.openInventory(hero,'tv-victory');
+          else {this.returnFromTv();return;}
+        }
+        s.held={...input};
       }
+      if(this.tvWildbound.requestLobbyReturn&&!this.tvWildbound.victoryRewards.some(Boolean)){this.returnFromTv();return;}
       if(!blocked)this.tvWildbound.step(dt,commands);
       this.draw();return;
     }
+    if(!blocked)tickLobbyStorage(this.getGame(),this.practice,this.state,inputs,dt);
     const joinedTv=new Set();
     for(const p of players){
       const s=this.state.members.get(p.id),input=playerInput(players,p,inputs);
@@ -291,11 +321,11 @@ export class PlayableLobby {
         if(edge('inventory')){if(p.ui)p.ui=null;else{game.openInventory(p);this.state.invalidate(players);}}
         if(p.ui){
           s.inventoryRelease=true;
-          for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close'])if(edge(action))game.inventoryAction(p,action);
+          if(!s.storageUiOpened)for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close'])if(edge(action))game.inventoryAction(p,action);
           const direction=['next','prev','up','down'].find(key=>input[key]);
           s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
           if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
-        }else{
+        }else if(!p.room&&!s.inventoryRelease){
           const o=this.state.nearest(p);
           if(o?.id==='character-station'&&edge('lobbyInteract'))this.openCharacterStation(p);
           if(this.television?.players.has(p.id)){
@@ -311,8 +341,9 @@ export class PlayableLobby {
       }else s.moving=false;
       p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
       tickSalvage(this.getGame(),p,!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected&&!!p.ui&&(!!input.salvage||!!p.ui.salvagePointer),dt);
-      if(!p.ui&&!['inventory','use','close','interact','attack','jump','dodge','block','trap','potion','bait','offhand','panel'].some(key=>input[key]))s.inventoryRelease=false;
+      if(!p.ui&&!['inventory','use','close','interact','lobbyInteract','attack','jump','dodge','block','trap','potion','bait','offhand','panel','portal'].some(key=>input[key]))s.inventoryRelease=false;
       s.held={...input};
+      delete s.storageUiOpened;
     }
     const practiceInputs={...inputs},tvCommands={};
     for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
@@ -331,7 +362,7 @@ export class PlayableLobby {
       this.tvWildbound=new TvWildbound(party,this.television.seed);
       this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
-      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · Directional movement · Jump to break question blocks · Attack the central board to roll · Explore both directions';
+      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · D-pad / arrows: move · bottom face / Z: jump · left face / F or X: attack · I / Back: inventory · E / top face: collect dropped items · face and strike the central board to roll';
     }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
@@ -421,15 +452,16 @@ export class PlayableLobby {
       c.fillStyle='#f2efdf';c.font='15px system-ui';this.label(o.name,o.x,o.y+(o.id==='target-lever'?27:44),15,'#f4efdc',650);
       if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad move · Down: pipe':'Interact · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
     }
-    for(const a of this.practice.players)if(a.hunterPet)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
+    for(const a of this.practice.players)if(a.hunterPet&&!this.getGame().players.find(p=>p.id===a.id)?.room)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
     this.drawPractice(c);
+    for(const door of this.getGame().portals.filter(d=>d.lobby))drawPortal(c,door,this.practice.time,'STORAGE · WALK IN');
     for(const t of this.practice.targets)for(const f of [...t.combatText].reverse()){
       c.save();c.globalAlpha=Math.min(1,f.life/.12);c.translate(t.x,t.y-42-f.age*34-f.offset);
       const scale=1+Math.sin(Math.min(1,f.age/.12)*Math.PI)*.25;c.scale(scale,scale);
       c.font='bold 18px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#142021';c.fillStyle=DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical;this.label(String(Math.round(f.amount)),t.x,t.y-42-f.age*34-f.offset,18,DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical,700);c.restore();
     }
     for(const p of [...this.getGame().players].sort((a,b)=>this.state.members.get(a.id).y-this.state.members.get(b.id).y)){
-      const s=this.state.members.get(p.id);if(!s.spawned)continue;
+      const s=this.state.members.get(p.id);if(!s.spawned||p.room)continue;
       const actor=this.practice.players.find(a=>a.id===p.id)||{...p,...s};
       c.fillStyle='#41474b';c.beginPath();c.ellipse(s.x,s.y-(actor.groundHeight||0)+4,20,7,0,0,Math.PI*2);c.fill();
       this.animator.draw(c,{...actor,kind:'player'},this.practice.time,LOBBY_PLAYER_SIZE);

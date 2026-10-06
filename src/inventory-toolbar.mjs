@@ -2,6 +2,7 @@ import {ITEMS,SLOTS,socketCount} from './items.mjs';
 import {ARROW_TYPES,quiverType} from './arrow-supplies.mjs';
 import {protectedItem} from './field-systems.mjs';
 import {salvageReason} from './salvage.mjs';
+import {canDropInventoryItem} from './inventory-world.mjs';
 
 // Stable controls: selection changes availability, never the layout or button count.
 export function inventoryToolbar(game,p,pad){
@@ -11,7 +12,7 @@ export function inventoryToolbar(game,p,pad){
   const item=gear?{type,qty:1}:quiver?{type,qty:1}:p.inventory[u.index],def=ITEMS[type];
   const keyboard=p.device==='keyboard',carrying=!!u.carry,empty='Select an item first.';
   const canUse=def&&(def.slot||def.bag||def.recipe||ARROW_TYPES.includes(type)||type.startsWith('caught_')||['potion','stamina_potion','coconut','trap'].includes(type));
-  const dropReason=!def?empty:!pack&&!gear?'Select an item in your bag or equipment.':p.room||game.phase!=='play'?'Items can only be dropped during an expedition.':protectedItem(p,type)?'Unlock this item in Field Kit first.':'';
+  const dropReason=!def?empty:!pack&&!gear?'Select an item in your bag or equipment.':!canDropInventoryItem(game,p)?'Items can only be dropped during an expedition.':protectedItem(p,type)?'Unlock this item in Field Kit first.':'';
   const option=(id,label,key,action,reason='')=>({id,label,key,action,reason:carrying&&id!=='move-item'?'Place or cancel the held item first.':reason});
   return {item,def,gear,quiver,options:[
     option('use',gear?'Unequip':quiver?'Next arrows':def?.bag?'Open bag':ARROW_TYPES.includes(type)?'Load quiver':def?.recipe?'Learn recipe':def?.slot?'Equip':'Use',keyboard?'Enter':pad[0],gear||quiver?'use':'equip',!def?empty:!gear&&!quiver&&!canUse?'This item has no direct use yet.':''),

@@ -23,7 +23,7 @@ test('Adventure uses the same bow aim lock and clears it when switching to shiel
 test('Lobby tables block walking, support jumps and allow walking off; totem stays solid',()=>{
  const {practice,tick}=setup();tick({});const p=practice.players[0];
  for(const table of practice.house.furniture){Object.assign(p,{x:table.x-20,y:table.y+12,groundHeight:0,jumpHeight:0});practice.moveActor(p,35,0);assert.ok(p.x<table.x);startJump(p);for(let i=0;i<12;i++)tickJump(p,.02,practice);practice.moveActor(p,35,0);assert.ok(p.x>table.x);for(let i=0;i<50;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,table.surfaceHeight);practice.moveActor(p,-60,0);for(let i=0;i<30;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,0);}
- assert.equal(practice.blocked(925,165,8,false,false,false,0,40),true);
+ assert.equal(practice.blocked(955,165,8,false,false,false,0,40),true);
 });
 test('Every lobby object has a solid visible footprint and remains reachable for interaction',()=>{
  const {practice,lobby,tick,p}=setup();tick({});const actor=practice.players[0];
