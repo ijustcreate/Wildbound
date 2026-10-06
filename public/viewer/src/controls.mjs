@@ -55,6 +55,8 @@ export function normalizeMapping(saved = {}) {
   return result;
 }
 export function renderPlayerMappings(root, game, mapping, pads = Array.from(navigator.getGamepads?.() || []).filter(Boolean)) {
+  // One shared settings surface can display a different physical layout per player.
+  const glyphModule=import('./controller-glyphs.mjs');
   root.replaceChildren();
   const rows = game.players.map(p=>({name:p.name, device:p.device, pad:pads.find(pad=>p.device==='pad:'+pad.index)}));
   for(const pad of pads) if(!rows.some(r=>r.pad===pad)) rows.push({name:'Unassigned controller',device:'pad:'+pad.index,pad});
@@ -69,6 +71,27 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
     const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'RB · set skill: Tame / Raise Skeleton',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
     for(const [action,key] of Object.entries(bindings)){const term=document.createElement('dt'),value=document.createElement('dd');term.textContent=action;value.textContent=key;list.append(term,value);}
     card.append(list);root.append(card);
+    const family=row.device==='keyboard'?'keyboard':row.pad?controllerFamily(row.pad):'xbox';
+    const directions=document.createElement('div');directions.className='controller-directions';
+    const appendGroup=(label,group,items)=>{
+      const section=document.createElement('section'),heading=document.createElement('strong'),icons=document.createElement('div');
+      section.className='controller-directions-group';heading.textContent=label;icons.className='controller-direction-icons';
+      for(const [direction,title] of items){
+        const cell=document.createElement('span'),name=document.createElement('small');cell.className='controller-direction-cell';
+        name.textContent=title;cell.append(name);icons.append(cell);
+        glyphModule.then(({controllerGlyph})=>cell.prepend(controllerGlyph(document.createElement('canvas'),family,group,direction)));
+      }
+      section.append(heading,icons);directions.append(section);
+    };
+    if(family==='keyboard'){
+      appendGroup('MOVE · WASD','wasd',[['up','W'],['left','A'],['down','S'],['right','D']]);
+      appendGroup('MOVE · ARROWS','arrows',[['up','↑'],['left','←'],['down','↓'],['right','→']]);
+      appendGroup('MOUSE','mouse',[['left','Attack'],['right','Dodge']]);
+    }else{
+      appendGroup('D-PAD','dpad',[['up','Up'],['left','Left'],['down','Down'],['right','Right']]);
+      appendGroup('FACE BUTTON POSITIONS','face',[['up','Top'],['left','Left'],['right','Right'],['down','Bottom']]);
+    }
+    card.append(directions);
     if(row.pad){
       const label=document.createElement('label');label.textContent='Controller button labels ';
       const select=document.createElement('select');

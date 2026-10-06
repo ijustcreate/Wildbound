@@ -1,5 +1,5 @@
 import {rigSubject} from './rig-subjects.mjs';
-import {poseAt,projectPoint,facingIndex} from './player-motion.mjs';
+import {companionVisualActor} from './companion-locomotion.mjs';
 export function drawHunterPet(c,pet,owner,time,size=43){
  if(!pet||!Number.isFinite(pet.x))return;
  const rig=rigSubject(pet.kind);if(!rig)return;
@@ -7,11 +7,11 @@ export function drawHunterPet(c,pet,owner,time,size=43){
  const height=(pet.roostHeight||0)+(pet.jumpHeight||0)+(pet.groundHeight||0);
  c.translate(pet.x,pet.y-height);c.scale(size/48,size/48);
  if(pet.hp<=0){c.globalAlpha=.6;c.rotate(Math.PI/2);}
- const actor={...pet,x:0,y:0,animationAction:pet.hp<=0?'idle':pet.animationAction};
- rig.draw(c,actor,time,rig.data);
- const action=actor.animationAction||'idle',pose=poseAt(rig.data,rig.data.clips[action]?action:'idle',time*4);
- const joint=(pose.chest||pose.head).map((v,i)=>v*.7+(pose.neck||pose.head)[i]*.3);
- const neck=projectPoint(joint,facingIndex(pet.faceX,pet.faceY));
+ const actor=companionVisualActor({...pet,x:0,y:0,animationAction:pet.hp<=0?'idle':pet.animationAction},rig.data);
+ const pose=rig.draw(c,actor,time,rig.data);
+ // Reuse the exact walking/hurt/bite pose, not a second idle pose sample.
+ const chest=pose.chest||pose.head,joint=pose.neck||pose.head;
+ const neck={x:chest.x*.7+joint.x*.3,y:chest.y*.7+joint.y*.3};
  neck.y+=pet.kind==='bat'?0:Math.max(0,pet.faceY||0)*7;
  c.strokeStyle=pet.collar||owner.color;c.lineWidth=1.5;c.beginPath();c.ellipse(neck.x,neck.y,pet.kind==='bat'?3:5,1.3,0,0,Math.PI*2);c.stroke();
  c.restore();

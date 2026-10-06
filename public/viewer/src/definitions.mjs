@@ -1,4 +1,5 @@
 import {wolfMotion, validateWolfMotion, replaceWolfMotion} from './wolf-motion.mjs';
+import {warlockMotion,validateWarlockMotion,replaceWarlockMotion} from './warlock-motion.mjs';
 import { NIGHT_KINDS, nightMotions, validateNightMotion, replaceNightMotion } from './night-rigs.mjs';
 import {
   beastMotions,
@@ -216,6 +217,7 @@ export function creatureDefaults(kind) {
       dashCooldown: kind === "panther" ? 0.65 : 1.8,
       dashDistance: kind === "panther" ? 80 : 163,
       dashSpeed: 340,
+      ...(kind === 'panther' ? {energyMax:100,energyRegen:16,restEnergyRegen:22,swipeEnergy:18,biteEnergy:25,swoopEnergy:48} : {}),
       rangedCooldown: 2.3,
       dropChance: 1,
       bananaCooldown: 2.5,
@@ -565,6 +567,7 @@ export function loadDefinitions(events, items) {
   }
 }
 export function applyDefinitions(d, events, items, { spriteOverrides = true } = {}) {
+  if(d.warlock&&!validateWarlockMotion(d.warlock))throw Error('Invalid warlock animation');
   for (const [kind, model] of Object.entries(d.nightMotions || {}))
     if (!validateNightMotion(kind, model)) throw Error('Invalid night animation: ' + kind);
   for (const [k, m] of Object.entries(d.beastMotions || {}))
@@ -608,6 +611,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   for (const [k, m] of Object.entries(d.beastMotions || {}))
     replaceBeastMotion(k, m);
   if (d.player) replacePlayerMotion(d.player);
+  if (d.warlock) replaceWarlockMotion(d.warlock);
   if (d.alligator) replaceAlligatorMotion(d.alligator);
   for (const [kind, m] of Object.entries(d.skeletonMotions || {}))
     replaceSkeletonMotion(kind, m);
@@ -621,6 +625,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   for (const [kind, model] of Object.entries(d.nightMotions || {}))
     replaceNightMotion(kind, model);
   const savedSpriteModels = {
+    necromancer:warlockMotion,
     player: playerMotion,
     alligator: alligatorMotion,
     lion: lionMotion,
@@ -660,7 +665,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "dragon",
   "fire_elemental",
   "water_elemental",
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || e.type==='mystery'&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }
@@ -681,6 +686,7 @@ export function definitionPack(events, items) {
     events,
     items,
     player: playerMotion,
+    warlock:warlockMotion,
     alligator: alligatorMotion,
     skeletonMotions,
     lion: lionMotion,

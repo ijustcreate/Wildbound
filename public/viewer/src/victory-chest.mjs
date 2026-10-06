@@ -11,7 +11,7 @@ export function victoryRewards(players,random=Math.random){
 export function victoryChestBlocked(g,x,y,radius,elevation,from){return !!g.victoryChest&&elevation<20&&raisedSurfaceBlocked(VICTORY_CHEST,x,y,radius,from,0);}
 export function drawVictoryChest(c,g){
  if(!g.victoryChest)return;
- const open=g.players.some(p=>p.ui?.storage==='victory'),s=g.victoryChestArt||={lid:0,last:g.time};
+ const open=g.players.some(p=>['victory','tv-victory'].includes(p.ui?.storage)),s=g.victoryChestArt||={lid:0,last:g.time};
  s.lid+=(Number(open)-s.lid)*Math.min(1,Math.max(0,(g.time-s.last))*10);s.last=g.time;
  const loot=(g.victoryRewards||[]).some(Boolean),x=800,y=919,t=g.time||0;
  c.save();c.translate(x,y);c.fillStyle='#10251b80';c.beginPath();c.ellipse(0,10,30,9,0,0,7);c.fill();

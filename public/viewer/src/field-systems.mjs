@@ -98,6 +98,7 @@ export function category(type) {
 export function storageCapacity(g, p, list) {
   return list === g.victoryRewards ||
     list === g.sharedStash ||
+    list === p.starterChest ||
     list === initializeField(p).overflow
     ? Infinity
     : 24;
@@ -343,10 +344,9 @@ export function tickField(g, dt, inputs) {
           p.hp > 0 &&
           !p.room &&
           !p.ui &&
-          Math.hypot(p.x - o.x, p.y - o.y) < 65 &&
-          (inputs[p.device] || {}).interact,
+          Math.hypot(p.x - o.x, p.y - o.y) < 65,
       );
-      o.progress = Math.max(0, o.progress + (helping.length ? dt : -dt * 0.5));
+      o.progress = Math.min(o.target, (o.progress || 0) + (helping.length ? dt : 0));
     }
 
     if (!o.done && o.progress >= o.target) {

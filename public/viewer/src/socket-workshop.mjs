@@ -7,7 +7,7 @@ export function socketChoices(p){const item=socketTarget(p);if(!item)return [];c
 export function socketAction(g,p,action){
  const u=p.ui;
  if(!u.socket){
-  if(action!=='sockets'&&action!=='offhand')return false;
+  if(action!=='sockets')return false;
   const type=u.panel==='gear'?p.equipment[SLOTS[u.index]]:u.panel==='pack'?p.inventory[u.index]?.type:null;
   if(!socketCount(type))return action==='sockets';
   u.socket={target:u.panel==='gear'?{mode:'gear',slot:SLOTS[u.index]}:{mode:'pack',index:u.index},type,index:0};u.notice='';g.uiRevision=(g.uiRevision||0)+1;return true;

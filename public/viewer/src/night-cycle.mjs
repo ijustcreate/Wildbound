@@ -1,5 +1,6 @@
 import {eventHasStartingAreas} from './starting-area.mjs';
 import { ITEMS } from './items.mjs';
+import {houseLightSources} from './house-lights.mjs';
 
 // Eight minutes of simulation time. Menus/pause never advance the sky.
 export const DAY_LENGTH = 480;
@@ -34,6 +35,7 @@ export function lightSources(g) {
   });
   for (const f of g.firePatches || []) if (f.life > 0)
     sources.push({ x: f.x + 16, y: f.y + 16, radius: 90, intensity: 0.8, color: '#ffaf55' });
+  sources.push(...houseLightSources(g));
   return sources;
 }
 export function lightAt(g, point) {

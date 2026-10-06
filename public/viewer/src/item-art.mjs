@@ -24,6 +24,19 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if(type==='unknown_mushroom'){c.fillStyle='#30253e';c.fillRect(7,13,11,9);c.fillRect(2,7,20,9);c.fillRect(6,3,12,7);c.fillStyle='#d9c5a0';c.fillRect(9,14,7,6);c.fillStyle='#9653bc';c.fillRect(3,8,18,6);c.fillRect(7,4,10,6);c.fillStyle='#e5c9ff';c.fillRect(7,6,3,3);c.fillRect(15,9,3,3);c.fillRect(3,10,2,2);return;}
+  if(type==='dark_essence'){c.fillStyle='#2d173e';c.fillRect(8,5,8,15);c.fillRect(5,9,14,7);c.fillStyle='#8c4dcc';c.fillRect(9,6,5,12);c.fillRect(6,10,11,4);c.fillStyle='#e1b4ff';c.fillRect(10,7,2,5);c.fillRect(7,10,2,2);return;}
+  if(ITEMS[type]?.boomerang){c.fillStyle='#352b21';for(let i=0;i<9;i++){c.fillRect(3+i,15-i,4,5);c.fillRect(12+i,7+i,4,5);}c.fillStyle=ITEMS[type].artColor;for(let i=0;i<9;i++){c.fillRect(4+i,15-i,2,3);c.fillRect(13+i,7+i,2,3);}return;}
+  if(['gallery_medallion','phantom_charm','miners_keepsake'].includes(type)){
+    c.fillStyle='#c5a35e';for(const [x,y,w,h]of [[5,2,2,7],[17,2,2,7],[7,8,2,3],[15,8,2,3],[9,10,6,2]])c.fillRect(x,y,w,h);
+    c.fillStyle='#302b29';c.fillRect(7,12,10,10);c.fillStyle=ITEMS[type].artColor;c.fillRect(8,13,8,8);c.fillStyle='#f4e3b4';
+    if(type==='gallery_medallion'){c.fillRect(10,14,4,5);c.fillStyle='#554b36';c.fillRect(11,15,3,1);}
+    else if(type==='phantom_charm'){c.fillRect(12,14,1,5);c.fillRect(10,18,3,2);c.fillRect(13,14,2,1);}
+    else{c.fillRect(10,15,5,1);c.fillRect(12,16,1,4);c.fillRect(9,16,2,1);}
+    return;
+  }
+  if(type==='mystery_score'){c.fillStyle='#655039';c.fillRect(4,2,16,20);c.fillStyle='#e9d8aa';c.fillRect(5,3,14,18);c.fillStyle='#645942';for(let y=7;y<17;y+=3)c.fillRect(7,y,10,1);c.fillRect(10,8,2,6);c.fillRect(8,13,3,2);return;}
+  if(type==='stick')return paintItemBase(c,type);
   if (!ITEMS[type]?.slot && !ITEMS[type]?.relic) return paintItemBase(c,type);
   const pixels = Array(576).fill(null);
   const raster = {fillStyle:'#302b2b',fillRect(x,y,w,h) {
@@ -146,7 +159,17 @@ function paintItemBase(c, type) {
     green = "#82aa63";
   const def = ITEMS[type],
     originalType = type;
-  type = itemKind(type);
+  type = originalType==='stick'?'stick':itemKind(type);
+  if(def?.warlockGear){
+    const cloth=def.artColor,bone='#d0c2a2',ink='#292332',mint='#81ceb1';
+    if(type==='hat'){r(9,2,6,3,ink);r(6,5,12,4,cloth);r(4,9,16,12,ink);r(5,9,3,11,cloth);r(16,9,3,11,cloth);r(8,8,8,2,bone);r(8,11,8,6,'#443344');r(9,12,2,1,mint);r(13,12,2,1,mint);}
+    else if(type==='armor'){r(7,3,10,5,cloth);r(3,7,18,7,cloth);r(6,13,12,9,cloth);r(11,8,2,13,ink);r(5,7,3,3,bone);r(16,7,3,3,bone);r(6,20,5,2,bone);r(13,20,5,2,bone);r(10,10,4,2,mint);}
+    else if(type==='charm'){line(6,3,8,10,bone,1);line(18,3,16,10,bone,1);r(8,10,8,11,ink);r(9,11,6,8,cloth);r(11,10,2,11,mint);r(8,14,8,2,mint);}
+    else if(type==='staff'){r(11,8,2,15,cloth);r(8,2,8,7,ink);r(9,3,6,5,bone);r(9,4,2,2,'#25392f');r(13,4,2,2,'#25392f');r(10,4,1,1,mint);r(13,4,1,1,mint);r(10,8,4,3,bone);r(10,9,1,2,ink);r(13,9,1,2,ink);r(10,15,4,2,bone);}
+    else if(type==='cape'){r(8,2,8,3,bone);r(6,5,12,13,cloth);r(4,11,16,7,cloth);r(4,18,4,4,cloth);r(10,18,4,3,cloth);r(16,18,4,4,cloth);r(11,6,2,11,ink);}
+    else {paintItemBase(c,def.base);r(9,10,6,4,cloth);r(10,10,4,1,bone);}
+    return;
+  }
   if (def?.style === "safari") {
     const khaki = def.artColor, trim = "#74553c", pale = "#eee0b0";
     if (type === "hat") {
@@ -625,13 +648,28 @@ export function drawItem(c, type, x, y, size = 24, dye = null) {
   c.save();
   c.imageSmoothingEnabled = false;
   c.drawImage(
-    itemCanvas(type, dye),
+    detailedItemCanvas(type, dye),
     Math.round(x - size / 2),
     Math.round(y - size / 2),
     size,
     size,
   );
   c.restore();
+}
+// Retain authored silhouettes but add subpixel bevels at twice their native
+// resolution. Cached once per item/dye, never rebuilt for each inventory frame.
+export function detailedItemCanvas(type,dye=null){
+ const key='detail:'+type+':'+(dye||'');if(cache.has(key))return cache.get(key);
+ const base=itemCanvas(type,dye),out=document.createElement('canvas');out.width=out.height=48;
+ const ctx=out.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(base,0,0,48,48);
+ if(ctx.getImageData&&ctx.putImageData){
+  const image=ctx.getImageData(0,0,48,48),source=new Uint8ClampedArray(image.data),at=(x,y)=>x>=0&&y>=0&&x<48&&y<48?source[(y*48+x)*4+3]:0;
+  for(let y=0;y<48;y++)for(let x=0;x<48;x++){
+   const i=(y*48+x)*4;if(!source[i+3])continue;
+   const light=!at(x,y-1)||!at(x-1,y),shadow=!at(x,y+1)||!at(x+1,y);
+   if(light||shadow)for(let n=0;n<3;n++)image.data[i+n]=Math.max(0,Math.min(255,source[i+n]+(light?18:-24)));
+  }ctx.putImageData(image,0,0);
+ }cache.set(key,out);return out;
 }
 export function drawItemPart(
   c,

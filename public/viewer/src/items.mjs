@@ -13,6 +13,12 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  unknown_mushroom:{name:'Strange mushroom',stack:999,rarity:'unique',color:'#c58bfa',sellPrice:0,description:'A mysterious mushroom found inside a question block in the TV world. Purple quality. Its purpose is unknown; no use yet.'},
+  dark_essence:{name:'Dark Essence',stack:999,color:'#a269cb',material:true,description:'Extracted by salvaging a captured creature. No use yet.'},
+  starter_boomerang:{name:'Starter boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:12,range:210,speed:330,stack:1,supplyOnly:true,color:'#bf9658',artColor:'#bf9658',description:'Throw and catch. Returns to you; no ammunition needed. One throw at a time.'},
+  boomerang:{name:'Trail boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:20,range:260,speed:380,stack:1,rarity:'common',color:'#be9251',artColor:'#be9251',description:'A returning weapon. Hits each enemy once per throw; no ammunition needed.'},
+  moon_boomerang:{name:'Moonsteel boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:30,range:310,speed:430,stack:1,rarity:'rare',color:'#8cd6e8',artColor:'#8cd6e8',description:'A swift moonsteel returning weapon. One throw at a time; no ammunition needed.'},
+  sun_boomerang:{name:'Sunfire boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:42,range:360,speed:480,stack:1,rarity:'unique',color:'#f4b75d',artColor:'#f4b75d',description:'A powerful golden returning weapon. One throw at a time; no ammunition needed.'},
   critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip and press Attack near a critter. Requires an empty jar for small creatures or a cage for birds and scavengers.'},
   empty_jar:{name:'Empty critter jar',stack:12,color:'#abdcd9',sellPrice:2,description:'One jar holds one small critter. Use a catcher net nearby.'},
   critter_cage:{name:'Travel cage',stack:6,color:'#b69b67',sellPrice:4,description:'Holds a caught bird, mouse or scavenger.'},
@@ -55,7 +61,7 @@ export const ITEMS = {
     name: "Rifle cartridge", stack: 99, color: "#d5ad61",
     description: "One cartridge per rifle shot.",
   },
-  ritual_dagger:{name:'Ritual Dagger',base:'dagger',slot:'hand1',damage:32,stack:1,rarity:'legendary',color:'#efb94e',artColor:'#73e5cc',description:'Legendary · dagger kills summon a ghost ally for 30 seconds. Up to six spirits follow each wielder.'},
+  ritual_dagger:{name:'Ritual Dagger',base:'dagger',slot:'hand1',damage:32,stack:1,rarity:'legendary',color:'#efb94e',artColor:'#73e5cc',description:'While equipped, a friendly ghost tiger follows you and fights enemies you attack or that attack you. Unequipping dismisses it. Dagger kills also summon temporary spirits.'},
   barricade: {
     name: "Trail barricade",
     stack: 5,
@@ -65,9 +71,13 @@ export const ITEMS = {
   },
   stick: {
     name: "Stick",
+    base: "sword",
+    slot: "hand1",
+    damage: 8,
+    artColor: "#a78652",
     stack: 99,
     color: "#a78652",
-    description: "Gathered by striking trees. Crafting material.",
+    description: "Crafting material or improvised sword. Equip one from a stack. Small chance to break on a hit (1 in 20 / 5%); equip another stick if it breaks.",
   },
   log: {
     name: "Log",
@@ -327,7 +337,7 @@ export const ITEMS = {
   },
   hat: { name: "Scout hat", slot: "head", armor: 2, color: "#ceb379" },
   santa_hat: { name: "Santa hat", slot: "head", armor: 2, color: "#e45b5b", style: "santa", description: "A bright winter cap with a snowy pom-pom." },
-  krampus_whip: { name: "Krampus's whip", base: "sword", slot: "hand1", damage: 29, reach: 112, color: "#d35b54", style: "whip", description: "A sword-length lash whose blade snaps through a wide arc." },
+  krampus_whip: { name: "Krampus's whip", base: "sword", slot: "hand1", damage: 29, reach: 112, color: "#d35b54", style: "whip", description: "A braided lash that coils, unfurls and cracks through a wide arc." },
   shoulder_armor: {
     name: "Leather shoulder guards",
     slot: "shoulders",
@@ -436,11 +446,14 @@ export const ITEMS = {
 };
 export const RARITIES = {
   common: "#d2d8d2",
+  uncommon: "#79d88b",
   rare: "#68aaff",
   unique: "#c58bfa",
   legendary: "#ffad4f",
   gm: "#ff8fc8",
 };
+ITEMS.mystery_score={name:'Stolen organ score',stack:1,color:'#e9d8aa',description:'A mystery clue. Return to the phantom organ beside the board.'};
+for(const [id,name,bonus]of [['gallery_medallion','Gallery detective medallion',{armor:3}],['phantom_charm','Phantom melody charm',{maxMana:25}],['miners_keepsake','Miner’s lucky keepsake',{damageBonus:4}]])ITEMS[id]={name,base:'charm',slot:'neck',stack:1,rarity:'unique',color:'#c58bfa',artColor:({gallery_medallion:'#d1b16c',phantom_charm:'#72c9c0',miners_keepsake:'#db9662'})[id],...bonus,description:'Special reward for solving a two-part mystery.'};
 const gearVariants = [
   ['tattered_cape','Wayfarer’s tattered cape','cape','rare','#aa6855',{armor:4},'tattered'],
   ['short_cape','Scout’s half cape','cape','common','#579f91',{armor:2},'short'],
@@ -892,6 +905,13 @@ for(const [id,name,base,slot,stats] of [
 ])ITEMS[id]={name,base,slot,stack:1,rarity:'rare',color:'#79a56b',artColor:'#789253',set:'ranger',...stats,description:`${base==='quiver'?'Back-slot quiver · arrows travel 10% faster · bow charges 20% faster. Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).':'Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).'}`};
 ITEMS.leather_quiver={name:'Leather quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · arrows travel 10% faster · bow charges 20% faster.'};
 ITEMS.starter_quiver={name:'Starter quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · includes eight starter arrows · arrows travel 10% faster · bow charges 20% faster.'};
+// Enemy costume pieces use the same fitted humanoid equipment system. They are
+// deliberately outside random loot pools; the warlock's existing rewards stay intact.
+export const WARLOCK_EQUIPMENT=Object.freeze({head:'warlock_hood',neck:'warlock_sigil',shoulders:'warlock_mantle',chest:'warlock_robe',gloves:'warlock_gloves',pants:'warlock_trousers',feet:'warlock_boots',cape:'warlock_cape',hand1:'warlock_staff'});
+for(const [slot,id]of Object.entries(WARLOCK_EQUIPMENT)){
+ const base={head:'hat',neck:'charm',shoulders:'shoulder_armor',chest:'armor',gloves:'gloves',pants:'pants',feet:'boots',cape:'cape',hand1:'staff'}[slot];
+ ITEMS[id]={name:{head:'Warlock cowl',neck:'Gravebound sigil',shoulders:'Bone mantle',chest:'Warlock ritual robe',gloves:'Ritual gloves',pants:'Warlock trousers',feet:'Gravewalker boots',cape:'Warlock vestment',hand1:'Warlock skull staff'}[slot],base,slot,stack:1,npcOnly:true,warlockGear:true,rarity:'unique',color:'#a176c1',artColor:{head:'#593568',neck:'#81ceb1',shoulders:'#bdb394',chest:'#5d396f',gloves:'#393047',pants:'#35293f',feet:'#382d39',cape:'#432952',hand1:'#ac9270'}[slot],style:{head:'hood',chest:'robe',gloves:'wraps',feet:'tall',cape:'tattered'}[slot],description:'Custom equipment worn by the purple warlock. Not part of random loot.',...(slot==='hand1'?{magic:true,damage:18,manaCost:10}:{})};
+}
 // Rare discoveries unique to supply chests in each environment.
 for(const [id,name,color,bonus,description] of [
  ['fern_pendant','Fern pendant','#8fb779',{armor:2},'Woodland charm · +2 armor.'],
@@ -905,7 +925,7 @@ export const GEAR_SETS={
  moon:{name:'Moonbound',groups:[['moon_circlet','moon_helm'],['moon_shoulders'],['moon_steps'],['moon_blade','moon_bow','moon_shield']],three:{maxMana:30},full:{manaRegen:4,manaDiscount:.25,castHeal:3},threeText:'+30 maximum mana',fullText:'Lunar grace: 25% cheaper spells, +4 mana/sec, heal 3 on each cast'},
  safari_hunter:{name:'Safari hunter',groups:Object.values(SAFARI_HUNTER_SET).map(id=>[id]),three:{maxHp:25},full:{hpRegen:1,speedBonus:.12},threeText:'+25 maximum health',fullText:'Trail vitality: regenerate 1 health/sec and move 12% faster'},
  sun:{name:'Sunforged',groups:[['sun_crown'],['sun_shoulders'],['sun_plate'],['sun_grips'],['sun_blade','sun_bow','sun_wand','sun_shield']],three:{maxHp:30},full:{damageBonus:8,hpRegen:2},threeText:'+30 maximum health',fullText:'Solar might: +8 attack damage and regenerate 2 health/sec'},
- necromancer:{name:'Necromancer',groups:[['necromancer_dagger'],['necromancer_wand']],skills:['necromancer_pet'],full:{},fullText:'Complete set: unlocks the Raise Skeleton companion skill.'},
+ necromancer:{name:'Necromancer',groups:[['necromancer_dagger'],['necromancer_wand']],skills:['necromancer_pet'],full:{},fullText:'Complete set: your kills raise one skeleton companion. While it lives, no additional skeletons summon. If it dies, your next kill raises another.'},
 };
 for(const [set,def] of Object.entries(GEAR_SETS))for(const group of def.groups)for(const id of group)ITEMS[id].set=set;
 for(const [id,item] of Object.entries(ITEMS))if(item.slot){
@@ -947,6 +967,11 @@ for (const [id, item] of Object.entries(ITEMS)) {
   if (item.relic) item.color = RARITIES[item.rarity];
 }
 export const itemKind = (id) => ITEMS[id]?.base || id;
+// Preserve non-stackable gear, socketed items and container instances.
+for(const [id,item]of Object.entries(ITEMS)){
+ if(item.stack>1||id.startsWith('caught_'))item.stack=999;
+ if(id.startsWith('caught_'))item.description=(item.description||'A captured critter.')+' Use: release as a follower for this level. Recapture before quitting or it is lost. Salvage: consumes the creature, returns its jar/cage and produces Dark Essence.';
+}
 export function itemStats(id) {
   const i = ITEMS[id];
   if (!i) return "";
@@ -978,7 +1003,7 @@ export function rollGear(random = Math.random, minTier = null) {
   const r = random(),
     tier = minTier || (r < 0.62 ? "common" : r < 0.9 ? "rare" : "unique");
   const pool = Object.keys(ITEMS).filter(
-    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && ITEMS[id].rarity === tier,
+    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && !ITEMS[id].npcOnly && ITEMS[id].rarity === tier,
   );
   return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
 }

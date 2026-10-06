@@ -3,9 +3,12 @@ import {drawWetDrips} from './wet-weather.mjs';
 import {merchantPanel} from './traveling-merchant.mjs';
 import {ARROW_TYPES,quiverType} from './arrow-supplies.mjs';
 import { bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
-import {GEAR_SETS,setProgress,socketCount,gearStat} from './items.mjs';
+import {GEAR_SETS,setProgress,socketCount,gearStat,RARITIES} from './items.mjs';
 import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
+import {inventoryToolbar} from './inventory-toolbar.mjs';
+import {guardInventoryKeys} from './inventory-input.mjs';
+import {Animator} from './animation.mjs';
 import { compareItem, itemStatDelta, canAccess, protectedItem } from "./field-systems.mjs";
 import { controllerButtonNames, controllerFamily, CONTROLLER_NAMES } from "./controls.mjs";
 import { chestName } from "./items.mjs";
@@ -35,6 +38,7 @@ export class HeroUI {
     this.root = root;
     this.panels = new Map();
     this.panelAnchors = new Map();
+    root.addEventListener('keydown',guardInventoryKeys,true);
   }
   controllerText(game, p) {
     if (p.device === 'keyboard') return { accept:'Enter', close:'Esc', select:'Arrows', tabs:'Tab' };
@@ -47,7 +51,9 @@ export class HeroUI {
     const show = () => {
       let tip = panel.querySelector('.item-tooltip');
       if (!tip) { tip = el('div', null, 'item-tooltip'); panel.append(tip); }
-      tip.replaceChildren(el('strong', def.name));
+      const name=el('strong',def.name,'item-name');
+      name.style.color=RARITIES[def.rarity]||RARITIES.common;
+      tip.replaceChildren(name);
       if (def.description) tip.append(el('p', def.description));
       const stats = el('div', null, 'item-tooltip-stats');
       const base = itemStats(item.type);
@@ -58,6 +64,9 @@ export class HeroUI {
       }
       if (!stats.children.length) stats.append(el('span', 'No equipment stat change', 'item-tooltip-muted'));
       tip.append(stats);
+      if(button.dataset.mode==='pack'&&salvageYield(item.type).length){
+        tip.append(el('p','Salvage one: '+salvageYield(item.type).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ')+'. Hold '+(p.device==='keyboard'?'V':controllerButtonNames(liveControllerFamily(p))[7])+' for 1.25 seconds.','item-tooltip-salvage'));
+      }
       if (def.set && GEAR_SETS[def.set]) {
         const set = setProgress(p, def.set), checklist = el('section', null, 'item-tooltip-set');
         checklist.append(el('strong', `${set.name} · ${set.count}/${set.checks.length}`));
@@ -69,14 +78,35 @@ export class HeroUI {
       }
       tip.hidden = false;
       const r = button.getBoundingClientRect(), pr = panel.getBoundingClientRect();
-      const bx = r.left - pr.left, by = r.top - pr.top;
+      const scale=pr.width/panel.offsetWidth||1;
+      const panelWidth=panel.clientWidth,panelHeight=panel.clientHeight;
       const gap=8,tw=tip.offsetWidth,th=tip.offsetHeight;
-      const x=Math.max(4,Math.min(pr.width-tw-4,r.right-pr.left+gap));
-      const preferred=r.bottom-pr.top+gap;
-      const y=preferred+th<=pr.height-4?preferred:Math.max(4,by-th-gap);
+      const left=(r.left-pr.left)/scale-panel.clientLeft,right=(r.right-pr.left)/scale-panel.clientLeft,top=(r.top-pr.top)/scale-panel.clientTop,bottom=(r.bottom-pr.top)/scale-panel.clientTop;
+      const sideRight=right+gap,sideLeft=left-tw-gap;
+      const centeredX=Math.max(4,Math.min(panelWidth-tw-4,(left+right-tw)/2));
+      const belowY=bottom+gap,aboveY=top-th-gap;
+      const candidates=[
+        {x:sideRight,y:Math.max(4,Math.min(panelHeight-th-4,(top+bottom-th)/2)),side:'right',fits:sideRight+tw<=panelWidth-4},
+        {x:sideLeft,y:Math.max(4,Math.min(panelHeight-th-4,(top+bottom-th)/2)),side:'left',fits:sideLeft>=4},
+        {x:centeredX,y:belowY,side:'bottom',fits:belowY+th<=panelHeight-4},
+        {x:centeredX,y:aboveY,side:'top',fits:aboveY>=4},
+      ];
+      // Gear details sit over the bag, leaving the live character preview visible.
+      if(button.dataset.mode==='gear'&&panel.classList.contains('inventory-workbench')){
+        const sheet=button.closest('.equipment-window').getBoundingClientRect(),gearBottom=(sheet.bottom-pr.top)/scale-panel.clientTop+gap;
+        candidates.unshift({x:centeredX,y:gearBottom,side:'bottom',fits:gearBottom+th<=panelHeight-4});
+      }
+      // Keep bag contents visible when inspecting backpack/chest items.
+      if(button.dataset.mode==='pack'||button.dataset.mode==='chest') candidates.sort((a,b)=>(a.side==='top'?-1:0)-(b.side==='top'?-1:0));
+      const placement=candidates.find(candidate=>candidate.fits)||candidates.reduce((best,candidate)=>{
+        const visible=Math.max(0,Math.min(panelWidth,candidate.x+tw)-Math.max(0,candidate.x))*Math.max(0,Math.min(panelHeight,candidate.y+th)-Math.max(0,candidate.y));
+        return !best||visible>best.visible?{...candidate,visible}:best;
+      },null);
+      const x=Math.max(4,Math.min(panelWidth-tw-4,placement.x));
+      const y=Math.max(4,Math.min(panelHeight-th-4,placement.y));
       tip.style.left=x+'px';tip.style.top=y+'px';
       tip.style.setProperty('--tether-x',Math.max(4,Math.min(tw-4,r.right-pr.left-x))+'px');
-      tip.classList.toggle('tooltip-above',y<by);
+      tip.classList.toggle('tooltip-above',placement.side==='top');
       tip.hidden = false;
     };
     const hide = () => { const tip = panel.querySelector('.item-tooltip'); if (tip) tip.hidden = true; };
@@ -96,6 +126,7 @@ export class HeroUI {
       if (onlyId !== null && p.id !== onlyId) continue;
       if (!p.ui && !p.room) continue;
       wanted.add(p.id);
+      if(p.ui)p.ui.ownerDevice??=p.device;
       let panel = this.panels.get(p.id);
       if (!panel) {
         panel = el("section", null, "hero-panel");
@@ -103,11 +134,13 @@ export class HeroUI {
         this.root.append(panel);
         this.panels.set(p.id, panel);
       }
+      panel.dataset.ownerDevice=p.ui?.ownerDevice??p.device;
       const focus = panel.contains(document.activeElement)
         ? document.activeElement.dataset.action
         : null;
       const portal = game.portals.find((door) => door.id === p.room);
       const owner = game.players.find((q) => q.id === portal?.owner);
+      if(p.ui&&game.storageFor(p)&&!p.ui.loot){p.ui.loot=true;p.ui.panel='chest';p.ui.index=Math.max(0,game.storageFor(p).findIndex(Boolean));}
       const signature = [
         game.uiRevision || 0,
         p.name,
@@ -121,8 +154,12 @@ export class HeroUI {
         p.ui?.panel,
         p.ui?.index,
         p.ui?.storage,
+        p.ui&&game.storageFor(p)?JSON.stringify([p.inventory,game.storageFor(p),canAccess(game,p,true),canAccess(game,p,false)]):'',
         p.ui?.shop,
+        p.ui?.robotView,p.ui?.robotIndex,
+        p.ui?.shop==='robot'?JSON.stringify([p.inventory,owner?.robotStock]):'',
         p.ui?.notice,
+        p.ui&&!p.ui.shop?salvageReason(p):'',
         p.ui?.tab,
         p.ui?.page,game.merchant?.revision,
         JSON.stringify(p.ui?.carry||null),
@@ -160,12 +197,18 @@ export class HeroUI {
       panel.classList.toggle("merchant-session", p.ui?.shop === "merchant");
       panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop);
       panel.classList.toggle('victory-loot-session', p.ui?.storage === 'victory');
+      panel.classList.toggle('tv-victory-loot',p.ui?.storage==='tv-victory');
+      panel.classList.toggle('starter-chest-session',p.ui?.storage==='starter');
+      panel.classList.toggle('loot-popup',!!game.storageFor(p));
       panel.classList.toggle('socket-session',!!p.ui?.socket);
+      panel.classList.toggle('inventory-workbench',!!p.ui&&!p.ui.shop&&!p.ui.socket&&!game.storageFor(p));
+      panel.classList.toggle('scrap-shop',p.ui?.shop==='robot');
+      panel.classList.toggle('vending-refresh',p.ui?.shop==='vending');
       panel.replaceChildren();
       panel.style.borderColor = p.color;
       const head = el(
         "header",
-        p.name +
+        panel.classList.contains('inventory-workbench')?`${p.name} · LV ${p.level}`:p.name +
           " · " +
           (p.ui?.shop === "merchant" ? "TRADING POST" : p.ui?.storage === "victory" ? "VICTORY SPOILS" : p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
           " · LV " +
@@ -273,34 +316,91 @@ export class HeroUI {
     for(const panel of this.panels.values()){
       const selected=panel.querySelector('.storage-sheet.active .selected');
       if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest'});
-      if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split&&(panel.hero?.device!=='keyboard'||panel.revealSelection)){
+      if(!['victory','tv-victory','starter'].includes(panel.hero?.ui?.storage)&&!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split&&(panel.hero?.device!=='keyboard'||panel.revealSelection)){
         if(selected?.showItemTooltip){if(panel.tooltipSelection!==selected||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)selected.showItemTooltip();panel.tooltipSelection=selected;}
         else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
       }
       panel.revealSelection=false;
     }
   }
+  storagePopup(panel,game,p,button){
+    const u=p.ui,storage=game.storageFor(p),reusable=Number.isInteger(u.storage)||u.storage==='shared'||u.storage==='starter';
+    u.loot=true;if(!reusable)u.panel='chest';
+    panel.classList.add('loot-popup');panel.classList.toggle('chest-transfer',reusable);
+    const door=game.portals.find(d=>d.id===p.room),owner=game.players.find(q=>q.id===door?.owner);
+    const title=reusable?(u.storage==='starter'?'Starter chest':u.storage==='shared'?'Shared stash':chestName(owner||p,u.storage)):u.storage==='temple'?'Ritual chest':'Victory spoils';
+    panel.querySelector('header').textContent=p.name+' · '+title;
+    const switchTo=(mode,index)=>{game.inventoryAction(p,'panel:'+mode);if(index!==undefined)game.inventoryAction(p,'select:'+index);};
+    const surface=el('div',null,'storage-containers');
+    for(const mode of reusable?['chest','pack']:['chest']){
+      const list=mode==='pack'?p.inventory:storage,deposit=mode==='pack',active=u.panel===mode;
+      const section=el('section',null,'storage-container storage-sheet');section.classList.toggle('active',active);section.dataset.container=mode;
+      const head=button(deposit?'Your backpack':'Chest contents','storage-'+mode,()=>switchTo(mode));
+      head.className='storage-container-heading';head.append(el('span',list.filter(Boolean).length+(!deposit&&['shared','starter'].includes(u.storage)?' items':' / 24'),'storage-capacity'));head.setAttribute('aria-pressed',String(active));section.append(head);
+      const grid=el('div',null,'storage-slots');grid.dataset.container=mode;
+      const page=active?Math.floor(u.index/24):(u.storagePages?.[mode]||0);(u.storagePages||={})[mode]=page;
+      for(let index=page*24;index<page*24+24;index++){
+        const item=list[index],def=ITEMS[item?.type],b=button('',mode+'-slot-'+index,()=>switchTo(mode,index));
+        b.dataset.index=index;b.dataset.mode=mode;b.dataset.rarity=def?.rarity||'common';
+        b.classList.toggle('selected',active&&u.index===index);b.classList.toggle('empty-slot',!item);
+        b.setAttribute('aria-label',(deposit?'Backpack':'Chest')+' slot '+(index+1)+': '+(def?.name||item?.type||'Empty')+(item?' ×'+item.qty:''));
+        b.style.setProperty('--rarity',RARITIES[def?.rarity]||RARITIES.common);
+        if(item){
+          const icon=el('canvas');icon.width=icon.height=48;icon.className='item-icon';drawItem(icon.getContext('2d'),item.type,24,24,48);b.append(icon);
+          if(item.qty>1)b.append(el('span',String(item.qty),'inventory-quantity'));
+          if(def)this.itemTooltip(panel,b,game,p,item);else b.title=item.type;
+          b.ondblclick=()=>{switchTo(mode,index);game.inventoryAction(p,'use');};
+          if(!canAccess(game,p,!deposit)||(deposit&&protectedItem(p,item.type)))b.classList.add('locked-item');
+        }
+        grid.append(b);
+      }
+      section.append(grid);
+      if(list.length>24){
+        const pages=Math.ceil(list.length/24),nav=el('nav',null,'storage-pages');
+        const previous=button('‹','storage-page-'+mode+'-prev',()=>switchTo(mode,Math.max(0,page-1)*24));previous.disabled=page===0;
+        const next=button('›','storage-page-'+mode+'-next',()=>switchTo(mode,Math.min(pages-1,page+1)*24));next.disabled=page>=pages-1;
+        nav.append(previous,el('span',(page+1)+' / '+pages),next);section.append(nav);
+      }
+      surface.append(section);
+    }
+    panel.append(surface);
+    const deposit=u.panel==='pack',list=deposit?p.inventory:storage,item=list[u.index],allowed=canAccess(game,p,!deposit)&&!(deposit&&protectedItem(p,item?.type));
+    const controls=this.controllerText(game,p),actions=el('nav',null,'storage-popup-actions');
+    const primary=button(controls.accept+' · '+(deposit?'Deposit selected →':reusable?'← Withdraw selected':'Take selected'),'storage-transfer',()=>game.inventoryAction(p,'use'));
+    primary.disabled=!item||!allowed;actions.append(primary);
+    const all=button(deposit?'Deposit all':reusable?'Withdraw all':'Loot all','lootAll',()=>game.inventoryAction(p,'lootAll'));all.disabled=!list.some(Boolean)||!canAccess(game,p,!deposit);actions.append(all);
+    const notice=el('p',u.notice||(!storage.some(Boolean)?reusable?'Chest empty. Select an item in your backpack to deposit.':'No loot remaining.':item?(ITEMS[item.type]?.name||item.type)+' ×'+item.qty:'Select an item to transfer.'),'loot-notice');
+    if(['victory','tv-victory','starter'].includes(u.storage)&&item)notice.append(el('small',itemStats(item.type)||ITEMS[item.type]?.description||'','victory-item-detail'));
+    panel.append(actions,notice);
+    panel.append(el('small',reusable?`${controls.select}: select · ${controls.tabs}: switch container · ${controls.accept}: transfer · ${controls.close}: close`:`${controls.select}: select · ${controls.accept}: take · ${controls.close}: close`,'storage-help'));
+    if(u.storage==='starter')panel.append(el('small','Your starter selection · restocked each new level · deposited items are kept.','storage-help'));
+    if(u.storage==='victory'){const nav=el('nav',null,'victory-loot-actions');for(const [text,action]of [['Restart this level','restart'],['Return to lobby','lobby']])nav.append(button(text,'victory-'+action,()=>panel.dispatchEvent(new CustomEvent('victory-action',{bubbles:true,detail:action}))));panel.append(nav);}
+    if(u.storage==='tv-victory'){
+      const nav=el('nav',null,'victory-loot-actions'),back=button(controls.accept+' · Return to lobby','tvReturn',()=>game.inventoryAction(p,'tvReturn'));
+      back.disabled=storage.some(Boolean);nav.append(back);panel.append(nav);
+      panel.append(el('small',storage.some(Boolean)?'Shared party treasure · loot before leaving. Backpack full? Close this chest and open your inventory to make room.':'Treasure collected. Confirm to return to the lobby.','storage-help'));
+    }
+  }
   storagePanels(panel, game, p, button) {
     if(p.ui.socket){drawSocketWorkshop(panel,game,p,button,el);return;}
+    if(game.storageFor(p)){
+      this.storagePopup(panel,game,p,button);return;
+    }
     const u = p.ui,
       storage = game.storageFor(p),
       layout = el("div", null, "storage-layout");
     const victoryStorage=u.storage==='victory';
     const quiver=el('div',null,'quiver-slot');quiver.classList.toggle('selected',u.panel==='quiver');
-    const label=el('label','QUIVER'),selectAmmo=el('select');selectAmmo.setAttribute('aria-label','Quiver ammunition');
+    const label=el('label','AMMO'),selectAmmo=el('select');selectAmmo.setAttribute('aria-label','Quiver ammunition');
     for(const type of ARROW_TYPES){const option=el('option',`${ITEMS[type].name} (${count(p,type)})`);option.value=type;selectAmmo.append(option);}
     selectAmmo.value=quiverType(p);selectAmmo.onchange=()=>game.inventoryAction(p,'quiver:'+selectAmmo.value);
     selectAmmo.onfocus=()=>{if(p.ui)p.ui.panel='quiver';};
     label.append(selectAmmo);const ammoIcon=el('canvas');ammoIcon.width=ammoIcon.height=24;drawItem(ammoIcon.getContext('2d'),quiverType(p),12,12,24);
-    quiver.append(ammoIcon,label);if(!victoryStorage)panel.append(quiver);
+    quiver.append(ammoIcon,label);
     layout.classList.toggle("has-chest", !!storage);
     const select = (mode, index) => {
       game.inventoryAction(p, "panel:" + mode);
       if (index !== undefined) game.inventoryAction(p, "select:" + index);
-    };
-    const act = (mode, action) => {
-      if (u.panel !== mode) select(mode);
-      game.inventoryAction(p, action);
     };
     const door = game.portals.find((d) => d.id === p.room),
       owner = game.players.find((q) => q.id === door?.owner);
@@ -333,15 +433,24 @@ export class HeroUI {
       sheet.append(
         el(
           "header",
-          gear ? "Paper doll" : mode === "pack" ? "Backpack" : title,
+          gear ? "Equipped gear" : mode === "pack" ? "Inventory" : title,
         ),
       );
+      let previewFrame;
       if (gear) {
         const portrait = el("canvas");
-        portrait.width = 140;
-        portrait.height = 180;
+        portrait.width = 180;
+        portrait.height = 220;
         portrait.className = "equipment-preview";
-        sheet.append(portrait);
+        portrait.setAttribute('aria-label',p.name+' · live equipped character');
+        previewFrame=el('div',null,'inventory-character');
+        const rotate=delta=>{u.previewDirection=((u.previewDirection||0)+delta+8)%8;};
+        const previous=button('‹','preview-left',()=>rotate(-1));
+        const next=button('›','preview-right',()=>rotate(1));
+        previous.setAttribute('aria-label','Rotate character left');next.setAttribute('aria-label','Rotate character right');
+        previous.className='preview-turn preview-turn-left';next.className='preview-turn preview-turn-right';
+        previewFrame.append(portrait,previous,next);
+        const previewColumn=el('div',null,'inventory-preview-column');previewColumn.append(previewFrame,quiver);sheet.append(previewColumn);
       }
       const controls = el("nav");
       controls.append(
@@ -460,7 +569,7 @@ export class HeroUI {
             ? "item" + n
             : mode + "-item" + n;
         const b = button(
-          (gear ? item.slot.toUpperCase().replace('HAND', 'HAND ') : (item?.type === "occupied" ? "BOTH" : def ? "" : "—")) +
+          (gear ? item.slot.toUpperCase().replace('HAND', 'HAND ') : (item?.type === "occupied" ? "BOTH" : "")) +
             (item?.qty > 1 ? " ×" + item.qty : ""),
           action,
           () => { select(mode, n); if (def?.bag) u.bag = {mode, index:n, selected:0}; },
@@ -473,7 +582,15 @@ export class HeroUI {
         if (def?.bag) b.ondblclick = () => { select(mode, n); u.bag = {mode, index:n}; };
         b.setAttribute('aria-label',(gear?item.slot+': ':'')+(def?.name||'Empty slot')+(item?.qty>1?' ×'+item.qty:''));
         b.style.setProperty("--item", def?.color || "#405047");
-        if (gear) b.dataset.slot = item.slot;
+        if (gear) {
+          b.dataset.slot=item.slot;b.textContent='';
+          const name=item.slot==='back'&&itemKind(item.type)==='quiver'?'QUIVER':item.slot==='hand1'?'R HAND':item.slot==='hand2'?'L HAND':item.slot.toUpperCase();
+          const label=el('span',null,'equipment-slot-label');label.append(el('span',name,'equipment-label-full'),el('span',item.slot==='shoulders'?'SHLDRS':name,'equipment-label-compact'));b.append(label);
+          b.setAttribute('aria-label',(item.slot==='hand1'?'Right hand (Hand 1)':item.slot==='hand2'?'Left hand (Hand 2)':item.slot==='back'?'Back / quiver':item.slot)+': '+(def?.name||'Empty slot'));
+        }
+        b.classList.toggle('empty-slot',!def);
+        b.dataset.rarity=def?.rarity||'common';
+        b.style.setProperty('--rarity',RARITIES[def?.rarity]||RARITIES.common);
         b.title = def
           ? def.name +
             " · " +
@@ -493,10 +610,13 @@ export class HeroUI {
         if(!gear&&item?.qty>1){b.textContent='';b.append(el('span',String(item.qty),'inventory-quantity'));}
         if (def) {
           const icon = el("canvas");
-          icon.width = icon.height = 24;
+          icon.width = icon.height = 48;
           icon.className = "item-icon";
-          drawItem(icon.getContext("2d"), item.type, 12, 12, 24);
+          drawItem(icon.getContext("2d"), item.type, 24, 24, 48);
           b.prepend(icon);
+        }else if(gear){
+          const sample=Object.keys(ITEMS).find(type=>ITEMS[type].slot===item.slot&&!ITEMS[type].gmOnly);
+          if(sample){const icon=el('canvas');icon.width=icon.height=48;icon.className='item-icon empty-equipment-icon';drawItem(icon.getContext('2d'),sample,24,24,48);b.prepend(icon);}
         }
         if(gear&&itemKind(item.type)==='quiver'){
           const ammo=el('span',null,'quiver-ammo-indicator'),loaded=Math.min(3,count(p,quiverType(p)));
@@ -551,62 +671,10 @@ export class HeroUI {
           "storage-detail",
         ),
       );
-      const actions = el("div", null, "inventory-actions");
-      const pad=controllerButtonNames(liveControllerFamily(p)),keyboard=p.device==='keyboard';
-      if(active&&(def||u.carry))actions.append(button((keyboard?'M':'LS')+' · '+(u.carry?'Place':'Move'),'move-item',()=>act(mode,'pick')));
-      const hints={use:keyboard?'Enter':pad[0],equip:keyboard?'Enter':pad[0],equipOffhand:keyboard?'2':pad[3],store:keyboard?'R':pad[2],split:keyboard?'2':pad[3],drop:keyboard?'Delete':pad[2],dropOne:keyboard?'Shift+Delete':'LT+'+pad[2]};
-      if(def&&socketCount(item.type)&&['gear','pack'].includes(mode)&&!(gear&&p.equipment[item.slot]==='occupied')){
-        sheet.append(el('p',`${'◆'.repeat(item.sockets?.length||0)}${'◇'.repeat(Math.max(0,socketCount(item.type)-(item.sockets?.length||0)))} · Item mana +${gearStat(item.type,item.sockets,'maxMana')}`,'socket-summary'));
-        actions.append(button((keyboard?'2':pad[3])+' · Trinket sockets','sockets-'+mode,()=>act(mode,'sockets')));
-      }
-      const add = (label, key, action) =>
-        actions.append(button((hints[action]||'Click')+' · '+label, key, () => act(mode, action)));
-      if (gear && def) {
-        add("Unequip", active ? "use" : "gear-use", "use");
-        if(!p.room&&game.phase==='play')add("Drop equipped","gear-drop","drop");
-      }
-      else if (mode === "pack" && def) {
-        add(
-          ARROW_TYPES.includes(item.type)?"Load quiver":def.recipe?"Learn recipe":"Use / Equip",
-          storage ? "storage-equip" : active ? "use" : "pack-use",
-          "equip",
-        );
-        if (def.slot === "hand1" && !def.twoHanded)
-          add("Equip hand 2", "offhand", "equipOffhand");
-        if (storage) add("Store selected →", "transfer-pack", "store");
-        if (item?.qty > 1)
-          add("Split stack", storage ? "split-pack" : "split", "split");
-        if (def.bag) add('Open bag', 'open-bag', 'equip');
-        if (!p.room && game.phase !== 'lobby') {
-          add("Drop one", "dropOne", "dropOne");
-          add("Drop stack", "drop", "drop");
-        }
-        if(game.phase!=='lobby'&&active&&salvageYield(item?.type).length){
-          const reason=salvageReason(p),b=button('','salvage-hold',()=>{}),ring=el('span',null,'salvage-ring');
-          ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
-          b.className='salvage-button';b.disabled=!!reason;
-          b.append(ring,el('span',(keyboard?'Hold V':'Hold RT')+' · Salvage'));
-          b.title=reason||salvageYield(item.type).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ')+' · Socketed trinkets are returned as drops.';
-          b.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);p.ui.salvagePointer=true;};
-          const stop=()=>{if(p.ui)p.ui.salvagePointer=false;};b.onpointerup=stop;b.onpointercancel=stop;b.onlostpointercapture=stop;b.onblur=stop;
-          b.onkeydown=e=>{if(['Space','Enter'].includes(e.code)){e.preventDefault();e.stopPropagation();p.ui.salvagePointer=true;}};b.onkeyup=stop;
-          actions.append(b,el('small',reason||b.title,'salvage-description'));
-        }
-      } else if (mode === "chest" && def) {
-        add("← Take selected", "transfer-chest", "store");
-        add("Split stack", "split-chest", "split");
-      }
-      sheet.append(actions);
       layout.append(sheet);
     }
-    panel.append(
-      layout,
-      el(
-        "p",
-        u.notice || "",
-        "storage-notice",
-      ),
-    );
+    panel.append(layout);
+    this.inventoryToolbar(panel,game,p,button);
     if(victoryStorage){
       const endActions=el('nav',null,'victory-loot-actions');
       const restart=button('Restart this level','victory-restart',()=>panel.dispatchEvent(new CustomEvent('victory-action',{bubbles:true,detail:'restart'})));
@@ -618,6 +686,34 @@ export class HeroUI {
     const family = p.device === 'keyboard' ? 'Keyboard + mouse' : CONTROLLER_NAMES[detectedFamily] || 'Game controller';
     panel.append(el('small',u.carry?`Moving ${u.carry.name} · ${p.device==='keyboard'?'M / Enter':'LS / A'}: place · ${controls.close}: cancel`:`${controls.select}: select · ${controls.tabs}: equipment / bag · ${controls.close}: close`,'inventory-help'));
     this.inventoryPopovers(panel, game, p, button);
+  }
+
+  inventoryToolbar(panel,game,p,button){
+    const pad=controllerButtonNames(liveControllerFamily(p)),{item,def,gear,quiver,options}=inventoryToolbar(game,p,pad);
+    const summary=el('div',null,'inventory-selection'),name=el('strong',def?.name||(gear?'Empty equipment slot':'Empty backpack slot'),'item-name');
+    if(def){name.style.color=RARITIES[def.rarity]||RARITIES.common;name.dataset.rarity=def.rarity||'common';}
+    summary.append(name,el('span',def?quiver?'Quiver':gear?'Equipped':item.qty>1?'×'+item.qty:'Backpack':'','selection-location'));
+    const detail=p.ui.notice||(p.ui.carry?'Choose a destination, then Place. Close cancels the move.':quiver?'Choose ammunition above. Left / right changes arrow type.':def?itemStats(item.type)||def.description||'Select an action below.':gear?'Drag matching gear onto this slot, or choose an item in your backpack.':'Choose an item above. Empty slots remain available for moving items.');
+    const notice=el('small',detail,'storage-notice');notice.title=detail;summary.append(notice);panel.append(summary);
+    const actions=el('nav',null,'inventory-actions current-inventory-actions');actions.setAttribute('aria-label','Selected item actions');
+    for(const option of options){
+      const b=button('',option.id,()=>game.inventoryAction(p,option.action));
+      b.disabled=!!option.reason;b.setAttribute('aria-label',option.label+' · '+option.key+(option.reason?' · '+option.reason:''));b.title=option.reason||option.label+' · '+option.key;
+      const badge=option.key.replace(/Triangle/g,'△').replace(/Square/g,'□').replace(/Circle/g,'○').replace(/Cross/g,'×').replace(/Shift\+Del/g,'⇧Del');
+      const compactLabel={'Next arrows':'Arrows','Load quiver':'Load','Learn recipe':'Learn'}[option.label]||option.label;
+      b.append(el('span',badge,'inventory-key'),el('span',compactLabel,'inventory-action-label'));
+      if(option.id==='salvage-hold'){
+        const ring=el('span',null,'salvage-ring');ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
+        b.className='salvage-button';b.append(ring);b.onclick=()=>{};
+        b.title=option.reason||'Hold '+option.key+' for 1.25 seconds to salvage one item. '+salvageYield(item?.type).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ');
+        b.setAttribute('aria-label',b.title);
+        b.onpointerdown=e=>{if(b.disabled||e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);if(p.ui)p.ui.salvagePointer=true;};
+        const stop=()=>{if(p.ui)p.ui.salvagePointer=false;};b.onpointerup=stop;b.onpointercancel=stop;b.onlostpointercapture=stop;b.onblur=stop;
+        b.onkeydown=e=>{if(!b.disabled&&['Space','Enter'].includes(e.code)){e.preventDefault();e.stopPropagation();if(p.ui)p.ui.salvagePointer=true;}};b.onkeyup=stop;
+      }
+      actions.append(b);
+    }
+    panel.append(actions);
   }
 
   inventoryPopovers(panel, game, p, button) {
@@ -638,7 +734,9 @@ export class HeroUI {
       if (!item || item.qty < 2) { delete u.split; return; }
       const popup = el('form', null, 'inventory-popover split-popover');
       popup.setAttribute('aria-label', 'Split stack');
-      popup.append(el('strong', 'Split ' + ITEMS[item.type].name));
+      const splitName=el('strong','Split '+ITEMS[item.type].name);
+      splitName.style.color=RARITIES[ITEMS[item.type].rarity]||RARITIES.common;
+      popup.append(splitName);
       const row = el('div', null, 'split-stepper'), amount = el('input');
       amount.type = 'number'; amount.min = 1; amount.max = item.qty - 1; amount.value = s.amount;
       amount.setAttribute('aria-label', 'Amount to split');
@@ -656,7 +754,9 @@ export class HeroUI {
       if (!rule) { delete u.bag; return; }
       const popup = el('section', null, 'inventory-popover bag-popover');
       popup.setAttribute('aria-label', ITEMS[bag.type].name);
-      popup.append(el('strong', ITEMS[bag.type].name), button('\u00d7', 'bag-close', () => { delete u.bag; panel.uiSignature = null; }));
+      const bagName=el('strong',ITEMS[bag.type].name);
+      bagName.style.color=RARITIES[ITEMS[bag.type].rarity]||RARITIES.common;
+      popup.append(bagName, button('\u00d7', 'bag-close', () => { delete u.bag; panel.uiSignature = null; }));
       const grid = el('div', null, 'bag-grid');
       const changed = ok => { u.notice = ok ? 'Item moved.' : 'No room, or this bag cannot hold that item.'; game.persist(); panel.uiSignature = null; };
       const canStore = item => !protectedItem(p, item?.type) && (s.mode !== 'chest' || canAccess(game, p, false));
@@ -683,18 +783,21 @@ export class HeroUI {
   preview(panel, p, time) {
     const canvas = panel.querySelector(".equipment-preview");
     if (!canvas) return;
+    // Preview keeps breathing even while the lobby/game simulation is paused.
+    time=performance.now()/1000;
     const c = canvas.getContext("2d");
     c.clearRect(0, 0, canvas.width, canvas.height);
     c.save();
-    c.translate(canvas.width / 2, 170);
-    c.scale(3.5, 3.5);
+    c.translate(canvas.width / 2, canvas.height-14);
+    c.scale(4.1, 4.1);
     drawPlayer(
       c,
       {
         ...p,
-        faceX: 0,
-        faceY: 1,
-        animationAction: (p.salvageHold?.elapsed>0&&!p.salvageHold.latched)||p.salvageFinish>0?'salvage':'idle',
+        faceX: Math.sin((p.ui?.previewDirection||0)*Math.PI/4),
+        faceY: Math.cos((p.ui?.previewDirection||0)*Math.PI/4),
+        animationAction: 'idle',
+        attack:0,spin:0,charge:0,bowAiming:false,bowAimBlend:0,gatherTime:0,
         moving: false,
         playerFrame: undefined,
       },
@@ -703,9 +806,14 @@ export class HeroUI {
     c.restore();
   }
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), open = game.players.filter((q) => q.ui || q.room)) {
-    if(panel.classList.contains('storage-session')&&(!p.ui?.shop||p.ui.shop==='merchant')){
+    if(p.ui?.shop==='vending'){const index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(680,bounds.width/cols-16),height=Math.min(780,bounds.height/rows-16);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*bounds.width/cols+'px';panel.style.top=8+Math.floor(index/cols)*bounds.height/rows+'px';return;}
+    if(p.ui?.loot){const victory=['victory','tv-victory'].includes(p.ui.storage),index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(victory?440:620,bounds.width/cols-16),height=Math.min(victory?520:740,bounds.height/rows-16);panel.classList.toggle('loot-compact',height<=460);panel.classList.toggle('loot-tight',height<=360);if(p.ui.storage==='starter')p.ui.storageColumns=height<=360?6:4;panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*(bounds.width/cols)+'px';panel.style.top=8+Math.floor(index/cols)*(bounds.height/rows)+'px';return;}
+    if(panel.classList.contains('storage-session')&&(!p.ui?.shop||['merchant','robot'].includes(p.ui.shop))){
       const index=Math.max(0,open.findIndex(q=>q.id===p.id)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/3);
-      const width=Math.min(480,(bounds.width-16)/cols-8),height=(bounds.height-16)/rows;
+      const width=Math.min(panel.classList.contains('inventory-workbench')||p.ui?.shop==='robot'?480:560,(bounds.width-16)/cols-8),height=Math.min(800,(bounds.height-16)/rows);
+      panel.classList.toggle('inventory-compact',height<=580);
+      panel.classList.toggle('inventory-tight',height<=460);
+      panel.classList.toggle('inventory-narrow',width<=380);
       const left=cols===1?8:cols===2?(index%cols===0?8:bounds.width-width-8):(index%3)*(bounds.width/3)+8;
       panel.classList.toggle('party-panel',open.length>1);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=left+'px';panel.style.top=8+Math.floor(index/3)*height+'px';return;
     }
@@ -781,7 +889,9 @@ export class HeroUI {
   }
   room(canvas, g, p, d, renderer) {
     const c = canvas.getContext("2d");
-    if(d?.temple){drawTempleRoom(c,g,p,renderer.animator);drawWetDrips(c,g,p.room);return;}
+    // Lobby storage can open before the main expedition renderer exists.
+    const animator=renderer?.animator||(this.roomAnimator||=new Animator());
+    if(d?.temple){drawTempleRoom(c,g,p,animator);drawWetDrips(c,g,p.room);return;}
     c.imageSmoothingEnabled = false;
     c.fillStyle = "#100e20";
     c.fillRect(0, 0, 320, 240);
@@ -941,7 +1051,7 @@ export class HeroUI {
       c.beginPath();
       c.ellipse(q.roomX, q.roomY + 1, 18, 8, 0, 0, Math.PI * 2);
       c.stroke();
-      renderer.animator.draw(
+      animator.draw(
         c,
         {
           ...q,

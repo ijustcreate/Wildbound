@@ -1,4 +1,5 @@
 import {wolfMotion, defaultWolfMotion, replaceWolfMotion, drawWolf} from './wolf-motion.mjs';
+import {warlockMotion,defaultWarlockMotion,replaceWarlockMotion,drawWarlock} from './warlock-motion.mjs';
 import { NIGHT_KINDS, nightMotions, nightRigLabels, defaultNightMotion, replaceNightMotion, drawNightRig } from './night-rigs.mjs';
 import {
   BEAST_KINDS,
@@ -54,6 +55,7 @@ import {
   creatureRigLabels,
 } from "./creature-motion.mjs";
 export const RIG_SUBJECTS = {
+  necromancer:{name:'Purple warlock / equipped humanoid',data:warlockMotion,defaults:defaultWarlockMotion,replace:replaceWarlockMotion,draw:drawWarlock,sprite:'necromancer',selected:'handR',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'cast',scale:5},
   ...Object.fromEntries(NIGHT_KINDS.map(kind => {
     const data = nightMotions[kind];
     const selected = { carnivorous_flower: 'jawTop', night_stalker: 'frontPawR', burrower: 'head', mimic_vine: 'tendril6', poison_pod: 'sacR', carrion_pack: 'jaw', hunter: 'rifleMuzzle', elephant: 'trunkTip', zebra: 'frontPawR', pelican: 'wingTipR' }[kind];

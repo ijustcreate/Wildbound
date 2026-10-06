@@ -90,6 +90,7 @@ export class Profiles {
     p.equipment = { ...h.equipment };
     p.equipmentSockets=structuredClone(h.equipmentSockets||{});
     p.chests = structuredClone(h.chests);
+    p.starterChest = structuredClone(h.starterChest || null);
     p.chestNames = structuredClone(
       h.chestNames || ["Chest 1", "Chest 2", "Chest 3"],
     );
@@ -124,6 +125,7 @@ export class Profiles {
         equipment: { ...p.equipment },
         equipmentSockets:structuredClone(p.equipmentSockets||{}),
         chests: structuredClone(p.chests),
+        starterChest: structuredClone(p.starterChest || null),
         chestNames: structuredClone(p.chestNames || []),
         level: p.level,
         xp: p.xp,

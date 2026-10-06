@@ -2,6 +2,7 @@ import {drawParticleEffect} from './particles.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {tickJump} from './jumping.mjs';
+import {hasSetSkill} from './items.mjs';
 export const TEMPLE_STAIRS={x:1040,y:590};
 export function templeLayout(){
  return {temple:true,floors:[{x:480,y:450,w:640,h:670}],paths:[],pools:[],trees:[],rooms:[{name:'THE JADE SANCTUM',x:800,y:510}],furniture:[],doors:[{x:752,y:1104,w:96,h:16,open:true}],walls:[{x:480,y:450,w:640,h:24},{x:480,y:450,w:24,h:670},{x:1096,y:450,w:24,h:670},{x:480,y:1104,w:272,h:16},{x:848,y:1104,w:272,h:16},...[[560,560],[984,560],[560,960],[984,960]].map(([x,y])=>({x,y,w:40,h:40}))]};
@@ -12,6 +13,7 @@ export function ensureTemple(g){
  if(!g.portals.some(d=>d.temple))g.portals.push({id:'temple-upper',temple:true,...TEMPLE_STAIRS,owner:null,closing:null,entryReady:[]});
 }
 export function templeRoomStep(g,p,i,dt){
+ if(i.attack&&!p.previousInput?.attack){p.attack=.3;g.onSound('swing',p);}
  const d=g.portals.find(d=>d.id===p.room);if(!d?.temple)return false;
  const x=p.roomX,y=p.roomY;p.roomX=Math.max(28,Math.min(292,x+(i.x||0)*90*dt));p.roomY=Math.max(48,Math.min(214,y+(i.y||0)*90*dt));p.roomMoving=x!==p.roomX||y!==p.roomY;p.roomStep=(p.roomStep||0)+Math.hypot(p.roomX-x,p.roomY-y)*.13;
  if(p.roomMoving){const len=Math.hypot(p.roomX-x,p.roomY-y);p.faceX=(p.roomX-x)/len;p.faceY=(p.roomY-y)/len;}
@@ -29,7 +31,7 @@ export function summonGhost(g,e){
 export function summonTempleTigers(g,p){
  g.ghosts??=[];
  const portal=g.portals.find(d=>d.temple),room=!!p.room;
- for(let n=0;n<2;n++)g.ghosts.push({id:g.nextId++,kind:'tiger',name:`Sanctum Ghost Tiger ${n+1}`,ritualTiger:true,wildTiger:true,ghost:true,faction:'neutral',targetPlayerId:p.id,owner:null,hp:120,maxHp:120,life:Infinity,speed:92,damage:0,cooldown:0,scareCooldown:0,attack:0,state:'hunt',moving:false,step:0,faceX:n?1:-1,faceY:0,x:room?160+(n?17:-17):(portal?.x||p.x),y:room?78+(n?2:-2):(portal?.y||p.y),room:room?'temple-upper':null,roomX:160+(n?17:-17),roomY:78+(n?2:-2)});
+ for(let n=0;n<2;n++)g.ghosts.push({id:g.nextId++,kind:'tiger',name:`Sanctum Ghost Tiger ${n+1}`,ritualTiger:true,wildTiger:true,ghost:true,faction:'hostile',targetPlayerId:p.id,owner:null,hp:120,maxHp:120,life:Infinity,speed:92,damage:12,cooldown:0,scareCooldown:0,attack:0,state:'hunt',moving:false,step:0,faceX:n?1:-1,faceY:0,x:room?160+(n?17:-17):(portal?.x||p.x),y:room?78+(n?2:-2):(portal?.y||p.y),room:room?'temple-upper':null,roomX:160+(n?17:-17),roomY:78+(n?2:-2)});
  g.message('The Ritual Dagger wakes two ghost tigers in the sanctum.');g.onSound('magic',p);g.persist();
 }
 export function summonNecromancerPet(g,owner){
@@ -40,11 +42,17 @@ export function summonNecromancerPet(g,owner){
  const pet={id:g.nextId++,kind:'skeleton',owner:owner.id,pet:true,faction:'ally',ghost:true,hp:120,maxHp:120,life:Infinity,cooldown:0,damage:20,speed:78,state:'hunt',attack:0,x:owner.x-faceX*38,y:owner.y-faceY*38,faceX,faceY,equipment:{hand1:'sword'},moving:false,step:0};
  g.ghosts.push(pet);owner.necromancerCooldown=18;g.message('Raise Skeleton: your sword-wielding companion answers the call.');g.onSound('magic',pet);return true;
 }
+export function summonNecromancerOnKill(g,enemy){
+ if(enemy.hp>0||enemy.practiceTarget||enemy.ghost||enemy.faction==='ally')return false;
+ const owner=g.players.find(p=>p.id===enemy.killedBy);
+ if(!owner||!hasSetSkill(owner,'necromancer_pet')||(g.ghosts||[]).some(a=>a.pet&&a.owner===owner.id&&a.hp>0))return false;
+ return summonNecromancerPet(g,owner);
+}
 export function tickGhosts(g,dt){
  tickFear(g,dt);
- for(const a of g.ghosts||[]){a.life-=dt;a.cooldown=Math.max(0,a.cooldown-dt);a.attack=Math.max(0,(a.attack||0)-dt);tickJump(a,dt,g);
+ for(const a of g.ghosts||[]){if(a.hp<=0)continue;a.hit=Math.max(0,(a.hit||0)-dt);a.invuln=Math.max(0,(a.invuln||0)-dt);a.life-=dt;a.cooldown=Math.max(0,a.cooldown-dt);a.attack=Math.max(0,(a.attack||0)-dt);tickJump(a,dt,g);
  if(a.wildTiger){
-  const target=g.players.find(p=>p.id===a.targetPlayerId&&p.hp>0),portal=g.portals.find(d=>d.temple);a.moving=false;
+  const target=g.players.find(p=>p.id===a.targetPlayerId&&p.hp>0&&!p.underBridge&&!p.quicksandUnder&&!(p.swimming&&p.diveDepth>.12)),portal=g.portals.find(d=>d.temple);a.moving=false;
   if(!target)continue;
   if(target.room==='temple-upper'){
    if(a.room!=='temple-upper'){
@@ -63,9 +71,11 @@ export function tickGhosts(g,dt){
    if(d>48){const step=Math.min(d-36,a.speed*dt);a.x=Math.max(24,Math.min(1576,a.x+a.faceX*step));a.y=Math.max(24,Math.min(1576,a.y+a.faceY*step));a.moving=true;}
   }
   const separation=target.room==='temple-upper'&&a.room==='temple-upper'?Math.hypot(target.roomX-a.roomX,target.roomY-a.roomY):!target.room&&!a.room?Math.hypot(target.x-a.x,target.y-a.y):Infinity;
-  a.scareCooldown=Math.max(0,a.scareCooldown-dt);
-  if(separation<54&&a.scareCooldown<=0){a.scareCooldown=1.25;if(g.random()<.1)scarePlayer(g,target,a);}
-  a.animationAction=a.moving?'walk':'idle';continue;
+  if(separation<42&&a.cooldown<=0){a.cooldown=1.2;a.attack=.34;if(target.room){if(!(target.invuln>0)){target.hp=Math.max(0,target.hp-12);target.invuln=.7;}}else g.hurt(target,12,a);}
+  if(separation<65&&target.attack>0&&!a.hitSwing){damageEnemy(a,16);a.killedBy=target.id;a.hitSwing=true;}
+  if(!(target.attack>0))a.hitSwing=false;
+  if(a.moving)a.step=(a.step||0)+a.speed*dt*.13;
+  a.state='hunt';a.timer=a.attack;a.animationAction=a.attack>0?'bite':null;continue;
  }
  const owner=g.players.find(p=>p.id===a.owner);if(!owner||owner.hp<=0||owner.room){a.moving=false;continue;}
  const candidates=g.enemies.filter(e=>e.hp>0&&e.faction!=="ally"&&e.faction!=="neutral"&&Math.hypot(e.x-owner.x,e.y-owner.y)<=(a.pet?180:260));
@@ -96,11 +106,11 @@ function tickFear(g,dt){
   if(!p.scaredTime){delete p.scaredDx;delete p.scaredDy;delete p.scaredBy;}
  }
 }
-export function tickGorilla(g,e,dt){
+export function tickGorilla(g,e,dt,visiblePlayers=g.players){
  if(e.kind!=='gorilla')return false;e.cooldown=Math.max(0,(e.cooldown||0)-dt);e.attack=Math.max(0,(e.attack||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);
- const p=g.players.filter(p=>p.hp>0&&!p.room).sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];if(!p){e.moving=false;return true;}
+ const p=visiblePlayers.filter(p=>p.hp>0&&!p.room).sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];if(!p){e.moving=false;return true;}
  const d=Math.hypot(p.x-e.x,p.y-e.y)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;
- if(e.state==='windup'){e.timer-=dt;if(e.timer<=0){e.attack=.5;for(const q of g.players)if(!q.room&&q.hp>0&&Math.hypot(q.x-e.x,q.y-e.y)<105&&clearShot(g,e,q))g.hurt(q,26,e);e.state='recover';e.timer=1.1;e.cooldown=2.5;g.onSound('hit',e);}return true;}
+ if(e.state==='windup'){e.timer-=dt;if(e.timer<=0){e.attack=.5;for(const q of visiblePlayers)if(g.players.includes(q)&&!q.room&&q.hp>0&&Math.hypot(q.x-e.x,q.y-e.y)<105&&clearShot(g,e,q))g.hurt(q,26,e);e.state='recover';e.timer=1.1;e.cooldown=2.5;g.onSound('hit',e);}return true;}
  if(e.state==='recover'){e.timer-=dt;if(e.timer<=0)e.state='hunt';return true;}
  if(d<100&&e.cooldown<=0&&clearShot(g,e,p)){e.state='windup';e.timer=.85;e.moving=false;return true;}navigateEnemy(g,e,p,dt);return true;
 }
@@ -118,5 +128,5 @@ export function drawTemple(c,g,animator){
  if(g.generatedEnvironment==='temple'){const s=TEMPLE_STAIRS;c.fillStyle='#bcb18b';c.fillRect(s.x-32,s.y-32,64,64);for(let i=0;i<8;i++){c.fillStyle=i%2?'#6e7863':'#bcb18b';c.fillRect(s.x-30,s.y-30+i*8,60,4);}c.fillStyle='#ffe9ad';c.font='12px sans-serif';c.textAlign='center';c.fillText('STAIRS · UPPER SANCTUM',s.x,s.y-43);
  for(const [x,y] of [[536,640],[1064,640],[536,920],[1064,920]]){c.fillStyle='#455f44';c.fillRect(x-13,y-24,26,40);c.fillStyle='#d7b975';c.fillRect(x-8,y-19,5,6);c.fillRect(x+3,y-19,5,6);c.fillRect(x-6,y-5,12,4);}}
 }
-export function drawTempleRoom(c,g,p,animator){c.fillStyle='#102821';c.fillRect(0,0,320,240);c.fillStyle='#6d7861';c.fillRect(16,32,288,192);c.strokeStyle='#3c5143';for(let y=32;y<224;y+=24)for(let x=16;x<304;x+=32)c.strokeRect(x,y,Math.min(32,304-x),Math.min(24,224-y));c.fillStyle='#d5ba6a';c.fillRect(142,66,36,23);c.fillStyle='#503e25';c.fillRect(144,74,32,5);c.fillStyle='#e8e6b5';c.font='11px sans-serif';c.textAlign='center';c.fillText('UPPER SANCTUM',160,20);if(Math.hypot(p.roomX-160,p.roomY-78)<68&&!p.ui){c.fillStyle='#ffe6a3';c.font='bold 11px sans-serif';c.fillText('E / Y · OPEN CHEST',160,57);}c.fillStyle='#203c32';c.fillRect(140,204,40,30);c.fillStyle='#f2d78e';c.fillText('↓ Return downstairs',160,236);for(const a of (g.ghosts||[]).filter(a=>a.room===p.room)){c.save();c.globalAlpha=.78;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...a,x:a.roomX,y:a.roomY},g.time,43);c.restore();}for(const q of g.players.filter(q=>q.room===p.room)){if(q.hunterPet?.spiritGhost){c.save();c.globalAlpha=.8;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...q.hunterPet,x:q.hunterPet.roomX??q.roomX+25,y:q.hunterPet.roomY??q.roomY+15},g.time,43);c.restore();}animator.draw(c,{...q,x:q.roomX,y:q.roomY,moving:q.roomMoving,step:q.roomStep},g.time,48);if(q.scaredTime>0)drawFearFace(c,q.roomX,q.roomY-30);}}
+export function drawTempleRoom(c,g,p,animator){c.fillStyle='#102821';c.fillRect(0,0,320,240);c.fillStyle='#6d7861';c.fillRect(16,32,288,192);c.strokeStyle='#3c5143';for(let y=32;y<224;y+=24)for(let x=16;x<304;x+=32)c.strokeRect(x,y,Math.min(32,304-x),Math.min(24,224-y));c.fillStyle='#d5ba6a';c.fillRect(142,66,36,23);c.fillStyle='#503e25';c.fillRect(144,74,32,5);c.fillStyle='#e8e6b5';c.font='11px sans-serif';c.textAlign='center';c.fillText('UPPER SANCTUM',160,20);if(Math.hypot(p.roomX-160,p.roomY-78)<68&&!p.ui){c.fillStyle='#ffe6a3';c.font='bold 11px sans-serif';c.fillText('E / Y · OPEN CHEST',160,57);}c.fillStyle='#203c32';c.fillRect(140,204,40,30);c.fillStyle='#f2d78e';c.fillText('↓ Return downstairs',160,236);for(const a of (g.ghosts||[]).filter(a=>a.room===p.room)){c.save();c.globalAlpha=.78;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...a,x:a.roomX,y:a.roomY},g.time,43);c.restore();}for(const q of g.players.filter(q=>q.room===p.room)){for(const companion of [q.hunterPet,q.ritualPet].filter(a=>a?.spiritGhost)){c.save();c.globalAlpha=.8;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...companion,x:companion.roomX??q.roomX+25,y:companion.roomY??q.roomY+15},g.time,43);c.restore();}animator.draw(c,{...q,x:q.roomX,y:q.roomY,moving:q.roomMoving,step:q.roomStep},g.time,48);if(q.scaredTime>0)drawFearFace(c,q.roomX,q.roomY-30);}}
 export function drawFearFace(c,x,y){c.save();c.fillStyle='#f5d76c';c.strokeStyle='#52341f';c.lineWidth=1.5;c.beginPath();c.arc(x,y,7,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#34271e';c.fillRect(x-3,y-2,1.5,2);c.fillRect(x+2,y-2,1.5,2);c.beginPath();c.arc(x,y+3,1.5,0,Math.PI*2);c.fill();c.restore();}

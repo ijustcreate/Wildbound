@@ -1,15 +1,15 @@
-// Matches the displayed paper doll, including the lower-left glove slot.
+// Matches the three-column body layout beside the live character preview.
 export const EQUIPMENT_NEIGHBORS={
- head:{up:'feet',down:'neck',prev:'neck',next:'back'},
- back:{up:'head',down:'cape',prev:'head',next:'neck'},
- neck:{up:'head',down:'shoulders',prev:'cape',next:'cape'},
- cape:{up:'head',down:'chest',prev:'neck',next:'neck'},
- shoulders:{up:'neck',down:'hand1',prev:'chest',next:'chest'},
- chest:{up:'cape',down:'hand2',prev:'shoulders',next:'shoulders'},
- hand1:{up:'shoulders',down:'gloves',prev:'hand2',next:'hand2'},
- hand2:{up:'chest',down:'pants',prev:'hand1',next:'hand1'},
- gloves:{up:'hand1',down:'feet',prev:'pants',next:'feet'},
- pants:{up:'hand2',down:'feet',prev:'feet',next:'gloves'},
- feet:{up:'gloves',down:'head',prev:'gloves',next:'pants'},
+ head:{up:'feet',down:'neck',prev:'back',next:'cape'},
+ neck:{up:'head',down:'chest',prev:'back',next:'cape'},
+ shoulders:{up:'cape',down:'hand2',prev:'chest',next:'gloves'},
+ cape:{up:'head',down:'shoulders',prev:'neck',next:'back'},
+ chest:{up:'neck',down:'pants',prev:'gloves',next:'shoulders'},
+ back:{up:'head',down:'gloves',prev:'cape',next:'neck'},
+ gloves:{up:'back',down:'hand1',prev:'shoulders',next:'chest'},
+ pants:{up:'chest',down:'feet',prev:'hand1',next:'hand2'},
+ hand1:{up:'gloves',down:'feet',prev:'hand2',next:'pants'},
+ hand2:{up:'shoulders',down:'feet',prev:'pants',next:'hand1'},
+ feet:{up:'pants',down:'head',prev:'hand1',next:'hand2'},
 };
 export const equipmentNeighbor=(slot,direction)=>EQUIPMENT_NEIGHBORS[slot]?.[direction]||'head';

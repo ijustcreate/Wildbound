@@ -3,8 +3,10 @@ import { Animator } from './animation.mjs';
 import {resizeGameSurface,LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 import {drawLobbyBoard} from './lobby-board.mjs';
 import {applyCelShading} from './cel-shading.mjs';
-import {drawEmbeddedArrow,drawLodgedArrow,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawBoomerang} from './boomerang.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
+import {playerInput} from './inventory-input.mjs';
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {take} from './items.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
@@ -13,15 +15,18 @@ import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
 import { controllerButtonNames } from './controls.mjs';
-import { give, canGive } from './items.mjs';
-import { loadQuiver } from './arrow-supplies.mjs';
+import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision} from './lobby-tv.mjs';
 import {TvWildbound} from './tv-wildbound.mjs';
+import {tickSalvage} from './salvage.mjs';
+import {tickLobbyStorage} from './lobby-storage.mjs';
+import {drawPortal} from './portal-art.mjs';
+import {drawStarterChest,restockStarterChests} from './starter-chest.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
-  {id:'difficulty',name:'Difficulty totem',x:925,y:165},
+  {id:'difficulty',name:'Difficulty totem',x:955,y:165},
   {id:'dice-count',name:'Dice tray',x:780,y:548},
   {id:'board',name:'Gameboard',x:770,y:375},
   {id:'target-lever',name:'Target lever',x:465,y:548},
@@ -71,14 +76,14 @@ export class LobbyState {
     let changed=false;
     for(const id of this.members.keys())if(!ids.has(id)){this.members.delete(id);changed=true;}
     for(const [i,p] of players.entries())if(!this.members.has(p.id)){
-      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[],starterClaimed:false});changed=true;
+      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[]});changed=true;
     }
     if(changed)this.invalidate(players);
   }
   invalidate(players){for(const p of players)p.ready=false;this.countdown=null;}
   nearest(p){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
   tick(dt,players){
-    const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.lobbyDisconnected);
+    const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.room&&!p.lobbyDisconnected);
     if(!ready){this.countdown=null;return false;}
     if(this.started)return false;
     this.countdown=(this.countdown??3)-dt;
@@ -99,6 +104,11 @@ export class PlayableLobby {
     const area=document.createElement('div');area.className='lobby-world';
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
+    const modeButton=document.createElement('button');
+    modeButton.id='house-worlds-toggle';
+    modeButton.textContent='House worlds mode: Off';modeButton.setAttribute('aria-pressed','false');
+    modeButton.onclick=()=>{const g=this.getGame();g.houseWorldsEnabled=!g.houseWorldsEnabled;modeButton.textContent=`House worlds mode: ${g.houseWorldsEnabled?'On — roll 5 or 8 to travel':'Off'}`;modeButton.setAttribute('aria-pressed',String(g.houseWorldsEnabled));this.state.invalidate(g.players);};
+    area.after(modeButton);
     root.querySelector('.party-heading h1').textContent='Gather around the board';
     this.defaultHelp='Enter / A: join · WASD / left stick: move · E / A (B on Switch): interact · F / A: attack · J / B: jump · TV: D-pad / arrows move; A (Z key) jumps twice; X runs (X key); down enters pipes; walk away to leave';
     root.querySelector('.party-help').textContent=this.defaultHelp;
@@ -111,7 +121,12 @@ export class PlayableLobby {
     };
     for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest','character-station','television'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
-  reset(){this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
+  reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.starterChestArt=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
+  returnFromTv(){
+    const game=this.getGame();
+    for(const p of game.players)if(this.tvWildbound?.players.has(p.id))p.ui=null;
+    game.persist();this.reset();this.keepSelectedPlayers();this.draw();
+  }
   keepSelectedPlayers(players=this.getGame().players){
     this.state.sync(players);
     for(const [i,p] of players.entries()){
@@ -135,6 +150,10 @@ export class PlayableLobby {
     if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}
     if(panel==='television'){if(this.television.join(p.id))this.sound?.('ui');return;}
     if(panel==='character-station'){this.openCharacterStation(p);return;}
+    if(panel==='starter-chest'){
+      this.getGame().openInventory(p,'starter');
+      s.inventoryRelease=true;this.state.invalidate(this.getGame().players);return;
+    }
     s.panel=panel;s.focus=0;this.renderPanel(p);
   }
   openCharacterStation(p){
@@ -170,15 +189,6 @@ export class PlayableLobby {
       buildCreationMenu({panel,state:s,profiles:this.profiles,presets:LOOK_PRESETS,
         onCreate:(name,look)=>{this.profiles.assign(p,this.profiles.create(name,look));s.creationName=null;s.spawned=true;this.state.invalidate(this.getGame().players);this.close(p);this.refreshChoosers();},
         onBack:()=>{s.panel='choose';s.focus=0;this.renderPanel(p);}});
-    }else if(s.panel==='starter-chest'){
-      heading.textContent='Starter chest';
-      const intro=document.createElement('p');intro.textContent='Choose your starter gear, or claim the complete kit. The starter quiver comes loaded with eight arrows.';panel.append(intro);
-      const items=[['starter_bow','Starter bow',1],['starter_quiver','Starter quiver · 8 arrows',1],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1]];
-      const addStarter=(list,type,qty)=>type==='starter_quiver'?give(list,'starter_quiver',1)&&give(list,'starter_arrow',8)&&loadQuiver(p,'starter_arrow'):give(list,type,qty);
-      const claim=(type,qty)=>{const inventory=structuredClone(p.inventory||[]);if(!addStarter(inventory,type,qty)){error.textContent='Your pack is full.';return;}p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');this.renderPanel(p);};
-      for(const [type,label,qty] of items)button(`Take ${label}${qty>1?' · '+qty:''}`,()=>claim(type,qty));
-      button(s.starterClaimed?'Starter kit claimed':'Take complete starter kit',()=>{const inventory=structuredClone(p.inventory||[]);let ok=true;for(const [type,,qty] of items)if(!addStarter(inventory,type,qty)){ok=false;break;}if(ok){p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');}else error.textContent='The complete starter kit needs more backpack space.';this.renderPanel(p);});
-      button('Close',()=>this.close(p));
     }else if(s.panel==='board'){
       heading.textContent='Ready to begin?';
       const info=document.createElement('div');info.className='board-menu-summary';
@@ -214,8 +224,9 @@ export class PlayableLobby {
   }
   refreshChoosers(){for(const p of this.getGame().players)if(this.state.members.get(p.id)?.panel==='choose')this.renderPanel(p);}
   highlight(p){const s=this.state.members.get(p.id),buttons=[...this.nodes.get(p.id)?.querySelectorAll('button')||[]];s.focus=Math.max(0,Math.min(s.focus,buttons.length-1));buttons.forEach((b,i)=>b.classList.toggle('lobby-focus',i===s.focus));}
-  navigate(p,{x=0,y=0,accept=false,back=false,adjust=false}){
+  navigate(p,{x=0,y=0,accept=false,back=false,adjust=false},device=p.device){
     const s=this.state.members.get(p.id),panel=this.nodes.get(p.id);if(!panel)return;
+    if(device!==p.device||panel.dataset.ownerDevice!==device)return;
     if(panel.creationNavigate){panel.creationNavigate({x,y,accept,back,adjust});return;}
     if(back){if(s.spawned)this.close(p);else if(s.panel==='create'){s.panel='choose';this.renderPanel(p);}else {this.getGame().players=this.getGame().players.filter(q=>q!==p);this.sync();}return;}
     const buttons=[...panel.querySelectorAll('button')];
@@ -262,18 +273,41 @@ export class PlayableLobby {
   update(dt,inputs,blocked=false){
     this.sync();const players=this.getGame().players;
     if(this.tvWildbound){
+      const game=this.getGame();
+      // Runtime link is deliberately non-enumerable: never save the TV simulation.
+      if(game.tvWorld!==this.tvWildbound)Object.defineProperty(game,'tvWorld',{value:this.tvWildbound,writable:true,configurable:true});
       const commands={};
       for(const [id] of this.tvWildbound.players){
-        const hero=players.find(p=>p.id===id),input=hero?inputs[hero.device]||{}:{};
-        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,attack:!!input.tvX||!!input.attack,run:!!input.block};
-        if(this.tvWildbound.won&&input.lobbyInteract){this.reset();this.draw();return;}
+        const hero=players.find(p=>p.id===id);if(!hero)continue;
+        const s=this.state.members.get(id),input=playerInput(players,hero,inputs),edge=key=>!!input[key]&&!s.held[key];
+        if(!blocked&&!hero.lobbyDisconnected){
+          if(edge('inventory')){if(hero.ui)hero.ui=null;else game.openInventory(hero);s.inventoryRelease=true;}
+          if(hero.ui){
+            for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close','drop','dropOne'])if(edge(action))game.inventoryAction(hero,action);
+            const direction=['next','prev','up','down'].find(key=>input[key]);s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
+            if(direction&&s.menuRepeat>.35){game.inventoryAction(hero,direction);s.menuRepeat=.24;}
+            s.inventoryRelease=true;
+          }
+          tickSalvage(game,hero,!!hero.ui&&(!!input.salvage||!!hero.ui.salvagePointer),dt);
+        }
+        if(!hero.ui&&!['inventory','use','close','interact','lobbyInteract','attack','tvA','tvX','block','salvage'].some(key=>input[key]))s.inventoryRelease=false;
+        // TV jump and attack are distinct. The normal game's bottom-face attack
+        // binding must not leak into the TV's bottom-face jump binding.
+        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,attack:!!input.tvX||(hero.device==='keyboard'&&!!input.attack),run:!!input.block,loot:!!input.interact,paused:blocked||!!hero.ui||!!s.inventoryRelease||!!hero.lobbyDisconnected};
+        if(!blocked&&!hero.lobbyDisconnected&&this.tvWildbound.won&&!hero.ui&&!s.inventoryRelease&&(edge('lobbyInteract')||edge('interact'))){
+          if(this.tvWildbound.victoryRewards.some(Boolean))game.openInventory(hero,'tv-victory');
+          else {this.returnFromTv();return;}
+        }
+        s.held={...input};
       }
+      if(this.tvWildbound.requestLobbyReturn&&!this.tvWildbound.victoryRewards.some(Boolean)){this.returnFromTv();return;}
       if(!blocked)this.tvWildbound.step(dt,commands);
       this.draw();return;
     }
+    if(!blocked)tickLobbyStorage(this.getGame(),this.practice,this.state,inputs,dt);
     const joinedTv=new Set();
     for(const p of players){
-      const s=this.state.members.get(p.id),input=players.find(q=>q.device===p.device)===p?(inputs[p.device]||{}):{};
+      const s=this.state.members.get(p.id),input=playerInput(players,p,inputs);
       if(this.television?.players.has(p.id)&&(blocked||!s.spawned||p.lobbyDisconnected||Math.hypot(s.x-785,s.y-165)>103||p.ui))this.television.leave(p.id);
       if(!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected){
         const game=this.getGame(),edge=key=>input[key]&&!s.held[key];
@@ -281,11 +315,11 @@ export class PlayableLobby {
         if(edge('inventory')){if(p.ui)p.ui=null;else{game.openInventory(p);this.state.invalidate(players);}}
         if(p.ui){
           s.inventoryRelease=true;
-          for(const action of ['next','prev','up','down','panel','use','offhand','pick','close'])if(edge(action))game.inventoryAction(p,action);
+          if(!s.storageUiOpened)for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close'])if(edge(action))game.inventoryAction(p,action);
           const direction=['next','prev','up','down'].find(key=>input[key]);
           s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
           if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
-        }else{
+        }else if(!p.room&&!s.inventoryRelease){
           const o=this.state.nearest(p);
           if(o?.id==='character-station'&&edge('lobbyInteract'))this.openCharacterStation(p);
           if(this.television?.players.has(p.id)){
@@ -299,8 +333,11 @@ export class PlayableLobby {
           if(!input.lobbyInteract)s.stationPress=false;
         }
       }else s.moving=false;
-      if(!p.ui&&!['inventory','use','close','interact','attack','jump','dodge','block','trap','potion','bait','offhand','panel'].some(key=>input[key]))s.inventoryRelease=false;
+      p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
+      tickSalvage(this.getGame(),p,!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected&&!!p.ui&&(!!input.salvage||!!p.ui.salvagePointer),dt);
+      if(!p.ui&&!['inventory','use','close','interact','lobbyInteract','attack','jump','dodge','block','trap','potion','bait','offhand','panel','portal'].some(key=>input[key]))s.inventoryRelease=false;
       s.held={...input};
+      delete s.storageUiOpened;
     }
     const practiceInputs={...inputs},tvCommands={};
     for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
@@ -316,9 +353,11 @@ export class PlayableLobby {
     if(!blocked)this.television?.step(dt,tvCommands);
     if(this.television?.completed){
       const party=players.filter(p=>this.television.players.has(p.id));
+      restockStarterChests(this.getGame());
       this.tvWildbound=new TvWildbound(party,this.television.seed);
+      this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
-      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · Arrows / D-pad: move · Z / A: jump · X / X: hit enemies and the board to roll · Hit the board until all 30 spaces glow';
+      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · D-pad / arrows: move · bottom face / Z: jump · left face / F or X: attack · I / Back: inventory · E / top face: collect dropped items · face and strike the central board to roll';
     }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
@@ -331,11 +370,12 @@ export class PlayableLobby {
     this.area.querySelector('.lobby-countdown').textContent=this.state.countdown!==null?`The board opens in ${Math.max(1,Math.ceil(this.state.countdown))}…`:'';
   }
   drawPractice(c){
+    for(const b of this.practice.boomerangs||[])drawBoomerang(c,b,this.practice.time);
     c.save();
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
-    for(const a of this.practice.loot)if(a.embedded&&a.type==='arrow')drawEmbeddedArrow(c,a,this.practice.time);
-    for(const a of this.practice.arrows){if(a.stuck){drawLodgedArrow(c,a,this.practice.time);continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
+    for(const a of this.practice.loot)if(a.embedded&&ARROW_TYPES.includes(a.type))drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());
+    for(const a of groupLodgedArrows(this.practice.arrows)){if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
     for(const b of this.practice.spells)drawMagicBolt(c,b);
     for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';this.label(f.text,f.x,f.y,14,f.color||'#fff');}
     c.restore();
@@ -391,7 +431,9 @@ export class PlayableLobby {
       }else if(o.id==='dice-count'){
         c.fillStyle='#785a46';c.fillRect(o.x-43,o.y-34,86,47);for(const x of lobbyDiceOffsets(document.getElementById('dice-count').value)){c.fillStyle='#ede5cc';c.fillRect(o.x+x,o.y-25,24,24);c.fillStyle='#333';c.fillRect(o.x+x+5,o.y-20,4,4);c.fillRect(o.x+x+15,o.y-10,4,4);}
       }else if(o.id==='starter-chest'){
-        c.fillStyle='#4b3527';c.fillRect(o.x-58,o.y-28,116,48);c.fillStyle='#8e623a';c.fillRect(o.x-55,o.y-32,110,44);c.fillStyle='#cfa85e';c.fillRect(o.x-5,o.y-10,10,13);c.strokeStyle='#e0bf73';c.lineWidth=2;c.strokeRect(o.x-55,o.y-32,110,44);c.fillStyle='#f1dfaa';c.font='bold 13px Georgia';this.label('STARTER',o.x,o.y-8,12,'#f1dfaa',650);
+        const art=this.starterChestArt||={lid:0,last:this.practice.time},open=this.getGame().players.some(p=>p.ui?.storage==='starter');
+        art.lid+=(Number(open)-art.lid)*(1-Math.exp(-10*Math.max(0,this.practice.time-art.last)));art.last=this.practice.time;
+        drawStarterChest(c,o,art.lid);
       }else if(o.id==='target-lever'){
         c.fillStyle='#574a38';c.fillRect(o.x-15,o.y-12,30,18);c.strokeStyle='#c0b497';c.lineWidth=5;c.beginPath();c.moveTo(o.x,o.y);c.lineTo(o.x+(this.practice.targetsMoving?10:-10),o.y-29);c.stroke();c.fillStyle=this.practice.targetsMoving?'#8dc99a':'#b66b4e';c.fillRect(o.x+(this.practice.targetsMoving?5:-15),o.y-34,11,9);
       }else if(o.id==='television'){
@@ -405,17 +447,18 @@ export class PlayableLobby {
         drawLobbyBoard(c,this.practice.time);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';this.label(o.name,o.x,o.y+(o.id==='target-lever'?27:44),15,'#f4efdc',650);
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad move · Down: pipe':'Interact · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Restocks each level':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad move · Down: pipe':'Interact · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
     }
-    for(const a of this.practice.players)if(a.hunterPet)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
+    for(const a of this.practice.players)if(a.hunterPet&&!this.getGame().players.find(p=>p.id===a.id)?.room)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
     this.drawPractice(c);
+    for(const door of this.getGame().portals.filter(d=>d.lobby))drawPortal(c,door,this.practice.time,'STORAGE · WALK IN');
     for(const t of this.practice.targets)for(const f of [...t.combatText].reverse()){
       c.save();c.globalAlpha=Math.min(1,f.life/.12);c.translate(t.x,t.y-42-f.age*34-f.offset);
       const scale=1+Math.sin(Math.min(1,f.age/.12)*Math.PI)*.25;c.scale(scale,scale);
       c.font='bold 18px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#142021';c.fillStyle=DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical;this.label(String(Math.round(f.amount)),t.x,t.y-42-f.age*34-f.offset,18,DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical,700);c.restore();
     }
     for(const p of [...this.getGame().players].sort((a,b)=>this.state.members.get(a.id).y-this.state.members.get(b.id).y)){
-      const s=this.state.members.get(p.id);if(!s.spawned)continue;
+      const s=this.state.members.get(p.id);if(!s.spawned||p.room)continue;
       const actor=this.practice.players.find(a=>a.id===p.id)||{...p,...s};
       c.fillStyle='#41474b';c.beginPath();c.ellipse(s.x,s.y-(actor.groundHeight||0)+4,20,7,0,0,Math.PI*2);c.fill();
       this.animator.draw(c,{...actor,kind:'player'},this.practice.time,LOBBY_PLAYER_SIZE);

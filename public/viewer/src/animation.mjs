@@ -1,4 +1,5 @@
 import {drawGorilla} from './temple.mjs';
+import {companionVisualActor} from './companion-locomotion.mjs';
 import { NIGHT_KINDS, STAMPEDE_KINDS, nightMotions, nightMotionRevisions, nightAction, nightFrame } from './night-rigs.mjs';
 import { ITEMS } from "./items.mjs";
 import {
@@ -65,6 +66,7 @@ export class Animator {
     }
     const nameKey = actor.sprite || actor.kind,
       rig = actor.rigOverride || creatures[nameKey]?.rig;
+    actor=companionVisualActor(actor,rigSubject(nameKey)?.data);
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
     if (rigSubject(nameKey)) {

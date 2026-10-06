@@ -6,6 +6,7 @@ export function drawWindow(c,w){
  else {c.fillStyle='#b3e0df';for(let i=0;i<4;i++){const px=x+4+(width-8)*i/4,py=y+4;c.beginPath();c.moveTo(px,py);c.lineTo(px+4,py);c.lineTo(px+2,py+5);c.fill();}}
 }
 export function drawFurniture(c,f){
+ if(['lamp','ceiling_light'].includes(f.kind)){c.save();const x=f.x+f.w/2,y=f.y+f.h/2;c.fillStyle='#493d2e';c.fillRect(x-6,y+2,12,5);c.fillStyle='#ad8a50';c.fillRect(x-2,y-10,4,16);c.fillStyle='#d5c08c';c.fillRect(x-9,y-15,18,10);c.fillStyle='#eddbab';c.fillRect(x-7,y-14,14,2);c.restore();return;}
  const {x,y,w,h,kind}=f;if(['bookcase','sofa','desk'].includes(kind)&&drawBiomeSprite(c,kind,x+w/2,y+h,w,h+12))return;c.save();c.translate(x,y);
  c.fillStyle='#0005';if(kind!=='rug')c.fillRect(3,5,w,h);
  c.fillStyle=({sofa:'#49766d',bed:'#577b91',rug:'#934e43',plant:'#38764b',sink:'#aabec0',stove:'#41454d',mailbox:'#567e84'}[kind]||'#895f3c');c.fillRect(0,0,w,h);

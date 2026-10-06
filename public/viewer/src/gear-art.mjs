@@ -94,6 +94,7 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     if(def.style==='leaf') {r(1,0,2,2,p.dark);r(1,0,1,1,p.light);}
     if(def.style==='moon'||def.style==='sun') r(0,0,1,2,p.shine);
     if(def.style==='safari') {r(-2,0,w,1,p.trim);r(0,-1,1,1,p.shine);}
+    if(def.warlockGear){r(-2,-3,2,2,'#d3c9a4');r(1,-3,2,2,'#a69a7b');r(-2,1,w,1,'#6e5978');}
   }
 }
 

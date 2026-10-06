@@ -1,6 +1,118 @@
 import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyStarterChestControls=async()=>{
+    ctx.newLobby();const g=ctx.game,lobby=ctx.playableLobby;
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller'].map((id,index)=>({index,id,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();ctx.keys.clear();
+    try{
+      const keyboard=g.addPlayer('keyboard'),p=g.addPlayer('pad:0'),q=g.addPlayer('pad:1');lobby.sync();
+      for(const [i,hero] of [keyboard,p,q].entries()){hero.profileId='starter-controls-'+i;hero.inventory=[];Object.assign(lobby.state.members.get(hero.id),{spawned:true,panel:null,x:i?866:300,y:i?536:440});lobby.close(hero);}
+      const step=()=>{lobby.update(.05,ctx.inputFrame());ctx.heroUI.draw(g,ctx.renderer);};
+      const press=(pad,button)=>{pads[pad].buttons[button]={pressed:true,value:1};step();pads[pad].buttons[button]={pressed:false,value:0};step();};
+      step();press(0,0);if(p.ui?.storage!=='starter'||p.inventory.length||p.starterChest.filter(Boolean).length!==8)throw Error('Starter opening skipped UI or auto-looted');
+      press(1,0);if(q.ui?.storage!=='starter'||q.starterChest===p.starterChest)throw Error('Starter stock not player-owned');
+      const panel=ctx.heroUI.panels.get(p.id);if(panel.querySelectorAll('[data-container="chest"] .item-icon').length!==8||panel.querySelectorAll('.storage-slots button').length!==48)throw Error('Starter gear or empty slots missing');
+      if(!ctx.heroUI.panels.get(q.id).textContent.includes('B ·'))throw Error('Nintendo chest labels wrong');
+      g.openInventory(keyboard);step();ctx.heroUI.panels.get(keyboard.id).querySelector('button').focus();press(0,15);if(p.ui.index!==1||q.ui.index!==0||keyboard.ui.index!==0)throw Error('Starter controller focus leaked');
+      press(0,0);if(!p.inventory.some(i=>i?.type==='starter_sword')||q.inventory.length||q.starterChest.filter(Boolean).length!==8)throw Error('Starter withdrawal affected another hero');
+      press(0,1);press(0,0);if(p.starterChest.filter(Boolean).length!==7)throw Error('Starter restocked on reopening');
+      // Real storage buttons, including full-pack refusal and two-way metadata.
+      keyboard.ui=null;q.ui=null;step();const a=ctx.heroUI.panels.get(p.id);
+      p.inventory=[{type:'moon_blade',qty:1,sockets:['azure_bead']}];step();a.querySelector('[data-action="pack-slot-0"]').click();step();a.querySelector('[data-action="storage-transfer"]').click();step();
+      const at=p.starterChest.findIndex(i=>i?.type==='moon_blade');if(at<0)throw Error('Starter deposit failed');a.querySelector('[data-action="chest-slot-'+at+'"]').click();step();a.querySelector('[data-action="storage-transfer"]').click();step();
+      if(!p.inventory.some(i=>i?.sockets?.[0]==='azure_bead'))throw Error('Starter deposit lost sockets');
+      p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:0');step();const stock=JSON.stringify(p.starterChest);a.querySelector('[data-action="storage-transfer"]').click();step();if(JSON.stringify(p.starterChest)!==stock||!p.ui.notice.includes('full'))throw Error('Full pack lost starter supplies');
+      p.inventory=[];g.inventoryAction(p,'lootAll');step();if(p.starterChest.some(Boolean))throw Error('Starter Withdraw all failed');g.start();if(p.starterChest.filter(Boolean).length!==8)throw Error('Next level failed to restock');
+      g.phase='lobby';g.openInventory(p,'starter');step();lobby.draw();
+      window.starterVerification={g,lobby,p,q};
+      return {checks:'Actual inputFrame: Xbox/Switch open without auto-loot, independent selection, withdrawal, reopen, mouse deposit/withdraw, sockets, full-pack safety and new-level restock',playerId:p.id};
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();ctx.keys.clear();}
+  };
+  window.verifyLobbyStorageAndTvControls=async()=>{
+    ctx.newLobby();
+    const {TvWildbound,TV_BOARD_X}=await import('./tv-wildbound.mjs');
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller'].map((id,index)=>({index,id,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();ctx.keys.clear();
+    try{
+      const game=ctx.game,lobby=ctx.playableLobby,heroes=[game.addPlayer('keyboard'),...pads.map(pad=>game.addPlayer('pad:'+pad.index))];
+      lobby.sync();for(const [i,p]of heroes.entries()){p.profileId='tv-controls-'+i;p.inventory=[{type:'sword',qty:1},{type:'potion',qty:3}];const s=lobby.state.members.get(p.id);Object.assign(s,{spawned:true,panel:null,x:300+i*200,y:350});}
+      const step=()=>{lobby.update(.05,ctx.inputFrame());ctx.heroUI.draw(game,ctx.renderer);};
+      const press=(index,button)=>{pads[index].buttons[button]={pressed:true,value:1};step();pads[index].buttons[button]={pressed:false,value:0};step();};
+      step();press(0,12);const owner=heroes[1],door=game.portals.find(d=>d.owner===owner.id);if(!door?.lobby)throw Error('Actual D-pad up did not open lobby portal');
+      Object.assign(lobby.state.members.get(owner.id),{x:door.x,y:door.y});step();if(owner.room!==door.id)throw Error('Lobby portal cannot be entered');
+      owner.chests[0]=[{type:'potion',qty:5}];Object.assign(owner,{roomX:60,roomY:115});press(0,0);
+      if(owner.ui?.storage!==0||ctx.heroUI.panels.get(owner.id).querySelectorAll('[data-container="chest"] .item-icon').length!==1)throw Error('Real lobby chest UI did not show stored items');
+      if(owner.chests[0][0]?.qty!==5)throw Error('Opening input also withdrew chest item');press(0,1);press(0,12);if(owner.room)throw Error('Controller could not return to lobby');
+      lobby.tvWildbound=new TvWildbound(heroes,12);const mode=lobby.tvWildbound;mode.intro=2.8;mode.enemies=[];step();
+      ctx.keys.add('KeyI');step();ctx.keys.delete('KeyI');step();if(!heroes[0].ui)throw Error('Keyboard I did not open TV inventory');
+      press(0,8);press(1,8);if(heroes.some(p=>!p.ui))throw Error('TV controller inventory did not open');
+      ctx.heroUI.panels.get(heroes[0].id).querySelector('button').focus();press(1,15);
+      if(heroes[2].ui.index!==1||heroes[1].ui.index!==0||heroes[0].ui.index!==0)throw Error('TV inventory ownership leaked');
+      press(0,0);if(owner.equipment.hand1!=='sword'||mode.progress)throw Error('TV Equip jumped or rolled board');
+      owner.ui.panel='gear';owner.ui.index=SLOTS.indexOf('hand1');press(0,2);if(owner.equipment.hand1||mode.loot.at(-1)?.type!=='sword'||game.loot.length)throw Error('TV gear drop did not stay in TV world');
+      press(0,1);press(1,1);ctx.keys.add('KeyI');step();ctx.keys.delete('KeyI');step();if(heroes.some(p=>p.ui))throw Error('TV inventory could not close independently');
+      const actor=mode.players.get(owner.id);Object.assign(actor,{x:TV_BOARD_X,y:437,vy:0,grounded:true,face:1});press(0,0);if(mode.progress||actor.vy>=0)throw Error('Jump still attacks TV board');
+      Object.assign(actor,{x:TV_BOARD_X,y:437,vy:0,grounded:true,face:1});press(0,2);if(!mode.progress||mode.rollView?.playerId!==owner.id)throw Error('TV left-face attack failed to roll for its owner');
+      mode.rollView=null;mode.progress=48;Object.assign(actor,{x:4790,y:437,vy:0});step();if(!mode.won||!mode.victoryRewards.length)throw Error('TV finish did not create treasure');
+      const rewards=mode.victoryRewards,total=rewards.length;press(0,3);
+      if(owner.ui?.storage!=='tv-victory'||rewards.filter(Boolean).length!==total)throw Error('Finish interaction skipped or auto-looted treasure');
+      const panel=ctx.heroUI.panels.get(owner.id);if(panel.querySelectorAll('[data-container="chest"] .item-icon').length!==total||!panel.querySelector('[data-action="tvReturn"]').disabled)throw Error('Treasure chest UI/return safety broken');
+      press(0,0);if(rewards.filter(Boolean).length!==total-1)throw Error('Controller could not loot reward');press(0,1);press(1,3);
+      if(heroes[2].ui?.storage!=='tv-victory'||game.storageFor(heroes[2])!==rewards)throw Error('Party treasure was regenerated on reopen');
+      ctx.heroUI.panels.get(heroes[2].id).querySelector('[data-action="lootAll"]').click();step();
+      if(rewards.some(Boolean)||ctx.heroUI.panels.get(heroes[2].id).querySelector('[data-action="tvReturn"]').disabled)throw Error('Loot-all/return button broken');
+      press(1,0);if(lobby.tvWildbound||game.tvWorld||heroes.some(p=>p.ui)||heroes.some(p=>!lobby.state.members.get(p.id)?.spawned))throw Error('Treasure return lost lobby heroes');
+      return 'Actual inputFrame: lobby portal/chest/return; three owned TV inventories; equip/drop/close; distinct jump/attack; finish treasure, co-op loot, safe return with heroes retained';
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();ctx.keys.clear();}
+  };
+  window.verifyInventoryControllerIsolation=async()=>{
+    await window.showcase('game');ctx.paused=true;
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller','Sony DualSense'].map((id,index)=>({index,id,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();ctx.keys.clear();
+    try{
+      const g=new ctx.Game(()=>.5);g.phase='play';g.openingBoard=false;g.scenery=[];g.house=null;g.terrain.fill('grass');ctx.game=g;
+      const heroes=pads.map(pad=>g.addPlayer('pad:'+pad.index));
+      for(const p of heroes){p.inventory=[{type:'sword',qty:1},{type:'phantom_charm',qty:1},{type:'stick',qty:2}];g.openInventory(p);}
+      const step=()=>{g.tickAdventure(.05,ctx.inputFrame());ctx.heroUI.draw(g,ctx.renderer);};
+      const press=(index,button)=>{pads[index].buttons[button]={pressed:true,value:1};step();pads[index].buttons[button]={pressed:false,value:0};step();};
+      step();
+      // Deliberately put browser focus in a different player's UI for every press.
+      for(let i=0;i<3;i++){
+        ctx.heroUI.panels.get(heroes[(i+1)%3].id).querySelector('button').focus();
+        press(i,15);if(heroes.some((p,j)=>p.ui.index!==(j<=i?1:0)))throw Error('Navigation leaked across controller inventories');
+      }
+      for(let i=0;i<3;i++){
+        heroes[i].ui.index=0;press(i,0);
+        if(heroes[i].equipment.hand1!=='sword'||heroes.some((p,j)=>j>i&&p.equipment.hand1==='sword'))throw Error('Equip routed through global focus');
+      }
+      const p=heroes[1];p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');press(1,2);
+      if(p.equipment.hand1||g.loot.length!==1||g.loot[0].type!=='sword'||heroes[0].equipment.hand1!=='sword')throw Error('Controller gear drop wrong owner');
+      press(2,1);if(heroes[2].ui||!heroes[0].ui||!heroes[1].ui)throw Error('Controller close leaked');
+      return 'Actual inputFrame: Xbox/Switch/PlayStation inventories navigate, equip, drop gear and close independently even with focus in another player panel';
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();}
+  };
+  window.verifyDevOwnerRouting=async()=>{
+    await window.showcase('game');
+    for(const menu of ctx.$('pause-dialog').querySelectorAll('.game-debug-console'))menu.remove();
+    const [first,second]=ctx.game.players;first.inventory=[];second.inventory=[];second.device='pad:1';
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pad={index:1,id:'Xbox ownership check',mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[pad]});
+    try{
+      ctx.inputFrame();pad.buttons[9].pressed=true;ctx.inputFrame();pad.buttons[9].pressed=false;ctx.inputFrame();
+      const dialog=ctx.$('pause-dialog');
+      if(!dialog.open||dialog.dataset.debugOwnerId!==String(second.id))throw Error('Start did not capture the pausing player');
+      ctx.$('pause-dev').focus();pad.buttons[0].pressed=true;ctx.inputFrame();pad.buttons[0].pressed=false;ctx.inputFrame();
+      const consoleEl=dialog.querySelector('.game-debug-console');if(!consoleEl)throw Error('Controller did not open the dev menu');
+      consoleEl.querySelector('[data-debug=item]').value='sword_of_a_thousand_truths';consoleEl.querySelector('[data-debug-spawn=inventory]').click();
+      if(first.inventory.some(i=>i?.type==='sword_of_a_thousand_truths')||!second.inventory.some(i=>i?.type==='sword_of_a_thousand_truths'))throw Error('Controller item routed to wrong explorer');
+      consoleEl.remove();dialog.close();return 'Real Start → pause → controller confirm → dev item went only to the opening player';
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;}
+  };
   window.verifyTvWildboundFlow=()=>{
     ctx.newLobby();
     const game=ctx.game,lobby=ctx.playableLobby;
@@ -1163,7 +1275,7 @@ export function installDebugTools(ctx) {
     check("Inventory window and all paper-doll slots exist", () => {
       ctx.game.inventoryAction(p, "panel:gear");
       ctx.heroUI.draw(ctx.game, ctx.renderer);
-      return ctx.heroRoot.querySelectorAll(".paper-doll button").length === SLOTS.length;
+      return ctx.heroRoot.querySelectorAll(".paper-doll button[data-slot]").length === SLOTS.length;
     });
     check(
       "Equipment sits above backpack; drag equips offhand and rejects invalid slots",

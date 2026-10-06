@@ -12,7 +12,7 @@ export function drawPalmTrunk(c,p){
   rect(c,x-w/2-1,y,w+2,5,'#493d2c');rect(c,x-w/2,y,w,4,'#94734c');rect(c,x-w/2,y,2,3,'#c7a171');
   if(i%2===0)line(c,x-w/2,y+3,x+w/2,y+2,1,'#665139');
  }
- line(c,-3,-3,-8,1,3,'#796043');line(c,3,-3,8,1,3,'#796043');
+ drawTreeRoots(c,p);
 }
 export function drawPalmFronds(c,p,time){
  const s=palmStructure(p),cx=s.lean,cy=-s.height;
@@ -42,6 +42,7 @@ export function treeSeason(p,g={}){return p.season|| (forestSettings.season==='a
 export const leafHabit=p=>p.leafHabit||forestSettings[treeType(p)];
 export function treeStructure(p){const seed=p.seed??hash(p.x,p.y)*1000;return {height:.88+hash(seed,2)*.24,width:.85+hash(seed,3)*.3,lean:(hash(seed,4)-.5)*.16,branchSpread:.8+hash(seed,5)*.4,seed};}
 export function treeStumpPalette(p){
+ if(p.kind==='palm')return {shadow:'#403729',bark:'#94734c',highlight:'#c7a171',rings:'#695238',root:'#796043'};
  const type=treeType(p);
  if(type==='birch')return {shadow:'#343b35',bark:'#c9cbb3',highlight:'#ebebcf',rings:'#4f5650',root:'#bfc3af'};
  if(type==='pine')return {shadow:'#3b352c',bark:'#5f4b39',highlight:'#967755',rings:'#403a32',root:'#665a47'};
@@ -50,11 +51,27 @@ export function treeStumpPalette(p){
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h));};
 function line(c,x,y,xx,yy,width,color){const n=Math.ceil(Math.hypot(xx-x,yy-y));for(let i=0;i<=n;i++)rect(c,x+(xx-x)*i/(n||1)-width/2,y+(yy-y)*i/(n||1),width,width,color);}
 function crown(c,x,y,rx,ry,color,seed){for(let row=-ry;row<=ry;row+=2){const half=Math.sqrt(Math.max(0,1-row*row/(ry*ry)))*rx,jag=hash(Math.floor(row/4),seed)*3;rect(c,x-half+jag-1,y+row,half*2-jag+hash(row,seed)*2,2,color);}}
+export const TREE_CUT_Y=-9;
+export function treeFallPose(p){
+ const progress=Math.max(0,Math.min(1,(p.falling||0)/1.1));
+ return {cutY:TREE_CUT_Y,angle:(p.fallDirection||1)*Math.PI/2*(.08*progress+.92*progress**2.2),alpha:Math.max(0,Math.min(1,(1.5-(p.falling||0))/.25))};
+}
+export function drawTreeRoots(c,p){
+ const colors=treeStumpPalette(p),seed=p.seed??hash(p.x,p.y)*1000;
+ // Tapered, branching roots end individually; there is no rectangular ground pad.
+ for(let i=0;i<5;i++){
+  const sign=i%2?-1:1,end=sign*(7+hash(seed,i)*8),ey=1+hash(i,seed)*4;
+  const mx=end*.52,my=-2+hash(seed,i+5)*3;
+  line(c,sign*2,-6,mx,my,4,colors.shadow);line(c,mx,my,end,ey,2,colors.shadow);
+  line(c,sign*2,-5,mx,my,2,colors.root);line(c,mx,my,end,ey-1,1,colors.highlight);
+  if(i%2)line(c,mx,my,end*.8,ey+2,1,colors.root);
+ }
+}
 export function drawTreeTrunk(c,p){
  const birch=treeType(p)==='birch',bark=birch?'#c9cbb3':'#655044';
  line(c,0,-43,-1,-3,birch?7:11,'#343b35');line(c,-1,-40,-2,-2,birch?5:7,bark);
  line(c,-2,-33,-3,-3,2,birch?'#ebebcf':'#987652');
- for(const [x,y] of [[-13,2],[13,2],[-8,-4],[7,-3]]){line(c,0,-10,x,y,4,'#3c4036');line(c,-1,-7,x,y,2,bark);}
+ drawTreeRoots(c,p);
  for(let i=0;i<7;i++)rect(c,birch?(i%2?-3:0):1,-5-i*5,birch?4:2,1,birch?'#4f5650':'#403a32');
 }
 export function drawTreeBranches(c,p){
@@ -107,32 +124,45 @@ function paintTreeFoliage(c,p,time,g){
  });
  if(season==='winter')clusters.forEach(([cx,cy,rx,ry],i)=>{
   const x=cx*treeStructure(p).branchSpread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
-  if(season==='winter'){
-    // Broad, layered caps cover the top of every branch tier, with cool shaded
-    // undersides and small overhanging drifts. Cached with the foliage.
-    crown(c,x,y-ry*.38,rx*.96,ry*.48,'#8caeb9',seed+i);
-    crown(c,x-1,y-ry*.53,rx*.90,ry*.40,'#d3e8eb',seed+i);
-    crown(c,x-2,y-ry*.66,rx*.73,ry*.27,'#f0faf5',seed+i);
-    for(let n=0;n<4;n++){const dx=(n/3-.5)*rx*1.45,depth=2+hash(n+i,seed)*3;
-      rect(c,x+dx-2,y-ry*.24,4,depth,'#d3e8eb');}
+  // Overlapping drifts follow individual branch tips, not wide horizontal slabs.
+  // Their cool undersides and scalloped silhouettes are baked into the foliage cache.
+  const lobes=Math.max(3,Math.round(rx/5));
+  for(let n=0;n<lobes;n++){
+   const u=lobes===1?0:n/(lobes-1)*2-1,lx=x+u*rx*.72;
+   const ly=y-ry*(.40+.20*(1-u*u))+(hash(seed+i,n)-.5)*5;
+   const w=rx/lobes*(.75+hash(i+n,seed)*.45)+1,h=3+hash(seed,n+i*9)*3;
+   crown(c,lx,ly+1,w,h,'#8caeb9',seed+i+n);
+   crown(c,lx-.5,ly-1,w*.92,h*.80,'#d3e8eb',seed+i+n);
+   crown(c,lx-1,ly-2,w*.73,h*.58,'#f0faf5',seed+i+n);
   }
  });
 }
 export function drawForestTree(c,p,time,g={}){
  const b=treeBase(p),s=p.size/64;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(s,s);
- if(p.fallen){drawStump(c,p);c.restore();return;}
- // Roots stay grounded while the upper tree falls around the same root pivot.
- if(p.falling){drawStump(c,p);c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
  const shape=treeStructure(p);c.transform(shape.width,0,shape.lean,shape.height,0,0);
- drawTreeTrunk(c,p);drawTreeBranches(c,p);drawTreeFoliage(c,p,time,g);c.restore();
+ drawSplitTree(c,p,()=>drawTreeTrunk(c,p),()=>{drawTreeBranches(c,p);drawTreeFoliage(c,p,time,g);});c.restore();
 }
-function drawStump(c,p){
+export function drawPalmTree(c,p,time){
+ const b=palmBase(p),s=p.size/64;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(s,s);
+ drawSplitTree(c,p,()=>drawPalmTrunk(c,p),()=>drawPalmFronds(c,p,time));c.restore();
+}
+function drawSplitTree(c,p,trunk,upper){
+ if(p.fallen){drawStump(c,p);return;}
+ if(!p.falling){trunk();upper();return;}
+ const pose=treeFallPose(p);
+ c.save();c.beginPath();c.rect(-96,pose.cutY-1,192,48);c.clip();trunk();drawStump(c,p);c.restore();
+ c.save();c.translate(0,pose.cutY);c.rotate(pose.angle);c.translate(0,-pose.cutY);
+ c.globalAlpha*=pose.alpha;c.beginPath();c.rect(-160,-200,320,200+pose.cutY);c.clip();trunk();upper();c.restore();
+}
+export function drawStump(c,p){
  const colors=treeStumpPalette(p);
- rect(c,-7,-6,14,7,colors.shadow);
- rect(c,-6,-6,12,3,colors.highlight);
- rect(c,-3,-5,6,1,colors.rings);
- line(c,-4,-1,-11,2,3,colors.root);
- line(c,4,-1,10,2,3,colors.root);
+ drawTreeRoots(c,p);
+ crown(c,0,-4,treeType(p)==='birch'?5:7,5,colors.shadow,3);
+ crown(c,-1,-4,treeType(p)==='birch'?4:5,4,colors.bark,3);
+ crown(c,0,TREE_CUT_Y+1,treeType(p)==='birch'?5:6,2,colors.highlight,1);
+ line(c,-3,TREE_CUT_Y+1,3,TREE_CUT_Y+1,1,colors.rings);
+ rect(c,-1,TREE_CUT_Y,2,2,colors.rings);
+ line(c,3,-5,3,-1,1,colors.shadow);
  if(treeType(p)==='birch'){
   rect(c,-6,-2,3,1,colors.rings);
   rect(c,2,-1,4,1,colors.rings);

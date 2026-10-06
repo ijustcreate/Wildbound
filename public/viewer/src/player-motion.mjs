@@ -1,4 +1,5 @@
 import {drawTorchFlame} from './torch-flame.mjs';
+import {drawWhip} from './whip-visual.mjs';
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
 import { fitHeroGrip } from './hero-generation.mjs';
@@ -393,7 +394,7 @@ export function bowHandleWorld(actor,time,model=playerMotion,size=43){
   const d=facingIndex(actor.faceX,actor.faceY),pose=playerPose(actor,time,model),v=[...pose.handL];
   if(actor.appearance?.build==='broad')v[0]*=1.12;
   else if(actor.appearance?.build&&actor.appearance.build!=='standard')v[0]*=.9;
-  const hand=projectPoint(v,d),visual=model.wearables?.[actor.equipment?.hand1]?.[d];
+  const hand=projectPoint(v,Number.isFinite(actor.bowVisualAngle)?actor.bowVisualAngle*4/Math.PI:d),visual=model.wearables?.[actor.equipment?.hand1]?.[d];
   const rotation=playerJointAngle(actor,time,model,d,'handL')*Math.PI/180;
   const x=visual?.x||0,y=visual?.y||0;
   return {x:actor.x+(hand.x+x*Math.cos(rotation)-y*Math.sin(rotation))*size/48,
@@ -401,8 +402,16 @@ export function bowHandleWorld(actor,time,model=playerMotion,size=43){
 }
 // Keep a readable curve when the bow's plane is nearly edge-on to the camera.
 export function bowRigGeometry(hand,d,length=10,carried=false){
+  if(carried){
+    // Diagonal, lowered bow across the hips; rotate its plane with the hero.
+    const point=v=>{const q=projectPoint(v,d);return {x:hand.x+q.x,y:hand.y+q.y};};
+    const scale=length/10;
+    const top=point([15*scale,2,13*scale]),bottom=point([-13*scale,2,-3*scale]);
+    // A small silhouette allowance prevents side views collapsing to a straight line.
+    if(Math.abs(top.x-bottom.x)<8){const sign=d<4?-1:1;top.x=hand.x+sign*5;bottom.x=hand.x-sign*3;}
+    return {top,mid:hand,bottom};
+  }
   const bend=projectPoint([0,-4,0],d);
-  if(carried)bend.x=(Math.sign(hand.x)|| (d<4?-1:1))*4;
   if(Math.abs(bend.x)<2.5)bend.x=(d<4?-1:1)*3.5;
   return {top:{x:hand.x+bend.x,y:hand.y+bend.y-length},
     mid:hand,bottom:{x:hand.x+bend.x,y:hand.y+bend.y+length}};
@@ -520,7 +529,7 @@ export function playerFrame(actor, time, model = playerMotion, action = playerAc
       ? time * clip.fps
       : (actor.step / (0.13 * (model.artGeneration===3&&action==='walk'?56:88))) * clip.length;
   if (action === "draw")
-    return Math.min(clip.length - 1, (actor.charge ?? 1) * (clip.length-1));
+    return Math.min(clip.length - 1, Math.max(actor.bowAiming?.65:0,actor.charge ?? 1) * (clip.length-1));
   if(action==='death')return Math.min(1,(actor.deathTime??.5)/.5)*(clip.length-1);
   if(action==='get_up')return (1-(actor.getUpTime||0)/.4)*(clip.length-1);
   if(action==='land')return (1-(actor.landTime||0)/.22)*(clip.length-1);
@@ -558,13 +567,24 @@ export function playerPose(actor,time,model=playerMotion){
   if(itemKind(actor.equipment?.hand1)==='bow'&&['draw','ranged'].includes(action)){
     pose.handL[0]-=2.5;applyIK(model,pose);
   }
-  if(itemKind(actor.equipment?.hand1)==='bow'&&!['draw','ranged','death','sleep'].includes(action)){
-    // Carry away from the torso so side/rear locomotion does not swallow the bow.
-    pose.handL[0]-=3;pose.handL[1]=Math.max(6,pose.handL[1]);
-    pose.elbowL[0]-=1.5;pose.elbowL[1]+=2;
+  if(itemKind(actor.equipment?.hand1)==='bow'&&['idle','walk','run'].includes(action)){
+    const chest=pose.chest,idle=action==='idle';
+    // Relaxed two-hand ready pose: low grip, other hand resting above the string.
+    pose.handL=[chest[0]-4, chest[1]+6,chest[2]-10];
+    pose.handR=[chest[0]+1,chest[1]+7,chest[2]-5];
+    pose.elbowL=[chest[0]-7,chest[1]+3,chest[2]-6];
+    pose.elbowR=[chest[0]+7,chest[1]+2,chest[2]-4];
+    if(idle){pose.footL[0]-=1.2;pose.footR[0]+=1.2;pose.kneeL[0]-=.6;pose.kneeR[0]+=.6;}
     applyIK(model,pose);
   }
-  return fitHeroGrip(pose,actor,model,action);
+  pose=fitHeroGrip(pose,actor,model,action);
+  if(itemKind(actor.equipment?.hand1)==='bow'&&!actor.animationAction&&Number.isFinite(actor.bowAimBlend)&&['idle','walk','run','draw','ranged'].includes(action)){
+    const blend=actor.bowAimBlend,aimed=['draw','ranged'].includes(action);
+    const other=playerPose({...actor,bowAimBlend:undefined,animationAction:aimed?(actor.moving?(actor.walking?'walk':'run'):'idle'):'draw',charge:aimed?0:.65,bowAiming:!aimed,attack:0},time,model);
+    const resting=aimed?other:pose,raised=aimed?pose:other;
+    for(const key of Object.keys(pose))if(resting[key]&&raised[key])pose[key]=resting[key].map((v,i)=>v+(raised[key][i]-v)*blend);
+  }
+  return pose;
 }
 export function playerEquipmentAction(actor,time,model=playerMotion){
   const layer=playerLayers(actor,time,model).filter(l=>l.joints.includes('handR')||l.joints.includes('handL')).at(-1);
@@ -646,7 +666,8 @@ export function drawPlayer(
   model = playerMotion,
   suppliedPose = null,
 ) {
-  const d = facingIndex(actor.faceX, actor.faceY),
+  const visualDirection=itemKind(actor.equipment?.hand1)==='bow'&&Number.isFinite(actor.bowVisualAngle)?((actor.bowVisualAngle*4/Math.PI)%8+8)%8:null;
+  const d = visualDirection===null?facingIndex(actor.faceX, actor.faceY):((Math.round(visualDirection)%8)+8)%8,
     positions = suppliedPose
       ? { ...suppliedPose }
       : playerPose(actor,time,model);
@@ -658,7 +679,7 @@ export function drawPlayer(
         v[2],
       ];
   const p = Object.fromEntries(
-    Object.entries(positions).map(([n, v]) => [n, projectPoint(v, d)]),
+    Object.entries(positions).map(([n, v]) => [n, projectPoint(v, visualDirection??d)]),
   );
   const pal = { ...model.palette },
     gear = { ...actor.equipment },
@@ -757,7 +778,7 @@ export function drawPlayer(
       "Stowed weapon",
     );
   if(itemKind(gear.back)==='quiver'){
-    const q=quiverPose(positions,d);
+    const q=quiverPose(positions,visualDirection??d);
     add(q.depth,()=>{
     const carrier={...actor,inventory:actor.inventory||[]};
     const ammo=Math.min(3,count(carrier,quiverType(carrier)));
@@ -948,6 +969,7 @@ export function drawPlayer(
             if(weapon === "torch")drawTorchFlame(c,hand.x,hand.y-11,time,d*.17+(side==="L"?2:0));
           }
           if(weapon==='critter_net')drawItem(c,weaponId,hand.x,hand.y-8,24);
+          if(weapon==='boomerang')drawItem(c,weaponId,hand.x,hand.y+3,19);
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
             const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
@@ -963,28 +985,9 @@ export function drawPlayer(
           }
           if (weapon === "sword" || weapon === "dagger") {
             const style=ITEMS[weaponId]?.style;
-            if(style==='whip'&&model.combatRevision===4){
-              const action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1),active=SWING_ACTIONS.includes(action),phase=combatPhase(action,t);
-              const extension=active?Math.max(.18,Math.sin(Math.PI*Math.min(1,phase.t/ .85))):.15;
-              const reach=13+extension*27,sign=phase.reverse?-1:1;
-              let last=hand;
-              for(let n=1;n<=12;n++){
-                const u=n/12,lag=(1-u)*.2,v=active?combatWeaponVector(action,Math.max(0,t-lag),'sword',side):[4,3,-13];
-                const scale=reach/Math.hypot(...v),curve=Math.sin(u*Math.PI)*(1-extension)*10*sign;
-                const q=projectPoint([v[0]*scale*u+curve,v[1]*scale*u,v[2]*scale*u-(1-extension)*u*u*12],d);
-                const next={x:hand.x+q.x,y:hand.y+q.y};
-                limb(c,last,next,n===12?1:2,n%2?weaponColor||'#d35b54':gearPalette(weaponId).light);last=next;
-              }
-            }else if(style==='whip'){
-              const length = actor.attack > 0 ? 27 + (1 - actor.attack / (actor.attackDuration || .34)) * 34 : 27;
-              const dx = actor.faceX || 0, dy = actor.faceY || -1, px = -dy, py = dx;
-              let last = hand;
-              for(let n=1;n<=7;n++){
-                const t=n/7,bend=Math.sin(t*Math.PI)*(actor.attack>0?(actor.attackClip==='swipe_two'?-1:1):.35)*(5+t*8);
-                const next={x:hand.x+dx*length*t+px*bend,y:hand.y+dy*length*t+py*bend};
-                limb(c,last,next,n===7?2:2.5-t*.8,n%2?weaponColor||'#d35b54':gearPalette(weaponId).light);last=next;
-              }
-              ellipse(c,last.x,last.y,2.5,2.5,gearPalette(weaponId).trim);
+            if(style==='whip'){
+              const action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1);
+              drawWhip(c,hand,action,t,side,d,projectPoint,weaponColor);
             } else {
             const attack =
               actor.attack > 0 || actor.animationAction === "slash";
@@ -1008,6 +1011,12 @@ export function drawPlayer(
               }
             }
             const material=gearPalette(weaponId);
+            if(weaponId==='stick'){
+              limb(c,hand,tip,4,'#493a28');
+              limb(c,hand,tip,2,'#a78652');
+              limb(c,{x:hand.x-1,y:hand.y},{x:tip.x-1,y:tip.y},1,'#d0b17a');
+              limb(c,{x:tip.x-(tip.x-hand.x)*.3,y:tip.y-(tip.y-hand.y)*.3},{x:tip.x+3,y:tip.y+3},2,'#a78652');
+            }else{
             const bladeWidth=style==='broad'?4:2;
             const bladeLength=Math.hypot(tip.x-hand.x,tip.y-hand.y)||1;
             const ux=(tip.x-hand.x)/bladeLength,uy=(tip.y-hand.y)/bladeLength;
@@ -1036,6 +1045,19 @@ export function drawPlayer(
             pixel(hand.x-ux*2,hand.y-uy*2,1,1,material.trim);
             pixel(hand.x-ux*3-1,hand.y-uy*3,2,1,material.trim);
             }
+            }
+          }
+          if(weapon==='staff'){
+            const material=gearPalette(weaponId),action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1);
+            const angle=(action==='slash'?Math.sin(Math.max(0,Math.min(1,t))*Math.PI)*1.15:.09)*(d<4?-1:1),dx=Math.sin(angle),dy=-Math.cos(angle);
+            const tip={x:hand.x+dx*23,y:hand.y+dy*23},butt={x:hand.x-dx*7,y:hand.y-dy*7};
+            limb(c,butt,tip,3,material.ink);limb(c,butt,tip,1,material.base);
+            if(ITEMS[weaponId]?.warlockGear){
+              pixel(tip.x-3,tip.y-3,7,6,'#302936');pixel(tip.x-2,tip.y-3,5,4,'#c9c0a0');pixel(tip.x-1,tip.y-4,3,1,'#e0d6b5');
+              pixel(tip.x-2,tip.y-1,2,1,'#3c3444');pixel(tip.x+1,tip.y-1,2,1,'#3c3444');pixel(tip.x-1,tip.y-1,1,1,'#91d9bc');pixel(tip.x+1,tip.y-1,1,1,'#91d9bc');
+              pixel(tip.x,tip.y+1,1,1,'#66546b');pixel(tip.x-2,tip.y+2,5,2,'#a3977c');pixel(tip.x-1,tip.y+2,1,1,'#dfd5b2');pixel(tip.x+1,tip.y+2,1,1,'#dfd5b2');
+            }else{ellipse(c,tip.x,tip.y,3,4,material.ink);ellipse(c,tip.x,tip.y-1,2,2.5,'#c99ef1');pixel(tip.x-1,tip.y-2,1,1,'#f3e4ff');}
+            pixel(hand.x-1,hand.y-4,3,1,'#baa780');
           }
           if (weapon === "wand") {
             const localTip=posedWandTip(actor,time,model,d,side,null);
@@ -1053,7 +1075,7 @@ export function drawPlayer(
           if (weapon === "shield") {
             fittedShield(c,weaponId,hand,d,actor.blocking,cosmetics.dye);
           }
-          if(['wand','sword','dagger','rifle'].includes(weapon)) {
+          if(['wand','staff','sword','dagger','rifle'].includes(weapon)) {
             pixel(hand.x-1,hand.y-1,3,2,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).base:pal.head);
             pixel(hand.x-1,hand.y+1,2,1,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).dark:pal.headShade);
           }
@@ -1064,7 +1086,7 @@ export function drawPlayer(
     );
     // The grip is part of this arm. A projected hand depth can fall behind
     // its own forearm in profile poses, hiding a shield or wand in the sleeve.
-    if(['shield','wand'].includes(itemKind(gear[side === 'R' ? 'hand1' : 'hand2'])))
+    if(['shield','wand','staff'].includes(itemKind(gear[side === 'R' ? 'hand1' : 'hand2'])))
       queue.at(-1).attachmentOrder={anchors:['Arm '+side],behind:false};
   }
   add(
@@ -1167,8 +1189,8 @@ export function drawPlayer(
             const gem = attach(0, 4, -4);
             limb(c, attach(-3, 2, 1), gem, 1, "#f2ce7c");
             limb(c, attach(3, 2, 1), gem, 1, "#f2ce7c");
-            ellipse(c, gem.x, gem.y, 2.6, 3.3, "#9c5724");
-            ellipse(c, gem.x, gem.y, 1.9, 2.6, "#ffb43e");
+            ellipse(c, gem.x, gem.y, 2.6, 3.3, ITEMS[gear.neck]?.warlockGear?'#302b3c':"#9c5724");
+            ellipse(c, gem.x, gem.y, 1.9, 2.6, ITEMS[gear.neck]?.warlockGear?'#81ceb1':"#ffb43e");
             c.fillStyle = "#fff0ad";
             c.fillRect(Math.round(gem.x) - 1, Math.round(gem.y) - 1, 1, 2);
           }
@@ -1280,12 +1302,23 @@ export function drawPlayer(
             mid = { x: hand.x + facing*bulge, y: hand.y },
             bottom = { x: hand.x + facing, y: hand.y + length };
           const action=equipmentPose.action,aimed=['draw','ranged'].includes(action),t=equipmentPose.frame/(model.clips[action]?.length-1||1);
-          if(model.combatRevision===4){
-            ({top,mid,bottom}=bowRigGeometry(hand,d,length,!aimed));
+          if(model.combatRevision===4||!aimed){
+            ({top,mid,bottom}=bowRigGeometry(hand,visualDirection??d,length,!aimed));
           }
-          limb(c,top,mid,3,material.ink);limb(c,mid,bottom,3,material.ink);
-          limb(c, top, mid, 1.5, ITEMS[gear.hand1]?.artColor || "#d4ac69");
-          limb(c, mid, bottom, 1.5, ITEMS[gear.hand1]?.artColor || "#d4ac69");
+          if(!actor.animationAction&&Number.isFinite(actor.bowAimBlend)&&['idle','walk','run','draw','ranged'].includes(action)){
+            const low=bowRigGeometry(hand,visualDirection??d,length,true),high=bowRigGeometry(hand,visualDirection??d,length,false),blend=actor.bowAimBlend;
+            const mix=key=>({x:low[key].x+(high[key].x-low[key].x)*blend,y:low[key].y+(high[key].y-low[key].y)*blend});
+            top=mix('top');mid=hand;bottom=mix('bottom');
+          }
+          // Smooth laminated limbs, not the old two straight segments forming a V.
+          const curve=(a,b)=>{
+            const control={x:mid.x+(a.x-mid.x)*.72,y:mid.y+(a.y-mid.y)*.18};
+            let last=a;
+            for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};
+              limb(c,last,next,3,material.ink);last=next;}
+            last=a;for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};limb(c,last,next,1.5,material.light);last=next;}
+          };
+          curve(top,mid);curve(bottom,mid);
           const stringHand=model.combatRevision===4&&(!aimed||action==='ranged'&&t>.1)?{x:(top.x+bottom.x)/2,y:(top.y+bottom.y)/2}:p.handR;
           limb(c, top, stringHand, 0.7, "#dfd8b4");
           limb(c, stringHand, bottom, 0.7, "#dfd8b4");
@@ -1294,8 +1327,17 @@ export function drawPlayer(
             limb(c,top,{x:top.x+facing*3,y:top.y-2},2,material.light);
             limb(c,bottom,{x:bottom.x+facing*3,y:bottom.y+2},2,material.light);
           }
+          const relaxed=['idle','walk','run'].includes(action);
+          if(relaxed&&count({...actor,inventory:actor.inventory||[]},quiverType({...actor,inventory:actor.inventory||[]}))>0){
+            const v=projectPoint([14,0,-10],visualDirection??d),tip={x:hand.x+v.x,y:hand.y+v.y};
+            limb(c,p.handR,tip,1,'#d8bd80');
+            const dx=tip.x-p.handR.x,dy=tip.y-p.handR.y,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len;
+            limb(c,{x:tip.x-ux*3-uy,y:tip.y-uy*3+ux},tip,1,'#e4ece7');
+            limb(c,{x:tip.x-ux*3+uy,y:tip.y-uy*3-ux},tip,1,'#9aafb1');
+            pixel(p.handR.x-1,p.handR.y-1,3,2,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).base:pal.head);
+          }
           if (actor.charge > 0 || sculpted&&aimed&&!(model.combatRevision===4&&action==='ranged'&&t>.1)){
-            const v=model.combatRevision===4?projectPoint([0,12,0],d):{x:facing*12,y:0};
+            const v=model.combatRevision===4?projectPoint([0,12,0],visualDirection??d):{x:facing*12,y:0};
             limb(c, p.handR, { x: hand.x + v.x, y: hand.y+v.y }, 1, "#dfc693");
             const tip={x:hand.x+v.x,y:hand.y+v.y};
             ellipse(c,tip.x,tip.y,1.5,1.5,'#dce7df');
@@ -1307,10 +1349,14 @@ export function drawPlayer(
               pixel(tip.x,tip.y,1,1,'#ffffff');
             }
           }
+          // Fingers close over the grip instead of being hidden behind the bow.
+          pixel(hand.x-1,hand.y-1,3,3,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).base:pal.head);
+          pixel(hand.x-1,hand.y+1,2,1,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).dark:pal.headShade);
         }));
       },
       "Bow",
     );
+  if(queue.at(-1)?.id==='Bow')queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:p.handL.depth<p.chest.depth};
   if(sculpted&&['mine','woodcut','carry','pickup','found_unique'].includes(propAction))add((p.handL.depth+p.handR.depth)/2+.3,()=>{
     const a=p.handR,b=p.handL,mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     if(propAction==='mine'||propAction==='woodcut'){
@@ -1332,7 +1378,7 @@ export function drawPlayer(
     }
     for(const q of [a,b]){pixel(q.x-1,q.y-1,3,2,gear.gloves?gearPalette(gear.gloves).base:pal.head);}
   },'Interaction prop');
-  paintLayers(queue, model, d, c, p);
+  paintLayers(queue, model, d, c, p,itemKind(gear.hand1)==='bow');
   if (!human) wearableDetails(c, p, {}, look, d, time, cosmetics);
   if(salvaging){
     if(actor.salvageHold?.type&&!actor.salvageHold.latched)drawItem(c,actor.salvageHold.type,(p.handL.x+p.handR.x)/2,(p.handL.y+p.handR.y)/2,10);

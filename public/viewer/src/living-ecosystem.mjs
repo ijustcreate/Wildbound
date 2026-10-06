@@ -17,6 +17,7 @@ import { nearbyScenery } from './performance.mjs';
  */
 export const LIVING_LIMITS = Object.freeze({ vines: 24, animals: 18, growthSeconds: 45 });
 const runtime = new WeakMap();
+export const releasedCritters = g => (runtime.get(g)?.animals || []).filter(a=>a.releasedOwner!=null);
 const biomes = ['forest', 'temple', 'house', 'ice', 'desert'];
 const finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 const biome = g => g.generatedEnvironment || g.environment || 'forest';
@@ -142,6 +143,13 @@ export function updateLivingEcosystem(g,dt) {
     }
   }
   for(const a of r.animals) {
+    if(a.releasedOwner!=null){
+      const owner=g.players.find(p=>p.id===a.releasedOwner);
+      if(owner&&!owner.room){const dx=owner.x-a.x,dy=owner.y+14-a.y,d=Math.hypot(dx,dy),step=Math.min(Math.max(0,d-22),dt*85);
+        if(d>280){a.x=owner.x-18;a.y=owner.y+18;}else if(d>22){const x=a.x+dx/d*step,y=a.y+dy/d*step;if(!g.blocked?.(x,y,3,false,true)){a.x=x;a.y=y;}}
+        a.hopHeight=a.kind==='frog'&&step>0?Math.abs(Math.sin(r.time*9+a.phase))*8:0;
+      }continue;
+    }
     if(a.kind==='frog'){tickFrog(g,a,dt,r.time);continue;}
     // Wildlife is never a combat target, but it should feel alive when the
     // party or a hostile creature approaches. Use a soft steering force so
@@ -264,5 +272,12 @@ export function catchCritter(g,p){
  const container=['frog','dragonfly','fairy'].includes(a.kind)?'empty_jar':'critter_cage',copy=structuredClone(p.inventory);
  if(!take(copy,container)){g.message(container==='empty_jar'?'You need an empty jar.':'You need an empty cage.');return true;}
  if(!give(copy,'caught_'+a.kind)){g.message('Make space for your new passenger.');return true;}
- p.inventory=copy;r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught! Safely packed for the journey.');g.persist?.();return true;
+ p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught! Safely packed for the journey.');g.persist?.();return true;
+}
+export function releaseCritter(g,p,index){
+ const item=p.inventory[index];if(!item?.type?.startsWith('caught_')||p.room)return false;
+ const kind=item.type.slice(7),container=['frog','dragonfly','fairy'].includes(kind)?'empty_jar':'critter_cage',copy=structuredClone(p.inventory);
+ if(!take(copy,item.type,1)||!give(copy,container,1)){p.ui.notice='Make room for the empty container first.';return true;}
+ p.inventory=copy;const r=ensure(g);r.animals.push({id:'released-'+p.id+'-'+(g.nextId++),kind,x:p.x+18,y:p.y+18,homeX:p.x,homeY:p.y,phase:r.time,releasedOwner:p.id,hopHeight:0});
+ p.ui.notice='Released! Your critter follows for this level. Catch it again before quitting.';g.uiRevision=(g.uiRevision||0)+1;g.persist?.();return true;
 }

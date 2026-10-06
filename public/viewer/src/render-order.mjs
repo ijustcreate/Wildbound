@@ -24,8 +24,9 @@ function inferredBones(id, joints) {
   if (name.includes("body") || name.includes("pelvis") || name.includes("chest")) return has("pelvis", "chest", "neck");
   return Object.keys(joints || {}).slice(0, 1);
 }
-export function paintLayers(queue, model, direction, context, joints) {
-  const order = model.renderOrder?.[direction] || [];
+export function paintLayers(queue, model, direction, context, joints, posedDepth=false) {
+  // Static studio ordering cannot describe crossed arms moving around a bow.
+  const order = posedDepth?[]:model.renderOrder?.[direction] || [];
   const sorted = queue.map((part,i)=>({...part,id:part.id || `Layer ${i+1}`})).sort((a,b)=>a.depth-b.depth);
   const defaultOrder = sorted.map(p=>p.id);
   const all = [...new Set([...order.filter(id=>defaultOrder.includes(id)), ...defaultOrder])];
