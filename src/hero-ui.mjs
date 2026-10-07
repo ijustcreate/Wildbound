@@ -270,6 +270,7 @@ export class HeroUI {
         canvas.className = "room-view";
         canvas.width = 320;
         canvas.height = 240;
+        canvas.setAttribute('aria-label', d?.mausoleum ? 'Mausoleum crypt map' : 'Underground room map');
         panel.append(canvas);
         this.room(canvas, game, p, d, renderer);
         if(d.oldWell){panel.append(el('p',d.mausoleum?'Explore the candlelit crypt. Interact with the lantern chest and the final coffin. Use the entrance stairs to return to the cemetery.':'Explore the tunnels. Interact at the treasure chest, or at the rope in the circle of daylight to climb out.','well-help'));}

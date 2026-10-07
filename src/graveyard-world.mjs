@@ -98,9 +98,15 @@ export function graveyardWorld(seed=0) {
 export function graveyardBlocked(g,x,y,radius=8,flying=false) {
   if(!active(g)||flying||g.phase==='won'||!Number.isFinite(x)||!Number.isFinite(y))return false;
   radius=Number.isFinite(radius)?Math.max(0,radius):8;
-  return (g.scenery || []).some(p=>p.graveyard && !p.depleted && !p.falling &&
-    (p.graveyardFootprint && rectHit(p.graveyardFootprint,x,y,radius) ||
-      (p.blockers || []).some(r=>rectHit(r,x,y,radius))));
+  return (g.scenery || []).some(p=>{
+    if(!p.graveyard || p.depleted || p.falling) return false;
+    // Leave a clean approach to every mausoleum doorway. The structure still
+    // blocks its walls, but the player can stand at the threshold and use the
+    // interaction before or after the event opens the gate.
+    if(p.kind==='mausoleum' && Math.abs(x-(p.x||0))<=26 && y >= (p.rootY??p.y)-10) return false;
+    return (p.graveyardFootprint && rectHit(p.graveyardFootprint,x,y,radius) ||
+      (p.blockers || []).some(r=>rectHit(r,x,y,radius)));
+  });
 }
 
 function emerge(g,stone,plot,roll) {

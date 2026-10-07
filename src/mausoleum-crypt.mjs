@@ -365,6 +365,21 @@ function drawVermin(c, e, time) {
   c.restore();
 }
 
+function drawCryptBossGear(c, e, time) {
+  c.save(); c.translate(Math.round(e.x), Math.round(e.y));
+  const bob=Math.round(Math.sin(time*4)*1);
+  // A readable crypt-warden kit: iron crown, ribbed cuirass, shoulder plates,
+  // and a torn funerary mantle layered over the normal skeleton rig.
+  rect(c,-12,-48+bob,24,5,'#302a35'); rect(c,-9,-53+bob,18,5,'#75604d');
+  for(const x of [-8,-2,4]) rect(c,x,-58+bob,3,7,'#c39d61');
+  rect(c,-16,-31,32,19,'#343b47'); rect(c,-12,-29,24,15,'#62616b');
+  for(let y=-26;y<-14;y+=4) rect(c,-10,y,20,1,'#bbb08f');
+  rect(c,-22,-29,7,13,'#4a4d58'); rect(c,15,-29,7,13,'#4a4d58');
+  rect(c,-25,-22,5,4,'#a88454'); rect(c,20,-22,5,4,'#a88454');
+  rect(c,-19,-12,8,16,'#29232f'); rect(c,11,-12,8,16,'#29232f');
+  c.restore();
+}
+
 /** An equipped lantern lights both co-op cameras; backpack lanterns stay dark. */
 export function mausoleumLights(g, d) {
   const lights = [{...d.well.exit, radius: 80, intensity: .9},
@@ -466,7 +481,14 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null) {
       else for (let n = 15; n < 130; n += 10) rect(c, e.x + e.aimX * n - 1, e.y + e.aimY * n - 1, 3, 3, '#e8b99b');
       c.restore();
     }
-    if (['skeleton', 'zombie', CRYPT_BOSS_KIND].includes(e.kind)) drawUndead(c, e, time);
+    const standard = ['skeleton','zombie','bat','spider'].includes(e.kind);
+    if (standard && animator) {
+      const size=e.kind==='bat'?34:e.kind==='spider'?32:47;
+      animator.draw(c,{...e,sprite:e.kind},time,size);
+    } else if (e.kind===CRYPT_BOSS_KIND && animator) {
+      animator.draw(c,{...e,kind:'skeleton',sprite:'skeleton',equipment:{hand1:'sword'}},time,50);
+      drawCryptBossGear(c,e,time);
+    } else if (['skeleton', 'zombie', CRYPT_BOSS_KIND].includes(e.kind)) drawUndead(c, e, time);
     else drawVermin(c, e, time);
   }
   for (const b of s.bolts) {

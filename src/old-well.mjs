@@ -206,7 +206,8 @@ export function ensureOldWells(g) {
   }
 }
 export function enterOldWell(g, p, d) {
-  if (!d?.oldWell || !g.portals.includes(d) || p.room || p.ui || p.hp <= 0 || distance(p, d) > 74) return false;
+  const reach=d?.mausoleum?64:74;
+  if (!d?.oldWell || !g.portals.includes(d) || p.room || p.ui || p.hp <= 0 || distance(p, d) > reach) return false;
   ensureOldWells(g);
   p.wellReturn = {portalId: d.id, x: p.x, y: p.y, environment: g.generatedEnvironment};
   const entry = wellArrival(d.well);
@@ -226,7 +227,7 @@ export function enterOldWell(g, p, d) {
 }
 export function interactOldWell(g, p) {
   if (p.room || p.ui || p.hp <= 0) return false;
-  const d = (g.portals || []).filter(d => d.oldWell && distance(p, d) <= 74)
+  const d = (g.portals || []).filter(d => d.oldWell && distance(p, d) <= (d.mausoleum?64:74))
     .sort((a, b) => distance(p, a) - distance(p, b))[0];
   return !!d && enterOldWell(g, p, d);
 }

@@ -1093,6 +1093,14 @@ dialog h2 {
   image-rendering: pixelated;
   display: block;
 }
+.hero-panel canvas.room-view {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: #080a14;
+}
 .hero-panel p {
   font-size: 12px;
   line-height: 1.45;
