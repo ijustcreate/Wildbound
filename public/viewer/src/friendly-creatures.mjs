@@ -5,8 +5,12 @@ import {companionMovement} from './companion-locomotion.mjs';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 export function befriendCreature(actor,owner){
- if(!actor||actor.hp<=0||actor.practiceTarget)return false;
+ if(!actor||actor.hp<=0||actor.practiceTarget||actor.kind==='bee_hive')return false;
  Object.assign(actor,{faction:'ally',allyOwner:owner,aggro:false,state:'idle',timer:0,moving:false,attack:0,animationAction:null,poseTime:null,motionDuration:null});
+ if(actor.kind==='succubus')Object.assign(actor,{succubusAttack:null,succubusWindup:0,succubusFlightHeight:0,succubusFlying:false});
+ if(actor.kind==='imp')Object.assign(actor,{impWindup:0,impAim:null});
+ if(actor.kind==='zombie')Object.assign(actor,{zombieWindup:0,zombieAim:null,zombieTarget:null});
+ if(['succubus','imp','zombie'].includes(actor.kind))actor.humanoidTrapRecovery=false;
  for(const key of ['playerFrame','animationProgress','animationTime','stateAge','night','stampeding','pounce','vx','vy'])delete actor[key];
  actor.step=Number.isFinite(actor.step)?actor.step:0;
  return true;

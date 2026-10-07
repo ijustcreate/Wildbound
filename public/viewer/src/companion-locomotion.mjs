@@ -18,7 +18,7 @@ export function companionVisualActor(actor,model){
   const clips=model?.clips;if(!clips)return actor;
   const preferred=['bat','pelican','dragon'].includes(actor.kind)?['fly','run','walk']:actor.kind==='snake'?['slither','walk','run']:(actor.locomotionSpeed??actor.speed??90)<=110?['walk','run','stalk']:['run','walk','stalk'];
   const action=preferred.find(name=>clips[name]);if(!action)return actor;
-  const clip=clips[action],stride=action==='walk'?70:100;
+  const clip=clips[action],stride=actor.kind==='beetle'?(action==='walk'?54:70):action==='walk'?70:100;
   // Flying loops are time-driven; footed gaits cover a consistent distance/cycle.
   const playerFrame=action==='fly'?undefined:((actor.step||0)/(.13*stride))*clip.length;
   return {...actor,animationAction:action,playerFrame,poseTime:undefined,animationProgress:undefined,animationTime:undefined};

@@ -1,5 +1,5 @@
-import { HAIR_STYLES } from './appearance.mjs';
-import { drawPlayer } from './player-motion.mjs';
+import { HAIR_STYLES, FACE_STYLES } from './appearance.mjs';
+import { drawCreationPreview, creationFamily, creationButtonLabels, creationHelp } from './creation-preview.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
 
@@ -22,8 +22,9 @@ export function colorWheelPoint(color) {
   return {x:Math.cos(hue)*saturation,y:Math.sin(hue)*saturation,value:max};
 }
 
-export function buildCreationMenu({panel,state:s,profiles,presets,onCreate,onBack}) {
+export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreate,onBack}) {
   panel.classList.add('creation-menu');
+  panel.dataset.controllerFamily=creationFamily(player||{device:panel.dataset.ownerDevice});
   const look=s.creationLook ||= structuredClone(presets[0]);
   s.creationName ??= suggestCharacterName(profiles.data.heroes);
   const body=document.createElement('div');body.className='creation-body';panel.append(body);
@@ -32,15 +33,15 @@ export function buildCreationMenu({panel,state:s,profiles,presets,onCreate,onBac
   const input=document.createElement('input');input.value=s.creationName;input.maxLength=20;input.setAttribute('aria-label','Explorer name');input.oninput=()=>s.creationName=input.value;nameRow.append(input);
   add('Edit',()=>openControllerKeyboard(input),nameRow).setAttribute('aria-label','Edit explorer name');
   const art=document.createElement('canvas');art.width=240;art.height=116;art.setAttribute('aria-label','Explorer appearance preview');body.append(art);
-  const preview=()=>{const c=art.getContext('2d');c.clearRect(0,0,240,116);c.save();c.imageSmoothingEnabled=false;c.translate(120,105);c.scale(2.5,2.5);drawPlayer(c,{appearance:look,equipment:{},faceX:0,faceY:1,animationAction:'idle'},0);c.restore();};
+  const preview=()=>{const time=performance.now()/1000;drawCreationPreview(art.getContext('2d'),look,{width:art.width,height:art.height,time});if(popupPreview)drawCreationPreview(popupPreview.getContext('2d'),look,{width:popupPreview.width,height:popupPreview.height,mode:popupMode,direction:popupDirection,time});};
   const refreshers=[];
   const refresh=()=>{preview();refreshers.forEach(fn=>fn());};
-  let popup=null,opener=null,popupFocus=0,wheel=null;
+  let popup=null,opener=null,popupFocus=0,wheel=null,popupPreview=null,popupMode='full',popupDirection=0;
   const buttons=()=>[...(popup||body).querySelectorAll('button')];
   const highlight=()=>{const list=buttons();let index=popup?popupFocus:s.focus;index=Math.max(0,Math.min(index,list.length-1));if(popup)popupFocus=index;else s.focus=index;panel.querySelectorAll('button').forEach(b=>b.classList.remove('lobby-focus'));list[index]?.classList.add('lobby-focus');list[index]?.scrollIntoView({block:'nearest'});};
-  const close=()=>{popup?.remove();popup=null;wheel=null;body.inert=false;highlight();opener?.focus({preventScroll:true});};
+  const close=()=>{popup?.remove();popup=null;wheel=null;popupPreview=null;body.inert=false;highlight();opener?.focus({preventScroll:true});};
   const open=(title,source)=>{
-    popup?.remove();wheel=null;opener=source;body.inert=true;popupFocus=0;
+    popup?.remove();wheel=null;popupPreview=null;opener=source;body.inert=true;popupFocus=0;
     popup=document.createElement('div');popup.className='creation-popup';popup.setAttribute('role','dialog');popup.setAttribute('aria-label',title);
     const h=document.createElement('h3');h.textContent=title;popup.append(h);panel.append(popup);return popup;
   };
@@ -60,7 +61,7 @@ export function buildCreationMenu({panel,state:s,profiles,presets,onCreate,onBac
     const choose=add('Choose color',()=>{look[key]=wheelColor(point.x,point.y,point.value);refresh();close();},box);choose.className='creation-color-row';
     const chip=document.createElement('i');choose.append(chip);
     add('Back to palette',()=>showPalette(key,source),box);
-    const hint=document.createElement('p');hint.textContent='Stick / D-pad: move · A: choose · B: palette\nX / Space: adjust brightness';box.append(hint);
+    const hint=document.createElement('p');hint.dataset.creationHelp='wheel';box.append(hint);updateLabels();
     wheel={adjusting:false,move:(x,y)=>{if(wheel.adjusting){point.value=Math.max(0,Math.min(1,point.value+(x||-y)*.05));paint();}else move(point.x+x*.06,point.y+y*.06);},accept:()=>{if(wheel.adjusting){wheel.adjusting=false;brightness.textContent='Brightness';}else choose.click();},back:()=>showPalette(key,source)};
     paint();choose.focus({preventScroll:true});
   };
@@ -76,23 +77,38 @@ export function buildCreationMenu({panel,state:s,profiles,presets,onCreate,onBac
     const chip=document.createElement('i');chip.setAttribute('aria-hidden','true');b.append(chip);refreshers.push(()=>b.style.setProperty('--swatch',look[key]));
   }
   const select=(key,label,options,fallback)=>{
-    const b=add('',()=>{const box=open(label,b);for(const [value,name] of options)add((look[key]===value?'✓ ':'')+name,()=>{look[key]=value;refresh();close();},box);add('Cancel',close,box);highlight();buttons()[0].focus({preventScroll:true});});
+    const b=add('',()=>{
+      const box=open(label,b);box.classList.add('creation-detail-popup');popupMode=key==='face'?'face':'hair';popupDirection=0;
+      popupPreview=document.createElement('canvas');popupPreview.width=240;popupPreview.height=190;popupPreview.className='creation-detail-preview';popupPreview.setAttribute('aria-label',label+' close-up preview');box.append(popupPreview);
+      const views=document.createElement('div');views.className='creation-preview-views';box.append(views);
+      add('↶ View',()=>rotatePreview(-1),views);add('View ↷',()=>rotatePreview(1),views);
+      const grid=document.createElement('div');grid.className='creation-option-grid';box.append(grid);
+      const selection=()=>grid.querySelectorAll('button').forEach(q=>{const selected=q.dataset.optionValue===(look[key]||fallback);q.setAttribute('aria-pressed',String(selected));q.textContent=(selected?'✓ ':'')+q.dataset.optionName;});
+      for(const [value,name] of options){const q=add(name,()=>{look[key]=value;refresh();selection();},grid);q.dataset.optionValue=value;q.dataset.optionName=name;}
+      add('Done',close,box);const help=document.createElement('small');help.dataset.creationHelp='detail';box.append(help);updateLabels();selection();refresh();
+      popupFocus=buttons().indexOf(grid.querySelector('[aria-pressed="true"]')||grid.firstElementChild);highlight();buttons()[popupFocus]?.focus({preventScroll:true});
+    });
     refreshers.push(()=>{b.textContent=label;const value=document.createElement('span');value.textContent=(options.find(([id])=>id===(look[key]||fallback))||options[0])[1]+' ›';b.append(value);});b.className='creation-select-row';
   };
   select('hair','Hair style',Object.entries(HAIR_STYLES),'crop');
-  select('face','Face details',[['classic','None'],['freckles','Freckles'],['scar','Scar'],['beard','Beard'],['elf','Elf ears']],'classic');
+  select('face','Face details',Object.entries(FACE_STYLES),'classic');
   const actions=document.createElement('div');actions.className='creation-actions';body.append(actions);
   add('Suggest name',()=>{input.value=s.creationName=suggestCharacterName(profiles.data.heroes);},actions);
   add('Random look',()=>{Object.assign(look,presets[Math.floor(Math.random()*presets.length)]);refresh();},actions);
   const error=document.createElement('p');error.className='lobby-error';error.setAttribute('role','alert');body.append(error);
   add('Create & join',()=>{const problem=characterNameError(input.value,profiles.data.heroes);if(problem){error.textContent=problem;return;}onCreate(input.value,look);}).className='creation-primary';
   add('Back',onBack);
-  const hint=document.createElement('small');hint.textContent='↑ ↓ Move   ·   A Choose   ·   B Back';body.append(hint);
-  panel.creationNavigate=({x=0,y=0,accept=false,back=false,adjust=false})=>{
+  const hint=document.createElement('small');hint.dataset.creationHelp='menu';body.append(hint);
+  function updateLabels(){const family=panel.dataset.controllerFamily,n=creationButtonLabels(family);panel.querySelectorAll('[data-creation-help]').forEach(q=>{q.textContent=q.dataset.creationHelp==='wheel'?`${n.move}: color · ${n.choose}: choose · ${n.back}: palette · ${n.adjust}: brightness`:creationHelp(family)+(q.dataset.creationHelp==='detail'?` · ${n.rotate}: rotate`: '');});}
+  const rotatePreview=delta=>{popupDirection=(popupDirection+delta+8)%8;refresh();};
+  panel.updateControllerFamily=family=>{panel.dataset.controllerFamily=family;updateLabels();};
+  panel.creationNavigate=({x=0,y=0,accept=false,back=false,adjust=false,rotate=0})=>{
+    if(rotate&&popupPreview){rotatePreview(rotate);return;}
     if(wheel){if(adjust)popup.querySelector('button').click();else if(back)wheel.back();else if(accept)wheel.accept();else if(x||y)wheel.move(x,y);return;}
     if(back){if(popup)close();else onBack();return;}
     if(x||y){const list=buttons(),grid=popup?.querySelector('.creation-palette');let index=popup?popupFocus:s.focus;
       if(grid)index=y?Math.max(0,Math.min(16,index+y*4)):(index<16?Math.floor(index/4)*4+(index%4+x+4)%4:0);
+      else if(popup?.querySelector('.creation-option-grid')){const step=y?y*2:x;index=Math.max(0,Math.min(list.length-1,index+step));}
       else if(!popup&&y&&list[index]?.parentElement===colors){
         const first=list.indexOf(colors.firstElementChild),offset=index-first;
         index=y>0?(offset<2?index+2:offset<4?first+4:first+5):(offset>=2?first+(offset===4?2:offset-2):first-1);
@@ -104,5 +120,8 @@ export function buildCreationMenu({panel,state:s,profiles,presets,onCreate,onBac
   panel.addEventListener('focusin',e=>{const index=buttons().indexOf(e.target);if(index>=0){if(popup)popupFocus=index;else s.focus=index;highlight();}});
   // Trap Tab within this player's pop-up without blocking other controllers.
   panel.addEventListener('keydown',e=>{if(popup&&e.key==='Tab'){e.preventDefault();const list=buttons(),index=list.indexOf(document.activeElement);list[(index+(e.shiftKey?-1:1)+list.length)%list.length]?.focus();}});
-  refresh();
+  updateLabels();refresh();
+  let lastPreview=-Infinity;
+  const animate=t=>{if(!panel.isConnected)return;if(t-lastPreview>100){preview();lastPreview=t;}requestAnimationFrame(animate);};
+  requestAnimationFrame(animate);
 }

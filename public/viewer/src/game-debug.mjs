@@ -1,4 +1,5 @@
 import {ITEMS,give as giveItem} from './items.mjs';
+import {spawnEventTestBoard} from './event-test-board.mjs';
 
 export function spawnDebugItem(game,ownerId,type,amount,destination='inventory') {
  const p=game.players.find(p=>String(p.id)===String(ownerId));
@@ -30,9 +31,13 @@ export function createGameDebug({getGame,events,items}) {
    root.append(el('h2','GM field console'),el('p','Testing tools: spawn events, protect the party and create items.'));
    target=el('p',null,'debug-target');root.append(target);
    const eventLabel=el('label','Event'),event=el('select');event.dataset.debug='event';
-   events.forEach((e,i)=>{const o=el('option',`${i}: ${e.name||e.kind||e.type}`);o.value=i;event.append(o);});eventLabel.append(event);root.append(eventLabel);
+   events.forEach((e,i)=>{const o=el('option',`${i+1}: ${e.name||e.kind||e.type}`);o.value=i;event.append(o);});eventLabel.append(event);root.append(eventLabel);
    const tools=el('div',null,'debug-tools'),spawn=el('button','Spawn selected event');spawn.onclick=()=>{getGame().spawnEvent(Number(event.value));say({ok:true,message:'Spawned '+(events[event.value]?.name||'event')});};tools.append(spawn);
    const inv=el('label'),check=el('input');check.type='checkbox';check.onchange=()=>{for(const p of getGame().players)p.invincible=check.checked;say({ok:true,message:check.checked?'Party invincibility enabled':'Party invincibility disabled'});};inv.append(check,' Party invincible');tools.append(inv);root.append(tools);
+   root.append(el('h3','Event test board'),el('p','A second board at your feet. Each hit spawns the next event, from 1 to the end of the list, including events from other biomes. No dice, pawn movement or turn advance. Respawn to restart.'));
+   const boardActions=el('div',null,'debug-tools');
+   const board=el('button','Spawn / restart test board');board.dataset.debug='test-board';board.onclick=()=>say(spawnEventTestBoard(getGame(),ownerId));boardActions.append(board);
+   const remove=el('button','Remove test board');remove.dataset.debug='remove-test-board';remove.onclick=()=>{getGame().eventTestBoard=null;getGame().persist();say({ok:true,message:'Event test board removed.'});};boardActions.append(remove);root.append(boardActions);
    const itemLabel=el('label','Item'),item=el('select');item.dataset.debug='item';
    Object.entries(items).filter(([,v])=>v).sort((a,b)=>(a[1].name||a[0]).localeCompare(b[1].name||b[0])).forEach(([id,v])=>{const o=el('option',`${v.name||id} (${id})`);o.value=id;item.append(o);});itemLabel.append(item);root.append(itemLabel);
    const amountLabel=el('label','Amount'),amount=el('input');amount.type='number';amount.min='1';amount.max='999';amount.step='1';amount.value='1';amount.dataset.debug='amount';amountLabel.append(amount);root.append(amountLabel);
@@ -43,7 +48,7 @@ export function createGameDebug({getGame,events,items}) {
    root.append(actions);status=el('p','Ready.','debug-status');status.setAttribute('role','status');status.setAttribute('aria-live','polite');root.append(status);
    const close=el('button','Close');close.onclick=()=>{root.remove();if(returnFocus?.isConnected)returnFocus.focus();};root.append(close);
   }
-  target.textContent=owner?'Item target: '+owner.name+' · only your backpack is changed':'No player selected. Reopen this menu from your explorer.';
+  target.textContent=owner?'Explorer: '+owner.name+' · board and item target':'No player selected. Reopen this menu from your explorer.';
   status.textContent='Choose an item, amount and destination.';status.dataset.error='false';
   host.append(root);root.querySelector('select')?.focus();
  };

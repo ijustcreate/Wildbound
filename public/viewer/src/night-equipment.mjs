@@ -1,4 +1,5 @@
 import { ITEMS, take } from "./items.mjs";
+import {isCharmed,charmShot,playerCombatTargets} from './succubus-charm.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import { equipmentAttack } from "./equipment-runtime.mjs";
 import { ignite, firePatch } from "./hazards.mjs";
@@ -31,6 +32,7 @@ export function tryEquipmentAttack(g, p, charge = 0) {
   p.attack = p.attackDuration = 0.25;
   p.attackClip = "draw";
   (g.rifleShots ||= []).push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y,
+    ...charmShot(p),
     vx: x * cfg.speed, vy: y * cfg.speed, remaining: cfg.range,
     owner: p.id, playerOwned: !!g.players?.includes(p), damage: def.damage,
     aimed: Number.isFinite(charge) && charge >= cfg.aimTime });
@@ -132,7 +134,7 @@ export function tickNightEquipment(g, dt) {
     b.prevX = b.x; b.prevY = b.y;
     const speed = Math.hypot(b.vx, b.vy), travel = Math.min(b.remaining, speed * dt);
     const steps = Math.max(1, Math.ceil(travel / 4)), step = travel / steps;
-    const targets = b.playerOwned ? [...enemies, ...(g.pvp ? players.filter(p => p.id !== b.owner) : [])] : players;
+    const targets = b.playerOwned ? playerCombatTargets(g,b) : players.filter(p=>!isCharmed(p));
     for (let i = 0; i < steps && b.remaining > 0; i++) {
       const next = { x: b.x + b.vx / speed * step, y: b.y + b.vy / speed * step };
       if (g.projectileBlocked(next.x, next.y, 2, true)) { b.remaining = 0; break; }

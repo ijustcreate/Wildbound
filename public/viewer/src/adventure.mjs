@@ -1,8 +1,18 @@
 import {victoryRewards} from './victory-chest.mjs';
+import {damageStructureProjectile} from './structure-destruction.mjs';
+import {openNpcDialogue,npcDialogueAction} from './npc-quests.mjs';
+import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
+import {dropRavenLoot,spawnRavenFlock} from './raven.mjs';
+import {spawnSurfaceEcology,releaseGraveyardCritter} from './graveyard-ecology.mjs';
+import {dropHiveHoney,useHoneycomb} from './honeycomb.mjs';
+import {enterOldWell,leaveOldWell,interactOldWell,oldWellRoomStep,tickOldWells,wellForPlayer} from './old-well.mjs';
 import {robotShopAction} from './robot-shop.mjs';
+import {bansheeArrowBonus,bansheeArrowImpact} from './banshee-queen.mjs';
+import {isCharmed,clearCharm,charmShot,playerCombatTargets,tickSuccubusKisses} from './succubus-charm.mjs';
 import {starterChestFor} from './starter-chest.mjs';
 import {waterAt} from './environment.mjs';
 import {tickBoomerangs} from './boomerang.mjs';
+import {anacondaProjectileHit,anacondaBody,anacondaContact} from './anaconda-body.mjs';
 import {interactMystery} from './mysteries.mjs';
 import {toggleHouseLight} from './house-lights.mjs';
 import {inventoryCarryAction} from './inventory-carry.mjs';
@@ -10,16 +20,18 @@ import {playerInput} from './inventory-input.mjs';
 import {magicBoltGlow} from './magic-bolt-render.mjs';
 import {merchantAction,openMerchant} from './traveling-merchant.mjs';
 import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
+import {canHitEventTestBoard} from './event-test-board.mjs';
 import {LOBBY_PLAYER_SIZE,PLAYER_RENDER_SIZE} from './render-settings.mjs';
 import {equipmentAction} from './equipment-actions.mjs';
 import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
 import {xpBurst,tickXPOrbs} from './xp-orbs.mjs';
 import {equipmentNeighbor} from './equipment-navigation.mjs';
-import {tickStorageRoom} from './storage-room.mjs';
+import {tickStorageRoom,resetStorageJump} from './storage-room.mjs';
+import {cancelRobotRepair,robotOnline,openRobotIntroduction} from './storage-repair.mjs';
 import {canDropInventoryItem,dropInventoryItem} from './inventory-world.mjs';
 import {arrowVisualAngle} from './embedded-arrow.mjs';
-import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,loadQuiver,quiverType,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
-import {learnIceRecipe,tickMeltingIce} from './ice-crafting.mjs';
+import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
+import {tickMeltingIce} from './ice-crafting.mjs';
 import { takeFromBag } from './inventory-containers.mjs';
 import {wandTipWorld,bowHandleWorld} from './player-motion.mjs';
 import {chargedProjectileRange,arrowFlightGravity} from './projectile-range.mjs';
@@ -78,7 +90,6 @@ import {
 } from "./items.mjs";
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function onChestItemTaken(g,p,storage,type,fromMode){
-  if(storage==='starter'&&fromMode==='chest'&&type==='starter_arrow'&&!count(p,quiverType(p)))loadQuiver(p,'starter_arrow');
   if(storage==='temple'&&fromMode==='chest'&&type==='ritual_dagger'&&!g.templeTigersSummoned){
     g.templeTigersSummoned=true;
     summonTempleTigers(g,p);
@@ -89,7 +100,7 @@ function aimedDirection(g, p, origin, strength = 0.2) {
   const fx = length ? p.faceX / length : 0, fy = length ? p.faceY / length : 1, fl = 1;
   if (p.bowAiming) return {x:fx,y:fy};
   let best = null;
-  for (const e of g.enemies || []) {
+  for (const e of playerCombatTargets(g,p)) {
     if (e.hp <= 0 || e.room) continue;
     const dx = e.x - origin.x, dy = e.y - origin.y, d = Math.hypot(dx, dy) || 1;
     const dot = (dx * fx + dy * fy) / (d * fl);
@@ -135,6 +146,8 @@ export function initHero(p) {
     ],
     equipment: c.equipment,
     chests: c.chests,
+    robotRepaired: c.robotRepaired,
+    robotIntroduced: c.robotIntroduced,
     chestNames: c.chestNames,
     level: 1,
     xp: 0,
@@ -222,8 +235,9 @@ export const adventureMethods = {
       explored: this.explored.size,
     }));
     this.phase = "won";
-    this.scenery = [];
-    this.enemies = [];
+    if(!houseKeepsWorld(this))this.scenery = [];
+    this.enemies = houseKeepsWorld(this)?this.enemies.filter(e=>!recalledEnemy(e)):[];
+    if(houseKeepsWorld(this))this.ghosts=(this.ghosts||[]).filter(e=>!recalledEnemy(e));
     this.arrows = [];
     this.arrowIcePatches=[];
     this.traps = [];
@@ -237,9 +251,11 @@ export const adventureMethods = {
     this.victoryChest = true;
     this.victoryChestOpened=false;this.victoryChestArt=null;
     this.merchant=null;
+    this.questNpcs=[];this.questSceneToken=null;this.questSpawnTimer=0;
     this.victoryRewards=victoryRewards(this.players,this.random);
     this.loot = [];
     for (const p of this.players) {
+      clearCharm(p,false);
       p.hp = p.maxHp;
       p.sealHold = 0;
       p.secondWindUsed = false;
@@ -251,6 +267,7 @@ export const adventureMethods = {
     this.persist();
   },
   newExpedition() {
+    this.eventTestBoard=null;
     this.footprints = [];
     this.environmentParticles = [];
     initHazards(this);
@@ -258,8 +275,14 @@ export const adventureMethods = {
     const env =
       resolveEnvironment(this.environment,this.seed);
     Object.assign(this, generateWorld(this.seed, env));
+    this.boundlessLoadedChunks=[];
     this.templeTigersSummoned = false;
     this.generatedEnvironment = env;
+    spawnSurfaceEcology(this);
+    if(env==='graveyard'){
+      const perch=this.scenery.find(p=>p.kind==='leafless_tree'&&Math.hypot(p.x-800,p.y-800)>350);
+      spawnRavenFlock(this,{count:3,x:perch?.x??470,y:perch?.rootY??430});this.graveyard.ravensSeeded=true;
+    }
     seedSupplyChests(this,true);
     this.phase = "play";
     this.bloom = 0;
@@ -279,6 +302,7 @@ export const adventureMethods = {
     this.victoryChest = (this.victoryRewards || []).some(Boolean);
     this.victoryShown = false;
     for (const [i, p] of this.players.entries()) {
+      clearCharm(p,false);
       const f = initializeField(p);
       f.boon = null;
       f.boonReady = false;
@@ -435,11 +459,23 @@ export const adventureMethods = {
       this.leaveRoom(p);
       return;
     }
-    let door = this.portals.find((d) => !d.temple && d.owner === p.id);
+    let door = this.portals.find((d) => !d.temple && !d.oldWell && d.owner === p.id);
+    if (door) {
+      if (this.players.some((q) => q.room === door.id)) {
+        // Repeated presses must not extend a guest's existing escape countdown.
+        if (door.closing === null) door.closing = rules.portalGrace;
+        this.message(p.name + " closed the storage portal. Leave within " + Math.ceil(door.closing) + " seconds.");
+      } else {
+        this.portals = this.portals.filter((q) => q !== door);
+        this.message(p.name + " closed the storage portal.");
+      }
+      this.persist();
+      return;
+    }
     // A nearby private portal is already the shared entry for this storage room.
     // Reuse it instead of spawning a second portal on top of the first one.
     const nearby = this.portals.find(
-      (d) => !d.temple && d.owner !== p.id && dist(p, d) <= 70,
+      (d) => !d.temple && !d.oldWell && d.owner !== p.id && dist(p, d) <= 70,
     );
     if (!door && nearby) {
       if (dist(p, nearby) <= 26) this.enterRoom(p, nearby);
@@ -496,12 +532,15 @@ export const adventureMethods = {
     this.persist();
   },
   enterRoom(p, door) {
+    if(door?.oldWell)return enterOldWell(this,p,door);
     if (p.hp <= 0 || p.room || dist(p, door) > 26) return false;
     p.room = door.id;
     p.roomX = 160;
     p.roomY = 158;
     p.roomMoving = false;
     p.roomStep = 0;
+    resetStorageJump(p);
+    cancelRobotRepair(p);
     p.charge = 0;
     p.ui = null;
     if(p.hunterPet?.spiritGhost){p.hunterPet.room=door.id;p.hunterPet.roomX=p.roomX+24;p.hunterPet.roomY=p.roomY+12;}
@@ -515,8 +554,15 @@ export const adventureMethods = {
   leaveRoom(p, forced = false) {
     const d = this.portals.find((d) => d.id === p.room);
     if (!d) return;
+    if(d.oldWell){
+      if(!forced&&p.hp>0&&p.wellExitArmed===false){this.message(d.mausoleum?'Release Interact after descending, then use the entrance stairs.':'Release Interact after descending, then use the rope to climb out.');return false;}
+      if(!forced&&p.hp>0&&Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=36){this.message(d.mausoleum?'Find the entrance stairs and use Interact to return.':'Find the shaft of light and climb the rope to return.');return false;}
+      return leaveOldWell(this,p);
+    }
     p.room = null;
     p.ui = null;
+    resetStorageJump(p);
+    cancelRobotRepair(p);
     p.x = d.x;
     p.y = d.y;
     if(p.hunterPet?.spiritGhost){p.hunterPet.room=null;p.hunterPet.x=d.x-24;p.hunterPet.y=d.y+12;}
@@ -531,10 +577,12 @@ export const adventureMethods = {
     this.persist();
   },
   openInventory(p, storage = null) {
+    cancelRobotRepair(p);
     if(storage==='temple'&&!this.templeTigersSummoned){this.templeTigersSummoned=true;summonTempleTigers(this,p);}
     this.onSound("inventory",p);
     p.ui = { ownerDevice:p.device,panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
     if(storage==='starter')Object.assign(p.ui,{panel:'chest',loot:true,index:Math.max(0,starterChestFor(this,p).findIndex(Boolean))});
+    if(storage==='old-well')Object.assign(p.ui,{panel:'chest',loot:true,index:Math.max(0,wellForPlayer(this,p)?.well.chest.items.findIndex(Boolean)??0)});
     if(storage==='victory')this.victoryChestOpened=true;
     if(storage==='tv-victory'&&this.tvWorld?.won&&this.tvWorld.players.has(p.id)){
       this.tvWorld.victoryChestOpened=true;
@@ -543,6 +591,7 @@ export const adventureMethods = {
     p.charge = 0;
   },
   storageFor(p) {
+    if(p.ui?.storage==='old-well')return wellForPlayer(this,p)?.well.chest.items||null;
     if(p.ui?.storage==='starter')return starterChestFor(this,p);
     if(p.ui?.storage==="temple")return this.templeChest;
     if (p.ui?.storage === "victory") return this.victoryRewards;
@@ -581,9 +630,14 @@ export const adventureMethods = {
     return ok;
   },
   inventoryAction(p, action) {
+    if(npcDialogueAction(this,p,action))return;
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
+    if(u.shop==='robot-intro'){
+      if(['use','close','robotContinue'].includes(action)){p.ui=null;this.onSound('ui',p);}
+      return;
+    }
     if(u.loot){
       if(u.storage==='tv-victory'&&['tvReturn','use'].includes(action)&&!this.storageFor(p)?.some(Boolean)){
         if(this.tvWorld?.won&&this.tvWorld.players.has(p.id))this.tvWorld.requestLobbyReturn=true;
@@ -604,6 +658,7 @@ export const adventureMethods = {
       if(action==='lootAll'){for(const index of occupied){u.index=index;this.inventoryAction(p,'use');}return;}
       if(action==='use')action='store';
     }
+    if (u.shop === 'vending' && !['use','collect','offhand','panel','next','prev','down','up','close'].includes(action)) return;
     delete u.tab; // Old category selections must not hide or disable saved items.
     if(robotShopAction(this,p,action))return;
     if(merchantAction(this,p,action))return;
@@ -632,12 +687,8 @@ export const adventureMethods = {
     if(p.salvageHold)p.salvageHold={latched:true};
     u.salvagePointer=false;
     if(socketAction(this,p,action))return;
-    if(action.startsWith('quiver:')){if(loadQuiver(p,action.slice(7)))this.persist();return;}
-    if(u.panel==='quiver'&&['next','prev','down','up','use','equip'].includes(action)){
-      if(action==='down'){u.panel='gear';u.index=SLOTS.indexOf('head');return;}
-      const step=['prev','up'].includes(action)?-1:1;
-      loadQuiver(p,ARROW_TYPES[(ARROW_TYPES.indexOf(quiverType(p))+step+ARROW_TYPES.length)%ARROW_TYPES.length]);this.persist();return;
-    }
+    if(u.panel==='quiver'){u.panel='gear';u.index=SLOTS.indexOf('head');}
+    if(action.startsWith('quiver:')||action==='panel:quiver')return;
     const storage = this.storageFor(p);
     const selected = p.inventory[u.index];
     if (
@@ -710,10 +761,47 @@ export const adventureMethods = {
       u.shop === "vending" &&
       ["use", "collect", "offhand"].includes(action)
     ) {
-      if (action === "collect" || action === "offhand") this.collectVending(p);
-      else this.purchaseVending(p, u.index % 12);
+      const orders = (p.vendingOrders || []).filter(o => o.owner === (this.shopOwner(p)?.profileId || this.shopOwner(p)?.id));
+      if (action === "offhand" || action === "collect") {
+        const selected = u.vendingView === 'tray' ? u.vendingOrderId : undefined;
+        const collected = this.collectVending(p, selected);
+        if (collected) {
+          const remaining=(p.vendingOrders||[]).find(o=>o.owner===(this.shopOwner(p)?.profileId||this.shopOwner(p)?.id)&&o.ready);
+          if (u.vendingView==='tray'&&remaining) u.vendingOrderId=remaining.id;
+          else { u.vendingView='catalog'; delete u.vendingOrderId; }
+        }
+      } else if (u.vendingView === 'tray') {
+        if (this.collectVending(p, u.vendingOrderId)) {
+          const remaining=(p.vendingOrders||[]).find(o=>o.owner===(this.shopOwner(p)?.profileId||this.shopOwner(p)?.id)&&o.ready);
+          if (remaining) u.vendingOrderId=remaining.id;
+          else { u.vendingView='catalog'; delete u.vendingOrderId; }
+        }
+      } else this.purchaseVending(p, u.index % 12);
       return;
     }
+    if (u.shop === 'vending' && ['panel','next','prev','down','up'].includes(action)) {
+      const owner = this.shopOwner(p), orders = (p.vendingOrders || []).filter(o => o.owner === (owner?.profileId || owner?.id));
+      const ready = orders.filter(o => o.ready);
+      u.vendingView ||= 'catalog';
+      if (action === 'panel' || (u.vendingView === 'catalog' && (action === 'down' || action === 'up') && ready.length)) {
+        u.vendingView = u.vendingView === 'tray' ? 'catalog' : 'tray';
+        if (u.vendingView === 'tray') u.vendingOrderId = ready[0]?.id;
+        else delete u.vendingOrderId;
+        return;
+      }
+      if (u.vendingView === 'tray') {
+        if (!ready.length) { u.vendingView='catalog'; delete u.vendingOrderId; return; }
+        if (action === 'up') { u.vendingView='catalog'; delete u.vendingOrderId; return; }
+        const i = Math.max(0, ready.findIndex(o => o.id === u.vendingOrderId));
+        const step = action === 'next' || action === 'down' ? 1 : action === 'prev' || action === 'up' ? -1 : 0;
+        u.vendingOrderId = ready[(i + step + ready.length) % ready.length].id;
+        return;
+      }
+      const limit = 12, step = action === 'next' ? 1 : action === 'prev' ? -1 : action === 'down' ? 3 : -3;
+      u.index = (u.index + step + limit) % limit;
+      return;
+    }
+    if (u.shop === 'vending' && action !== 'close') return;
     if (u.shop && action === "use") {
       u.notice =
         u.shop === "robot"
@@ -765,7 +853,7 @@ export const adventureMethods = {
       );
     if (
       action.startsWith("panel:") &&
-      ["pack", "gear", "chest", "quiver"].includes(action.slice(6))
+      ["pack", "gear", "chest"].includes(action.slice(6))
     ) {
       switchPanel(action.slice(6));
     }
@@ -774,7 +862,7 @@ export const adventureMethods = {
       return;
     }
     if (action === "panel") {
-        const panels = storage ? ["pack", "gear", "quiver", "chest"] : ["pack", "gear", "quiver"];
+        const panels = storage ? ["pack", "gear", "chest"] : ["pack", "gear"];
         switchPanel(panels[(panels.indexOf(u.panel) + 1) % panels.length]);
     }
     const limit =
@@ -792,7 +880,6 @@ export const adventureMethods = {
       else u.index=(u.index+step+24)%24;
     }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
       if(action==='down'&&SLOTS[u.index]==='feet'){switchPanel('pack');u.index=0;}
-      else if(action==='up'&&SLOTS[u.index]==='head')switchPanel('quiver');
       else u.index=SLOTS.indexOf(equipmentNeighbor(SLOTS[u.index],action));
     }else{
       if (action === "next") u.index = (u.index + 1) % limit;
@@ -809,12 +896,16 @@ export const adventureMethods = {
       else if (storage && action === "use") moveItem();
       else {
         const item = p.inventory[u.index];
-        if(item?.type?.startsWith('caught_'))releaseCritter(this,p,u.index);
-        else if(item?.type==='ice_arrow_recipe'){u.notice=learnIceRecipe(p)?'Ice arrows added to the Field Guild.':'Recipe already learned.';}
-        else if(ARROW_TYPES.includes(item?.type)){loadQuiver(p,item.type);u.notice=ITEMS[item.type].name+' loaded in quiver.';}
+        if(item?.type?.startsWith('caught_')){
+          if(['caught_grave_moth','caught_crypt_beetle'].includes(item.type)){
+            if(!releaseGraveyardCritter(this,p,u.index))u.notice='Release this cemetery critter on open graveyard ground.';
+          }else releaseCritter(this,p,u.index);
+        }
+        else if(item?.type==='arrow')u.notice='Arrows are used automatically when you fire a bow.';
         else if (item?.type === "stamina_potion") useStamina(p);
         else if (item?.type === "potion") this.usePotion(p);
         else if (item?.type === "coconut") this.useCoconut(p);
+        else if (item?.type === "honeycomb") useHoneycomb(this,p);
         else if (item?.type === "trap" && !p.room) this.trap(p);
         else equip(p, u.index);
       }
@@ -862,6 +953,7 @@ export const adventureMethods = {
     this.persist();
   },
   tickAdventure(dt, inputs) {
+    tickOldWells(this,dt);
     tickXPOrbs(this,dt);
     tickMeltingIce(this,dt);tickArrowIce(this,dt);
     if(this.time>=(this.arrowCompactAt||0)){compactArrowDrops(this);this.arrowCompactAt=this.time+1;}
@@ -896,8 +988,9 @@ export const adventureMethods = {
         p.maxMana,
         (p.mana ?? p.maxMana) + (p.hp > 0 ? dt * (8+stat(p,'manaRegen')) : 0),
       );
-      if (!p.room && !p.ui && p.hp > 0) {
+      if (!p.room && !p.ui && p.hp > 0 && !isCharmed(p)) {
         for (const door of this.portals) {
+          if(door.autoEnter===false||door.oldWell)continue;
           door.entryReady ||= [];
           if (dist(p, door) > 34 && !door.entryReady.includes(p.id))
             door.entryReady.push(p.id);
@@ -908,6 +1001,7 @@ export const adventureMethods = {
         }
       }
       p.consumeInput = !!p.ui || !!p.room;
+      if(isCharmed(p)){tickSalvage(this,p,false,dt);p.charge=0;p.previousInput={};continue;}
       if (p.hp <= 0 || p.stun > 0) {
         tickSalvage(this,p,false,dt);
         p.charge = 0;
@@ -951,7 +1045,7 @@ export const adventureMethods = {
         tickSalvage(this,p,!!i.salvage||!!p.ui?.salvagePointer,dt);
       } else if (p.room) {
         tickSalvage(this,p,false,dt);
-        if(templeRoomStep(this,p,i,dt)){p.previousInput={...i};continue;}
+        if(oldWellRoomStep(this,p,i,dt)||templeRoomStep(this,p,i,dt)){p.previousInput={...i};continue;}
         tickStorageRoom(this,p,i,dt,edge('interact'));
       } else if (!p.consumeInput) {
         if(this.openingBoard)faceOpeningBoard(p);else if (!p.sleeping) updateAimFacing(p, i);
@@ -972,20 +1066,16 @@ export const adventureMethods = {
           });
           this.persist();
         }
-        if (
-          this.phase === "play" &&
-          p.progress >= 48 &&
-          dist(p, { x: 800, y: 800 }) < 120 &&
-          i.interact &&
-          !this.nearbyLoot(p)
-        ) {
+        const sealPriority = this.phase === 'play' && p.progress >= 48 && dist(p, {x:800,y:800}) < 120;
+        if (sealPriority && i.interact) {
           p.sealHold = (p.sealHold || 0) + dt;
           if (p.sealHold >= rules.sealHold) this.beginSeal(p);
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
-        if (!this.openingBoard && (edge('interact') || (p.device?.startsWith('pad:') && edge('attack'))) && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
-          const opened = openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p);
+        if(!sealPriority&&!this.openingBoard&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
+        if (!sealPriority && !this.openingBoard && (edge('interact') || (p.device?.startsWith('pad:') && edge('attack')&&!canHitEventTestBoard(this,p))) && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
+          const opened = !!p.ui||openNpcDialogue(this,p)||interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
         if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
@@ -1000,17 +1090,17 @@ export const adventureMethods = {
         if (edge("loot") && l) this.collect(p, l);
         if (i.interact) {
           p.interactTime = (p.interactTime || 0) + dt;
-          if (p.interactTime >= 0.55 && !p.interactUsed && l) {
+          if (!sealPriority && p.interactTime >= 0.55 && !p.interactUsed && l) {
             this.collect(p, l, true);
             p.interactUsed = true;
           }
         } else {
-          if (old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
+          if (!sealPriority && old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if(interactMystery(this,p)||toggleHouseLight(this,p)){}
+            if(openNpcDialogue(this,p)||interactMystery(this,p)||toggleHouseLight(this,p)){}
             else if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
-            else if (openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}
+            else if (interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}
             else if (cutLivingVines(this,p)) { this.onSound('harvest',p); this.message('Vines cut. The path is clear.'); this.persist(); }
             else if (this.victoryChest && dist(p, { x: 800, y: 914 }) < 60)
               this.openInventory(p, "victory");
@@ -1036,17 +1126,18 @@ export const adventureMethods = {
         const sight =
           sightRadius(this, p, rules.visionRadius);
         for (
-          let y = Math.max(0, Math.floor((p.y - sight) / 32));
-          y < Math.min(50, (p.y + sight) / 32);
+          let y = this.mapMode==='boundless'?Math.floor((p.y - sight) / 32):Math.max(0, Math.floor((p.y - sight) / 32));
+          y < (this.mapMode==='boundless'?Math.ceil((p.y + sight) / 32):Math.min(50, (p.y + sight) / 32));
           y++
         )
           for (
-            let x = Math.max(0, Math.floor((p.x - sight) / 32));
-            x < Math.min(50, (p.x + sight) / 32);
+            let x = this.mapMode==='boundless'?Math.floor((p.x - sight) / 32):Math.max(0, Math.floor((p.x - sight) / 32));
+            x < (this.mapMode==='boundless'?Math.ceil((p.x + sight) / 32):Math.min(50, (p.x + sight) / 32));
             x++
           )
             if (Math.hypot(x * 32 + 16 - p.x, y * 32 + 16 - p.y) < sight)
-              this.explored.add(y * 50 + x);
+              this.explored.add(this.mapMode==='boundless'?`${x},${y}`:y * 50 + x);
+        if(this.mapMode==='boundless')while(this.explored.size>40000)this.explored.delete(this.explored.values().next().value);
       }
       p.previousInput = { ...i };
       if (p.consumeInput) {
@@ -1067,9 +1158,10 @@ export const adventureMethods = {
         bolt.x += (bolt.vx / speed) * distance;
         bolt.y += (bolt.vy / speed) * distance;
         bolt.remaining -= distance;
+        if(damageStructureProjectile(this,bolt)){this.persist();bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true)){bolt.life=0;finishMagicBolt(this,bolt,true);break;}
-        const target = [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==bolt.owner&&!p.room):[])].find(
-          (e) => e.hp > 0 && dist(e, bolt) < 16 + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
+        const target = playerCombatTargets(this,bolt).find(
+          (e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,bolt,(bolt.size||6)/2):e.hp > 0 && dist(e, bolt) < 16 + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
         );
         if (target) {
           finishMagicBolt(this,bolt,true);
@@ -1096,8 +1188,9 @@ export const adventureMethods = {
         if (a.enemy!==undefined&&a.enemy!==null) {
           const e = this.enemies.find((e) => e.id === a.enemy);
           if (e) {
-            a.x = e.x + (a.hitOffsetX || 0);
-            a.y = e.y + (a.hitOffsetY || 0);
+            const section=e.kind==='anaconda'&&Number.isInteger(a.anacondaSection)?anacondaBody(e).segments[a.anacondaSection]:null;
+            a.x = section?section.x+(a.sectionOffsetX||0):e.x+(a.hitOffsetX||0);
+            a.y = section?section.y+(a.sectionOffsetY||0):e.y+(a.hitOffsetY||0);
           }
         }
         continue;
@@ -1124,8 +1217,8 @@ export const adventureMethods = {
           a.remove=true;break;
         }
         const target = a.hostile
-          ? [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(p=>p.pet)].find((p) => !p.room && p.hp > 0 && dist(p, a) < 16 && clearShot(this,a,p))
-          : [...this.enemies,...(this.pvp?this.players.filter(p=>p.id!==a.owner&&!p.room):[])].find((e) => e.hp > 0 &&
+          ? [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(p=>p.pet)].find((p) => !p.room && p.hp > 0 && !isCharmed(p) && dist(p, a) < 16 && clearShot(this,a,p))
+          : playerCombatTargets(this,a).find((e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,a,1,a.z):e.hp > 0 &&
             (e.practiceTarget
               ? a.z>0 && Math.hypot(a.x-e.x,(a.y-a.z)-(e.y-18))<23
               : dist(e,a)<19 && a.z<38) && clearShot(this,a,e));
@@ -1147,9 +1240,11 @@ export const adventureMethods = {
             target.flash = 0.2;
             frostImpact(this,a,target);
             if (a.ice && this.random() < 0.35) target.frozen = 1.6;
+            bansheeArrowImpact(this,a,target);
             a.enemy = target.id;
             a.hitOffsetX = a.x - target.x;
             a.hitOffsetY = a.y - target.y;
+            if(target.kind==='anaconda'){a.anacondaSection=anacondaContact(target,a,1).index;const section=anacondaBody(target).segments[a.anacondaSection];a.sectionOffsetX=a.x-section.x;a.sectionOffsetY=a.y-section.y;}
             a.embedDepth = a.embedDepth || 7;
             a.angleJitter = a.angleJitter || 0;
           }
@@ -1179,6 +1274,7 @@ export const adventureMethods = {
       }
     }
     this.arrows = this.arrows.filter((a) => !a.remove);
+    tickSuccubusKisses(this,dt);
   },
   shieldBlocks(p, source) {
     if (!source || !p.blocking) return false;
@@ -1197,14 +1293,14 @@ export const adventureMethods = {
   },
   purchaseVending(p, index) {
     const owner = this.shopOwner(p);
-    if (!owner || p.ui?.shop !== "vending") return false;
+    if (!owner || p.hp <= 0 || p.ui?.shop !== "vending" || p.ui.ownerDevice !== p.device || !this.players.includes(p) || this.players.filter(q => q.device === p.device).length !== 1) return false;
     p.ui.notice = purchaseVending(p, owner, index);
     this.persist();
     return true;
   },
   collectVending(p, id) {
     const owner = this.shopOwner(p);
-    if (!owner) return false;
+    if (!owner || p.hp <= 0 || p.ui?.shop !== 'vending' || p.ui.ownerDevice !== p.device || !this.players.includes(p) || this.players.filter(q => q.device === p.device).length !== 1) return false;
     const order = (p.vendingOrders || []).find(
       (o) =>
         o.owner === (owner.profileId || owner.id) &&
@@ -1222,10 +1318,14 @@ export const adventureMethods = {
     return !!ok;
   },
   openShop(p, shop) {
+    if(shop==='robot'&&openRobotIntroduction(this,p))return true;
     if (!p.room || !["robot", "vending"].includes(shop)) return false;
+    const owner = this.shopOwner(p);
+    if(!owner)return false;
+    if(shop==='robot'&&!robotOnline(owner)){this.message('SCRAP-9 is offline. Hold Interact nearby to repair it.');return false;}
     this.openInventory(p);
     p.ui.shop = shop;
-    const owner = this.shopOwner(p);
+    if (shop === 'vending') { p.ui.vendingView = 'catalog'; delete p.ui.vendingOrderId; }
     owner.robotStock ||= [];
     owner.vendingStock ||= vendingStock();
     p.vendingOrders ||= [];
@@ -1245,7 +1345,8 @@ export const adventureMethods = {
     const tip=wandTipWorld(p,slot,this.time);
     const aim = aimedDirection(this, p, {x:tip.x,y:tip.y+16}, 0.18);
     this.spells.push({
-      owner:p.id,slot,age:0,
+      ...charmShot(p),
+      owner:p.id,slot,age:0,visualSeed:(p.id+1)*977+Math.round(this.time*1000)+(slot==='hand2'?479:0),
       x: tip.x,
       y: tip.y+16,
       vx: aim.x * 260,
@@ -1253,6 +1354,7 @@ export const adventureMethods = {
       life: 3,
       remaining: chargedProjectileRange(charge),
       size: 6 + Math.round(strength * 8),
+      structureCharge: strength,
       damage: Math.round((def.damage+stat(p,'damageBonus')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
       glow: magicBoltGlow(def),
@@ -1267,7 +1369,7 @@ export const adventureMethods = {
     emitNoise(this, p, 'bow', 150);
     const ammoType=consumeQuiver(p);
     if (!ammoType) {
-      this.message("Quiver empty. Load another arrow type in your backpack.");
+      this.message("Out of arrows. Collect or recover more arrows.");
       return false;
     }
     this.onSound("bow",p);
@@ -1282,8 +1384,10 @@ export const adventureMethods = {
     for(const spread of stat(p,'arrowVolley')>=2?[-.16,0,.16]:[0]){
     const angle=Math.atan2(aim.y,aim.x)+spread;
     this.arrows.push({
+      ...charmShot(p),
       owner:p.id,
       ammoType,shaftLength:24,
+      ...bansheeArrowBonus(p),
       id: this.nextId++,
       x: origin.x,
       y: origin.y,
@@ -1342,6 +1446,8 @@ export const adventureMethods = {
     );
   },
   enemyLoot(e) {
+    dropRavenLoot(this,e);
+    dropHiveHoney(this,e);
     if(SCROLL_BOSSES.has(e.kind)||e.frostMage||e.boss){
       const missing=SKILLS.filter(s=>this.players.some(p=>!skillAvailable(p,s.id)));
       const pool=missing.length?missing:SKILLS,skill=pool[Math.floor(this.random()*pool.length)];
@@ -1414,9 +1520,8 @@ export const adventureMethods = {
       drop(e.x, e.y, "bow", 1, "Archer drop");
     }
     if(cfg?.behaviors?.ranged&&(cfg.aiKind||e.kind)!=='skeleton_wizard'){
-      const remaining=enemyQuiver(e),ice=Math.min(remaining,e.iceArrowsLeft||0);
-      if(remaining>ice)arrowDrop(this,{x:e.x,y:e.y,type:'arrow'},remaining-ice,'Enemy quiver');
-      if(ice>0)arrowDrop(this,{x:e.x,y:e.y,type:'ice_arrow'},ice,'Enemy quiver');e.arrowsLeft=0;e.iceArrowsLeft=0;
+      const remaining=enemyQuiver(e);
+      if(remaining>0)arrowDrop(this,{x:e.x,y:e.y,type:'arrow'},remaining,'Enemy quiver');e.arrowsLeft=0;delete e.iceArrowsLeft;
     }
     if (e.kind === "skeleton_boss")
       for (const type of ["moon_blade", "moon_shield", "moon_circlet"])

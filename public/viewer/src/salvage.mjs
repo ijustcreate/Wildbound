@@ -1,7 +1,8 @@
 import {ITEMS,clearSlot,refreshVitals,give} from './items.mjs';
+import {critterContainer} from './critter-containers.mjs';
 export const SALVAGE_SECONDS=1.25;
-export function salvageYield(type){
- if(type?.startsWith('caught_')&&ITEMS[type])return [{type:'dark_essence',qty:1},{type:['frog','dragonfly','fairy'].includes(type.slice(7))?'empty_jar':'critter_cage',qty:1}];
+export function salvageYield(type,metadata={}){
+ if(type?.startsWith('caught_')&&ITEMS[type])return [{type:'dark_essence',qty:1},{type:critterContainer(type,metadata),qty:1}];
  const item=ITEMS[type];if(!item||item.gmOnly||!(item.slot||item.relic))return [];
  const tier=item.rarity||'common',dust={common:1,rare:2,unique:4,legendary:8}[tier]||1;
  const result=[{type:'relic_dust',qty:dust}];
@@ -30,7 +31,7 @@ export function tickSalvage(g,p,held,dt){
  if(!hold)hold=p.salvageHold={item,index:p.ui.index,type:item.type,qty:item.qty,elapsed:0};
  hold.elapsed+=Math.max(0,Math.min(.1,dt));
  if(hold.elapsed+1e-8<SALVAGE_SECONDS)return;
- const drops=[...salvageYield(item.type),...(item.sockets||[]).map(type=>({type,qty:1}))];
+ const drops=[...salvageYield(item.type,item),...(item.sockets||[]).map(type=>({type,qty:1}))];
  // The lobby has a separate practice simulation; world drops there would be
  // invisible and discarded on starting an expedition. Deliver atomically to
  // the real backpack, including returned socketed trinkets.

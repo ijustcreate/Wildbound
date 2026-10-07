@@ -1,6 +1,7 @@
 // Original compositions, not ripped frames from the reference packs.
 const fx=(name,description,style,color,count=18,life=.65,blend='lighter')=>({name,description,fx:'pixel-'+style,count,life,speedX:0,speedY:-12,spread:55,gravity:80,size:8,orbit:18,shape:'sprite',blend,start:color,end:'#eafaff',category:'Pixel FX'});
 export const PIXEL_EFFECTS={
+ 'px-black-hole':{...fx('Black-hole vortex','A black core surrounded by a ragged rotating gold-white ring, spiralling ember arcs and tiny blue orbiting sparks.','black-hole','#ffdc65',16,2.4,'source-over'),speedY:0,gravity:0,spread:52,orbit:20,end:'#bc6a27',loop:true},
  'px-sword-sweep':fx('Sword sweep','A broad ivory blade arc travels across the strike, shedding thin silver chips.','slash','#eef6db',12,.35),
  'px-cross-cut':fx('Cross cut','Two crossing silver arcs snap through a compact contact flash.','cross','#cfecff',14,.4),
  'px-thrust':fx('Piercing thrust','A narrow white spear of light extends forward with parallel speed streaks.','thrust','#dff7ff',12,.3),

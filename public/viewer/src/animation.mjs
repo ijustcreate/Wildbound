@@ -1,5 +1,14 @@
 import {drawGorilla} from './temple.mjs';
+import {humanoidArtStatus} from './humanoid-hd.mjs';
+import {drawAnaconda} from './anaconda-art.mjs';
+import {drawWildFauna} from './wild-fauna-art.mjs';
+import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {companionVisualActor} from './companion-locomotion.mjs';
+import {beastMotions,beastMotionRevisions} from './beast-motion.mjs';
+import {beetleAction,beetleFrame} from './beetle-motion.mjs';
+import {drawBee,drawBeeHive} from './bee-art.mjs';
+import {drawTsetse} from './tsetse-art.mjs';
+import {drawRaven} from './raven-art.mjs';
 import { NIGHT_KINDS, STAMPEDE_KINDS, nightMotions, nightMotionRevisions, nightAction, nightFrame } from './night-rigs.mjs';
 import { ITEMS } from "./items.mjs";
 import {
@@ -39,16 +48,21 @@ export class Animator {
     this.frameCache = new WeakMap();
     this.rigSurface = document.createElement("canvas");
     this.rigSurface.width = this.rigSurface.height = 256;
+    this.humanoidSurface=document.createElement('canvas');
+    this.humanoidSurface.width=this.humanoidSurface.height=512;
     this.stampedeFrames = new Map();
     this.playerFrames = new Map();
     this.playerRevision = playerMotionRevision;
     this.catFrames = new Map();
     this.catRevisions = { lion: lionRevision, tiger: tigerRevision };
+    this.beetleFrames=new Map();this.beetleRevision=beastMotionRevisions.beetle;
     this.stampedeRevision = rhinoMotionRevision;
     this.nightStampedeFrames = new Map();
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
+    if(actor.kind==='imp'){size*=.7;if(actor.hp>0)actor={...actor,y:actor.y-(actor.impFlightHeight??20)};}
+    if(actor.kind==='succubus'&&actor.hp>0&&actor.succubusFlightHeight>0)actor={...actor,y:actor.y-actor.succubusFlightHeight};
     if(actor.kind==='bat'&&actor.roostHeight>0)actor={...actor,y:actor.y-actor.roostHeight};
     if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
     if (this.metrics?.enabled)
@@ -58,6 +72,12 @@ export class Animator {
     return this.drawActor(ctx, actor, time, size);
   }
   drawActor(ctx, actor, time, size = 48) {
+    if(drawRaven(ctx,actor,time,size))return;
+    if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
+    if(WILD_FAUNA_KINDS.includes(actor.kind)){drawWildFauna(ctx,actor,time,size);return;}
+    if(actor.kind==='bee'){drawBee(ctx,actor,time,size);return;}
+    if(actor.kind==='tsetse'){drawTsetse(ctx,actor,time,size);return;}
+    if(actor.kind==='bee_hive'){drawBeeHive(ctx,actor,time,size);return;}
     if(actor.kind==='gorilla'){drawGorilla(ctx,actor,time);return;}
     if(actor.kind==='spider_egg'){
       ctx.save();ctx.translate(actor.x,actor.y);ctx.fillStyle='#afa8bf';ctx.beginPath();ctx.ellipse(0,0,12,15,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f0e8e7';ctx.lineWidth=2;
@@ -66,10 +86,19 @@ export class Animator {
     }
     const nameKey = actor.sprite || actor.kind,
       rig = actor.rigOverride || creatures[nameKey]?.rig;
+    const explicitPose=actor.animationAction||Number.isFinite(actor.playerFrame)||Number.isFinite(actor.poseTime)||Number.isFinite(actor.animationProgress);
     actor=companionVisualActor(actor,rigSubject(nameKey)?.data);
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
     if (rigSubject(nameKey)) {
+      if(nameKey==='beetle'&&!explicitPose&&!actor.rigOverride){
+        if(this.beetleRevision!==beastMotionRevisions.beetle){this.beetleFrames.clear();this.beetleRevision=beastMotionRevisions.beetle;}
+        const model=beastMotions.beetle,action=beetleAction(actor),clip=model.clips[action]||model.clips.idle,raw=beetleFrame(actor,time,model);
+        const frame=Math.floor((clip.loop?(raw%clip.length+clip.length)%clip.length:Math.max(0,Math.min(clip.length-1,raw)))*2)/2;
+        const key=[facingIndex(actor.faceX,actor.faceY),action,frame].join(':');let surface=this.beetleFrames.get(key);
+        if(!surface){surface=document.createElement('canvas');surface.width=surface.height=96;const c=surface.getContext('2d');c.translate(48,48);rigSubject(nameKey).draw(c,{...actor,playerFrame:frame},time,model);if(this.beetleFrames.size>=128)this.beetleFrames.delete(this.beetleFrames.keys().next().value);this.beetleFrames.set(key,surface);}
+        ctx.imageSmoothingEnabled=false;ctx.drawImage(surface,Math.round(actor.x-size),Math.round(actor.y-size),size*2,size*2);return;
+      }
       if (STAMPEDE_KINDS.includes(nameKey) && actor.state === 'stampede' && !actor.aggro &&
           !(actor.flash > 0) && !(actor.hit > 0) && !(actor.hp <= 0) && !actor.dead &&
           !actor.animationAction && !Number.isFinite(actor.playerFrame) && !Number.isFinite(actor.poseTime) &&
@@ -116,6 +145,7 @@ export class Animator {
                 2,
             ) / 2;
         const key = JSON.stringify([
+          humanoidArtStatus().revision,
           facingIndex(actor.faceX, actor.faceY),
           frame,
           actor.equipment,
@@ -130,21 +160,21 @@ export class Animator {
         let surface = this.playerFrames.get(key);
         if (!surface) {
           surface = document.createElement("canvas");
-          surface.width = surface.height = 256;
+          surface.width = surface.height = 384;
           const cc = surface.getContext("2d");
-          cc.translate(128, 128);
+          cc.scale(4,4);cc.translate(48,48);cc.imageSmoothingEnabled=false;
           rigSubject(nameKey).draw(cc, { ...actor, playerFrame: frame }, time);
-          if (this.playerFrames.size >= 96)
+          if (this.playerFrames.size >= 64)
             this.playerFrames.delete(this.playerFrames.keys().next().value);
           this.playerFrames.set(key, surface);
         }
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(
           surface,
-          Math.round(actor.x - (size * 8) / 3),
-          Math.round(actor.y - (size * 8) / 3),
-          (size * 16) / 3,
-          (size * 16) / 3,
+          Math.round(actor.x - size),
+          Math.round(actor.y - size),
+          size * 2,
+          size * 2,
         );
         return;
       }
@@ -244,10 +274,16 @@ export class Animator {
         );
         return;
       }
-      const c = this.rigSurface.getContext("2d");
-      c.clearRect(0, 0, 256, 256);
+      const subject=rigSubject(nameKey),humanoid=!!(subject.data?.joints?.handL&&subject.data?.joints?.footL&&!subject.data.skeleton&&!subject.data.robot);
+      // The test creature's generated fur needs the same detail resolution as
+      // humanoid artwork. Reuse the bounded scratch surface; other beasts stay unchanged.
+      const detailed=humanoid||nameKey==='murk_wolf';
+      const surface=detailed?this.humanoidSurface:this.rigSurface;
+      const c = surface.getContext("2d");
+      c.clearRect(0, 0, surface.width, surface.height);
       c.save();
-      c.translate(128, 128);
+      if(detailed)c.scale(4,4);
+      c.translate(detailed?64:128,detailed?64:128);
       const cfg = creatures[nameKey];
       const motionDuration =
         actor.state === "windup"
@@ -270,11 +306,11 @@ export class Animator {
       c.restore();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
-        this.rigSurface,
-        Math.round(actor.x - (size * 8) / 3),
-        Math.round(actor.y - (size * 8) / 3),
-        (size * 16) / 3,
-        (size * 16) / 3,
+        surface,
+        Math.round(actor.x - size * (detailed?4:8) / 3),
+        Math.round(actor.y - size * (detailed?4:8) / 3),
+        size * (detailed?8:16) / 3,
+        size * (detailed?8:16) / 3,
       );
       return;
     }

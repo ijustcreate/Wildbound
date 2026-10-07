@@ -1,6 +1,41 @@
 import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyCharacterCreator=async()=>{
+    ctx.newLobby();const g=ctx.game,lobby=ctx.playableLobby;
+    const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller'].map((id,index)=>({index,id,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();ctx.keys.clear();
+    try{
+      const heroes=pads.map(pad=>g.addPlayer('pad:'+pad.index));lobby.sync();
+      for(const p of heroes){const s=lobby.state.members.get(p.id);s.panel='create';s.focus=0;lobby.renderPanel(p);}
+      const step=()=>{lobby.update(.02,ctx.inputFrame());};
+      const press=(pad,button)=>{pads[pad].buttons[button]={pressed:true,value:1};step();pads[pad].buttons[button]={pressed:false,value:0};step();};
+      step();const [a,b]=heroes.map(p=>lobby.nodes.get(p.id));
+      if(!a.textContent.includes('A: choose')||!b.textContent.includes('B: choose'))throw Error('Creator families wrong');
+      const row=(panel,label)=>[...panel.querySelectorAll('.creation-select-row')].find(q=>q.textContent.startsWith(label));
+      row(b,'Hair style').click();
+      if(b.querySelectorAll('.creation-option-grid button').length!==19)throw Error('Hair styles missing');
+      const c=b.querySelector('.creation-detail-preview'),before=c.toDataURL();
+      b.querySelector('[data-option-value="afro"]').click();if(c.toDataURL()===before)throw Error('Hair preview did not update');
+      press(1,5);if(!b.querySelector('.creation-popup')||c.toDataURL()===before)throw Error('Preview rotation closed picker');
+      a.querySelector('button').focus();const qBefore=JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook);press(1,13);if(JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook)!==qBefore)throw Error('Other controller changed look');
+      press(1,1);row(b,'Face details').click();if(b.querySelectorAll('.creation-option-grid button').length!==8)throw Error('Face details missing');
+      b.querySelector('[data-option-value="warpaint"]').click();if(lobby.state.members.get(heroes[1].id).creationLook.face!=='warpaint')throw Error('Face selection not applied');press(1,1);
+      b.querySelector('.creation-name button').click();let kb=document.querySelector('#controller-keyboard');
+      if(kb.dataset.ownerDevice!=='pad:1'||!kb.textContent.includes('Y: delete')||!kb.textContent.includes('+: done'))throw Error('Keyboard labels/owner wrong');
+      const nameBefore=kb.querySelector('output').textContent;press(0,0);if(kb.querySelector('output').textContent!==nameBefore)throw Error('Wrong owner typed');
+      press(1,15);const selected=kb.querySelector('.keyboard-selected');if(!selected||selected.textContent!=='2')throw Error('Keyboard selection lost '+JSON.stringify({selected:selected?.textContent,active:document.activeElement?.outerHTML,owner:kb.dataset.ownerDevice,dialogs:[...document.querySelectorAll('dialog[open]')].map(q=>q.id)}));
+      const computed=getComputedStyle(selected);if(computed.backgroundColor!=='rgb(249, 217, 108)')throw Error('Cursor is not high contrast '+JSON.stringify({background:computed.backgroundColor,image:computed.backgroundImage,classes:selected.className,connected:selected.isConnected,parent:selected.parentElement.outerHTML.slice(0,150),matches:selected.matches('#controller-keyboard .controller-keyboard-grid button.keyboard-selected'),rule:[...document.styleSheets].at(-1).cssRules[0].cssText,media:[...document.styleSheets].at(-1).media.mediaText}));
+      press(1,0);if(!kb.querySelector('output').textContent.includes('2'))throw Error('Selected letter not typed');press(1,2);if(kb.querySelector('output').textContent!==nameBefore)throw Error('Nintendo delete not routed');press(1,9);if(document.querySelector('#controller-keyboard'))throw Error('Plus failed to commit name');
+      // The second creation path also uses close-ups and family labels.
+      ctx.nameNewCharacter(heroes[1]);const dialog=document.querySelector('#character-name-dialog');dialog.querySelector('details').open=true;
+      dialog.querySelector('[aria-label="Hair style"]').focus();step();if(dialog.querySelector('canvas').dataset.previewMode!=='hair')throw Error('Drop-in hair close-up missing');
+      dialog.querySelector('[aria-label="Face details"]').focus();step();if(dialog.querySelector('canvas').dataset.previewMode!=='face'||!dialog.textContent.includes('B: choose'))throw Error('Drop-in face close-up/family missing');dialog.querySelector('.name-cancel').click();
+      row(b,'Hair style').click();window.creatorVerification={g,lobby,heroes,a,b,press};
+      return {checks:'Actual inputFrame: Xbox/Switch prompts, 19 hair and 8 face options, live close-ups/rotation, independent look control, keyboard cursor and owner-only typing/delete/Plus commit; drop-in creator close-ups'};
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();ctx.keys.clear();}
+  };
   window.verifyStarterChestControls=async()=>{
     ctx.newLobby();const g=ctx.game,lobby=ctx.playableLobby;
     const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
@@ -665,6 +700,7 @@ export function installDebugTools(ctx) {
         }
         if (view === "storage-chest") ctx.game.openInventory(p, 0);
         if (view === "robot-shop") {
+          p.robotRepaired=true; // Isolated preview of the operational shop.
           ctx.game.openShop(p, "robot");
           p.robotStock = [
             { type: "sword", qty: 1 },
@@ -823,7 +859,7 @@ export function installDebugTools(ctx) {
       });
       check("Music decodes: " + track.name, () => playable);
     }
-    check('Expedition soundtrack offers random and explicit tracks',()=>ctx.$('music-track').value==='random'&&!ctx.$('music-track').disabled&&ctx.MUSIC_TRACKS.length>=11&&ctx.music.loop);
+    check('Expedition soundtrack defaults to adaptive and retains explicit/random choices',()=>ctx.$('music-track').value===(localStorage.getItem('wildbound-level-music')||'adaptive')&&[...ctx.$('music-track').options].some(o=>o.value==='adaptive')&&[...ctx.$('music-track').options].some(o=>o.value==='random')&&!ctx.$('music-track').disabled&&ctx.MUSIC_TRACKS.length>=11&&ctx.music.loop);
     check(
       "Three-player second roll renders water elementals and all heroes at fullscreen size",
       () => {

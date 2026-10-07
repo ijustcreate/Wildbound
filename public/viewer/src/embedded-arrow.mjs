@@ -20,15 +20,10 @@ export function drawFlyingArrow(c,a={},time=0){
  const length=a.shaftLength||24;
  // A short tapered wake stays faint and follows the actual flight orientation.
  c.save();
- for(let i=0;i<5;i++){c.globalAlpha=.13*(1-i/5);c.fillStyle=a.ammoType==='ice_arrow'?'#bcecf3':'#e9e1bd';c.fillRect(-length-4-i*5,-.5,5,1);}
+ for(let i=0;i<5;i++){c.globalAlpha=.13*(1-i/5);c.fillStyle='#e9e1bd';c.fillRect(-length-4-i*5,-.5,5,1);}
  c.restore();
  c.fillStyle='#ba9763';c.fillRect(-length,-.7,length-2,1.4);drawArrowFletching(c,-length+1);
- c.fillStyle=a.ammoType==='ice_arrow'?'#6cd8ff':'#c6d2c8';c.beginPath();c.moveTo(0,0);c.lineTo(-5,-2);c.lineTo(-4,0);c.lineTo(-5,2);c.closePath();c.fill();
- if(a.ammoType==='ice_arrow'){
-  const glow=c.createRadialGradient(-2,0,0,-2,0,5);glow.addColorStop(0,'#bcf7ff88');glow.addColorStop(1,'#69d9ff00');
-  c.fillStyle=glow;c.beginPath();c.arc(-2,0,5,0,Math.PI*2);c.fill();c.fillStyle='#ceffff';
-  for(let i=0;i<3;i++){const phase=time*9+i*2.1;c.fillRect(-3-Math.abs(Math.sin(phase))*6,Math.cos(phase)*4,1,1);}
- }
+ c.fillStyle='#c6d2c8';c.beginPath();c.moveTo(0,0);c.lineTo(-5,-2);c.lineTo(-4,0);c.lineTo(-5,2);c.closePath();c.fill();
 }
 export function drawEmbeddedArrow(c,a,time=0,showQuantity=false){
  c.save();

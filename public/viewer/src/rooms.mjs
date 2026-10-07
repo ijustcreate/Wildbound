@@ -11,6 +11,7 @@ export function snapshot(g) {
     "spriteLibrary",
     "explored",
     "forestLandscape",
+    "boundlessLoadedChunks",
   ]);
   return {
     ...Object.fromEntries(

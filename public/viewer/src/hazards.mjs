@@ -2,10 +2,12 @@ import {tickSnow,drawBlizzard} from './ice-world.mjs';
 import {tickWetWeather,clearWetWeather} from './wet-weather.mjs';
 import {spawnMerchant,tickMerchant} from './traveling-merchant.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
+import {isCharmed} from './succubus-charm.mjs';
 import {advanceShot,clearShot} from './navigation.mjs';
 import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
 import { creatures } from "./definitions.mjs";
+import {stampedeDestruction,tickDestruction} from './structure-destruction.mjs';
 export const HAZARD_EVENTS = [
  {name:'A bargain with the bushes',type:'merchant',kind:'merchant',count:0,weight:5,verse:'A hat, a horse, a fire so bright.\nTrade well before they leave tonight.',tip:'Marlow Moss has set up camp away from the board. He stays until this map ends.'},
  {name:'The dunes take flight',type:'sandstorm',kind:'sandstorm',environment:'desert',count:0,weight:7,duration:45,intensity:1,verse:'The desert shakes its golden mane.\nHold fast until the dunes are tame.',tip:'Sand sweeps across the dunes. Stay together until the storm passes.'},
@@ -67,6 +69,7 @@ export function initHazards(g) {
   g.fireballs = [];
   g.firePatches = [];
   g.fireParticles = [];
+  g.impBombs=[];g.impFireCircles=[];
 }
 export function ignite(target, duration = 2, damage = 3) {
   target.burning = Math.max(target.burning || 0, duration);
@@ -151,6 +154,7 @@ export function startHazard(g, event) {
   return false;
 }
 export function tickHazards(g, dt) {
+  tickDestruction(g,dt);
   tickMerchant(g,dt);
   tickSnow(g,dt);
   for (const b of g.fireballs || []) {
@@ -167,8 +171,10 @@ export function tickHazards(g, dt) {
     for (const p of g.players)
       if (
         b.life > 0 &&
+        !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
+        !((p.jumpHeight||0)>2 || (p.groundHeight||0)>2 || p.flying || p.flightHeight || p.roostHeight) &&
         Math.hypot(p.x - b.x, p.y - b.y) < 18 && clearShot(g,b,p)
       ) {
         if (!g.shieldBlocks(p, b) && p.invuln <= 0) {
@@ -191,6 +197,7 @@ export function tickHazards(g, dt) {
     for (const p of g.players)
       if (
         !p.room &&
+        !((p.jumpHeight||0)>2 || (p.groundHeight||0)>2 || p.flying || p.flightHeight || p.roostHeight) &&
         p.hp > 0 &&
         p.x >= f.x &&
         p.x < f.x + 32 &&
@@ -201,7 +208,7 @@ export function tickHazards(g, dt) {
         ignite(p, 2, f.damage);
       }
     if(f.playerLit)for(const e of g.enemies)
-      if(!e.room&&e.hp>0&&e.x>=f.x&&e.x<f.x+32&&e.y>=f.y&&e.y<f.y+32) {
+      if(!e.room&&e.hp>0&&!((e.jumpHeight||0)>2||(e.groundHeight||0)>2||e.flying||e.flightHeight||e.roostHeight||['bat','bee','wasp','tsetse','dragonfly','fairy','bird','pelican','raven','crow'].includes(e.kind))&&e.x>=f.x&&e.x<f.x+32&&e.y>=f.y&&e.y<f.y+32) {
         damageEnemy(e,f.damage,'fire');e.killedBy=f.ownerId;e.aggro=true;e.flash=.12;
         ignite(e,2,f.damage);
       }
@@ -299,6 +306,7 @@ export function tickHazards(g, dt) {
     for (const p of g.players)
       if (
         b.life > 0 &&
+        !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
         Math.hypot(p.x - b.x, p.y - b.y) < 18 && clearShot(g,b,p)
@@ -330,6 +338,7 @@ export function tickHazards(g, dt) {
     b.life -= dt;
     for (const p of g.players)
       if (
+        !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
         b.z < 30 &&
@@ -343,6 +352,7 @@ export function tickHazards(g, dt) {
   g.bananas = g.bananas.filter((b) => b.life > 0);
   for (const e of g.enemies)
     if ((e.stampeding || e.kind === "rhino") && !e.aggro && e.hp > 0) {
+      const from={x:e.x,y:e.y};
       e.x += e.runDirection * e.speed * dt;
       e.y =
         e.lane -
@@ -351,6 +361,7 @@ export function tickHazards(g, dt) {
           : 0);
       e.step += e.speed * dt * 0.13;
       e.moving = true;
+      stampedeDestruction(g,e,from);
       for (const p of g.players)
         if (!p.room && Math.hypot(e.x - p.x, e.y - p.y) < 28)
           g.hurt(p, e.damage, e);

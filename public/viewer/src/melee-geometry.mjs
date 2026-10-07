@@ -1,4 +1,5 @@
 import { ITEMS, itemKind } from './items.mjs';
+import {anacondaMeleeSections} from './anaconda-body.mjs';
 
 export function meleeProfile(actor) {
   const ids = [actor.equipment?.hand1, actor.equipment?.hand2].filter(Boolean);
@@ -15,6 +16,10 @@ export function meleeBodyRadius(target) {
   return ({dragon:42,elephant:38,rhino:34,golem:26,gorilla:26,lion:24,white_lion:24,tiger:24,panther:22,snow_leopard:22,wolf:18,baby_spider:6})[target.kind]??(target.kind?14:target.device?12:0);
 }
 export function meleeContact(actor,target,profile=meleeProfile(actor)) {
+  if(target.kind==='anaconda'&&!Number.isFinite(target.hitRadius)){
+    for(const p of anacondaMeleeSections(target)){const hit=meleeContact(actor,{...p,hitRadius:p.radius},profile);if(hit)return hit;}
+    return null;
+  }
   const dx=target.x-actor.x,dy=target.y-actor.y;
   const facing=Math.atan2(actor.faceY||0,actor.faceX||0);
   const relative=Math.atan2(Math.sin(Math.atan2(dy,dx)-facing),Math.cos(Math.atan2(dy,dx)-facing));
@@ -27,6 +32,10 @@ export function meleeTargetInArc(actor,target,profile=meleeProfile(actor)) {
   return !!meleeContact(actor,target,profile);
 }
 export function meleeCanHit(actor,target,profile,visible) {
+  if(target.kind==='anaconda'&&!Number.isFinite(target.hitRadius)){
+    for(const p of anacondaMeleeSections(target))if(meleeCanHit(actor,{...p,hitRadius:p.radius},profile,visible))return true;
+    return false;
+  }
   const contact=meleeContact(actor,target,profile);if(!contact)return false;
   const radius=meleeBodyRadius(target);
   // Stop at the near surface of the body, not at a center hidden behind a frame.

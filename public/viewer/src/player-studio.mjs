@@ -1146,12 +1146,15 @@ export class RigStudio {
       this.surface = document.createElement("canvas");
       this.surface.width = this.surface.height = 96;
     }
+    const partDensity=this.subject==='murk_wolf'?2:1;
+    if(this.surface.width!==96*partDensity)this.surface.width=this.surface.height=96*partDensity;
     const sc = this.surface.getContext("2d"),
       pose = this.pose(),
       actor = this.actor();
     const paint = (p, alpha = 1) => {
-      sc.clearRect(0, 0, 96, 96);
+      sc.clearRect(0, 0, this.surface.width, this.surface.height);
       sc.save();
+      sc.scale(partDensity,partDensity);
       sc.translate(48, 64);
       captureLayers(this.model);
       try { this.definition.draw(sc, actor, this.frame/(this.model.clips[this.clip].fps||12), this.model, p); }

@@ -1,5 +1,8 @@
 import { ITEMS, itemKind } from "./items.mjs";
 import { mixGearColor, paintGearIcon } from './gear-art.mjs';
+import {paintSuccubusItem} from './succubus-attachments.mjs';
+import {detailRaster,materialIndex,humanoidArtStatus} from './humanoid-hd.mjs';
+import {paintKeeperItem} from './keeper-gear-art.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -24,6 +27,8 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if(paintKeeperItem(c,type))return;
+  if(paintSuccubusItem(c,type))return;
   if(type==='unknown_mushroom'){c.fillStyle='#30253e';c.fillRect(7,13,11,9);c.fillRect(2,7,20,9);c.fillRect(6,3,12,7);c.fillStyle='#d9c5a0';c.fillRect(9,14,7,6);c.fillStyle='#9653bc';c.fillRect(3,8,18,6);c.fillRect(7,4,10,6);c.fillStyle='#e5c9ff';c.fillRect(7,6,3,3);c.fillRect(15,9,3,3);c.fillRect(3,10,2,2);return;}
   if(type==='dark_essence'){c.fillStyle='#2d173e';c.fillRect(8,5,8,15);c.fillRect(5,9,14,7);c.fillStyle='#8c4dcc';c.fillRect(9,6,5,12);c.fillRect(6,10,11,4);c.fillStyle='#e1b4ff';c.fillRect(10,7,2,5);c.fillRect(7,10,2,2);return;}
   if(ITEMS[type]?.boomerang){c.fillStyle='#352b21';for(let i=0;i<9;i++){c.fillRect(3+i,15-i,4,5);c.fillRect(12+i,7+i,4,5);}c.fillStyle=ITEMS[type].artColor;for(let i=0;i<9;i++){c.fillRect(4+i,15-i,2,3);c.fillRect(13+i,7+i,2,3);}return;}
@@ -64,14 +69,54 @@ export function paintItem(c, type) {
   }
 }
 function paintItemBase(c, type) {
-  if(type==='ice_arrow'){
-    paintItemBase(c,'arrow');c.fillStyle='#397cba';c.fillRect(16,1,6,5);c.fillStyle='#b6f4ff';c.fillRect(18,2,4,2);c.fillStyle='#70d7ff';c.fillRect(20,4,2,5);c.fillRect(13,2,2,2);return;
+  if(type==='coffin_lid_shield') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    // Narrow head, broad shoulders and a tapered foot: a coffin lid, not a kite.
+    for(const [x,y,w,h] of [[9,2,6,2],[7,4,10,2],[5,6,14,3],[6,9,12,3],[7,12,10,4],[8,16,8,5],[9,21,6,1]]) {
+      r(x,y,w,h,'#352c27');r(x+1,y,w-2,h,'#896143');r(x+1,y,1,h,'#bc9262');r(x+w-2,y,1,h,'#654731');
+    }
+    r(9,5,1,15,'#5c402e');r(12,3,1,18,'#5c402e');r(14,9,1,10,'#ac8054');
+    for(const [x,y,w] of [[6,7,12],[8,16,8]]) {
+      r(x,y,w,2,'#465157');r(x,y,w,1,'#8e9895');
+      r(x+1,y,1,1,'#d4d4ba');r(x+w-2,y,1,1,'#d4d4ba');
+    }
+    r(11,11,3,3,'#465157');r(12,11,1,2,'#a5aaa1');return;
   }
+  if(type==='crypt_flame_sword') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(11,2,2,1,'#f0dfbd');r(10,3,4,12,'#5e5b50');r(11,3,2,12,'#d4bea0');
+    r(11,3,1,11,'#f0dfbd');r(7,14,10,3,'#4d3e32');r(8,14,8,1,'#c8a060');
+    r(11,17,3,5,'#4d3428');r(11,17,1,4,'#986a46');r(10,21,5,2,'#bd8e54');
+    // Detached square embers leave the warm steel silhouette readable.
+    for(const [x,y] of [[7,3],[15,6],[8,10],[16,11]]) {r(x,y,2,2,'#e67538');r(x,y,1,1,'#ffd17b');}
+    r(14,2,1,2,'#f8ad50');r(6,8,1,1,'#ffd17b');return;
+  }
+  if(type==='caught_grave_moth'||type==='caught_crypt_beetle') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(7,3,10,3,'#a78a56');r(5,7,14,15,'#4b827d');r(6,8,12,13,'#739d96');
+    r(7,8,1,11,'#d0efdf');r(5,21,14,2,'#b1d8c8');
+    if(type==='caught_grave_moth') {
+      r(9,11,3,5,'#b8a38d');r(13,11,3,5,'#b8a38d');r(10,16,5,2,'#8d7a70');
+      r(12,11,1,7,'#4e414e');r(10,12,1,1,'#e2cfb3');r(14,12,1,1,'#e2cfb3');
+    } else {
+      r(10,13,6,5,'#3c3549');r(11,12,4,6,'#877b9b');r(12,13,1,5,'#4e414e');
+      r(9,14,1,1,'#3c3549');r(16,14,1,1,'#3c3549');r(11,11,3,2,'#514357');r(11,13,1,2,'#bcadc3');
+    }
+    return;
+  }
+  if(type==='honeycomb'){
+    const rows=['0011100','0111110','1111111','1111111','0111110','0011100'];
+    for(const [cx,cy]of [[3,3],[10,3],[17,3],[3,10],[10,10],[17,10]])
+      rows.forEach((row,y)=>{for(let x=0;x<row.length;x++)if(row[x]==='1'){
+        const edge=y===0||y===5||row[x-1]!=='1'||row[x+1]!=='1';
+        c.fillStyle=edge?'#f9e6ac':y<3?'#efb840':'#be7925';c.fillRect(cx+x-3,cy+y,1,1);
+      }});
+    c.fillStyle='#f3bf45';c.fillRect(16,15,2,5);c.fillRect(15,19,4,2);
+    c.fillStyle='#ffe39a';c.fillRect(16,17,1,3);return;
+  }
+  if(ITEMS[type]?.bansheeGear&&paintGearIcon(c,type))return;
   if(type==='raw_ice'){
     c.fillStyle='#559bb9';c.fillRect(5,9,14,12);c.fillRect(8,5,9,4);c.fillStyle='#91d5e9';c.fillRect(6,10,11,9);c.fillRect(9,6,7,4);c.fillStyle='#defbff';c.fillRect(7,10,3,7);c.fillRect(10,6,2,4);return;
-  }
-  if(type==='ice_arrow_recipe'){
-    c.fillStyle='#947a50';c.fillRect(4,3,16,19);c.fillStyle='#e5dcad';c.fillRect(5,4,14,17);c.fillStyle='#eafaff';c.fillRect(3,2,17,3);c.fillStyle='#368cb2';c.fillRect(11,7,2,11);c.fillRect(8,11,8,2);c.fillRect(9,8,6,2);c.fillRect(8,16,2,3);return;
   }
   if(ITEMS[type]?.supplyOnly){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},color=ITEMS[type].artColor;
@@ -191,6 +236,10 @@ function paintItemBase(c, type) {
   switch (type) {
     case 'critter_net':
       line(5,23,12,11,'#a27d4f',2);line(8,3,18,3,'#c3ccb5',2);line(7,4,7,11,'#c3ccb5',2);line(19,4,19,11,'#c3ccb5',2);line(8,12,18,12,'#c3ccb5',2);for(let i=9;i<19;i+=3)line(i,4,i,11,'#8daba3');line(8,7,18,7,'#8daba3');break;
+    case 'caught_fish':
+      r(7,3,10,3,'#a78a56');r(5,7,14,15,'#4b827d');r(7,7,10,14,'#9bcbc180');r(7,8,2,11,'#d0efdf');r(5,21,14,2,'#b1d8c8');r(8,12,3,6,'#4f9cc0');r(11,12,7,5,'#84d6dc');r(15,13,2,2,'#173f54');r(12,11,3,1,'#e6cf83');break;
+    case 'caught_crab':
+      r(3,7,19,15,'#493e2e');r(9,13,8,5,'#dc8862');r(7,11,3,3,'#efb77e');r(17,11,3,3,'#efb77e');r(8,18,3,1,'#df9e70');r(16,18,3,1,'#df9e70');for(let i=4;i<23;i+=4)r(i,7,1,15,'#bea775');r(3,6,19,2,'#bea775');r(3,21,19,2,'#bea775');r(10,3,5,3,'#bea775');break;
     case 'empty_jar': case 'caught_frog': case 'caught_dragonfly': case 'caught_fairy':
       r(7,3,10,3,'#a78a56');r(5,7,14,15,'#4b827d');r(7,7,10,14,'#9bcbc180');r(7,8,2,11,'#d0efdf');r(5,21,14,2,'#b1d8c8');if(type!=='empty_jar'){r(10,13,type==='caught_frog'?5:3,5,type==='caught_fairy'?'#c7a1dd':type==='caught_dragonfly'?'#85c6cd':'#759c51');r(10,12,1,1,'#f3eebb');r(14,12,1,1,'#f3eebb');}break;
     case 'critter_cage': case 'caught_bird': case 'caught_white_mouse': case 'caught_scavenger':
@@ -659,7 +708,11 @@ export function drawItem(c, type, x, y, size = 24, dye = null) {
 // Retain authored silhouettes but add subpixel bevels at twice their native
 // resolution. Cached once per item/dye, never rebuilt for each inventory frame.
 export function detailedItemCanvas(type,dye=null){
- const key='detail:'+type+':'+(dye||'');if(cache.has(key))return cache.get(key);
+ const status=humanoidArtStatus(),key='detail:'+status.revision+':'+type+':'+(dye||'');if(cache.has(key))return cache.get(key);
+ if(status.ready&&ITEMS[type]?.slot){
+  const out=detailRaster(itemCanvas(type,dye),materialIndex(type),4);
+  if(cache.size>=512)cache.delete(cache.keys().next().value);cache.set(key,out);return out;
+ }
  const base=itemCanvas(type,dye),out=document.createElement('canvas');out.width=out.height=48;
  const ctx=out.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(base,0,0,48,48);
  if(ctx.getImageData&&ctx.putImageData){

@@ -1,7 +1,8 @@
 import {RIG_SUBJECTS, rigSubject} from './src/rig-subjects.mjs';
-import {creatures, applyDefinitions} from './src/definitions.mjs';
+import {creatures} from './src/definitions.mjs';
 import {Assets} from './src/assets.mjs';
 import {Animator} from './src/animation.mjs';
+import {prepareRuntime} from './runtime.mjs';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage');
@@ -253,16 +254,8 @@ $('feedback-form').addEventListener('submit',async event=>{
 });
 
 try{
-  const sourcePaths=['./authored/rigs.json','./src/player-motion.mjs','./src/human-head.mjs','./src/ik.mjs'];
-  const [sourceTexts]=await Promise.all([
-    Promise.all(sourcePaths.map(async path=>{const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw Error('Rig source could not be loaded');return response.text();})),
-    assets.load(),
-  ]);
-  const [rigText]=sourceTexts;
-  const rigs=JSON.parse(rigText);
-  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(sourceTexts.join('\n---rig-source---\n')));
-  rigRevision=[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('').slice(0,16);
-  applyDefinitions(rigs,[],{},{spriteOverrides:false});
+  const snapshot=await prepareRuntime(assets);
+  rigRevision=snapshot.revision;
   $('roster-count').textContent=`${units.length} units`;
-  makeCards();selectUnit(Math.max(0,units.findIndex(unit=>unit.id===(new URLSearchParams(location.search).get('unit')||'panther'))));requestAnimationFrame(tick);
+  makeCards();selectUnit(Math.max(0,units.findIndex(unit=>unit.id===(new URLSearchParams(location.search).get('unit')||'player'))));requestAnimationFrame(tick);
 }catch(error){$('unit-name').textContent='Viewer could not load';$('status').textContent=error.message;console.error(error);}

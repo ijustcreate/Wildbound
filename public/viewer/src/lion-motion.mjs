@@ -1,5 +1,6 @@
 import {withCompanionClips} from './companion-motion.mjs';
 import { paintLayers } from "./render-order.mjs";
+import {pixelVolume,pixelPolygon,pixelLine} from './pixel-shapes.mjs';
 import { validateSprite } from "./pixels.mjs";
 import {
   poseAt,
@@ -414,6 +415,7 @@ export function drawLion(
       pal.body,
     );
     limb(c, p.chest, p.neck, s.bodyRadius * 1.5, pal.body);
+    if(!tiger&&!panther)for(const n of ['pelvis','chest'])pixelVolume(c,pose[n],s.bodyRadius,8,s.bodyRadius,direction,{body:pal.body,shade:pal.bodyShade,light:pal.head,outline:pal.outline});
     if(panther){
       const ax=p.pelvis.x,ay=p.pelvis.y,bx=p.chest.x,by=p.chest.y;
       c.fillStyle=pal.highlight||'#66727a';
@@ -440,6 +442,14 @@ export function drawLion(
       s.maneRadius - 0.5,
       pal.mane,
     );
+    if(!panther){
+      // Layered pointed locks break the old perfectly round mane silhouette.
+      for(let ring=0;ring<2;ring++)for(let i=0;i<14;i++){
+        const a=i*Math.PI*2/14+ring*.2,r=s.maneRadius*(ring?.62:.9),x=h.x+Math.cos(a)*r,y=h.y+Math.sin(a)*r*1.08;
+        pixelPolygon(c,[{x:x-Math.sin(a)*2.4,y:y+Math.cos(a)*2.4},{x:h.x+Math.cos(a)*(r+3-ring),y:h.y+Math.sin(a)*(r+3-ring)*1.12},{x:x+Math.sin(a)*2.4,y:y-Math.cos(a)*2.4},{x:h.x+Math.cos(a)*(r-4),y:h.y+Math.sin(a)*(r-4)}],(i+ring)%3?pal.mane:pal.maneShade);
+        if(i<7)pixelLine(c,{x,y:y-1},{x:h.x+Math.cos(a)*(r+1),y:h.y+Math.sin(a)*(r+1)*1.08},pal.headShade);
+      }
+    }
   }, "Mane", "head", ["head","neck"]);
   add(headDepth + 0.01, () => {
     const visible = (name) => model.visibility?.[name]?.[direction] !== false;
@@ -473,11 +483,20 @@ export function drawLion(
     const muzzle = p.muzzle;
     if (visible("muzzle"))
       ellipse(c, muzzle.x, muzzle.y, 2.8, 2.1, pal.muzzle || "#f7d997");
+    if(!tiger&&!panther&&visible('muzzle')){
+      for(const side of [-1,1])ellipse(c,muzzle.x+side*2,muzzle.y,2.3,2.2,pal.muzzle||'#f6dda3');
+      pixelLine(c,{x:muzzle.x-2,y:muzzle.y+3},{x:muzzle.x+2,y:muzzle.y+3},pal.outline);
+      if(['bite','windup','pounce'].includes(lionAction(actor))){
+        c.fillStyle=pal.outline;c.fillRect(Math.round(muzzle.x)-3,Math.round(muzzle.y)+1,6,4);
+        for(const side of [-1,1])pixelPolygon(c,[{x:muzzle.x+side*2-1,y:muzzle.y+1},{x:muzzle.x+side*2+1,y:muzzle.y+1},{x:muzzle.x+side*2,y:muzzle.y+4}],'#fff0c8');
+      }
+    }
     if(panther&&visible('muzzle')){c.fillStyle=pal.claw||'#d9d2b9';for(const side of [-1,1]){c.fillRect(Math.round(muzzle.x)+side*4,Math.round(muzzle.y),3,1);c.fillRect(Math.round(muzzle.x)+side*4,Math.round(muzzle.y)+2,2,1);}}
     for (const name of ["eyeL", "eyeR"])
       if (visible(name)) {
         c.fillStyle = pal.outline;
         c.fillRect(Math.round(p[name].x), Math.round(p[name].y), 1, 1);
+        if(!tiger&&!panther){c.fillStyle='#f6d480';c.fillRect(Math.round(p[name].x)-1,Math.round(p[name].y),1,1);pixelLine(c,{x:p[name].x-2,y:p[name].y-2},{x:p[name].x+1,y:p[name].y-1},pal.headShade);}
       }
     const nose = p.nose;
     if (visible("nose")) {

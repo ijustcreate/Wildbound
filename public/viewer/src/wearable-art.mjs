@@ -1,7 +1,11 @@
 import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
+import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
+import {drawSuccubusHorns} from './succubus-attachments.mjs';
+import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
+  if(detailedProcedural(c,p.chest,pen=>wearableDetails(pen,p,gear,look,d,time,cosmetics),materialIndex(gear.chest||gear.pants)))return;
   const back = d >= 3 && d <= 5,
     side = d === 2 || d === 6;
   const rect = (x, y, w, h, color) => {
@@ -10,7 +14,8 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
   };
   const chest = p.chest,
     head = p.head;
-  if (gear.chest) {
+  if(ITEMS[gear.chest]?.bansheeGear)bansheeCuirass(c,p,d,gearPalette(gear.chest,cosmetics.dye),look?.skin||'#85b9cd');
+  else if (gear.chest) {
     // Decoration follows the torso instead of stamping a second torso above it.
     const bottom = p.pelvis;
     const material=gearPalette(gear.chest,cosmetics.dye),style=ITEMS[gear.chest]?.style;
@@ -73,10 +78,13 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
 export function directionalHelmet(c, id, h, d, cosmetics = {}) {
   const def=ITEMS[id];
   if(!def) return false;
+  if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics),materialIndex(id,'metal')))return true;
   const p=gearPalette(id,cosmetics.dye),r=gearPixels(c,h);
   const back=d>=3&&d<=5,side=d===2||d===6;
   const front=d===0?0:d<4?-3:3;
   const style=def.style||'brim';
+  if(style==='succubus_horns'){drawSuccubusHorns(c,h,d,def.hornsPalette);return true;}
+  if(def.bansheeGear){bansheeHood(c,h,d,p);return true;}
   if(def.warlockGear){
     // Pointed cloth cowl, open face, layered hem; rear view has no floating eyes.
     r(-1,-11,3,1,p.ink);r(-3,-10,7,1,p.ink);r(-5,-9,11,2,p.ink);
@@ -88,6 +96,12 @@ export function directionalHelmet(c, id, h, d, cosmetics = {}) {
       r(-3,-3,side?4:7,2,p.dark);r(side?(d===2?-2:2):-2,-2,1,1,'#91d9bc');if(!side)r(2,-2,1,1,'#91d9bc');
     }
     r(-5,4,11,1,p.ink);r(-4,3,9,1,p.base);r(front,-8,1,2,'#baa780');return true;
+  }
+  if(style==='halo') {
+    const y=-12,w=side?5:7;
+    r(-w+2,y,w*2-3,1,'#fff9d8');r(-w,y+1,2,3,'#ffe8a0');r(w-1,y+1,2,3,'#d5ae59');
+    r(-w+1,y+4,w*2-1,1,'#ffe8a0');r(-w+2,y+4,w*2-3,1,'#fff9d8');
+    return true;
   }
   if(style==='circlet'||style==='crown') {
     r(-6,-4,13,3,p.ink);r(-5,-4,11,1,p.light);r(-5,-3,11,1,p.base);

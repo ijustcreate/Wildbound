@@ -15,7 +15,7 @@ export const LOBBY_FIXTURES=[
  {id:'television',x:709,y:101,w:152,h:94},
  {id:'difficulty',x:934,y:100,w:42,h:76},
  {id:'target-lever',x:450,y:514,w:30,h:41},
- {id:'starter-chest',x:892,y:488,w:116,h:52},
+ {id:'starter-chest',x:892,y:516,w:116,h:52},
 ];
 
 // A separate simulation uses the real combat/movement code without touching saves.

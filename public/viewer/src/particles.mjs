@@ -53,6 +53,7 @@ export function drawParticleEffect(c,id,x,y,time,seed=0){
  const spend=()=>{if(frame){if(frame.draws>=frame.budget)return false;frame.draws++;}return true;};
  if(effect.fx&&effect.shape==='sprite'){
   const stamp=(sprite,px,py,w,h,angle,opacity)=>{if(!spend())return;if(frame?.reducedMotion){angle=0;opacity*=.55;}c.globalAlpha=alpha*opacity;c.save();c.translate(px,py);if(angle)c.rotate(angle);if(sprite)c.drawImage(sprite,-w/2,-h/2,w,h);else{c.fillStyle=effect.start;c.fillRect(-2,-2,4,4);}c.restore();};
+  if(frame?.reducedMotion&&effect.fx==='pixel-black-hole')time=effect.life*.5;
   const quality=frame?.quality??1;const draw=effect.fx.startsWith('pixel-')?drawPixelFX:drawCartoonFX;draw(c,effect,time,seed,stamp,Math.max(1,Math.floor(effect.count*quality)));c.restore();return;
  }
  let palette=palettes.get(effect);if(!palette||palette.start!==effect.start||palette.end!==effect.end){const a=rgb(effect.start),b=rgb(effect.end);palette={start:effect.start,end:effect.end,colors:Array.from({length:16},(_,n)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*n/15)).join(',')})`)};palettes.set(effect,palette);}

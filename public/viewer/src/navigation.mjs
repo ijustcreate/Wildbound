@@ -1,16 +1,17 @@
 import {rigSubject} from './rig-subjects.mjs';
+import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {creatures} from './definitions.mjs';
 import {startJump} from './jumping.mjs';
 import {furnitureHeight} from './house-design.mjs';
-export const collisionOffset=(g,e)=>(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
-export const actorRadius=e=>e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
-export const usesDoors=e=>['hunter','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
+export const collisionOffset=(g,e)=>e.kind==='anaconda'||e.kind==='succubus'||e.kind==='imp'||e.kind==='zombie'||WILD_FAUNA_KINDS.includes(e.kind)?0:(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
+export const actorRadius=e=>e.kind==='anaconda'?16:e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
+export const usesDoors=e=>['hunter','banshee_queen','succubus','imp','zombie','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
 export const flies=e=>['pelican','bat','wasp','bee','dragon'].includes(e.kind);
 export function clearShot(g,a,b,r=2){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.max(1,Math.ceil(d/4));for(let i=1;i<n;i++)if(g.projectileBlocked(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,r))return false;return true;}
 export function advanceShot(g,b,dt,r=2){const dx=b.vx*dt,dy=b.vy*dt,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));for(let i=0;i<n;i++){const x=b.x+dx/n,y=b.y+dy/n;if(g.projectileBlocked(x,y,r,true)){b.life=0;return false;}b.x=x;b.y=y;}return true;}
 const caches=new WeakMap(),routes=new WeakMap();
 function gridFor(g,e){
- const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+Math.floor((g.time||0)/2);
+ const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+(g.house?.destructionRevision||0)+':'+Math.floor((g.time||0)/2);
  let cache=caches.get(g);if(!cache||cache.house!==g.house||cache.signature!==signature){cache={house:g.house,signature,grids:new Map()};caches.set(g,cache);}
  const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),jump=!!creatures[e.kind]?.behaviors.jump,key=[radius,door,flying,jump].join(':');
  if(!cache.grids.has(key)){const grid=new Uint8Array(2500);for(let y=0;y<50;y++)for(let x=0;x<50;x++)grid[y*50+x]=!g.blocked(x*32+16,y*32+16,radius,flying,false,door,collisionOffset(g,e),jump?20:0);cache.grids.set(key,grid);}

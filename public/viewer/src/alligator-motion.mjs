@@ -1,4 +1,5 @@
 import { paintLayers } from "./render-order.mjs";
+import {pixelVolume,pixelPolygon,pixelLine} from './pixel-shapes.mjs';
 import { defaultLionMotion, lionFrame, lionAction } from "./lion-motion.mjs";
 import {
   poseAt,
@@ -123,6 +124,8 @@ export function drawAlligator(
     }, y === "tailTip" ? "Tail tip" : "Tail base", x, [x, y]);
   add((p.pelvis.depth + p.chest.depth) / 2, () => {
     limb(c, p.pelvis, p.chest, s.bodyWidth, pal.body);
+    const skin={...pal,outline:pal.shade};
+    pixelVolume(c,pose.pelvis,s.bodyWidth*.53,11,4.5,d,skin);pixelVolume(c,pose.chest,s.bodyWidth*.52,10,5,d,skin);
     for (let i = 0; i < 5; i++) {
       const t = i / 4;
       ellipse(
@@ -133,6 +136,10 @@ export function drawAlligator(
         1,
         pal.light,
       );
+    }
+    for(let i=0;i<7;i++)for(const side of [-1,0,1]){
+      const t=i/6,v=pose.pelvis.map((n,k)=>n+(pose.chest[k]-n)*t);v[0]+=side*s.bodyWidth*.27;v[2]+=5;
+      const at=projectPoint(v,d);pixelPolygon(c,[{x:at.x-2,y:at.y+1},{x:at.x,y:at.y-2},{x:at.x+2,y:at.y+1}],i%2?pal.light:pal.shade);
     }
   }, "Body", "chest", ["pelvis", "chest"]);
   add(p.head.depth, () => {
@@ -147,10 +154,17 @@ export function drawAlligator(
         1,
         pal.mouth,
       );
+      const open=['bite','lunge','windup'].includes(action)?(action==='windup'?2:3+Math.sin(Math.min(1,frame/7)*Math.PI)*3):0;
+      const jawA={x:p.face.x,y:p.face.y+2},jawB={x:p.nose.x,y:p.nose.y+2};
+      pixelLine(c,jawA,jawB,pal.shade,s.headWidth*1.7);
+      if(open>0)pixelLine(c,{x:jawA.x,y:jawA.y+open},{x:jawB.x,y:jawB.y+open},pal.body,s.headWidth*1.6);
+      pixelVolume(c,pose.face,s.headWidth*1.2,7,3,d,{...pal,outline:pal.shade});pixelVolume(c,pose.muzzle,s.headWidth,6,2,d,{...pal,outline:pal.shade});
+      for(let i=1;i<=5;i++){const t=i/6,x=jawA.x+(jawB.x-jawA.x)*t,y=jawA.y+(jawB.y-jawA.y)*t;for(const side of [-1,1]){const xx=x+side*(s.headWidth*.5);pixelPolygon(c,[{x:xx-1,y},{x:xx+1,y},{x:xx,y:y+Math.max(1,open*.6)}],pal.mouth);}}
+      pixelLine(c,{x:jawA.x-2,y:jawA.y},{x:jawB.x-2,y:jawB.y},pal.shade);
     }
     if (visible("nose")) ellipse(c, p.nose.x, p.nose.y, 2, 1, pal.shade);
     for (const n of ["eyeL", "eyeR"])
-      if (visible(n)) ellipse(c, p[n].x, p[n].y, 1.4, 1.1, pal.eyes);
+      if (visible(n)){ellipse(c,p[n].x,p[n].y,2,1.5,pal.eyes);c.fillStyle=pal.shade;c.fillRect(Math.round(p[n].x),Math.round(p[n].y)-1,1,2);pixelLine(c,{x:p[n].x-2,y:p[n].y-2},{x:p[n].x+2,y:p[n].y-1},pal.light);}
   }, "Head", "head", ["head", "neck"]);
   paintLayers(q, m, d, c, p);
   return p;

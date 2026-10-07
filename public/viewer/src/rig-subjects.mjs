@@ -1,5 +1,10 @@
 import {wolfMotion, defaultWolfMotion, replaceWolfMotion, drawWolf} from './wolf-motion.mjs';
+import {murkWolfMotion, defaultMurkWolfMotion, replaceMurkWolfMotion, drawMurkWolf} from './murk-wolf-motion.mjs';
 import {warlockMotion,defaultWarlockMotion,replaceWarlockMotion,drawWarlock} from './warlock-motion.mjs';
+import {bansheeMotion,defaultBansheeMotion,replaceBansheeMotion,drawBanshee} from './banshee-motion.mjs';
+import {succubusMotion,defaultSuccubusMotion,replaceSuccubusMotion,drawSuccubus} from './succubus-motion.mjs';
+import {impMotion,defaultImpMotion,replaceImpMotion,drawImp} from './imp-motion.mjs';
+import {zombieMotion,defaultZombieMotion,replaceZombieMotion,drawZombie} from './zombie-motion.mjs';
 import { NIGHT_KINDS, nightMotions, nightRigLabels, defaultNightMotion, replaceNightMotion, drawNightRig } from './night-rigs.mjs';
 import {
   BEAST_KINDS,
@@ -55,6 +60,11 @@ import {
   creatureRigLabels,
 } from "./creature-motion.mjs";
 export const RIG_SUBJECTS = {
+  murk_wolf:{name:'Murk Wolf / motion transfer test',data:murkWolfMotion,defaults:defaultMurkWolfMotion,replace:replaceMurkWolfMotion,draw:drawMurkWolf,sprite:'murk_wolf',selected:'head',palette:Object.keys(murkWolfMotion.palette),shapeKeys:Object.keys(murkWolfMotion.shape),tracks:['frontPawL','frontPawR','rearPawL','rearPawR','jawTip'],clip:'run',scale:6},
+  zombie:{name:'Zombie / shambling humanoid',data:zombieMotion,defaults:defaultZombieMotion,replace:replaceZombieMotion,draw:drawZombie,sprite:'zombie',selected:'handR',palette:['head','body','arms','legs'],tracks:['handR','handL','footR','footL'],clip:'walk',scale:5},
+  succubus:{name:'Succubus / winged humanoid',data:succubusMotion,defaults:defaultSuccubusMotion,replace:replaceSuccubusMotion,draw:drawSuccubus,sprite:'succubus',selected:'wingTipL',palette:['head','body','arms','legs'],tracks:['handL','handR','wingTipL','wingTipR','tailTip'],clip:'fly',scale:5},
+  imp:{name:'Ember imp / small winged demon',data:impMotion,defaults:defaultImpMotion,replace:replaceImpMotion,draw:drawImp,sprite:'imp',selected:'wingTipL',palette:['head','body','arms','legs'],tracks:['handR','wingTipL','wingTipR','tailTip'],clip:'fly',scale:5},
+  banshee_queen:{name:'Banshee Queen / equipped humanoid',data:bansheeMotion,defaults:defaultBansheeMotion,replace:replaceBansheeMotion,draw:drawBanshee,sprite:'banshee_queen',selected:'handL',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'draw',scale:5},
   necromancer:{name:'Purple warlock / equipped humanoid',data:warlockMotion,defaults:defaultWarlockMotion,replace:replaceWarlockMotion,draw:drawWarlock,sprite:'necromancer',selected:'handR',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'cast',scale:5},
   ...Object.fromEntries(NIGHT_KINDS.map(kind => {
     const data = nightMotions[kind];
@@ -73,8 +83,8 @@ export const RIG_SUBJECTS = {
       kind,
       {
         name:
-          ['beetle','spider'].includes(kind)
-            ? kind==='spider'?'Spider / eight legs':"Beetle / six legs"
+          ['beetle','spider','tarantula'].includes(kind)
+            ? kind==='tarantula'?'Sandy tarantula / eight legs':kind==='spider'?'Black spider / eight legs':"Jade scarab / six articulated legs"
             : kind[0].toUpperCase() + kind.slice(1) + " / quadruped",
         data: beastMotions[kind],
         defaults: () => defaultBeastMotion(kind),
@@ -84,8 +94,8 @@ export const RIG_SUBJECTS = {
         selected: kind === "beetle" ? "antennaL" : "head",
         palette: Object.keys(beastMotions[kind].palette),
         tracks:
-          ['beetle','spider'].includes(kind)
-            ? ["foot0L", "foot1R", "foot2L", kind==='spider'?'foot3R':"antennaL"]
+          ['beetle','spider','tarantula'].includes(kind)
+            ? ["foot0L", "foot1R", "foot2L", kind!=='beetle'?'foot3R':"antennaL"]
             : ["frontPawL", "frontPawR", "rearPawL", "rearPawR", "tailTip"],
         clip: "run",
         scale: 6,

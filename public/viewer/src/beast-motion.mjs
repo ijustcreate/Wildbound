@@ -3,6 +3,8 @@ import {withCompanionClips} from './companion-motion.mjs';
 import { paintLayers } from "./render-order.mjs";
 import {validateSprite} from './pixels.mjs';
 import { defaultRhinoMotion, drawRhino } from "./rhino-motion.mjs";
+import {defaultBeetleMotion,upgradeBeetleMotion,drawBeetle} from './beetle-motion.mjs';
+import {defaultSpiderMotion,upgradeSpiderMotion,drawSpider} from './spider-motion.mjs';
 import {
   poseAt,
   projectPoint,
@@ -11,7 +13,7 @@ import {
   limb,
   validateMotion,
 } from "./player-motion.mjs";
-export const BEAST_KINDS = ["panther", "boar", "beetle", "white_lion", "snow_leopard", "spider"];
+export const BEAST_KINDS = ["panther", "boar", "beetle", "white_lion", "snow_leopard", "spider", "tarantula"];
 const pantherPose = (model, frame, changes = {}) => ({frame, joints: Object.fromEntries(Object.keys(model.joints).map(name => [name, changes[name] || (['face','eyeL','eyeR','earL','earR','muzzle','nose'].includes(name) ? changes.head : null) || [0,0,0]]))});
 function pantherClip(model, fps, length, loop, frames) {
   return {fps,length,loop,keys:frames.map(([frame,joints])=>pantherPose(model,frame,joints))};
@@ -32,6 +34,8 @@ function addPantherClips(model) {
   return model;
 }
 export function defaultBeastMotion(kind) {
+  if(kind==='beetle')return defaultBeetleMotion();
+  if(kind==='spider'||kind==='tarantula')return defaultSpiderMotion(kind);
   if(kind==='white_lion'||kind==='snow_leopard'){
     const m=kind==='white_lion'?defaultLionMotion():defaultBeastMotion('panther');m.type=kind;m.name=kind==='white_lion'?'White lion':'Snow leopard';
     if(kind==='snow_leopard'){
@@ -87,6 +91,9 @@ export function defaultBeastMotion(kind) {
     m.joints.tailTip.position = [2, -23, 15];
     return m;
   }
+  return legacyInsectMotion(kind);
+}
+export function legacyInsectMotion(kind='beetle') {
   const m = {
     version: 1,
     type: kind==='spider'?'spider':'beetle',
@@ -171,7 +178,16 @@ export function defaultBeastMotion(kind) {
 export const beastMotions = Object.fromEntries(
   BEAST_KINDS.map((k) => [k, defaultBeastMotion(k)]),
 );
+export const beastMotionRevisions=Object.fromEntries(BEAST_KINDS.map(kind=>[kind,0]));
 export function validateBeastMotion(kind, m) {
+  if(kind==='spider'&&m?.artGeneration!==2){
+    if(!validateMotion(m,legacyInsectMotion('spider')))return false;
+    m=upgradeSpiderMotion(m,legacyInsectMotion('spider'));
+  }
+  if(kind==='beetle'&&m?.artGeneration!==2){
+    if(!validateMotion(m,legacyInsectMotion('beetle'))||!Object.keys(legacyInsectMotion('beetle').visibility).every(n=>m.visibility?.[n]?.length===8&&m.visibility[n].every(v=>typeof v==='boolean')))return false;
+    m=upgradeBeetleMotion(m,legacyInsectMotion('beetle'));
+  }
   if(['panther','white_lion','snow_leopard'].includes(kind))m=withCompanionClips(structuredClone(m));
   return (
     m?.type === kind &&
@@ -186,7 +202,8 @@ export function validateBeastMotion(kind, m) {
 }
 export function replaceBeastMotion(kind, m) {
   if (!validateBeastMotion(kind, m)) throw Error("Invalid " + kind + " rig");
-  Object.assign(beastMotions[kind], ['panther','white_lion','snow_leopard'].includes(kind)?withCompanionClips(structuredClone(m)):structuredClone(m));
+  Object.assign(beastMotions[kind], kind==='spider'?upgradeSpiderMotion(m,legacyInsectMotion('spider')):kind==='beetle'?upgradeBeetleMotion(m,legacyInsectMotion('beetle')):['panther','white_lion','snow_leopard'].includes(kind)?withCompanionClips(structuredClone(m)):structuredClone(m));
+  beastMotionRevisions[kind]++;
 }
 export function drawBeast(
   c,
@@ -195,6 +212,8 @@ export function drawBeast(
   m = beastMotions[a.sprite || a.kind],
   suppliedPose = null,
 ) {
+  if(m.type==='beetle')return drawBeetle(c,a,time,m,suppliedPose);
+  if(m.type==='spider'||m.type==='tarantula')return drawSpider(c,a,time,m,suppliedPose);
   if (['panther','white_lion','snow_leopard'].includes(m.type)) {
     const p=drawLion(c,a,time,m,suppliedPose);
     if(m.type==='snow_leopard'){c.fillStyle='#496073';for(let i=0;i<7;i++){const t=i/7;c.fillRect(Math.round(p.pelvis.x*(1-t)+p.chest.x*t)+(i%2?2:-2),Math.round(p.pelvis.y*(1-t)+p.chest.y*t)-2,2,2);}}

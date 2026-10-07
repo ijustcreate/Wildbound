@@ -1,5 +1,5 @@
 import {petRecord,restoreHunterPet} from './hunter-pets.mjs';
-import { freshCharacter, ITEMS, SLOTS, migrateEquipment, refreshVitals } from "./items.mjs";
+import { freshCharacter, ITEMS, SLOTS, migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
 export const cleanCharacterName = (name) =>
   String(name || "")
@@ -54,7 +54,11 @@ export class Profiles {
       const raw = window.desktop
         ? await window.desktop.loadProfiles()
         : JSON.parse(localStorage.getItem("wildbound-profiles") || "null");
-      if (raw?.version === 1 && Array.isArray(raw.heroes)) this.data = raw;
+      if (raw?.version === 1 && Array.isArray(raw.heroes)) {
+        this.data = raw;
+        for(const hero of this.data.heroes)migrateEquipment(hero);
+        migrateLegacySupplies(this.data.sharedStash);
+      }
     } catch (e) {
       this.error = e.message;
     }
@@ -84,6 +88,7 @@ export class Profiles {
     );
     p.profileId = h.id;
     p.name = h.name;
+    p.npcQuests = structuredClone(h.npcQuests || {});
     p.hunterPet=restoreHunterPet(h.hunterPet);
     p.appearance = structuredClone(h.appearance || null);
     p.inventory = structuredClone(h.inventory);
@@ -98,6 +103,9 @@ export class Profiles {
     p.xp = h.xp || 0;
     p.coins = h.coins || 0;
     p.robotStock = structuredClone(h.robotStock || []);
+    p.robotRepaired = h.robotRepaired === true;
+    // Already repaired legacy characters have met SCRAP-9; never reset repairs.
+    p.robotIntroduced = h.robotIntroduced === true || p.robotRepaired;
     p.vendingStock = structuredClone(h.vendingStock || null);
     p.vendingOrders = structuredClone(h.vendingOrders || []);
     p.nextVendingId = h.nextVendingId || 0;
@@ -119,6 +127,7 @@ export class Profiles {
       Object.assign(h, {
         field: structuredClone(p.field || {}),
         name: p.name,
+        npcQuests: structuredClone(p.npcQuests || {}),
         hunterPet:petRecord(p.hunterPet),
         appearance: structuredClone(p.appearance || null),
         inventory: structuredClone(p.inventory),
@@ -131,6 +140,8 @@ export class Profiles {
         xp: p.xp,
         coins: p.coins || 0,
         robotStock: structuredClone(p.robotStock || []),
+        robotRepaired: p.robotRepaired === true,
+        robotIntroduced: p.robotIntroduced === true,
         vendingStock: structuredClone(p.vendingStock || null),
         vendingOrders: structuredClone(p.vendingOrders || []),
         nextVendingId: p.nextVendingId || 0,

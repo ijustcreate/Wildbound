@@ -1,5 +1,7 @@
 import {drawBiomeSprite} from './biome-sprites.mjs';
+import {drawBeachProp} from './beach-art.mjs';
 import {drawTorchFlame} from './torch-flame.mjs';
+import {drawDesertSand,drawDesertWind} from './desert-art.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 const poly=(c,points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};
@@ -7,9 +9,7 @@ export const BIOME_ART_FEATURES={ice:['wind-carved snow','glacial fissures','cry
 export function drawBiomeTile(c,g,kind,x,y){
   const env=g.generatedEnvironment,r=hash(x+(g.seed||0),y);
   if(env==='desert'&&kind==='sand'){
-    const palettes=['#b99059','#c69d61','#d3ad6c','#dfbc7b','#e8ca8b'];
-    for(let yy=0;yy<32;yy+=4){const phase=(y+yy)*.032+Math.sin(x*.007)*2+Math.sin(x*.025)*.35,n=(Math.sin(phase)+1)*.5;rect(c,x,y+yy,32.5,4.5,palettes[Math.min(4,Math.floor(n*5))]);}
-    for(let i=0;i<3;i++)rect(c,x+hash(x,i)*28,y+hash(y,i)*28,2,1,i%2?'#f0d69b':'#b08b56');return true;
+    drawDesertSand(c,x,y,32,32,g.seed||0);return true;
   }
   if(env==='ice'&&['snow','ice'].includes(kind)){
     if(kind==='snow'){
@@ -34,6 +34,7 @@ export function drawBiomeTile(c,g,kind,x,y){
   return false;
 }
 export function drawBiomeProp(c,p,time,g){
+  if(drawBeachProp(c,p,time,g))return true;
   if(g.generatedEnvironment!=='desert'||!['rock','cactus','dune'].includes(p.kind)||p.depleted||p.falling)return false;
   if(drawBiomeSprite(c,p.kind==='rock'?'sandstone':p.kind,p.x,p.y+p.size*.19,p.size,p.kind==='cactus'?p.size*1.2:p.size))return true;
   c.save();c.translate(p.x,p.y+p.size*.19);c.scale(p.size/64,p.size/64);
@@ -82,8 +83,9 @@ export function drawBiomeAccents(c,g,visible){
   }
   c.restore();
 }
-export function drawBiomeAir(c,g,visible){
+export function drawBiomeAir(c,g,visible,bounds,lod=0){
   const env=g.generatedEnvironment;if(!BIOME_ART_FEATURES[env])return;c.save();const t=g.time||0;
+  if(env==='desert'){c.restore();drawDesertWind(c,g,bounds,lod);return;}
   for(let i=0;i<120;i++){
     const speed=env==='desert'?18:env==='ice'?7:1.5,x=(hash(i,7)*1600+t*speed)%1600,y=(hash(i,13)*1600+t*(env==='ice'?12:2))%1600;
     if(!visible({x,y})||Math.hypot(x-800,y-800)>g.bloom*430)continue;

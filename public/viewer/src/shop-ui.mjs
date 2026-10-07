@@ -16,7 +16,7 @@ function icon(type) {
   drawItem(c.getContext("2d"), type, 12, 12, 24);
   return c;
 }
-export function shopPanel(panel, game, p, button) {
+export function shopPanel(panel, game, p, button,tooltip) {
   const owner = game.shopOwner(p),
     u = p.ui;
   if (u.shop === "robot") {
@@ -32,7 +32,7 @@ export function shopPanel(panel, game, p, button) {
       const def=ITEMS[item?.type],b=button('','robot-'+view+'-'+index,()=>game.inventoryAction(p,'robotSelect:'+view+':'+index));
       b.className='robot-item-slot';b.dataset.index=index;b.dataset.view=view;b.classList.toggle('selected',selected);b.classList.toggle('empty-slot',!item);
       b.setAttribute('aria-pressed',String(selected));b.setAttribute('aria-label',(view==='sell'?'Backpack':'Buyback')+' slot: '+(def?.name||'Empty')+(item?' ×'+item.qty+' · '+sellValue(item.type)*item.qty+' gold':''));
-      if(item){const c=icon(item.type);c.width=c.height=48;drawItem(c.getContext('2d'),item.type,24,24,42);b.append(c);b.title=def?.name||item.type;if(item.qty>1)b.append(node('span',String(item.qty),'inventory-quantity'));b.style.setProperty('--rarity',def?.color||'#82917b');}
+      if(item){const c=icon(item.type);c.width=c.height=48;drawItem(c.getContext('2d'),item.type,24,24,42);b.append(c);if(item.qty>1)b.append(node('span',String(item.qty),'inventory-quantity'));b.style.setProperty('--rarity',def?.color||'#82917b');b.dataset.mode='shop';b.dataset.tooltipExtra='Stack ×'+item.qty+' · '+sellValue(item.type)*item.qty+' gold '+(view==='sell'?'to sell':'to buy back');if(tooltip)tooltip(b,item);else b.title=def?.name||item.type;}
       return b;
     };
     const buyback=node('section',null,'robot-buyback'),buybackHead=node('header');
@@ -43,10 +43,9 @@ export function shopPanel(panel, game, p, button) {
     const backpack=node('section',null,'robot-backpack'),packHead=button('Your backpack','robot-view-sell',()=>game.inventoryAction(p,'robotView:sell'));packHead.append(node('span',p.inventory.filter(Boolean).length+' / 24'));packHead.setAttribute('aria-pressed',String(!purchased));backpack.append(packHead);
     const grid=node('div',null,'robot-backpack-slots');for(let i=0;i<24;i++)grid.append(slot('sell',i,p.inventory[i],!purchased&&u.index===i));backpack.append(grid);panel.append(backpack);
     const item=purchased?owner.robotStock[u.robotIndex]:p.inventory[u.index],price=item?sellValue(item.type)*item.qty:0;
-    const detail=node('div',null,'robot-selection');detail.append(node('strong',item?ITEMS[item.type]?.name||item.type:'Empty slot'),node('span',item?'×'+item.qty+' · '+price+' gold '+(purchased?'to buy back':'to sell'):'Select a backpack item or a sold item above.'));panel.append(detail);
     const actions=node('footer',null,'robot-actions'),n=controllerButtonNames(p.controllerFamily||'generic'),accept=p.device==='keyboard'?'Enter':n[0],splitKey=p.device==='keyboard'?'2':n[3];
-    const sell=button((!purchased?accept+' · ':'')+'Sell stack','robotSell',()=>game.inventoryAction(p,'robotSell'));sell.disabled=purchased||!item||p.field?.favorites?.includes(item.type);
-    const back=button((purchased?accept+' · ':'')+'Buy back','robotBuyback',()=>game.inventoryAction(p,'robotBuyback'));back.disabled=!purchased||!item||(p.coins||0)<price;
+    const sell=button((!purchased?accept+' · ':'')+'Sell'+(!purchased&&item?' · '+price+'g':''),'robotSell',()=>game.inventoryAction(p,'robotSell'));sell.disabled=purchased||!item||p.field?.favorites?.includes(item.type);
+    const back=button((purchased?accept+' · ':'')+'Buy back'+(purchased&&item?' · '+price+'g':''),'robotBuyback',()=>game.inventoryAction(p,'robotBuyback'));back.disabled=!purchased||!item||(p.coins||0)<price;
     const split=button(splitKey+' · Split','split',()=>game.inventoryAction(p,'split'));split.disabled=purchased||!(item?.qty>1);actions.append(sell,back,split);panel.append(actions,node('p',u.notice||'Select first, then confirm. Sold items stay in buyback.','storage-notice'));
     if(u.split){const pop=node('div',null,'scrap-split');const amount=node('input');amount.type='number';amount.min=1;amount.max=Math.max(1,(item?.qty||1)-1);amount.value=u.split.amount;amount.oninput=()=>u.split.amount=Math.max(1,Math.min(Number(amount.max),Number(amount.value)||1));
       pop.append(node('strong','Split stack'),amount,button('Confirm split','split-confirm',()=>game.inventoryAction(p,'use')),button('Cancel','split-cancel',()=>game.inventoryAction(p,'close')));panel.append(pop);}

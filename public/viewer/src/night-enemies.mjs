@@ -1,4 +1,5 @@
 import { clearShot, navigateEnemy } from './navigation.mjs';
+import {isCharmed} from './succubus-charm.mjs';
 import * as items from './items.mjs';
 import { rules, creatures } from './definitions.mjs';
 import { lightAt, emitNoise, loudestNoise } from './night-cycle.mjs';
@@ -50,7 +51,7 @@ const distance = (a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const active = (g,dt)=>Number.isFinite(dt)&&dt>0&&!g.paused&&(g.phase==null||['play','won'].includes(g.phase));
 const sameRoom = (a,b)=>(a.room||null)===(b.room||null);
 const visible = (g,a,b)=>!!b&&sameRoom(a,b)&&clearShot(g,a,b,3);
-const valid = (e,p)=>p&&p.hp>0&&!p.room&&sameRoom(e,p);
+const valid = (e,p)=>p&&p.hp>0&&!p.room&&!isCharmed(p)&&sameRoom(e,p);
 const state = g=>g.nightEnemies??={shots:[],traps:[],objectives:[]};
 function brain(e) { return e.night??={phase:'idle',timer:0,cooldown:0,trail:[],trailTimer:0,lastHp:e.hp}; }
 function face(e,p) { const d=distance(e,p)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d; }

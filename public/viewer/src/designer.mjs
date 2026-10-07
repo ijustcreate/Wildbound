@@ -1,4 +1,5 @@
 import {START_AREAS,START_AREA_LABELS,eventStartingAreas} from './starting-area.mjs';
+import {NpcQuestEditor} from './npc-quest-editor.mjs';
 import {MYSTERY_EVENTS} from './mysteries.mjs';
 import {BoardEditor} from './board-editor.mjs';
 import {ComboEditor} from './combo-editor.mjs';
@@ -40,6 +41,7 @@ export class Designer {
     this.poseTime = 0;
     this.animator = new Animator(assets);
     this.playerStudio = new RigStudio(async () => {
+      this.npcQuestEditor?.apply();
       localStorage.setItem(
         "wildbound-design",
         JSON.stringify(definitionPack(this.events, this.items)),
@@ -235,7 +237,7 @@ export class Designer {
     const header=this.dialog.querySelector(':scope > header'),nav=this.dialog.querySelector(':scope > nav'),body=element('main');body.className='studio-body';body.id='studio-panel';body.setAttribute('role','tabpanel');body.setAttribute('aria-label',this.tab);
     for(const child of [...this.dialog.children])if(child!==header&&child!==nav)body.append(child);this.dialog.append(body);
     nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor jobs');
-    const labels=['Players','Creature','Rules','Items','Events','House Builder','Particles','Combos','Forest','Board'];
+    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Forest','Board'];
     [...nav.children].forEach((b,i)=>{const active=labels[i]===this.tab;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(active));b.setAttribute('aria-controls','studio-panel');b.tabIndex=active?0:-1;b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?labels.length-1:(i+(e.key==='ArrowLeft'?-1:1)+labels.length)%labels.length;this.tab=labels[next];this.render();this.dialog.querySelector('[aria-selected="true"]')?.focus();};});
   }
   render() {
@@ -264,6 +266,7 @@ export class Designer {
       "Rules",
       "Items",
       "Events",
+      "NPC & quests",
       "House Builder",
       "Particles",
       "Combos",
@@ -309,8 +312,11 @@ export class Designer {
     this.status.setAttribute("role", "status");
     const controls = element("div");
     controls.className = "studio-controls";
-    this.dialog.append(controls);
-    if (["Creature", "Rig & animation"].includes(this.tab)) {
+    if (this.tab !== 'NPC & quests') this.dialog.append(controls);
+    if (this.tab === 'NPC & quests') {
+      this.npcQuestEditor ||= new NpcQuestEditor(this.items);
+      const root = element('section'); this.dialog.append(root); this.npcQuestEditor.mount(root);
+    } else if (["Creature", "Rig & animation"].includes(this.tab)) {
       this.field(controls, "Creature", this, "kind", {
         options: Object.keys(creatures).filter(
           (n) => !n.startsWith("explorer"),
@@ -883,6 +889,7 @@ export class Designer {
         for (const c of Object.values(creatures))
           if (!validateRig(c.rig))
             throw Error("Invalid parent chain or part geometry: " + c.name);
+        this.npcQuestEditor?.apply();
         localStorage.setItem(
           "wildbound-design",
           JSON.stringify(definitionPack(this.events, this.items)),
@@ -890,12 +897,16 @@ export class Designer {
         this.onSave();
         await saveProjectRigs(this.events, this.items);
         this.status.textContent =
-          "Saved. Existing creatures refreshed; new events use these settings.";
+          this.tab === 'NPC & quests'
+            ? 'Saved NPC & quest definitions. New conversations use these settings.'
+            : "Saved. Existing creatures refreshed; new events use these settings.";
       } catch (e) {
         this.status.textContent = e.message;
       }
     });
     this.button(footer, "Export definitions", () => {
+      try {
+      this.npcQuestEditor?.apply();
       const url = URL.createObjectURL(
           new Blob(
             [JSON.stringify(definitionPack(this.events, this.items), null, 2)],
@@ -907,17 +918,21 @@ export class Designer {
       a.download = "wildbound-definitions.json";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) { this.status.textContent = error.message; }
     });
     const input = element("input");
     input.type = "file";
     input.accept = ".json";
     input.onchange = async (e) => {
       try {
+        if (!e.target.files[0]) return;
+        const pack = JSON.parse(await e.target.files[0].text());
         applyDefinitions(
-          JSON.parse(await e.target.files[0].text()),
+          pack,
           this.events,
           this.items,
         );
+        if (Object.hasOwn(pack, 'npcQuests')) this.npcQuestEditor?.reload();
         this.render();
         this.status.textContent = "Imported. Preview, then Save definitions.";
       } catch (e) {

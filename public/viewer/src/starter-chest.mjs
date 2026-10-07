@@ -2,7 +2,7 @@ import {ITEMS,give} from './items.mjs';
 
 // Include every starter equipment option, not rare gear or the NPC costumes.
 export const STARTER_GEAR=Object.freeze(Object.keys(ITEMS).filter(id=>id.startsWith('starter_')&&ITEMS[id].slot));
-export const STARTER_SUPPLIES=Object.freeze([...STARTER_GEAR.map(type=>Object.freeze({type,qty:1})),Object.freeze({type:'starter_arrow',qty:8})]);
+export const STARTER_SUPPLIES=Object.freeze([...STARTER_GEAR.map(type=>Object.freeze({type,qty:1})),Object.freeze({type:'arrow',qty:8})]);
 
 export function restockStarterChest(player){
   if(!Array.isArray(player.starterChest))player.starterChest=[];

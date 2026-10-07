@@ -9,8 +9,8 @@ export function mysterySpot(g,x,y){
  for(let i=0;i<400;i++){const radius=i?24*Math.sqrt(i):0,a=i*2.39996,point={x:Math.max(64,Math.min(1536,x+Math.cos(a)*radius)),y:Math.max(64,Math.min(1536,y+Math.sin(a)*radius))};if(!g.blocked(point.x,point.y,10,false,false))return point;}
  return null;
 }
-export function startMystery(g,event){
- if(g.mystery&&!g.mystery.done){g.message('Finish the active mystery before starting another.');return false;}
+export function startMystery(g,event,{test=false}={}){
+ if(!test&&g.mystery&&!g.mystery.done){g.message('Finish the active mystery before starting another.');return false;}
  const config=structuredClone(event.mystery);if(!config||!ITEMS[config.reward]||(config.goal==='recover'&&!ITEMS[config.item]))return false;
  const point=mysterySpot(g,Number(config.x)||350,Number(config.y)||350);if(!point){g.message('No safe mystery location on this map.');return false;}
  const m=g.mystery={name:event.name,config,stage:1,done:false,point,enemyIds:[],object:null};

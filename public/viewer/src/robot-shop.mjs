@@ -1,4 +1,5 @@
 import {ITEMS,sellStack,sellValue,transfer} from './items.mjs';
+import {robotOnline} from './storage-repair.mjs';
 
 export const robotBuybackIndices=owner=>(owner?.robotStock||[]).flatMap((item,index)=>item?[index]:[]).reverse();
 export const robotBuying=u=>u.robotView==='buyback'||u.robotView==='stock';
@@ -16,6 +17,7 @@ export function robotShopAction(g,p,action){
   const u=p.ui;
   if(u?.shop!=='robot'||u.split)return false;
   const owner=g.shopOwner(p),indices=robotBuybackIndices(owner);
+  if(!robotOnline(owner)&&action!=='close'){u.notice='Repair SCRAP-9 in the storage room first.';return true;}
   const changeView=view=>{u.robotView=view==='stock'?'buyback':view;u.panel='pack';u.notice='';if(robotBuying(u)&&!indices.includes(u.robotIndex))u.robotIndex=indices[0]??0;};
   if(action==='panel'||action.startsWith('robotView:')){
     changeView(action==='panel'?(robotBuying(u)?'sell':'buyback'):action.slice(10));return true;

@@ -4,7 +4,7 @@ import {footprintHit} from './world.mjs';
 import {navigateEnemy} from './navigation.mjs';
 
 export function arrowDrop(g,a,qty=1,source='Recovered arrows'){
- const type=ARROW_TYPES.includes(a.ammoType||a.type)?a.ammoType||a.type:'arrow';
+ const type='arrow';
  const nearby=g.loot.find(l=>l.type===type&&!!l.surfaceEmbedded===!!a.surfaceEmbedded&&Math.abs((l.z||0)-(a.z||0))<8&&Math.hypot(l.x-a.x,l.y-a.y)<24);
  if(nearby){nearby.qty+=qty;if(Number.isFinite(a.impactTime))nearby.impactTime=a.impactTime;return nearby;}
  const item={id:g.nextId++,x:a.x,y:a.y,z:a.z||0,type,qty,source,manualPickup:true,embedded:true,
@@ -39,17 +39,10 @@ export function retrieveEnemyArrows(g,e,dt){
  if(!loot){e.retrievingArrows=false;return false;}
  e.retrievingArrows=true;
  const d=Math.hypot(loot.x-e.x,loot.y-e.y);
- if(d<30){const qty=Math.min(loot.qty,e.startingArrows-e.arrowsLeft);e.arrowsLeft+=qty;if(loot.type==='ice_arrow')e.iceArrowsLeft=(e.iceArrowsLeft||0)+qty;loot.qty-=qty;if(!loot.qty)g.loot=g.loot.filter(l=>l!==loot);}
+ if(d<30){const qty=Math.min(loot.qty,e.startingArrows-e.arrowsLeft);e.arrowsLeft+=qty;loot.qty-=qty;if(!loot.qty)g.loot=g.loot.filter(l=>l!==loot);}
  else navigateEnemy(g,e,loot,dt);
  return true;
 }
-export function frostImpact(g,a,target){
- if(a.ammoType!=='ice_arrow')return;
- if(target)target.frozen=Math.max(target.frozen||0,2.5);
- else (g.arrowIcePatches||=[]).push({x:a.x,y:a.y,radius:25,life:9});
- g.effects.push({x:a.x,y:a.y-(a.z||0),radius:18,color:'#9eeaff',life:.45});
-}
-export function tickArrowIce(g,dt){
- g.arrowIcePatches=(g.arrowIcePatches||[]).filter(p=>(p.life-=dt)>0);
- for(const e of g.enemies)if(e.hp>0&&g.arrowIcePatches.some(p=>Math.hypot(e.x-p.x,e.y-p.y)<p.radius))e.frozen=Math.max(e.frozen||0,.2);
-}
+// Compatibility for old arrow-impact call sites/snapshots; arrows have no element.
+export function frostImpact(){}
+export function tickArrowIce(g){if(g.arrowIcePatches?.length)g.arrowIcePatches=[];}

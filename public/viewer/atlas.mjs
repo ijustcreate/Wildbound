@@ -6,6 +6,7 @@ import {Animator} from './src/animation.mjs';
 import {drawPlayer,playerMotion,directionVector} from './src/player-motion.mjs';
 import {paintItem} from './src/item-art.mjs';
 import {DEFAULT_APPEARANCE} from './src/appearance.mjs';
+import {prepareRuntime} from './runtime.mjs';
 
 const $=id=>document.getElementById(id),canvas=$('stage'),ctx=canvas.getContext('2d'),assets=new Assets(),animator=new Animator(assets);
 const directions=['South','Southwest','West','Northwest','North','Northeast','East','Southeast'];
@@ -77,7 +78,7 @@ document.querySelectorAll('.direction-row button').forEach(b=>b.addEventListener
 $('scale-control').addEventListener('input',e=>{scale=Number(e.target.value);$('scale-label').value=`${scale.toFixed(1)}×`;paintStage()});$('close-screen').onclick=()=>$('screen-dialog').close();$('screen-dialog').addEventListener('click',e=>{if(e.target===$('screen-dialog'))$('screen-dialog').close()});
 document.addEventListener('keydown',e=>{if($('screen-dialog').open)return;if(e.code==='Space'){e.preventDefault();$('play-button').click()}else if(e.key==='ArrowLeft')selectItem(chosen-1);else if(e.key==='ArrowRight')selectItem(chosen+1);else if(e.key==='ArrowUp'){$('frame-prev').click()}else if(e.key==='ArrowDown'){$('frame-next').click()}});
 canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);canvas.dataset.x=String(e.clientX);canvas.dataset.angle=String(angle)});canvas.addEventListener('pointermove',e=>{if(!canvas.hasPointerCapture(e.pointerId))return;const dx=e.clientX-Number(canvas.dataset.x);angle=(Number(canvas.dataset.angle)+dx*.015)%(Math.PI*2);setPressed('spin-toggle',false);paintStage();updateControls()});
-try{await assets.load()}catch(error){$('status').textContent=`Some game art could not load: ${error.message}`}
+await prepareRuntime(assets).catch(error=>{$('status').textContent=error.message;throw error});
 $('unit-total').textContent=String(units.length);$('gear-total').textContent=String(gear.length);setMode('units');requestAnimationFrame(tick);
 
 
