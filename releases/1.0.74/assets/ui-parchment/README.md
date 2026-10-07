@@ -1,0 +1,5 @@
+# Parchment UI assets
+
+Generated with the built-in OpenAI image generator. The atlas is retained with transparent alpha; `node scripts/slice-parchment-ui.cjs` extracts production PNGs and records their coordinates in manifest.json. Panels and buttons use CSS nine-slicing; text remains live rather than baked into the art.
+
+Prompt: Create a production-ready transparent pixel-art UI sprite sheet inspired by the supplied reference: warm pale parchment panels, carved dark brown wooden frames and jade-green beveled buttons. Four columns by four rows: parchment window, jade header panel, dark inset slot, pale inset slot; normal, selected gold-edge, pressed and disabled horizontal buttons; close X, settings gear, backpack, speaker; music note, gold coin, left arrow, right arrow. No words, labels, scenery or character. Isolate every sprite with generous transparent padding. Crisp aligned pixel clusters, consistent lighting, simple repeatable frame edges suitable for nine-slicing. Preserve true transparency.

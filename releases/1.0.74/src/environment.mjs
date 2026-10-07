@@ -1,0 +1,355 @@
+import {drawBiomeProp} from './biome-art.mjs';
+import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
+import {drawForestTree,drawPalmTree,drawBush,treeBase,palmBase,tickForest} from './forest.mjs';
+import { emitNoise } from './night-cycle.mjs';
+import {drawForestRuin} from './forest-art.mjs';
+import { terrainHash } from "./world.mjs";
+import {hunterPets} from './hunter-pets.mjs';
+import {releasedCritters} from './living-ecosystem.mjs';
+import {boundlessTerrainAt} from './boundless-world.mjs';
+export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
+  x: p.x,
+  y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
+});
+export function waterAt(g, x, y) {
+  if (g.phase === "won") return "grass";
+  const tx = Math.floor(x / 32),
+    ty = Math.floor(y / 32);
+  if (tx < 0 || ty < 0 || tx >= 50 || ty >= 50) {
+    if(g.mapMode==='boundless')return boundlessTerrainAt(g,tx,ty);
+    return "water";
+  }
+  let base = g.terrain?.[ty * 50 + tx] || "grass";
+  if(g.house?.pools){if(g.house.pools.some(p=>x>=p.x&&y>=p.y&&x<p.x+p.w&&y<p.y+p.h))return 'water';if(base==='water')base='grass';}
+  // Derived from terrain so existing saves gain natural muddy shorelines too.
+  if(base==='sand'&&g.generatedEnvironment!=='beach'&&!g.house?.pools&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>tx+dx>=0&&tx+dx<50&&ty+dy>=0&&ty+dy<50&&['water','shallow'].includes(g.terrain?.[(ty+dy)*50+tx+dx])))return 'mud';
+  if (g.weather?.type !== "monsoon") return base;
+  if (base === "bridge") return "floodbridge";
+  if (base === "grass")
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const nx = tx + dx,
+        ny = ty + dy;
+      if (nx < 0 || ny < 0 || nx >= 50 || ny >= 50) continue;
+      if (["water", "shallow", "bridge"].includes(g.terrain?.[ny * 50 + nx]))
+        return "shallow";
+    }
+  return base;
+}
+export const isShallow = (type) => type === "shallow" || type === "floodbridge" || type === 'mud';
+export const isQuicksand = (type) => type === "quicksand";
+export function harvest(g, p, damage, range, onHit) {
+  const candidates = g.scenery
+    .filter(
+      (s) => !s.falling && !s.depleted && ["tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
+    )
+    .map((s) => ({ s, b: propBase(s) }))
+    .filter(({ b }) => {
+      const dx = b.x - p.x,
+        dy = b.y - (p.y + 14),
+        d = Math.hypot(dx, dy);
+      return (
+        d < range &&
+        d > 0 &&
+        (dx * p.faceX + dy * p.faceY) /
+          (d * (Math.hypot(p.faceX, p.faceY) || 1)) >=
+          Math.cos(Math.PI / 4)
+      );
+    })
+    .sort(
+      (a, b) =>
+        Math.hypot(a.b.x - p.x, a.b.y - p.y) -
+        Math.hypot(b.b.x - p.x, b.b.y - p.y),
+    );
+  const hit = candidates[0];
+  if (!hit) return false;
+  const { s, b } = hit;
+  p.gatherAction = ["tree", "palm", "snow_tree", "frozen_log"].includes(s.kind) ? "woodcut" : "mine";
+  p.gatherTime = 0.55;
+  emitNoise(g, p, 'break', 300);
+  g.onSound(["rock","ice_rock","ice_spire"].includes(s.kind)?"mine":"harvest",p);
+  s.hitAt = g.time;
+  s.harvest = (s.harvest || 0) + Math.max(12, damage);
+  const drop = (type, qty) => {
+    g.dropLoot(p.x + p.faceX * 12, p.y + p.faceY * 12, type, qty, "Harvested");
+    g.loot.at(-1).manualPickup = true;
+  };
+  if (["tree","palm","snow_tree","frozen_log"].includes(s.kind)) {
+    drop("stick", 1);
+    s.maxHarvest ||= Math.round(s.size * 0.85);
+    if (s.harvest >= s.maxHarvest) {
+      s.falling = 0.001;
+      s.fallDirection = p.faceX < 0 ? -1 : 1;
+      s.logCount = Math.max(2, Math.round(s.size / 32));
+      if (s.kind === "palm") s.coconuts ??= Math.floor(terrainHash(s.x, s.y) * 4);
+    }
+  } else {
+    s.maxHarvest = 36;
+    s.chunks ??= Math.max(2, Math.round(s.size / 16));
+    if (s.harvest >= 36) {
+      s.harvest -= 36;
+      s.chunks--;
+      s.chipped = (s.chipped || 0) + 1;
+      drop(["ice_rock","ice_spire"].includes(s.kind)?"raw_ice":"stone", 1);
+      if (s.chunks <= 0) {
+        s.depleted = true;
+        s.falling = 0.001;
+      }
+    }
+  }
+  (g.environmentParticles ||= []).push({
+    x: b.x,
+    y: b.y - 12,
+    life: 0.5,
+    kind: s.kind,
+  });
+  onHit?.(s);
+  g.persist();
+  return true;
+}
+export function tickEnvironment(g, dt) {
+  tickForest(g,dt);
+  g.footprints ||= [];
+  g.environmentParticles ||= [];
+  g.footprints = g.footprints.filter((f) => g.time - f.time < 18);
+  g.environmentParticles = g.environmentParticles.filter(
+    (f) => (f.life -= dt) > 0,
+  );
+  for (const s of g.scenery)
+    if (s.falling) {
+      s.falling += dt;
+      if (s.falling >= 1.2 && !s.depleted) {
+        s.depleted = true;
+        const b = propBase(s);
+        g.dropLoot(
+          b.x + s.fallDirection * s.size * 0.35,
+          b.y,
+          "log",
+          s.logCount || 2,
+          "Felled tree",
+        );
+        g.loot.at(-1).manualPickup = true;
+        if (s.kind === "palm" && s.coconuts > 0) {
+          g.dropLoot(b.x + s.fallDirection * 12, b.y - 8, "coconut", s.coconuts, "Felled palm", true);
+        }
+        g.persist();
+      }
+    }
+  for (const s of g.scenery) {
+    if (s.falling >= 1.5 && ["tree", "snow_tree", "palm"].includes(s.kind)) {
+      // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
+      s.fallen = true;
+      s.falling = 0;
+      s.rootY = propBase(s).y;
+      s.harvest = 0;
+    }
+  }
+  if(g.scenery.some(s=>s.falling>=1.5))g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
+  for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
+    if (
+      a.room ||
+      a.hp <= 0 ||
+      a.spiritGhost || a.ghost ||
+      ["bat", "wasp", "snake", "vine", "dragonfly", "fairy", "bird", "tsetse"].includes(a.kind)
+    )
+      continue;
+    const feetOffset=a.kind?14:0;
+    if(['water','shallow','floodbridge'].includes(waterAt(g,a.x,a.y+feetOffset))){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
+    if(a.trackImpulse){const point=a.trackImpulse;delete a.trackImpulse;const angle=Math.atan2(a.faceY||0,a.faceX||1);for(const side of [-1,1])g.footprints.push({x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,water:isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind});a.trackPosition={x:a.x,y:a.y};}
+    if(a.jumpHeight>0||a.groundHeight>0||a.swimming){a.trackPosition={x:a.x,y:a.y};continue;}
+    const last = a.trackPosition;
+    if (
+      last &&
+      Math.hypot(a.x - last.x, a.y - last.y) >= 15 &&
+      Math.hypot(a.x - last.x, a.y - last.y) < 100
+    ) {
+      a.trackSide = -(a.trackSide || 1);
+      const angle = Math.atan2(a.y - last.y, a.x - last.x),
+        water = isShallow(waterAt(g, a.x, a.y + feetOffset));
+      g.footprints.push({
+        x: a.x + Math.sin(angle) * a.trackSide * 3,
+        y: a.y + feetOffset - Math.cos(angle) * a.trackSide * 3,
+        angle,
+        time: g.time,
+        water,
+        animal: !!a.kind,
+        purple: a.kind === 'necromancer' || !!a.summonFootprint,
+      });
+      a.trackPosition = { x: a.x, y: a.y };
+    } else if (!last || Math.hypot(a.x - last.x, a.y - last.y) >= 100)
+      a.trackPosition = { x: a.x, y: a.y };
+  }
+  if (g.footprints.length > 600)
+    g.footprints.splice(0, g.footprints.length - 600);
+}
+export function drawTracks(c, g) {
+  for (const f of g.footprints || []) {
+    if(['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
+    const t = g.time - f.time;
+    c.save();
+    c.translate(f.x, f.y);
+    if (f.water) {
+      if (t > 1) {
+        c.restore();
+        continue;
+      }
+      c.globalAlpha = (1 - t) * 0.6;
+      c.strokeStyle = "#b1d3bc";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.ellipse(0, 0, 3 + t * 13, 1 + t * 5, 0, 0, Math.PI * 2);
+      c.stroke();
+      if (t < 0.3) {
+        c.fillStyle = "#c8e6d4";
+        c.fillRect(-5, -4 - t * 12, 2, 2);
+        c.fillRect(4, -2 - t * 8, 2, 2);
+      }
+    } else {
+      c.globalAlpha = Math.max(0, 1 - t / 18) * 0.36;
+      c.rotate(f.angle);
+      if(f.scale)c.scale(f.scale,f.scale);
+      c.fillStyle = f.purple ? "#bf68e8" : "#15281f";
+      c.fillRect(-2, -1, f.animal ? 3 : 5, 2);
+      if (f.animal) {
+        c.fillRect(2, -2, 1, 1);
+        c.fillRect(2, 1, 1, 1);
+      }
+    }
+    c.restore();
+  }
+  for (const f of g.environmentParticles || []) {
+    c.fillStyle = f.kind === "tree" ? "#c29a57" : "#a5aaa2";
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.4;
+      c.fillRect(
+        f.x + Math.cos(a) * (1 - f.life) * 25,
+        f.y + Math.sin(a) * 14 * (1 - f.life) + 8 * (1 - f.life),
+        2,
+        2,
+      );
+    }
+  }
+}
+export function drawProp(c, p, time,game={}) {
+  if(drawBiomeProp(c,p,time,game))return true;
+  if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
+  if(p.procedural&&['tree','snow_tree','palm'].includes(p.kind)){
+    if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game);
+    if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
+  }
+  if(p.kind==='bush'){drawBush(c,p,time);return true;}
+  if(drawIceProp(c,p,time))return true;
+  if (!p.procedural) return false;
+  const base = propBase(p),
+    seed = terrainHash(p.x, p.y),
+    scale = p.size / 64;
+  c.save();
+  c.translate(Math.round(base.x), Math.round(base.y));
+  c.scale(scale, scale);
+  if (p.fallen && ["tree", "snow_tree", "palm"].includes(p.kind)) {
+    c.fillStyle = "#15251d";
+    c.beginPath();
+    c.ellipse(0, 3, 15, 5, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = p.kind === "palm" ? "#5a402b" : "#493d2c";
+    c.fillRect(-7, -4, 14, 7);
+    c.fillStyle = p.kind === "palm" ? "#a47644" : "#98704a";
+    c.fillRect(-4, -4, 8, 3);
+    c.restore();
+    return true;
+  }
+  if (p.falling) {
+    c.rotate(
+      ((p.fallDirection || 1) * Math.min(1, p.falling / 1.1) * Math.PI) / 2,
+    );
+    c.globalAlpha *= Math.max(0, 1 - Math.max(0, p.falling - 1) * 2);
+  }
+  const r = (x, y, w, h, color) => {
+    c.fillStyle = color;
+    c.fillRect(Math.round(x), Math.round(y), w, h);
+  };
+  if (p.kind === "tree") {
+    r(-13, -2, 26, 4, "#192d22");
+    r(-6, -39, 12, 39, "#493d2c");
+    r(-4, -39, 5, 38, "#98704a");
+    r(1, -35, 3, 33, "#bd945b");
+    r(-10, -4, 6, 5, "#6d5036");
+    r(5, -6, 6, 6, "#795a39");
+    const sway = Math.sin(time * 1.5 + seed * 8) * 1.1;
+    for (let i = 0; i < 7; i++) {
+      const h = terrainHash(i, seed * 100),
+        x = Math.cos(i * 2.4) * 15 + sway,
+        y = -36 - Math.sin(i * 1.8) * 9;
+      const crown = (cx, cy, rx, ry, color) => {
+        for (let row = -ry; row <= ry; row += 2) {
+          const half =
+            Math.floor(
+              (Math.sqrt(Math.max(0, 1 - (row * row) / (ry * ry))) * rx) / 2,
+            ) * 2;
+          r(cx - half, cy + row, half * 2, 2, color);
+        }
+      };
+      crown(x, y, 14, 12, "#203d2d");
+      crown(x - 1, y - 2, 12, 10, "#31573b");
+      crown(x - 3, y - 6, 9, 5, "#60804a");
+      crown(x - 5, y - 8, 5, 2, "#8c9b5c");
+      for (let n = 0; n < 6; n++) {
+        const lx = x - 8 + terrainHash(n, i + seed) * 17,
+          ly = y - 7 + terrainHash(i, n + seed) * 13;
+        r(lx, ly, 2, 1, n % 2 ? "#436943" : "#789154");
+      }
+    }
+  } else if (p.kind === "cactus") {
+    r(-4, -31, 8, 31, "#4f7049");
+    r(-12, -21, 8, 5, "#5f8251");
+    r(-12, -27, 5, 11, "#5f8251");
+    r(4, -15, 8, 5, "#5f8251");
+    r(7, -22, 5, 12, "#5f8251");
+    r(-2, -29, 2, 4, "#a8aa61");
+  } else if (p.kind === "dune") {
+    r(-22, -3, 44, 5, "#8f693f");
+    r(-17, -9, 34, 7, "#d5ad71");
+    r(-9, -14, 18, 6, "#e0bb7c");
+  } else if (p.kind === "rock") {
+    const chip = p.chipped || 0,
+      w = Math.max(10, 25 - chip * 3);
+    r(-w / 2 - 3, -4, w + 6, 7, "#24372d");
+    r(-w / 2, -18, w, 19, "#545f59");
+    r(-w / 2 + 3, -24, w - 5, 21, "#899087");
+    r(-w / 2 + 3, -24, w - 8, 5, "#bbc0a1");
+    r(1, -18, w / 2 - 1, 18, "#6b766d");
+    r(-3, -21, 2, 11, "#424f4a");
+    r(-3, -11, 7, 2, "#424f4a");
+  } else {
+    const sway = Math.sin(time * 2 + seed * 7) * 2;
+    r(-2, -1, 4, 3, "#233c2b");
+    for (let i = 0; i < 5; i++) {
+      const x = (i - 2) * 5 + sway;
+      r(x, -5 - Math.abs(i - 2) * 2, 4, 8, "#426b43");
+      r(x + 1, -8 - Math.abs(i - 2) * 2, 2, 7, "#779250");
+    }
+    if (p.kind === "flower") {
+      r(-1 + sway, -14, 3, 12, "#557445");
+      r(-5 + sway, -15, 10, 4, "#d7976b");
+      r(-2 + sway, -18, 4, 10, "#e8b57e");
+      r(-1 + sway, -15, 2, 3, "#e9d391");
+    }
+  }
+  c.restore();
+  if (p.harvest && !p.falling && time - (p.hitAt || 0) < 4) {
+    c.fillStyle = "#152c25";
+    c.fillRect(base.x - 17, base.y + 8, 34, 5);
+    c.fillStyle = p.kind === "tree" ? "#cba568" : "#a0c6c2";
+    c.fillRect(
+      base.x - 16,
+      base.y + 9,
+      32 * Math.min(1, p.harvest / (p.maxHarvest || 36)),
+      3,
+    );
+  }
+  return true;
+}
