@@ -15,6 +15,7 @@ Read [docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md) before resuming 
 
 ## Diagnose and verify
 
+- **Keep Wildbound silent during build and test runs.** Mute every automated Electron test window before loading the game with `window.webContents.setAudioMuted(true)` (or launch a test-only Electron process with `--mute-audio`). For manual playtests, mute the game's audio before triggering music or sound effects. Do not change the player's saved sound settings or Windows system volume to achieve this.
 - For freezes or apparently missing controllers, inspect renderer exceptions and live diagnostics before changing mappings, packaging or security assumptions. A stopped frame loop can resemble controller failure.
 - Test meaningful UI changes in Electron, not only with syntax checks or mocked canvas tests. Cover selection transitions, empty/occupied slots, controller-family labels, multiple panels and small windows when relevant.
 - Do not claim hardware playtesting or FPS improvements from unit tests alone. State what was measured and what remains unverified.

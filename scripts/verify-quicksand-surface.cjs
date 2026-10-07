@@ -8,7 +8,7 @@ if(!process.versions.electron){
  if(!fs.existsSync(binary))throw Error('QA Electron missing: '+binary);
  for(const mode of ['gpu','canvas']){
   const env={...process.env,WILDBOUND_QUICKSAND_MODE:mode,WILDBOUND_QUICKSAND_OUTPUT:dir};delete env.ELECTRON_RUN_AS_NODE;
-  const child=spawnSync(binary,[__filename],{cwd:root,env,windowsHide:true,encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024});
+  const child=spawnSync(binary,['--mute-audio',__filename],{cwd:root,env,windowsHide:true,encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024});
   process.stdout.write(child.stdout||'');process.stderr.write(child.stderr||'');
   if(child.error||child.status!==0){console.error(child.error||'QA failed: '+mode);process.exitCode=1;break;}
  }

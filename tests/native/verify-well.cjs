@@ -12,7 +12,7 @@ if (!process.versions.electron) {
   const binary = candidates.find(file => fs.existsSync(file));
   if (!binary) throw Error('No local QA Electron available. Set WILDBOUND_WELL_ELECTRON.');
   const env = {...process.env, WILDBOUND_WELL_OUTPUT: dir}; delete env.ELECTRON_RUN_AS_NODE;
-  const child = spawnSync(binary, [__filename], {cwd: root, env, windowsHide: true,
+  const child = spawnSync(binary, ['--mute-audio', __filename], {cwd: root, env, windowsHide: true,
     encoding: 'utf8', timeout: 150000, maxBuffer: 8 * 1024 * 1024});
   process.stdout.write(child.stdout || ''); process.stderr.write(child.stderr || '');
   console.log('Well QA artifacts: ' + dir);

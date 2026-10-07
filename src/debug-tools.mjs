@@ -124,10 +124,21 @@ export function installDebugTools(ctx) {
         heroes[i].ui.index=0;press(i,0);
         if(heroes[i].equipment.hand1!=='sword'||heroes.some((p,j)=>j>i&&p.equipment.hand1==='sword'))throw Error('Equip routed through global focus');
       }
+      for(let i=0;i<3;i++){
+        const hero=heroes[i];press(i,4);hero.ui.index=SLOTS.indexOf('hand1');step();
+        const before=hero.inventory.filter(item=>item?.type==='sword').length;press(i,0);
+        if(hero.equipment.hand1||hero.inventory.filter(item=>item?.type==='sword').length!==before+1)throw Error('Controller primary button did not unequip sword');
+        hero.equipment.hand1='bow';hero.equipment.hand2='occupied';hero.equipmentSockets={hand1:['azure_bead']};hero.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));hero.ui.index=SLOTS.indexOf('hand2');g.uiRevision++;step();
+        press(i,0);if(hero.equipment.hand1!=='bow'||hero.equipment.hand2!=='occupied'||!hero.ui.notice.includes('Backpack full'))throw Error('Full pack must keep linked weapon equipped');
+        hero.inventory[7]=null;press(i,0);
+        if(hero.equipment.hand1||hero.equipment.hand2||hero.inventory[7]?.type!=='bow'||hero.inventory[7]?.sockets?.[0]!=='azure_bead')throw Error('Primary unequip from linked hand lost weapon or sockets');
+        press(i,0);if(hero.inventory.filter(item=>item?.type==='bow').length!==1)throw Error('Empty equipment slot duplicated weapon');
+        hero.inventory=[{type:'sword',qty:1}];hero.ui.panel='pack';hero.ui.index=0;press(i,0);
+      }
       const p=heroes[1];p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');press(1,2);
       if(p.equipment.hand1||g.loot.length!==1||g.loot[0].type!=='sword'||heroes[0].equipment.hand1!=='sword')throw Error('Controller gear drop wrong owner');
       press(2,1);if(heroes[2].ui||!heroes[0].ui||!heroes[1].ui)throw Error('Controller close leaked');
-      return 'Actual inputFrame: Xbox/Switch/PlayStation inventories navigate, equip, drop gear and close independently even with focus in another player panel';
+      return 'Actual inputFrame: Xbox/Switch/PlayStation navigate, equip, primary unequip, full-pack refusal, linked hands/sockets, empty-slot safety, gear drop and independent ownership';
     }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();}
   };
   window.verifyDevOwnerRouting=async()=>{

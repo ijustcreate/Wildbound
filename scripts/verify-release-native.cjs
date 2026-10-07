@@ -21,7 +21,7 @@ async function worker(){while(index<jobs.length){const [name,...args]=jobs[index
  if(!fs.existsSync(script)){results.push({name,exit:1,error:'QA script missing'});continue;}
  await new Promise(resolve=>{const env={...process.env,WILDBOUND_VERIFY_APP:base};delete env.ELECTRON_RUN_AS_NODE;
   const binary=selfLaunching.has(name)?process.execPath:electron,started=Date.now();
-  const child=cp.spawn(binary,[script,...args],{cwd:root,env,windowsHide:true});let log='',error=null;
+  const child=cp.spawn(binary,selfLaunching.has(name)?[script,...args]:['--mute-audio',script,...args],{cwd:root,env,windowsHide:true});let log='',error=null;
   child.stdout.on('data',v=>log+=v);child.stderr.on('data',v=>log+=v);child.on('error',e=>error=String(e));
   const timer=setTimeout(()=>{error='QA timed out';child.kill();},240000);
   child.on('close',code=>{clearTimeout(timer);fs.writeFileSync(path.join(out,'build'+version+'-'+name+'.log'),log);results.push({name,exit:code??1,error,seconds:Math.round((Date.now()-started)/100)/10});console.log(name+': '+(code===0&&!error?'PASS':'FAIL')+(error?' '+error:'')+'\n'+log.slice(-800));resolve();});

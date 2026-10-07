@@ -5,6 +5,7 @@ import {raisedSurfaceBlocked} from './terrain-support.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
+import {creatures} from './definitions.mjs';
 import {sectionBlocked,drawBreakable,breakDamagedWindow} from './structure-destruction.mjs';
 export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','graveyard'];
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
@@ -97,30 +98,35 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   const spider=isSpider(e),insect=['wasp','bee','beetle'].includes(e.kind);
   if(!spider&&!insect)return false;
   const opponents=g.enemies.filter(q=>q!==e&&q.hp>0&&(spider?['wasp','bee','beetle'].includes(q.kind):isSpider(q))&&Math.hypot(q.x-e.x,q.y-e.y)<300&&lineClear(g,e,q));
-  const targets=opponents.length?opponents:spider?visiblePlayers.filter(p=>p.hp>0&&!p.room):[];
+  const detection=creatures[e.kind]?.stats?.detection??600;
+  const targets=opponents.length?opponents:spider?visiblePlayers.filter(p=>p.hp>0&&!p.room&&(!adultSpider(e)||Math.hypot(p.x-e.x,p.y-e.y)<=detection)):[];
   if(!spider&&!targets.length)return false;
   e.cooldown=Math.max(0,(e.cooldown||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.attack=Math.max(0,(e.attack||0)-dt);e.moving=false;
   if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
   const trap=g.traps.find(t=>t.life>0&&Math.hypot(t.x-e.x,t.y-e.y)<30);
   if(trap&&trap.variant!=='slow'){trap.life=0;e.state='snared';e.timer=2;return true;}
-  const target=targets.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];
-  if(!target)return true;
+  let target=targets.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];
   if (adultSpider(e)) {
     const web = (g.webs || []).filter(w => w.group === e.group || Math.hypot(e.x-w.x,e.y-w.y)<w.radius+30).sort((a,b)=>Math.hypot(e.x-a.x,e.y-a.y)-Math.hypot(e.x-b.x,e.y-b.y))[0];
     if (web) {
-      e.webEggCooldown = Math.max(0, (e.webEggCooldown ?? 45) - dt);
-      const sameGroupEgg = g.enemies.some(q => q.hp > 0 && q.kind === 'spider_egg' && q.group === e.group);
-      const lead = g.enemies.filter(q => q.hp > 0 && adultSpider(q) && q.group === e.group).sort((a,b)=>a.id-b.id)[0];
-      if (lead === e && e.webEggCooldown <= 0 && !sameGroupEgg) layWebEgg(g,e,web);
-      if (Math.hypot(e.x-web.x,e.y-web.y) > web.radius * 0.82) {
-        const d = Math.hypot(web.x-e.x, web.y-e.y) || 1;
-        g.moveActor(e, (web.x-e.x)/d*e.speed*dt, (web.y-e.y)/d*e.speed*dt);
+      if(target){
+        e.webEggCooldown = Math.max(0, (e.webEggCooldown ?? 45) - dt);
+        const sameGroupEgg = g.enemies.some(q => q.hp > 0 && q.kind === 'spider_egg' && q.group === e.group);
+        const lead = g.enemies.filter(q => q.hp > 0 && adultSpider(q) && q.group === e.group).sort((a,b)=>a.id-b.id)[0];
+        if (lead === e && e.webEggCooldown <= 0 && !sameGroupEgg) layWebEgg(g,e,web);
       }
+      // Pursuit and returning home are exclusive. Applying both movements in
+      // one tick pinned adults to the inner edge of their web.
+      const huntRadius=web.radius+Math.min(detection,240);
+      if(Math.hypot(e.x-web.x,e.y-web.y)>huntRadius||target&&Math.hypot(target.x-web.x,target.y-web.y)>huntRadius)target=null;
+      if(!target&&Math.hypot(e.x-web.x,e.y-web.y)>web.radius*.82){navigateEnemy(g,e,web,dt);return true;}
     }
   }
+  if(!target)return true;
+  e.state='hunt';
   const d=Math.hypot(target.x-e.x,target.y-e.y)||1;e.faceX=(target.x-e.x)/d;e.faceY=(target.y-e.y)/d;
   if(g.house&&!lineClear(g,e,target)){navigateEnemy(g,e,target,dt);return true;}
-  if(d>28){const moved=g.moveActor(e,e.faceX*e.speed*dt,e.faceY*e.speed*dt,insect&&e.kind!=='beetle');if(moved<e.speed*dt*.2)g.moveActor(e,-e.faceY*e.speed*dt,e.faceX*e.speed*dt);}
+  if(d>28){const moved=g.moveActor(e,e.faceX*e.speed*dt,e.faceY*e.speed*dt,insect&&e.kind!=='beetle');if(moved<e.speed*dt*.2){if(spider)navigateEnemy(g,e,target,dt);else g.moveActor(e,-e.faceY*e.speed*dt,e.faceX*e.speed*dt);}}
   if(d<42&&e.cooldown<=0&&lineClear(g,e,target)){
     if(g.players.includes(target))g.hurt(target,e.damage,e);else {target.hp-=e.damage;target.flash=.2;}
     e.cooldown=spider?.9:1.2;e.attack=.25;

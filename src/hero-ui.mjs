@@ -59,15 +59,18 @@ export class HeroUI {
     const show = () => {
       let tip = panel.querySelector('.item-tooltip');
       if (!tip) { tip = el('div', null, 'item-tooltip'); panel.append(tip); }
+      tip.setAttribute('role','tooltip');
+      panel.tooltipAnchor=button;
       const name=el('strong',def.name,'item-name');
       name.style.color=RARITIES[def.rarity]||RARITIES.common;
       tip.replaceChildren(name);
       if (def.description) tip.append(el('p', def.description));
+      if(button.dataset.mode==='gear')tip.append(el('p',`Equipped · ${this.controllerText(game,p).accept}: unequip to backpack`));
       if (button.dataset.tooltipExtra) tip.append(el('p',button.dataset.tooltipExtra,'item-tooltip-price'));
       const stats = el('div', null, 'item-tooltip-stats');
       const base = itemStats(item.type);
       if (base) stats.append(el('span', base, 'item-tooltip-base'));
-      for (const delta of itemStatDelta(p, item.type,item.sockets)) {
+      for (const delta of button.dataset.mode==='gear'?[]:itemStatDelta(p, item.type,item.sockets)) {
         const sign = delta.value > 0 ? '+' : '';
         stats.append(el('span', `${delta.label} ${sign}${delta.value}  (${delta.current} → ${delta.next})`, delta.value > 0 ? 'stat-up' : 'stat-down'));
       }
@@ -119,11 +122,11 @@ export class HeroUI {
       tip.classList.toggle('tooltip-above',placement.side==='top');
       tip.hidden = false;
     };
-    const hide = () => { const tip = panel.querySelector('.item-tooltip'); if (tip) tip.hidden = true; };
-    button.addEventListener('pointerenter', show, { passive:true });
-    button.addEventListener('pointerleave', hide, { passive:true });
-    button.addEventListener('focus', show);
-    button.addEventListener('blur', hide);
+    const hide = () => { const tip = panel.querySelector('.item-tooltip'); if (tip&&panel.tooltipAnchor===button) tip.hidden = true; };
+    button.addEventListener('pointerenter', () => {panel.tooltipHover=button;show();}, { passive:true });
+    button.addEventListener('pointerleave', () => {if(panel.tooltipHover===button)panel.tooltipHover=null;hide();}, { passive:true });
+    button.addEventListener('focus', () => {panel.tooltipFocus=button;show();});
+    button.addEventListener('blur', () => {if(panel.tooltipFocus===button)panel.tooltipFocus=null;hide();});
     button.showItemTooltip=show;
   }
   draw(game, renderer, onlyId = null) {
@@ -349,9 +352,15 @@ export class HeroUI {
     for(const panel of this.panels.values()){
       const selected=panel.querySelector('.storage-sheet.active .selected,.robot-item-slot.selected,.npc-dialogue-choice.selected');
       if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest'});
-      if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split&&(panel.hero?.device!=='keyboard'||panel.revealSelection)){
-        if(selected?.showItemTooltip){if(panel.tooltipSelection!==selected||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)selected.showItemTooltip();panel.tooltipSelection=selected;}
-        else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
+      if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split){
+        if(panel.revealSelection){panel.tooltipHover=null;panel.tooltipFocus=null;}
+        // A hovered/focused item can differ from the controller's selected
+        // slot. Keep its tooltip until the pointer/focus leaves that item.
+        const hovered=panel.contains(panel.tooltipHover)?panel.tooltipHover:null;
+        const focused=panel.contains(panel.tooltipFocus)?panel.tooltipFocus:null;
+        const anchor=hovered||focused||((panel.hero?.device!=='keyboard'||panel.revealSelection)?selected:null);
+        if(anchor?.showItemTooltip){if(panel.tooltipAnchor!==anchor||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)anchor.showItemTooltip();}
+        else if(panel.hero?.device!=='keyboard'||panel.revealSelection){const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
       }
       panel.revealSelection=false;
     }
@@ -535,7 +544,7 @@ export class HeroUI {
         sheet.querySelector('header').append(el('span', `${p.inventory.filter(Boolean).length} / 24`, 'pack-capacity'));
       }
       const list = gear
-        ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot]==='occupied'?p.equipment.hand1:p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[slot]||[] }))
+        ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[p.equipment[slot]==='occupied'?'hand1':slot]||[] }))
         : mode === "pack"
           ? p.inventory
           : storage;
