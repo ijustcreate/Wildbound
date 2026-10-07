@@ -7,12 +7,13 @@ const scenes=new WeakMap();
 export function sampleBansheeSteps(g,{room=null,time=g.time||0,spacing=10}={}){
  let scene=scenes.get(g);if(!scene){scene={steps:[],positions:new Map()};scenes.set(g,scene);}
  scene.steps=scene.steps.filter(s=>time>=s.time&&time-s.time<BANSHEE_STEP_LIFE);
- for(const p of g.players||[]){
+ const actors=[...(g.players||[]),...(g.enemies||[]).filter(e=>e.kind==='banshee_queen'&&e.hp>0)];
+ for(const p of actors){
   if((p.room||null)!==room)continue;
-  const key=String(room)+':'+p.id,x=room?p.roomX:p.x,y=room?p.roomY:p.y;
+  const key=String(room)+':'+(p.kind==='banshee_queen'?'queen:'+p.id:p.id),x=room?p.roomX:p.x,y=room?p.roomY:p.y;
   if(!Number.isFinite(x)||!Number.isFinite(y))continue;
   const last=scene.positions.get(key),distance=last?Math.hypot(x-last.x,y-last.y):0;
-  const eligible=p.hp>0&&!(p.jumpHeight>2)&&stat(p,'icySteps')>0;
+  const eligible=p.hp>0&&!(p.jumpHeight>2)&&((p.kind==='banshee_queen'&&p.moving)||stat(p,'icySteps')>0);
   const current={x,y,time,remainder:eligible&&last?.eligible?last.remainder:0,side:last?.side||1,eligible};
   if(eligible&&last?.eligible&&distance>0&&distance<80&&time-last.time<.5){
    const dx=(x-last.x)/distance,dy=(y-last.y)/distance;

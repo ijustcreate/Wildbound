@@ -35,6 +35,7 @@ import {victoryChestBlocked} from './victory-chest.mjs';
 import {catchCritter} from './living-ecosystem.mjs';
 import {updateBoundlessWorld, BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
+import {houseKeepsWorld} from './house-victory.mjs';
 import {tickQuicksand} from './quicksand.mjs';
 import {tickBoardSequence} from './board-sequence.mjs';
 import {tickWolf, wolfPack} from './wolf-pack.mjs';
@@ -64,6 +65,12 @@ import { initAdventure, initHero, adventureMethods } from "./adventure.mjs";
 import { ITEMS, stat, give, itemKind, hasSetSkill } from "./items.mjs";
 import { rules, creatures } from "./definitions.mjs";
 import { meleeProfile, meleeCanHit } from './melee-geometry.mjs';
+import {GRAVEYARD_EVENTS,cemeteryEvent} from './graveyard-events.mjs';
+import {graveyardBlocked,harvestGravestone,tickGraveyard,GRAVE_EMERGENCE_SECONDS} from './graveyard-world.mjs';
+import {spawnSurfaceEcology,tickSurfaceEcology,catchGraveyardCritter} from './graveyard-ecology.mjs';
+import {spawnMausoleumEvent} from './mausoleum-crypt.mjs';
+import {spawnRavenFlock,tickRaven,dropRavenLoot} from './raven.mjs';
+import {flamingMeleeHit,onFlamingHarvest} from './crypt-gear.mjs';
 import {healingAdventureMethods} from './healing-magic.mjs';
 import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
 export const TILE = 32,
@@ -400,6 +407,7 @@ EVENTS.push(structuredClone(IMP_EVENT));
 EVENTS.push(structuredClone(ZOMBIE_EVENT));
 EVENTS.push({name:'Velvet feet in the sand',kind:'tarantula',count:2,hp:110,speed:48,damage:16,weight:8,spiderNest:true,verse:'Soft gold hides eight silent feet.\nThe velvet hunters guard their keep.',tip:'Tarantulas are slower and tougher than black spiders. Avoid their bite and destroy the eggs.'});
 EVENTS.push(structuredClone(OLD_WELL_EVENT));
+EVENTS.push(...GRAVEYARD_EVENTS.map(e=>structuredClone(e)));
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {
@@ -516,6 +524,7 @@ export class Game {
     if(!flying&&!projectile&&!['ally','neutral'].includes(creatures.anaconda?.faction)&&anacondaBlocks(this,x,y,radius,elevation,from))return true;
     if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile,from))return true;
     if(livingEcosystemBlocked(this,x,y,radius,flying,footOffset))return true;
+    if(graveyardBlocked(this,x,y+footOffset,radius,flying))return true;
     if (
       (this.barricades || []).some(
         (b) =>
@@ -535,8 +544,8 @@ export class Game {
       this.volcanoes?.some((v) => Math.hypot(x - v.x, y - v.y) < 45)
     )
       return true;
-    if(!flying&&!ignoreWater&&this.phase!=='won'&&this.house?.pools?.some(b=>Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y+footOffset-Math.max(b.y,Math.min(y+footOffset,b.y+b.h)))<radius))return true;
-    if (!flying && !ignoreWater && this.phase !== "won")
+    if(!flying&&!ignoreWater&&(this.phase!=='won'||houseKeepsWorld(this))&&this.house?.pools?.some(b=>Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y+footOffset-Math.max(b.y,Math.min(y+footOffset,b.y+b.h)))<radius))return true;
+    if (!flying && !ignoreWater && (this.phase !== "won"||houseKeepsWorld(this)))
       for (const [dx, dy] of [
         [0, 0],
         [radius, 0],
@@ -675,6 +684,11 @@ export class Game {
     seedSupplyChests(this);
     this.phase = "play";
     initLivingEcosystem(this);
+    spawnSurfaceEcology(this);
+    if(this.generatedEnvironment==='graveyard'&&!this.graveyard.ravensSeeded){
+      const perch=this.scenery.find(p=>p.kind==='leafless_tree'&&Math.hypot(p.x-800,p.y-800)>350);
+      spawnRavenFlock(this,{count:3,x:perch?.x??470,y:perch?.rootY??430});this.graveyard.ravensSeeded=true;
+    }
     this.turnOrder = [];
     this.repeatTurnPlayerId = null;
     this.message("The board is awake. Hit the table to roll.");
@@ -761,7 +775,7 @@ export class Game {
       return this.hitTable(p);
     }
     if (!["play", "won"].includes(this.phase) || p.hp <= 0 || p.room || p.ui) return false;
-    if(!isCharmed(p)&&catchCritter(this,p))return true;
+    if(!isCharmed(p)&&(catchGraveyardCritter(this,p)||catchCritter(this,p)))return true;
     if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
     if(throwBoomerang(this,p))return true;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
@@ -813,7 +827,7 @@ export class Game {
       );
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
-    let stickHit=!isCharmed(p)&&harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
+    let stickHit=!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
     for(const pane of this.house?.walls||[]){
@@ -846,6 +860,7 @@ export class Game {
           damage * (e.state === "recover" ? 1.3 : 1) * (guard ? 0.35 : 1),
         );
         damageEnemy(e,appliedDamage);
+        for(const slot of ['hand1','hand2'])flamingMeleeHit(this,p,e,slot);
         applyTorchHit(this,p,e);
         e.flash = 0.13;
         if (charge > 0.6) {
@@ -1019,6 +1034,7 @@ export class Game {
       if(index===null)return;
     }
     if(!EVENTS[index]||!eventHasStartingAreas(this,EVENTS[index]))return;
+    if(this.generatedEnvironment==='graveyard'&&!cemeteryEvent(EVENTS[index]))return;
     if(EVENTS[index].environments&&!EVENTS[index].environments.includes(this.generatedEnvironment))return;
     this.event = migrateBeeEvent(EVENTS[index]);
     if(!this.event||(this.event.environment&&this.event.environment!==this.generatedEnvironment))return;
@@ -1031,6 +1047,12 @@ export class Game {
     this.event.chainRuntime = 0;
     this.runEventActions("start");
     if(this.event.type==='old_well'){spawnOldWell(this);this.onSound('event');return;}
+    if(this.event.type==='mausoleum'){spawnMausoleumEvent(this);this.onSound('event');return;}
+    if(['raven_flock','murder_of_crows'].includes(this.event.type)){
+      const birds=spawnRavenFlock(this,{...this.event,murder:this.event.type==='murder_of_crows',x:800,y:1040});
+      this.eventSpawnCount=birds.length;this.reveal=birds[0]?{x:birds[0].x,y:birds[0].y,life:3}:null;
+      this.message(this.event.name+' — '+this.event.tip);this.onSound('event');return;
+    }
     if(this.event.type==='mystery'){startMystery(this,this.event);this.onSound('event');return;}
     if (startHazard(this, this.event)) {
       this.message(this.event.name + " — " + this.event.tip);
@@ -1181,6 +1203,7 @@ export class Game {
         initializeAnaconda(e,this);
       }
       this.enemies.push(e);
+      if(this.event.graveRise){e.graveEmergence={elapsed:0,duration:GRAVE_EMERGENCE_SECONDS,origin:{x:e.x,y:e.y,groundY:e.y+14}};e.state='emerging';}
       first ??= e;
     }
     for(const e of this.enemies.filter(e=>e.group===group&&e.kind==="wolf"))wolfPack(this,e);
@@ -1239,6 +1262,7 @@ export class Game {
     tickHazards(this, dt);
     tickImpHazards(this,dt);
     tickEnvironment(this, dt);
+    tickGraveyard(this,dt);tickSurfaceEcology(this,dt);
     tickMystery(this);
     tickNightEquipment(this, dt);
     tickNightEnemyHazards(this, dt);
@@ -1363,6 +1387,8 @@ export class Game {
     const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet)].filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
       if(e.practiceTarget)continue;
+      if(e.graveEmergence)continue;
+      if(e.hp>0&&tickRaven(this,e,dt))continue;
       const alive = targets.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p)));
       if(e.hp>0&&e.kind==='bee_hive'){tickBeeHive(this,e,dt);continue;}
       if(e.hp>0&&e.kind==='bee'&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickBee(this,e,dt,alive);continue;}
@@ -2031,6 +2057,7 @@ export class Game {
       }
       if(e.faction==='ally'||creatures[e.kind]?.faction==='ally'){
         this.message(`${e.kind} companion fell.`);
+        dropRavenLoot(this,e); // Carried property survives friendship and death.
         continue; // Losing a friendly creature is not an enemy kill or loot reward.
       }
       if(e.kind!=='bee_hive'){summonGhost(this,e);summonNecromancerOnKill(this,e);}

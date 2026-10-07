@@ -1,6 +1,7 @@
 import {eventHasStartingAreas} from './starting-area.mjs';
 import { ITEMS } from './items.mjs';
 import {houseLightSources} from './house-lights.mjs';
+import {cemeteryEvent} from './graveyard-events.mjs';
 
 // Eight minutes of simulation time. Menus/pause never advance the sky.
 export const DAY_LENGTH = 480;
@@ -47,7 +48,8 @@ export function lightAt(g, point) {
   return light;
 }
 export function eventAvailable(g, event) {
-  return (!event.environment || event.environment === g.generatedEnvironment)
+  return (g.generatedEnvironment!=='graveyard'||cemeteryEvent(event))
+    && (!event.environment || event.environment === g.generatedEnvironment)
     && (!event.environments || event.environments.includes(g.generatedEnvironment))
     && (!event.times || event.times.includes(timeOfDay(g)))
     && eventHasStartingAreas(g,event);

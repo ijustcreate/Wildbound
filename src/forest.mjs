@@ -1,4 +1,5 @@
 import {tickFern} from './fern-art.mjs';
+import {houseKeepsWorld} from './house-victory.mjs';
 // Layered, deterministic pixel vegetation. No bitmap dependencies or per-frame random spawning.
 import {forestWind} from './forest-landscape.mjs';
 import {hasForestLandscape,drawCanopyShadow,drawLandscapeCover} from './forest-art.mjs';
@@ -198,7 +199,7 @@ export function tickForest(g,dt){
 }
 export function drawForestGround(c,g,visible=()=>true){
  const data=forestDecor(g),landscape=hasForestLandscape(g);c.save();
- if(landscape){const cameraVisible=visible;visible=p=>cameraVisible(p)&&(g.phase!=='won')&&(g.bloom>=3||Math.hypot(p.x-800,p.y-800)<g.bloom*430);drawLandscapeCover(c,g,visible);}
+ if(landscape){const cameraVisible=visible;visible=p=>cameraVisible(p)&&(g.phase!=='won'||houseKeepsWorld(g))&&(g.bloom>=3||Math.hypot(p.x-800,p.y-800)<g.bloom*430);drawLandscapeCover(c,g,visible);}
  for(const p of g.scenery||[])if(['tree','snow_tree','palm'].includes(p.kind)&&visible(p)){
  if(landscape&&p.kind!=='palm'){drawCanopyShadow(c,p,g);continue;}
  const b=p.kind==='palm'?palmBase(p):treeBase(p);c.fillStyle=p.fallen?'#102b224d':'#0b25234f';c.beginPath();c.ellipse(b.x+5,b.y+3,p.size*(p.fallen?.13:.34),p.size*(p.fallen?.05:.12),0,0,Math.PI*2);c.fill();}

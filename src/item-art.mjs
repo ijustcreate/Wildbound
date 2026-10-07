@@ -66,6 +66,41 @@ export function paintItem(c, type) {
   }
 }
 function paintItemBase(c, type) {
+  if(type==='coffin_lid_shield') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    // Narrow head, broad shoulders and a tapered foot: a coffin lid, not a kite.
+    for(const [x,y,w,h] of [[9,2,6,2],[7,4,10,2],[5,6,14,3],[6,9,12,3],[7,12,10,4],[8,16,8,5],[9,21,6,1]]) {
+      r(x,y,w,h,'#352c27');r(x+1,y,w-2,h,'#896143');r(x+1,y,1,h,'#bc9262');r(x+w-2,y,1,h,'#654731');
+    }
+    r(9,5,1,15,'#5c402e');r(12,3,1,18,'#5c402e');r(14,9,1,10,'#ac8054');
+    for(const [x,y,w] of [[6,7,12],[8,16,8]]) {
+      r(x,y,w,2,'#465157');r(x,y,w,1,'#8e9895');
+      r(x+1,y,1,1,'#d4d4ba');r(x+w-2,y,1,1,'#d4d4ba');
+    }
+    r(11,11,3,3,'#465157');r(12,11,1,2,'#a5aaa1');return;
+  }
+  if(type==='crypt_flame_sword') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(11,2,2,1,'#f0dfbd');r(10,3,4,12,'#5e5b50');r(11,3,2,12,'#d4bea0');
+    r(11,3,1,11,'#f0dfbd');r(7,14,10,3,'#4d3e32');r(8,14,8,1,'#c8a060');
+    r(11,17,3,5,'#4d3428');r(11,17,1,4,'#986a46');r(10,21,5,2,'#bd8e54');
+    // Detached square embers leave the warm steel silhouette readable.
+    for(const [x,y] of [[7,3],[15,6],[8,10],[16,11]]) {r(x,y,2,2,'#e67538');r(x,y,1,1,'#ffd17b');}
+    r(14,2,1,2,'#f8ad50');r(6,8,1,1,'#ffd17b');return;
+  }
+  if(type==='caught_grave_moth'||type==='caught_crypt_beetle') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(7,3,10,3,'#a78a56');r(5,7,14,15,'#4b827d');r(6,8,12,13,'#739d96');
+    r(7,8,1,11,'#d0efdf');r(5,21,14,2,'#b1d8c8');
+    if(type==='caught_grave_moth') {
+      r(9,11,3,5,'#b8a38d');r(13,11,3,5,'#b8a38d');r(10,16,5,2,'#8d7a70');
+      r(12,11,1,7,'#4e414e');r(10,12,1,1,'#e2cfb3');r(14,12,1,1,'#e2cfb3');
+    } else {
+      r(10,13,6,5,'#3c3549');r(11,12,4,6,'#877b9b');r(12,13,1,5,'#4e414e');
+      r(9,14,1,1,'#3c3549');r(16,14,1,1,'#3c3549');r(11,11,3,2,'#514357');r(11,13,1,2,'#bcadc3');
+    }
+    return;
+  }
   if(type==='honeycomb'){
     const rows=['0011100','0111110','1111111','1111111','0111110','0011100'];
     for(const [cx,cy]of [[3,3],[10,3],[17,3],[3,10],[10,10],[17,10]])

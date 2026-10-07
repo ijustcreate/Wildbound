@@ -24,6 +24,7 @@ export const LEVEL_MUSIC_PAIRS = Object.freeze({
   tv: {calm:'village-gate',combat:'swinging-vines'},
   lobby: {calm:'curious-groove',combat:'under-the-conductors-blade'},
   beach: {calm:'village-gate',combat:'worlds-edge'},
+  graveyard: {calm:'ancient-gate',combat:'the-altar-of-bone'},
 });
 export function levelMusicPair(level='lobby',choice='adaptive',random=Math.random){
   const assigned=LEVEL_MUSIC_PAIRS[level]||LEVEL_MUSIC_PAIRS.forest;

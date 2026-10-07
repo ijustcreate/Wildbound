@@ -7,12 +7,15 @@ import { terrainHash } from "./world.mjs";
 import {hunterPets} from './hunter-pets.mjs';
 import {releasedCritters} from './living-ecosystem.mjs';
 import {boundlessTerrainAt} from './boundless-world.mjs';
+import {houseKeepsWorld} from './house-victory.mjs';
+import {drawGraveyardProp} from './graveyard-art.mjs';
+import {tickFlamingTrees} from './crypt-gear.mjs';
 export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
 });
 export function waterAt(g, x, y) {
-  if (g.phase === "won") return "grass";
+  if (g.phase === "won"&&!houseKeepsWorld(g)) return "grass";
   const tx = Math.floor(x / 32),
     ty = Math.floor(y / 32);
   if (tx < 0 || ty < 0 || tx >= 50 || ty >= 50) {
@@ -20,6 +23,9 @@ export function waterAt(g, x, y) {
     return "water";
   }
   let base = g.terrain?.[ty * 50 + tx] || "grass";
+  // Beach pier boards are bridge tiles: water routes remain traversable
+  // underneath instead of becoming a solid dry collision strip.
+  if (g.generatedEnvironment === 'beach' && base === 'wood') return 'bridge';
   if(g.house?.pools){if(g.house.pools.some(p=>x>=p.x&&y>=p.y&&x<p.x+p.w&&y<p.y+p.h))return 'water';if(base==='water')base='grass';}
   // Derived from terrain so existing saves gain natural muddy shorelines too.
   if(base==='sand'&&g.generatedEnvironment!=='beach'&&!g.house?.pools&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>tx+dx>=0&&tx+dx<50&&ty+dy>=0&&ty+dy<50&&['water','shallow'].includes(g.terrain?.[(ty+dy)*50+tx+dx])))return 'mud';
@@ -45,7 +51,7 @@ export const isQuicksand = (type) => type === "quicksand";
 export function harvest(g, p, damage, range, onHit) {
   const candidates = g.scenery
     .filter(
-      (s) => !s.falling && !s.depleted && ["tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
+      (s) => !s.falling && !s.depleted && ["tree", "leafless_tree", "grave_forest_tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
     )
     .map((s) => ({ s, b: propBase(s) }))
     .filter(({ b }) => {
@@ -68,7 +74,7 @@ export function harvest(g, p, damage, range, onHit) {
   const hit = candidates[0];
   if (!hit) return false;
   const { s, b } = hit;
-  p.gatherAction = ["tree", "palm", "snow_tree", "frozen_log"].includes(s.kind) ? "woodcut" : "mine";
+  p.gatherAction = ["tree", "leafless_tree", "grave_forest_tree", "palm", "snow_tree", "frozen_log"].includes(s.kind) ? "woodcut" : "mine";
   p.gatherTime = 0.55;
   emitNoise(g, p, 'break', 300);
   g.onSound(["rock","ice_rock","ice_spire"].includes(s.kind)?"mine":"harvest",p);
@@ -78,7 +84,7 @@ export function harvest(g, p, damage, range, onHit) {
     g.dropLoot(p.x + p.faceX * 12, p.y + p.faceY * 12, type, qty, "Harvested");
     g.loot.at(-1).manualPickup = true;
   };
-  if (["tree","palm","snow_tree","frozen_log"].includes(s.kind)) {
+  if (["tree","leafless_tree","grave_forest_tree","palm","snow_tree","frozen_log"].includes(s.kind)) {
     drop("stick", 1);
     s.maxHarvest ||= Math.round(s.size * 0.85);
     if (s.harvest >= s.maxHarvest) {
@@ -112,6 +118,7 @@ export function harvest(g, p, damage, range, onHit) {
   return true;
 }
 export function tickEnvironment(g, dt) {
+  tickFlamingTrees(g,dt);
   tickForest(g,dt);
   g.footprints ||= [];
   g.environmentParticles ||= [];
@@ -140,7 +147,7 @@ export function tickEnvironment(g, dt) {
       }
     }
   for (const s of g.scenery) {
-    if (s.falling >= 1.5 && ["tree", "snow_tree", "palm"].includes(s.kind)) {
+    if (s.falling >= 1.5 && ["tree", "leafless_tree", "grave_forest_tree", "snow_tree", "palm"].includes(s.kind)) {
       // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
       s.fallen = true;
       s.falling = 0;
@@ -187,6 +194,8 @@ export function tickEnvironment(g, dt) {
     g.footprints.splice(0, g.footprints.length - 600);
 }
 export function drawTracks(c, g) {
+  // An active Banshee Queen owns the ground-trail layer while she is alive.
+  if ((g.enemies || []).some(e => e.kind === 'banshee_queen' && e.hp > 0 && !e.room)) return;
   for (const f of g.footprints || []) {
     if(['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
     const t = g.time - f.time;
@@ -235,6 +244,7 @@ export function drawTracks(c, g) {
   }
 }
 export function drawProp(c, p, time,game={}) {
+  if(drawGraveyardProp(c,p,time,game))return true;
   if(drawBiomeProp(c,p,time,game))return true;
   if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
   if(p.procedural&&['tree','snow_tree','palm'].includes(p.kind)){

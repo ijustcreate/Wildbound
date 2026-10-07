@@ -6,6 +6,7 @@ import {makeHouse,insideHouse} from './expansion.mjs';
 import {BOARD_TABLE} from './board-table.mjs';
 import {createForestLandscape,createForestScenery} from './forest-landscape.mjs';
 import {palmBase} from './forest.mjs';
+import {graveyardWorld} from './graveyard-world.mjs';
 // Matches the visible board footprint (including the lower carved rim).
 export const TABLE = {
   // Keep the physical board aligned with the reduced board art in render.mjs.
@@ -58,12 +59,13 @@ export function createScenery(seed = 0, environment = "forest") {
   return result;
 }
 export function generateWorld(seed, environment = "forest") {
-  return {forestLandscape:null,forestLandscapeVersion:0,...generateWorldData(seed,environment)};
+  return {forestLandscape:null,forestLandscapeVersion:0,graveyard:null,ravenFlocks:[],...generateWorldData(seed,environment)};
 }
 function generateWorldData(seed, environment) {
   const terrain = Array(2500).fill("grass");
   if(environment==='ice')return iceWorld(seed);
   if(environment==='beach')return beachWorld(seed);
+  if(environment==='graveyard')return graveyardWorld(seed);
   if(environment==='temple'){
     const house=templeLayout();for(let y=0;y<50;y++)for(let x=0;x<50;x++)if(x*32>=480&&x*32<1120&&y*32>=450&&y*32<1120)terrain[y*50+x]='temple_stone';
     const scenery=createScenery(seed).filter(p=>!(p.x>425&&p.x<1175&&p.y>395&&p.y<1175));
@@ -154,6 +156,7 @@ export function ensureFootprint(sprite, name) {
   return sprite;
 }
 export function propDepth(prop, sprite) {
+  if(prop.graveyard)return prop.rootY??prop.y;
   if(prop.coastal)return prop.rootY??prop.y;
   if(prop.kind==='forest_ruin')return prop.y;
   if(prop.procedural&&['tree','snow_tree'].includes(prop.kind))return prop.rootY??prop.y+prop.size*.35;
@@ -166,6 +169,9 @@ export function propDepth(prop, sprite) {
   return prop.y - prop.size / 2 + ((bottom + 0.5) * prop.size) / sprite.height;
 }
 export function footprintHit(prop, sprite, x, y, radius = 8) {
+  // Cemetery obstacles are tested once by graveyardBlocked, not by the generic
+  // square sprite fallback (which would block paths and the mausoleum doorstep).
+  if(prop.graveyard)return false;
   if(prop.coastal){
     if(prop.falling||prop.depleted||!prop.beachFootprint)return false;
     const [w,d]=prop.beachFootprint,base=prop.rootY??prop.y;

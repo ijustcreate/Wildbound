@@ -1,4 +1,7 @@
 import {victoryRewards} from './victory-chest.mjs';
+import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
+import {dropRavenLoot,spawnRavenFlock} from './raven.mjs';
+import {spawnSurfaceEcology,releaseGraveyardCritter} from './graveyard-ecology.mjs';
 import {dropHiveHoney,useHoneycomb} from './honeycomb.mjs';
 import {enterOldWell,leaveOldWell,interactOldWell,oldWellRoomStep,tickOldWells,wellForPlayer} from './old-well.mjs';
 import {robotShopAction} from './robot-shop.mjs';
@@ -229,8 +232,9 @@ export const adventureMethods = {
       explored: this.explored.size,
     }));
     this.phase = "won";
-    this.scenery = [];
-    this.enemies = [];
+    if(!houseKeepsWorld(this))this.scenery = [];
+    this.enemies = houseKeepsWorld(this)?this.enemies.filter(e=>!recalledEnemy(e)):[];
+    if(houseKeepsWorld(this))this.ghosts=(this.ghosts||[]).filter(e=>!recalledEnemy(e));
     this.arrows = [];
     this.arrowIcePatches=[];
     this.traps = [];
@@ -269,6 +273,11 @@ export const adventureMethods = {
     this.boundlessLoadedChunks=[];
     this.templeTigersSummoned = false;
     this.generatedEnvironment = env;
+    spawnSurfaceEcology(this);
+    if(env==='graveyard'){
+      const perch=this.scenery.find(p=>p.kind==='leafless_tree'&&Math.hypot(p.x-800,p.y-800)>350);
+      spawnRavenFlock(this,{count:3,x:perch?.x??470,y:perch?.rootY??430});this.graveyard.ravensSeeded=true;
+    }
     seedSupplyChests(this,true);
     this.phase = "play";
     this.bloom = 0;
@@ -541,7 +550,8 @@ export const adventureMethods = {
     const d = this.portals.find((d) => d.id === p.room);
     if (!d) return;
     if(d.oldWell){
-      if(!forced&&p.hp>0&&Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=36){this.message('Find the shaft of light and climb the rope to return.');return false;}
+      if(!forced&&p.hp>0&&p.wellExitArmed===false){this.message(d.mausoleum?'Release Interact after descending, then use the entrance stairs.':'Release Interact after descending, then use the rope to climb out.');return false;}
+      if(!forced&&p.hp>0&&Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=36){this.message(d.mausoleum?'Find the entrance stairs and use Interact to return.':'Find the shaft of light and climb the rope to return.');return false;}
       return leaveOldWell(this,p);
     }
     p.room = null;
@@ -642,6 +652,7 @@ export const adventureMethods = {
       if(action==='lootAll'){for(const index of occupied){u.index=index;this.inventoryAction(p,'use');}return;}
       if(action==='use')action='store';
     }
+    if (u.shop === 'vending' && !['use','collect','offhand','panel','next','prev','down','up','close'].includes(action)) return;
     delete u.tab; // Old category selections must not hide or disable saved items.
     if(robotShopAction(this,p,action))return;
     if(merchantAction(this,p,action))return;
@@ -744,10 +755,47 @@ export const adventureMethods = {
       u.shop === "vending" &&
       ["use", "collect", "offhand"].includes(action)
     ) {
-      if (action === "collect" || action === "offhand") this.collectVending(p);
-      else this.purchaseVending(p, u.index % 12);
+      const orders = (p.vendingOrders || []).filter(o => o.owner === (this.shopOwner(p)?.profileId || this.shopOwner(p)?.id));
+      if (action === "offhand" || action === "collect") {
+        const selected = u.vendingView === 'tray' ? u.vendingOrderId : undefined;
+        const collected = this.collectVending(p, selected);
+        if (collected) {
+          const remaining=(p.vendingOrders||[]).find(o=>o.owner===(this.shopOwner(p)?.profileId||this.shopOwner(p)?.id)&&o.ready);
+          if (u.vendingView==='tray'&&remaining) u.vendingOrderId=remaining.id;
+          else { u.vendingView='catalog'; delete u.vendingOrderId; }
+        }
+      } else if (u.vendingView === 'tray') {
+        if (this.collectVending(p, u.vendingOrderId)) {
+          const remaining=(p.vendingOrders||[]).find(o=>o.owner===(this.shopOwner(p)?.profileId||this.shopOwner(p)?.id)&&o.ready);
+          if (remaining) u.vendingOrderId=remaining.id;
+          else { u.vendingView='catalog'; delete u.vendingOrderId; }
+        }
+      } else this.purchaseVending(p, u.index % 12);
       return;
     }
+    if (u.shop === 'vending' && ['panel','next','prev','down','up'].includes(action)) {
+      const owner = this.shopOwner(p), orders = (p.vendingOrders || []).filter(o => o.owner === (owner?.profileId || owner?.id));
+      const ready = orders.filter(o => o.ready);
+      u.vendingView ||= 'catalog';
+      if (action === 'panel' || (u.vendingView === 'catalog' && (action === 'down' || action === 'up') && ready.length)) {
+        u.vendingView = u.vendingView === 'tray' ? 'catalog' : 'tray';
+        if (u.vendingView === 'tray') u.vendingOrderId = ready[0]?.id;
+        else delete u.vendingOrderId;
+        return;
+      }
+      if (u.vendingView === 'tray') {
+        if (!ready.length) { u.vendingView='catalog'; delete u.vendingOrderId; return; }
+        if (action === 'up') { u.vendingView='catalog'; delete u.vendingOrderId; return; }
+        const i = Math.max(0, ready.findIndex(o => o.id === u.vendingOrderId));
+        const step = action === 'next' || action === 'down' ? 1 : action === 'prev' || action === 'up' ? -1 : 0;
+        u.vendingOrderId = ready[(i + step + ready.length) % ready.length].id;
+        return;
+      }
+      const limit = 12, step = action === 'next' ? 1 : action === 'prev' ? -1 : action === 'down' ? 3 : -3;
+      u.index = (u.index + step + limit) % limit;
+      return;
+    }
+    if (u.shop === 'vending' && action !== 'close') return;
     if (u.shop && action === "use") {
       u.notice =
         u.shop === "robot"
@@ -842,7 +890,11 @@ export const adventureMethods = {
       else if (storage && action === "use") moveItem();
       else {
         const item = p.inventory[u.index];
-        if(item?.type?.startsWith('caught_'))releaseCritter(this,p,u.index);
+        if(item?.type?.startsWith('caught_')){
+          if(['caught_grave_moth','caught_crypt_beetle'].includes(item.type)){
+            if(!releaseGraveyardCritter(this,p,u.index))u.notice='Release this cemetery critter on open graveyard ground.';
+          }else releaseCritter(this,p,u.index);
+        }
         else if(item?.type==='arrow')u.notice='Arrows are used automatically when you fire a bow.';
         else if (item?.type === "stamina_potion") useStamina(p);
         else if (item?.type === "potion") this.usePotion(p);
@@ -1233,14 +1285,14 @@ export const adventureMethods = {
   },
   purchaseVending(p, index) {
     const owner = this.shopOwner(p);
-    if (!owner || p.ui?.shop !== "vending") return false;
+    if (!owner || p.hp <= 0 || p.ui?.shop !== "vending" || p.ui.ownerDevice !== p.device || !this.players.includes(p) || this.players.filter(q => q.device === p.device).length !== 1) return false;
     p.ui.notice = purchaseVending(p, owner, index);
     this.persist();
     return true;
   },
   collectVending(p, id) {
     const owner = this.shopOwner(p);
-    if (!owner) return false;
+    if (!owner || p.hp <= 0 || p.ui?.shop !== 'vending' || p.ui.ownerDevice !== p.device || !this.players.includes(p) || this.players.filter(q => q.device === p.device).length !== 1) return false;
     const order = (p.vendingOrders || []).find(
       (o) =>
         o.owner === (owner.profileId || owner.id) &&
@@ -1265,6 +1317,7 @@ export const adventureMethods = {
     if(shop==='robot'&&!robotOnline(owner)){this.message('SCRAP-9 is offline. Hold Interact nearby to repair it.');return false;}
     this.openInventory(p);
     p.ui.shop = shop;
+    if (shop === 'vending') { p.ui.vendingView = 'catalog'; delete p.ui.vendingOrderId; }
     owner.robotStock ||= [];
     owner.vendingStock ||= vendingStock();
     p.vendingOrders ||= [];
@@ -1384,6 +1437,7 @@ export const adventureMethods = {
     );
   },
   enemyLoot(e) {
+    dropRavenLoot(this,e);
     dropHiveHoney(this,e);
     if(SCROLL_BOSSES.has(e.kind)||e.frostMage||e.boss){
       const missing=SKILLS.filter(s=>this.players.some(p=>!skillAvailable(p,s.id)));

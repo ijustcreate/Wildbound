@@ -6,7 +6,18 @@ import {BOARD_ENTRY_TILE_PIXELS,boardImagePoint} from './board-layout.mjs';
 const load=path=>{if(typeof Image==='undefined')return null;const image=new Image();image.src=new URL(path,import.meta.url).href;return image;};
 export const BOARD_ART_ASSETS=Object.freeze({forest:'../assets/board-minimal.png',desert:'../assets/board-desert-v1.png',beach:'../assets/board-beach-v1.png',temple:'../assets/board-temple-v1.png',house:'../assets/board-house-v1.png'});
 const backgrounds=Object.fromEntries(Object.entries(BOARD_ART_ASSETS).map(([biome,path])=>[biome,load(path)])),pieces=load('../assets/board-pawns.png');
-export const boardArtBiome=game=>Object.hasOwn(BOARD_ART_ASSETS,game.generatedEnvironment||game.environment)?game.generatedEnvironment||game.environment:'forest';
+export const boardArtBiome=game=>(game.generatedEnvironment||game.environment)==='graveyard'?'graveyard':Object.hasOwn(BOARD_ART_ASSETS,game.generatedEnvironment||game.environment)?game.generatedEnvironment||game.environment:'forest';
+function drawCemeteryBoard(c,trail){
+ c.fillStyle='#283333';c.fillRect(-140,-96,280,192);c.fillStyle='#35453c';c.fillRect(-132,-88,264,176);
+ c.strokeStyle='#777d68';c.lineWidth=3;c.strokeRect(-135,-91,270,182);
+ for(let i=0;i<42;i++){const x=-127+i*6.2;c.fillStyle='#18252b';c.fillRect(x,-90,2,14);c.fillRect(x,78,2,12);c.fillStyle='#87938a';c.fillRect(x,-90,1,2);}
+ for(const [x,y]of [[-95,-56],[-55,-66],[12,-59],[77,-55],[-92,54],[-41,60],[24,58],[91,53]]){
+  c.fillStyle='#172b27';c.fillRect(x-8,y+2,16,6);c.fillStyle='#626f6b';c.fillRect(x-5,y-13,10,16);c.fillRect(x-3,y-16,6,3);c.fillStyle='#a2a894';c.fillRect(x-4,y-12,8,2);c.fillStyle='#313e3c';c.fillRect(x-1,y-8,2,9);c.fillRect(x-4,y-6,8,2);
+ }
+ c.fillStyle='#435352';c.fillRect(98,-14,26,30);c.fillStyle='#93a18c';c.fillRect(96,-17,30,4);c.fillStyle='#172227';c.fillRect(106,-9,10,24);
+ c.strokeStyle='#c2c7a3';c.lineWidth=7;c.lineJoin='round';c.beginPath();trail.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.stroke();
+ c.strokeStyle='#646c59';c.lineWidth=1.5;c.stroke();
+}
 function drawEntryStone(c){
   const outline=(dx=0,dy=0)=>{c.beginPath();for(const [i,p]of BOARD_ENTRY_TILE_PIXELS.entries()){const v=boardImagePoint(p);i?c.lineTo(v.x+dx,v.y+dy):c.moveTo(v.x+dx,v.y+dy);}c.closePath();};
   c.fillStyle='#493a26';outline(.1,1);c.fill();
@@ -27,7 +38,8 @@ export function drawBoardScene(c,game,time,options,trail,point){
   const selected=backgrounds[boardArtBiome(game)];
   const background=selected?.complete&&selected.naturalWidth?selected:backgrounds.forest;
   c.fillStyle='#30251a';c.fillRect(-140,-96,280,192);
-  if(background?.complete&&background.naturalWidth){c.save();c.filter=`brightness(${settings.boardLight})`;c.drawImage(background,-140,-96,280,192);c.restore();}
+  if(boardArtBiome(game)==='graveyard')drawCemeteryBoard(c,trail);
+  else if(background?.complete&&background.naturalWidth){c.save();c.filter=`brightness(${settings.boardLight})`;c.drawImage(background,-140,-96,280,192);c.restore();}
   else{c.strokeStyle='#d5c49a';c.lineWidth=10;c.beginPath();trail.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.stroke();}
   drawEntryStone(c);
   const resolved=game.roll?.resolved&&game.event;

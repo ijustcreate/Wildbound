@@ -12,7 +12,7 @@ const jobs=[
  ['verify-adaptive-audio','--reuse-audit'],['verify-arrow-supplies'],
  ['verify-lobby-prop-art'],['verify-event-variety','--app-path',base],
  ['verify-quicksand-surface'],['verify-well'],['verify-storage-portals'],['verify-robot-intro'],['verify-storage-jump'],
- ['verify-banshee-queen'],['verify-beach-wild-fauna'],['verify-biome-boards-house-events'],['verify-seal-vortex'],
+ ['verify-banshee-queen'],['verify-beach-wild-fauna'],['verify-biome-boards-house-events'],['verify-seal-vortex'],['verify-house-finale'],
 ];
 const selfLaunching=new Set(['verify-lobby-prop-art','verify-event-variety','verify-quicksand-surface','verify-well']);
 const out=path.join(root,'test-output');fs.mkdirSync(out,{recursive:true});const results=[];

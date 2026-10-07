@@ -47,6 +47,7 @@ export function selectEvent(g,events,available){
  const eligible=events.flatMap((event,index)=>{
   if(!available(g,event)||!(event.weight??10)||event.weight<0)return [];
   if(event.type==='old_well'&&(g.portals||[]).some(d=>d.oldWell))return [];
+  if(event.type==='mausoleum'&&(g.portals||[]).some(d=>d.mausoleum&&d.oldWell))return [];
   if(event.type==='mystery'&&g.mystery&&!g.mystery.done)return [];
   if(event.type==='merchant'&&g.merchant)return [];
   if(weather.has(event.type)&&g.weather?.life>0)return [];

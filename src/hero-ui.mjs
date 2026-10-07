@@ -47,9 +47,9 @@ export class HeroUI {
     root.addEventListener('keydown',guardInventoryKeys,true);
   }
   controllerText(game, p) {
-    if (p.device === 'keyboard') return { accept:'Enter', close:'Esc', select:'Arrows', tabs:'Tab' };
+    if (p.device === 'keyboard') return { accept:'Enter', collect:'2', close:'Esc', select:'Arrows', tabs:'Tab' };
     const names = controllerButtonNames(liveControllerFamily(p));
-    return { accept:names[0], close:names[1], select:'D-pad', tabs:`${names[4]} / ${names[5]}` };
+    return { accept:names[0], collect:names[3], close:names[1], select:'D-pad', tabs:`${names[4]} / ${names[5]}` };
   }
   itemTooltip(panel, button, game, p, item) {
     const def = ITEMS[item?.type];
@@ -222,7 +222,7 @@ export class HeroUI {
         "header",
         panel.classList.contains('inventory-workbench')?`${p.name} · LV ${p.level}`:p.name +
           " · " +
-          (p.ui?.shop === "merchant" ? "TRADING POST" : p.ui?.storage === "victory" ? "VICTORY SPOILS" : wellForPlayer(game,p)?WELL_TITLE.toUpperCase():p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
+          (p.ui?.shop === "merchant" ? "TRADING POST" : p.ui?.storage === "victory" ? "VICTORY SPOILS" : wellForPlayer(game,p)?(wellForPlayer(game,p).mausoleum?'MAUSOLEUM CRYPT':WELL_TITLE.toUpperCase()):p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
           " · LV " +
           p.level,
       );
@@ -244,7 +244,7 @@ export class HeroUI {
       };
       panel.append(
         button(
-          p.ui ? "\u00d7" : wellForPlayer(game,p)?"Climb rope":p.room === "temple-upper" ? "Return downstairs" : p.room ? "Return through portal" : "Close",
+          p.ui ? "\u00d7" : wellForPlayer(game,p)?(wellForPlayer(game,p).mausoleum?'Climb stairs':'Climb rope'):p.room === "temple-upper" ? "Return downstairs" : p.room ? "Return through portal" : "Close",
           "close",
           () => {
             if (p.ui?.socket)game.inventoryAction(p,'close');
@@ -254,7 +254,7 @@ export class HeroUI {
         ),
       );
       const d = game.portals.find((d) => d.id === p.room);
-      if(d?.oldWell&&!p.ui){const close=panel.querySelector('[data-action="close"]');close.disabled=Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=36;close.title='Return at the rope and circle of daylight.';}
+      if(d?.oldWell&&!p.ui){const close=panel.querySelector('[data-action="close"]');close.disabled=p.wellExitArmed===false||Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=36;close.title=d.mausoleum?'Use the stairs in the crypt entrance hall.':'Return at the rope and circle of daylight.';}
       if (d?.closing !== null && d?.closing !== undefined)
         panel.append(
           el(
@@ -272,7 +272,7 @@ export class HeroUI {
         canvas.height = 240;
         panel.append(canvas);
         this.room(canvas, game, p, d, renderer);
-        if(d.oldWell){panel.append(el('p','Explore the tunnels. Interact at the treasure chest, or at the rope in the circle of daylight to climb out.','well-help'));}
+        if(d.oldWell){panel.append(el('p',d.mausoleum?'Explore the candlelit crypt. Interact with the lantern chest and the final coffin. Use the entrance stairs to return to the cemetery.':'Explore the tunnels. Interact at the treasure chest, or at the rope in the circle of daylight to climb out.','well-help'));}
         else if(d.temple){panel.append(el("p","Upper Sanctum · walk to the ritual chest and press Interact. The south doorway returns downstairs."),button("Open ritual chest","temple-chest",()=>game.openInventory(p,"temple")));}
         else {
         const owner = game.players.find((q) => q.id === d.owner);
@@ -351,7 +351,7 @@ export class HeroUI {
     u.loot=true;if(!reusable)u.panel='chest';
     panel.classList.add('loot-popup');panel.classList.toggle('chest-transfer',reusable);
     const door=game.portals.find(d=>d.id===p.room),owner=game.players.find(q=>q.id===door?.owner);
-    const title=reusable?(u.storage==='starter'?'Starter chest':u.storage==='shared'?'Shared stash':chestName(owner||p,u.storage)):u.storage==='old-well'?'Buried well treasure':u.storage==='temple'?'Ritual chest':'Victory spoils';
+    const title=reusable?(u.storage==='starter'?'Starter chest':u.storage==='shared'?'Shared stash':chestName(owner||p,u.storage)):u.storage==='old-well'?(wellForPlayer(game,p)?.mausoleum?'Crypt lantern chest':'Buried well treasure'):u.storage==='temple'?'Ritual chest':'Victory spoils';
     panel.querySelector('header').textContent=p.name+' · '+title;
     const switchTo=(mode,index)=>{game.inventoryAction(p,'panel:'+mode);if(index!==undefined)game.inventoryAction(p,'select:'+index);};
     const surface=el('div',null,'storage-containers');
@@ -846,13 +846,13 @@ export class HeroUI {
     if(p.ui?.shop==='vending'){const index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(680,bounds.width/cols-16),height=Math.min(780,bounds.height/rows-16);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*bounds.width/cols+'px';panel.style.top=8+Math.floor(index/cols)*bounds.height/rows+'px';return;}
     if(p.ui?.loot){const victory=['victory','tv-victory'].includes(p.ui.storage),index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(victory?440:620,bounds.width/cols-16),height=Math.min(victory?520:740,bounds.height/rows-16);panel.classList.toggle('loot-compact',height<=460);panel.classList.toggle('loot-tight',height<=360);if(p.ui.storage==='starter')p.ui.storageColumns=height<=360?6:4;panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*(bounds.width/cols)+'px';panel.style.top=8+Math.floor(index/cols)*(bounds.height/rows)+'px';return;}
     if(panel.classList.contains('storage-session')&&(!p.ui?.shop||['merchant','robot'].includes(p.ui.shop))){
-      const index=Math.max(0,open.findIndex(q=>q.id===p.id)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/3);
+      const playerIndex=Math.max(0,game.players.findIndex(q=>q.id===p.id)),slot=playerIndex%4,cols=2,rows=2;
       const width=Math.min(panel.classList.contains('inventory-workbench')||p.ui?.shop==='robot'?480:560,(bounds.width-16)/cols-8),height=Math.min(800,(bounds.height-16)/rows);
       panel.classList.toggle('inventory-compact',height<=580);
       panel.classList.toggle('inventory-tight',height<=460);
       panel.classList.toggle('inventory-narrow',width<=380);
-      const left=cols===1?8:cols===2?(index%cols===0?8:bounds.width-width-8):(index%3)*(bounds.width/3)+8;
-      panel.classList.toggle('party-panel',open.length>1);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=left+'px';panel.style.top=8+Math.floor(index/3)*height+'px';return;
+      const left=slot%2===0?8:bounds.width-width-8,top=slot<2?8:bounds.height-height-8;
+      panel.classList.toggle('party-panel',open.length>1);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=left+'px';panel.style.top=top+'px';return;
     }
     panel.style.height='';
     const compactRobot = p.ui?.shop === "robot" && bounds.height < 760,
@@ -905,19 +905,6 @@ export class HeroUI {
         this.panelAnchors.set(p.id, anchor);
       }
       panel.dataset.anchor = anchor;
-    }
-    if (open.length > 1) {
-      const index = open.findIndex((q) => q.id === p.id),
-        cols = open.length > 4 ? 3 : 2,
-        rows = Math.ceil(open.length / cols),
-        cellW = bounds.width / cols,
-        cellH = bounds.height / rows;
-      panel.classList.add("party-panel");
-      panel.style.width = cellW - 12 + "px";
-      panel.style.maxHeight = cellH - 16 + "px";
-      panel.style.left = (index % cols) * cellW + 6 + "px";
-      panel.style.top = Math.floor(index / cols) * cellH + 8 + "px";
-      return;
     }
     panel.classList.remove("party-panel");
     const [x, y] = positions[panel.dataset.anchor] || positions["top-left"];

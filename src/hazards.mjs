@@ -172,6 +172,7 @@ export function tickHazards(g, dt) {
         !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
+        !((p.jumpHeight||0)>2 || (p.groundHeight||0)>2 || p.flying || p.flightHeight || p.roostHeight) &&
         Math.hypot(p.x - b.x, p.y - b.y) < 18 && clearShot(g,b,p)
       ) {
         if (!g.shieldBlocks(p, b) && p.invuln <= 0) {
@@ -194,6 +195,7 @@ export function tickHazards(g, dt) {
     for (const p of g.players)
       if (
         !p.room &&
+        !((p.jumpHeight||0)>2 || (p.groundHeight||0)>2 || p.flying || p.flightHeight || p.roostHeight) &&
         p.hp > 0 &&
         p.x >= f.x &&
         p.x < f.x + 32 &&
@@ -204,7 +206,7 @@ export function tickHazards(g, dt) {
         ignite(p, 2, f.damage);
       }
     if(f.playerLit)for(const e of g.enemies)
-      if(!e.room&&e.hp>0&&e.x>=f.x&&e.x<f.x+32&&e.y>=f.y&&e.y<f.y+32) {
+      if(!e.room&&e.hp>0&&!((e.jumpHeight||0)>2||(e.groundHeight||0)>2||e.flying||e.flightHeight||e.roostHeight||['bat','bee','wasp','tsetse','dragonfly','fairy','bird','pelican','raven','crow'].includes(e.kind))&&e.x>=f.x&&e.x<f.x+32&&e.y>=f.y&&e.y<f.y+32) {
         damageEnemy(e,f.damage,'fire');e.killedBy=f.ownerId;e.aggro=true;e.flash=.12;
         ignite(e,2,f.damage);
       }

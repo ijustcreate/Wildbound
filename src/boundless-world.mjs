@@ -13,12 +13,14 @@ const species = {
   desert: ['lion', 'panther', 'tiger'],
   ice: ['snow_leopard', 'white_lion', 'tiger'],
   temple: ['tiger', 'gorilla', 'monkey'],
+  graveyard: ['zombie','skeleton','spider','bat'],
 };
 const keyOf = (x, y) => `${x},${y}`;
 const chunkOf = n => Math.floor(n / BOUNDLESS_CHUNK_SIZE);
 const chunkSeed = (seed, x, y) => Math.floor(Math.abs(terrainHash(seed + x * 127.1, y * 311.7) * 2147483647));
 
 export function boundlessBiomeAt(g, x, y) {
+  if(g.generatedEnvironment==='graveyard')return 'graveyard';
   const cx = chunkOf(x), cy = chunkOf(y);
   if (cx === 0 && cy === 0) {
     const base = g.generatedEnvironment || g.environment || 'forest';
@@ -56,11 +58,13 @@ function createChunkProps(g, cx, cy) {
   const x = cx * BOUNDLESS_CHUNK_SIZE, y = cy * BOUNDLESS_CHUNK_SIZE;
   const biome = boundlessBiomeAt(g, x + BOUNDLESS_CHUNK_SIZE / 2, y + BOUNDLESS_CHUNK_SIZE / 2);
   const seed = chunkSeed(g.seed || 0, cx, cy);
-  const props = createScenery(seed, biome === 'desert' ? 'desert' : 'forest').filter((_,i)=>i%2===0);
+  const props = createScenery(seed, ['desert','graveyard'].includes(biome)?biome:'forest').filter((_,i)=>i%2===0);
   for (const prop of props) {
     prop.x += x; prop.y += y;
     prop.id = `boundless:${cx}:${cy}:${prop.id}`;
-    if (biome === 'ice') {
+    if (biome === 'graveyard') {
+      if(prop.kind==='tree'){prop.kind='leafless_tree';prop.graveyard=true;prop.rootY=prop.y;prop.graveyardFootprint={x:prop.x-10,y:prop.y-7,w:20,h:14};}
+    } else if (biome === 'ice') {
       if (prop.kind === 'tree') prop.kind = 'snow_tree';
       else if (prop.kind === 'rock') prop.kind = 'ice_rock';
       else if (prop.kind === 'flower') prop.kind = 'frost_shrub';

@@ -31,6 +31,8 @@ export const ITEMS = {
   caught_scavenger:{name:'Critter in a cage',stack:1,color:'#9b886f',sellPrice:7},
   caught_crab:{name:'Captured shore crab',stack:1,color:'#e69b65',sellPrice:8,description:'A tiny sideways-scuttling beach passenger.'},
   caught_fish:{name:'Captured reef fish',stack:1,color:'#76d9df',sellPrice:8,description:'A bright reef fish. Release near deep water.'},
+  caught_grave_moth:{name:'Grave moth',stack:1,captureContainer:'empty_jar',color:'#c6b3a1',sellPrice:7,description:'A soft-winged crypt visitor, carried in a critter bottle.'},
+  caught_crypt_beetle:{name:'Crypt beetle',stack:1,captureContainer:'empty_jar',color:'#877b9b',sellPrice:8,description:'An iron-dark beetle from the crypt, carried in a critter bottle.'},
   raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'A piece of frozen ice. Melts after five minutes outside the ice level.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Stored relics grant no passive bonuses.' },
@@ -309,6 +311,19 @@ export const ITEMS = {
     armor: 2,
     color: "#9fba85",
     description: "Hold LT / C to block frontal blows and catch arrows.",
+  },
+  coffin_lid_shield: {
+    name: "Coffin-lid shield", base: "shield", slot: "hand2", stack: 1,
+    rarity: "unique", bossOnly: true, armor: 8, maxHp: 10, style: "tower",
+    color: "#896143", artColor: "#896143",
+    description: "Unique crypt boss gear. An iron-bound wooden coffin lid; hold Block to stop frontal blows and catch arrows. Pair with the Crypt flame sword to burn enemies and trees.",
+  },
+  crypt_flame_sword: {
+    name: "Crypt flame sword", base: "sword", slot: "hand1", stack: 1,
+    rarity: "unique", bossOnly: true, damage: 32, reach: 76,
+    color: "#d4bea0", artColor: "#d4bea0", flamingSword: true,
+    meleeBurn: { duration: 2, damage: 3 },
+    description: "Unique crypt boss gear. Warm steel and restless embers. Landed melee hits burn enemies for 2 seconds (3 damage every half-second); struck trees burn down into normal timber. Misses leave no fire.",
   },
   starter_shield: {
     base: "shield",
@@ -1008,6 +1023,7 @@ export function itemStats(id) {
     i.reach ? `Melee reach ${i.reach}` : "",
     i.lightSource ? `Light radius ${i.lightSource.radius}` : "",
     i.fire ? "Ignites enemies and trees · melts ice" : "",
+    i.meleeBurn ? `Burn ${i.meleeBurn.damage} / 0.5 sec for ${i.meleeBurn.duration} sec · ignites struck trees` : "",
     i.shot ? `Aimed shot · range ${i.shot.range}` : "",
     i.magic ? `Mana ${i.manaCost} per cast` : "",
     i.healingAmount ? `Spell healing ${i.healingAmount}–${i.healingAmount*1.5}` : '',
@@ -1066,7 +1082,8 @@ export function migrateLegacySupplies(list){
     target=item;
   }
 }
-const matchingStack=(item,type,metadata)=>item?.type===type&&(!type.startsWith('caught_')||critterContainer(type,item)===critterContainer(type,metadata));
+const itemCaptureContainer=(type,item={})=>critterContainer(type,{captureContainer:item.captureContainer??ITEMS[type]?.captureContainer});
+const matchingStack=(item,type,metadata)=>item?.type===type&&(!type.startsWith('caught_')||itemCaptureContainer(type,item)===itemCaptureContainer(type,metadata));
 export function canGive(list, type, qty = 1, slots = 24, metadata = {}) {
   qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   if (!ITEMS[type] || qty <= 0) return false;
@@ -1090,7 +1107,7 @@ export function give(list, type, qty = 1, slots = 24, metadata = {}) {
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    const item={type,qty:n,...(type.startsWith('caught_')?{captureContainer:critterContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
+    const item={type,qty:n,...(type.startsWith('caught_')?{captureContainer:itemCaptureContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
     if (hole >= 0) list[hole] = item;
     else list.push(item);
     qty -= n;

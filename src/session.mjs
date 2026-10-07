@@ -9,6 +9,7 @@ import {restoreForestLandscape} from './forest-landscape.mjs';
 import {cancelRobotRepair} from './storage-repair.mjs';
 import {tickCharmStatuses} from './succubus-charm.mjs';
 import {ensureOldWells} from './old-well.mjs';
+import {houseKeepsWorld} from './house-victory.mjs';
 export function saveSession(game) {
   return { version: 1, state: snapshot(game) };
 }
@@ -42,7 +43,7 @@ export function restoreSession(saved) {
     g.openingBoard = !g.event && !g.players.some((p) => p.rolls > 0);
   g.explored = new Set(saved.state.explored || []);
   g.scenery =
-    g.phase === "won"
+    g.phase === "won"&&!houseKeepsWorld(g)
       ? []
       : saved.state.scenery || generateWorld(g.seed).scenery;
   for (const p of g.players) {

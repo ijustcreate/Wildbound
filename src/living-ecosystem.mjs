@@ -4,6 +4,7 @@ import {give,take,clearSlot,ITEMS,migrateLegacySupplies} from './items.mjs';
 import {CRITTER_CONTAINERS,critterContainer} from './critter-containers.mjs';
 import {seedCoastalCritters,tickCoastalCritter,nearbyFishWater,drawCoastalCritter} from './coastal-critters.mjs';
 import { propBase, waterAt } from './environment.mjs';
+import {houseKeepsWorld} from './house-victory.mjs';
 import { nearbyScenery } from './performance.mjs';
 
 /** Parent integration (world coordinates, seconds):
@@ -199,7 +200,7 @@ export function updateLivingEcosystem(g,dt) {
 
 /** Input x/y match Game.blocked; flying creatures bypass vines. Read-only. */
 export function livingEcosystemBlocked(g,x,y,radius=8,flying=false,footOffset=14) {
-  if(flying||g.phase==='won')return false;
+  if(flying||(g.phase==='won'&&!houseKeepsWorld(g)))return false;
   const s=g.livingEcosystem;
   if(s?.biome!==biome(g)||s.seed!==finite(g.seed))return false;
   return (s.vines||[]).some(v=>v.stage>=2&&!v.cut&&!protectedSpot(g,v.x,v.y)&&
@@ -222,7 +223,7 @@ export function livingAnimals(g) {return (runtime.get(g)?.animals||[]).map(a=>({
 
 /** Procedural, integer pixel sprites. ctx is an ordinary CanvasRenderingContext2D. */
 export function drawLivingEcosystem(c,g,layer='all') {
-  const r=runtime.get(g);if(!r||r.state!==g.livingEcosystem||r.state.biome!==biome(g)||g.phase==='won')return;
+  const r=runtime.get(g);if(!r||r.state!==g.livingEcosystem||r.state.biome!==biome(g)||(g.phase==='won'&&!houseKeepsWorld(g)))return;
   const ground=layer==='all'||layer==='ground',air=layer==='all'||layer==='air';
   c.save();
   const pixel=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};

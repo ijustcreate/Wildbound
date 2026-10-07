@@ -277,6 +277,17 @@ test('Death exits the well into normal revival handling without restoring HP or 
   assert.equal(p.inventory.find(i => i?.type === 'magic_essence').qty, 6);
 });
 
+test('Well arrival cannot bounce out on held/carried Interact; exit requires a new press at the rope',()=>{
+ for(const env of ['forest','house']){
+  const {g,p,d}=setup(env);assert.ok(enterOldWell(g,p,d));assert.ok(Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=45);
+  Object.assign(p,{roomX:d.well.exit.x,roomY:d.well.exit.y});
+  for(let n=0;n<12;n++){p.previousInput={};g.update(.05,{keyboard:{interact:true}});assert.equal(p.room,d.id,'carried fresh edges must not exit on arrival');}
+  assert.equal(g.leaveRoom(p),false);assert.equal(p.room,d.id);
+  g.update(.05,{});assert.equal(p.room,d.id,'proximity alone never climbs');
+  g.update(.05,{keyboard:{interact:true}});assert.equal(p.room,null);
+ }
+});
+
 test('Invalid entry and distant chest interaction do not mutate state', () => {
   const {g, p, d} = setup(); p.x = 5; p.y = 5; assert.equal(enterOldWell(g, p, d), false);
   Object.assign(p, {x: d.x, y: d.y + 50, hp: 0}); assert.equal(interactOldWell(g, p), false);
@@ -306,8 +317,8 @@ test('Actual main g.update inputs investigate, explore, open item slots, transfe
   }
 });
 
-test('Actual spawnEvent appends a well card at the tail and spawns a portal rather than an enemy', () => {
-  const index = EVENTS.findIndex(e => e.kind === 'old_well'); assert.equal(index, EVENTS.length - 1);
+test('Actual spawnEvent preserves well card index 59 after appended cemetery cards and spawns a portal rather than an enemy', () => {
+  const index = EVENTS.findIndex(e => e.kind === 'old_well'); assert.equal(index, 59);
   for (const env of ['forest', 'house', 'desert', 'temple']) {
     const g = new Game(() => .37); g.environment = env; g.addPlayer('keyboard'); g.start();
     const enemies = g.enemies.length; g.spawnEvent(index);

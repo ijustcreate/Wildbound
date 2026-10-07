@@ -72,12 +72,17 @@ import {drawForestGround,drawFallingLeaves} from './forest.mjs';
 import {hasForestLandscape,drawLandscapeGround,drawForestBank} from './forest-art.mjs';
 import {meleeProfile} from './melee-geometry.mjs';
 import {SealVortex,sealSurfaceSize} from './seal-vortex.mjs';
+import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
+import {drawGraveyardGround,drawGraveEmergence} from './graveyard-art.mjs';
+import {drawGraveyardEcology} from './graveyard-ecology.mjs';
+import {drawCryptWeaponFlames} from './crypt-gear.mjs';
 const hash = (x, y) => {
   const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
   return v - Math.floor(v);
 };
 const sortedProceduralScenery = new Set(["palm"]);
 const sceneryNeedsDepthSort = (d, library = {}) =>
+  d.graveyard&&['leafless_tree','grave_forest_tree','gravestone','mausoleum','cemetery_fence','cemetery_gate'].includes(d.kind) ||
   d.coastal&&['tree','palm','rock','beach_arch'].includes(d.kind) ||
   d.kind === "forest_ruin" ||
   iceSolid(d) ||
@@ -183,7 +188,7 @@ export class Renderer {
   draw(game, dt, {sealCapture=false}={}) {
     if(game.phase==='sealing'&&!sealCapture){this.drawSeal(game,dt);return;}
     if(!sealCapture&&this.sealReady&&(this.sealReady.game!==game||this.sealReady.seed!==game.seed||game.phase!=='play')){this.sealReady.canvas.width=this.sealReady.canvas.height=1;this.sealReady=null;}
-    if(!sealCapture&&this.sealGame){this.sealVortex?.clear();for(const key of ['sealAnchors','sealFrame'])if(this[key]){this[key].width=this[key].height=1;this[key]=null;}this.sealGame=null;}
+    if(!sealCapture&&this.sealGame){this.sealVortex?.clear();for(const key of ['sealAnchors','sealFrame','sealHouseBackdrop'])if(this[key]){this[key].width=this[key].height=1;this[key]=null;}this.sealGame=null;}
     this.lod=renderLOD(this.camera.zoom);
     this.decorationCache ||= new DecorationCache();
     this.actorPoseCache ||= new ActorPoseCache();
@@ -246,6 +251,7 @@ export class Renderer {
     drawImpGround(ctx,game);
     drawZombieTells(ctx,game);
     drawLivingEcosystem(ctx, game, 'ground');
+    drawGraveyardEcology(ctx,game,'ground');
     drawHazards(ctx, game);
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
     for (const orb of game.xpOrbs || []) {
@@ -617,6 +623,8 @@ export class Renderer {
       } else if (player&&waterAt(game,a.x,a.y)==='mud'&&!(a.jumpHeight>0)&&!(a.groundHeight>0)) {
         ctx.beginPath();ctx.rect(a.x-100,a.y-180,200,181);ctx.clip();
         this.animator.draw(ctx,{...a,y:a.y+3},game.time,size);
+      } else if(drawGraveEmergence(ctx,a,game.time,size)) {
+        // Authored crawl-up pose is clipped to the attached grave's soil plane.
       } else if (a.kind === "tsetse") {
         this.animator.draw(ctx,a,game.time,size);
       } else {
@@ -626,6 +634,7 @@ export class Renderer {
       ctx.restore();
       if(player&&a.scaredTime>0)drawFearFace(ctx,a.x,a.y-(a.jumpHeight||a.groundHeight||0)-43);
       if(player)drawBowAim(ctx,a,1,game.time);
+      if(player)drawCryptWeaponFlames(ctx,a,game.time);
       if (!player && a.hp>0 && (a.frostMage || (a.kind === "skeleton" && a.frostBound))) {
         ctx.fillStyle = "#8cecff";
         ctx.fillRect(a.x - 5, a.y - 29, 3, 2);
@@ -753,6 +762,7 @@ export class Renderer {
     // Draw burn sparks after actors so the fire visibly clings to the target.
     drawBridges(ctx,game,true);
     drawLivingEcosystem(ctx, game, 'air');
+    drawGraveyardEcology(ctx,game,'air');
     drawNightEnemyEffects(ctx, game);
     drawNightEquipment(ctx, game);
     for (const f of game.fireParticles || []) {
@@ -864,6 +874,7 @@ export class Renderer {
     this.minimap(ctx, game, w, h);
   }
   rememberSealScene(game,w,h){
+    if(houseKeepsWorld(game))return;
     if(game.phase!=='play'||!game.players.some(p=>p.sealHold>0))return;
     const size=sealSurfaceSize(w,h);
     if(this.sealReady?.game!==game){if(this.sealReady){this.sealReady.canvas.width=this.sealReady.canvas.height=1;}this.sealReady={game,canvas:document.createElement('canvas')};}
@@ -897,10 +908,11 @@ export class Renderer {
     // Camera stays steady through the pull. Resizing/restore starts a fresh,
     // bounded capture, not a screenshot of an already distorted screenshot.
     if(this.sealGame!==game||this.sealW!==w||this.sealH!==h||p<this.sealProgress){
+      if(!houseKeepsWorld(game)&&this.sealHouseBackdrop){this.sealHouseBackdrop.width=this.sealHouseBackdrop.height=1;this.sealHouseBackdrop=null;}
       this.sealVortex.clear();this.sealGame=game;this.sealW=w;this.sealH=h;
       const size=sealSurfaceSize(w,h),ready=this.sealReady;
       let snapshot;
-      if(ready?.game===game&&ready.seed===game.seed&&ready.w===w&&ready.h===h&&Math.abs(game.time-ready.time)<.25){snapshot=ready.canvas;this.camera={...ready.camera};this.sealReady=null;}
+      if(!houseKeepsWorld(game)&&ready?.game===game&&ready.seed===game.seed&&ready.w===w&&ready.h===h&&Math.abs(game.time-ready.time)<.25){snapshot=ready.canvas;this.camera={...ready.camera};this.sealReady=null;}
       else{
         snapshot=document.createElement('canvas');snapshot.width=size.width;snapshot.height=size.height;
         const capture=new Renderer(snapshot,this.assets);capture.camera={...this.camera};capture.age=this.age;
@@ -908,7 +920,27 @@ export class Renderer {
         capture.decorationCache=this.decorationCache;capture.actorPoseCache=this.actorPoseCache;capture.cacheWorld=this.cacheWorld;
         capture.resize=()=>{const c=capture.ctx;c.setTransform(size.width/w,0,0,size.height/h,0,0);c.imageSmoothingEnabled=false;capture.viewport={w,h};return {w,h};};
         const view=Object.create(game);view.phase='play';view.openingBoard=false;
-        capture.draw(view,0,{sealCapture:true});
+        if(houseKeepsWorld(game)){
+          // Cache the real house/yard separately; only the transparent hostile
+          // layer is fed to the warp shader. No world redraws in the frame loop.
+          view.enemies=game.enemies.filter(e=>!recalledEnemy(e));view.spells=[];view.arrows=[];
+          capture.draw(view,0,{sealCapture:true});
+          if(this.sealHouseBackdrop){this.sealHouseBackdrop.width=this.sealHouseBackdrop.height=1;}
+          this.sealHouseBackdrop=snapshot;
+          snapshot=document.createElement('canvas');snapshot.width=size.width;snapshot.height=size.height;
+          const enemies=snapshot.getContext('2d');enemies.setTransform(size.width/w,0,0,size.height/h,0,0);enemies.imageSmoothingEnabled=false;
+          enemies.translate(w/2,h/2);enemies.scale(this.camera.zoom,this.camera.zoom);enemies.translate(-this.camera.x,-this.camera.y);
+          for(const a of [...game.enemies,...(game.ghosts||[])].filter(a=>!a.room&&recalledEnemy(a)).sort((a,b)=>a.y-b.y)){
+            if(a.kind==='anaconda'){
+              for(const part of anacondaRenderParts(a))if(this.visible(part,w,h,60)){drawAnacondaShadow(enemies,a,part.anacondaIndex);drawAnacondaSegment(enemies,a,part.anacondaIndex,game.time);}
+              continue;
+            }
+            if(!this.visible(a,w,h,140))continue;
+            ellipse(enemies,a.x,a.y+2,16,5,'#17362d88');
+            const scale=a.kind==='elephant'?82:['crocodile','lion','tiger','white_lion','rhino','dragon','zebra','carnivorous_flower'].includes(a.kind)?61:['bat','wasp','bee','tsetse'].includes(a.kind)?34:47;
+            this.animator.draw(enemies,a,game.time,scale);
+          }
+        }else capture.draw(view,0,{sealCapture:true});
       }
       this.sealVortex.capture(snapshot,w,h,w/2+(CENTER-this.camera.x)*this.camera.zoom,h/2+(CENTER-this.camera.y)*this.camera.zoom);
       // Simulation is frozen during sealing. Rasterize the unchanged party/table
@@ -917,7 +949,7 @@ export class Renderer {
       c.setTransform(size.width/w,0,0,size.height/h,0,0);c.imageSmoothingEnabled=false;c.translate(w/2,h/2);c.scale(this.camera.zoom,this.camera.zoom);c.translate(-this.camera.x,-this.camera.y);
       this.boardBase(c,game);
       const party=game.players.filter(a=>!a.room).map(a=>({...a,isPlayer:true,drawDepth:boardActorDepth(game,a)}));
-      for(const ghost of game.ghosts||[])if(!ghost.room)party.push({...ghost,isGhostActor:true,drawDepth:ghost.y});
+      for(const ghost of game.ghosts||[])if(!ghost.room&&(!houseKeepsWorld(game)||!recalledEnemy(ghost)))party.push({...ghost,isGhostActor:true,drawDepth:ghost.y});
       for(const pet of hunterPets(game))if(Number.isFinite(pet.x))party.push({...pet,drawDepth:pet.y});
       party.push({isBoard:true,drawDepth:boardTableDepth()});
       for(const a of party.sort((a,b)=>a.drawDepth-b.drawDepth)){
@@ -937,6 +969,8 @@ export class Renderer {
     const ctx=this.sealFrame?.getContext('2d')||output;
     if(this.sealFrame){ctx.setTransform(this.sealFrame.width/w,0,0,this.sealFrame.height/h,0,0);ctx.imageSmoothingEnabled=false;}
     ctx.fillStyle='#505b5d';ctx.fillRect(0,0,w,h);
+    if(this.sealHouseBackdrop)ctx.drawImage(this.sealHouseBackdrop,0,0,w,h);
+    else{
     ctx.save();ctx.translate(w/2,h/2);ctx.scale(this.camera.zoom,this.camera.zoom);ctx.translate(-this.camera.x,-this.camera.y);
     // The room revealed by the disappearing jungle is cached tile-simple art.
     const tile=TILE;
@@ -944,12 +978,13 @@ export class Renderer {
     const ex=Math.min(WORLD/tile,Math.ceil((this.camera.x+w/this.camera.zoom/2)/tile)),ey=Math.min(WORLD/tile,Math.ceil((this.camera.y+h/this.camera.zoom/2)/tile));
     ctx.fillStyle='#888a8e';ctx.fillRect(0,0,WORLD,WORLD);ctx.strokeStyle='#73767a';ctx.lineWidth=1/this.camera.zoom;
     ctx.beginPath();for(let x=sx;x<=ex;x++){ctx.moveTo(x*tile,sy*tile);ctx.lineTo(x*tile,ey*tile);}for(let y=sy;y<=ey;y++){ctx.moveTo(sx*tile,y*tile);ctx.lineTo(ex*tile,y*tile);}ctx.stroke();ctx.restore();
+    }
     this.sealVortex.drawWorld(ctx,p);this.sealVortex.drawAir(ctx,p);
     if(this.sealAnchors)ctx.drawImage(this.sealAnchors,0,0,w,h);this.sealVortex.drawAir(ctx,p,true);
     ctx.save();ctx.globalAlpha=Math.min(1,p*9)*(1-Math.max(0,(p-.94)/.06));ctx.textAlign='center';
     const titleY=Math.max(41,h*.18),titleW=Math.min(w-20,300);ctx.fillStyle='#142f28dd';ctx.fillRect(w/2-titleW/2,titleY-30,titleW,52);ctx.strokeStyle='#bfa46a66';ctx.lineWidth=1;ctx.strokeRect(w/2-titleW/2+.5,titleY-29.5,titleW-1,51);
     ctx.fillStyle='#18352d';ctx.font=`bold ${Math.max(16,Math.min(28,w*.044))}px Georgia`;ctx.fillText('WILDBOUND!',w/2,Math.max(42,h*.18)+1);
-    ctx.fillStyle='#f3dfaa';ctx.fillText('WILDBOUND!',w/2,Math.max(41,h*.18));ctx.font='9px monospace';ctx.fillStyle='#d9eee0';ctx.fillText('THE JUNGLE RETURNS TO THE BOARD',w/2,Math.max(55,h*.18+15));ctx.restore();
+    ctx.fillStyle='#f3dfaa';ctx.fillText('WILDBOUND!',w/2,Math.max(41,h*.18));ctx.font='9px monospace';ctx.fillStyle='#d9eee0';ctx.fillText(houseKeepsWorld(game)?'THE ENCOUNTERS RETURN TO THE BOARD':'THE JUNGLE RETURNS TO THE BOARD',w/2,Math.max(55,h*.18+15));ctx.restore();
     if(this.sealFrame)output.drawImage(this.sealFrame,0,0,w,h);
     // No minimap, weather, blur layers or full-scene shader passes during warp.
   }
@@ -1117,6 +1152,7 @@ export class Renderer {
       );
     const landscape=hasForestLandscape(game);
     if(game.generatedEnvironment==='beach'&&game.phase!=='won'){drawBeachGround(ctx,game,{sx,sy,ex,ey});return;}
+    if(game.generatedEnvironment==='graveyard'&&game.phase!=='won'){drawGraveyardGround(ctx,game,{sx,sy,ex,ey});return;}
     this.ground(ctx, sx, sy, ex, ey, game.generatedEnvironment === "desert",game);
     if(landscape&&sx<50&&sy<50&&ex>0&&ey>0)
       drawLandscapeGround(ctx,game,{sx:Math.max(0,sx),sy:Math.max(0,sy),ex:Math.min(50,ex),ey:Math.min(50,ey)});
@@ -1126,7 +1162,7 @@ export class Renderer {
           d = Math.hypot(x - 24.5, y - 24.5);
         const kind = waterAt(game, x * 32 + 16, y * 32 + 16);
         const streamed=boundless&&(x<0||y<0||x>=50||y>=50);
-        if(game.phase==='won'||(game.bloom<3&&Math.hypot(x*32+16-CENTER,y*32+16-CENTER)>game.bloom*430)){
+        if((game.phase==='won'&&!houseKeepsWorld(game))||(game.bloom<3&&Math.hypot(x*32+16-CENTER,y*32+16-CENTER)>game.bloom*430)){
           ctx.fillStyle='#888a8e';ctx.fillRect(x*32,y*32,32.5,32.5);ctx.strokeStyle='#73767a';ctx.strokeRect(x*32,y*32,32,32);continue;
         }
         if(game.house?.pools&&kind==='water')continue;
@@ -1209,7 +1245,7 @@ export class Renderer {
         }
         }
         if (
-          game.phase === "won" ||
+          (game.phase === "won"&&!houseKeepsWorld(game)) ||
           (game.bloom < 3 &&
             Math.hypot(x * 32 + 16 - CENTER, y * 32 + 16 - CENTER) >
               game.bloom * 430)

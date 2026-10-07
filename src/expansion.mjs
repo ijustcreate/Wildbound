@@ -5,7 +5,7 @@ import {raisedSurfaceBlocked} from './terrain-support.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
-export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach'];
+export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','graveyard'];
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
@@ -33,7 +33,9 @@ export function toggleDoor(g,p){
 }
 export const isSpider=e=>['spider','tarantula','baby_spider'].includes(e.kind);
 const adultSpider=e=>e.kind==='spider'||e.kind==='tarantula';
-export const webSlow=(g,a)=>!isSpider(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
+const airborne=(a)=>!!(a?.flying||a?.flightHeight||a?.roostHeight||a?.impFlightHeight||a?.succubusFlightHeight||
+  (a?.jumpHeight||0)>2||['bat','bee','wasp','tsetse','dragonfly','fairy','bird','pelican','raven','crow'].includes(a?.kind));
+export const webSlow=(g,a)=>!isSpider(a)&&!airborne(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
 export function maintainSpiderWebs(g, dt = 0) {
   const adults = (g.enemies || []).filter(e => e.hp > 0 && adultSpider(e));
   if (!adults.length) {

@@ -51,6 +51,7 @@ import {
   replaceCreatureMotion,
 } from "./creature-motion.mjs";
 import { applyRigSpriteOverrides } from "./rig-sprite-storage.mjs";
+import { GRAVEYARD_EVENTS } from './graveyard-events.mjs';
 export const RULE_DEFAULTS = {
   startingTraps: 3,
   potionHeal: 45,
@@ -256,6 +257,7 @@ for (const name of [
   "snake",
   "anaconda",
   "bat",
+  "raven", "crow",
   "beetle",
   "wasp",
   "bee", "bee_hive",
@@ -271,6 +273,7 @@ for (const name of [
   "dragon",
   "fire_elemental",
   "water_elemental",
+          ...GRAVEYARD_EVENTS.map(e=>e.kind),
   "explorer-teal",
   "explorer-coral",
   "explorer-blue",
@@ -283,6 +286,7 @@ for(const [kind,base] of [['tiger','lion'],['gorilla','golem'],['white_lion','li
   creatures[kind]=creatureDefaults(base);creatures[kind].name=kind;creatures[kind].aiKind=base;
 }
 for(const kind of ['lion','wolf','bat','panther','tiger'])creatures[kind].tamable=true;
+for(const kind of ['raven','crow']){creatures[kind].rig=creatureDefaults('bat').rig;Object.assign(creatures[kind].stats,{hp:45,speed:90,damage:9});creatures[kind].tamable=true;}
 Object.assign(creatures.spider.stats,{hp:70,speed:68,damage:11});
 Object.assign(creatures.tarantula.stats,{hp:110,speed:48,damage:16});
 Object.assign(creatures.anaconda.stats,{hp:380,speed:46,damage:26,attackRange:145,windup:.9,recovery:1.1,dashCooldown:2.5,dashSpeed:240,dashDistance:116,detection:750});

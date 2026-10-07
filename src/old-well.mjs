@@ -1,10 +1,14 @@
 import {OLD_WELL_EVENT} from './definitions.mjs';
 import {ITEMS, give, take, stat, itemKind} from './items.mjs';
 import {waterAt} from './environment.mjs';
+import {graveyardBlocked} from './graveyard-world.mjs';
+import {ignite} from './hazards.mjs';
 import {createRoomHealingBolt, spellHealingTargets, spellHealingPoint, hitHealingBolt} from './healing-magic.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
+  wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance} from './mausoleum-crypt.mjs';
 
 export {OLD_WELL_EVENT};
 export const WELL_TITLE = 'The bottom of the well';
@@ -15,6 +19,9 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const roomPoint = p => ({x: p.roomX, y: p.roomY});
 const tileIndex = (s, x, y) => y * s.width + x;
+// Restore creates new player objects. Each arrival/load must observe a release
+// before accepting an exit edge, even though session resets previousInput.
+const arrivalGuarded = new WeakSet();
 const hash = (seed, x, y) => {
   let n = (seed | 0) ^ Math.imul(x + 19, 374761393) ^ Math.imul(y + 37, 668265263);
   n = Math.imul(n ^ n >>> 13, 1274126177);
@@ -115,16 +122,29 @@ function revealWell(s, x, y) {
   }
   s.explored = [...known];
 }
+function wellArrival(s) {
+  // Retain the existing +56 safe-arrival preference, outside the exit radius.
+  const candidates = [s.arrival, {x: s.exit.x, y: s.exit.y + 56},
+    {x: s.exit.x + 56, y: s.exit.y}, {x: s.exit.x - 56, y: s.exit.y}].filter(Boolean);
+  for (let radius = 48; radius <= 96; radius += 16) for (let n = 0; n < 8; n++)
+    candidates.push({x: s.exit.x + Math.cos(n * Math.PI / 4) * radius,
+      y: s.exit.y + Math.sin(n * Math.PI / 4) * radius});
+  return candidates.find(a => !wellTunnelBlocked(s, a.x, a.y) && distance(a, s.exit) >= 45) ||
+    {x: s.exit.x, y: s.exit.y + 20};
+}
 
 export const wellForPlayer = (g, p) => (g.portals || []).find(d => d.oldWell && d.id === p.room) || null;
 export function oldWellBlocked(g, x, y, radius = 8, from = null) {
   // The rope landing is outside this solid stone rim.
-  return (g.portals || []).some(d => d.oldWell && d !== from && Math.hypot(x - d.x, y - d.y) < 25 + radius);
+  return (g.portals || []).some(d => d.oldWell && !d.mausoleum && d !== from && Math.hypot(x - d.x, y - d.y) < 25 + radius);
 }
 function surfaceClear(g, x, y, radius = 10, ignore = null) {
+  const ground = waterAt(g, x, y);
   return Number.isFinite(x + y) && (g.mapMode === 'boundless' ||
     x > radius && y > radius && x < 1600 - radius && y < 1600 - radius) &&
-    !wet.has(waterAt(g, x, y)) && !g.blocked(x, y, radius, false, false, false, 0, 0, false, ignore);
+    (!wet.has(ground) || ignore?.mausoleum && ground === 'mud') &&
+    !(ignore?.mausoleum && graveyardBlocked(g, x, y, radius)) &&
+    !g.blocked(x, y, radius, false, false, false, 0, 0, false, ignore);
 }
 export function validWellSpawn(g, point) {
   if (!point || !surfaceClear(g, point.x, point.y, 38) || oldWellBlocked(g, point.x, point.y, 60)) return false;
@@ -139,7 +159,7 @@ export function validWellSpawn(g, point) {
 export function spawnOldWell(g, preferred = null) {
   if (!OLD_WELL_EVENT.environments.includes(g.generatedEnvironment)) return null;
   g.portals ||= [];
-  const existing = g.portals.find(d => d.oldWell);
+  const existing = g.portals.find(d => d.oldWell && !d.mausoleum);
   if (existing) return existing;
   let spot = preferred && validWellSpawn(g, preferred) ? preferred : null;
   const focus = preferred || g.players.find(p => p.hp > 0 && !p.room) || {x: 800, y: 960};
@@ -171,11 +191,17 @@ export function spawnOldWell(g, preferred = null) {
 export function ensureOldWells(g) {
   for (const d of (g.portals || []).filter(d => d.oldWell)) {
     d.closing = null; d.autoEnter = false; d.persistent = true; d.entryReady ||= [];
-    d.well ||= generateWellTunnels(hash(g.seed, d.x, d.y));
+    d.well ||= (d.mausoleum ? generateMausoleumCrypt : generateWellTunnels)(hash(g.seed, d.x, d.y));
     d.well.bolts ||= []; d.well.drops ||= []; d.well.explored ||= [];
+    if (!d.well.explored.length) revealWell(d.well, d.well.exit.x, d.well.exit.y);
+    if (d.mausoleum) d.well.hazards ||= [];
     for (const p of g.players.filter(p => p.room === d.id)) {
       p.wellReturn ||= {portalId: d.id, x: p.x, y: p.y, environment: d.sourceEnvironment};
-      if (wellTunnelBlocked(d.well, p.roomX, p.roomY)) Object.assign(p, {roomX: d.well.exit.x, roomY: d.well.exit.y});
+      if (!arrivalGuarded.has(p)) {p.wellExitArmed = false; arrivalGuarded.add(p);}
+      if (wellTunnelBlocked(d.well, p.roomX, p.roomY)) {
+        const entry = wellArrival(d.well);
+        Object.assign(p, {roomX: entry.x, roomY: entry.y, wellExitArmed: false});
+      }
     }
   }
 }
@@ -183,14 +209,18 @@ export function enterOldWell(g, p, d) {
   if (!d?.oldWell || !g.portals.includes(d) || p.room || p.ui || p.hp <= 0 || distance(p, d) > 74) return false;
   ensureOldWells(g);
   p.wellReturn = {portalId: d.id, x: p.x, y: p.y, environment: g.generatedEnvironment};
-  p.room = d.id; p.roomX = d.well.exit.x; p.roomY = d.well.exit.y + 20;
+  const entry = wellArrival(d.well);
+  p.room = d.id; p.roomX = entry.x; p.roomY = entry.y;p.wellExitArmed=false;
+  arrivalGuarded.add(p); revealWell(d.well, entry.x, entry.y);
   p.roomMoving = false; p.roomStep = 0; p.charge = 0; p.ui = null;
   p.interactTime = 0; p.interactUsed = true; p.consumeInput = true;
   p.wellAttackCooldown = 0;
   for (const pet of [p.hunterPet, p.ritualPet].filter(a => a?.spiritGhost))
     Object.assign(pet, {room: d.id, roomX: p.roomX + 12, roomY: p.roomY + 8});
   p.previousInput = {...p.previousInput, interact: true};
-  g.message?.(WELL_TITLE + '. Follow the tunnels; the rope leads home.');
+  if (d.mausoleum) p.previousInput.use = true;
+  g.message?.(d.mausoleum ? CRYPT_TITLE + '. Follow the candles; the entrance stairs lead home.' :
+    WELL_TITLE + '. Follow the tunnels; the rope leads home.');
   g.onSound?.('doorOpen', p); g.persist?.();
   return true;
 }
@@ -208,16 +238,18 @@ export function leaveOldWell(g, p) {
     candidates.push({x: d.x + Math.cos(n * Math.PI / 6) * radius, y: d.y + Math.sin(n * Math.PI / 6) * radius});
   const spot = candidates.find(a => surfaceClear(g, a.x, a.y, 10, d) &&
     Math.hypot(a.x - d.x, a.y - d.y) >= 36 && !oldWellBlocked(g, a.x, a.y, 10, d));
-  if (!spot) {g.message?.('The rope landing is obstructed. Clear the ground above before climbing.'); return false;}
+  if (!spot) {g.message?.(d.mausoleum ? 'The mausoleum stairs are obstructed above.' : 'The rope landing is obstructed. Clear the ground above before climbing.'); return false;}
   p.room = null; p.ui = null; p.x = spot.x; p.y = spot.y;
   p.roomMoving = false; p.charge = 0; p.consumeInput = true;
   p.interactTime = 0; p.interactUsed = true; p.invuln = Math.max(p.invuln || 0, 1.2);
   p.previousInput = {...p.previousInput, interact: true};
-  delete p.wellReturn; delete p.wellAttackCooldown;
+  if (d.mausoleum) p.previousInput.use = true;
+  delete p.wellReturn; delete p.wellAttackCooldown;delete p.wellExitArmed;
+  arrivalGuarded.delete(p);
   d.entryReady = d.entryReady.filter(id => id !== p.id); d.closing = null;
   for (const pet of [p.hunterPet, p.ritualPet].filter(a => a?.spiritGhost))
     Object.assign(pet, {room: null, x: p.x, y: p.y});
-  g.message?.('You climb back to the ' + (d.sourceEnvironment === 'house' ? 'house grounds.' : 'forest.'));
+  g.message?.('You climb back to the ' + (d.mausoleum ? 'graveyard.' : d.sourceEnvironment === 'house' ? 'house grounds.' : 'forest.'));
   g.onSound?.('doorClose', p); g.persist?.();
   return true;
 }
@@ -227,11 +259,12 @@ export function lootOldWellChest(g, p) {
   const chest = d.well.chest; chest.opened = true;
   g.openInventory(p, 'old-well');
   Object.assign(p.ui, {panel: 'chest', loot: true, index: Math.max(0, chest.items.findIndex(Boolean))});
-  g.message?.(chest.items.some(Boolean) ? 'The old well treasure chest opened.' : 'The well chest is empty.');
+  g.message?.(chest.items.some(Boolean) ? (d.mausoleum ? 'The lantern treasure chest opened.' : 'The old well treasure chest opened.') : 'The chest is empty.');
   g.persist?.(); return true;
 }
 
 function hitWellEnemy(g, s, e, damage, p) {
+  if (s.theme === 'mausoleum') {hitCryptEnemy(g, s, e, damage, p); return;}
   if (e.hp <= 0) return;
   e.hp = Math.max(0, e.hp - damage); e.hit = .18; e.state = e.hp ? 'hunt' : 'defeated';
   if (!e.hp) {
@@ -243,6 +276,7 @@ function hitWellEnemy(g, s, e, damage, p) {
 }
 function attackInWell(g, p, s, input, charge = 0, slot = 'hand1') {
   const weapon = ITEMS[p.equipment?.[slot]];
+  if (weapon?.utility) return;
   const aimed = Math.hypot(input.aimX || 0, input.aimY || 0) > .1;
   const aimX = aimed ? input.aimX || 0 : p.faceX || 0;
   const aimY = aimed ? input.aimY || 0 : p.faceY ?? 1, len = Math.hypot(aimX, aimY) || 1;
@@ -270,8 +304,13 @@ function attackInWell(g, p, s, input, charge = 0, slot = 'hand1') {
       life: 1.1, damage, owner: p.id, room: p.room, slot, magic: !!weapon.magic});
   } else for (const e of s.enemies) {
     const from = roomPoint(p), dx = e.x - from.x, dy = e.y - from.y, d = Math.hypot(dx, dy);
-    if (e.hp > 0 && d < 40 && (d < 12 || (dx * aimX + dy * aimY) / (d * len) > .1) && tunnelSight(s, from, e))
+    if (e.hp > 0 && (s.theme !== 'mausoleum' || cryptEnemyCanBeHit(e)) && d < 40 && (d < 12 || (dx * aimX + dy * aimY) / (d * len) > .1) && tunnelSight(s, from, e)) {
       hitWellEnemy(g, s, e, damage, p);
+      if (s.theme === 'mausoleum' && e.hp > 0 && weapon?.meleeBurn) {
+        ignite(e, weapon.meleeBurn.duration, weapon.meleeBurn.damage); e.burnOwner = p.id;
+        g.persist?.();
+      }
+    }
   }
   g.onSound?.('swing', p);
 }
@@ -280,6 +319,7 @@ export function oldWellRoomStep(g, p, input, dt) {
   if (p.hp <= 0) {leaveOldWell(g, p); return true;}
   if (p.ui) return true;
   const s = d.well, edge = key => input[key] && !p.previousInput?.[key];
+  if(!input.interact && (!d.mausoleum || !input.use))p.wellExitArmed=true;
   dt = clamp(Number(dt) || 0, 0, .2);
   p.wellAttackCooldown = Math.max(0, (p.wellAttackCooldown || 0) - dt);
   const a = roomPoint(p), ix = clamp(input.x || 0, -1, 1), iy = clamp(input.y || 0, -1, 1), norm = Math.max(1, Math.hypot(ix, iy));
@@ -299,9 +339,10 @@ export function oldWellRoomStep(g, p, input, dt) {
     }
   } else if (edge('attack') && !p.wellAttackCooldown) attackInWell(g, p, s, input);
   if (edge('potion')) g.usePotion?.(p);
-  if (edge('interact')) {
-    if (distance(a, s.exit) < 36) {leaveOldWell(g, p); return true;}
+  if (edge('interact') || d.mausoleum && edge('use')) {
+    if (p.wellExitArmed!==false&&distance(a, s.exit) < 36) {leaveOldWell(g, p); return true;}
     if (distance(a, s.chest) < 38) lootOldWellChest(g, p);
+    else if (d.mausoleum) wakeMausoleumBoss(g, p, d);
   }
   for (const drop of [...s.drops]) if (distance(a, drop) < 20 && give(p.inventory, drop.type, drop.qty)) {
     s.drops.splice(s.drops.indexOf(drop), 1); g.persist?.();
@@ -354,13 +395,18 @@ export function tickOldWells(g, dt) {
           if (b.remaining <= 0) b.life = 0;
           continue;
         }
-        const e = s.enemies.find(e => e.hp > 0 && distance(e, b) < 13);
+        const e = s.enemies.find(e => e.hp > 0 && (s.theme !== 'mausoleum' || cryptEnemyCanBeHit(e)) && distance(e, b) < 13);
         if (e) {const p = g.players.find(p => p.id === b.owner); if (p) hitWellEnemy(g, s, e, b.damage, p); b.life = 0;}
         if (b.remaining <= 0) b.life = 0;
       }
       if (b.healing && b.life <= 0) finishMagicBolt(g, b, false);
     }
     s.bolts = s.bolts.filter(b => b.life > 0);
+    if (d.mausoleum) {
+      tickMausoleumCrypt(g, d, occupants, dt,
+        {move: moveInTunnels, sight: tunnelSight, waypoint: tunnelWaypoint, blocked: wellTunnelBlocked, leave: leaveOldWell});
+      continue;
+    }
     for (const e of s.enemies) {
       e.hit = Math.max(0, (e.hit || 0) - dt); e.attack = Math.max(0, (e.attack || 0) - dt);
       e.cooldown = Math.max(0, e.cooldown - dt); e.moving = false;
@@ -405,6 +451,7 @@ function bucket(c, x, y) {
   rect(c, x + 3, y - 11, 1, 3, '#c9b790');
 }
 export function drawOldWell(c, d, time = 0) {
+  if (d.mausoleum) {drawMausoleumEntrance(c, d, time); return;}
   c.save(); c.translate(Math.round(d.x), Math.round(d.y)); c.imageSmoothingEnabled = false;
   pixelDisc(c, 0, 4, 34, 17, '#1a211c');
   pixelDisc(c, 0, -2, 29, 22, '#50534a'); pixelDisc(c, 0, -10, 29, 16, '#9c9b7e');
@@ -425,7 +472,7 @@ export function drawOldWells(c, g) {
     drawOldWell(c, d, g.time);
     if (g.players.some(p => !p.room && p.hp > 0 && distance(p, d) <= 74 && !p.ui)) {
       c.save(); c.fillStyle = '#ffe7a9'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
-      c.fillText('E / Y · INVESTIGATE OLD WELL', d.x, d.y - 67); c.restore();
+      c.fillText(d.mausoleum ? 'E / Y · ENTER MAUSOLEUM' : 'E / Y · INVESTIGATE OLD WELL', d.x, d.y - 67); c.restore();
     }
   }
 }
@@ -474,6 +521,7 @@ export function wellRoomCamera(p, s) {
 export function drawOldWellRoom(c, g, p, animator = null) {
   const d = wellForPlayer(g, p); if (!d) return false;
   const s = d.well, camera = wellRoomCamera(p, s), known = new Set(s.explored);
+  if (d.mausoleum) return drawMausoleumRoom(c, g, p, d, camera, animator);
   c.save(); c.imageSmoothingEnabled = false;
   rect(c, 0, 0, 320, 240, '#101218');
   c.save(); c.beginPath(); c.rect(0, 26, 320, 192); c.clip(); c.translate(-camera.x, 26 - camera.y);

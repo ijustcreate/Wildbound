@@ -1,4 +1,5 @@
 import { definitionPack, applyDefinitions } from './definitions.mjs';
+import { registerCryptGearArt } from './crypt-gear.mjs';
 
 const RIG_KEYS = ['player', 'warlock', 'banshee', 'succubus', 'imp', 'zombie', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'bat', 'rhino', 'creatureMotions', 'beastMotions', 'nightMotions'];
 export function rigPack(events, items) {
@@ -35,4 +36,7 @@ export async function loadProjectRigs(events, items) {
   } else if (desktop?.saveProjectRigs && localStorage.getItem('wildbound-design')) {
     await saveProjectRigs(events, items);
   }
+  // Older authored rigs predate this gear. Fill only absent views; never replace
+  // fitted art the player authored for the new shield.
+  registerCryptGearArt();
 }

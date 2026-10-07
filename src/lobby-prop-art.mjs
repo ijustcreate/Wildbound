@@ -79,6 +79,7 @@ const MAP_PALETTES = Object.freeze({
   desert: ['#d4ad62', '#ac7442'], ice: ['#bcd3ce', '#779fa9'],
   house: ['#94a372', '#79694e'], temple: ['#719071', '#8d8460'],
   beach: ['#8dc6bb', '#438b92'],
+  graveyard: ['#465649', '#9aa38a'],
 });
 
 function chart(c, x, y, value) {
@@ -90,7 +91,12 @@ function chart(c, x, y, value) {
   // Fine border ticks and folded corner are ink on parchment, not a framed icon.
   for (let i = 7; i < 52; i += 7) rect(c, '#aa925e', x + i, y + 2, 1, 1);
   rect(c, P.paperLight, x + 54, y + 19, 3, 5); rect(c, P.paperShade, x + 52, y + 23, 4, 2);
-  if (map === 'beach') {
+  if(map==='graveyard'){
+    rect(c,'#22322b',x+7,y+6,42,12);
+    for(const sx of [10,19,28,37]){rect(c,detail,x+sx,y+8,4,8);rect(c,'#d2d3ac',x+sx+1,y+7,2,1);}
+    for(const sx of [8,15,22,29,36,43]){rect(c,'#1b292b',x+sx,y+4,1,3);rect(c,'#1b292b',x+sx,y+18,1,3);}
+    rect(c,detail,x+43,y+9,7,7);rect(c,'#151f24',x+45,y+12,3,4);
+  } else if (map === 'beach') {
     rect(c, '#dec78c', x + 4, y + 4, 18, 17); rect(c, '#dec78c', x + 22, y + 11, 5, 10);
     rect(c, '#b3dfd0', x + 22, y + 4, 2, 7); rect(c, '#b3dfd0', x + 27, y + 11, 2, 10);
     for (const [sx, sy] of [[32, 7], [42, 17], [30, 18]]) rect(c, '#daf1da', x + sx, y + sy, 6, 1);

@@ -7,6 +7,7 @@ import {beastMotions,beastMotionRevisions} from './beast-motion.mjs';
 import {beetleAction,beetleFrame} from './beetle-motion.mjs';
 import {drawBee,drawBeeHive} from './bee-art.mjs';
 import {drawTsetse} from './tsetse-art.mjs';
+import {drawRaven} from './raven-art.mjs';
 import { NIGHT_KINDS, STAMPEDE_KINDS, nightMotions, nightMotionRevisions, nightAction, nightFrame } from './night-rigs.mjs';
 import { ITEMS } from "./items.mjs";
 import {
@@ -68,6 +69,7 @@ export class Animator {
     return this.drawActor(ctx, actor, time, size);
   }
   drawActor(ctx, actor, time, size = 48) {
+    if(drawRaven(ctx,actor,time,size))return;
     if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
     if(WILD_FAUNA_KINDS.includes(actor.kind)){drawWildFauna(ctx,actor,time,size);return;}
     if(actor.kind==='bee'){drawBee(ctx,actor,time,size);return;}

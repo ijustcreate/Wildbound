@@ -57,6 +57,7 @@ const MAP_DETAILS={
   house:'A lived-in house with gardens and doors.',
   temple:'Jungle ruins with dangerous encounters.',
   beach:'Turquoise surf, tide pools, sea arches, and a coastal pier.',
+  graveyard:'A fenced cemetery, restless graves, black wings, and candlelit crypts.',
 };
 const MAP_MODE_DETAILS={
   bounded:'The current board-sized expedition, with a clear edge and finale.',
@@ -411,6 +412,12 @@ export class PlayableLobby {
     c.drawImage(this.difficultyArt,index*w,0,w,this.difficultyArt.naturalHeight,x,y,size,size);
   }
   drawMapIcon(c,value,x,y,size){
+    if(value==='graveyard'){
+      c.fillStyle='#172226';c.fillRect(x,y,size,size);c.fillStyle='#354247';c.fillRect(x+size*.1,y+size*.67,size*.8,size*.23);
+      c.fillStyle='#7d9091';c.fillRect(x+size*.24,y+size*.27,size*.32,size*.44);c.fillRect(x+size*.3,y+size*.2,size*.2,size*.08);
+      c.fillStyle='#344146';c.fillRect(x+size*.37,y+size*.31,size*.06,size*.28);c.fillRect(x+size*.29,y+size*.39,size*.22,size*.06);
+      c.fillStyle='#bdbba0';c.fillRect(x+size*.77,y+size*.16,size*.1,size*.12);return;
+    }
     if(value==='beach'){if(this.beachArt.complete&&this.beachArt.naturalWidth)c.drawImage(this.beachArt,0,0,this.beachArt.naturalWidth,this.beachArt.naturalHeight,x,y,size,size);return;}
     if(!this.mapArt.complete||!this.mapArt.naturalWidth)return;
     const index={random:0,forest:1,desert:2,ice:3,house:4,temple:5}[value]??0,w=this.mapArt.naturalWidth/6;
