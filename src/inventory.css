@@ -84,8 +84,10 @@
 .hero-panel[data-environment="house"] .equipment-window { background-position: 100% 100%; }
 .hero-panel.inventory-redesign .equipment-window > header { display: none; }
 .hero-panel.inventory-redesign .equipment-window .equipment-preview { top: 18%; left: 50%; width: 28%; height: 64%; border: 0; border-radius: 0; background: transparent; object-fit: contain; z-index: 1; }
+.hero-panel.inventory-redesign .equipment-window .equipment-preview { pointer-events: none; }
 .hero-panel.inventory-redesign .equipment-window .paper-doll { height: 100%; width: min(100%, 360px); margin: auto; background: none; overflow: visible; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot] { width: 18%; height: 17%; min-height: 0; max-height: 56px; left: auto; right: auto; top: auto; padding: 2px; border: 1px solid #b9a66a; border-radius: 3px; background: #0b211ee8; color: #f4e5c5 !important; display: flex; flex-direction: column; gap: 1px; font: 8px system-ui; white-space: normal; overflow: visible; box-shadow: inset 0 0 0 2px #365343, 0 2px 6px #0009; }
+.hero-panel.inventory-redesign .paper-doll button[data-slot] { z-index: 2; pointer-events: auto; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="head"] { left: 41%; top: 1%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="neck"] { left: 19%; top: 19%; }
 .hero-panel.inventory-redesign .paper-doll button[data-slot="cape"] { right: 19%; top: 19%; }
