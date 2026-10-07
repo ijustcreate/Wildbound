@@ -2,7 +2,6 @@ import { ITEMS, SLOTS, give, take, equip, stat, itemKind,refreshVitals,clearSlot
 
 export const SYMBOLS = ["◆", "●", "▲", "✦", "■", "✚"];
 export const RECIPES = [
-  {id:'ice_arrow',name:'Ice arrows',unlock:'ice_arrow',ingredients:{arrow:20,magic_essence:20,raw_ice:3},output:'ice_arrow',qty:20},
   {id:'azure_bead',name:'Azure bead (+15 mana)',ingredients:{stone:3,bone_shard:1},output:'azure_bead',qty:1},
   {id:'moon_prism',name:'Moon prism (+25 mana)',ingredients:{azure_bead:2,golem_core:1},output:'moon_prism',qty:1},
   {id:'starheart',name:'Starheart (+40 mana)',ingredients:{moon_prism:2,golem_core:2},output:'starheart',qty:1},
@@ -98,6 +97,7 @@ export function category(type) {
 export function storageCapacity(g, p, list) {
   return list === g.victoryRewards ||
     list === g.sharedStash ||
+    list === p.starterChest ||
     list === initializeField(p).overflow
     ? Infinity
     : 24;

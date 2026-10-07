@@ -3,6 +3,7 @@ import { paintLayers } from './render-order.mjs';
 import { ITEMS, itemKind, SAFARI_HUNTER_SET } from './items.mjs';
 import { directionalHelmet, wearableDetails } from './wearable-art.mjs';
 import { drawItem } from './item-art.mjs';
+import {flowerDefaults,upgradeFlowerMotion,drawCarnivorous} from './carnivorous-art.mjs';
 
 export const HUNTER_EQUIPMENT = Object.freeze({ ...SAFARI_HUNTER_SET, hand1: 'rifle', hand2: null });
 
@@ -149,7 +150,7 @@ function keys(kind, action, spec) {
     return { frame, joints: j };
   });
 }
-export function defaultNightMotion(kind) {
+export function legacyNightMotion(kind) {
   if (!NIGHT_KINDS.includes(kind)) throw Error('Unknown night rig: ' + kind);
   const spec = skeleton(kind), [body, shade, light, face, detail] = colors[kind];
   const clips = [...new Set(['idle', 'walk', 'run', 'attack', 'hit', 'hurt', 'death', ...actions[kind]])];
@@ -163,16 +164,18 @@ export function defaultNightMotion(kind) {
       loop: ['idle', 'walk', 'run', 'sway', 'mouth', 'stalk', 'crouch', 'underground', 'wrap', 'feed', 'aim', 'charge', 'fly', 'flap'].includes(action), keys: keys(kind, action, spec) }])),
   };
 }
+export function defaultNightMotion(kind){const model=legacyNightMotion(kind);return kind==='carnivorous_flower'?flowerDefaults(model):model;}
 export const nightMotions = Object.fromEntries(NIGHT_KINDS.map(k => [k, defaultNightMotion(k)]));
 export const nightMotionRevisions = Object.fromEntries(NIGHT_KINDS.map(k => [k, 0]));
 export function validateNightMotion(kind, model) {
   if (!NIGHT_KINDS.includes(kind) || model?.type !== kind) return false;
+  if(kind==='carnivorous_flower'&&model.artGeneration!==2){if(!validateMotion(model,legacyNightMotion(kind)))return false;model=upgradeFlowerMotion(model,legacyNightMotion(kind));}
   const def = defaultNightMotion(kind);
   return validateMotion(model, def) && Object.keys(def.visibility).every(n => Array.isArray(model.visibility?.[n]) && model.visibility[n].length === 8 && model.visibility[n].every(v => typeof v === 'boolean'));
 }
 export function replaceNightMotion(kind, model) {
   if (!validateNightMotion(kind, model)) throw Error('Invalid ' + kind + ' animation. Nothing imported.');
-  const copy = structuredClone(model), target = nightMotions[kind];
+  const copy = kind==='carnivorous_flower'?upgradeFlowerMotion(model,legacyNightMotion(kind)):structuredClone(model), target = nightMotions[kind];
   for (const key of Object.keys(target)) delete target[key];
   Object.assign(target, copy); nightMotionRevisions[kind]++;
 }
@@ -237,6 +240,7 @@ export function nightFrame(kind, actor, time, model = nightMotions[kind]) {
 export function drawNightRig(c, actor, time, model = nightMotions[actor.sprite] || nightMotions[actor.kind], suppliedPose = null) {
   const kind = model.type, d = facingIndex(actor.faceX, actor.faceY), pal = model.palette, s = model.shape;
   const pose = suppliedPose || poseAt(model, nightAction(kind, actor, model), nightFrame(kind, actor, time, model));
+  if(kind==='carnivorous_flower')return drawCarnivorous(c,actor,model,pose,d);
   const p = Object.fromEntries(Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]));
   const queue = [], visible = n => model.visibility?.[n]?.[d] !== false;
   // Preview defaults use real equippable IDs. An explicit equipment object is

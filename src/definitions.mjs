@@ -1,4 +1,12 @@
 import {wolfMotion, validateWolfMotion, replaceWolfMotion} from './wolf-motion.mjs';
+import {warlockMotion,validateWarlockMotion,replaceWarlockMotion} from './warlock-motion.mjs';
+import {bansheeMotion,validateBansheeMotion,replaceBansheeMotion} from './banshee-motion.mjs';
+import {BANSHEE_SET} from './items.mjs';
+import {SUCCUBUS_DROPS} from './items.mjs';
+import {succubusMotion,validateSuccubusMotion,replaceSuccubusMotion} from './succubus-motion.mjs';
+import {impMotion,validateImpMotion,replaceImpMotion} from './imp-motion.mjs';
+import {zombieMotion,validateZombieMotion,replaceZombieMotion} from './zombie-motion.mjs';
+import {WILD_FAUNA_DEFAULTS,DEER_KINDS,PEACEFUL_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import { NIGHT_KINDS, nightMotions, validateNightMotion, replaceNightMotion } from './night-rigs.mjs';
 import {
   beastMotions,
@@ -152,13 +160,13 @@ export function creatureDefaults(kind) {
   const night = NIGHT_CREATURE_DEFAULTS[kind];
   const type =
     kind.startsWith("explorer") ||
-    ["skeleton", "skeleton_caster", "skeleton_wizard", "necromancer", "archer", "golem", "monkey", "hunter"].includes(kind)
+    ["skeleton", "skeleton_caster", "skeleton_wizard", "necromancer", "banshee_queen", "succubus", "imp", "zombie", "archer", "golem", "monkey", "hunter"].includes(kind)
       ? "humanoid"
       : ["vine", "carnivorous_flower", "mimic_vine", "poison_pod"].includes(kind)
         ? "plant"
-        : kind === "snake"
+        : ["snake", "anaconda"].includes(kind)
           ? "serpent"
-          : ["bat", "wasp", "tsetse", "pelican"].includes(kind)
+          : ["bat", "wasp", "bee", "tsetse", "pelican"].includes(kind)
             ? "winged"
             : "quadruped";
   const rig = rigPreset(night?.type || type);
@@ -246,9 +254,11 @@ for (const name of [
   "crocodile",
   "boar",
   "snake",
+  "anaconda",
   "bat",
   "beetle",
   "wasp",
+  "bee", "bee_hive",
   "tsetse",
   "vine",
   "golem",
@@ -269,10 +279,37 @@ for (const name of [
   "explorer-green",
 ])
   creatures[name] = creatureDefaults(name);
-for(const [kind,base] of [['tiger','lion'],['gorilla','golem'],['white_lion','lion'],['snow_leopard','panther'],['spider','beetle'],['baby_spider','beetle'],['spider_egg','beetle']]){
+for(const [kind,base] of [['tiger','lion'],['gorilla','golem'],['white_lion','lion'],['snow_leopard','panther'],['spider','beetle'],['tarantula','beetle'],['baby_spider','beetle'],['spider_egg','beetle']]){
   creatures[kind]=creatureDefaults(base);creatures[kind].name=kind;creatures[kind].aiKind=base;
 }
 for(const kind of ['lion','wolf','bat','panther','tiger'])creatures[kind].tamable=true;
+Object.assign(creatures.spider.stats,{hp:70,speed:68,damage:11});
+Object.assign(creatures.tarantula.stats,{hp:110,speed:48,damage:16});
+Object.assign(creatures.anaconda.stats,{hp:380,speed:46,damage:26,attackRange:145,windup:.9,recovery:1.1,dashCooldown:2.5,dashSpeed:240,dashDistance:116,detection:750});
+Object.assign(creatures.anaconda.rig,{tailThickness:12,tailLength:390,tailSegments:40,tailTip:2});
+creatures.banshee_queen=creatureDefaults('banshee_queen');
+Object.assign(creatures.banshee_queen.stats,{hp:340,speed:44,damage:24,windup:.8,rangedRange:420,rangedCooldown:2.4});
+Object.assign(creatures.banshee_queen.behaviors,{ranged:true,melee:false,loot:true});
+creatures.banshee_queen.lootDrops=BANSHEE_SET.map(item=>({item,qty:1,chance:100}));
+creatures.succubus=creatureDefaults('succubus');
+Object.assign(creatures.succubus.stats,{hp:180,speed:56,damage:18,detection:520,attackRange:112,windup:.75,recovery:1.6});
+Object.assign(creatures.succubus.behaviors,{ranged:true,melee:true,loot:true,dash:false,jump:false});
+creatures.succubus.lootDrops=SUCCUBUS_DROPS.map(item=>({item,qty:1,chance:100}));
+creatures.imp=creatureDefaults('imp');
+Object.assign(creatures.imp.stats,{hp:60,speed:70,damage:14,detection:500,windup:.9,rangedRange:330,rangedCooldown:3});
+Object.assign(creatures.imp.behaviors,{ranged:true,melee:false,loot:true,dash:false,jump:false});
+creatures.zombie=creatureDefaults('zombie');
+Object.assign(creatures.zombie.stats,{hp:80,speed:32,damage:14,detection:360,attackRange:54,windup:.65,recovery:1.25});
+Object.assign(creatures.zombie.behaviors,{ranged:false,melee:true,loot:true,dash:false,jump:false});
+for(const [kind,settings]of Object.entries(WILD_FAUNA_DEFAULTS)){
+ creatures[kind]=creatureDefaults(kind);const cfg=creatures[kind];cfg.name=settings.name;cfg.faction=settings.faction;
+ Object.assign(cfg.stats,{hp:settings.hp,speed:settings.speed,damage:settings.damage,detection:kind==='scorpion'?150:240,attackRange:kind==='scorpion'?44:40});
+ Object.assign(cfg.behaviors,{hunt:true,melee:!PEACEFUL_FAUNA_KINDS.includes(kind),dash:false,jump:false});
+ if(DEER_KINDS.includes(kind))cfg.lootDrops=[{item:'meat',qty:kind==='stag'?2:1,chance:kind==='baby_deer'?50:100}];
+ if(kind==='pig'||kind==='pig_spotted')cfg.lootDrops=[{item:'meat',qty:1,chance:100}];
+}
+Object.assign(creatures.bee.stats,{hp:27,speed:90,damage:7});creatures.bee.behaviors.dash=false;
+Object.assign(creatures.bee_hive.stats,{hp:160,speed:0,damage:0});Object.assign(creatures.bee_hive.behaviors,{hunt:false,melee:false,dash:false,jump:false});
 for (const kind of ["skeleton_unarmed", "skeleton_boss"]) {
   creatures[kind] = creatureDefaults("skeleton");
   creatures[kind].name = kind;
@@ -566,6 +603,11 @@ export function loadDefinitions(events, items) {
   }
 }
 export function applyDefinitions(d, events, items, { spriteOverrides = true } = {}) {
+  if(d.imp&&!validateImpMotion(d.imp))throw Error('Invalid imp animation');
+  if(d.zombie&&!validateZombieMotion(d.zombie))throw Error('Invalid zombie animation');
+  if(d.succubus&&!validateSuccubusMotion(d.succubus))throw Error('Invalid succubus animation');
+  if(d.banshee&&!validateBansheeMotion(d.banshee))throw Error('Invalid Banshee Queen animation');
+  if(d.warlock&&!validateWarlockMotion(d.warlock))throw Error('Invalid warlock animation');
   for (const [kind, model] of Object.entries(d.nightMotions || {}))
     if (!validateNightMotion(kind, model)) throw Error('Invalid night animation: ' + kind);
   for (const [k, m] of Object.entries(d.beastMotions || {}))
@@ -609,6 +651,11 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   for (const [k, m] of Object.entries(d.beastMotions || {}))
     replaceBeastMotion(k, m);
   if (d.player) replacePlayerMotion(d.player);
+  if (d.warlock) replaceWarlockMotion(d.warlock);
+  if(d.banshee)replaceBansheeMotion(d.banshee);
+  if(d.succubus)replaceSuccubusMotion(d.succubus);
+  if(d.imp)replaceImpMotion(d.imp);
+  if(d.zombie)replaceZombieMotion(d.zombie);
   if (d.alligator) replaceAlligatorMotion(d.alligator);
   for (const [kind, m] of Object.entries(d.skeletonMotions || {}))
     replaceSkeletonMotion(kind, m);
@@ -622,6 +669,11 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   for (const [kind, model] of Object.entries(d.nightMotions || {}))
     replaceNightMotion(kind, model);
   const savedSpriteModels = {
+    imp:impMotion,
+    zombie:zombieMotion,
+    succubus:succubusMotion,
+    banshee_queen:bansheeMotion,
+    necromancer:warlockMotion,
     player: playerMotion,
     alligator: alligatorMotion,
     lion: lionMotion,
@@ -651,6 +703,13 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "skeleton_boss",
           "beetle",
           "spider",
+          "tarantula",
+          "old_well",
+          "anaconda",
+          "banshee_queen",
+          "succubus",
+          "imp",
+          "zombie",
           "gorilla",
           "blizzard",
           "sandstorm",
@@ -682,6 +741,11 @@ export function definitionPack(events, items) {
     events,
     items,
     player: playerMotion,
+    warlock:warlockMotion,
+    banshee:bansheeMotion,
+    succubus:succubusMotion,
+    imp:impMotion,
+    zombie:zombieMotion,
     alligator: alligatorMotion,
     skeletonMotions,
     lion: lionMotion,
@@ -694,3 +758,11 @@ export function definitionPack(events, items) {
     beastMotions,
   };
 }
+
+// Append this card to EVENTS after the existing cards; indices are save keys.
+export const OLD_WELL_EVENT = {
+  name: 'The old well', kind: 'old_well', type: 'old_well', count: 0,
+  environments: ['forest', 'house'], weight: 7,
+  verse: 'A rope descends beyond the light.\nOld tunnels keep their gold from sight.',
+  tip: 'Investigate the well. Explore the tunnels, find the chest, and climb the rope to return.',
+};

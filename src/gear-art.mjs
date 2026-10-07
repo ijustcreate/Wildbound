@@ -1,4 +1,5 @@
 import { ITEMS, itemKind } from './items.mjs';
+import {bansheeShoulder,bansheeGearIcon} from './banshee-gear-art.mjs';
 
 // Shared material ramps for world sprites, fitted equipment and inventory art.
 export function mixGearColor(color, target, amount) {
@@ -14,6 +15,7 @@ export function gearPalette(id, dye) {
   if (ramps.has(key)) return ramps.get(key);
   const result = { ink:'#302b2b', dark:mixGearColor(base,'#302b2b',.48), base,
     light:mixGearColor(base,'#f7e7c0',.42), shine:'#f4e4bc', trim:'#b18a51', leather:'#624735' };
+  if(def.bansheeGear)Object.assign(result,{ink:'#24232e',dark:mixGearColor(base,'#202532',.5),light:mixGearColor(base,'#b7d2de',.34),shine:'#d0e8ed',trim:'#90aab9',leather:'#473344'});
   if (ramps.size >= 512) ramps.clear();
   ramps.set(key, result);
   return result;
@@ -56,6 +58,11 @@ export function withBootPose(c, ankle, knee, paint, customSprite=false) {
 // Deliberately authored at character resolution: never resize inventory pairs.
 export function fittedGear(c, id, anchor, direction, side, dye) {
   const def=ITEMS[id], kind=itemKind(id), p=gearPalette(id,dye);
+  if(def?.humanoidWings){
+    // Only the fitted harness clasp goes on the shoulder joint. The actual
+    // wing belongs to the separate back-mounted articulated layer.
+    const r=gearPixels(c,anchor);r(-2,-2,5,4,p.ink);r(-1,-1,3,2,'#b29363');r(-1,-1,2,1,'#eed9a2');r(0,0,1,1,p.dark);return;
+  }
   const r=gearPixels(c,anchor), profile=direction===2||direction===6;
   const rear=direction>=3&&direction<=5;
   if(kind==='gloves') {
@@ -87,6 +94,7 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     if(def.style==='flame') {r(1,-3,1,3,'#f2b66c');r(0,-2,1,2,p.shine);}
     if(def.style==='moon') r(0,-3,1,2,p.shine);
   } else if(kind==='shoulder_armor') {
+    if(def.bansheeGear){bansheeShoulder(c,anchor,direction,side,p);return;}
     const w=profile?4:5;
     r(-2,-2,w,1,p.ink);r(-3,-1,w+2,3,p.ink);r(-2,2,w,1,p.ink);
     r(-2,-1,w,2,p.base);r(-2,-1,w-1,1,p.light);r(-1,1,w-1,1,p.dark);
@@ -94,6 +102,7 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     if(def.style==='leaf') {r(1,0,2,2,p.dark);r(1,0,1,1,p.light);}
     if(def.style==='moon'||def.style==='sun') r(0,0,1,2,p.shine);
     if(def.style==='safari') {r(-2,0,w,1,p.trim);r(0,-1,1,1,p.shine);}
+    if(def.warlockGear){r(-2,-3,2,2,'#d3c9a4');r(1,-3,2,2,'#a69a7b');r(-2,1,w,1,'#6e5978');}
   }
 }
 
@@ -132,9 +141,15 @@ export function fittedShield(c,id,hand,d,blocking,dye) {
 export function paintGearIcon(c,id) {
   const def=ITEMS[id];if(!def?.slot)return false;
   const kind=itemKind(id),style=def.style,p=gearPalette(id),r=gearPixels(c,{x:0,y:0});
+  if(def.bansheeGear&&bansheeGearIcon(c,kind,p))return true;
   if(!['hat','armor','pants','gloves','boots','shoulder_armor','cape','shield','wand'].includes(kind))return false;
   if(kind==='hat') {
-    if(style==='circlet'||style==='crown') {
+    if(style==='halo') {
+      r(5,6,14,2,'#a27b35');r(3,8,3,6,'#a27b35');r(18,8,3,6,'#a27b35');r(5,14,14,2,'#a27b35');
+      r(6,5,12,2,p.base);r(4,7,3,6,p.base);r(17,7,3,6,p.base);r(6,13,12,2,p.base);
+      r(7,5,9,1,'#fff9d8');r(4,8,1,4,'#fff9d8');r(7,13,9,1,'#fff9d8');
+      r(2,3,1,3,p.base);r(1,4,3,1,p.base);r(21,17,1,3,p.base);r(20,18,3,1,p.base);
+    } else if(style==='circlet'||style==='crown') {
       r(4,12,16,4,p.dark);r(5,12,14,1,p.light);r(5,14,14,1,p.base);
       if(style==='crown')for(const x of [5,10,16]) {r(x,6,3,7,p.base);r(x,6,1,6,p.light);}
       r(10,10,4,6,p.dark);r(11,11,2,4,p.base);r(11,11,1,2,p.shine);

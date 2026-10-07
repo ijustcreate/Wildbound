@@ -6,6 +6,7 @@ import {drawForestRuin} from './forest-art.mjs';
 import { terrainHash } from "./world.mjs";
 import {hunterPets} from './hunter-pets.mjs';
 import {releasedCritters} from './living-ecosystem.mjs';
+import {boundlessTerrainAt} from './boundless-world.mjs';
 export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
@@ -14,11 +15,14 @@ export function waterAt(g, x, y) {
   if (g.phase === "won") return "grass";
   const tx = Math.floor(x / 32),
     ty = Math.floor(y / 32);
-  if (tx < 0 || ty < 0 || tx >= 50 || ty >= 50) return "water";
+  if (tx < 0 || ty < 0 || tx >= 50 || ty >= 50) {
+    if(g.mapMode==='boundless')return boundlessTerrainAt(g,tx,ty);
+    return "water";
+  }
   let base = g.terrain?.[ty * 50 + tx] || "grass";
   if(g.house?.pools){if(g.house.pools.some(p=>x>=p.x&&y>=p.y&&x<p.x+p.w&&y<p.y+p.h))return 'water';if(base==='water')base='grass';}
   // Derived from terrain so existing saves gain natural muddy shorelines too.
-  if(base==='sand'&&!g.house?.pools&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>tx+dx>=0&&tx+dx<50&&ty+dy>=0&&ty+dy<50&&['water','shallow'].includes(g.terrain?.[(ty+dy)*50+tx+dx])))return 'mud';
+  if(base==='sand'&&g.generatedEnvironment!=='beach'&&!g.house?.pools&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>tx+dx>=0&&tx+dx<50&&ty+dy>=0&&ty+dy<50&&['water','shallow'].includes(g.terrain?.[(ty+dy)*50+tx+dx])))return 'mud';
   if (g.weather?.type !== "monsoon") return base;
   if (base === "bridge") return "floodbridge";
   if (base === "grass")

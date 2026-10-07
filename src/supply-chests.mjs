@@ -6,6 +6,7 @@ export const LEVEL_SUPPLIES = {
  ice: {item:'snowflake_pendant',name:'Winter supplies',color:'#b5e5ef'},
  house: {item:'hearth_pendant',name:'Homestead supplies',color:'#c99777'},
  temple: {item:'jade_pendant',name:'Temple supplies',color:'#83d4b9'},
+ beach: {item:'fern_pendant',name:'Coastal supplies',color:'#84ded2'},
 };
 export function seedSupplyChests(g, force=false) {
  if(!force && Array.isArray(g.supplyChests))return;

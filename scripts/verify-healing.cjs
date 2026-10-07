@@ -1,0 +1,113 @@
+const {app,BrowserWindow}=require('electron');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),base=process.env.WILDBOUND_VERIFY_APP||root;
+const output=path.join(root,'test-output');fs.mkdirSync(output,{recursive:true});
+const profile=fs.mkdtempSync(path.join(output,'healing-profile-'));
+app.disableHardwareAcceleration();app.setPath('userData',profile);
+app.whenReady().then(async()=>{
+  const w=new BrowserWindow({show:false,width:1280,height:850,useContentSize:true,webPreferences:{offscreen:true}});
+  const errors=[];
+  w.webContents.on('console-message',details=>{if(details.level==='error')errors.push(details.message);});
+  w.webContents.on('render-process-gone',(_,details)=>errors.push(JSON.stringify(details)));
+  const run=async source=>{
+    const r=await w.webContents.executeJavaScript('(async()=>{try{return await ('+source+');}catch(e){return {verificationError:e.stack};}})()');
+    if(r?.verificationError)throw Error(r.verificationError);return r;
+  };
+  try{
+    await w.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});
+    await run('window.wildboundBoot.ready');
+    await run(`(()=>{window.requestAnimationFrame=()=>0;window.addEventListener('error',e=>{window.healingQAErrors||=[];window.healingQAErrors.push(e.error?.stack||e.message);});return true;})()`);
+    const result=await run(`(async()=>{
+      const {Game}=await import('./src/core.mjs'),{ITEMS,give,equip}=await import('./src/items.mjs');
+      const {saveSession,restoreSession}=await import('./src/session.mjs'),{snapshot,Rooms,cleanInput}=await import('./src/rooms.mjs');
+      const {hitHealingBolt,tickSpellHealing,createRoomHealingBolt,spellHealingTargets,HEALING_COLOR}=await import('./src/healing-magic.mjs');
+      const {drawMagicBolt}=await import('./src/magic-bolt-render.mjs'),{drawMagicBurst}=await import('./src/magic-bolt-effects.mjs');
+      const {drawItem,ITEM_ART_TYPES}=await import('./src/item-art.mjs'),{Assets}=await import('./src/assets.mjs');
+      const {Animator}=await import('./src/animation.mjs'),{Renderer}=await import('./src/render.mjs');
+      const {generateWellTunnels,tickOldWells,drawOldWellRoom}=await import('./src/old-well.mjs');
+      const checks=[],check=(name,ok)=>{if(!ok)throw Error(name);checks.push(name);};
+      const setup=()=>{const g=new Game(()=>.2),p=g.addPlayer('keyboard'),q=g.addPlayer('net:healer');
+        Object.assign(g,{phase:'play',openingBoard:false,generatedEnvironment:'forest',scenery:[],house:null,forestLandscape:null,enemies:[],ghosts:[],portals:[],pickups:[],loot:[]});g.terrain.fill('grass');
+        Object.assign(p,{x:400,y:400,faceX:1,faceY:0,hp:100,mana:100});Object.assign(q,{x:470,y:400,hp:20,mana:100});p.equipment.hand1='healing_wand';return {g,p,q};};
+      const fire=(g,p,target,charge=0)=>{check('cast accepted',g.fireSpell(p,charge));const b=g.spells.at(-1);target.x=b.x+b.vx*.24;target.y=b.y+b.vy*.24;return b;};
+      const {g,p,q}=setup();p.equipment.head=q.equipment.head='halo';
+      const b=fire(g,p,q,1.2);const enemy={id:800,kind:'lion',hp:10,maxHp:100,x:b.x+b.vx*.08,y:b.y+b.vy*.08};g.enemies=[enemy];
+      g.tickAdventure(.4,{});check('fully charged outgoing/incoming halo: 56.25 effective HP',q.hp===76.25);
+      check('enemy crossing bolt path receives no damage or healing',enemy.hp===10);
+      check('green exact effective healing and light blue rising particles',g.effects.some(e=>e.text==='+56.25'&&e.color==='#75ef93')&&g.effects.some(e=>e.healingRise&&e.color===HEALING_COLOR));
+      tickSpellHealing(g,1);check('halo HoT ticks after one second',q.hp===82.5);
+      const saved=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));tickSpellHealing(saved,1);
+      check('save/reload continues remaining HoT schedule',saved.players[1].hp===88.75);
+      for(let i=0;i<4;i++)hitHealingBolt(g,{owner:p.id,healingAmount:1,healingHot:true,healingHotAmount:5},q);
+      check('HoT max three independent stacks',q.healingOverTime.length===3);
+      tickSpellHealing(g,3);check('HoT expires rather than refreshing forever',!q.healingOverTime);
+      const n=g.effects.length;q.hp=q.maxHp;hitHealingBolt(g,{owner:p.id,healingAmount:50},q);
+      check('overheal produces no floating healing',g.effects.length===n);
+      q.hp=0;check('dead actors never revived',!hitHealingBolt(g,{owner:p.id,healingAmount:50},q)&&q.hp===0);
+      const pet={id:801,kind:'wolf',hunterPet:true,faction:'ally',owner:p.id,hp:10,maxHp:100};p.hunterPet=pet;
+      fire(g,p,pet);g.tickAdventure(.4,{});check('real projectile heals live pet',pet.hp===40);
+      pet.hp=0;tickSpellHealing(g,1);check('downed pet remains dead and loses HoT',pet.hp===0&&!pet.healingOverTime);
+      const pv=setup();pv.g.pvp=true;fire(pv.g,pv.p,pv.q);pv.g.tickAdventure(.4,{});
+      check('PvP opponents take neither damage nor healing',pv.q.hp===20);
+      pv.p.mana=0;check('out of mana rejects bolt',!pv.g.fireSpell(pv.p));
+      const net=setup();net.p.equipment.hand1=null;net.q.equipment.hand1='healing_wand';net.q.faceX=-1;net.q.faceY=0;
+      const room=Object.create(Rooms.prototype);Object.assign(room,{role:'host',age:0,inputs:{},send(d){this.sent=d;}});
+      room.inputs[net.q.device]=cleanInput({attack:true,aimX:-1});net.g.tickAdventure(.05,room.tick(net.g,.05,{keyboard:{}}));
+      room.inputs[net.q.device]=cleanInput({attack:false,aimX:-1});net.g.tickAdventure(.05,room.tick(net.g,.05,{keyboard:{}}));
+      check('network release owner and mana isolation',net.g.spells[0]?.owner===net.q.id&&net.p.mana===100&&net.q.mana<100);
+      check('healing bolt is included in host snapshot',JSON.parse(JSON.stringify(snapshot(net.g))).spells[0].healing===true);
+      const roomQA=setup();Object.assign(roomQA.p,{room:'qa-well',roomX:80,roomY:100});Object.assign(roomQA.q,{room:'qa-well',roomX:140,roomY:100});
+      roomQA.p.equipment.head=roomQA.q.equipment.head='halo';roomQA.g.projectileBlocked=()=>{throw Error('Room creator called world collision');};
+      const rb=createRoomHealingBolt(roomQA.g,roomQA.p,1.2,'hand1',{aim:{x:1,y:0}});
+      check('room creator uses local feet coordinates, normal charge and exact mana',rb.x===80&&rb.y===100&&rb.room==='qa-well'&&rb.healingAmount===45&&roomQA.p.mana===88);
+      check('same-room player is a healing collision candidate',spellHealingTargets(roomQA.g,rb).includes(roomQA.q));
+      hitHealingBolt(roomQA.g,rb,roomQA.q);const rfx=roomQA.g.effects.find(e=>e.spellHealing);
+      check('room healing numbers and particles use room coordinates and room tag',roomQA.q.hp===76.25&&rfx.x===140&&rfx.y===74&&rfx.room==='qa-well'&&roomQA.g.effects.find(e=>e.healingRise).room==='qa-well');
+      const restoredRoom=restoreSession(JSON.parse(JSON.stringify(saveSession(roomQA.g))));tickSpellHealing(restoredRoom,1);
+      check('room HoT survives save and ticks in local space',restoredRoom.players[1].hp===82.5&&restoredRoom.effects.filter(e=>e.spellHealing).every(e=>e.room==='qa-well'));
+      const roomEnemy={id:'qa-room-foe',hp:20,maxHp:40,room:'qa-well',roomX:120,roomY:100};
+      check('separate room enemy cannot receive healing',!hitHealingBolt(roomQA.g,rb,roomEnemy)&&roomEnemy.hp===20);
+      roomQA.q.hp=0;check('room dead ally cannot revive',!hitHealingBolt(roomQA.g,rb,roomQA.q)&&roomQA.q.hp===0);
+      for(const id of ['healing_wand','halo']){give(p.inventory,id);check('ordinary equipment '+id,equip(p,p.inventory.findIndex(i=>i?.type===id)));check('dev catalog '+id,ITEM_ART_TYPES.includes(id));}
+      const assets=new Assets();await assets.load();const animator=new Animator(assets);
+      roomQA.q.hp=20;roomQA.g.effects=[];
+      const ws=generateWellTunnels(41),portal={id:'qa-well',oldWell:true,x:1100,y:1200,well:ws};roomQA.g.portals=[portal];
+      const wellFoe={id:'well-render-foe',kind:'bat',x:105,y:100,hp:24,maxHp:24,damage:0,speed:0,state:'idle',cooldown:10};ws.enemies=[wellFoe];
+      ws.bolts.push(createRoomHealingBolt(roomQA.g,roomQA.p));tickOldWells(roomQA.g,.2);
+      check('parent well swept pipeline heals ally and passes through separate foes',roomQA.q.hp===57.5&&wellFoe.hp===24&&ws.bolts.length===0);
+      const roomCanvas=document.createElement('canvas');roomCanvas.width=320;roomCanvas.height=240;
+      const roomC=roomCanvas.getContext('2d');roomC.imageSmoothingEnabled=false;drawOldWellRoom(roomC,roomQA.g,roomQA.q,animator);
+      check('parent old well renderer draws room healing effects',roomCanvas.getContext('2d').getImageData(0,0,320,240).data.some(v=>v));
+      const sheet=document.createElement('canvas');sheet.width=1100;sheet.height=770;
+      const c=sheet.getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#203b36';c.fillRect(0,0,sheet.width,sheet.height);
+      c.fillStyle='#f4e4bc';c.font='bold 24px monospace';c.fillText('HEALING WAND + HALO / NATIVE PIXEL ART',24,38);
+      for(const [i,id]of ['healing_wand','halo','honeycomb'].entries()){
+        drawItem(c,id,85+i*145,110,90);c.fillStyle='#d8e4cd';c.font='14px monospace';c.fillText(ITEMS[id]?.name||id,30+i*145,176);
+      }
+      for(let d=0;d<8;d++)animator.draw(c,{...p,x:65+d*138,y:315,faceX:-Math.sin(d*Math.PI/4),faceY:Math.cos(d*Math.PI/4),equipment:{hand1:'healing_wand',head:'halo'},hp:100},.4,85);
+      c.fillStyle='#d8e4cd';c.fillText('Halo follows head in eight directions',24,358);
+      c.save();c.translate(20,390);c.scale(3,3);drawMagicBolt(c,{x:240,y:35,vx:260,vy:0,age:.5,color:HEALING_COLOR,healing:true,size:6});c.restore();
+      for(let i=0;i<3;i++){
+        const x=150+i*325,y=665;animator.draw(c,{...q,x,y,equipment:{head:'halo'},hp:80,faceX:0,faceY:1},.5,85);
+        c.save();c.translate(x,y-40);c.scale(2,2);drawMagicBurst(c,{healingRise:true,x:0,y:0,color:HEALING_COLOR,life:.85*(1-(.15+i*.3)),duration:.85});c.restore();
+        c.fillStyle='#75ef93';c.font='bold 18px monospace';c.textAlign='center';c.fillText('+37.5',x,y-92-i*8);
+      }
+      c.textAlign='left';c.fillStyle='#d8e4cd';c.font='14px monospace';c.fillText('Rising particles: early / middle / late',24,744);
+      const world=document.createElement('canvas');world.width=1280;world.height=850;world.style.cssText='width:1280px;height:850px';document.body.append(world);
+      const renderer=new Renderer(world,assets);renderer.pixelScale=1;
+      const scene=setup();Object.assign(scene.p,{x:720,y:920});Object.assign(scene.q,{x:820,y:920,hp:95});scene.p.equipment.head='halo';
+      scene.g.explored=new Set(Array.from({length:2500},(_,i)=>i));scene.g.night={...scene.g.night,phase:'day'};
+      hitHealingBolt(scene.g,{owner:scene.p.id,healingAmount:24},scene.q);scene.g.time=.4;
+      scene.g.spells.push({owner:scene.p.id,healing:true,x:780,y:985,vx:260,vy:0,age:.4,life:2,remaining:180,size:6,color:HEALING_COLOR});
+      renderer.camera={x:800,y:850,zoom:1.4};renderer.draw(scene.g,0);
+      check('native Renderer draws live healing effects',world.getContext('2d').getImageData(0,0,world.width,world.height).data.some(v=>v));
+      check('renderer exceptions absent',!(window.healingQAErrors||[]).length);
+      return {report:{checks,failed:0,rendererErrors:window.healingQAErrors||[],balance:{heal:24,chargedHeal:36,mana:12,haloIncoming:.25,haloOutgoing:.25,hotBase:4,hotSeconds:3,maxStacks:3}},sheet:sheet.toDataURL(),world:world.toDataURL(),room:roomCanvas.toDataURL()};
+    })()`);
+    if(errors.length)throw Error(errors.join('\n'));
+    for(const name of ['sheet','world','room'])fs.writeFileSync(path.join(output,'healing-'+name+'.png'),Buffer.from(result[name].split(',')[1],'base64'));
+    result.report.profile=profile;result.report.electron=process.versions.electron;
+    fs.writeFileSync(path.join(output,'healing-qa.json'),JSON.stringify(result.report,null,2));
+    console.log(JSON.stringify(result.report,null,2));app.exit(0);
+  }catch(e){console.error(e);app.exit(1);}
+});

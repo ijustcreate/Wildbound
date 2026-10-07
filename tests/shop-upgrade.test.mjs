@@ -23,6 +23,7 @@ const setup = () => {
 };
 test("Robot receives sold stacks and awards gold; sale fails atomically when stock is full", () => {
   const { g, p } = setup();
+  p.robotRepaired=true; // Economy checks use an already repaired shop.
   p.inventory = [{ type: "potion", qty: 4 }];
   g.openShop(p, "robot");
   g.inventoryAction(p, "use");

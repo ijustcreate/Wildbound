@@ -7,14 +7,16 @@ import {tickXPOrbs} from '../src/xp-orbs.mjs';
 import {equipmentNeighbor} from '../src/equipment-navigation.mjs';
 import {SLOTS} from '../src/items.mjs';
 
-test('Equipment navigation follows the ring around the central paper doll and reaches every slot',()=>{
- assert.equal(equipmentNeighbor('shoulders','next'),'head');assert.equal(equipmentNeighbor('head','next'),'neck');assert.equal(equipmentNeighbor('neck','next'),'cape');
- assert.equal(equipmentNeighbor('head','down'),'chest');assert.equal(equipmentNeighbor('neck','down'),'back');
+test('Equipment navigation matches the body-shaped grid beside the live portrait and reaches every slot',()=>{
+ assert.equal(equipmentNeighbor('head','down'),'neck');assert.equal(equipmentNeighbor('neck','down'),'chest');assert.equal(equipmentNeighbor('chest','down'),'pants');assert.equal(equipmentNeighbor('pants','down'),'feet');
+ assert.equal(equipmentNeighbor('back','next'),'neck');assert.equal(equipmentNeighbor('neck','next'),'cape');assert.equal(equipmentNeighbor('cape','down'),'shoulders');
  assert.equal(equipmentNeighbor('hand1','up'),'gloves');assert.equal(equipmentNeighbor('feet','prev'),'hand1');
  const seen=new Set(['head']),queue=['head'];
  while(queue.length){const slot=queue.shift();for(const d of ['up','down','next','prev']){const next=equipmentNeighbor(slot,d);assert.ok(SLOTS.includes(next));if(!seen.has(next)){seen.add(next);queue.push(next);}}}
  assert.equal(seen.size,SLOTS.length);
  const g=new Game(),p=g.addPlayer('pad:0');g.start();g.openInventory(p);p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');g.inventoryAction(p,'up');assert.equal(SLOTS[p.ui.index],'gloves');
+ p.ui.index=SLOTS.indexOf('neck');g.inventoryAction(p,'up');assert.equal(p.ui.panel,'gear');assert.equal(SLOTS[p.ui.index],'head');
+ g.inventoryAction(p,'up');assert.equal(p.ui.panel,'gear');assert.equal(SLOTS[p.ui.index],'feet');g.inventoryAction(p,'up');assert.equal(SLOTS[p.ui.index],'pants');
 });
 
 function rolling(){

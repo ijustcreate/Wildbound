@@ -2,6 +2,7 @@ import {tickSnow,drawBlizzard} from './ice-world.mjs';
 import {tickWetWeather,clearWetWeather} from './wet-weather.mjs';
 import {spawnMerchant,tickMerchant} from './traveling-merchant.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
+import {isCharmed} from './succubus-charm.mjs';
 import {advanceShot,clearShot} from './navigation.mjs';
 import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
@@ -67,6 +68,7 @@ export function initHazards(g) {
   g.fireballs = [];
   g.firePatches = [];
   g.fireParticles = [];
+  g.impBombs=[];g.impFireCircles=[];
 }
 export function ignite(target, duration = 2, damage = 3) {
   target.burning = Math.max(target.burning || 0, duration);
@@ -167,6 +169,7 @@ export function tickHazards(g, dt) {
     for (const p of g.players)
       if (
         b.life > 0 &&
+        !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
         Math.hypot(p.x - b.x, p.y - b.y) < 18 && clearShot(g,b,p)
@@ -299,6 +302,7 @@ export function tickHazards(g, dt) {
     for (const p of g.players)
       if (
         b.life > 0 &&
+        !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
         Math.hypot(p.x - b.x, p.y - b.y) < 18 && clearShot(g,b,p)
@@ -330,6 +334,7 @@ export function tickHazards(g, dt) {
     b.life -= dt;
     for (const p of g.players)
       if (
+        !isCharmed(p) &&
         !p.room &&
         p.hp > 0 &&
         b.z < 30 &&

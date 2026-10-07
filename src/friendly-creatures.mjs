@@ -1,22 +1,35 @@
 import {creatures} from './definitions.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {clearShot,navigateEnemy,flies} from './navigation.mjs';
+import {companionMovement} from './companion-locomotion.mjs';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 export function befriendCreature(actor,owner){
- if(!actor||actor.hp<=0||actor.practiceTarget)return false;
+ if(!actor||actor.hp<=0||actor.practiceTarget||actor.kind==='bee_hive')return false;
  Object.assign(actor,{faction:'ally',allyOwner:owner,aggro:false,state:'idle',timer:0,moving:false,attack:0,animationAction:null,poseTime:null,motionDuration:null});
+ if(actor.kind==='succubus')Object.assign(actor,{succubusAttack:null,succubusWindup:0,succubusFlightHeight:0,succubusFlying:false});
+ if(actor.kind==='imp')Object.assign(actor,{impWindup:0,impAim:null});
+ if(actor.kind==='zombie')Object.assign(actor,{zombieWindup:0,zombieAim:null,zombieTarget:null});
+ if(['succubus','imp','zombie'].includes(actor.kind))actor.humanoidTrapRecovery=false;
+ for(const key of ['playerFrame','animationProgress','animationTime','stateAge','night','stampeding','pounce','vx','vy'])delete actor[key];
+ actor.step=Number.isFinite(actor.step)?actor.step:0;
  return true;
 }
 
 // Allies need the same transient-state upkeep as hostiles. Skipping it used to
 // leave friendship-wand cats permanently flashing, biting or mid-pounce.
 export function tickFriendlyCreature(g,e,dt,cfg=creatures[e.kind]){
+ const finish=companionMovement(e,dt);
+ try{return tickFriendly(g,e,dt,cfg);}finally{finish();}
+}
+function tickFriendly(g,e,dt,cfg){
  e.moving=false;
  for(const key of ['flash','hit','attack','summonPulse','healEffect','frozen','throwTime','cooldown'])e[key]=Math.max(0,(e[key]||0)-dt);
  const owned=e.allyOwner!==undefined&&e.allyOwner!==null;
  const owner=owned?g.players.find(p=>p.id===e.allyOwner&&p.hp>0&&!p.room):null;
  e.state=e.attack>0?'attack':'idle';e.animationAction=null;e.poseTime=null;
+ // Also migrate already-charmed actors from older saved sessions.
+ for(const key of ['playerFrame','animationProgress','animationTime','night'])delete e[key];
  if(e.frozen>0||owned&&!owner)return;
  const beh=cfg?.behaviors||{};
  let target=null,nearest=Infinity;

@@ -23,7 +23,7 @@ test('Supply chests open once, persist their rewards, and release collectable po
  const g=new Game(()=>.01);g.environment='ice';const p=g.addPlayer('keyboard');g.start();
  const c=g.supplyChests[0];Object.assign(p,{x:c.x,y:c.y});p.inventory=[];
  assert.equal(openSupplyChest(g,p),true);assert.equal(openSupplyChest(g,p),false);
- assert.equal(g.loot.length,4);assert.ok(g.loot.some(l=>l.type==='empty_jar'));assert.ok(g.loot.some(l=>l.type==='ice_arrow_recipe'));assert.ok(g.loot.some(l=>l.type==='snowflake_pendant'));
+ assert.equal(g.loot.length,3);assert.ok(g.loot.some(l=>l.type==='empty_jar'));assert.equal(g.loot.some(l=>l.type==='ice_arrow_recipe'),false);assert.ok(g.loot.some(l=>l.type==='snowflake_pendant'));
  const potion=g.loot.find(l=>l.type==='potion');g.collect(p,potion);assert.equal(count(p,'potion'),1);
  const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
  seedSupplyChests(restored);assert.equal(restored.supplyChests[0].opened,true);

@@ -4,6 +4,7 @@ import {navigateEnemy,clearShot,collisionOffset} from './navigation.mjs';
 import {tickJump} from './jumping.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {nearbyRoost,moveBatToRoost} from './bat-roost.mjs';
+import {companionMovement} from './companion-locomotion.mjs';
 
 export const TAMABLE_KINDS=['lion','wolf','bat','panther','tiger'];
 export const hunterPets=g=>g.players.filter(p=>!p.room).flatMap(p=>[p.hunterPet,p.ritualPet]).filter(Boolean);
@@ -83,6 +84,8 @@ export function tickHunterPets(g,dt,inputs={}){
   const pet=p.hunterPet;if(!pet)continue;
   pet.hunterPet=true;pet.owner=p.id;pet.id??=g.nextId++;pet.equipment??={};pet.inventory??=[];
   if(!Number.isFinite(pet.x)||!Number.isFinite(pet.y))placeNearOwner(g,p,pet);
+  const finish=companionMovement(pet,dt);
+  try{
   pet.invuln=Math.max(0,(pet.invuln||0)-dt);pet.hit=Math.max(0,(pet.hit||0)-dt);pet.attack=Math.max(0,(pet.attack||0)-dt);pet.cooldown=Math.max(0,(pet.cooldown||0)-dt);pet.heartTime=Math.max(0,(pet.heartTime||0)-dt);
   if(pet.hp<=0){
    pet.downedRemaining=Math.max(0,(pet.downedRemaining??60)-dt);
@@ -130,12 +133,15 @@ export function tickHunterPets(g,dt,inputs={}){
    if(pet.happyClock>=9){pet.happyClock=0;g.effects.push({x:pet.x,y:pet.y-36,text:'☺',color:'#ffe9a1',life:1.5});}
   }
   if(pet.kind!=='bat')tickJump(pet,dt,g,collisionOffset(g,pet));
+  }finally{finish();}
  }
 }
 export function tickRitualPets(g,dt){
  for(const p of g.players){
   if(![p.equipment?.hand1,p.equipment?.hand2].includes('ritual_dagger')||p.hp<=0){delete p.ritualPet;continue;}
   const pet=p.ritualPet??=Object.assign(restoreHunterPet({kind:'tiger',name:'Ghost Tiger',collar:p.color}),{id:g.nextId++,owner:p.id,spiritGhost:true,ritualPet:true,x:p.x,y:p.y});
+  const finish=companionMovement(pet,dt);
+  try{
   pet.attack=Math.max(0,(pet.attack||0)-dt);pet.cooldown=Math.max(0,(pet.cooldown||0)-dt);
   pet.room=p.room||null;
   if(p.room){
@@ -151,5 +157,6 @@ export function tickRitualPets(g,dt){
   if(d>(target?30:8))navigateEnemy(g,pet,goal,dt);
   if(target&&d<45&&pet.cooldown<=0&&clearShot(g,pet,target)){damageEnemy(target,pet.damage,'spectral');target.killedBy=p.id;pet.attack=.34;pet.cooldown=.85;g.onSound('hit',target);}
   pet.state='hunt';pet.timer=pet.attack;pet.animationAction=pet.attack>0?'bite':null;
+  }finally{finish();}
  }
 }

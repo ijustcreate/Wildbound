@@ -1,5 +1,5 @@
 import {petRecord,restoreHunterPet} from './hunter-pets.mjs';
-import { freshCharacter, ITEMS, SLOTS, migrateEquipment, refreshVitals } from "./items.mjs";
+import { freshCharacter, ITEMS, SLOTS, migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
 export const cleanCharacterName = (name) =>
   String(name || "")
@@ -54,7 +54,11 @@ export class Profiles {
       const raw = window.desktop
         ? await window.desktop.loadProfiles()
         : JSON.parse(localStorage.getItem("wildbound-profiles") || "null");
-      if (raw?.version === 1 && Array.isArray(raw.heroes)) this.data = raw;
+      if (raw?.version === 1 && Array.isArray(raw.heroes)) {
+        this.data = raw;
+        for(const hero of this.data.heroes)migrateEquipment(hero);
+        migrateLegacySupplies(this.data.sharedStash);
+      }
     } catch (e) {
       this.error = e.message;
     }
@@ -90,6 +94,7 @@ export class Profiles {
     p.equipment = { ...h.equipment };
     p.equipmentSockets=structuredClone(h.equipmentSockets||{});
     p.chests = structuredClone(h.chests);
+    p.starterChest = structuredClone(h.starterChest || null);
     p.chestNames = structuredClone(
       h.chestNames || ["Chest 1", "Chest 2", "Chest 3"],
     );
@@ -97,6 +102,9 @@ export class Profiles {
     p.xp = h.xp || 0;
     p.coins = h.coins || 0;
     p.robotStock = structuredClone(h.robotStock || []);
+    p.robotRepaired = h.robotRepaired === true;
+    // Already repaired legacy characters have met SCRAP-9; never reset repairs.
+    p.robotIntroduced = h.robotIntroduced === true || p.robotRepaired;
     p.vendingStock = structuredClone(h.vendingStock || null);
     p.vendingOrders = structuredClone(h.vendingOrders || []);
     p.nextVendingId = h.nextVendingId || 0;
@@ -124,11 +132,14 @@ export class Profiles {
         equipment: { ...p.equipment },
         equipmentSockets:structuredClone(p.equipmentSockets||{}),
         chests: structuredClone(p.chests),
+        starterChest: structuredClone(p.starterChest || null),
         chestNames: structuredClone(p.chestNames || []),
         level: p.level,
         xp: p.xp,
         coins: p.coins || 0,
         robotStock: structuredClone(p.robotStock || []),
+        robotRepaired: p.robotRepaired === true,
+        robotIntroduced: p.robotIntroduced === true,
         vendingStock: structuredClone(p.vendingStock || null),
         vendingOrders: structuredClone(p.vendingOrders || []),
         nextVendingId: p.nextVendingId || 0,

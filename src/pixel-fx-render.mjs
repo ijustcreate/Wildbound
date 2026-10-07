@@ -1,3 +1,4 @@
+import {drawBlackHoleFX} from './black-hole-fx.mjs';
 const textures=new Map(),plans=new WeakMap(),TAU=Math.PI*2;
 const chips=['#ffd76b','#89e8d3','#ee93d5','#a8bfff'];
 // Each raster is generated once. 256 × 48² RGBA is a hard ~2.25 MiB ceiling.
@@ -30,6 +31,7 @@ export function pixelTexture(shape,color){
 export const pixelTextureStats=()=>({textures:textures.size,bytes:textures.size*48*48*4});
 export function drawPixelFX(c,e,time,seed,stamp,maxCount){
  if(!Number.isFinite(time)||time<0||time>e.life)return;
+ if(e.fx==='pixel-black-hole'){drawBlackHoleFX(c,e,time,seed,stamp,maxCount);return;}
  const style=e.fx.slice(6),u=time/e.life,s=e.size/8,r=Math.max(12,e.spread)*s,fade=Math.min(1,u*18)*(1-u),count=Math.min(e.count,maxCount),color=u>.75?e.end:e.start;
  let data=plans.get(e);if(!data||data.length!==e.count*3){data=new Float32Array(e.count*3);for(let i=0;i<e.count;i++){const angle=i*2.399963;data.set([Math.cos(angle),Math.sin(angle),(i*.618033)%1],i*3);}plans.set(e,data);}
  const image=(shape,x,y,w,h=w,angle=0,alpha=fade,tint=color)=>stamp(pixelTexture(shape,tint),x,y,w,h,angle,alpha);

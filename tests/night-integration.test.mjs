@@ -31,7 +31,7 @@ test('Hunter timeout wins without a death or equipment reward and does not spawn
   const hunter=g.enemies[0];hunter.night.objective.elapsed=119.98;
   g.update(.05,{});g.update(.05,{});
   assert.equal(g.nightEnemies.objectives[0].status,'survived');
-  assert.equal(g.enemies.length,0);assert.equal(g.loot.length,0);assert.equal(p.coins,20);
+  assert.equal(g.enemies.filter(e=>!e.wildlife).length,0);assert.equal(g.loot.length,0);assert.equal(p.coins,20);
 });
 test('Night supplies can be crafted and equipped with the existing inventory system',()=>{
   const {p}=setup();p.inventory=[{type:'stick',qty:2},{type:'log',qty:2},{type:'stone',qty:5}];

@@ -32,3 +32,15 @@ export function drawRobotPortrait(canvas, time = 0) {
   );
   c.restore();
 }
+const brokenRobotRig=structuredClone(robotRig);
+Object.assign(brokenRobotRig.palette,{head:'#65777a',headShade:'#384a4d',body:'#697a7b',bodyShade:'#354547',outline:'#263b3c'});
+export function drawStorageRobot(c,station,p,time,online=true){
+ c.save();c.translate(station.x,station.y);c.scale(1.15,1.15);
+ drawPlayer(c,{faceX:online?p.roomX-station.x:0,faceY:online?p.roomY-station.y:1,equipment:{},hp:online?100:0,
+  animationAction:online?'idle':'death',...(online?{}:{playerFrame:brokenRobotRig.clips.death.length-1})},time,online?robotRig:brokenRobotRig);
+ if(!online){
+  c.fillStyle='#303b3c';c.fillRect(-18,-1,7,2);c.fillRect(10,-3,9,2);c.fillStyle='#a98859';c.fillRect(12,-4,3,2);c.fillRect(-16,-3,2,2);
+  c.fillStyle='#8a6456';c.fillRect(14,-7,1,4);c.fillRect(15,-8,4,1);c.fillStyle='#435858';c.fillRect(-4,-10,8,3);c.fillStyle='#a88b5b';c.fillRect(-2,-9,1,1);
+ }
+ c.restore();
+}

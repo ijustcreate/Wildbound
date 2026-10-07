@@ -1,6 +1,8 @@
 import { footprintHit, terrainHash } from './world.mjs';
 import {forestDecor} from './forest.mjs';
-import {give,take} from './items.mjs';
+import {give,take,clearSlot,ITEMS,migrateLegacySupplies} from './items.mjs';
+import {CRITTER_CONTAINERS,critterContainer} from './critter-containers.mjs';
+import {seedCoastalCritters,tickCoastalCritter,nearbyFishWater,drawCoastalCritter} from './coastal-critters.mjs';
 import { propBase, waterAt } from './environment.mjs';
 import { nearbyScenery } from './performance.mjs';
 
@@ -79,6 +81,7 @@ export function initLivingEcosystem(g) {
   const state=g.livingEcosystem={version:1,biome:biome(g),seed:finite(g.seed),
     growth:compatible?Math.max(0,Math.min(44.999,finite(old.growth))):0,vines,caught:compatible?(old.caught||[]).filter(id=>Number.isInteger(id)&&id>=0&&id<18):[]};
   const animals=[];
+  if(biome(g)==='beach')animals.push(...seedCoastalCritters(g,LIVING_LIMITS.animals));
   if(biomes.includes(biome(g))) {
     const species=biome(g)==='ice'?['white_mouse','fairy']:['dragonfly','frog','bird','scavenger'];
     for(let i=0;i<180&&animals.length<LIVING_LIMITS.animals;i++) {
@@ -143,6 +146,10 @@ export function updateLivingEcosystem(g,dt) {
     }
   }
   for(const a of r.animals) {
+    if(['crab','fish'].includes(a.kind)){
+      const owner=a.releasedOwner!=null?g.players.find(p=>p.id===a.releasedOwner&&p.hp>0&&!p.room):null;
+      tickCoastalCritter(g,a,dt,r.time,owner&&Math.hypot(owner.x-a.x,owner.y-a.y)>25?owner:null);continue;
+    }
     if(a.releasedOwner!=null){
       const owner=g.players.find(p=>p.id===a.releasedOwner);
       if(owner&&!owner.room){const dx=owner.x-a.x,dy=owner.y+14-a.y,d=Math.hypot(dx,dy),step=Math.min(Math.max(0,d-22),dt*85);
@@ -233,6 +240,7 @@ export function drawLivingEcosystem(c,g,layer='all') {
   for(const a of r.animals) {
     const flying=['dragonfly','bird','fairy'].includes(a.kind);
     if(flying?!air:!ground)continue;
+    if(['crab','fish'].includes(a.kind)){drawCoastalCritter(c,a,r.time);continue;}
     const x=Math.round(a.x),y=Math.round(a.y-(a.hopHeight||0)),flap=Math.sin(r.time*16+a.phase)>0?2:-1;
     pixel(x-3,y+2,7,2,'#20352b55');
     if(a.kind==='dragonfly'||a.kind==='fairy') {
@@ -269,15 +277,20 @@ export function catchCritter(g,p){
  if(![p.equipment?.hand1,p.equipment?.hand2].includes('critter_net'))return false;
  const r=ensure(g),a=r.animals.filter(a=>Math.hypot(a.x-p.x,a.y-p.y)<46&&(a.x-p.x)*(p.faceX||0)+(a.y-p.y)*(p.faceY||0)>=-8).sort((a,b)=>distance(a,p)-distance(b,p))[0];
  if(!a){g.message('No critter within reach.');return true;}
- const container=['frog','dragonfly','fairy'].includes(a.kind)?'empty_jar':'critter_cage',copy=structuredClone(p.inventory);
- if(!take(copy,container)){g.message(container==='empty_jar'?'You need an empty jar.':'You need an empty cage.');return true;}
- if(!give(copy,'caught_'+a.kind)){g.message('Make space for your new passenger.');return true;}
- p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught! Safely packed for the journey.');g.persist?.();return true;
+ const preferred=critterContainer(a.kind),copy=structuredClone(p.inventory);migrateLegacySupplies(copy);
+ const containers=[preferred,...CRITTER_CONTAINERS.filter(c=>c!==preferred)];
+ const consume=list=>{for(const type of containers){if(take(list,type))return type;}for(const item of list||[])if(ITEMS[item?.type]?.bag&&item.contents){const found=consume(item.contents);if(found)return found;}return null;};
+ const container=consume(copy);
+ if(!container){g.message('You need an empty critter bottle/jar or travel cage in your backpack. Filled containers cannot be reused.');return true;}
+ if(!give(copy,'caught_'+a.kind,1,24,{captureContainer:container})){g.message('Make space for your new passenger. Nothing was consumed.');return true;}
+ p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught '+a.kind+'! Packed in your '+(container==='empty_jar'?'bottle.':'travel cage.'));g.persist?.();return true;
 }
 export function releaseCritter(g,p,index){
  const item=p.inventory[index];if(!item?.type?.startsWith('caught_')||p.room)return false;
- const kind=item.type.slice(7),container=['frog','dragonfly','fairy'].includes(kind)?'empty_jar':'critter_cage',copy=structuredClone(p.inventory);
- if(!take(copy,item.type,1)||!give(copy,container,1)){p.ui.notice='Make room for the empty container first.';return true;}
- p.inventory=copy;const r=ensure(g);r.animals.push({id:'released-'+p.id+'-'+(g.nextId++),kind,x:p.x+18,y:p.y+18,homeX:p.x,homeY:p.y,phase:r.time,releasedOwner:p.id,hopHeight:0});
+ const kind=item.type.slice(7),container=critterContainer(item.type,item),copy=structuredClone(p.inventory),water=kind==='fish'?nearbyFishWater(g,p):null;
+ if(kind==='fish'&&!water){p.ui.notice='Release your fish beside deep water. Nothing was consumed.';return true;}
+ if(--copy[index].qty===0)clearSlot(copy,index);
+ if(!give(copy,container,1)){p.ui.notice='Make room for the empty container first.';return true;}
+ p.inventory=copy;const r=ensure(g),spot=water||{x:p.x+18,y:p.y+18};r.animals.push({id:'released-'+p.id+'-'+(g.nextId++),kind,...spot,homeX:spot.x,homeY:spot.y,phase:r.time,releasedOwner:p.id,hopHeight:0});
  p.ui.notice='Released! Your critter follows for this level. Catch it again before quitting.';g.uiRevision=(g.uiRevision||0)+1;g.persist?.();return true;
 }

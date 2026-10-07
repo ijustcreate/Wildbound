@@ -67,6 +67,7 @@ test("Later rolls keep previously summoned creatures", () => {
   while(g.roll)tick(g,.05);
   const lionId = g.enemies[0].id;
   while(g.rollCooldown>0)tick(g,.05);
+  g.random=()=>.2; // Select a combat card: .5 now legitimately draws a merchant.
   g.hitTable(g.current || g.players.find((p) => !p.rolls));
   while(g.roll)tick(g,.05);
   assert.ok(g.enemies.some((e) => e.id === lionId));
@@ -78,6 +79,7 @@ test("A roll still moves the piece and can summon another event over a live wave
   g.spawnEvent(0);
   const existing = g.enemies.length,
     startProgress = p.progress;
+  g.random=()=>.2; // This assertion specifically exercises a second combat wave.
   assert.ok(g.hitTable(p));
   tick(g, 5);
   assert.ok(p.progress > startProgress);
@@ -97,8 +99,14 @@ test("All events have working spawns, including mixed squads", () => {
       if(EVENTS[i].mystery.goal==='recover')assert.ok(g.mystery.object);
       continue;
     }
-    assert.equal(g.enemies.length, EVENTS[i].count+(EVENTS[i].spiderNest?3:0));
+    assert.equal(g.enemies.length, EVENTS[i].count+(EVENTS[i].spiderNest?3:0)+(EVENTS[i].beeHive?1:0));
     if(EVENTS[i].spiderNest)g.enemies=g.enemies.filter(e=>e.kind!=='spider_egg');
+    if(EVENTS[i].beeHive){
+      const hive=g.enemies.find(e=>e.kind==='bee_hive');
+      assert.ok(hive.hp>0);
+      assert.ok(g.enemies.filter(e=>e.kind==='bee').every(e=>e.hiveId===hive.id));
+      g.enemies=g.enemies.filter(e=>e.kind!=='bee_hive');
+    }
     assert.ok(g.enemies.every((e) => e.hp > 0 && (EVENTS[i].squad ? EVENTS[i].squad.includes(e.kind) : EVENTS[i].mixedSkeletons ? ["skeleton","archer"].includes(e.kind) : EVENTS[i].wizardEscort ? ["skeleton_wizard","skeleton"].includes(e.kind) : e.kind === EVENTS[i].kind)));
   }
 });

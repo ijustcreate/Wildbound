@@ -1,10 +1,11 @@
 import {drawFurniture,drawWindow} from './house-render.mjs';
+import {drawHouseFloor,drawHouseWall,drawHouseDoor} from './house-architecture-art.mjs';
 import {boardTableBlocked} from './board-table.mjs';
 import {raisedSurfaceBlocked} from './terrain-support.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
-export const ENVIRONMENTS=['forest','desert','ice','house','temple'];
+export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach'];
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
@@ -30,10 +31,11 @@ export function toggleDoor(g,p){
   if(d.open&&[...g.players,...g.enemies].some(a=>a.hp>0&&Math.abs(a.x-d.x-d.w/2)<d.w/2+12&&Math.abs(a.y-d.y-d.h/2)<d.h/2+12)){g.message('Doorway occupied.');return true;}
   d.open=!d.open;g.onSound(d.open?'doorOpen':'doorClose',p);g.message(d.open?'Door opened.':'Door closed.');return true;
 }
-export const isSpider=e=>e.kind==='spider'||e.kind==='baby_spider';
+export const isSpider=e=>['spider','tarantula','baby_spider'].includes(e.kind);
+const adultSpider=e=>e.kind==='spider'||e.kind==='tarantula';
 export const webSlow=(g,a)=>!isSpider(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
 export function maintainSpiderWebs(g, dt = 0) {
-  const adults = (g.enemies || []).filter(e => e.hp > 0 && isSpider(e) && e.kind === 'spider');
+  const adults = (g.enemies || []).filter(e => e.hp > 0 && adultSpider(e));
   if (!adults.length) {
     for (const tree of g.scenery || []) tree.webbed = false;
     g.webs = [];
@@ -49,7 +51,7 @@ export function maintainSpiderWebs(g, dt = 0) {
 function layWebEgg(g, adult, web) {
   const angle = Math.atan2(adult.y - web.y, adult.x - web.x) + Math.PI * 0.35;
   const x = web.x + Math.cos(angle) * (web.radius - 14), y = web.y + Math.sin(angle) * (web.radius - 14);
-  g.enemies.push({id:g.nextId++,group:adult.group,kind:'spider_egg',x,y,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
+  g.enemies.push({id:g.nextId++,group:adult.group,kind:'spider_egg',hatchSprite:adult.kind,x,y,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
   adult.webEggCooldown = 45;
   g.message('A spider lays an egg at the web edge.');
 }
@@ -78,14 +80,14 @@ export function spiderNest(g,anchor,group){
   for(let i=0;i<3;i++){
     let spot={x:anchor.x+Math.cos(i*2.1)*42,y:anchor.y+Math.sin(i*2.1)*42};
     if(g.blocked(spot.x,spot.y)||(g.house&&insideHouse(spot.x,spot.y,g.house)))spot={x:anchor.x,y:anchor.y};
-    g.enemies.push({id:g.nextId++,group,kind:'spider_egg',...spot,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
+    g.enemies.push({id:g.nextId++,group,kind:'spider_egg',hatchSprite:anchor.kind==='tarantula'?'tarantula':'spider',...spot,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
   }
 }
 const lineClear=(g,a,b)=>{const n=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/12);for(let i=1;i<n;i++)if(structureBlocked(g,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,2))return false;return true;};
 export function tickSpider(g,e,dt,visiblePlayers=g.players){
   if(e.kind==='spider_egg'){
     e.hatchIn-=dt;
-    if(e.hatchIn<=0){Object.assign(e,{kind:'baby_spider',sprite:'spider',hp:28,maxHp:28,speed:95,damage:5,state:'hunt',timer:0,cooldown:.8,step:0});g.message('Spider eggs are hatching!');}
+    if(e.hatchIn<=0){const tar=e.hatchSprite==='tarantula';Object.assign(e,{kind:'baby_spider',sprite:tar?'tarantula':'spider',hp:tar?38:28,maxHp:tar?38:28,speed:tar?72:95,damage:tar?7:5,state:'hunt',timer:0,cooldown:.8,step:0});g.message('Spider eggs are hatching!');}
     return true;
   }
   const spider=isSpider(e),insect=['wasp','bee','beetle'].includes(e.kind);
@@ -99,12 +101,12 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   if(trap&&trap.variant!=='slow'){trap.life=0;e.state='snared';e.timer=2;return true;}
   const target=targets.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];
   if(!target)return true;
-  if (e.kind === 'spider') {
+  if (adultSpider(e)) {
     const web = (g.webs || []).filter(w => w.group === e.group || Math.hypot(e.x-w.x,e.y-w.y)<w.radius+30).sort((a,b)=>Math.hypot(e.x-a.x,e.y-a.y)-Math.hypot(e.x-b.x,e.y-b.y))[0];
     if (web) {
       e.webEggCooldown = Math.max(0, (e.webEggCooldown ?? 45) - dt);
       const sameGroupEgg = g.enemies.some(q => q.hp > 0 && q.kind === 'spider_egg' && q.group === e.group);
-      const lead = g.enemies.filter(q => q.hp > 0 && q.kind === 'spider' && q.group === e.group).sort((a,b)=>a.id-b.id)[0];
+      const lead = g.enemies.filter(q => q.hp > 0 && adultSpider(q) && q.group === e.group).sort((a,b)=>a.id-b.id)[0];
       if (lead === e && e.webEggCooldown <= 0 && !sameGroupEgg) layWebEgg(g,e,web);
       if (Math.hypot(e.x-web.x,e.y-web.y) > web.radius * 0.82) {
         const d = Math.hypot(web.x-e.x, web.y-e.y) || 1;
@@ -127,11 +129,12 @@ export function drawExpansion(c,g){
     for(let j=0;j<12;j++){const a=j*Math.PI/6;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*w.radius,Math.sin(a)*w.radius*.65);c.stroke();}c.restore();
   }
   if(!g.house)return;
+  if(g.generatedEnvironment==='house')drawHouseFloor(c,g.house);
   for(const r of g.house.rooms){c.fillStyle='#e5d8bc70';c.font='10px sans-serif';c.textAlign='center';c.fillText(r.name,r.x,r.y);}
   for(const p of g.house.pools||[]){drawWaterSurface(c,g,p.x,p.y,p.w,p.h);c.strokeStyle='#bcece488';c.lineWidth=2;c.strokeRect(p.x+5,p.y+5,p.w-10,p.h-10);c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);}
   for(const f of g.house.furniture||[]){drawFurniture(c,f);if(furnitureHeight(f)&&g.players.some(p=>!p.room&&Math.hypot(p.x-f.x-f.w/2,p.y-f.y-f.h/2)<90)){c.fillStyle='#e7edce';c.font='9px sans-serif';c.textAlign='center';c.fillText('Jumpable · '+f.kind,f.x+f.w/2,f.y-7);}}
-  for(const b of g.house.walls){if(b.kind==='window'){drawWindow(c,b);continue;}if(b.kind==='fence'){c.fillStyle='#876c49';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#b99a6a';for(let n=0;n<Math.max(b.w,b.h);n+=24)c.fillRect(b.x+(b.w>b.h?n:0),b.y+(b.h>b.w?n:0),12,20);continue;}c.fillStyle='#252d34';c.fillRect(b.x,b.y+5,b.w,b.h+8);c.fillStyle='#a9b6b4';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#d8d8c4';c.fillRect(b.x,b.y,b.w,3);}
-  for(const d of g.house.doors){c.fillStyle=d.open?'#a1bb83':'#90643c';const horizontal=d.w>d.h;c.fillRect(d.x,d.y,d.open?(horizontal?7:48):d.w,d.open?(horizontal?48:7):d.h);c.fillStyle='#f3d58a';c.fillRect(d.x+(d.open?2:Math.max(3,d.w-10)),d.y+4,3,3);
+  for(const b of g.house.walls){if(b.kind==='window'){drawWindow(c,b);continue;}if(g.generatedEnvironment==='house'){drawHouseWall(c,b);continue;}if(b.kind==='fence'){c.fillStyle='#876c49';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#b99a6a';for(let n=0;n<Math.max(b.w,b.h);n+=24)c.fillRect(b.x+(b.w>b.h?n:0),b.y+(b.h>b.w?n:0),12,20);continue;}c.fillStyle='#252d34';c.fillRect(b.x,b.y+5,b.w,b.h+8);c.fillStyle='#a9b6b4';c.fillRect(b.x,b.y,b.w,b.h);c.fillStyle='#d8d8c4';c.fillRect(b.x,b.y,b.w,3);}
+  for(const d of g.house.doors){if(g.generatedEnvironment==='house')drawHouseDoor(c,d);else{c.fillStyle=d.open?'#a1bb83':'#90643c';const horizontal=d.w>d.h;c.fillRect(d.x,d.y,d.open?(horizontal?7:48):d.w,d.open?(horizontal?48:7):d.h);c.fillStyle='#f3d58a';c.fillRect(d.x+(d.open?2:Math.max(3,d.w-10)),d.y+4,3,3);}
     if(g.players.some(p=>!p.room&&Math.hypot(p.x-d.x-d.w/2,p.y-d.y)<65)){c.fillStyle='#fff3c5';c.font='9px sans-serif';c.textAlign='center';c.fillText(d.open?'Interact: close':'Interact: open',d.x+d.w/2,d.y-8);}}
 
 }

@@ -1,13 +1,16 @@
 import { mixGearColor } from './gear-art.mjs';
+import { shade, hairCoversEar } from './appearance.mjs';
 
 const palettes = new Map();
 export function skinPalette(base) {
   if (!palettes.has(base)) {
     if (palettes.size >= 128) palettes.clear();
     palettes.set(base, { base, ink: '#302b2b',
-      shadow: mixGearColor(base, '#523637', .3),
+      shadow: mixGearColor(base, '#523637', .36),
       light: mixGearColor(base, '#fff1d0', .25),
-      blush: mixGearColor(base, '#e78486', .38) });
+      blush: mixGearColor(base, '#b56867', .28),
+      brow: mixGearColor(base, '#42302e', .62),
+      lip: mixGearColor(base, '#783f44', .48) });
   }
   return palettes.get(base);
 }
@@ -28,6 +31,7 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
     r(-4,-4,9,6,p.shadow); r(-3,-5,7,1,p.base);
     r(-3,-4,6,6,p.base); r(-2,2,5,2,p.shadow);
     r(-3,-3,3,3,p.light); r(-2,2,3,1,p.base);
+    r(3,0,1,2,p.shadow);r(-2,3,4,1,p.base);
     if (profile) r(turn < 0 ? 2 : -4,-2,2,5,p.shadow);
     return;
   }
@@ -48,7 +52,7 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
       r(earX,dy,1,1,p.blush);
       continue;
     }
-    const covered=['bob','long','curls'].includes(look?.hair);
+    const covered=hairCoversEar(look?.hair);
     if(covered&&back)continue;
     if(covered){
       // A tucked lock exposes only the ear's lower rim, never a skin block on hair.
@@ -64,10 +68,11 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
     const q = points[name];
     const x = Math.round(q.x-h.x), y = Math.round(q.y-h.y);
     if(look?.eyesClosed){r(x-1,y,2,1,p.shadow);continue;}
-    r(x-1,y-2,2,1,p.shadow);
+    r(x-1,y-2,2,1,p.brow);
     const pupil=profile?turn:turn?turn:0;
     r(x-1,y,3,2,'#fff3df');
-    r(x+pupil,y,1,2,outline);
+    if(!profile)r(x+(pupil<0?0:-1),y+1,1,1,'#65736e');
+    r(x+pupil,y,1,2,look?.eyeColor||outline);
     r(x-1,y-1,3,1,p.shadow);
     r(x-1,y+2,2,1,p.blush);
   }
@@ -81,12 +86,14 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
       r(x+turn*2,y+1,1,1,p.base);
     } else {
       r(x,y,1,1,p.light);r(x,y+1,1,1,p.blush);
+      r(x+1,y+1,1,1,p.shadow);
     }
   }
   if (visible('mouth')) {
     const x = Math.round(points.mouth.x-h.x) - (profile ? 0 : 1);
     const y = Math.min(3,Math.round(points.mouth.y-h.y + (profile ? .5 : 0)));
-    r(x,y,profile?1:2,1,p.blush);
+    r(x,y,profile?1:2,1,p.lip);
+    if(!profile)r(x,y+1,2,1,p.light);
   }
   const cheek = profile ? turn*2 : turn ? -turn*2 : -3;
   if (look?.face === 'freckles') {
@@ -99,7 +106,11 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
   }
   if (look?.face === 'beard') {
     const hair = look.hairColor || '#593923';
-    r(profile ? -turn : -3,3,profile ? 3 : 7,2,hair);
-    r(-1,5,3,1,hair); r(turn ? turn*3 : 0,3,2,1,p.shadow);
+    r(profile ? -turn : -3,3,profile ? 3 : 7,2,shade(hair));
+    r(-1,5,3,1,shade(hair));r(-2,3,2,1,hair);r(1,4,2,1,hair);
+    if(!profile){r(-2,2,2,1,hair);r(1,2,2,1,hair);r(0,3,1,1,p.lip);}
   }
+  if(look?.face==='stubble')for(const [x,y] of [[-3,2],[-2,3],[0,4],[2,3],[3,2]])r(x,y,1,1,p.brow);
+  if(look?.face==='goatee'){const hair=look.hairColor||'#593923';r(-1,3,3,2,shade(hair));r(0,5,1,1,hair);if(!profile){r(-2,2,2,1,hair);r(1,2,2,1,hair);}}
+  if(look?.face==='warpaint'){r(profile?turn*3:-4,1,profile?2:3,1,'#57798a');if(!profile)r(2,1,3,1,'#57798a');r(-1,-3,2,1,'#b56855');}
 }

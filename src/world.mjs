@@ -1,5 +1,6 @@
 import {templeLayout} from './temple.mjs';
 import {iceWorld} from './ice-world.mjs';
+import {beachWorld} from './beach-world.mjs';
 import {contains} from './house-design.mjs';
 import {makeHouse,insideHouse} from './expansion.mjs';
 import {BOARD_TABLE} from './board-table.mjs';
@@ -62,6 +63,7 @@ export function generateWorld(seed, environment = "forest") {
 function generateWorldData(seed, environment) {
   const terrain = Array(2500).fill("grass");
   if(environment==='ice')return iceWorld(seed);
+  if(environment==='beach')return beachWorld(seed);
   if(environment==='temple'){
     const house=templeLayout();for(let y=0;y<50;y++)for(let x=0;x<50;x++)if(x*32>=480&&x*32<1120&&y*32>=450&&y*32<1120)terrain[y*50+x]='temple_stone';
     const scenery=createScenery(seed).filter(p=>!(p.x>425&&p.x<1175&&p.y>395&&p.y<1175));
@@ -152,6 +154,7 @@ export function ensureFootprint(sprite, name) {
   return sprite;
 }
 export function propDepth(prop, sprite) {
+  if(prop.coastal)return prop.rootY??prop.y;
   if(prop.kind==='forest_ruin')return prop.y;
   if(prop.procedural&&['tree','snow_tree'].includes(prop.kind))return prop.rootY??prop.y+prop.size*.35;
   if(prop.procedural&&prop.kind==='palm')return palmBase(prop).y;
@@ -163,6 +166,11 @@ export function propDepth(prop, sprite) {
   return prop.y - prop.size / 2 + ((bottom + 0.5) * prop.size) / sprite.height;
 }
 export function footprintHit(prop, sprite, x, y, radius = 8) {
+  if(prop.coastal){
+    if(prop.falling||prop.depleted||!prop.beachFootprint)return false;
+    const [w,d]=prop.beachFootprint,base=prop.rootY??prop.y;
+    return Math.hypot(x-Math.max(prop.x-w,Math.min(x,prop.x+w)),y-Math.max(base-d,Math.min(y,base)))<radius;
+  }
   if(prop.kind==='forest_ruin')return Math.hypot(x-Math.max(prop.x-prop.width/2,Math.min(x,prop.x+prop.width/2)),y-Math.max(prop.y-prop.depth,Math.min(y,prop.y)))<radius;
   if(prop.procedural&&!prop.falling&&!prop.depleted){
     const sizes={tree:[12,8,.35],snow_tree:[8,6,.35],rock:[Math.max(10,25-(prop.chipped||0)*3)/2,8,.19],ice_rock:[25,10,.19],ice_spire:[25,10,.19],frozen_log:[28,7,.19],winter_cache:[20,12,.19]};
@@ -208,6 +216,7 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   return false;
 }
 export function isOccluded(prop, sprite, player) {
+  if(prop.coastal&&['tree','palm','beach_arch'].includes(prop.kind)){const base=prop.rootY;return player.y+8<base&&player.y>base-prop.size*.86&&Math.abs(player.x-prop.x)<prop.size*.46;}
   if(prop.kind==='forest_ruin')return player.y<prop.y&&player.y>prop.y-prop.depth-prop.height&&Math.abs(player.x-prop.x)<prop.width/2+8;
   if(prop.procedural&&['tree','snow_tree'].includes(prop.kind)) {
     const base=prop.rootY??prop.y+prop.size*.35;

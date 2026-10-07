@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="src/parchment-ui.css" />
     <link rel="stylesheet" href="src/inventory-polish.css" />
     <link rel="stylesheet" href="src/inventory-workbench.css" />
+    <link rel="stylesheet" href="src/character-creator.css" />
+    <link rel="stylesheet" href="src/ui-polish.css" />
   </head>
   <body>
     <div id="loading">
@@ -91,13 +93,15 @@
       <div class="party-heading"><h1>Gather your party</h1><p id="party-status" aria-live="polite">Press A to join · Enter for keyboard</p></div>
       <div id="player-slots"></div>
       <div class="party-options">
+        <button data-option-target="map-mode" aria-label="Map mode"></button>
         <button data-option-target="environment" aria-label="Environment"></button>
         <button data-option-target="dice-count" aria-label="Roll length"></button>
         <button data-option-target="difficulty" aria-label="Difficulty" aria-describedby="difficulty-description"></button><p id="difficulty-description" aria-live="polite"></p>
         <button id="begin-button" class="primary">START ADVENTURE <span>Start / Menu</span></button>
       </div>
       <div class="party-help">A · Choose / Ready &nbsp; B · Leave / Back &nbsp; ↑↓ · Navigate &nbsp; ←→ · Change option &nbsp; Start · Ready & Start</div>
-      <select id="environment" hidden><option value="random">Random · All five maps</option><option value="forest">Forest</option><option value="desert">Desert</option><option value="ice">Ice</option><option value="house">House &amp; Yard</option><option value="temple">Jungle Temple</option></select>
+      <select id="map-mode" hidden><option value="bounded" selected>Bounded</option><option value="boundless">Boundless</option></select>
+      <select id="environment" hidden><option value="random">Random · All six maps</option><option value="forest">Forest</option><option value="desert">Desert</option><option value="ice">Ice</option><option value="house">House &amp; Yard</option><option value="temple">Jungle Temple</option><option value="beach">Beach</option></select>
       <select id="dice-count" hidden><option value="1">One die · longer game</option><option value="2" selected>Two dice · faster game</option></select>
     <select id="difficulty" hidden><option value="gentle">Gentle</option><option value="adventure" selected>Adventure</option><option value="wild">Wild</option></select>
       <button id="back-home" hidden>Back</button><div id="device-status" hidden></div>

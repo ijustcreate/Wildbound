@@ -37,7 +37,7 @@ test('Per-facing layer order survives JSON and leaves other facings automatic',(
  painted.length=0;paintLayers(queue,model,6);assert.deepEqual(painted,['back','front']);
 });
 test('Portal outline and glow use the owning player highlight',()=>{
- const c={save(){},restore(){},translate(){},beginPath(){},ellipse(){},stroke(){},fill(){},fillText(){}};
+ const c={save(){},restore(){},translate(){},beginPath(){},ellipse(){},stroke(){},fill(){},fillRect(){},fillText(){}};
  drawPortal(c,{x:0,y:0,color:'#22bb99',closing:null},0);
  assert.equal(c.shadowColor,'#22bb99');assert.equal(c.strokeStyle,'#22bb99');
 });

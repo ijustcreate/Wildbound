@@ -43,3 +43,11 @@ test('Lobby portal is suppressed during inventory, pause, disconnected or unsele
   p.ui=null;tick();lobby.update(.05,{keyboard:{portal:true}},true);assert.equal(game.portals.length,0);
   tick();p.lobbyDisconnected=true;tick({keyboard:{portal:true}});assert.equal(game.portals.length,0);
 });
+
+test('Lobby outside-owner toggle closes empty portals and gives an inside guest the standard escape countdown',()=>{
+ const {game,p,q,lobby,tick}=setup(),worlds=game.players.map(p=>[p.x,p.y]);
+ tick({keyboard:{portal:true}});tick();tick({keyboard:{portal:true}});assert.equal(game.portals.length,0);
+ tick();tick({keyboard:{portal:true}});const d=game.portals[0];tick();Object.assign(lobby.state.members.get(q.id),{x:d.x,y:d.y});tick();assert.equal(q.room,d.id);
+ tick({keyboard:{portal:true}});assert.equal(d.closing,10);tick();tick({keyboard:{portal:true}});assert.ok(d.closing<10);const hp=q.hp;
+ for(let n=0;n<202;n++)tick();assert.equal(q.room,null);assert.equal(q.hp,hp-q.maxHp*.5);assert.equal(game.portals.length,0);assert.deepEqual(game.players.map(p=>[p.x,p.y]),worlds);
+});

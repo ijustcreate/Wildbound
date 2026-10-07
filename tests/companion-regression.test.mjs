@@ -14,7 +14,7 @@ test('hostile panther death heals survivors without the out-of-scope alive crash
 test('last friendship panther can be hurt and die without loot, heal or kill rewards',()=>{
  const {g,p}=setup(),e=animal(g,'panther');befriendCreature(e,p.id);e.hit=.2;e.hp=1;g.update(.05,{});e.hp=0;
  const hp=p.hp;assert.doesNotThrow(()=>g.update(.05,{}));assert.equal(e.defeated,true);assert.equal(g.cleared,0);assert.equal(g.loot.length,0);assert.equal(p.hp,hp);assert.equal(g.killedCreatures?.panther,undefined);
- for(let n=0;n<80;n++)g.update(.05,{});assert.equal(g.enemies.length,0);
+ for(let n=0;n<80;n++)g.update(.05,{});assert.equal(g.enemies.filter(e=>!e.wildlife).length,0);
 });
 test('friendship lion clears hostile poses and transitions run, bite, hurt and idle',()=>{
  const {g,p}=setup(),e=animal(g,'lion',430);Object.assign(e,{state:'charge',animationAction:'pounce',poseTime:.7,motionDuration:.48,flash:.2,attack:.3});

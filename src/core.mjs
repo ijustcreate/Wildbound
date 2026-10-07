@@ -1,9 +1,12 @@
 import {eventHasStartingAreas,requiredSpawnSpot,unitStartingArea} from './starting-area.mjs';
+import {selectEvent,rememberEvent,eventUnitStats} from './event-director.mjs';
+import {polishDefaultEventCopy} from './event-flavor.mjs';
 import {throwBoomerang} from './boomerang.mjs';
 import {MYSTERY_EVENTS,startMystery,tickMystery} from './mysteries.mjs';
 import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
 import {seedSupplyChests} from './supply-chests.mjs';
 import {vendingStock} from './shops.mjs';
+import {restockStarterChests} from './starter-chest.mjs';
 import {enemyQuiver,retrieveEnemyArrows} from './arrow-supplies.mjs';
 import {nextCombo,loadoutKind} from './combat-combos.mjs';
 import {ensureNightCycle, tickNightCycle, movementNoise, emitNoise, eventAvailable, rewardNightHunts} from './night-cycle.mjs';
@@ -11,14 +14,26 @@ import {initLivingEcosystem, updateLivingEcosystem, livingEcosystemBlocked, cutL
 import {NIGHT_EVENTS, tickNightEnemy, tickNightEnemyHazards, startNightEvent, hitNightEnemyVines} from './night-enemies.mjs';
 import {tryEquipmentAttack, applyTorchHit, tickNightEquipment} from './night-equipment.mjs';
 import {startJump,tickJump} from './jumping.mjs';
+import {tickWingFlight} from './wing-flight.mjs';
 import {tamePet,tickHunterPets,hunterPets,hurtPet,petPvPEvent} from './hunter-pets.mjs';
 import {tickWildBatRoost} from './bat-roost.mjs';
 import {tickPanther} from './panther-ai.mjs';
 import {tickFriendlyCreature} from './friendly-creatures.mjs';
+import {beeEvent,migrateBeeEvent,startBeeHive,tickBeeHive,tickBee} from './bee-swarm.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
+import {ANACONDA_EVENT,tickAnaconda} from './anaconda.mjs';
+import {BANSHEE_EVENT,initializeBansheeQueen,tickBansheeQueen} from './banshee-queen.mjs';
+import {SUCCUBUS_EVENT,initializeSuccubus,tickSuccubus} from './succubus.mjs';
+import {IMP_EVENT,initializeImp,tickImp,tickImpHazards} from './imps.mjs';
+import {ZOMBIE_EVENT,initializeZombie,tickZombie} from './zombies.mjs';
+import {isCharmed,clearCharm,tickCharmStatuses,charmInputs,tickCharmedPlayer,charmCanTarget,playerCombatTargets} from './succubus-charm.mjs';
+import {seedWildFauna,tickWildFauna} from './wild-fauna.mjs';
+import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
+import {initializeAnaconda,updateAnacondaBody,anacondaBlocks} from './anaconda-body.mjs';
 import {stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
 import {victoryChestBlocked} from './victory-chest.mjs';
 import {catchCritter} from './living-ecosystem.mjs';
+import {updateBoundlessWorld, BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
 import {tickQuicksand} from './quicksand.mjs';
 import {tickBoardSequence} from './board-sequence.mjs';
@@ -49,6 +64,8 @@ import { initAdventure, initHero, adventureMethods } from "./adventure.mjs";
 import { ITEMS, stat, give, itemKind, hasSetSkill } from "./items.mjs";
 import { rules, creatures } from "./definitions.mjs";
 import { meleeProfile, meleeCanHit } from './melee-geometry.mjs';
+import {healingAdventureMethods} from './healing-magic.mjs';
+import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
   WORLD = TILE * MAP_SIZE,
@@ -140,13 +157,13 @@ export const EVENTS = [
   },
   {
     name: "A thousand little wings",
-    kind: "wasp",
+    kind: "bee",beeHive:true,
     count: 5,
     hp: 27,
     speed: 90,
     damage: 7,
     verse: "An amber hum, a needle choir.\nDo not stand within their ire.",
-    tip: "Keep moving. Traps catch flying enemies too.",
+    tip: "Break the hive to stop reinforcements. At most eight bees can fly from each hive.",
   },
   {
     name: "The stone remembers",
@@ -375,23 +392,35 @@ EVENTS.push(
  {name:'Ghosts of the glacier',kind:'snow_leopard',environment:'ice',count:2,hp:85,speed:88,damage:13,weight:12,verse:'Spotted ghosts on silent feet.\nTwo cold shadows leave the sleet.',tip:'Keep both snow leopards in sight. Snare one to split the pair.'},
  {name:'Eight legs, three promises',kind:'spider',count:2,hp:70,speed:68,damage:11,weight:10,spiderNest:true,verse:'Two silk hunters start to creep.\nThree small promises wake from sleep.',tip:'Destroy three eggs before they hatch in 20 seconds. Webs slow everyone except spiders.'}
 );
+// Append new encounters: saved/editor event indices retain their old meanings.
+EVENTS.push(ANACONDA_EVENT);
+EVENTS.push(structuredClone(BANSHEE_EVENT));
+EVENTS.push(structuredClone(SUCCUBUS_EVENT));
+EVENTS.push(structuredClone(IMP_EVENT));
+EVENTS.push(structuredClone(ZOMBIE_EVENT));
+EVENTS.push({name:'Velvet feet in the sand',kind:'tarantula',count:2,hp:110,speed:48,damage:16,weight:8,spiderNest:true,verse:'Soft gold hides eight silent feet.\nThe velvet hunters guard their keep.',tip:'Tarantulas are slower and tougher than black spiders. Avoid their bite and destroy the eggs.'});
+EVENTS.push(structuredClone(OLD_WELL_EVENT));
+polishDefaultEventCopy(EVENTS);
+const initializedEventStats=new Set();
 for (const event of EVENTS) {
   if(event.type==='mystery')continue;
   const c = creatures[event.kind];
-  if (c && !c.edited)
+  if (c && !c.edited && !initializedEventStats.has(event.kind)){
+    initializedEventStats.add(event.kind);
     Object.assign(c.stats, {
       hp: event.hp,
       speed: event.speed,
       damage: event.damage,
     });
+  }
 }
 import {enemyCanSeeTarget,forgetHiddenTarget} from './enemy-sight.mjs';
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-export function cameraTarget(players, w, h, reveal = null) {
+export function cameraTarget(players, w, h, reveal = null, mapMode='bounded') {
   if (reveal) {
-    const party = cameraTarget(players,w,h);
-    const event = cameraTarget([...players,reveal],w,h);
+    const party = cameraTarget(players,w,h,null,mapMode);
+    const event = cameraTarget([...players,reveal],w,h,null,mapMode);
     // Never sacrifice party visibility to frame a distant event. Reveal at most
     // 15% more world, centered on the party, rather than the faraway spawn.
     return {...party,zoom:Math.max(party.zoom*.85,event.zoom)};
@@ -409,17 +438,17 @@ export function cameraTarget(players, w, h, reveal = null) {
     maxY = Math.max(...ys);
   const zoom = clamp(
     Math.min(w / (maxX - minX + 340), h / (maxY - minY + 290)),
-    0.1,
+    mapMode === 'boundless' ? 0.5 : 0.1,
     2.35,
   );
   const halfW = w / zoom / 2,
     halfH = h / zoom / 2;
   return {
-    x:
+    x: mapMode==='boundless'?(minX+maxX)/2:
       halfW > WORLD / 2
         ? CENTER
         : clamp((minX + maxX) / 2, halfW, WORLD - halfW),
-    y:
+    y: mapMode==='boundless'?(minY+maxY)/2:
       halfH > WORLD / 2
         ? CENTER
         : clamp((minY + maxY) / 2, halfH, WORLD - halfH),
@@ -441,6 +470,7 @@ export function expeditionCameraTarget(game, w, h) {
     w,
     Math.max(130, h - 85),
     uiOpen ? null : game.reveal,
+    game.mapMode,
   );
 }
 export class Game {
@@ -471,6 +501,7 @@ export class Game {
     this.onSound = () => {};
     this.difficulty = "adventure";
     this.environment = "forest";
+    this.mapMode = 'bounded';
     this.generatedEnvironment = "forest";
     this.diceCount = 2;
     this.seed = Math.floor(this.random() * 1000000);
@@ -480,7 +511,9 @@ export class Game {
     ensureNightCycle(this);
   }
   blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false, from = null) {
+    if(!flying&&oldWellBlocked(this,x,y,radius,from))return true;
     if(!flying&&victoryChestBlocked(this,x,y,radius,elevation,from))return true;
+    if(!flying&&!projectile&&!['ally','neutral'].includes(creatures.anaconda?.faction)&&anacondaBlocks(this,x,y,radius,elevation,from))return true;
     if(structureBlocked(this,x,y,radius,canOpenDoors,footOffset,elevation,projectile,from))return true;
     if(livingEcosystemBlocked(this,x,y,radius,flying,footOffset))return true;
     if (
@@ -527,10 +560,10 @@ export class Game {
     if(impact&&breakWindow(this,x,y,radius))return true;
     // Airborne shots cross water but still hit scenery, the board and map edges.
     return (
-      x - radius < 0 ||
-      x + radius >= WORLD ||
-      y + 14 - radius < 0 ||
-      y + 14 + radius >= WORLD ||
+      (this.mapMode!=='boundless'&&x - radius < 0) ||
+      (this.mapMode!=='boundless'&&x + radius >= WORLD) ||
+      (this.mapMode!=='boundless'&&y + 14 - radius < 0) ||
+      (this.mapMode!=='boundless'&&y + 14 + radius >= WORLD) ||
       this.blocked(x, y, radius, false, true,false,this.house?0:14,0,true)
     );
   }
@@ -555,10 +588,13 @@ export class Game {
       oldY = actor.y,
       steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
     for (let i = 0; i < steps; i++) {
-      const x = clamp(actor.x + dx / steps, 24, WORLD - 24);
-      if (!this.blocked(x, actor.y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.x = x;
-      const y = clamp(actor.y + dy / steps, 24, WORLD - 24);
-      if (!this.blocked(actor.x, y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.y = y;
+      const x = this.mapMode==='boundless'?actor.x+dx/steps:clamp(actor.x + dx / steps, 24, WORLD - 24);
+      const hostile = this.mapMode==='boundless' && this.enemies.includes(actor) && !['ally','neutral'].includes(actor.faction);
+      const outsideSanctuary = (x - CENTER) ** 2 + (actor.y - CENTER) ** 2 >= BOUNDLESS_SAFE_RADIUS ** 2;
+      if ((!hostile||outsideSanctuary) && !this.blocked(x, actor.y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.x = x;
+      const y = this.mapMode==='boundless'?actor.y+dy/steps:clamp(actor.y + dy / steps, 24, WORLD - 24);
+      const outsideSanctuaryY = (actor.x - CENTER) ** 2 + (y - CENTER) ** 2 >= BOUNDLESS_SAFE_RADIUS ** 2;
+      if ((!hostile||outsideSanctuaryY) && !this.blocked(actor.x, y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.y = y;
     }
     const moved = Math.hypot(actor.x - oldX, actor.y - oldY);
     if (!this.players.includes(actor)) {
@@ -572,6 +608,7 @@ export class Game {
     actor.moving = moved > 0.01;
     actor.step = (actor.step || 0) + moved * 0.13;
     if (this.players.includes(actor)) movementNoise(this, actor, moved);
+    if(actor.kind==='anaconda'&&moved)updateAnacondaBody(this,actor);
     return moved;
   }
   addPlayer(device, name) {
@@ -627,6 +664,7 @@ export class Game {
     // Restock only when a fresh expedition starts, not on reopening a shop or
     // restoring a snapshot. Already paid orders remain redeemable.
     for(const player of this.players)player.vendingStock=vendingStock();
+    restockStarterChests(this);
     this.mystery=null;this.rollCooldown=0;
     if (this.generatedEnvironment !== this.environment) {
       const env =
@@ -657,6 +695,7 @@ export class Game {
     this.log = this.log.slice(0, 5);
   }
   hurt(p, amount, source) {
+    if(source&&!charmCanTarget(this,source,p))return;
     if(p.pet&&p.ghost){if(p.hp>0&&!(p.invuln>0)){p.hp=Math.max(0,p.hp-Math.max(1,amount));p.invuln=.5;p.hit=.2;if(!p.hp)this.message('Your skeleton fell. Your next kill with the Necromancer set equipped will raise another.');}return;}
     if(source?.id&&this.enemies.includes(source))p.ritualAttackerId=source.id;
     if(p.hunterPet===true){hurtPet(this,p,amount);return;}
@@ -710,6 +749,7 @@ export class Game {
       color: "#ff9c86",
       life: 0.7,
     });
+    if(p.hp===0)clearCharm(p);
     if (p.hp === 0)
       this.message(
         p.name + " is down! Stand nearby and hold Interact to revive.",
@@ -720,9 +760,9 @@ export class Game {
       faceOpeningBoard(p);p.attack=p.attackDuration=.34;p.attackClip='punch';this.tableShake=.2;
       return this.hitTable(p);
     }
-    if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
     if (!["play", "won"].includes(this.phase) || p.hp <= 0 || p.room || p.ui) return false;
-    if(catchCritter(this,p))return true;
+    if(!isCharmed(p)&&catchCritter(this,p))return true;
+    if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
     if(throwBoomerang(this,p))return true;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
     // Utility items do no melee damage; rifles have their own aimed shot and reload.
@@ -773,7 +813,7 @@ export class Game {
       );
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
-    let stickHit=harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
+    let stickHit=!isCharmed(p)&&harvest(this, p, damage, melee.range, s=>applyTorchHit(this,p,s));
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
     for(const pane of this.house?.walls||[]){
@@ -781,14 +821,16 @@ export class Game {
       const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
       if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35)){stickHit=true;breakWindow(this,x,y,2);}
     }
-    for (const e of [...this.enemies,...(this.ghosts||[]).filter(e=>e.wildTiger&&!e.room),...(this.pvp?this.players.filter(q=>q!==p&&q.hp>0&&!q.room):[])]) {
+    for (const e of [...playerCombatTargets(this,p),...(this.ghosts||[]).filter(e=>e.wildTiger&&!e.room&&charmCanTarget(this,p,e))]) {
+      let struckSection=null;
       const dx = e.x - p.x,
         dy = e.y - p.y,
         d = Math.hypot(dx, dy);
       if (
-        e.hp > 0 && meleeCanHit(p,e,spin?{...melee,range:96,arc:360}:melee,point=>
-          !this.projectileBlocked(point.x,point.y,.5) &&
-          clearShot(this,p,point,.5) && clearShot(this,e,point,.5))
+        e.hp > 0 && meleeCanHit(p,e,spin?{...melee,range:96,arc:360}:melee,point=>{
+          const visible=!this.projectileBlocked(point.x,point.y,.5)&&clearShot(this,p,point,.5)&&(e.kind==='anaconda'||clearShot(this,e,point,.5));
+          if(visible&&e.kind==='anaconda')struckSection=point;return visible;
+        })
       ) {
         stickHit=true;
         if(this.players.includes(e)){this.hurt(e,damage,p);continue;}
@@ -819,8 +861,8 @@ export class Game {
           );
         }
         this.effects.push({
-          x: e.x,
-          y: e.y - 24,
+          x: struckSection?.x??e.x,
+          y: (struckSection?.y??e.y) - 24,
           text: e.practiceTarget ? '' : String(appliedDamage),
           color: "#ffe8ad",
           life: 0.5,
@@ -866,6 +908,7 @@ export class Game {
     e.summonCooldown = 7.5; e.summonPulse = .8; this.onSound('magic', e); return true;
   }
   canHitBoard(p) {
+    if(isCharmed(p))return false;
     const dx =
       Math.max(
         CENTER - TABLE.halfWidth,
@@ -972,27 +1015,14 @@ export class Game {
   spawnEvent(index) {
     this.eventOnBoard=false;
     if (index === undefined) {
-      const weight = (e) =>
-        e.type==='mystery'&&this.mystery&&!this.mystery.done ? 0 :
-        !eventAvailable(this, e)
-          ? 0
-          : Math.max(0, e.weight ?? 10);
-      const sum = EVENTS.reduce((n, e) => n + weight(e), 0);
-      if(sum<=0)return;
-      let choice = this.random() * sum;
-      index = EVENTS.length - 1;
-      for (let i = 0; i < EVENTS.length; i++) {
-        choice -= weight(EVENTS[i]);
-        if (choice < 0) {
-          index = i;
-          break;
-        }
-      }
-      if (this.players.reduce((n, p) => n + p.rolls, 0) === 1) {const first=this.generatedEnvironment==="temple"?EVENTS.findIndex(e=>e.kind==="tiger"):0;if(EVENTS[first]&&eventAvailable(this,EVENTS[first]))index=first;}
+      index=selectEvent(this,EVENTS,eventAvailable);
+      if(index===null)return;
     }
     if(!EVENTS[index]||!eventHasStartingAreas(this,EVENTS[index]))return;
-    this.event = EVENTS[index];
+    if(EVENTS[index].environments&&!EVENTS[index].environments.includes(this.generatedEnvironment))return;
+    this.event = migrateBeeEvent(EVENTS[index]);
     if(!this.event||(this.event.environment&&this.event.environment!==this.generatedEnvironment))return;
+    rememberEvent(this,this.event,index);
     this.encounteredEvents ??= Object.create(null);
     this.encounteredEvents[this.event.name] = true;
     this.openingBoard = false;
@@ -1000,6 +1030,7 @@ export class Game {
     this.eventActionRun = new Set();
     this.event.chainRuntime = 0;
     this.runEventActions("start");
+    if(this.event.type==='old_well'){spawnOldWell(this);this.onSound('event');return;}
     if(this.event.type==='mystery'){startMystery(this,this.event);this.onSound('event');return;}
     if (startHazard(this, this.event)) {
       this.message(this.event.name + " — " + this.event.tip);
@@ -1079,20 +1110,22 @@ export class Game {
           : this.event.wizardEscort && i > 0
             ? "skeleton"
             : this.event.kind);
+      if(beeEvent(this.event)&&['bee','wasp'].includes(spawnedKind)&&this.enemies.filter(e=>e.group===group&&['bee','wasp'].includes(e.kind)).length>=8)continue;
       const a = this.random() * Math.PI * 2,
-        d = 280 + this.random() * 95;
+        d = this.mapMode==='boundless'?660+this.random()*90:280 + this.random() * 95;
       const creatureConfig = creatures[spawnedKind];
+      const unitStats=eventUnitStats(this.event,usingGroups?enemyGroup:null,spawnedKind,creatures);
       const e = {
         ...this.event,
         ...enemyGroup,
         ...(this.event.squadStats?.[spawnedKind] || {}),
-        ...(!enemyGroup.manualOverride && creatureConfig ? { hp: creatureConfig.stats.hp, speed: creatureConfig.stats.speed, damage: creatureConfig.stats.damage } : {}),
+        ...unitStats,
         kind: spawnedKind,
         id: this.nextId++,
         group,
         x: clamp(CENTER + Math.cos(a) * d, 70, WORLD - 70),
         y: clamp(CENTER + Math.sin(a) * d, 70, WORLD - 70),
-        maxHp: this.event.squadStats?.[spawnedKind]?.hp || (!enemyGroup.manualOverride && creatureConfig ? creatureConfig.stats.hp : enemyGroup.hp || this.event.hp),
+        maxHp: unitStats.hp,
         state: "hunt",
         timer: 1 + this.random(),
         cooldown: 1,
@@ -1112,11 +1145,12 @@ export class Game {
         ],
         orbit: this.random() < 0.5 ? -1 : 1,
         tacticTime: 1.4 + this.random() * 1.8,
-        skin:
-          this.event.kind === "lion" && this.round > 1 && this.random() < 0.4
-            ? "tiger"
-            : spawnedKind,
+        skin: spawnedKind,
       };
+      if(spawnedKind==='banshee_queen')initializeBansheeQueen(e);
+      if(spawnedKind==='succubus')initializeSuccubus(e);
+      if(spawnedKind==='imp')initializeImp(e);
+      if(spawnedKind==='zombie')initializeZombie(e,member);
       if (spawnedKind === 'necromancer') {
         e.equipment = {hand1:'staff'}; e.maxMana = 120; e.mana = 120; e.summonCooldown = 2;
         e.summonKinds = ['skeleton','skeleton_unarmed','skeleton_wizard','skeleton_caster'];
@@ -1128,6 +1162,7 @@ export class Game {
         lanternAssigned = true;
       }
       this.configureCreature(e, false);
+      if(enemyGroup.manualOverride)Object.assign(e,unitStats,{maxHp:unitStats.hp});
       const spawn=requiredSpawnSpot(this,e.kind,spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned));
       if(!spawn)continue;Object.assign(e,spawn);
       if(this.house && e.kind === "lion")this.houseLionSpawned = true;
@@ -1139,12 +1174,20 @@ export class Game {
         e.x = clamp(e.x + Math.cos(tries * 1.7) * 24, 70, WORLD - 70);
         e.y = clamp(e.y + Math.sin(tries * 1.7) * 24, 70, WORLD - 70);
       }
+      if(e.kind==='anaconda'){
+        for(let tries=0;tries<40&&this.blocked(e.x,e.y,16,false,false,false,0);tries++){
+          e.x=clamp(e.x+Math.cos(tries*1.7)*24,70,WORLD-70);e.y=clamp(e.y+Math.sin(tries*1.7)*24,70,WORLD-70);
+        }
+        initializeAnaconda(e,this);
+      }
       this.enemies.push(e);
       first ??= e;
     }
     for(const e of this.enemies.filter(e=>e.group===group&&e.kind==="wolf"))wolfPack(this,e);
     startNightEvent(this,this.event,this.enemies.filter(e=>e.group===group));
+    for(const e of this.enemies)if(e.group===group&&e.kind==='carnivorous_flower'&&e.plantVariant===undefined)e.plantVariant=e.id%3===0?'orchid':'maw';
     if(this.event.spiderNest&&first)spiderNest(this,first,group);
+    if(beeEvent(this.event))startBeeHive(this,group,this.enemies.filter(e=>e.group===group&&['bee','wasp'].includes(e.kind)));
     if (!first) return;
     this.reveal = { x: first.x, y: first.y, life: 4 };
     this.message(this.event.name + " — " + this.event.tip);
@@ -1184,6 +1227,8 @@ export class Game {
     dt = Math.min(dt, 0.05);
     this.rollCooldown=Math.max(0,(this.rollCooldown||0)-dt);
     if(tickBoardSequence(this,dt,inputs))return;
+    tickCharmStatuses(this,dt);
+    inputs=charmInputs(this,inputs);
     tickNightCycle(this, dt);
     ensureTemple(this);
     this.tickAdventure(dt, inputs);
@@ -1192,12 +1237,15 @@ export class Game {
     tickHunterPets(this,dt,inputs);
     tickField(this, dt, inputs);
     tickHazards(this, dt);
+    tickImpHazards(this,dt);
     tickEnvironment(this, dt);
     tickMystery(this);
     tickNightEquipment(this, dt);
     tickNightEnemyHazards(this, dt);
     rewardNightHunts(this);
     updateLivingEcosystem(this, dt);
+    updateBoundlessWorld(this,dt);
+    seedWildFauna(this);
     if (this.phase === "sealing") return;
     this.bloom = Math.min(3, (this.bloom || 0) + dt);
     this.time += dt;
@@ -1212,7 +1260,7 @@ export class Game {
       if (this.reveal.life <= 0) this.reveal = null;
     }
     for (const p of this.players) {
-      tickJump(p,dt,this,collisionOffset(this,p));
+      if(!tickWingFlight(this,p,inputs[p.device]||{},dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
       tickQuicksand(this,p,inputs[p.device]||{},dt);
       tickSwimming(this,p,inputs[p.device]||{},dt);
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
@@ -1230,6 +1278,7 @@ export class Game {
       p.invuln = Math.max(0, p.invuln - dt);
       p.trapCooldown = Math.max(0, p.trapCooldown - dt);
       p.hit = Math.max(0, p.hit - dt);
+      if(isCharmed(p)){tickCharmedPlayer(this,p,dt);continue;}
       const input = inputs[p.device] || {};
       p.bowAiming = !!input.block && hasAimWeapon(p) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !this.openingBoard;
       if(p.bowAiming){p.blocking=false;p.dashTime=0;p.slideX=p.slideY=0;}
@@ -1271,7 +1320,7 @@ export class Game {
         my /= len;
       }
       if(this.openingBoard)faceOpeningBoard(p);else updateAimFacing(p, input);
-      if(!this.openingBoard&&input.jump&&!p.jumpHeld)startJump(p);
+      if(!this.openingBoard&&input.jump&&!p.jumpHeld&&!p.wingHover)startJump(p);
       p.jumpHeld=!!input.jump;
       if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
       if (!this.openingBoard && !p.bowAiming && input.dodge && !p.dashHeld && p.dodge === 0) {
@@ -1314,13 +1363,16 @@ export class Game {
     const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet)].filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
       if(e.practiceTarget)continue;
-      const alive = targets.filter(p=>enemyCanSeeTarget(e,p));
-      if (!alive.length && e.faction!=='ally' && creatures[e.kind]?.faction!=='ally') {
+      const alive = targets.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p)));
+      if(e.hp>0&&e.kind==='bee_hive'){tickBeeHive(this,e,dt);continue;}
+      if(e.hp>0&&e.kind==='bee'&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickBee(this,e,dt,alive);continue;}
+      if(e.hp>0&&WILD_FAUNA_KINDS.includes(e.kind)&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickJump(e,dt,this,0);tickWildFauna(this,e,dt,alive);continue;}
+      if (!alive.length && e.kind!=='zombie' && e.faction!=='ally' && creatures[e.kind]?.faction!=='ally') {
         forgetHiddenTarget(e);e.cooldown=Math.max(0,(e.cooldown||0)-dt);continue;
       }
       if(e.hp<=0)continue;
       if(e.faction==='ally'||creatures[e.kind]?.faction==='ally'){
-        tickJump(e,dt,this,collisionOffset(this,e));tickFriendlyCreature(this,e,dt);continue;
+        tickJump(e,dt,this,collisionOffset(this,e));tickFriendlyCreature(this,e,dt);if(e.kind==='anaconda')updateAnacondaBody(this,e);continue;
       }
       if(tickWildBatRoost(this,e,dt,alive))continue;
       tickJump(e,dt,this,collisionOffset(this,e));
@@ -1334,8 +1386,7 @@ export class Game {
         beh = cfg?.behaviors || {};
       const aiKind = cfg?.aiKind || e.kind;
       if (cfg?.faction === "neutral") continue;
-      e.x = clamp(e.x, 24, WORLD - 24);
-      e.y = clamp(e.y, 24, WORLD - 24);
+      if(this.mapMode!=='boundless'){e.x = clamp(e.x, 24, WORLD - 24);e.y = clamp(e.y, 24, WORLD - 24);}
       e.flash = Math.max(0, e.flash - dt);
       e.summonPulse = Math.max(0, (e.summonPulse || 0) - dt);
       if (e.maxMana) e.mana = Math.min(e.maxMana, (e.mana ?? e.maxMana) + dt * (e.manaRegen ?? 5));
@@ -1347,6 +1398,28 @@ export class Game {
       e.cooldown -= dt;
       e.tacticTime -= dt;
       e.moving = false;
+      // These custom humanoid routes return before the legacy trap block.
+      // Keep capture/interrupt timing on the same ground plane as their feet.
+      if(['succubus','imp','zombie'].includes(e.kind)){
+        e.rooted=Math.max(0,(e.rooted||0)-dt);
+        if(e.humanoidTrapRecovery&&e.state==='recover'){
+          e.timer-=dt;if(e.timer<=0){e.humanoidTrapRecovery=false;e.state='hunt';}continue;
+        }
+        const trap=e.state!=='snared'&&this.traps.find(t=>t.life>0&&distance(t,e)<30);
+        if(trap?.variant==='slow')e.rooted=Math.max(e.rooted,.5);
+        else if(trap){
+          trap.life=0;e.state=trap.variant==='interrupt'?'recover':'snared';
+          e.timer=trap.variant==='interrupt'?1.8:rules.captureTime*(trap.capture||1);
+          e.humanoidTrapRecovery=trap.variant==='interrupt';e.flash=.2;e.attack=0;
+          e.succubusAttack=null;e.succubusWindup=0;e.succubusAim=null;e.succubusFlightHeight=0;
+          e.impWindup=0;e.impAim=null;e.zombieWindup=0;e.zombieAim=null;e.zombieTarget=null;
+          this.onSound('trap',e);continue;
+        }
+      }
+      if(e.kind==='succubus'){tickSuccubus(this,e,alive,dt,cfg?.stats,beh);continue;}
+      if(e.kind==='imp'){tickImp(this,e,alive,dt,cfg?.stats,beh);continue;}
+      if(e.kind==='zombie'){tickZombie(this,e,alive,dt,cfg?.stats,beh);continue;}
+      if(e.kind==='anaconda'){tickAnaconda(this,e,alive,dt,cfg?.stats,cfg?.behaviors);continue;}
       if(e.kind === "wolf"){tickWolf(this,e,alive,dt);continue;}
       const nearest = alive.reduce(
         (best, p) => (!best || distance(e, p) < distance(e, best) ? p : best),
@@ -1664,6 +1737,7 @@ export class Game {
           e.faceY = (p.y - e.y) / d;
         }
       }
+      if(e.kind==='banshee_queen'&&beh.ranged){tickBansheeQueen(this,e,p,dt,cfg.stats,beh);continue;}
       if (beh.ranged) {
         enemyQuiver(e);
         if(e.state!=='snared'&&retrieveEnemyArrows(this,e,dt))continue;
@@ -1678,7 +1752,7 @@ export class Game {
         if (e.state === 'snared') { e.timer -= dt; if(e.timer<=0)e.hp=0; continue; }
         if (e.cooldown <= 0 && e.arrowsLeft>0) {
           this.arrows.push({
-            ammoType:e.iceArrowsLeft>0?'ice_arrow':'arrow',shaftLength:24,
+            ammoType:'arrow',shaftLength:24,
             id: this.nextId++,
             x: e.x,
             y: e.y,
@@ -1690,7 +1764,6 @@ export class Game {
             hostile: true,
           });
           e.arrowsLeft--;
-          if(e.iceArrowsLeft>0)e.iceArrowsLeft--;
           e.cooldown = cfg?.stats.rangedCooldown || 2.3;
           e.attack = 0.34;
         }
@@ -1927,8 +2000,10 @@ export class Game {
         }
       }
       if (d < 29 && e.cooldown <= 0) {
-        if (beh.melee && !["skeleton", "vine"].includes(aiKind))
+        if (beh.melee && !["skeleton", "vine"].includes(aiKind)) {
           this.hurt(p, e.damage, e);
+          if(aiKind==='beetle')e.attack=.25;
+        }
         e.cooldown = 1;
         if (beh.steal && p.traps > 0) {
           p.traps--;
@@ -1958,8 +2033,7 @@ export class Game {
         this.message(`${e.kind} companion fell.`);
         continue; // Losing a friendly creature is not an enemy kill or loot reward.
       }
-      summonGhost(this,e);
-      summonNecromancerOnKill(this,e);
+      if(e.kind!=='bee_hive'){summonGhost(this,e);summonNecromancerOnKill(this,e);}
       this.killedCreatures ??= Object.create(null);
       this.killedCreatures[e.kind] = (this.killedCreatures[e.kind] || 0) + 1;
       this.enemyLoot(e);
@@ -1981,6 +2055,7 @@ export class Game {
     this.enemies = this.enemies.filter((e) =>
       e.hp > 0 || (e.wasSnared ? e.state === "snared" && false : (e.deathTimer || 0) < 3.5),
     );
+    tickCharmStatuses(this,0); // Owner death/friendship breaks the spell this frame.
     // An encounter card is an active warning, not a permanent banner. Once
     // its creatures are gone, close it immediately so the tip cannot claim
     // that the party is still fighting that creature type.
@@ -1988,7 +2063,7 @@ export class Game {
       this.event &&
       this.eventTime > 0 &&
       (this.eventSpawnCount || this.event.count) > 0 &&
-      !this.enemies.some((e) => e.hp > 0)
+      !this.enemies.some((e) => e.hp > 0&&!e.wildlife)
     ) {
       const clearedEvent = this.event.name;
       this.eventTime = 0;
@@ -2010,5 +2085,5 @@ export class Game {
     }
   }
 }
-Object.assign(Game.prototype, adventureMethods);
+Object.assign(Game.prototype, adventureMethods, healingAdventureMethods(adventureMethods));
 

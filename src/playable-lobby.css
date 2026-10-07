@@ -44,6 +44,12 @@ body[data-screen="lobby"] #hero-overlays{position:fixed;inset:104px 24px 28px}
 .lobby-player-panel .difficulty-choice-icon{width:40px!important;height:40px!important;flex:0 0 40px;image-rendering:auto}
 .lobby-player-panel .map-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 9px;min-height:54px}
 .lobby-player-panel .map-choice-icon{width:40px!important;height:40px!important;flex:0 0 40px;image-rendering:auto}
+.lobby-player-panel.map-menu{width:300px;max-width:calc(100% - 36px)}
+.lobby-player-panel.map-menu>button,.lobby-player-panel.map-menu>small,.lobby-player-panel.map-menu>h2{flex-shrink:0}
+.lobby-player-panel .map-mode-heading{display:block;margin:3px 0 0;padding:8px 4px 2px;border-top:1px solid #8c774b;color:#d4bb7f;font:10px/1 system-ui;letter-spacing:.16em;text-align:center}
+.lobby-player-panel .map-mode-choice{display:flex;align-items:center;text-align:left;padding:7px 10px;min-height:48px}
+.lobby-player-panel .map-mode-choice[aria-pressed="true"]{border-color:#d4bb7f;background:linear-gradient(90deg,#d8c28c,#eee2be);color:#233b2d}
+.lobby-player-panel .map-mode-choice .difficulty-choice-copy{width:100%}
 .difficulty-choice-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.difficulty-choice-copy strong{font-size:14px}.difficulty-choice-copy small{font-size:11px;line-height:1.2;color:#52635e}
 .lobby-countdown{position:absolute;top:15px;left:0;right:0;text-align:center;color:#fff4c4;font:24px system-ui;pointer-events:none;text-shadow:0 2px 6px #000}
 

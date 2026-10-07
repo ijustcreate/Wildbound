@@ -1,4 +1,5 @@
 import {SKILLS,skillScrollId} from './field-skills.mjs';
+import {critterContainer} from './critter-containers.mjs';
 export const SLOTS = [
   "head",
   "neck",
@@ -19,18 +20,18 @@ export const ITEMS = {
   boomerang:{name:'Trail boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:20,range:260,speed:380,stack:1,rarity:'common',color:'#be9251',artColor:'#be9251',description:'A returning weapon. Hits each enemy once per throw; no ammunition needed.'},
   moon_boomerang:{name:'Moonsteel boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:30,range:310,speed:430,stack:1,rarity:'rare',color:'#8cd6e8',artColor:'#8cd6e8',description:'A swift moonsteel returning weapon. One throw at a time; no ammunition needed.'},
   sun_boomerang:{name:'Sunfire boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:42,range:360,speed:480,stack:1,rarity:'unique',color:'#f4b75d',artColor:'#f4b75d',description:'A powerful golden returning weapon. One throw at a time; no ammunition needed.'},
-  critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip and press Attack near a critter. Requires an empty jar for small creatures or a cage for birds and scavengers.'},
-  empty_jar:{name:'Empty critter jar',stack:12,color:'#abdcd9',sellPrice:2,description:'One jar holds one small critter. Use a catcher net nearby.'},
-  critter_cage:{name:'Travel cage',stack:6,color:'#b69b67',sellPrice:4,description:'Holds a caught bird, mouse or scavenger.'},
+  critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip in either hand and press Attack near a critter. Automatically uses an empty bottle/jar or travel cage from your backpack.'},
+  empty_jar:{name:'Empty critter bottle',stack:12,color:'#abdcd9',sellPrice:2,description:'An empty bottle/jar for catching critters, including fish. Use a catcher net nearby.'},
+  critter_cage:{name:'Empty travel cage',stack:6,color:'#b69b67',sellPrice:4,description:'An empty cage for catching critters. The net automatically uses an available empty container.'},
   caught_frog:{name:'Frog in a jar',stack:1,color:'#85aa62',sellPrice:7,description:'A damp passenger with strong opinions about dinner.'},
   caught_dragonfly:{name:'Dragonfly in a jar',stack:1,color:'#85c6cd',sellPrice:6},
   caught_fairy:{name:'Fairy in a jar',stack:1,color:'#c7a1dd',sellPrice:12},
   caught_bird:{name:'Bird in a cage',stack:1,color:'#bca477',sellPrice:9},
   caught_white_mouse:{name:'Snow mouse in a cage',stack:1,color:'#e5e7dc',sellPrice:7},
   caught_scavenger:{name:'Critter in a cage',stack:1,color:'#9b886f',sellPrice:7},
-  ice_arrow:{name:'Ice arrow',stack:99,color:'#83dcff',description:'Blue-tipped ammunition. Freezes enemies and creates frost where it lands. Load into the quiver.'},
-  ice_arrow_recipe:{name:'Recipe: Ice arrows',stack:1,color:'#95dfea',recipe:true,description:'Use to learn Ice arrows in the Field Guild. Makes 20: 20 arrows + 20 Magic Essence + 3 raw ice.'},
-  raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'Melts after five minutes outside the ice level. Used to craft ice arrows.'},
+  caught_crab:{name:'Captured shore crab',stack:1,color:'#e69b65',sellPrice:8,description:'A tiny sideways-scuttling beach passenger.'},
+  caught_fish:{name:'Captured reef fish',stack:1,color:'#76d9df',sellPrice:8,description:'A bright reef fish. Release near deep water.'},
+  raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'A piece of frozen ice. Melts after five minutes outside the ice level.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Stored relics grant no passive bonuses.' },
   crafting_bag: { name: 'Crafting Pouch', stack: 1, color: '#83bb92', bag: { slots: 1, category: 'crafting' }, description: 'One crafting supply slot. Holds one stack.' },
@@ -238,18 +239,17 @@ export const ITEMS = {
     color: "#ef698b",
     description: "H / RB: restore 45 health.",
   },
+  honeycomb: {
+    name: "Honeycomb",
+    stack: 20,
+    color: "#e9b957",
+    description: "Sweet wax comb from a broken beehive. Use from your backpack to restore 25 health.",
+  },
   arrow: {
     name: "Arrow",
     stack: 99,
     color: "#ddd5ae",
     description: "Consumed when fired; recover from ground or enemy loot.",
-  },
-  starter_arrow: {
-    base: "arrow",
-    name: "Starter arrow",
-    stack: 99,
-    color: "#ddd5ae",
-    description: "Starter ammunition for the starter bow.",
   },
   fruit: {
     name: "Sweet fruit",
@@ -904,7 +904,14 @@ for(const [id,name,base,slot,stats] of [
  ['ranger_quiver','Ranger quiver','quiver','back',{bowDrawSpeed:.2,arrowSpeed:.1}],
 ])ITEMS[id]={name,base,slot,stack:1,rarity:'rare',color:'#79a56b',artColor:'#789253',set:'ranger',...stats,description:`${base==='quiver'?'Back-slot quiver · arrows travel 10% faster · bow charges 20% faster. Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).':'Ranger set · 3 pieces: three-arrow spread for one arrow. 5 pieces: Tame companion (R / RB).'}`};
 ITEMS.leather_quiver={name:'Leather quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · arrows travel 10% faster · bow charges 20% faster.'};
-ITEMS.starter_quiver={name:'Starter quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · includes eight starter arrows · arrows travel 10% faster · bow charges 20% faster.'};
+ITEMS.starter_quiver={name:'Starter quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · arrows travel 10% faster · bow charges 20% faster. Uses ordinary arrows automatically.'};
+// Enemy costume pieces use the same fitted humanoid equipment system. They are
+// deliberately outside random loot pools; the warlock's existing rewards stay intact.
+export const WARLOCK_EQUIPMENT=Object.freeze({head:'warlock_hood',neck:'warlock_sigil',shoulders:'warlock_mantle',chest:'warlock_robe',gloves:'warlock_gloves',pants:'warlock_trousers',feet:'warlock_boots',cape:'warlock_cape',hand1:'warlock_staff'});
+for(const [slot,id]of Object.entries(WARLOCK_EQUIPMENT)){
+ const base={head:'hat',neck:'charm',shoulders:'shoulder_armor',chest:'armor',gloves:'gloves',pants:'pants',feet:'boots',cape:'cape',hand1:'staff'}[slot];
+ ITEMS[id]={name:{head:'Warlock cowl',neck:'Gravebound sigil',shoulders:'Bone mantle',chest:'Warlock ritual robe',gloves:'Ritual gloves',pants:'Warlock trousers',feet:'Gravewalker boots',cape:'Warlock vestment',hand1:'Warlock skull staff'}[slot],base,slot,stack:1,npcOnly:true,warlockGear:true,rarity:'unique',color:'#a176c1',artColor:{head:'#593568',neck:'#81ceb1',shoulders:'#bdb394',chest:'#5d396f',gloves:'#393047',pants:'#35293f',feet:'#382d39',cape:'#432952',hand1:'#ac9270'}[slot],style:{head:'hood',chest:'robe',gloves:'wraps',feet:'tall',cape:'tattered'}[slot],description:'Custom equipment worn by the purple warlock. Not part of random loot.',...(slot==='hand1'?{magic:true,damage:18,manaCost:10}:{})};
+}
 // Rare discoveries unique to supply chests in each environment.
 for(const [id,name,color,bonus,description] of [
  ['fern_pendant','Fern pendant','#8fb779',{armor:2},'Woodland charm · +2 armor.'],
@@ -913,7 +920,35 @@ for(const [id,name,color,bonus,description] of [
  ['hearth_pendant','Hearth pendant','#c99777',{bowDrawSpeed:.12},'Homestead charm · 12% faster bow draw.'],
  ['jade_pendant','Jade pendant','#83d4b9',{arrowSpeed:.12},'Temple charm · 12% faster arrows.'],
 ])ITEMS[id]={name,base:'charm',slot:'neck',stack:1,rarity:'uncommon',color,artColor:color,...bonus,description,supplyOnly:true};
+// Five distinct Queen drops. The remaining outfit pieces are enemy costume only.
+export const BANSHEE_SET=Object.freeze(['banshee_bow','banshee_quiver','banshee_hood','banshee_cape','banshee_shoulders']);
+export const SUCCUBUS_DROPS=Object.freeze(['succubus_horns','succubus_whip','succubus_wings']);
+ITEMS.imp_horns={name:'Imp bone horns',base:'hat',slot:'head',color:'#d6bd87',artColor:'#d6bd87',style:'succubus_horns',hornsPalette:{ink:'#382325',base:'#b39164',light:'#e9d3a1',trim:'#8c493b'},stack:1,rarity:'unique',npcOnly:true};
+ITEMS.imp_wings={name:'Imp ember wings',base:'shoulder_armor',slot:'shoulders',color:'#c54e3a',artColor:'#c54e3a',style:'bat_wings',humanoidWings:true,wingPalette:{ink:'#401c29',base:'#b63d38',dark:'#702939',light:'#ef8251',bone:'#dba475'},stack:1,rarity:'unique',npcOnly:true};
+export const SUCCUBUS_EQUIPMENT=Object.freeze({head:'succubus_horns',hand1:'succubus_whip',shoulders:'succubus_wings',chest:'succubus_cuirass',gloves:'succubus_bracers',pants:'succubus_legguards',feet:'succubus_boots'});
+for(const [id,name,base,slot,color,style,stats]of [
+ ['succubus_horns','Succubus horn crown','hat','head','#873f54','succubus_horns',{armor:3,description:'Curved crimson horns on a gilded headband. Dropped by succubi.'}],
+ ['succubus_whip','Succubus thorn whip','sword','hand1','#974863','whip',{damage:25,reach:112,description:'A rose-braided lash with a long, snapping reach. Does not charm players.'}],
+ ['succubus_wings','Succubus wings','shoulder_armor','shoulders','#564065','bat_wings',{armor:2,humanoidWings:true,wingFlight:true,description:'Hold Jump to rise and hover on articulated bat wings. Release to descend. Worn in the shoulder slot; no tail.'}],
+ ['succubus_cuirass','Velvet cuirass','armor','chest','#443343','plate',{armor:2,npcOnly:true}],
+ ['succubus_bracers','Gilded bracers','gloves','gloves','#b79562','gauntlets',{npcOnly:true}],
+ ['succubus_legguards','Velvet legguards','pants','pants','#3a2939','plated',{npcOnly:true}],
+ ['succubus_boots','Velvet boots','boots','feet','#312535','tall',{npcOnly:true}],
+])ITEMS[id]={name,base,slot,color,artColor:color,style,stack:1,rarity:'unique',...stats,...(SUCCUBUS_DROPS.includes(id)?{bossOnly:true}:{})};
+export const BANSHEE_EQUIPMENT=Object.freeze({hand1:'banshee_bow',hand2:'occupied',back:'banshee_quiver',head:'banshee_hood',cape:'banshee_cape',shoulders:'banshee_shoulders',chest:'banshee_cuirass',gloves:'banshee_bracers',pants:'banshee_legguards',feet:'banshee_boots'});
+for(const [id,name,base,slot,color,style,stats] of [
+ ['banshee_bow','Banshee frost bow','bow','hand1','#8dafbf','recurve',{damage:30,ranged:true,twoHanded:true}],
+ ['banshee_quiver','Banshee quiver','quiver','back','#453349','bone',{bowDrawSpeed:.2,arrowSpeed:.1}],
+ ['banshee_hood','Banshee hood','hat','head','#5c3046','banshee',{armor:3}],
+ ['banshee_cape','Banshee torn cape','cape','cape','#382534','tattered',{armor:2}],
+ ['banshee_shoulders','Banshee skull shoulders','shoulder_armor','shoulders','#7a8d99','skulls',{armor:3}],
+ ['banshee_cuirass','Queen\u2019s cuirass','armor','chest','#453445','banshee',{armor:4}],
+ ['banshee_bracers','Queen\u2019s bracers','gloves','gloves','#403344','gauntlets',{}],
+ ['banshee_legguards','Queen\u2019s legguards','pants','pants','#352c39','plated',{}],
+ ['banshee_boots','Queen\u2019s armored boots','boots','feet','#352c39','tall',{}],
+])ITEMS[id]={name,base,slot,artColor:color,color,style,stack:1,rarity:'unique',bansheeGear:true,...stats,...(BANSHEE_SET.includes(id)?{bossOnly:true,description:'Banshee set \u00b7 dropped by the Banshee Queen. 2 pieces: arrows have a 20% freeze chance (1.5s). 5 pieces: cosmetic icy footsteps.'}:{npcOnly:true,description:'Custom fitted armor worn by the Banshee Queen.'})};
 export const GEAR_SETS={
+ banshee:{name:'Banshee',groups:BANSHEE_SET.map(id=>[id]),two:{arrowFreezeChance:.2},three:{},full:{icySteps:1},twoText:'Your arrows have a 20% chance to freeze enemies for 1.5 seconds',fullText:'Icy footprints follow your steps (cosmetic only)'},
  ranger:{name:'Ranger',groups:RANGER_SET.map(id=>[id]),three:{arrowVolley:2},full:{},skills:['tame_pet'],threeText:'Fire three arrows in a spread for one arrow',fullText:'Tame a lion, wolf, bat, panther, or tiger with R / RB. Your companion stays when gear is removed.'},
  moon:{name:'Moonbound',groups:[['moon_circlet','moon_helm'],['moon_shoulders'],['moon_steps'],['moon_blade','moon_bow','moon_shield']],three:{maxMana:30},full:{manaRegen:4,manaDiscount:.25,castHeal:3},threeText:'+30 maximum mana',fullText:'Lunar grace: 25% cheaper spells, +4 mana/sec, heal 3 on each cast'},
  safari_hunter:{name:'Safari hunter',groups:Object.values(SAFARI_HUNTER_SET).map(id=>[id]),three:{maxHp:25},full:{hpRegen:1,speedBonus:.12},threeText:'+25 maximum health',fullText:'Trail vitality: regenerate 1 health/sec and move 12% faster'},
@@ -929,7 +964,7 @@ for(const [id,item] of Object.entries(ITEMS))if(item.slot){
 for(const [id,name,mana,regen,rarity,color] of [['azure_bead','Azure bead',15,0,'common','#70c9ec'],['moon_prism','Moon prism',25,0,'rare','#b49cfa'],['starheart','Starheart',40,0,'unique','#80f4d5'],['mana_rune','Mana rune',0,1,'common','#78d6e8'],['void_sigil','Void sigil',0,2,'rare','#9f82e8'],['astral_heart','Astral heart',0,3,'unique','#e48cff']])ITEMS[id]={name,base:'trinket',trinket:true,maxMana:mana,manaRegen:regen,stack:1,rarity,color,artColor:color,description:`Socket into compatible gear: +${regen?regen+' mana/sec':mana+' maximum mana'}. No bonus while loose in your bag.`};
 export const socketCount=type=>ITEMS[type]?.slot&&!ITEMS[type]?.trinket?Math.max(0,Math.min(3,Math.floor(Number(ITEMS[type].sockets)||0))):0;
 export function setProgress(p,id){const def=GEAR_SETS[id];if(!def)return null;const worn=new Set(Object.values(p.equipment||{}));const checks=def.groups.map(group=>({ids:group,equipped:group.some(type=>worn.has(type))}));const count=checks.filter(g=>g.equipped).length;return {...def,id,checks,count,complete:count===checks.length};}
-export function setStat(p,key){let n=0;for(const id of Object.keys(GEAR_SETS)){const s=setProgress(p,id);if(s.count>=3)n+=s.three[key]||0;if(s.complete)n+=s.full[key]||0;}return n;}
+export function setStat(p,key){let n=0;for(const id of Object.keys(GEAR_SETS)){const s=setProgress(p,id);if(s.count>=2)n+=s.two?.[key]||0;if(s.count>=3)n+=s.three?.[key]||0;if(s.complete)n+=s.full[key]||0;}return n;}
 export function hasSetSkill(p,skill){return Object.entries(GEAR_SETS).some(([id,def])=>def.skills?.includes(skill)&&setProgress(p,id).complete);}
 export function gearStat(type,sockets,key){return (Number(ITEMS[type]?.[key])||0)+(sockets||[]).reduce((n,id)=>n+(ITEMS[id]?.trinket?Number(ITEMS[id][key])||0:0),0);}
 export function refreshVitals(p){
@@ -975,6 +1010,9 @@ export function itemStats(id) {
     i.fire ? "Ignites enemies and trees · melts ice" : "",
     i.shot ? `Aimed shot · range ${i.shot.range}` : "",
     i.magic ? `Mana ${i.manaCost} per cast` : "",
+    i.healingAmount ? `Spell healing ${i.healingAmount}–${i.healingAmount*1.5}` : '',
+    i.outgoingSpellHealing ? `Outgoing spell healing +${Math.round(i.outgoingSpellHealing*100)}%` : '',
+    i.incomingSpellHealing ? `Incoming spell healing +${Math.round(i.incomingSpellHealing*100)}%` : '',
     i.bowDamage ? `Bow damage +${Math.round(i.bowDamage*100)}%` : '',
     i.bowDrawSpeed ? `Bow draw speed +${Math.round(i.bowDrawSpeed*100)}%` : '',
     i.arrowSpeed ? `Arrow speed +${Math.round(i.arrowSpeed*100)}%` : '',
@@ -996,7 +1034,7 @@ export function rollGear(random = Math.random, minTier = null) {
   const r = random(),
     tier = minTier || (r < 0.62 ? "common" : r < 0.9 ? "rare" : "unique");
   const pool = Object.keys(ITEMS).filter(
-    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && ITEMS[id].rarity === tier,
+    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && !ITEMS[id].npcOnly && !ITEMS[id].bossOnly && ITEMS[id].rarity === tier,
   );
   return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
 }
@@ -1009,19 +1047,41 @@ export function rollRelic(random = Math.random) {
 }
 export const count = (p, id) =>
   p.inventory.filter((i) => i?.type === id).reduce((n, i) => n + i.qty, 0);
-export function canGive(list, type, qty = 1, slots = 24) {
+const LEGACY_SUPPLIES=Object.freeze({starter_arrow:'arrow',ice_arrow:'arrow',ice_arrow_recipe:'arrow',empty_bottle:'empty_jar',bottle_empty:'empty_jar',empty_cage:'critter_cage'});
+export const canonicalItemType=type=>Object.hasOwn(LEGACY_SUPPLIES,type)?LEGACY_SUPPLIES[type]:type;
+const canonicalQuantity=(type,qty)=>type==='ice_arrow_recipe'?qty*20:qty;
+export function migrateLegacySupplies(list){
+  if(!Array.isArray(list))return;
+  for(const item of list){
+    if(!item)continue;
+    item.qty=canonicalQuantity(item.type,item.qty);
+    item.type=canonicalItemType(item.type);
+    if(item.contents)migrateLegacySupplies(item.contents);
+  }
+  // Preserve every unrelated saved slot and never discard oversized legacy stacks.
+  let target;
+  for(let i=0;i<list.length;i++){
+    const item=list[i];if(item?.type!=='arrow')continue;
+    if(target&&target.qty<ITEMS.arrow.stack){const n=Math.min(item.qty,ITEMS.arrow.stack-target.qty);target.qty+=n;item.qty-=n;if(!item.qty){clearSlot(list,i);continue;}}
+    target=item;
+  }
+}
+const matchingStack=(item,type,metadata)=>item?.type===type&&(!type.startsWith('caught_')||critterContainer(type,item)===critterContainer(type,metadata));
+export function canGive(list, type, qty = 1, slots = 24, metadata = {}) {
+  qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   if (!ITEMS[type] || qty <= 0) return false;
   const max = socketCount(type)?1:ITEMS[type].stack || 1;
   const capacity =
-    list.reduce((n, i) => n + (i?.type === type ? max - i.qty : 0), 0) +
+    list.reduce((n, i) => n + (matchingStack(i,type,metadata) ? Math.max(0,max - i.qty) : 0), 0) +
     Math.max(0, slots - list.filter(Boolean).length) * max;
   return capacity >= qty;
 }
 export function give(list, type, qty = 1, slots = 24, metadata = {}) {
-  if (!canGive(list, type, qty, slots)) return false;
+  if (!canGive(list, type, qty, slots,metadata)) return false;
+  qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   const max = socketCount(type)?1:ITEMS[type].stack || 1;
   for (const i of list)
-    if (i?.type === type && i.qty < max) {
+    if (matchingStack(i,type,metadata) && i.qty < max) {
       const n = Math.min(qty, max - i.qty);
       i.qty += n;
       if(type==='raw_ice'&&n>0)i.meltRemaining=Math.min(i.meltRemaining??300,metadata.meltRemaining??300);
@@ -1030,7 +1090,7 @@ export function give(list, type, qty = 1, slots = 24, metadata = {}) {
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    const item={type,qty:n,...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
+    const item={type,qty:n,...(type.startsWith('caught_')?{captureContainer:critterContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
     if (hole >= 0) list[hole] = item;
     else list.push(item);
     qty -= n;
@@ -1127,6 +1187,8 @@ export function freshCharacter(id, name) {
     inventory: [{ type: "trap", qty: 3 }],
     equipment: Object.fromEntries(SLOTS.map((s) => [s, null])),
     chests: [[], [], []],
+    robotRepaired: false,
+    robotIntroduced: false,
     field: {
       favorites: [],
       loadouts: [],
@@ -1144,6 +1206,8 @@ export function freshCharacter(id, name) {
 }
 
 export function migrateEquipment(p) {
+  for(const list of [p.inventory,...(p.chests||[]),p.starterChest,p.robotStock,p.field?.overflow])migrateLegacySupplies(list);
+  if(p.field){delete p.field.quiver;if(p.field.recipes)delete p.field.recipes.ice_arrow;}
   p.equipment ||= {};
   for (const slot of SLOTS) p.equipment[slot] ??= null;
   if (itemKind(p.equipment.cape) === "quiver") {
@@ -1277,7 +1341,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
         return false;
       if (source === dest && from.index === to.index) return true;
       const target = dest[to.index];
-      if (target?.type === item.type && ITEMS[item.type].stack>1&&!socketCount(item.type)&&!item.sockets?.length&&!target.sockets?.length) {
+      if (matchingStack(target,item.type,item) && ITEMS[item.type].stack>1&&!socketCount(item.type)&&!item.sockets?.length&&!target.sockets?.length) {
         const qty = Math.min(item.qty, ITEMS[item.type].stack - target.qty);
         if (!qty) return false;
         target.qty += qty;
@@ -1300,3 +1364,13 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
 
 export const chestName = (owner, index) =>
   owner?.chestNames?.[index] || `Chest ${index + 1}`;
+
+// Append support gear: existing catalog/event indices and authored IDs stay put.
+ITEMS.healing_wand={name:'Healing wand',base:'wand',slot:'hand1',magic:true,healing:true,
+  healingAmount:24,damage:0,manaCost:12,stack:1,sockets:1,maxHp:0,rarity:'common',
+  color:RARITIES.common,artColor:'#9cddff',style:'crystal',
+  description:'Light-blue bolts heal living allied heroes and companions for 24 health (36 fully charged); never harm enemies. With a halo, each hit adds 4 healing/sec for 3 seconds, up to 3 independent stacks. Full stacks do not refresh.'};
+ITEMS.halo={name:'Halo',base:'hat',slot:'head',healingHalo:true,
+  outgoingSpellHealing:.25,incomingSpellHealing:.25,stack:1,sockets:1,maxHp:0,rarity:'rare',
+  color:RARITIES.rare,artColor:'#ffe8a0',style:'halo',
+  description:'A floating ring of warm light: +25% outgoing and +25% incoming spell healing (multiplicative). Combine with a healing wand for three one-second healing ticks per hit, up to 3 stacks.'};

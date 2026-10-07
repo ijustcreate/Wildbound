@@ -46,9 +46,9 @@ test('jump input is network-safe, lands, has a cooldown and cannot double jump',
  const a={hp:100};assert.equal(cleanInput({jump:true}).jump,true);assert.ok(startJump(a));assert.equal(startJump(a),false);for(let i=0;i<50;i++)tickJump(a,.02);assert.equal(a.jumpHeight,0);assert.ok(a.jumpCooldown>0);
  const {g,p}=setup();g.update(.02,{keyboard:{jump:true}});assert.ok(p.jumpHeight>0);assert.equal(playerAction(p),'jump_takeoff');
 });
-test('jump ability defaults and temple opening tigers',()=>{
+test('jump ability defaults and the temple tiger encounter',()=>{
  assert.equal(creatures.skeleton.behaviors.jump,false);assert.equal(creatures.monkey.behaviors.jump,true);assert.equal(creatures.lion.behaviors.jump,true);assert.equal(creatures.tiger.behaviors.jump,true);
- const g=new Game(()=>.5);g.environment='temple';const p=g.addPlayer('keyboard');g.start();p.rolls=1;g.spawnEvent();assert.equal(g.event.kind,'tiger');assert.ok(g.enemies.every(e=>e.kind==='tiger'));assert.ok(EVENTS.find(e=>e.kind==='tiger'&&e.environment==='temple'));
+ const g=new Game(()=>.5);g.environment='temple';g.addPlayer('keyboard');g.start();g.enemies=[];g.spawnEvent(EVENTS.findIndex(e=>e.kind==='tiger'&&e.environment==='temple'));assert.equal(g.event.kind,'tiger');assert.ok(g.enemies.every(e=>e.kind==='tiger'));assert.ok(EVENTS.find(e=>e.kind==='tiger'&&e.environment==='temple'));
 });
 test('legacy humanoid rigs gain new clips without losing edited poses',()=>{
  const m=defaultPlayerMotion();m.clips.run.keys[0].joints.handR=[1,2,3];for(const k of ['swipe_one','uppercut','cast','jump_air','death'])delete m.clips[k];const upgraded=upgradePlayerMotion(m);assert.ok(validatePlayerMotion(upgraded));assert.deepEqual(upgraded.clips.run.keys[0].joints.handR,[1,2,3]);assert.deepEqual(poseAt(playerMotion,'punch_left',5).handL,playerMotion.joints.handL.position);

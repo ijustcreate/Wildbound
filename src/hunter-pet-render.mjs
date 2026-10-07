@@ -1,4 +1,5 @@
 import {rigSubject} from './rig-subjects.mjs';
+import {companionVisualActor} from './companion-locomotion.mjs';
 export function drawHunterPet(c,pet,owner,time,size=43){
  if(!pet||!Number.isFinite(pet.x))return;
  const rig=rigSubject(pet.kind);if(!rig)return;
@@ -6,7 +7,7 @@ export function drawHunterPet(c,pet,owner,time,size=43){
  const height=(pet.roostHeight||0)+(pet.jumpHeight||0)+(pet.groundHeight||0);
  c.translate(pet.x,pet.y-height);c.scale(size/48,size/48);
  if(pet.hp<=0){c.globalAlpha=.6;c.rotate(Math.PI/2);}
- const actor={...pet,x:0,y:0,animationAction:pet.hp<=0?'idle':pet.animationAction};
+ const actor=companionVisualActor({...pet,x:0,y:0,animationAction:pet.hp<=0?'idle':pet.animationAction},rig.data);
  const pose=rig.draw(c,actor,time,rig.data);
  // Reuse the exact walking/hurt/bite pose, not a second idle pose sample.
  const chest=pose.chest||pose.head,joint=pose.neck||pose.head;

@@ -2,7 +2,9 @@ import { buildCreationMenu } from './creation-menu.mjs';
 import { Animator } from './animation.mjs';
 import {resizeGameSurface,LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 import {drawLobbyBoard} from './lobby-board.mjs';
+import {drawLobbyMapTable,drawLobbyDifficultyTotem,drawLobbyDiceTray,drawLobbyExplorerStation} from './lobby-prop-art.mjs';
 import {applyCelShading} from './cel-shading.mjs';
+import {drawBansheeSteps} from './banshee-steps.mjs';
 import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
 import {drawBoomerang} from './boomerang.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
@@ -11,12 +13,10 @@ import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {take} from './items.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {petCard} from './hunter-pet-ui.mjs';
-import {LobbyPractice,lobbyDiceOffsets} from './lobby-practice.mjs';
+import {LobbyPractice} from './lobby-practice.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
-import { controllerButtonNames } from './controls.mjs';
-import { give, canGive } from './items.mjs';
-import { loadQuiver } from './arrow-supplies.mjs';
+import { controllerButtonNames, controllerFamily } from './controls.mjs';
 import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision} from './lobby-tv.mjs';
@@ -24,6 +24,7 @@ import {TvWildbound} from './tv-wildbound.mjs';
 import {tickSalvage} from './salvage.mjs';
 import {tickLobbyStorage} from './lobby-storage.mjs';
 import {drawPortal} from './portal-art.mjs';
+import {drawStarterChest,restockStarterChests} from './starter-chest.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
@@ -55,6 +56,11 @@ const MAP_DETAILS={
   ice:'Frozen ground, snow, and blizzards.',
   house:'A lived-in house with gardens and doors.',
   temple:'Jungle ruins with dangerous encounters.',
+  beach:'Turquoise surf, tide pools, sea arches, and a coastal pier.',
+};
+const MAP_MODE_DETAILS={
+  bounded:'The current board-sized expedition, with a clear edge and finale.',
+  boundless:'Explore outward into streamed regions. The board clearing stays safe; danger waits beyond it.',
 };
 export function moveLobbyCharacter(s,input,dt){
   const x=Number.isFinite(input.x)?input.x:0,y=Number.isFinite(input.y)?input.y:0;
@@ -77,7 +83,7 @@ export class LobbyState {
     let changed=false;
     for(const id of this.members.keys())if(!ids.has(id)){this.members.delete(id);changed=true;}
     for(const [i,p] of players.entries())if(!this.members.has(p.id)){
-      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[],starterClaimed:false});changed=true;
+      this.members.set(p.id,{x:300+i*60,y:480,faceX:0,faceY:-1,step:0,spawned:false,panel:'choose',choice:0,focus:0,held:{},attack:0,creationLook:null,customLook:false,creationColorKey:null,recentColors:[]});changed=true;
     }
     if(changed)this.invalidate(players);
   }
@@ -101,6 +107,7 @@ export class PlayableLobby {
     this.practice.onPetFeed=(a,food)=>{const p=this.getGame().players.find(p=>p.id===a.id);return !!p&&take(p.inventory,food);};
     this.difficultyArt=new Image();this.difficultyArt.src=new URL('../assets/difficulty-icons.png',import.meta.url).href;
     this.mapArt=new Image();this.mapArt.src=new URL('../assets/map-icons.png',import.meta.url).href;
+    this.beachArt=new Image();this.beachArt.src=new URL('../assets/beach-background-v1.png',import.meta.url).href;
     root.classList.add('playable-lobby');
     const area=document.createElement('div');area.className='lobby-world';
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
@@ -120,9 +127,9 @@ export class PlayableLobby {
       const o=LOBBY_OBJECTS.find(o=>Math.hypot(o.x-x,o.y-y)<65);
       if(o&&this.state.nearest(p)===o)this.open(p,o.id);
     };
-    for(const o of LOBBY_OBJECTS.filter(o=>!['board','target-lever','starter-chest','character-station','television'].includes(o.id)))document.getElementById(o.id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
+    for(const id of ['map-mode','environment','difficulty','dice-count'])document.getElementById(id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
-  reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
+  reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.practice.onSound=this.sound;this.state=new LobbyState();this.television.reset();this.tvWildbound=null;this.starterChestArt=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
   returnFromTv(){
     const game=this.getGame();
     for(const p of game.players)if(this.tvWildbound?.players.has(p.id))p.ui=null;
@@ -151,6 +158,10 @@ export class PlayableLobby {
     if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}
     if(panel==='television'){if(this.television.join(p.id))this.sound?.('ui');return;}
     if(panel==='character-station'){this.openCharacterStation(p);return;}
+    if(panel==='starter-chest'){
+      this.getGame().openInventory(p,'starter');
+      s.inventoryRelease=true;this.state.invalidate(this.getGame().players);return;
+    }
     s.panel=panel;s.focus=0;this.renderPanel(p);
   }
   openCharacterStation(p){
@@ -164,6 +175,7 @@ export class PlayableLobby {
   renderPanel(p){
     const s=this.state.members.get(p.id);this.nodes.get(p.id)?.remove();
     const panel=document.createElement('section');panel.className='lobby-player-panel';panel.classList.toggle('board-menu',s.panel==='board');panel.dataset.ownerDevice=p.device;panel.style.setProperty('--player-color',p.color);panel.setAttribute('aria-label',p.name+' lobby controls');
+    panel.classList.toggle('map-menu',s.panel==='environment');
     const tag=document.createElement('small');tag.textContent=p.device==='keyboard'?'KEYBOARD':'PLAYER '+(this.getGame().players.indexOf(p)+1);panel.append(tag);
     const heading=document.createElement('h2');panel.append(heading);
     const button=(label,fn,parent=panel)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{fn();this.sync();};parent.append(b);return b;};
@@ -183,28 +195,32 @@ export class PlayableLobby {
       button('Leave lobby',()=>{this.getGame().players=this.getGame().players.filter(q=>q!==p);this.sync();this.refreshChoosers();});
     }else if(s.panel==='create'){
       heading.textContent='New explorer';
-      buildCreationMenu({panel,state:s,profiles:this.profiles,presets:LOOK_PRESETS,
+      buildCreationMenu({panel,state:s,profiles:this.profiles,presets:LOOK_PRESETS,player:p,
         onCreate:(name,look)=>{this.profiles.assign(p,this.profiles.create(name,look));s.creationName=null;s.spawned=true;this.state.invalidate(this.getGame().players);this.close(p);this.refreshChoosers();},
         onBack:()=>{s.panel='choose';s.focus=0;this.renderPanel(p);}});
-    }else if(s.panel==='starter-chest'){
-      heading.textContent='Starter chest';
-      const intro=document.createElement('p');intro.textContent='Choose your starter gear, or claim the complete kit. The starter quiver comes loaded with eight arrows.';panel.append(intro);
-      const items=[['starter_bow','Starter bow',1],['starter_quiver','Starter quiver · 8 arrows',1],['starter_sword','Starter sword',1],['starter_shield','Starter shield',1],['starter_dagger','Starter dagger',1],['starter_boomerang','Starter boomerang',1]];
-      const addStarter=(list,type,qty)=>type==='starter_quiver'?give(list,'starter_quiver',1)&&give(list,'starter_arrow',8)&&loadQuiver(p,'starter_arrow'):give(list,type,qty);
-      const claim=(type,qty)=>{const inventory=structuredClone(p.inventory||[]);if(!addStarter(inventory,type,qty)){error.textContent='Your pack is full.';return;}p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');this.renderPanel(p);};
-      for(const [type,label,qty] of items)button(`Take ${label}${qty>1?' · '+qty:''}`,()=>claim(type,qty));
-      button(s.starterClaimed?'Starter kit claimed':'Take complete starter kit',()=>{const inventory=structuredClone(p.inventory||[]);let ok=true;for(const [type,,qty] of items)if(!addStarter(inventory,type,qty)){ok=false;break;}if(ok){p.inventory=inventory;s.starterClaimed=true;this.sound?.('loot');}else error.textContent='The complete starter kit needs more backpack space.';this.renderPanel(p);});
-      button('Close',()=>this.close(p));
     }else if(s.panel==='board'){
       heading.textContent='Ready to begin?';
       const info=document.createElement('div');info.className='board-menu-summary';
-      for(const id of ['environment','difficulty','dice-count']){const e=document.getElementById(id),setting=document.createElement('span');setting.className='board-setting';setting.textContent=e.selectedOptions[0].text;info.append(setting);}
+    for(const id of ['map-mode','environment','difficulty','dice-count']){const e=document.getElementById(id),setting=document.createElement('span');setting.className='board-setting';setting.textContent=e.selectedOptions[0].text;info.append(setting);}
       panel.append(info);
       button(p.ready?'Cancel readiness':'Ready',()=>{p.ready=!p.ready;this.close(p);});
       button('Not yet',()=>this.close(p));
     }else{
       const o=LOBBY_OBJECTS.find(o=>o.id===s.panel);heading.textContent=o.name;
       const select=document.getElementById(s.panel);
+      let mapChoices;
+      if(s.panel==='environment'){
+        const mode=document.getElementById('map-mode');
+        if(!['bounded','boundless'].includes(mode.value))mode.value='bounded';
+        const enabled=mode.value==='boundless',toggle=button('',()=>{
+          mode.value=mode.value==='boundless'?'bounded':'boundless';mode.dispatchEvent(new Event('change'));this.renderPanel(p);
+        });toggle.classList.add('map-mode-toggle');toggle.setAttribute('aria-pressed',String(enabled));
+        const name=document.createElement('strong');name.textContent='Boundless: '+(enabled?'ON':'OFF');
+        const hint=document.createElement('small');hint.textContent=enabled?'Explore beyond the board into streamed regions.':'Bounded expedition · clear edges and a finale.';
+        const mark=document.createElement('i');mark.setAttribute('aria-hidden','true');
+        toggle.append(mark,name,hint);toggle.title=MAP_MODE_DETAILS[mode.value];
+        mapChoices=document.createElement('div');mapChoices.className='map-choices';panel.append(mapChoices);
+      }
       for(const option of select.options){const b=button('',()=>{
         select.value=option.value;select.dispatchEvent(new Event('change'));this.close(p);
       });if(s.panel==='difficulty'){
@@ -217,6 +233,8 @@ export class PlayableLobby {
         copy.append(name,detail);b.append(icon,copy);
       }else if(s.panel==='environment'){
         b.classList.add('map-choice');
+        b.setAttribute('aria-pressed',String(select.value===option.value));
+        b.title=MAP_DETAILS[option.value];mapChoices.append(b);
         b.setAttribute('aria-label',`${option.text}. ${MAP_DETAILS[option.value]}`);
         const icon=document.createElement('canvas');icon.width=40;icon.height=40;icon.className='map-choice-icon';this.drawMapIcon(icon.getContext('2d'),option.value,0,0,40);
         const copy=document.createElement('span');copy.className='difficulty-choice-copy';
@@ -230,10 +248,10 @@ export class PlayableLobby {
   }
   refreshChoosers(){for(const p of this.getGame().players)if(this.state.members.get(p.id)?.panel==='choose')this.renderPanel(p);}
   highlight(p){const s=this.state.members.get(p.id),buttons=[...this.nodes.get(p.id)?.querySelectorAll('button')||[]];s.focus=Math.max(0,Math.min(s.focus,buttons.length-1));buttons.forEach((b,i)=>b.classList.toggle('lobby-focus',i===s.focus));}
-  navigate(p,{x=0,y=0,accept=false,back=false,adjust=false},device=p.device){
+  navigate(p,{x=0,y=0,accept=false,back=false,adjust=false,rotate=0},device=p.device){
     const s=this.state.members.get(p.id),panel=this.nodes.get(p.id);if(!panel)return;
     if(device!==p.device||panel.dataset.ownerDevice!==device)return;
-    if(panel.creationNavigate){panel.creationNavigate({x,y,accept,back,adjust});return;}
+    if(panel.creationNavigate){panel.creationNavigate({x,y,accept,back,adjust,rotate});return;}
     if(back){if(s.spawned)this.close(p);else if(s.panel==='create'){s.panel='choose';this.renderPanel(p);}else {this.getGame().players=this.getGame().players.filter(q=>q!==p);this.sync();}return;}
     const buttons=[...panel.querySelectorAll('button')];
     if(x&&s.panel==='choose'&&buttons[s.focus]?.dataset.cycle){s.choice+=x;this.renderPanel(p);return;}
@@ -265,13 +283,14 @@ export class PlayableLobby {
   controller(pad,previous){
     const p=this.getGame().players.find(p=>p.device==='pad:'+pad.index);if(!p)return;
     const s=this.state.members.get(p.id);if(!s)return;
+    this.nodes.get(p.id)?.updateControllerFamily?.(controllerFamily(pad));
     if(s.panel)s.held.lobbyInteract=!!pad.buttons[0]?.pressed;
     const x=Math.abs(pad.axes[0]||0)>.6?Math.sign(pad.axes[0]):0,y=Math.abs(pad.axes[1]||0)>.6?Math.sign(pad.axes[1]):0;
     const repeat=s.panel==='create'&&performance.now()>(s.nextCreationMove||0);
     const dx=pad.buttons[14]?.pressed?-1:pad.buttons[15]?.pressed?1:x,dy=pad.buttons[12]?.pressed?-1:pad.buttons[13]?.pressed?1:y;
     if(s.panel==='create'){
       if(dx||dy){if(repeat||dx!==s.creationDX||dy!==s.creationDY){this.navigate(p,{x:dx,y:dy});s.nextCreationMove=performance.now()+(dx!==s.creationDX||dy!==s.creationDY?300:65);}}
-      this.navigate(p,{accept:pad.buttons[0]?.pressed&&!previous[0],back:pad.buttons[1]?.pressed&&!previous[1],adjust:pad.buttons[2]?.pressed&&!previous[2]});
+      this.navigate(p,{accept:pad.buttons[0]?.pressed&&!previous[0],back:pad.buttons[1]?.pressed&&!previous[1],adjust:pad.buttons[2]?.pressed&&!previous[2],rotate:pad.buttons[4]?.pressed&&!previous[4]?-1:pad.buttons[5]?.pressed&&!previous[5]?1:0});
       s.creationDX=dx;s.creationDY=dy;
     }else if(s.panel)this.navigate(p,{x:pad.buttons[14]?.pressed&&!previous[14]?-1:pad.buttons[15]?.pressed&&!previous[15]?1:x!==s.axisX?x:0,y:pad.buttons[12]?.pressed&&!previous[12]?-1:pad.buttons[13]?.pressed&&!previous[13]?1:y!==s.axisY?y:0,accept:pad.buttons[0]?.pressed&&!previous[0],back:pad.buttons[1]?.pressed&&!previous[1]});
     s.axisX=x;s.axisY=y;
@@ -359,6 +378,7 @@ export class PlayableLobby {
     if(!blocked)this.television?.step(dt,tvCommands);
     if(this.television?.completed){
       const party=players.filter(p=>this.television.players.has(p.id));
+      restockStarterChests(this.getGame());
       this.tvWildbound=new TvWildbound(party,this.television.seed);
       this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
@@ -391,6 +411,7 @@ export class PlayableLobby {
     c.drawImage(this.difficultyArt,index*w,0,w,this.difficultyArt.naturalHeight,x,y,size,size);
   }
   drawMapIcon(c,value,x,y,size){
+    if(value==='beach'){if(this.beachArt.complete&&this.beachArt.naturalWidth)c.drawImage(this.beachArt,0,0,this.beachArt.naturalWidth,this.beachArt.naturalHeight,x,y,size,size);return;}
     if(!this.mapArt.complete||!this.mapArt.naturalWidth)return;
     const index={random:0,forest:1,desert:2,ice:3,house:4,temple:5}[value]??0,w=this.mapArt.naturalWidth/6;
     c.drawImage(this.mapArt,index*w,0,w,this.mapArt.naturalHeight,x,y,size,size);
@@ -416,6 +437,7 @@ export class PlayableLobby {
     c.fillStyle='#20292d';c.fillRect(0,0,w,h);
     c.translate(w/2,h/2);c.scale(view.zoom/2,view.zoom/2);c.translate(-view.x,-view.y);
     this.drawBackdrop(c);
+    drawBansheeSteps(c,this.practice,{spacing:20});
     c.textAlign='center';
     for(const t of this.practice.targets){
       c.save();c.translate(t.homeX,t.homeY-18);c.rotate(t.angle);
@@ -426,31 +448,28 @@ export class PlayableLobby {
       c.restore();this.label(t.hits+' hits · '+Math.round(t.score)+' damage',t.x+(t.angle<-1?54:0),t.y+(t.angle<-1?14:30),12);
     }
     for(const o of LOBBY_OBJECTS){
-      c.fillStyle='#42474a';c.beginPath();c.ellipse(o.x,o.y+12,58,18,0,0,Math.PI*2);c.fill();
+      if(!['environment','difficulty','dice-count','character-station'].includes(o.id)){c.fillStyle='#42474a';c.beginPath();c.ellipse(o.x,o.y+12,58,18,0,0,Math.PI*2);c.fill();}
       if(o.id==='environment'){
-        c.fillStyle='#775a41';c.fillRect(o.x-47,o.y-35,94,44);c.fillRect(o.x-40,o.y+9,8,16);c.fillRect(o.x+32,o.y+9,8,16);c.fillStyle='#cebf92';c.fillRect(o.x-38,o.y-29,76,29);c.strokeStyle='#607760';c.lineWidth=3;c.beginPath();c.moveTo(o.x-30,o.y-22);c.lineTo(o.x-4,o.y-7);c.lineTo(o.x+26,o.y-24);c.stroke();
+        drawLobbyMapTable(c,o,document.getElementById('environment').value);
       }else if(o.id==='difficulty'){
-        c.fillStyle='#918779';c.fillRect(o.x-21,o.y-65,42,76);c.fillStyle='#403c36';c.fillRect(o.x-12,o.y-44,8,9);c.fillRect(o.x+4,o.y-44,8,9);c.fillRect(o.x-9,o.y-20,18,7);
-        c.strokeStyle='#c7a75f';c.lineWidth=2;c.beginPath();c.moveTo(o.x,o.y-68);c.lineTo(o.x,o.y-91);c.stroke();
-        this.drawDifficulty(c,document.getElementById('difficulty').value,o.x-28,o.y-147,56);
+        drawLobbyDifficultyTotem(c,o,document.getElementById('difficulty').value);
       }else if(o.id==='dice-count'){
-        c.fillStyle='#785a46';c.fillRect(o.x-43,o.y-34,86,47);for(const x of lobbyDiceOffsets(document.getElementById('dice-count').value)){c.fillStyle='#ede5cc';c.fillRect(o.x+x,o.y-25,24,24);c.fillStyle='#333';c.fillRect(o.x+x+5,o.y-20,4,4);c.fillRect(o.x+x+15,o.y-10,4,4);}
+        drawLobbyDiceTray(c,o,document.getElementById('dice-count').value);
       }else if(o.id==='starter-chest'){
-        c.fillStyle='#4b3527';c.fillRect(o.x-58,o.y-28,116,48);c.fillStyle='#8e623a';c.fillRect(o.x-55,o.y-32,110,44);c.fillStyle='#cfa85e';c.fillRect(o.x-5,o.y-10,10,13);c.strokeStyle='#e0bf73';c.lineWidth=2;c.strokeRect(o.x-55,o.y-32,110,44);c.fillStyle='#f1dfaa';c.font='bold 13px Georgia';this.label('STARTER',o.x,o.y-8,12,'#f1dfaa',650);
+        const art=this.starterChestArt||={lid:0,last:this.practice.time},open=this.getGame().players.some(p=>p.ui?.storage==='starter');
+        art.lid+=(Number(open)-art.lid)*(1-Math.exp(-10*Math.max(0,this.practice.time-art.last)));art.last=this.practice.time;
+        drawStarterChest(c,o,art.lid);
       }else if(o.id==='target-lever'){
         c.fillStyle='#574a38';c.fillRect(o.x-15,o.y-12,30,18);c.strokeStyle='#c0b497';c.lineWidth=5;c.beginPath();c.moveTo(o.x,o.y);c.lineTo(o.x+(this.practice.targetsMoving?10:-10),o.y-29);c.stroke();c.fillStyle=this.practice.targetsMoving?'#8dc99a':'#b66b4e';c.fillRect(o.x+(this.practice.targetsMoving?5:-15),o.y-34,11,9);
       }else if(o.id==='television'){
         drawLobbyTelevision(c,this.television,o);
       }else if(o.id==='character-station'){
-        c.fillStyle='#40362f';c.fillRect(o.x-42,o.y-33,84,54);c.fillStyle='#6d4f38';c.fillRect(o.x-37,o.y-38,74,50);c.fillStyle='#d7bd7a';c.fillRect(o.x-7,o.y-18,14,19);
-        c.strokeStyle='#e4c778';c.lineWidth=2;c.strokeRect(o.x-30,o.y-29,60,28);
-        c.fillStyle='#eee2be';c.font='bold 11px system-ui';this.label('HEROES',o.x,o.y-10,11,'#eee2be',650);
-        c.fillStyle='#98d2c7';c.beginPath();c.arc(o.x-22,o.y-17,5,0,Math.PI*2);c.arc(o.x+22,o.y-17,5,0,Math.PI*2);c.fill();
+        drawLobbyExplorerStation(c,o);
       }else{
         drawLobbyBoard(c,this.practice.time);
       }
       c.fillStyle='#f2efdf';c.font='15px system-ui';this.label(o.name,o.x,o.y+(o.id==='target-lever'?27:44),15,'#f4efdc',650);
-      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Basic gear · six items':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad move · Down: pipe':'Interact · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
+      if(o.id!=='board'){c.font='12px system-ui';c.fillStyle='#d1d5d4';const detail=o.id==='target-lever'?(this.practice.targetsMoving?'Moving':'Stopped'):o.id==='starter-chest'?'Restocks each level':o.id==='character-station'?'A · change hero (B on Switch)':o.id==='television'?(this.television.players.size?'D-pad move · Down: pipe':'Interact · play'):document.getElementById(o.id).selectedOptions[0].text;this.label(detail,o.x,o.y+(o.id==='target-lever'?45:64),12,'#d7e2d8');}
     }
     for(const a of this.practice.players)if(a.hunterPet&&!this.getGame().players.find(p=>p.id===a.id)?.room)drawHunterPet(c,a.hunterPet,a,this.practice.time,48);
     this.drawPractice(c);

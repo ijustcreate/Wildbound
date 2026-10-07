@@ -83,6 +83,7 @@ test("Stack splitting preserves totals, validates amounts and fails atomically w
 });
 test("Robot sells selected stacks, vending buys without losing coins on failure", () => {
   const { g, p } = setup();
+  p.robotRepaired=true;
   g.portal(p);
   { const entryDoor = g.portals.find((d) => d.owner === p.id); p.x = entryDoor.x; p.y = entryDoor.y; g.enterRoom(p, entryDoor); }
   g.openShop(p, "robot");
@@ -125,7 +126,7 @@ test("Currency and new slots survive character profile capture and session reloa
   assert.equal(q.coins, 47);
   assert.equal(q.equipment.neck, "charm");
 });
-test("Potions stay on ground until manually collected, including after reaching center", () => {
+test("Potions stay on ground until explicit loot pickup, including beside the finish table", () => {
   const { g, p } = setup();
   p.progress = 48;
   p.x = 800;
@@ -133,7 +134,7 @@ test("Potions stay on ground until manually collected, including after reaching 
   g.loot = [{ id: 99, type: "potion", qty: 2, x: p.x, y: p.y }];
   g.tickAdventure(0.05, {});
   assert.equal(g.loot.length, 1);
-  g.tickAdventure(0.05, { keyboard: { interact: true } });
+  g.tickAdventure(0.05, { keyboard: { loot: true } });
   g.tickAdventure(0.05, { keyboard: {} });
   assert.equal(g.loot.length, 0);
   assert.equal(count(p, "potion"), 4);

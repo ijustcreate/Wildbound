@@ -2,6 +2,7 @@ import { drawRobotPortrait } from "./robot-art.mjs";
 import { ITEMS, sellValue } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { controllerButtonNames } from "./controls.mjs";
+import {robotBuybackIndices,robotBuying} from './robot-shop.mjs';
 const node = (tag, text, cls) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
@@ -15,42 +16,37 @@ function icon(type) {
   drawItem(c.getContext("2d"), type, 12, 12, 24);
   return c;
 }
-export function shopPanel(panel, game, p, button) {
+export function shopPanel(panel, game, p, button,tooltip) {
   const owner = game.shopOwner(p),
     u = p.ui;
   if (u.shop === "robot") {
-    const purchased=u.robotView==='stock', list=purchased?(owner.robotStock||[]):p.inventory;
+    const purchased=robotBuying(u),indices=robotBuybackIndices(owner);
+    // Another player can buy from the same robot while this panel remains open.
+    if(purchased&&!indices.includes(u.robotIndex))u.robotIndex=indices[0]??0;
     panel.classList.add('scrap-shop');
     const intro=node('div',null,'robot-intro'),portrait=node('canvas',null,'robot-portrait');
     portrait.width=96;portrait.height=80;portrait.setAttribute('aria-label','SCRAP-9 portrait');drawRobotPortrait(portrait,game.time);
-    const greeting=node('div');greeting.append(node('strong','SCRAP-9'),node('p','Scrap in. Gold out. Select a stack, then confirm the sale.'));intro.append(portrait,greeting);panel.append(intro);
-    const tabs=node('nav',null,'scrap-tabs');
-    for(const [label,view]of [['Sell items','sell'],['Purchased items','stock']]){
-      const b=button(label,'robot-view-'+view,()=>game.inventoryAction(p,'robotView:'+view));b.classList.toggle('selected',(u.robotView||'sell')===view);tabs.append(b);
-    }panel.append(tabs);
-    const perPage=8,pages=Math.max(1,Math.ceil(list.length/perPage)),page=Math.min(pages-1,purchased?(u.robotStockPage||0):Math.floor(u.index/perPage));
-    const grid=node('div',null,'scrap-item-list');
-    for(let i=page*perPage;i<Math.min(list.length,(page+1)*perPage);i++){
-      const item=list[i];if(!item)continue;
-      const b=purchased?node('div',null,'scrap-item-row'):button('','item'+i,()=>{u.index=i;game.uiRevision=(game.uiRevision||0)+1;});b.classList.add('scrap-item-row');
-      b.dataset.index=i;b.classList.toggle('selected',!purchased&&u.index===i);
-      const c=icon(item.type);c.width=c.height=48;drawItem(c.getContext('2d'),item.type,24,24,42);
-      const text=node('span',null,'scrap-item-copy'),name=node('strong',ITEMS[item.type]?.name||item.type);
-      text.append(name,node('span','Stack ×'+item.qty),node('b',sellValue(item.type)*item.qty+' gold'+(purchased?' paid':' total'),'scrap-price'));
-      b.append(c,text);grid.append(b);
-    }
-    if(!grid.children.length)grid.append(node('p',purchased?'Nothing purchased yet. Your sold items appear here.':'No items on this page.','scrap-empty'));panel.append(grid);
-    const pager=node('nav',null,'scrap-pager');
-    const setPage=next=>{if(purchased)u.robotStockPage=next;else u.index=next*perPage;game.uiRevision=(game.uiRevision||0)+1;};
-    const prev=button('Previous','robot-prev',()=>setPage(page-1)),next=button('Next','robot-next',()=>setPage(page+1));prev.disabled=page===0;next.disabled=page>=pages-1;
-    pager.append(prev,node('span','Page '+(page+1)+' / '+pages),next);panel.append(pager);
-    const item=p.inventory[u.index],actions=node('footer',null,'scrap-sale-actions');
-    if(!purchased){
-      actions.append(node('p',item?(ITEMS[item.type]?.name||item.type)+' · '+sellValue(item.type)+' gold each':'Select a stack to sell.','sale-detail'));
-      const sell=button(item?'Sell stack · '+sellValue(item.type)*item.qty+' gold':'Sell stack','use',()=>game.inventoryAction(p,'use'));sell.disabled=!item;
-      const split=button('Split stack','split',()=>game.inventoryAction(p,'split'));split.disabled=!(item?.qty>1);actions.append(sell,split);
-    }else actions.append(node('p','Purchased items are a sales record, not a buyback shop.'));
-    panel.append(actions,node('p',u.notice||'Sales transfer the whole selected stack to SCRAP-9.','storage-notice'));
+    const greeting=node('div');greeting.append(node('strong','SCRAP-9'),node('p','Sell your finds. Buy them back for the same gold.'));intro.append(portrait,greeting);panel.append(intro);
+    const page=Math.floor(Math.max(0,indices.indexOf(u.robotIndex))/6),pages=Math.max(1,Math.ceil(indices.length/6));
+    const slot=(view,index,item,selected)=>{
+      const def=ITEMS[item?.type],b=button('','robot-'+view+'-'+index,()=>game.inventoryAction(p,'robotSelect:'+view+':'+index));
+      b.className='robot-item-slot';b.dataset.index=index;b.dataset.view=view;b.classList.toggle('selected',selected);b.classList.toggle('empty-slot',!item);
+      b.setAttribute('aria-pressed',String(selected));b.setAttribute('aria-label',(view==='sell'?'Backpack':'Buyback')+' slot: '+(def?.name||'Empty')+(item?' ×'+item.qty+' · '+sellValue(item.type)*item.qty+' gold':''));
+      if(item){const c=icon(item.type);c.width=c.height=48;drawItem(c.getContext('2d'),item.type,24,24,42);b.append(c);if(item.qty>1)b.append(node('span',String(item.qty),'inventory-quantity'));b.style.setProperty('--rarity',def?.color||'#82917b');b.dataset.mode='shop';b.dataset.tooltipExtra='Stack ×'+item.qty+' · '+sellValue(item.type)*item.qty+' gold '+(view==='sell'?'to sell':'to buy back');if(tooltip)tooltip(b,item);else b.title=def?.name||item.type;}
+      return b;
+    };
+    const buyback=node('section',null,'robot-buyback'),buybackHead=node('header');
+    const chooseBuyback=button('Buyback · '+indices.length,'robot-view-buyback',()=>game.inventoryAction(p,'robotView:buyback'));chooseBuyback.setAttribute('aria-pressed',String(purchased));buybackHead.append(chooseBuyback);
+    if(pages>1){const pager=node('nav',null,'robot-buyback-pager');for(const [label,direction]of [['‹','prev'],['›','next']]){const b=button(label,'robot-page-'+direction,()=>game.inventoryAction(p,'robotPage:'+direction));b.setAttribute('aria-label',direction+' buyback page');pager.append(b);}pager.prepend(node('span',(page+1)+' / '+pages));buybackHead.append(pager);}
+    buyback.append(buybackHead);const strip=node('div',null,'robot-buyback-slots');
+    for(let n=0;n<6;n++){const index=indices[page*6+n],item=owner.robotStock[index];const b=slot('buyback',index??-1,item,purchased&&(u.robotIndex===index||!indices.length&&n===0));b.disabled=!item;strip.append(b);}buyback.append(strip);panel.append(buyback);
+    const backpack=node('section',null,'robot-backpack'),packHead=button('Your backpack','robot-view-sell',()=>game.inventoryAction(p,'robotView:sell'));packHead.append(node('span',p.inventory.filter(Boolean).length+' / 24'));packHead.setAttribute('aria-pressed',String(!purchased));backpack.append(packHead);
+    const grid=node('div',null,'robot-backpack-slots');for(let i=0;i<24;i++)grid.append(slot('sell',i,p.inventory[i],!purchased&&u.index===i));backpack.append(grid);panel.append(backpack);
+    const item=purchased?owner.robotStock[u.robotIndex]:p.inventory[u.index],price=item?sellValue(item.type)*item.qty:0;
+    const actions=node('footer',null,'robot-actions'),n=controllerButtonNames(p.controllerFamily||'generic'),accept=p.device==='keyboard'?'Enter':n[0],splitKey=p.device==='keyboard'?'2':n[3];
+    const sell=button((!purchased?accept+' · ':'')+'Sell'+(!purchased&&item?' · '+price+'g':''),'robotSell',()=>game.inventoryAction(p,'robotSell'));sell.disabled=purchased||!item||p.field?.favorites?.includes(item.type);
+    const back=button((purchased?accept+' · ':'')+'Buy back'+(purchased&&item?' · '+price+'g':''),'robotBuyback',()=>game.inventoryAction(p,'robotBuyback'));back.disabled=!purchased||!item||(p.coins||0)<price;
+    const split=button(splitKey+' · Split','split',()=>game.inventoryAction(p,'split'));split.disabled=purchased||!(item?.qty>1);actions.append(sell,back,split);panel.append(actions,node('p',u.notice||'Select first, then confirm. Sold items stay in buyback.','storage-notice'));
     if(u.split){const pop=node('div',null,'scrap-split');const amount=node('input');amount.type='number';amount.min=1;amount.max=Math.max(1,(item?.qty||1)-1);amount.value=u.split.amount;amount.oninput=()=>u.split.amount=Math.max(1,Math.min(Number(amount.max),Number(amount.value)||1));
       pop.append(node('strong','Split stack'),amount,button('Confirm split','split-confirm',()=>game.inventoryAction(p,'use')),button('Cancel','split-cancel',()=>game.inventoryAction(p,'close')));panel.append(pop);}
   } else {
@@ -113,9 +109,9 @@ export function shopPanel(panel, game, p, button) {
     node(
       "small",
       (() => {
-        if (p.device === 'keyboard') return u.shop === "robot" ? "Arrows: select · Enter: sell · 2: split · Tab: switch view · Esc: room" : "Arrows: select slot · Enter: buy · 2: collect tray · Esc: room";
+        if (p.device === 'keyboard') return u.shop === "robot" ? "Arrows: select · Enter: confirm · 2: split · Tab: backpack / buyback · Esc: room" : "Arrows: select slot · Enter: buy · 2: collect tray · Esc: room";
         const n = controllerButtonNames(p.controllerFamily || 'generic');
-        return u.shop === "robot" ? `D-pad: select · ${n[0]}: sell · ${n[3]}: split · LB / RB: switch view · ${n[1]}: room` : `D-pad: select slot · ${n[0]}: buy · ${n[3]}: collect tray · ${n[1]}: room`;
+        return u.shop === "robot" ? `D-pad: select · ${n[0]}: confirm · ${n[3]}: split · LB / RB: backpack / buyback · ${n[1]}: room` : `D-pad: select slot · ${n[0]}: buy · ${n[3]}: collect tray · ${n[1]}: room`;
       })(),
     ),
   );

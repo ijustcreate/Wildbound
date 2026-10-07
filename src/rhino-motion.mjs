@@ -1,5 +1,6 @@
 import { paintLayers } from "./render-order.mjs";
 import { defaultLionMotion } from "./lion-motion.mjs";
+import {pixelVolume,pixelLine,pixelPolygon} from './pixel-shapes.mjs';
 import {
   poseAt,
   projectPoint,
@@ -198,10 +199,20 @@ export function drawRhino(
       pal.body,
     );
     limb(c, p.chest, p.neck, s.bodyWidth * 0.72, pal.shade);
+    const skin={...pal,outline:pal.shade};
+    for(const n of ['pelvis','chest'])pixelVolume(c,pose[n],s.bodyWidth*.52,12,s.bodyWidth*.53,d,skin);
+    pixelVolume(c,pose.neck,s.bodyWidth*.44,7,8,d,skin);
+    // Armor-like folds follow the posed shoulder and hip, not the screen.
+    for(const n of ['chest','pelvis'])for(const offset of [-3,2]){
+      const v=pose[n],points=[[-.45,6],[0,9],[.45,6]].map(([x,z])=>projectPoint([v[0]+x*s.bodyWidth,v[1]+offset,v[2]+z],d));
+      pixelLine(c,points[0],points[1],pal.shade);pixelLine(c,points[1],points[2],pal.shade);
+      pixelLine(c,{x:points[0].x,y:points[0].y-1},{x:points[1].x,y:points[1].y-1},pal.light);
+    }
   });
   add(p.head.depth, () => {
     limb(c, p.neck, p.head, s.headRadius * 1.7, pal.body);
     ellipse(c, p.head.x, p.head.y, s.headRadius, s.headRadius * 0.8, pal.body);
+    pixelVolume(c,pose.head,s.headRadius,8,6,d,{...pal,outline:pal.shade});
     for (const n of ["earL", "earR"])
       if (visible(n)) {
         const e = p[n];
@@ -209,12 +220,13 @@ export function drawRhino(
         ellipse(c, e.x, e.y - 1, 1, 2, pal.light);
       }
     if (visible("face")) limb(c, p.head, p.face, s.headRadius * 1.3, pal.face);
-    if (visible("muzzle")) ellipse(c, p.muzzle.x, p.muzzle.y, 4.5, 3, pal.face);
-    if (visible("nose")) ellipse(c, p.nose.x, p.nose.y, 1.5, 1, pal.shade);
+    if (visible("muzzle"))pixelVolume(c,pose.muzzle,5.5,6,3.5,d,{body:pal.face,shade:pal.shade,light:pal.light});
+    if (visible("nose")){ellipse(c,p.nose.x,p.nose.y,3,1,pal.shade);for(const side of [-1,1]){const n=projectPoint([pose.nose[0]+side*2,pose.nose[1],pose.nose[2]+1],d);c.fillStyle=pal.eye;c.fillRect(Math.round(n.x),Math.round(n.y),1,1);}}
     for (const n of ["eyeL", "eyeR"])
       if (visible(n)) {
         c.fillStyle = pal.eye;
-        c.fillRect(Math.round(p[n].x), Math.round(p[n].y), 1, 1);
+        c.fillRect(Math.round(p[n].x)-1, Math.round(p[n].y), 2, 1);
+        pixelLine(c,{x:p[n].x-2,y:p[n].y-2},{x:p[n].x+1,y:p[n].y-1},pal.shade);
       }
   });
   for (const prefix of ["smallHorn", "horn"]) {
@@ -223,6 +235,8 @@ export function drawRhino(
     if (visible(prefix + "Base") && visible(prefix + "Tip"))
       add((base.depth + tip.depth) / 2, () => {
         const width = s.hornWidth * (prefix === "horn" ? 1 : 0.65);
+        const vx=tip.x-base.x,vy=tip.y-base.y,len=Math.hypot(vx,vy)||1,nx=-vy/len,ny=vx/len;
+        pixelPolygon(c,[{x:base.x-nx*width,y:base.y-ny*width},{x:base.x+nx*width,y:base.y+ny*width},{x:base.x+vx*.55+nx*width*.45,y:base.y+vy*.55+ny*width*.45},tip],pal.shade);
         for (let i = 0; i < 9; i++) {
           const t = i / 8;
           ellipse(
@@ -234,6 +248,7 @@ export function drawRhino(
             pal.horn,
           );
         }
+        pixelLine(c,{x:base.x-nx*width*.35,y:base.y-ny*width*.35},tip,pal.light);
       });
   }
   paintLayers(q, model, d, c, p);

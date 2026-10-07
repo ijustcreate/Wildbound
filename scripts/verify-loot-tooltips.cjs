@@ -1,0 +1,20 @@
+const {app,BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),base=process.env.WILDBOUND_VERIFY_APP||root,out=path.join(root,'test-output','loot-tooltips');
+fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));app.disableHardwareAcceleration();
+app.whenReady().then(async()=>{
+ const w=new BrowserWindow({show:false,width:1280,height:850,useContentSize:true,webPreferences:{offscreen:true}}),errors=[];
+ w.webContents.on('console-message',(_e,level,message)=>{if(typeof level==='object'){message=level.message;level=level.level;}if(level===3||level==='error')errors.push(message);});
+ const run=s=>w.webContents.executeJavaScript(`(async()=>{${s}})()`),checks=[];
+ try{
+  await w.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});await run('await window.wildboundBoot.ready;');
+  await run(`const {Game}=await import('./src/core.mjs'),{HeroUI}=await import('./src/hero-ui.mjs'),{Assets}=await import('./src/assets.mjs');const g=new Game(()=>.5),p=g.addPlayer('pad:0','Healer'),assets=new Assets();await assets.load();g.start();g.openingBoard=false;p.controllerFamily='xbox';p.inventory=[{type:'honeycomb',qty:3},{type:'sword',qty:1}];const host=document.createElement('div');host.style='position:fixed;inset:0;background:#26382e;z-index:99999';document.body.append(host);const ui=new HeroUI(host);window.lootQA={g,p,assets,host,ui};`);
+  for(const [width,height] of [[1280,850],[600,430]]){
+   w.setContentSize(width,height);for(let n=0;n<30;n++){await new Promise(r=>setTimeout(r,100));const viewport=await run('return [innerWidth,innerHeight];'),size=w.getContentSize();if(viewport.every((v,i)=>Math.abs(v-size[i])<3))break;}await new Promise(r=>setTimeout(r,250));
+   for(const mode of ['pack','victory','robot']){
+    checks.push(await run(`const {g,p,ui,assets}=window.lootQA;const assert=(v,m)=>{if(!v)throw Error(m);};p.room=null;p.ui=null;if('${mode}'==='robot'){p.room='qa-storage';g.portals=[{id:p.room,owner:p.id}];p.robotRepaired=true;g.openShop(p,'robot');}else if('${mode}'==='victory'){g.victoryRewards=[{type:'honeycomb',qty:2},{type:'sword',qty:1},...Array(22).fill(null)];g.openInventory(p,'victory');}else g.openInventory(p);ui.draw(g,assets);const panel=ui.panels.get(p.id),selected=panel.querySelector('.storage-sheet.active .selected,.robot-item-slot.selected'),tip=panel.querySelector('.item-tooltip');assert(selected?.showItemTooltip,'Selected slot missing tooltip: ${mode}');assert(tip&&!tip.hidden&&tip.textContent.includes('Honeycomb')&&tip.textContent.includes('restore 25 health'),'Controller tooltip absent: ${mode}');assert(!panel.querySelector('.victory-item-detail,.robot-selection,.inventory-selection .item-name'),'Duplicate below-grid details: ${mode}');assert(!panel.querySelector('.inventory-selection')||getComputedStyle(panel.querySelector('.inventory-selection')).display==='none','Empty status row consumes space');const r=tip.getBoundingClientRect(),pr=panel.getBoundingClientRect();assert(r.left>=pr.left&&r.right<=pr.right+1&&r.top>=pr.top&&r.bottom<=pr.bottom+1,'Tooltip clipped ${mode}');if('${mode}'==='robot')assert(tip.textContent.includes('gold to sell'),'Robot price missing from tooltip');g.inventoryAction(p,'${mode}'==='robot'?'robotSelect:sell:1':'select:1');ui.draw(g,assets);assert(panel.querySelector('.item-tooltip').textContent.includes('Sword')||panel.querySelector('.item-tooltip').textContent.includes('sword'),'Tooltip did not follow selection');return '${mode} tooltip / no duplicated details at '+innerWidth+'×'+innerHeight;`));
+    await new Promise(r=>setTimeout(r,100));fs.writeFileSync(path.join(out,mode+'-'+width+'.png'),(await w.webContents.capturePage()).toPNG());
+   }
+  }
+  if(errors.length)throw Error(errors.join('\n'));fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({checks,errors},null,2));console.log(JSON.stringify({checks,errors}));app.exit(0);
+ }catch(e){console.error(e);fs.writeFileSync(path.join(out,'failure.json'),JSON.stringify({error:String(e),errors},null,2));app.exit(1);}
+});

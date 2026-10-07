@@ -2,6 +2,7 @@ const {app,BrowserWindow}=require('electron'),path=require('node:path'),fs=requi
 const root=path.resolve(__dirname,'..');app.disableHardwareAcceleration();app.setPath('userData',path.join(root,'test-output/inventory-refresh-profile'));
 app.whenReady().then(async()=>{
  const w=new BrowserWindow({show:false,width:1280,height:820,useContentSize:true,webPreferences:{offscreen:true}});
+ w.webContents.on('console-message',(_e,_level,message)=>{if(/Error|failed|Invalid/.test(message))console.error('Renderer:',message);});
  const resize=async(width,height,zoom)=>{
   w.setContentSize(width,height);w.webContents.setZoomFactor(zoom);
   for(let n=0;n<30;n++){await new Promise(r=>setTimeout(r,100));const viewport=await w.webContents.executeJavaScript('[innerWidth,innerHeight]');const [cw,ch]=w.getContentSize();if(Math.abs(viewport[0]-cw/zoom)<3&&Math.abs(viewport[1]-ch/zoom)<3)return;}
@@ -19,6 +20,19 @@ app.whenReady().then(async()=>{
    for(const slot of SLOTS)p.equipment[slot]=Object.keys(ITEMS).find(type=>ITEMS[type].slot===slot&&!ITEMS[type].gmOnly)||null;
    g.openInventory(p);const ui=new HeroUI(host);ui.draw(g,assets);window.inventoryRefresh={g,p,ui,host,assets,SLOTS};
   })()`);
+  console.log(await w.webContents.executeJavaScript(`(async()=>{
+   const {g,p,ui,assets}=window.inventoryRefresh,panel=ui.panels.get(p.id),canvas=panel.querySelector('.equipment-preview'),frames=new Set(),worldFacing=[p.faceX,p.faceY],gameTime=g.time;
+   const scene=panel.querySelector('.inventory-scene'),css=getComputedStyle(canvas);
+   if(css.position!=='absolute'||Number(css.zIndex)<=Number(getComputedStyle(scene).zIndex))throw Error('Character canvas is covered by the scenery layer');
+   const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+   if(Array.from(pixels).filter((v,i)=>i%4===3&&v>0).length<500)throw Error('Character canvas is empty');
+   for(let n=0;n<12;n++){ui.draw(g,assets);if(panel.querySelector('.equipment-preview')!==canvas)throw Error('Idle animation rebuilds the inventory');frames.add(canvas.toDataURL());await new Promise(r=>setTimeout(r,100));}
+   if(frames.size<2||g.time!==gameTime)throw Error('Live portrait does not animate independently of paused simulation');
+   const before=canvas.toDataURL();panel.querySelector('.preview-turn-right').click();ui.draw(g,assets);
+   if(canvas.toDataURL()===before||p.ui.previewDirection!==1||JSON.stringify([p.faceX,p.faceY])!==JSON.stringify(worldFacing))throw Error('Live portrait rotation failed or changed world facing');
+   panel.querySelector('.preview-turn-left').click();ui.draw(g,assets);
+   return 'Live equipped portrait animates with paused simulation, rotates independently, and preserves its canvas between frames';
+  })()`));
   const cases=[[1280,650,1],[1280,820,1.25],[960,850,1],[1280,850,1.5],[780,600,1],[600,430,1]];
   for(const [width,height,zoom]of cases){
    await resize(width,height,zoom);
@@ -27,19 +41,24 @@ app.whenReady().then(async()=>{
     const inside=(a,b,label)=>{if(a.left<b.left-1||a.top<b.top-1||a.right>b.right+1||a.bottom>b.bottom+1)throw Error(label+' escapes its container: '+JSON.stringify({a:round(a),b:round(b)}));};
     const overlaps=(a,b)=>a.left<b.right-.5&&a.right>b.left+.5&&a.top<b.bottom-.5&&a.bottom>b.top+.5;
     let baseline;
-    for(const [mode,index]of [['pack',0],['pack',1],['pack',7],['pack',23],['gear',0],['gear',SLOTS.indexOf('feet')],['quiver',0]]){
+    for(const [mode,index]of [['pack',0],['pack',1],['pack',7],['pack',23],['gear',0],['gear',SLOTS.indexOf('feet')]]){
      p.ui={panel:mode,index,notice:''};ui.draw(g,assets);host.querySelector('.item-tooltip')?.remove();
      const panel=ui.panels.get(p.id),bounds=panel.getBoundingClientRect(),grid=panel.querySelector('.inventory-window .item-grid');inside(bounds,host.getBoundingClientRect(),'Inventory panel');
      const gear=[...panel.querySelectorAll('.paper-doll button[data-slot]')],bag=[...grid.querySelectorAll('button')],actions=[...panel.querySelectorAll('.current-inventory-actions button')];
      if(gear.length!==11||bag.length!==24||actions.length!==8)throw Error('Lost slots or toolbar actions');
      if(bounds.width>480.01)throw Error('Inventory is not thinner');
      for(const b of [...gear,...bag])inside(b.getBoundingClientRect(),bounds,'Button '+b.dataset.action);
-     const portrait=panel.querySelector('.inventory-character').getBoundingClientRect(),doll=panel.querySelector('.paper-doll').getBoundingClientRect();inside(portrait,doll,'Paper doll portrait');
-     if(Math.abs((portrait.left+portrait.right)/2-(doll.left+doll.right)/2)>1)throw Error('Character is not centered');
-     const equipment=panel.querySelector('.equipment-window').getBoundingClientRect();if(Math.abs((portrait.left+portrait.right)/2-(equipment.left+equipment.right)/2)>1)throw Error('Paper doll is not centered in the equipment section');
-     for(const b of gear)if(overlaps(b.getBoundingClientRect(),portrait))throw Error('Gear overlaps the paper doll');
-     for(const side of ['left','right','above','below'])if(!gear.some(b=>{const r=b.getBoundingClientRect();return side==='left'?r.right<=portrait.left:side==='right'?r.left>=portrait.right:side==='above'?r.bottom<=portrait.top:r.top>=portrait.bottom;}))throw Error('Gear missing around '+side+' of paper doll');
+     const portrait=panel.querySelector('.inventory-character').getBoundingClientRect(),doll=panel.querySelector('.paper-doll').getBoundingClientRect(),preview=panel.querySelector('.inventory-preview-column').getBoundingClientRect(),equipment=panel.querySelector('.equipment-window').getBoundingClientRect();
+     inside(preview,equipment,'Live preview column');inside(portrait,preview,'Live character portrait');inside(doll,equipment,'Body-shaped equipment grid');
+     inside(panel.querySelector('.equipment-preview').getBoundingClientRect(),portrait,'Visible character canvas');
+     if(portrait.right>doll.left-1)throw Error('Live character is not left of the equipment');
+     if(panel.querySelector('.quiver-slot,select[data-action="selectAmmo"]'))throw Error('Removed ammunition selector remains visible');
+     const slots=Object.fromEntries(gear.map(b=>[b.dataset.slot,b.getBoundingClientRect()])),center=r=>(r.left+r.right)/2;
+     for(const column of [['head','neck','chest','pants','feet'],['back','gloves','hand1'],['cape','shoulders','hand2']])for(let i=1;i<column.length;i++){const a=slots[column[i-1]],b=slots[column[i]];if(Math.abs(center(a)-center(b))>1||b.top<a.bottom)throw Error('Body grid is out of order: '+column.join(' / '));}
+     if(!(center(slots.hand1)<center(slots.pants)&&center(slots.hand2)>center(slots.pants)))throw Error('Hands do not flank the legs');
+     for(const b of gear)if(overlaps(b.getBoundingClientRect(),portrait))throw Error('Gear overlaps the live character');
      for(const b of gear){const label=b.querySelector('.equipment-slot-label'),r=b.getBoundingClientRect();inside(label.getBoundingClientRect(),r,'Equipment label '+b.dataset.slot);if(label.scrollWidth>label.clientWidth+1)throw Error('Clipped equipment label '+b.dataset.slot);}
+     for(const b of gear){const icon=b.querySelector('canvas.item-icon'),ir=icon?.getBoundingClientRect();if(!ir||ir.width<18||ir.height<18)throw Error('Equipment icon collapsed: '+b.dataset.slot+' '+JSON.stringify(ir));inside(ir,b.getBoundingClientRect(),'Equipped icon '+b.dataset.slot);if(overlaps(ir,b.querySelector('.equipment-slot-label').getBoundingClientRect()))throw Error('Icon overlaps equipment label '+b.dataset.slot+' '+JSON.stringify({icon:round(ir),label:round(b.querySelector('.equipment-slot-label').getBoundingClientRect()),button:round(b.getBoundingClientRect()),rows:getComputedStyle(b).gridTemplateRows,columns:getComputedStyle(b).gridTemplateColumns}));}
      for(let i=0;i<gear.length;i++)for(let j=i+1;j<gear.length;j++)if(overlaps(gear[i].getBoundingClientRect(),gear[j].getBoundingClientRect()))throw Error('Overlapping equipment '+JSON.stringify([gear[i],gear[j]].map(b=>({slot:b.dataset.slot,area:getComputedStyle(b).gridArea,inset:getComputedStyle(b).inset,bounds:round(b.getBoundingClientRect())}))));
      for(const b of actions)for(const text of b.querySelectorAll('.inventory-key,.inventory-action-label')){inside(text.getBoundingClientRect(),b.getBoundingClientRect(),'Toolbar label');if(text.scrollWidth>text.clientWidth+1)throw Error('Clipped toolbar text '+b.dataset.action);}
      const bagRect=grid.getBoundingClientRect(),sheet=panel.querySelector('.inventory-window').getBoundingClientRect();if(sheet.bottom-bagRect.bottom>1)throw Error('Backpack still reserves an unused action row');

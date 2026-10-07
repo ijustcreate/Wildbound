@@ -11,18 +11,23 @@ import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
 import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES } from "./src/controls.mjs";
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
+import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels} from './src/creation-preview.mjs';
 import { dialogNeighbour,focusDialogControl } from './src/dialog-navigation.mjs';
+import { createLobbySettingsControllerRouter } from './src/lobby-settings-controller.mjs';
 import { FieldKit } from "./src/field-kit.mjs";
 import { FrameMetrics, FixedClock } from "./src/performance.mjs";
 import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
 import { drawPlayer } from "./src/player-motion.mjs";
 import { generateWorld } from "./src/world.mjs";
 import { restoreForestLandscape } from './src/forest-landscape.mjs';
-import { MUSIC_TRACKS, musicTrack } from "./src/music.mjs";
+import { MUSIC_TRACKS, musicTrack, levelMusicPair } from "./src/music.mjs";
+import { AdaptiveMusic } from './src/adaptive-music.mjs';
+import { CombatMusicThreat } from './src/adaptive-music-threat.mjs';
 import { mountMusicPicker } from './src/music-picker.mjs';
 import { Game, CENTER, EVENTS, FINISH, cameraTarget } from "./src/core.mjs";
 import { Assets } from "./src/assets.mjs";
 import { Renderer, drawMenu,drawDie } from "./src/render.mjs";
+import {warmSealVortex} from './src/seal-vortex.mjs';
 import { drawBoard } from "./src/board.mjs";
 import { Animator } from "./src/animation.mjs";
 import { ITEM_ART_TYPES, drawItem } from "./src/item-art.mjs";
@@ -92,10 +97,12 @@ const keys = new Set(),
   previousPads = new Map(),
   controllerClaims = new Map(),
   pendingControllerJoins = new Set(),
-  pendingControllerClaims = new Set(),
+  pendingControllerSettings = new Set(),
+  pendingControllerClaims = new Map(),
   controllerLastSeen = new Map();
 const controllerClaimKey = (pad) =>
   `${pad.index}|${pad.id || "unknown"}|${pad.mapping || ""}`;
+const controllerSettingsRouter = createLobbySettingsControllerRouter();
 const trackDebugCode = createDebugCodeTracker();
 const pauseCheat = createPauseCheatTracker();
 const pauseCheatActive = () => screen==='play' && game.phase==='play' && paused && $('pause-dialog').open && [...document.querySelectorAll('dialog[open]')].at(-1)===$('pause-dialog');
@@ -114,13 +121,21 @@ function feedDebugCode(token,device='keyboard'){
     gameDebug.open($('pause-dialog'));
   }
 }
-function requestControllerClaim(pad, key, joinRequested = false) {
-  if (!window.desktop?.claimController || pendingControllerClaims.has(key)) return;
-  pendingControllerClaims.add(key);
+function requestControllerClaim(pad, key, joinRequested = false, settingsRequested = false) {
+  if (!window.desktop?.claimController) return;
+  const pending = pendingControllerClaims.get(key);
+  if (pending) {
+    if (settingsRequested) Object.assign(pending, { settingsRequested: true, joinRequested: false, requestedScreen: screen });
+    return;
+  }
+  const request = { joinRequested, settingsRequested, requestedScreen: screen };
+  pendingControllerClaims.set(key, request);
   window.desktop.claimController(key).then((claimed) => {
     if (claimed) {
       controllerClaims.set(pad.index, key);
-      if(joinRequested && screen==='lobby')pendingControllerJoins.add(key);
+      if(request.joinRequested && screen==='lobby')pendingControllerJoins.add(key);
+      if(request.settingsRequested && screen===request.requestedScreen && !document.querySelector('dialog[open]'))
+        pendingControllerSettings.add(key);
     }
   }).catch(() => {}).finally(() => pendingControllerClaims.delete(key));
 }
@@ -130,12 +145,15 @@ function releaseControllerClaim(key) {
     if (owned === key) controllerClaims.delete(index);
   controllerLastSeen.delete(key);
   pendingControllerJoins.delete(key);
+  pendingControllerSettings.delete(key);
+  controllerSettingsRouter.release(key);
 }
 let soundEnabled = localStorage.getItem('wildbound-sound') !== 'off';
 let musicVolume = Number(localStorage.getItem('wildbound-music-volume') ?? .45);
 const audio = new GameAudio(); audio.enabled=soundEnabled;
-let selectedMusic = musicTrack(localStorage.getItem('wildbound-level-music') || 'curious-groove'), levelMusicKey=null, lastLevelTrack=null;
-const music = new Audio(selectedMusic.file); music.loop=true;
+let selectedMusic = musicTrack('curious-groove'), levelMusicKey=null, musicIntensity=0;
+const music = new AdaptiveMusic(),musicThreat=new CombatMusicThreat();
+music.setPair(levelMusicPair('lobby'));
 const musicPreview = new Audio();musicPreview.loop=true;musicPreview.volume=0;
 let previewTrack=null,previewRequest=0;
 function stopMusicPreview(){previewRequest++;previewTrack=null;musicPreview.pause();musicPreview.volume=0;const status=$('music-status');if(status)status.textContent=(screen==='play'?'Expedition: ':'Menu: ')+selectedMusic.name;}
@@ -146,22 +164,30 @@ function previewMusic(track){
  musicPreview.pause();musicPreview.volume=0;musicPreview.src=track.file;
  $('music-status').textContent='Preview: '+track.name;
  audio.unlock();
- if(soundEnabled&&musicVolume>0)musicPreview.play().catch(()=>{if(request===previewRequest){stopMusicPreview();$('music-status').textContent='Preview unavailable. Choose another track.';}});
+ if(soundEnabled&&musicVolume>0)musicPreview.play().then(()=>{if(!soundEnabled||musicVolume<=0||!previewTrack)musicPreview.pause();}).catch(()=>{if(request===previewRequest){stopMusicPreview();$('music-status').textContent='Preview unavailable. Choose another track.';}});
 }
-function startMusic(){audio.unlock();if(soundEnabled&&musicVolume>0)music.play().catch(()=>{});}
+function startMusic(){audio.unlock();music.enabled=soundEnabled;if(soundEnabled&&musicVolume>0){music.resume();if(previewTrack&&musicPreview.paused)musicPreview.play().then(()=>{if(!soundEnabled||musicVolume<=0||!previewTrack)musicPreview.pause();}).catch(()=>{});}}
 window.addEventListener('pointerdown',startMusic);window.addEventListener('keydown',startMusic);
 document.addEventListener('focusin',e=>{if(e.target.matches('button,input,select'))audio.play('focus');});
 document.addEventListener('click',e=>{if(e.target.closest('button'))audio.play('click');});
 document.addEventListener('change',()=>audio.play('click'));
 function sound(type,actor){audio.play(type,actor);}
-function routeMusic(){
- const active=screen==='play',key=active?String(game.seed)+':'+(game.environment||'forest'):'menu';
- if(key!==levelMusicKey){levelMusicKey=key;if(active){const choice=localStorage.getItem('wildbound-level-music') || 'random';if(choice==='random'){const pool=MUSIC_TRACKS.slice(1).filter(t=>t.id!==lastLevelTrack);selectedMusic=pool[Math.floor(Math.random()*pool.length)];}else selectedMusic=musicTrack(choice);lastLevelTrack=selectedMusic.id;}else selectedMusic=MUSIC_TRACKS[0];music.src=selectedMusic.file;music.load();if(audio.unlocked)startMusic();if($('music-status'))$('music-status').textContent=(active?'Expedition: ':'Menu: ')+selectedMusic.name;}
+function routeMusic(dt=.016){
+ const active=screen==='play',television=screen==='lobby'&&playableLobby?.television?.players.size>0;
+ const tv=screen==='lobby'&&(playableLobby?.tvWildbound||(television?playableLobby.television:null));
+ const level=active?(game.generatedEnvironment||game.environment||'forest'):tv?'tv':'lobby';
+ const choice=active||tv?localStorage.getItem('wildbound-level-music')||'adaptive':'adaptive';
+ const key=level+':'+(active?game.seed:tv?.landscapeSeed||(television?'platformer':'menu'))+':'+choice;
+ if(key!==levelMusicKey){levelMusicKey=key;const pair=levelMusicPair(level,choice);selectedMusic=pair.calm;music.setPair(pair);if(audio.unlocked)startMusic();if(!previewTrack&&$('music-status'))$('music-status').textContent=(active?'Expedition: ':tv?'TV: ':'Menu: ')+selectedMusic.name+' · adaptive mix';}
+ musicIntensity=musicThreat.update(tv||game,dt,!paused&&(active||!!tv),{tv:!!tv});
 }
 // Audio fades must continue even when rendering is paused or the window is hidden.
+let musicFadeTime=performance.now();
 setInterval(()=>{
+ const now=performance.now(),dt=(now-musicFadeTime)/1000;musicFadeTime=now;
  const target=soundEnabled?musicVolume*audio.settings.master*(performance.now()<(audio.duckUntil||0)?.4:1):0;
- music.volume+=(Math.max(0,Math.min(1,target*(previewTrack ? .15 : 1)))-music.volume)*.08;
+ music.update({enabled:soundEnabled,volume:musicVolume*audio.settings.master,intensity:musicIntensity,preview:!!previewTrack,duck:performance.now()<(audio.duckUntil||0)?.4:1},dt);
+ if(!soundEnabled||musicVolume<=0){musicPreview.pause();musicPreview.volume=0;return;}
  musicPreview.volume+=(Math.max(0,Math.min(1,previewTrack?target:0))-musicPreview.volume)*.12;
 }, 16);
 window.addEventListener('wildbound-house-applied',e=>{
@@ -175,6 +201,7 @@ function wireGame() {
   game.controlLabels = controlLabels(mapping);
   game.spriteLibrary = assets.library;
   game.environment = game.houseWorldsEnabled?'house':$("environment").value;
+  if(game.phase==='lobby')game.mapMode = $("map-mode").value || game.mapMode || 'bounded';
   game.sharedStash = structuredClone(profiles.data.sharedStash || []);
   game.eventDuration = Number(
     localStorage.getItem("wildbound-event-duration") || 5,
@@ -430,38 +457,25 @@ function nameNewCharacter(p, done = () => {}) {
   dialog.innerHTML =
     '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back. You can type with the mouse/keyboard or use the on-screen keyboard.</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off"></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
   document.body.append(dialog);
+  dialog.updateControllerFamily=family=>{dialog.dataset.controllerFamily=family;dialog.querySelector('form>p').textContent=creationHelp(family)+' · Left/right: change options · '+creationButtonLabels(family).rotate+': rotate preview';};
+  dialog.updateControllerFamily(creationFamily(p));
   const input = dialog.querySelector("input");
   input.value = p.name;
   const appearance = structuredClone(DEFAULT_APPEARANCE);
   let creationDirection = 0,
-    creationPose = "idle",
-    creationGear = {},
+    creationMode = 'full',
     starterKit = "classic";
   const preview = () => {
     const c = dialog.querySelector("canvas").getContext("2d");
-    c.clearRect(0, 0, 240, 180);
-    c.save();
-    c.translate(120, 160);
-    c.scale(4, 4);
-    const [faceX, faceY] = directionVector(creationDirection);
-    drawPlayer(
-      c,
-      {
-        appearance,
-        faceX,
-        faceY,
-        animationAction: creationPose,
-        moving: creationPose === "run",
-        attack:
-          creationPose === "slash"
-            ? 0.34 * (1 - ((performance.now() / 1000) % 1))
-            : 0,
-        equipment: creationGear,
-      },
-      performance.now() / 1000,
-    );
-    c.restore();
+    const canvas=dialog.querySelector('canvas');canvas.dataset.previewMode=creationMode;
+    drawCreationPreview(c,appearance,{width:canvas.width,height:canvas.height,mode:creationMode,direction:creationDirection,time:performance.now()/1000});
   };
+  dialog.rotatePreview=delta=>{creationDirection=(creationDirection+delta+8)%8;preview();};
+  const views=document.createElement('div');views.className='creation-preview-views';
+  for(const [label,delta] of [['↶ View',-1],['View ↷',1]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>dialog.rotatePreview(delta);views.append(b);}
+  dialog.querySelector('canvas').after(views);
+  dialog.refreshPreviewFocus=target=>{if(!target)return;const label=target.getAttribute?.('aria-label');if(label==='Face details')creationMode='face';else if(label==='Hair style'||label==='Hair color')creationMode='hair';else if(!views.contains(target))creationMode='full';dialog.querySelectorAll('.creator-selected').forEach(q=>q.classList.remove('creator-selected'));target.classList.add('creator-selected');preview();};
+  dialog.addEventListener('focusin',e=>dialog.refreshPreviewFocus(e.target));
   const kitLabel = document.createElement("label");
   kitLabel.className = "creation-choice creation-starting-gear";
   kitLabel.textContent = "Starting gear";
@@ -558,6 +572,7 @@ function startGame() {
   }
   game.spriteLibrary = assets.library;
   game.environment = $("environment").value;
+  game.mapMode = $("map-mode").value || 'bounded';
   if(game.openingBoard)seatOpeningParty(game.players);
   if (!game.start()) return;
   game.difficulty = $("difficulty").value;
@@ -783,7 +798,7 @@ $("victory-chest-button").onclick = () => {
   if (p) game.openInventory(p, "victory");
 };
 function restartSameLevel() {
-  const level = { seed: game.seed, environment: game.environment, difficulty: game.difficulty, diceCount: game.diceCount };
+  const level = { seed: game.seed, environment: game.environment, mapMode:game.mapMode||'bounded', difficulty: game.difficulty, diceCount: game.diceCount };
   const party = game.players.map((p) => ({
     device: p.device, name: p.name, profileId: p.profileId,
     controllerFamily: p.controllerFamily, controllerName: p.controllerName,
@@ -794,6 +809,7 @@ function restartSameLevel() {
   game = new Game();
   game.seed = level.seed;
   game.environment = level.environment;
+  game.mapMode = level.mapMode;
   game.generatedEnvironment = "";
   game.difficulty = level.difficulty;
   game.diceCount = level.diceCount;
@@ -806,6 +822,7 @@ function restartSameLevel() {
     p.controllerName = saved.controllerName;
   }
   $("environment").value = level.environment;
+  $("map-mode").value = level.mapMode;
   $("difficulty").value = level.difficulty;
   $("dice-count").value = String(level.diceCount);
   startGame();
@@ -882,7 +899,7 @@ $("begin-button").onclick = startGame;
 $('party-settings').onclick=()=>$('settings-button').click();
 for(const button of document.querySelectorAll('[data-option-target]')){
   const select=$(button.dataset.optionTarget);
-  const label={environment:'Map','dice-count':'Dice',difficulty:'Difficulty'}[button.dataset.optionTarget];
+  const label={'map-mode':'Mode',environment:'Map','dice-count':'Dice',difficulty:'Difficulty'}[button.dataset.optionTarget];
   const update=()=>{if(select.id==='difficulty')$('difficulty-description').textContent={gentle:'Gentle · Each hit deals only 1 damage. A relaxed expedition.',adventure:'Adventure · Take 35% less damage. The balanced adventure.',wild:'Wild · Full enemy damage. For a tougher expedition.'}[select.value];button.textContent=label+'   ‹  '+select.options[select.selectedIndex].text+'  ›';button.setAttribute('aria-label',label+': '+select.options[select.selectedIndex].text);};
   button.onclick=()=>{select.selectedIndex=(select.selectedIndex+1)%select.options.length;select.dispatchEvent(new Event('change'));update();};
   button.changeOption=delta=>{select.selectedIndex=(select.selectedIndex+delta+select.options.length)%select.options.length;select.dispatchEvent(new Event('change',{bubbles:true}));update();};update();
@@ -985,9 +1002,15 @@ function selectSettingsTab(name, focus = false) {
 document.querySelectorAll('[data-settings-tab]').forEach(button => {
   button.onclick = () => selectSettingsTab(button.dataset.settingsTab, true);
 });
-$("settings-button").onclick = () => {
-  if (screen === "play") pause();
-  $("settings-dialog").showModal();
+let controllerDialogDevice = null;
+function openSettings(device = controllerDialogDevice || 'keyboard') {
+  const dialog = $("settings-dialog");
+  if (dialog.open) return;
+  if (screen === "play") pause(undefined, device);
+  dialog.dataset.ownerDevice = device;
+  const pad = Array.from(navigator.getGamepads?.() || []).find(pad => pad && device === 'pad:' + pad.index);
+  dialog.dataset.controllerFamily = pad ? controllerFamily(pad) : 'keyboard';
+  dialog.showModal();
   selectSettingsTab('display');
   renderPlayerMappings($("player-mappings"), game, mapping);
   const hero = game.players[0];
@@ -995,8 +1018,28 @@ $("settings-button").onclick = () => {
     hero.appearance ||= structuredClone(DEFAULT_APPEARANCE);
     appearanceControls($("appearance-settings"), hero.appearance, () => game.persist(), { compact: true });
   }
-};
-$("close-settings").onclick = () => { musicPicker.close(); $("settings-dialog").close(); };
+  document.querySelector('[data-settings-tab="display"]')?.focus();
+}
+function closeSettings() {
+  musicPicker.close();
+  $("settings-dialog").close();
+  delete $("settings-dialog").dataset.ownerDevice;
+  delete $("settings-dialog").dataset.controllerFamily;
+}
+$("settings-button").onclick = () => openSettings();
+$("close-settings").onclick = closeSettings;
+for (const type of ['keydown', 'cancel']) $("settings-dialog").addEventListener(type, event => {
+  if ($("settings-dialog").dataset.ownerDevice?.startsWith('pad:')) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
+$("settings-dialog").addEventListener('close', () => {
+  if (!$("settings-dialog").open) {
+    delete $("settings-dialog").dataset.ownerDevice;
+    delete $("settings-dialog").dataset.controllerFamily;
+  }
+});
 $("ui-scale").value = localStorage.getItem("wildbound-ui-scale") || "1";
 $("ui-scale").onchange = e => { localStorage.setItem("wildbound-ui-scale", e.target.value); document.documentElement.style.setProperty("--ui-scale", e.target.value); };
 $("board-size").value = localStorage.getItem("wildbound-board-size") || "compact";
@@ -1015,14 +1058,14 @@ $("sound-toggle").onchange = (e) => {
   else music.pause();
 };
 $("music-volume").value = String(musicVolume);
-$('music-track').append(new Option('Random expedition soundtrack','random'), ...MUSIC_TRACKS.map(t=>new Option(t.name,t.id)));
-$('music-track').value=localStorage.getItem('wildbound-level-music') || 'random';
-$('music-track').onchange=e=>{localStorage.setItem('wildbound-level-music',e.target.value);if(screen==='play'){levelMusicKey=null;routeMusic();}};
+$('music-track').append(new Option('Adaptive soundtrack for each level','adaptive'),new Option('Random expedition soundtrack','random'), ...MUSIC_TRACKS.map(t=>new Option(t.name,t.id)));
+$('music-track').value=localStorage.getItem('wildbound-level-music') || 'adaptive';
+$('music-track').onchange=e=>{localStorage.setItem('wildbound-level-music',e.target.value);levelMusicKey=null;routeMusic();};
 const musicPicker=mountMusicPicker($('music-track'),MUSIC_TRACKS,{preview:previewMusic,stop:stopMusicPreview});
 $('settings-dialog').addEventListener('close',()=>musicPicker.close());
 $('settings-dialog').addEventListener('cancel',e=>{if(musicPicker.picker.open){e.preventDefault();musicPicker.close();musicPicker.picker.querySelector('summary').focus();}});
 window.addEventListener('blur',()=>musicPicker.close());
-$('music-status').textContent='Choose a track or let each expedition select one at random.';
+$('music-status').textContent='Adaptive: a fixed calm track per level, fading into a contrasting combat companion. Custom and random choices are retained.';
 $('music-volume').oninput=e=>{musicVolume=Number(e.target.value);localStorage.setItem('wildbound-music-volume',String(musicVolume));if(musicVolume>0)startMusic();};
 for(const key of ['master','sfx','ui','ambience']){const label=document.createElement('label');label.className='field-label';label.textContent=(key==='ambience'?'AMBIENT LEVEL ':key.toUpperCase()+' ')+'VOLUME';const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.01;input.id=key+'-volume';input.value=audio.settings[key];input.setAttribute('aria-label',label.textContent);input.oninput=()=>audio.set(key,input.value);label.append(input);$('audio-mixer').append(label);}
 $('audio-night').checked=audio.settings.night;$('audio-night').onchange=e=>audio.set('night',e.target.checked);
@@ -1194,6 +1237,8 @@ function dialogController(pad, previous) {
   const dialog = [...document.querySelectorAll("dialog[open]")].at(-1);
   if (!dialog) return;
   if(dialog.dataset.ownerDevice && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
+  dialog.updateControllerFamily?.(controllerFamily(pad));
+  if(dialog.id==='character-name-dialog'&&((pad.buttons[4]?.pressed&&!previous[4])||(pad.buttons[5]?.pressed&&!previous[5]))){dialog.rotatePreview(pad.buttons[4]?.pressed?-1:1);return;}
   const controls = Array.from(
     (dialog.querySelector('.game-debug-console')||dialog).querySelectorAll(
       "button:not(:disabled), select:not(:disabled), input:not(:disabled), summary",
@@ -1278,6 +1323,7 @@ function dialogController(pad, previous) {
     selected.dispatchEvent(new Event("change", { bubbles: true }));
   }
   if(dialog.id==='pause-dialog'&&selected&&!selected.classList.contains('menu-focus'))focusDialogControl(dialog,selected);
+  if(dialog.id==='character-name-dialog')dialog.refreshPreviewFocus?.(selected);
   selected?.scrollIntoView({block:'nearest'});
   if (accept) {
     if(dialog.id==='pause-dialog'&&selected?.id==='pause-dev'){
@@ -1312,7 +1358,8 @@ function inputFrame() {
   const seenControllerClaims = new Set();
   for (const pad of pads) {
     let previous = previousPads.get(pad.index) || [];
-    const modal = !!document.querySelector("dialog[open]"),
+    const openDialog = [...document.querySelectorAll("dialog[open]")].at(-1),
+      modal = !!openDialog,
       rising = pad.buttons.some((b, i) => b.pressed && !previous[i]);
     let joinedNow = false;
     // Reclaim an existing explorer before considering drop-in character creation.
@@ -1329,8 +1376,23 @@ function inputFrame() {
     if (ownedKey === claimKey) {
       seenControllerClaims.add(claimKey);
     } else if (claimSupported) {
-      if (active && document.hasFocus()) requestControllerClaim(pad, claimKey, rising && screen==='lobby' && !modal);
+      if (active && document.hasFocus()) requestControllerClaim(pad, claimKey,
+        rising && screen==='lobby' && !modal && !pad.buttons[9]?.pressed,
+        !!pad.buttons[9]?.pressed && !previous[9] && ['home','lobby'].includes(screen) && !modal);
       previousPads.set(pad.index, pad.buttons.map((b) => b.pressed));
+      continue;
+    }
+    const settingsAction = controllerSettingsRouter.route({
+      pad, previous, screen, dialog: openDialog, pendingOpen: pendingControllerSettings.has(claimKey),
+    });
+    pendingControllerSettings.delete(claimKey);
+    if (settingsAction) {
+      if (settingsAction === 'open') openSettings(device);
+      else if (settingsAction === 'close') closeSettings();
+      else if (settingsAction === 'navigate') dialogController(pad, previous);
+      pendingControllerJoins.delete(claimKey);
+      inputs[device] = {};
+      previousPads.set(pad.index, pad.buttons.map(button => button.pressed));
       continue;
     }
     if (active && screen === "play" && rooms.role !== "client" &&
@@ -1348,7 +1410,16 @@ function inputFrame() {
           "Controller reconnected. Resume when everyone is ready.";
       }
     }
-    if (modal) dialogController(pad, previous);
+    if (modal) {
+      controllerDialogDevice = device;
+      try { dialogController(pad, previous); }
+      finally { controllerDialogDevice = null; }
+      if ($('settings-dialog').open) {
+        inputs[device] = {};
+        previousPads.set(pad.index, pad.buttons.map(button => button.pressed));
+        continue;
+      }
+    }
     if (
       !modal &&
       screen === "play" &&
@@ -1660,12 +1731,13 @@ function frame(now) {
   if (ready && screen === "lobby") {rooms.tick(game, dt, {});if(rooms.role!=='client')tickMeltingIce(game,dt,'lobby');}
   if(!audio.unlocked&&Array.from(navigator.getGamepads?.()||[]).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
   $('pvp-safe-indicator').hidden=screen!=='play'||game.pvp;
-  routeMusic(); audio.update(game,screen==="play"&&!paused);
+  routeMusic(elapsed); audio.update(game,screen==="play"&&!paused);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 try {
   await assets.load();
+  warmSealVortex();
   workshop = new Workshop(assets);
   framesWorkshop = new FrameWorkshop(assets);
   designer = new Designer(assets, EVENTS, ITEMS, () => {
