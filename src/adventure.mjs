@@ -1,4 +1,5 @@
 import {victoryRewards} from './victory-chest.mjs';
+import {damageStructureProjectile} from './structure-destruction.mjs';
 import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
 import {dropRavenLoot,spawnRavenFlock} from './raven.mjs';
 import {spawnSurfaceEcology,releaseGraveyardCritter} from './graveyard-ecology.mjs';
@@ -1151,6 +1152,7 @@ export const adventureMethods = {
         bolt.x += (bolt.vx / speed) * distance;
         bolt.y += (bolt.vy / speed) * distance;
         bolt.remaining -= distance;
+        if(damageStructureProjectile(this,bolt)){this.persist();bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true)){bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         const target = playerCombatTargets(this,bolt).find(
           (e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,bolt,(bolt.size||6)/2):e.hp > 0 && dist(e, bolt) < 16 + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
@@ -1346,6 +1348,7 @@ export const adventureMethods = {
       life: 3,
       remaining: chargedProjectileRange(charge),
       size: 6 + Math.round(strength * 8),
+      structureCharge: strength,
       damage: Math.round((def.damage+stat(p,'damageBonus')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
       glow: magicBoltGlow(def),

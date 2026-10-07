@@ -34,7 +34,7 @@ export function restoreSession(saved) {
   for(const e of g.enemies||[])if(e.kind==='lion'&&e.skin==='tiger'&&!e.sprite&&!e.rigOverride)e.skin='lion';
   g.forestLandscape=null;
   restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
-  if(g.house)upgradeHouseFeatures(g.house);
+  if(g.house&&!g.house.temple)upgradeHouseFeatures(g.house);
   if (!saved.state.turnOrder) {
     g.turnOrder = g.players.map((p) => p.id);
     g.locked = true;

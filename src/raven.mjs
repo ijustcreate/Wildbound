@@ -171,7 +171,7 @@ function findRoute(g, e, target) {
 }
 function structureSignature(g) {
   return (g.house?.doors || []).map(d=>d.open?1:0).join('')+':'+
-    (g.house?.walls || []).map(w=>w.broken || w.open?1:0).join('');
+    (g.house?.walls || []).map(w=>w.broken || w.open?1:0).join('')+':'+(g.house?.destructionRevision||0);
 }
 function routeTo(g,e,target) {
   const s=e.raven, signature=structureSignature(g), key=`${target.id ?? 'point'}:${Math.floor(target.x/12)}:${Math.floor(target.y/12)}`;

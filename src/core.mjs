@@ -47,6 +47,7 @@ import {collisionOffset, actorRadius, clearShot, navigateEnemy} from './navigati
 import { initializeField, record, tickField } from "./field-systems.mjs";
 import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
+import {damageStructureMelee} from './structure-destruction.mjs';
 import {
   waterAt,
   isShallow,
@@ -827,7 +828,9 @@ export class Game {
       );
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
+    const structureHit=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword')&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin);
     let stickHit=!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
+    if(structureHit){stickHit=true;this.persist();}
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
     for(const pane of this.house?.walls||[]){

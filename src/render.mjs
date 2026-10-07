@@ -33,6 +33,7 @@ import {drawNightEnemyEffects, nightEnemyOpacity} from './night-enemies.mjs';
 import {drawNightEquipment} from './night-equipment.mjs';
 import {NIGHT_KINDS} from './night-rigs.mjs';
 import {drawTemple} from './temple.mjs';
+import {drawDestruction} from './structure-destruction.mjs';
 import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt,drawWinterTile} from './ice-world.mjs';
 import { drawFieldWorld } from "./field-art.mjs";
 import {drawExpansion,drawTreeWeb} from './expansion.mjs';
@@ -242,9 +243,10 @@ export class Renderer {
       for(let i=0;i<7;i++){const a=i*Math.PI*2/6,x=patch.x+Math.cos(a)*patch.radius,y=patch.y+Math.sin(a)*patch.radius*.55;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.fill();
       ctx.strokeStyle='#e2ffff';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(patch.x-17,patch.y+5);ctx.lineTo(patch.x+9,patch.y-6);ctx.stroke();ctx.restore();
     }
-    drawExpansion(ctx,game);
+    drawExpansion(ctx,game,(p,margin=64)=>this.visible(p,w,h,margin));
     drawForestGround(ctx,game,p=>this.visible(p,w,h,160)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
     drawTemple(ctx,game,this.animator);
+    drawDestruction(ctx,game,p=>this.visible(p,w,h,80));
     drawBiomeAccents(ctx,game,p=>this.visible(p,w,h,120)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
     drawTracks(ctx, game);
     drawBansheeSteps(ctx,game);

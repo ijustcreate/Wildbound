@@ -1,9 +1,10 @@
 import {furnitureHeight,contains} from './house-design.mjs';
+import {sectionBlocked} from './structure-destruction.mjs';
 import {boardTableSupport} from './board-table.mjs';
 import {terrainSupport} from './terrain-support.mjs';
 export function supportHeight(g,a,offset=0){
  if(a.room)return 0;
- return Math.max(boardTableSupport(g,a.x,a.y),terrainSupport(g,a,offset),...(g?.house?.furniture||[]).filter(f=>contains(f,a.x,a.y+offset)).map(furnitureHeight));
+ return Math.max(boardTableSupport(g,a.x,a.y),terrainSupport(g,a,offset),...(g?.house?.furniture||[]).filter(f=>!f.destroyed&&contains(f,a.x,a.y+offset)&&sectionBlocked(f,a.x,a.y+offset,.1)).map(furnitureHeight));
 }
 export function startJump(a){
  // Jumping is gated by contact with the ground/support, never by a timer.

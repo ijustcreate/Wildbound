@@ -1,6 +1,6 @@
 # Moving Wildbound development between computers
 
-Current release: [1.0.74 accumulated changes, healing, old-well tunnels, lobby/portal/robot polish, visible inventory character and storage jumping](history/2026-10-06-healing-well-lobby-1.0.74.md). The user requested integration, a GitHub push and versioned desktop/web outputs. Inspect `wildbound-build.json` and the exact verification reports; rebuild on another machine. The old web root remains at its previous build; the new web version is published separately under `/Wildbound/releases/1.0.74/`.
+Current desktop release: [1.0.78 local wall, door, furniture and tree destruction](history/2026-10-06-structure-destruction-1.0.78.md), following 1.0.77 crypt rendering/doorway fixes and 1.0.76 inventory layout/tooltips. Inspect `wildbound-build.json` and the exact verification reports; rebuild on another machine. The hosted web root remains at its previous build; the separate web release remains `/Wildbound/releases/1.0.74/`.
 
 Previous local release: [1.0.72 accumulated UI/coast/spider/map-selector build](history/2026-10-06-ui-coast-spiders-1.0.72.md), plus subsequent creature/event/biome additions. Earlier local history notes describe pre-integration modified checkouts; they are not the final 1.0.74 commit identity.
 

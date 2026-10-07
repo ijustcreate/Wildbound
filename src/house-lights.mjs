@@ -1,4 +1,4 @@
-export const isHouseLight=f=>['lamp','ceiling_light'].includes(f.kind);
+export const isHouseLight=f=>!f.destroyed&&['lamp','ceiling_light'].includes(f.kind);
 export function houseLightOn(g,f){const t=((g.sky?.elapsed||0)%480+480)%480;return f.lightMode==='on'||f.lightMode!=='off'&&t>=280&&t<460;}
 export function houseLightSources(g){return (g.house?.furniture||[]).filter(f=>isHouseLight(f)&&houseLightOn(g,f)).map(f=>({x:f.x+f.w/2,y:f.y+f.h/2,radius:Math.max(40,Math.min(400,Number(f.lightRadius)||160)),intensity:.95,color:'#ffd58a'}));}
 export function toggleHouseLight(g,p){

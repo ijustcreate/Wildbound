@@ -4,6 +4,7 @@ import {damageEnemy} from './enemy-damage.mjs';
 import {tickJump} from './jumping.mjs';
 import {hasSetSkill} from './items.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
+import {drawBreakable} from './structure-destruction.mjs';
 export const TEMPLE_STAIRS={x:1040,y:590};
 export function templeLayout(){
  return {temple:true,floors:[{x:480,y:450,w:640,h:670}],paths:[],pools:[],trees:[],rooms:[{name:'THE JADE SANCTUM',x:800,y:510}],furniture:[],doors:[{x:752,y:1104,w:96,h:16,open:true}],walls:[{x:480,y:450,w:640,h:24},{x:480,y:450,w:24,h:670},{x:1096,y:450,w:24,h:670},{x:480,y:1104,w:272,h:16},{x:848,y:1104,w:272,h:16},...[[560,560],[984,560],[560,960],[984,960]].map(([x,y])=>({x,y,w:40,h:40}))]};
@@ -120,7 +121,7 @@ export function drawTemple(c,g,animator){
  if(g.generatedEnvironment==='temple'){
   c.save();
   // Stepped stone borders and geometric jade inlays frame the temple halls.
-  for(const wall of g.house.walls){c.fillStyle='#697859';c.fillRect(wall.x,wall.y,wall.w,wall.h);c.strokeStyle='#bbc392';c.lineWidth=2;for(let x=wall.x;x<wall.x+wall.w;x+=24)for(let y=wall.y;y<wall.y+wall.h;y+=16)c.strokeRect(x,y,Math.min(24,wall.x+wall.w-x),Math.min(16,wall.y+wall.h-y));}
+  for(const wall of g.house.walls)drawBreakable(c,g,wall,(c,wall)=>{c.fillStyle='#697859';c.fillRect(wall.x,wall.y,wall.w,wall.h);c.strokeStyle='#bbc392';c.lineWidth=2;for(let x=wall.x;x<wall.x+wall.w;x+=24)for(let y=wall.y;y<wall.y+wall.h;y+=16)c.strokeRect(x,y,Math.min(24,wall.x+wall.w-x),Math.min(16,wall.y+wall.h-y));},'temple');
   for(const x of [518,1082])for(let y=490;y<1100;y+=48){c.strokeStyle='#c5ae62';c.lineWidth=2;c.strokeRect(x-7,y,14,14);c.fillStyle='#5f956d';c.fillRect(x-3,y+4,6,6);}
   for(const [x,y] of [[528,520],[1072,520],[528,1060],[1072,1060]]){c.fillStyle='#463a2b';c.fillRect(x-6,y-8,12,20);drawParticleEffect(c,'torch',x,y-10,g.time,x+y);}
   for(let x=490;x<1110;x+=28){c.strokeStyle='#315d3b';c.lineWidth=3;c.beginPath();c.moveTo(x,455);c.lineTo(x+7,485+(x%4)*8);c.stroke();c.fillStyle='#4d7b41';c.fillRect(x+2,471,11,5);}

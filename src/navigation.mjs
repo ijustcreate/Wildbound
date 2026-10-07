@@ -11,7 +11,7 @@ export function clearShot(g,a,b,r=2){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.
 export function advanceShot(g,b,dt,r=2){const dx=b.vx*dt,dy=b.vy*dt,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));for(let i=0;i<n;i++){const x=b.x+dx/n,y=b.y+dy/n;if(g.projectileBlocked(x,y,r,true)){b.life=0;return false;}b.x=x;b.y=y;}return true;}
 const caches=new WeakMap(),routes=new WeakMap();
 function gridFor(g,e){
- const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+Math.floor((g.time||0)/2);
+ const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+(g.house?.destructionRevision||0)+':'+Math.floor((g.time||0)/2);
  let cache=caches.get(g);if(!cache||cache.house!==g.house||cache.signature!==signature){cache={house:g.house,signature,grids:new Map()};caches.set(g,cache);}
  const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),jump=!!creatures[e.kind]?.behaviors.jump,key=[radius,door,flying,jump].join(':');
  if(!cache.grids.has(key)){const grid=new Uint8Array(2500);for(let y=0;y<50;y++)for(let x=0;x<50;x++)grid[y*50+x]=!g.blocked(x*32+16,y*32+16,radius,flying,false,door,collisionOffset(g,e),jump?20:0);cache.grids.set(key,grid);}

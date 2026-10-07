@@ -7,6 +7,7 @@ import {advanceShot,clearShot} from './navigation.mjs';
 import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
 import { creatures } from "./definitions.mjs";
+import {stampedeDestruction,tickDestruction} from './structure-destruction.mjs';
 export const HAZARD_EVENTS = [
  {name:'A bargain with the bushes',type:'merchant',kind:'merchant',count:0,weight:5,verse:'A hat, a horse, a fire so bright.\nTrade well before they leave tonight.',tip:'Marlow Moss has set up camp away from the board. He stays until this map ends.'},
  {name:'The dunes take flight',type:'sandstorm',kind:'sandstorm',environment:'desert',count:0,weight:7,duration:45,intensity:1,verse:'The desert shakes its golden mane.\nHold fast until the dunes are tame.',tip:'Sand sweeps across the dunes. Stay together until the storm passes.'},
@@ -153,6 +154,7 @@ export function startHazard(g, event) {
   return false;
 }
 export function tickHazards(g, dt) {
+  tickDestruction(g,dt);
   tickMerchant(g,dt);
   tickSnow(g,dt);
   for (const b of g.fireballs || []) {
@@ -350,6 +352,7 @@ export function tickHazards(g, dt) {
   g.bananas = g.bananas.filter((b) => b.life > 0);
   for (const e of g.enemies)
     if ((e.stampeding || e.kind === "rhino") && !e.aggro && e.hp > 0) {
+      const from={x:e.x,y:e.y};
       e.x += e.runDirection * e.speed * dt;
       e.y =
         e.lane -
@@ -358,6 +361,7 @@ export function tickHazards(g, dt) {
           : 0);
       e.step += e.speed * dt * 0.13;
       e.moving = true;
+      stampedeDestruction(g,e,from);
       for (const p of g.players)
         if (!p.room && Math.hypot(e.x - p.x, e.y - p.y) < 28)
           g.hurt(p, e.damage, e);

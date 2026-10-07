@@ -1,7 +1,8 @@
 import {generateWorld} from './world.mjs';
 import {collisionOffset,actorRadius} from './navigation.mjs';
 import {activeHouse} from './house-design.mjs';
-const layoutKey=h=>JSON.stringify(h&&{...h,walls:h.walls.map(({broken,...w})=>w),doors:h.doors.map(d=>({...d,open:false}))});
+const authoredRect=({broken,sectionDamage,destructionRevision,destructionGroup,destroyed,...r})=>r;
+const layoutKey=h=>{if(!h)return JSON.stringify(h);const {destructionRevision,...design}=h;return JSON.stringify({...design,walls:h.walls.map(authoredRect),doors:h.doors.map(d=>({...authoredRect(d),open:false})),furniture:(h.furniture||[]).map(authoredRect)});};
 export function applyChangedHouse(game){
  if(game.generatedEnvironment!=='house'||layoutKey(game.house)===layoutKey(activeHouse()))return false;
  return applyActiveHouse(game);
