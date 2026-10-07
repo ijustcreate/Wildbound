@@ -1,5 +1,6 @@
 import {victoryRewards} from './victory-chest.mjs';
 import {damageStructureProjectile} from './structure-destruction.mjs';
+import {openNpcDialogue,npcDialogueAction} from './npc-quests.mjs';
 import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
 import {dropRavenLoot,spawnRavenFlock} from './raven.mjs';
 import {spawnSurfaceEcology,releaseGraveyardCritter} from './graveyard-ecology.mjs';
@@ -249,6 +250,7 @@ export const adventureMethods = {
     this.victoryChest = true;
     this.victoryChestOpened=false;this.victoryChestArt=null;
     this.merchant=null;
+    this.questNpcs=[];this.questSceneToken=null;this.questSpawnTimer=0;
     this.victoryRewards=victoryRewards(this.players,this.random);
     this.loot = [];
     for (const p of this.players) {
@@ -626,6 +628,7 @@ export const adventureMethods = {
     return ok;
   },
   inventoryAction(p, action) {
+    if(npcDialogueAction(this,p,action))return;
     if (typeof action !== "string") return;
     const u = p.ui;
     if (!u) return;
@@ -1068,8 +1071,9 @@ export const adventureMethods = {
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
+        if(!sealPriority&&!this.openingBoard&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
         if (!sealPriority && !this.openingBoard && (edge('interact') || (p.device?.startsWith('pad:') && edge('attack'))) && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
-          const opened = interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p);
+          const opened = !!p.ui||openNpcDialogue(this,p)||interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
         if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
@@ -1091,7 +1095,7 @@ export const adventureMethods = {
         } else {
           if (!sealPriority && old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if(interactMystery(this,p)||toggleHouseLight(this,p)){}
+            if(openNpcDialogue(this,p)||interactMystery(this,p)||toggleHouseLight(this,p)){}
             else if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)) {}

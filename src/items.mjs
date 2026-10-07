@@ -379,6 +379,13 @@ export const ITEMS = {
     description: "Resist the biting plant’s root slow.",
   },
   cape: { name: "Traveller cape", slot: "cape", armor: 2, color: "#985bad" },
+  // Keeper reference rewards; the band uses the existing neck equipment slot.
+  keeper_crown: {name:'Crown of Second Growth',base:'hat',slot:'head',style:'horned',armor:4,magnet:8,stack:1,rarity:'rare',questReward:true,color:'#68aaff',artColor:'#493e49',description:'A crown of dead branching wood, hung with cyan beads and amber keepsakes.'},
+  keeper_robes: {name:'Cloak of Many Paths',base:'armor',slot:'chest',style:'robe',armor:6,stack:1,rarity:'rare',questReward:true,color:'#68aaff',artColor:'#087b79',description:'Layered teal robes with red binding, a high wrapped collar and hanging parchment story charms.'},
+  keeper_sash: {name:'Sash of Remnants',base:'pants',slot:'pants',style:'plain',armor:4,stack:1,rarity:'rare',questReward:true,color:'#68aaff',artColor:'#163f43',description:'A dark leather belt of pockets, with a warm gold buckle and teal, red-bound parchment panels.'},
+  keeper_staff: {name:'Staff of Returning',base:'staff',slot:'hand1',eitherHand:true,magic:true,damage:20,manaCost:10,stack:1,rarity:'rare',questReward:true,color:'#68aaff',artColor:'#493e49',description:'A one-handed dark branch staff with an amber tip and dangling bells. Uses the normal staff healing and melee abilities.'},
+  keeper_blade: {name:'Blade of Quiet Futures',base:'sword',slot:'hand1',damage:28,reach:76,stack:1,rarity:'rare',questReward:true,color:'#68aaff',artColor:'#a5e4ed',description:'A cyan-silver longsword with a dark branching guard and amber pommel. Can be equipped in either hand.'},
+  keeper_band: {name:'Band of Open Doors',base:'charm',slot:'neck',armor:2,magnet:12,stack:1,rarity:'rare',questReward:true,color:'#68aaff',artColor:'#40cbe6',description:'A dark engraved band with a bright cyan stone, worn on a cord in the neck slot.'},
   wand: {
     name: "Glimmer wand",
     slot: "hand1",
@@ -1050,7 +1057,7 @@ export function rollGear(random = Math.random, minTier = null) {
   const r = random(),
     tier = minTier || (r < 0.62 ? "common" : r < 0.9 ? "rare" : "unique");
   const pool = Object.keys(ITEMS).filter(
-    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && !ITEMS[id].npcOnly && !ITEMS[id].bossOnly && ITEMS[id].rarity === tier,
+    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && !ITEMS[id].npcOnly && !ITEMS[id].bossOnly && !ITEMS[id].questReward && ITEMS[id].rarity === tier,
   );
   return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
 }

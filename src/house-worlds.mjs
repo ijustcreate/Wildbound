@@ -1,6 +1,7 @@
 import {snapshot} from './rooms.mjs';
 import {seatOpeningParty} from './opening-board.mjs';
 import {restoreForestLandscape} from './forest-landscape.mjs';
+import {preserveQuestGear} from './npc-quests.mjs';
 
 export const HOUSE_WORLD_DESTINATIONS=['temple','forest','ice','desert'];
 const protectedKeys=new Set(['houseWorlds','houseWorldsEnabled','random','persist','onSound','spriteLibrary','saving','saveError','controlLabels']);
@@ -29,12 +30,15 @@ export function travelHouseWorlds(g,total){
     state=capture(fresh);
   }
   const devices=new Map(g.players.map(p=>[p.id,p.device]));
+  // Contracts belong to the character, not to the saved world snapshot.
+  const quests=new Map(g.players.map(p=>[p.id,structuredClone(p.npcQuests||{})]));
+  const questOwners=new Map(g.players.map(p=>[p.id,structuredClone(p)]));
   for(const key of Object.keys(g))if(!protectedKeys.has(key)&&typeof g[key]!=='function'&&!(key in state))delete g[key];
   Object.assign(g,structuredClone(state));
   g.explored=new Set(state.explored||[]);g.forestLandscape=null;
   restoreForestLandscape(g,state.forestLandscapeVersion);
   g.houseWorlds=mode;g.houseWorldsEnabled=true;
-  for(const p of g.players){p.device=devices.get(p.id)??p.device;p.previousInput={};p.ui=null;p.charge=0;}
+  for(const p of g.players){p.device=devices.get(p.id)??p.device;p.npcQuests=quests.get(p.id)||{};if(questOwners.has(p.id))preserveQuestGear(questOwners.get(p.id),p);p.previousInput={};p.ui=null;p.charge=0;}
   g.roll=null;g.eventOnBoard=false;
   g.message(to==='house'?'Five or eight — everyone returns to the house.':'Until the dice read five or eight, in this world you must wait.');
   g.persist();

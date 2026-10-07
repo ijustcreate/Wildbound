@@ -11,6 +11,7 @@ app.disableHardwareAcceleration();
 app.whenReady().then(async () => {
   const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true } });
   await win.loadFile(path.join(root, 'index.html'));
+  await win.webContents.executeJavaScript('window.wildboundBoot.ready');
   const moduleURL = pathToFileURL(path.join(root, 'src/player-motion.mjs')).href;
   const rig = JSON.parse(fs.readFileSync(path.join(root, 'authored/rigs.json'), 'utf8')).player;
   const png = await win.webContents.executeJavaScript(`(async () => {

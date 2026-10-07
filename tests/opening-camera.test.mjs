@@ -7,6 +7,7 @@ test("Opening stays tightly framed through dice and token movement, releasing at
   const p = g.addPlayer("keyboard");
   g.addPlayer("pad:0");
   g.start();
+  const spawn=g.spawnEvent.bind(g);g.spawnEvent=()=>spawn(0);
   const before = expeditionCameraTarget(g, 720, 426);
   assert.ok(before.zoom > 2.5, "Opening stage should tightly frame board and party");
   assert.equal(before.x, 800);

@@ -34,7 +34,7 @@ export const LOBBY_OBJECTS = [
   {id:'target-lever',name:'Target lever',x:465,y:548},
   {id:'character-station',name:'Explorer station',x:635,y:165},
   {id:'television',name:'Arcade TV',x:785,y:165},
-  {id:'starter-chest',name:'Starter chest',x:950,y:520},
+  {id:'starter-chest',name:'Starter chest',x:950,y:548},
 ];
 const LOOK_PRESETS = [
   { skin:'#d9ab76', shirt:'#39745b', pants:'#665b87', shoes:'#49372d', hair:'crop', hairColor:'#593923' },

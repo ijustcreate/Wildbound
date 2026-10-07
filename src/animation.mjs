@@ -1,4 +1,5 @@
 import {drawGorilla} from './temple.mjs';
+import {humanoidArtStatus} from './humanoid-hd.mjs';
 import {drawAnaconda} from './anaconda-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
@@ -47,6 +48,8 @@ export class Animator {
     this.frameCache = new WeakMap();
     this.rigSurface = document.createElement("canvas");
     this.rigSurface.width = this.rigSurface.height = 256;
+    this.humanoidSurface=document.createElement('canvas');
+    this.humanoidSurface.width=this.humanoidSurface.height=512;
     this.stampedeFrames = new Map();
     this.playerFrames = new Map();
     this.playerRevision = playerMotionRevision;
@@ -142,6 +145,7 @@ export class Animator {
                 2,
             ) / 2;
         const key = JSON.stringify([
+          humanoidArtStatus().revision,
           facingIndex(actor.faceX, actor.faceY),
           frame,
           actor.equipment,
@@ -156,21 +160,21 @@ export class Animator {
         let surface = this.playerFrames.get(key);
         if (!surface) {
           surface = document.createElement("canvas");
-          surface.width = surface.height = 256;
+          surface.width = surface.height = 384;
           const cc = surface.getContext("2d");
-          cc.translate(128, 128);
+          cc.scale(4,4);cc.translate(48,48);cc.imageSmoothingEnabled=false;
           rigSubject(nameKey).draw(cc, { ...actor, playerFrame: frame }, time);
-          if (this.playerFrames.size >= 96)
+          if (this.playerFrames.size >= 64)
             this.playerFrames.delete(this.playerFrames.keys().next().value);
           this.playerFrames.set(key, surface);
         }
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(
           surface,
-          Math.round(actor.x - (size * 8) / 3),
-          Math.round(actor.y - (size * 8) / 3),
-          (size * 16) / 3,
-          (size * 16) / 3,
+          Math.round(actor.x - size),
+          Math.round(actor.y - size),
+          size * 2,
+          size * 2,
         );
         return;
       }
@@ -270,10 +274,13 @@ export class Animator {
         );
         return;
       }
-      const c = this.rigSurface.getContext("2d");
-      c.clearRect(0, 0, 256, 256);
+      const subject=rigSubject(nameKey),humanoid=!!(subject.data?.joints?.handL&&subject.data?.joints?.footL&&!subject.data.skeleton&&!subject.data.robot);
+      const surface=humanoid?this.humanoidSurface:this.rigSurface;
+      const c = surface.getContext("2d");
+      c.clearRect(0, 0, surface.width, surface.height);
       c.save();
-      c.translate(128, 128);
+      if(humanoid)c.scale(4,4);
+      c.translate(humanoid?64:128,humanoid?64:128);
       const cfg = creatures[nameKey];
       const motionDuration =
         actor.state === "windup"
@@ -296,11 +303,11 @@ export class Animator {
       c.restore();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
-        this.rigSurface,
-        Math.round(actor.x - (size * 8) / 3),
-        Math.round(actor.y - (size * 8) / 3),
-        (size * 16) / 3,
-        (size * 16) / 3,
+        surface,
+        Math.round(actor.x - size * (humanoid?4:8) / 3),
+        Math.round(actor.y - size * (humanoid?4:8) / 3),
+        size * (humanoid?8:16) / 3,
+        size * (humanoid?8:16) / 3,
       );
       return;
     }

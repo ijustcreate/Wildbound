@@ -21,7 +21,7 @@ function tick(g,e,p,seconds){for(let n=0;n<Math.ceil(seconds/.05);n++){e.cooldow
 
 test('Banshee event appends without shifting existing indices, spawns one queen and exactly five bones',()=>{
  assert.equal(EVENTS[0].kind,'lion');assert.equal(EVENTS[2].kind,'snake');assert.equal(EVENTS[54].name,BANSHEE_EVENT.name);
- assert.equal(EVENTS.filter(e=>e.kind==='banshee_queen').length,1);
+ assert.equal(EVENTS.filter(e=>e.kind==='banshee_queen'&&e.environment!=='graveyard').length,1);
  const {g}=field();g.spawnEvent(EVENTS.findIndex(e=>e.kind==='banshee_queen'));
  assert.equal(g.enemies.length,6);assert.equal(g.eventSpawnCount,6);assert.equal(g.enemies.filter(e=>e.kind==='banshee_queen').length,1);
  assert.equal(g.enemies.filter(e=>['skeleton','skeleton_unarmed'].includes(e.kind)).length,5);

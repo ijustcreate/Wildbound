@@ -1,0 +1,62 @@
+.hero-panel.npc-dialogue-session {
+  display:flex;flex-direction:column;gap:8px;padding:12px;
+  overflow:hidden;container-type:inline-size;container-name:npc-dialogue;
+  color:#302d22;
+}
+.hero-panel.npc-dialogue-session > header {
+  flex:none;font:700 15px/1.25 system-ui;margin:0;padding:0 38px 0 0;
+  white-space:normal;overflow-wrap:anywhere;
+}
+.hero-panel.npc-dialogue-session > .inventory-progress-row {display:none;}
+.hero-panel.npc-dialogue-session > [data-action="close"] {position:absolute;right:8px;top:6px;}
+.npc-dialogue-session .npc-dialogue {
+  display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;min-width:0;
+}
+.npc-dialogue-cast {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;flex:none;}
+.npc-dialogue-person {margin:0;min-width:0;overflow:hidden;background:#cdbb8e;border:1px solid #9c8054;border-radius:4px;}
+.npc-dialogue-person canvas {
+  display:block;width:100%;height:auto;max-height:132px;object-fit:contain;
+  background:radial-gradient(ellipse at 50% 65%,#c1c394,#7c8b65);image-rendering:pixelated;
+}
+.npc-dialogue-npc canvas {background:radial-gradient(ellipse at 50% 65%,#dcc69b,#9a8762);}
+.npc-dialogue-person figcaption {display:flex;flex-direction:column;gap:2px;padding:5px 8px;overflow-wrap:anywhere;}
+.npc-dialogue-person strong {font:700 14px/1.2 Georgia,serif;color:#263d2d;}
+.npc-dialogue-person small {font:11px/1.25 system-ui;color:#55482e;}
+.npc-dialogue-body {flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#947b50 #d9c99f;padding:3px;}
+.npc-dialogue-heading {display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.npc-dialogue-heading h2 {font:700 18px/1.2 Georgia,serif;margin:0 0 8px;overflow-wrap:anywhere;}
+.npc-dialogue-stage {white-space:nowrap;color:#665432;font:11px system-ui;}
+.hero-panel.npc-dialogue-session p {min-height:0;}
+.hero-panel.npc-dialogue-session .npc-dialogue-text {font:15px/1.45 Georgia,serif;white-space:pre-wrap;margin:0 0 12px;overflow-wrap:anywhere;}
+.npc-dialogue-quest {padding:8px 10px;margin:0 0 12px;background:#f4e8c070;border:1px solid #a28a57;border-left:4px solid #94783c;border-radius:3px;}
+.npc-dialogue-quest.ready {border-left-color:#377346;}
+.npc-dialogue-quest p {font:12px/1.4 system-ui;margin:4px 0;white-space:pre-wrap;}
+.npc-dialogue-quest small {display:block;font:11px/1.4 system-ui;color:#554326;}
+.npc-dialogue-quest progress {display:block;width:100%;height:9px;margin:4px 0;accent-color:#407846;}
+.npc-dialogue-choices {display:flex;flex-direction:column;gap:7px;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice {
+  display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:3px 9px;
+  width:100%;margin:0;padding:8px 10px;min-height:42px;text-align:left;
+  border:2px solid #8a7954;border-image:none;background:#f0e3bb;color:#302d22;
+  font:13px/1.3 system-ui;border-radius:3px;box-shadow:none;overflow-wrap:anywhere;
+}
+.npc-dialogue-choice-key {font:700 10px/1.2 system-ui;min-width:20px;color:#524322;}
+.npc-dialogue-choice-detail {grid-column:2;font:11px/1.35 system-ui;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice:is(.selected,:focus-visible) {
+  background:#d2deb1;color:#193a25;border-color:#355c36!important;
+  outline:2px solid #805c25;outline-offset:-4px;box-shadow:inset 5px 0 #355c36;
+}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice:disabled {background:#d4caaa;color:#655d48;opacity:.7;}
+.npc-dialogue-notice {margin:10px 0 0;font:12px/1.4 system-ui;color:#61451e;white-space:pre-wrap;}
+.npc-dialogue-help {flex:none;font:11px/1.4 system-ui;color:#53472e;overflow-wrap:anywhere;}
+@container npc-dialogue (max-width:340px) {
+  .npc-dialogue-cast {gap:6px;}
+  .npc-dialogue-person canvas {max-height:92px;}
+  .npc-dialogue-person figcaption {padding:4px;}
+  .npc-dialogue-person strong {font-size:12px;}
+  .hero-panel.npc-dialogue-session .npc-dialogue-text {font-size:13px;}
+  .hero-panel.npc-dialogue-session button.npc-dialogue-choice {padding:7px;gap:3px 6px;}
+}
+.npc-dialogue-session.npc-dialogue-compact .npc-dialogue-person canvas {max-height:76px;}
+.npc-dialogue-session.npc-dialogue-compact .npc-dialogue {gap:6px;}
+.npc-dialogue-session.npc-dialogue-compact .npc-dialogue-person small {display:none;}

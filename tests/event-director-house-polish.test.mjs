@@ -48,7 +48,7 @@ test('Every encounter uses its own author stats; squad, edited species and expli
  const definitions={lion:{edited:true,stats:{hp:155,speed:61,damage:19}}};assert.equal(eventUnitStats(pool[0],null,'lion',definitions).hp,155);assert.equal(eventUnitStats(pool[0],{manualOverride:true,hp:90},'lion',definitions).hp,90);
 });
 test('Default event roster has unique save keys, two-line flavor and actionable tips without generic placeholder copy',()=>{
- assert.equal(EVENTS.length,69);assert.equal(new Set(EVENTS.map(e=>e.name)).size,69);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60).every(e=>e.environment==='graveyard'));
+ assert.equal(EVENTS.length,70);assert.equal(new Set(EVENTS.map(e=>e.name)).size,70);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');
  for(const e of EVENTS){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
 });
 test('Native House architecture is read-only, balanced and honors saved open doors and floor bounds',()=>{

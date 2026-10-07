@@ -78,6 +78,7 @@ test("Board has 49 linked positions and interpolated hopping figures", () => {
 });
 test("Figure movement completes before event and next turn", () => {
   const g = new Game(() => 0.5);
+  const spawn=g.spawnEvent.bind(g);g.spawnEvent=()=>spawn(0);
   g.addPlayer("keyboard");
   g.start();
   g.hitTable(g.players[0]);

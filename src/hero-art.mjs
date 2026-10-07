@@ -1,7 +1,9 @@
 import {gearPalette} from './gear-art.mjs';
+import {detailedTorso} from './humanoid-hd.mjs';
 
 // Skin the torso in its own frame so a bent or fallen body keeps its volume.
 export function drawHeroTorso(c,p,d,color,skin,back){
+  if(detailedTorso(c,p,d,color,skin,back))return;
   const top=p.chest,bottom=p.pelvis,dx=bottom.x-top.x,dy=bottom.y-top.y;
   const length=Math.max(3,Math.hypot(dx,dy));
   const width=d===2||d===6?5:d%2?5.8:6.4,mat=gearPalette(null,color);
@@ -29,6 +31,10 @@ export function drawHeroTorso(c,p,d,color,skin,back){
 // Rotate completed pixel coverage, rather than antialiasing every tiny rectangle.
 export function withPixelRotation(c,anchor,angle,paint){
   if(Math.abs(angle)<.035)return paint();
+  if(c.__humanoidDetail&&c.drawImage){
+    c.save();c.translate(anchor.x,anchor.y);c.rotate(angle);c.translate(-anchor.x,-anchor.y);
+    try{return paint();}finally{c.restore();}
+  }
   const original=c.fillRect,pixels=new Map();
   c.fillRect=function(x,y,w,h){
     for(let yy=Math.round(y);yy<y+h;yy++)for(let xx=Math.round(x);xx<x+w;xx++)pixels.set(`${xx},${yy}`,this.fillStyle);

@@ -2,8 +2,10 @@ import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
 import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
 import {drawSuccubusHorns} from './succubus-attachments.mjs';
+import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
+  if(detailedProcedural(c,p.chest,pen=>wearableDetails(pen,p,gear,look,d,time,cosmetics),materialIndex(gear.chest||gear.pants)))return;
   const back = d >= 3 && d <= 5,
     side = d === 2 || d === 6;
   const rect = (x, y, w, h, color) => {
@@ -76,6 +78,7 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
 export function directionalHelmet(c, id, h, d, cosmetics = {}) {
   const def=ITEMS[id];
   if(!def) return false;
+  if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics),materialIndex(id,'metal')))return true;
   const p=gearPalette(id,cosmetics.dye),r=gearPixels(c,h);
   const back=d>=3&&d<=5,side=d===2||d===6;
   const front=d===0?0:d<4?-3:3;

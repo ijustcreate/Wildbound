@@ -88,6 +88,7 @@ export class Profiles {
     );
     p.profileId = h.id;
     p.name = h.name;
+    p.npcQuests = structuredClone(h.npcQuests || {});
     p.hunterPet=restoreHunterPet(h.hunterPet);
     p.appearance = structuredClone(h.appearance || null);
     p.inventory = structuredClone(h.inventory);
@@ -126,6 +127,7 @@ export class Profiles {
       Object.assign(h, {
         field: structuredClone(p.field || {}),
         name: p.name,
+        npcQuests: structuredClone(p.npcQuests || {}),
         hunterPet:petRecord(p.hunterPet),
         appearance: structuredClone(p.appearance || null),
         inventory: structuredClone(p.inventory),

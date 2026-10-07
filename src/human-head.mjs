@@ -1,5 +1,6 @@
 import { mixGearColor } from './gear-art.mjs';
 import { shade, hairCoversEar } from './appearance.mjs';
+import {drawDetailedHead} from './humanoid-hd.mjs';
 
 const palettes = new Map();
 export function skinPalette(base) {
@@ -17,6 +18,7 @@ export function skinPalette(base) {
 
 // Two passes let hair cover the skull without burying the ear or profile nose.
 export function drawHumanHead(c, points, direction, skin, look, visible, foreground = false, outline = '#302b2b') {
+  if(drawDetailedHead(c,points,direction,skin,look,visible,foreground))return;
   const h = points.head, p = skinPalette(skin);
   const r = (x, y, w, height, color) => {
     c.fillStyle = color;

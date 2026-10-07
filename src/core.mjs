@@ -48,6 +48,8 @@ import { initializeField, record, tickField } from "./field-systems.mjs";
 import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
 import {damageStructureMelee} from './structure-destruction.mjs';
+import {NPC_QUEST_EVENT} from './npc-quest-data.mjs';
+import {spawnQuestNpc,tickNpcQuests,recordNpcQuestKill} from './npc-quests.mjs';
 import {
   waterAt,
   isShallow,
@@ -409,6 +411,7 @@ EVENTS.push(structuredClone(ZOMBIE_EVENT));
 EVENTS.push({name:'Velvet feet in the sand',kind:'tarantula',count:2,hp:110,speed:48,damage:16,weight:8,spiderNest:true,verse:'Soft gold hides eight silent feet.\nThe velvet hunters guard their keep.',tip:'Tarantulas are slower and tougher than black spiders. Avoid their bite and destroy the eggs.'});
 EVENTS.push(structuredClone(OLD_WELL_EVENT));
 EVENTS.push(...GRAVEYARD_EVENTS.map(e=>structuredClone(e)));
+EVENTS.push({...NPC_QUEST_EVENT});
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {
@@ -1050,6 +1053,7 @@ export class Game {
     this.event.chainRuntime = 0;
     this.runEventActions("start");
     if(this.event.type==='old_well'){spawnOldWell(this);this.onSound('event');return;}
+    if(this.event.type==='friendly_npc'){spawnQuestNpc(this);this.onSound('event');return;}
     if(this.event.type==='mausoleum'){spawnMausoleumEvent(this);this.onSound('event');return;}
     if(['raven_flock','murder_of_crows'].includes(this.event.type)){
       const birds=spawnRavenFlock(this,{...this.event,murder:this.event.type==='murder_of_crows',x:800,y:1040});
@@ -1258,6 +1262,7 @@ export class Game {
     tickNightCycle(this, dt);
     ensureTemple(this);
     this.tickAdventure(dt, inputs);
+    tickNpcQuests(this,dt);
     if(this.roll)return;
     tickGhosts(this,dt);
     tickHunterPets(this,dt,inputs);
@@ -2049,6 +2054,7 @@ export class Game {
       }
     }
     for (const e of this.enemies.filter((e) => e.hp <= 0 && !e.defeated)) {
+      recordNpcQuestKill(this,e);
       e.defeated = true;
       e.deathTimer = 0;
       e.wasSnared = e.state === "snared";

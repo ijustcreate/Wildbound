@@ -63,6 +63,7 @@ test("First round admits up to six unique devices then locks roster", () => {
 });
 test("Later rolls keep previously summoned creatures", () => {
   const g = game();
+  const spawn=g.spawnEvent.bind(g);g.spawnEvent=()=>spawn(0); // This test requires a combat card, not a random friendly encounter.
   g.hitTable(g.current || g.players.find((p) => !p.rolls));
   while(g.roll)tick(g,.05);
   const lionId = g.enemies[0].id;

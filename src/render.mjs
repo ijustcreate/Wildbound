@@ -2,6 +2,7 @@ import {drawVictoryChest} from './victory-chest.mjs';
 import {drawOldWell} from './old-well.mjs';
 import {anacondaRenderParts,drawAnacondaSegment,drawAnacondaShadow} from './anaconda-art.mjs';
 import {drawMerchant} from './traveling-merchant.mjs';
+import {drawQuestNpc,drawNpcQuestMarkers} from './npc-quests.mjs';
 import {drawBiomeTile,drawBiomeAccents,drawBiomeAir} from './biome-art.mjs';
 import {drawDesertChunk} from './desert-art.mjs';
 import {drawBeachGround,drawBeachGulls} from './beach-art.mjs';
@@ -247,6 +248,7 @@ export class Renderer {
     drawForestGround(ctx,game,p=>this.visible(p,w,h,160)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
     drawTemple(ctx,game,this.animator);
     drawDestruction(ctx,game,p=>this.visible(p,w,h,80));
+    drawNpcQuestMarkers(ctx,game,p=>this.visible(p,w,h,100));
     drawBiomeAccents(ctx,game,p=>this.visible(p,w,h,120)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
     drawTracks(ctx, game);
     drawBansheeSteps(ctx,game);
@@ -478,11 +480,13 @@ export class Renderer {
     if(!sealCapture)actors.push({ isBoard: true, drawDepth: boardTableDepth() });
     if(!sealCapture&&game.victoryChest)actors.push({isVictoryChest:true,drawDepth:927});
     if(game.merchant)actors.push({isMerchant:true,drawDepth:game.merchant.y+12});
+    if(!sealCapture)for(const npc of game.questNpcs||[])if(this.visible(npc,w,h,90))actors.push({...npc,isQuestNpc:true,drawDepth:npc.y});
     actors.sort((a, b) => a.drawDepth - b.drawDepth);
     for (const a of actors) {
       if(a.isAnacondaSegment){ctx.save();ctx.globalAlpha*=Math.min(enemyVisibility(game,a.anacondaActor),nightEnemyOpacity(game,a.anacondaActor));drawAnacondaShadow(ctx,a.anacondaActor,a.anacondaIndex);drawAnacondaSegment(ctx,a.anacondaActor,a.anacondaIndex,game.time);if(a.anacondaIndex===0&&a.anacondaActor.faction==='ally')drawFriendshipHearts(ctx,a.anacondaActor,game.time,70);ctx.restore();continue;}
       if(a.isVictoryChest){drawVictoryChest(ctx,game);continue;}
       if(a.isMerchant){drawMerchant(ctx,game,this.animator);continue;}
+      if(a.isQuestNpc){drawQuestNpc(ctx,game,a,this.animator);continue;}
       if(a.isSupplyChest){drawSupplyChest(ctx,game,a);continue;}
       if (a.isBoard) {
         this.boardTop(ctx, game);

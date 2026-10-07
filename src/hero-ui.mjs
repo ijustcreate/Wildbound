@@ -2,6 +2,8 @@ import {drawTempleRoom} from './temple.mjs';
 import {drawWetDrips} from './wet-weather.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
 import {merchantPanel} from './traveling-merchant.mjs';
+import {npcDialoguePanel,drawNpcDialoguePortraits} from './npc-dialogue-ui.mjs';
+import {getNpcQuestRevision} from './npc-quest-data.mjs';
 import {quiverType} from './quiver.mjs';
 import { bagAccepts, storeInBag, takeFromBag } from './inventory-containers.mjs';
 import {GEAR_SETS,setProgress,socketCount,gearStat,RARITIES} from './items.mjs';
@@ -164,6 +166,7 @@ export class HeroUI {
         p.ui?.storage,
         p.ui&&game.storageFor(p)?JSON.stringify([p.inventory,game.storageFor(p),canAccess(game,p,true),canAccess(game,p,false)]):'',
         p.ui?.shop,
+        p.ui?.shop==='npc-dialogue'?JSON.stringify([getNpcQuestRevision(),p.ui.npcId,p.ui.node,p.ui.offerBranch,p.ui.revision,p.npcQuests,p.inventory,p.equipment,p.appearance]):'',
         p.ui?.robotView,p.ui?.robotIndex,
         p.ui?.shop==='robot'?JSON.stringify([p.inventory,owner?.robotStock]):'',
         p.ui?.notice,
@@ -191,6 +194,7 @@ export class HeroUI {
         if (p.ui?.shop === "vending")
           drawVending(panel.querySelector(".vending-canvas"), game, p);
         drawRobotPortrait(panel.querySelector(".robot-portrait"), game.time);
+        if(p.ui?.shop==='npc-dialogue')drawNpcDialoguePortraits(panel,game,p,renderer?.animator||(this.roomAnimator||=new Animator()));
         continue;
       }
       panel.uiSignature = signature;
@@ -202,10 +206,11 @@ export class HeroUI {
       panel.dataset.environment = game.phase === 'lobby' ? 'lobby' : p.room ? 'temple' : game.generatedEnvironment || game.environment || 'forest';
       panel.classList.toggle(
         "storage-session",
-        !!(p.ui && p.ui.shop !== "vending"),
+        !!(p.ui && p.ui.shop !== "vending" && p.ui.shop !== 'npc-dialogue'),
       );
       panel.classList.toggle("vending-panel", p.ui?.shop === "vending");
       panel.classList.toggle("merchant-session", p.ui?.shop === "merchant");
+      panel.classList.toggle('npc-dialogue-session',p.ui?.shop==='npc-dialogue');
       panel.classList.toggle('inventory-redesign', !!p.ui && !p.ui.shop);
       panel.classList.toggle('victory-loot-session', p.ui?.storage === 'victory');
       panel.classList.toggle('tv-victory-loot',p.ui?.storage==='tv-victory');
@@ -308,6 +313,9 @@ export class HeroUI {
         }
         panel.append(button('Vending machine · potions','vending',()=>game.openShop(p,'vending')));
         }
+      } else if(p.ui?.shop==='npc-dialogue'){
+        panel.npcDialogueControls=this.controllerText(game,p);
+        npcDialoguePanel(panel,game,p,button);
       } else if(p.ui?.shop==='robot-intro'){
         const greeting=el('div','','robot-first-meeting');greeting.setAttribute('role','dialog');greeting.setAttribute('aria-label','Meet SCRAP-9');
         const portrait=el('canvas','','robot-portrait');portrait.width=96;portrait.height=80;drawRobotPortrait(portrait,game.time);
@@ -321,6 +329,7 @@ export class HeroUI {
         this.storagePanels(panel, game, p, button);
       }
       this.preview(panel, p, game.time);
+      if(p.ui?.shop==='npc-dialogue')drawNpcDialoguePortraits(panel,game,p,renderer?.animator||(this.roomAnimator||=new Animator()));
       if (focus)
         panel
           .querySelector('[data-action="' + focus + '"]')
@@ -338,7 +347,7 @@ export class HeroUI {
       this.layoutKey = layoutKey;
     }
     for(const panel of this.panels.values()){
-      const selected=panel.querySelector('.storage-sheet.active .selected,.robot-item-slot.selected');
+      const selected=panel.querySelector('.storage-sheet.active .selected,.robot-item-slot.selected,.npc-dialogue-choice.selected');
       if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest'});
       if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split&&(panel.hero?.device!=='keyboard'||panel.revealSelection)){
         if(selected?.showItemTooltip){if(panel.tooltipSelection!==selected||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)selected.showItemTooltip();panel.tooltipSelection=selected;}
@@ -823,6 +832,7 @@ export class HeroUI {
       }
     }
     const c = canvas.getContext("2d");
+    c.imageSmoothingEnabled = false;
     c.clearRect(0, 0, canvas.width, canvas.height);
     c.save();
     c.translate(canvas.width / 2, canvas.height-14);
@@ -843,6 +853,15 @@ export class HeroUI {
     c.restore();
   }
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), open = game.players.filter((q) => q.ui || q.room)) {
+    if(p.ui?.shop==='npc-dialogue'){
+      // Reserve each player's party slot, even while other panels are closed.
+      const slot=Math.max(0,game.players.findIndex(q=>q.id===p.id)),cols=game.players.length>1?2:1,rows=Math.ceil(game.players.length/cols);
+      const cellWidth=bounds.width/cols,cellHeight=bounds.height/rows;
+      const width=Math.max(1,Math.min(520,cellWidth-16)),height=Math.max(1,Math.min(600,cellHeight-16));
+      panel.classList.toggle('npc-dialogue-compact',height<420);
+      panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';
+      panel.style.left=8+(slot%cols)*cellWidth+'px';panel.style.top=8+Math.floor(slot/cols)*cellHeight+'px';return;
+    }
     if(p.ui?.shop==='robot-intro'){const index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(440,bounds.width/cols-16),height=Math.min(510,bounds.height/rows-16);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*bounds.width/cols+'px';panel.style.top=8+Math.floor(index/cols)*bounds.height/rows+'px';return;}
     if(p.ui?.shop==='vending'){const index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(680,bounds.width/cols-16),height=Math.min(780,bounds.height/rows-16);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*bounds.width/cols+'px';panel.style.top=8+Math.floor(index/cols)*bounds.height/rows+'px';return;}
     if(p.ui?.loot){const victory=['victory','tv-victory'].includes(p.ui.storage),index=Math.max(0,open.indexOf(p)),cols=Math.min(3,open.length),rows=Math.ceil(open.length/cols),width=Math.min(victory?440:620,bounds.width/cols-16),height=Math.min(victory?520:740,bounds.height/rows-16);panel.classList.toggle('loot-compact',height<=460);panel.classList.toggle('loot-tight',height<=360);if(p.ui.storage==='starter')p.ui.storageColumns=height<=360?6:4;panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=8+(index%cols)*(bounds.width/cols)+'px';panel.style.top=8+Math.floor(index/cols)*(bounds.height/rows)+'px';return;}

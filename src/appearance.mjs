@@ -1,3 +1,4 @@
+import {drawDetailedHair} from './humanoid-hd.mjs';
 export const HAIR_STYLES = {
   none: "Bald",
   crop: "Short crop",
@@ -290,6 +291,7 @@ export function appearanceControls(root, value, changed, options = {}) {
   root.append(advanced);
 }
 export function drawHair(c, h, appearance, direction, frame = 0, action = 'idle') {
+  if(drawDetailedHair(c,h,appearance,direction,frame,action))return;
   const style = appearance?.hair;
   if (!style || style === "none") return;
   const x = Math.round(h.x),

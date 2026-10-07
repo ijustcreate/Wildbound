@@ -1,4 +1,5 @@
 import {wolfMotion, validateWolfMotion, replaceWolfMotion} from './wolf-motion.mjs';
+import {npcQuestConfig, validateNpcQuestConfig, replaceNpcQuestConfig} from './npc-quest-data.mjs';
 import {warlockMotion,validateWarlockMotion,replaceWarlockMotion} from './warlock-motion.mjs';
 import {bansheeMotion,validateBansheeMotion,replaceBansheeMotion} from './banshee-motion.mjs';
 import {BANSHEE_SET} from './items.mjs';
@@ -607,6 +608,8 @@ export function loadDefinitions(events, items) {
   }
 }
 export function applyDefinitions(d, events, items, { spriteOverrides = true } = {}) {
+  if (Object.hasOwn(d, 'npcQuests') && !validateNpcQuestConfig(d.npcQuests))
+    throw Error('Invalid NPC quest configuration');
   if(d.imp&&!validateImpMotion(d.imp))throw Error('Invalid imp animation');
   if(d.zombie&&!validateZombieMotion(d.zombie))throw Error('Invalid zombie animation');
   if(d.succubus&&!validateSuccubusMotion(d.succubus))throw Error('Invalid succubus animation');
@@ -709,6 +712,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "spider",
           "tarantula",
           "old_well",
+          "wayfarer_npc",
           "anaconda",
           "banshee_queen",
           "succubus",
@@ -724,7 +728,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "dragon",
   "fire_elemental",
   "water_elemental",
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || e.type==='mystery'&&!d.events.some(old=>old.name===e.name),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||e.environment==='graveyard')&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }
@@ -736,10 +740,13 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
         ...v,
         ...(k === "charm" ? { slot: "neck" } : {}),
       };
+  if (Object.hasOwn(d, 'npcQuests')) replaceNpcQuestConfig(d.npcQuests);
 }
 export function definitionPack(events, items) {
+  if (!validateNpcQuestConfig(npcQuestConfig)) throw Error('Invalid NPC quest configuration');
   return {
     version: 1,
+    npcQuests: structuredClone(npcQuestConfig),
     creatures,
     rules,
     events,

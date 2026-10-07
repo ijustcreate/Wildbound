@@ -1,5 +1,6 @@
 import { ITEMS, itemKind } from './items.mjs';
 import {bansheeShoulder,bansheeGearIcon} from './banshee-gear-art.mjs';
+import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
 
 // Shared material ramps for world sprites, fitted equipment and inventory art.
 export function mixGearColor(color, target, amount) {
@@ -36,7 +37,7 @@ export function bootFrame(ankle, knee) {
 export function withBootPose(c, ankle, knee, paint, customSprite=false) {
   const {cos,sin}=bootFrame(ankle,knee),fill=c.fillRect;
   // Real canvas transforms compose with authored wearable offsets/rotations.
-  if(customSprite&&c.save&&c.restore&&c.translate&&c.rotate){
+  if((customSprite||c.__humanoidDetail)&&c.save&&c.restore&&c.translate&&c.rotate){
     c.save();c.translate(ankle.x,ankle.y);c.rotate(Math.atan2(sin,cos));c.translate(-ankle.x,-ankle.y);
     try{return paint();}finally{c.restore();}
   }
@@ -57,6 +58,7 @@ export function withBootPose(c, ankle, knee, paint, customSprite=false) {
 
 // Deliberately authored at character resolution: never resize inventory pairs.
 export function fittedGear(c, id, anchor, direction, side, dye) {
+  if(detailedProcedural(c,anchor,pen=>fittedGear(pen,id,anchor,direction,side,dye),materialIndex(id,'leather')))return;
   const def=ITEMS[id], kind=itemKind(id), p=gearPalette(id,dye);
   if(def?.humanoidWings){
     // Only the fitted harness clasp goes on the shoulder joint. The actual
@@ -107,6 +109,7 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
 }
 
 export function fittedShield(c,id,hand,d,blocking,dye) {
+  if(detailedProcedural(c,hand,pen=>fittedShield(pen,id,hand,d,blocking,dye),materialIndex(id,'metal')))return;
   const p=gearPalette(id,dye),style=ITEMS[id]?.style;
   const r=gearPixels(c,hand), profile=d===2||d===6, rear=d>=3&&d<=5;
   const width=profile?1:(d%2?3:style==='tower'?5:4);

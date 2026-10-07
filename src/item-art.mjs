@@ -1,6 +1,8 @@
 import { ITEMS, itemKind } from "./items.mjs";
 import { mixGearColor, paintGearIcon } from './gear-art.mjs';
 import {paintSuccubusItem} from './succubus-attachments.mjs';
+import {detailRaster,materialIndex,humanoidArtStatus} from './humanoid-hd.mjs';
+import {paintKeeperItem} from './keeper-gear-art.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -25,6 +27,7 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if(paintKeeperItem(c,type))return;
   if(paintSuccubusItem(c,type))return;
   if(type==='unknown_mushroom'){c.fillStyle='#30253e';c.fillRect(7,13,11,9);c.fillRect(2,7,20,9);c.fillRect(6,3,12,7);c.fillStyle='#d9c5a0';c.fillRect(9,14,7,6);c.fillStyle='#9653bc';c.fillRect(3,8,18,6);c.fillRect(7,4,10,6);c.fillStyle='#e5c9ff';c.fillRect(7,6,3,3);c.fillRect(15,9,3,3);c.fillRect(3,10,2,2);return;}
   if(type==='dark_essence'){c.fillStyle='#2d173e';c.fillRect(8,5,8,15);c.fillRect(5,9,14,7);c.fillStyle='#8c4dcc';c.fillRect(9,6,5,12);c.fillRect(6,10,11,4);c.fillStyle='#e1b4ff';c.fillRect(10,7,2,5);c.fillRect(7,10,2,2);return;}
@@ -705,7 +708,11 @@ export function drawItem(c, type, x, y, size = 24, dye = null) {
 // Retain authored silhouettes but add subpixel bevels at twice their native
 // resolution. Cached once per item/dye, never rebuilt for each inventory frame.
 export function detailedItemCanvas(type,dye=null){
- const key='detail:'+type+':'+(dye||'');if(cache.has(key))return cache.get(key);
+ const status=humanoidArtStatus(),key='detail:'+status.revision+':'+type+':'+(dye||'');if(cache.has(key))return cache.get(key);
+ if(status.ready&&ITEMS[type]?.slot){
+  const out=detailRaster(itemCanvas(type,dye),materialIndex(type),4);
+  if(cache.size>=512)cache.delete(cache.keys().next().value);cache.set(key,out);return out;
+ }
  const base=itemCanvas(type,dye),out=document.createElement('canvas');out.width=out.height=48;
  const ctx=out.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(base,0,0,48,48);
  if(ctx.getImageData&&ctx.putImageData){

@@ -2,6 +2,7 @@ import { rigSubject } from "./rig-subjects.mjs";
 import { spriteToRgba, validateSprite } from "./pixels.mjs";
 import { ensureFootprint } from "./world.mjs";
 import { Animator } from "./animation.mjs";
+import {loadHumanoidArt} from './humanoid-hd.mjs';
 export class Assets {
   constructor() {
     this.library = {};
@@ -9,6 +10,7 @@ export class Assets {
     this.overrides = {};
   }
   async load() {
+    await loadHumanoidArt();
     this.animationBank = await (await fetch("assets/animations.json")).json();
     this.library = await (await fetch("assets/library.json")).json();
     Object.assign(

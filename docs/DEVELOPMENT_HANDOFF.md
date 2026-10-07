@@ -1,6 +1,6 @@
 # Moving Wildbound development between computers
 
-Current desktop release: [1.0.78 local wall, door, furniture and tree destruction](history/2026-10-06-structure-destruction-1.0.78.md), following 1.0.77 crypt rendering/doorway fixes and 1.0.76 inventory layout/tooltips. Inspect `wildbound-build.json` and the exact verification reports; rebuild on another machine. The hosted web root remains at its previous build; the separate web release remains `/Wildbound/releases/1.0.74/`.
+Current desktop release: [1.0.79 The Keeper, editable branching quests and lobby alignment](history/2026-10-06-keeper-quests-1.0.79.md), following [1.0.78 local wall, door, furniture and tree destruction](history/2026-10-06-structure-destruction-1.0.78.md), 1.0.77 crypt rendering/doorway fixes and 1.0.76 inventory layout/tooltips. Inspect `wildbound-build.json` and the exact verification reports; rebuild on another machine. The hosted web root remains at its previous build; the separate web release remains `/Wildbound/releases/1.0.74/`.
 
 Previous local release: [1.0.72 accumulated UI/coast/spider/map-selector build](history/2026-10-06-ui-coast-spiders-1.0.72.md), plus subsequent creature/event/biome additions. Earlier local history notes describe pre-integration modified checkouts; they are not the final 1.0.74 commit identity.
 
