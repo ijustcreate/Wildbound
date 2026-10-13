@@ -1,5 +1,5 @@
 import {drawVictoryChest} from './victory-chest.mjs';
-import {drawOldWell} from './old-well.mjs';
+import {drawOldWells} from './old-well.mjs';
 import {anacondaRenderParts,drawAnacondaSegment,drawAnacondaShadow} from './anaconda-art.mjs';
 import {drawMerchant} from './traveling-merchant.mjs';
 import {drawQuestNpc,drawNpcQuestMarkers} from './npc-quests.mjs';
@@ -52,6 +52,7 @@ import {
   WORLD,
   TILE,
   FINISH,
+  EVENTS,
   expeditionCameraTarget,
   clamp,
 } from "./core.mjs";
@@ -352,9 +353,9 @@ export class Renderer {
       }
       ctx.restore();
     }
+    if(game.portals?.some(d=>d.oldWell))drawOldWells(ctx,game);
     for (const d of game.portals) {
-      if(d.temple)continue;
-      if(d.oldWell){drawOldWell(ctx,d,game.time);continue;}
+      if(d.temple||d.oldWell)continue;
       const owner = game.players.find((p) => p.id === d.owner);
       drawPortal(
         ctx,
@@ -445,6 +446,7 @@ export class Renderer {
     drawIceHints(ctx,game);
     drawFieldWorld(ctx, game);
     if(!sealCapture)this.boardBase(ctx, game);
+    if(!sealCapture&&game.eventTestBoard)this.boardBase(ctx,game,game.eventTestBoard);
     const actors = this.actorQueue;
     actors.length = 0;
     for(const chest of game.supplyChests||[])actors.push({...chest,isSupplyChest:true,drawDepth:chest.y});
@@ -478,6 +480,7 @@ export class Renderer {
     // Floor-level actors behind the table are occluded. Supported/airborne
     // actors over its footprint are drawn above it, including the back half.
     if(!sealCapture)actors.push({ isBoard: true, drawDepth: boardTableDepth() });
+    if(!sealCapture&&game.eventTestBoard)actors.push({isEventTestBoard:true,drawDepth:boardTableDepth(game.eventTestBoard)});
     if(!sealCapture&&game.victoryChest)actors.push({isVictoryChest:true,drawDepth:927});
     if(game.merchant)actors.push({isMerchant:true,drawDepth:game.merchant.y+12});
     if(!sealCapture)for(const npc of game.questNpcs||[])if(this.visible(npc,w,h,90))actors.push({...npc,isQuestNpc:true,drawDepth:npc.y});
@@ -488,6 +491,7 @@ export class Renderer {
       if(a.isMerchant){drawMerchant(ctx,game,this.animator);continue;}
       if(a.isQuestNpc){drawQuestNpc(ctx,game,a,this.animator);continue;}
       if(a.isSupplyChest){drawSupplyChest(ctx,game,a);continue;}
+      if(a.isEventTestBoard){this.eventTestBoard(ctx,game);continue;}
       if (a.isBoard) {
         this.boardTop(ctx, game);
         continue;
@@ -1270,27 +1274,35 @@ export class Renderer {
     }
     if(!boundless){ctx.strokeStyle = "#a2b67840";ctx.lineWidth = 2;ctx.strokeRect(2, 2, WORLD - 4, WORLD - 4);}
   }
-  boardBase(ctx, game) {
+  boardBase(ctx, game, b=BOARD_TABLE) {
     ctx.save();
-    const b=BOARD_TABLE;
-    ctx.fillStyle='#17251d55';ctx.beginPath();ctx.ellipse(CENTER,CENTER+9,36,15,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#17251d55';ctx.beginPath();ctx.ellipse(b.x+b.w/2,b.y+b.h/2+9,36,15,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#443020';
     for(const x of [b.x+3,b.x+b.w-8])ctx.fillRect(x,b.y+8,5,23);
     ctx.fillStyle='#5a3d28';ctx.fillRect(b.x,b.y-b.surfaceHeight+5,b.w,b.h);
     ctx.restore();
   }
-  boardTop(ctx, game) {
+  boardTop(ctx, game, b=BOARD_TABLE) {
     ctx.save();
-    const b=BOARD_TABLE;
     ctx.fillStyle='#987047';ctx.fillRect(b.x,b.y-b.surfaceHeight,b.w,b.h);
     ctx.translate(
-      CENTER + (game.tableShake ? Math.sin(this.age * 90) * 2 : 0),
-      CENTER-b.surfaceHeight,
+      b.x+b.w/2 + (game.tableShake ? Math.sin(this.age * 90) * 2 : 0),
+      b.y+b.h/2-b.surfaceHeight,
     );
     // Full board (including both leaves) fits on a two-tile tabletop.
     ctx.scale(60 / 280, 28 / 192);
     drawBoard(ctx, game, game.roll?.elapsed??this.age,{drawDie});
     ctx.restore();
+  }
+  eventTestBoard(ctx,game){
+    const b=game.eventTestBoard;
+    // Reuse the real board art, with stationary pawns and no normal dice roll.
+    this.boardTop(ctx,{...game,players:game.players.map(p=>({...p,progress:0,boardProgress:0})),roll:null,tableShake:0},b);
+    ctx.save();ctx.strokeStyle='#7fe7ef';ctx.lineWidth=1.5;ctx.strokeRect(b.x,b.y-b.surfaceHeight,b.w,b.h);
+    ctx.font='bold 8px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+    const label='EVENT TEST · '+b.nextEvent+' / '+EVENTS.length,x=b.x+b.w/2,y=b.y-b.surfaceHeight-10;
+    const width=ctx.measureText(label).width+12;ctx.fillStyle='#102b32ee';ctx.fillRect(x-width/2,y-7,width,14);
+    ctx.fillStyle='#a9f5fa';ctx.fillText(label,x,y);ctx.restore();
   }
   minimap(ctx, game, w, h) {
     ctx.save();

@@ -156,8 +156,8 @@ export function validWellSpawn(g, point) {
   if ((g.portals || []).some(d => Math.hypot(point.x - d.x, point.y - d.y) < 105)) return false;
   return surfaceClear(g, point.x, point.y + 50, 10);
 }
-export function spawnOldWell(g, preferred = null) {
-  if (!OLD_WELL_EVENT.environments.includes(g.generatedEnvironment)) return null;
+export function spawnOldWell(g, preferred = null, {test=false} = {}) {
+  if (!test&&!OLD_WELL_EVENT.environments.includes(g.generatedEnvironment)) return null;
   g.portals ||= [];
   const existing = g.portals.find(d => d.oldWell && !d.mausoleum);
   if (existing) return existing;
@@ -471,10 +471,14 @@ export function drawOldWell(c, d, time = 0) {
 export function drawOldWells(c, g) {
   for (const d of (g.portals || []).filter(d => d.oldWell)) {
     drawOldWell(c, d, g.time);
+    c.save(); c.fillStyle = '#ffe7a9'; c.font = 'bold 8px sans-serif'; c.textAlign = 'center';
+    c.fillText(d.mausoleum ? 'MAUSOLEUM' : 'OLD WELL', d.x, d.y - 64);
     if (g.players.some(p => !p.room && p.hp > 0 && distance(p, d) <= 74 && !p.ui)) {
-      c.save(); c.fillStyle = '#ffe7a9'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
-      c.fillText(d.mausoleum ? 'E / Y · ENTER MAUSOLEUM' : 'E / Y · INVESTIGATE OLD WELL', d.x, d.y - 67); c.restore();
+      const interact = g.controlLabels?.interact || 'E / Y';
+      c.font = 'bold 7px sans-serif';
+      c.fillText(d.mausoleum ? `${interact} · ENTER` : `${interact} · INVESTIGATE`, d.x, d.y - 75);
     }
+    c.restore();
   }
 }
 function shaft(c, exit, time) {
