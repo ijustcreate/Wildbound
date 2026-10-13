@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'">
+  <title>Wildbound Server Control</title>
+  <link rel="stylesheet" href="server-control.css">
+</head>
+<body>
+  <main>
+    <header><div><small>WILDBOUND</small><h1>Persistent forest server</h1></div><span id="state" class="state">Checking…</span></header>
+    <p class="subtitle">Control this PC's dedicated forest server. The game’s LAN room host is separate.</p>
+    <section class="connection"><span>Local control endpoint</span><code>127.0.0.1:4184</code><label>Admin token <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Enter server token"></label><button id="refresh">Check status</button></section>
+    <p id="notice" role="status" aria-live="polite">Checking for a server…</p>
+    <section class="health" aria-label="Connection health"><p>Authority processes: <strong id="authority-count">—</strong> · Tunnel processes: <strong id="tunnel-count">—</strong></p><p>Local health: <strong id="local-health">—</strong> · Public health: <strong id="public-health">—</strong></p><p id="checked">Not checked yet</p></section>
+    <section class="address"><label>Public connection address <input id="public-address" readonly placeholder="No public address recorded"></label><button id="copy-address" disabled>Copy address</button></section>
+    <section class="metrics" aria-label="Server status">
+      <article><span>Uptime</span><strong id="uptime">—</strong></article>
+      <article><span>Connected players</span><strong id="players">—</strong></article>
+      <article><span>World seed</span><strong id="seed">—</strong></article>
+      <article><span>Last save</span><strong id="saved">—</strong></article>
+    </section>
+    <section><h2>Players</h2><ul id="player-list"><li>Server offline or status unavailable.</li></ul></section>
+    <section><h2>Controls</h2><div class="actions"><button id="save" disabled>Save world now</button><button id="stop" disabled>Stop server safely</button></div><label class="announcement">Announcement <input id="announcement" maxlength="240" placeholder="Message to connected players"></label><button id="send" disabled>Send announcement</button></section>
+    <footer>Close to tray. Controls become available when the dedicated server responds with an admin status. Public multiplayer is active only when both local and public health pass.</footer>
+  </main>
+  <script src="server-control-ui.js"></script>
+</body>
+</html>
