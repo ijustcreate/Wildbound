@@ -78,6 +78,7 @@ import {flamingMeleeHit,onFlamingHarvest} from './crypt-gear.mjs';
 import {healingAdventureMethods} from './healing-magic.mjs';
 import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
 import {BEHOLDER_EVENT,LESSER_BEHOLDER_EVENT,beholderPaletteFor,tickBeholder} from './beholder.mjs';
+import {controlledUnit,prepareControlledUnit} from './controlled-unit.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
   WORLD = TILE * MAP_SIZE,
@@ -91,6 +92,28 @@ export const COLORS = [
   "#c5a0ed",
   "#b6d77c",
 ];
+
+function tickControlledUnit(g, owner, actor, input, dt) {
+  actor.controlPreviousInput ||= {};
+  if (actor.hp <= 0 || actor.room || actor.ui || actor.stun > 0 || g.openingBoard) {
+    actor.moving = false; actor.charge = 0; actor.bowAiming = false;
+    actor.controlPreviousInput = {...input}; return;
+  }
+  updateAimFacing(actor,input);
+  actor.bowAiming=!!input.block&&hasAimWeapon(actor)&&!actor.swimming&&!actor.sleeping&&!actor.stun;
+  if(actor.bowAiming){actor.blocking=false;actor.dashTime=0;actor.slideX=actor.slideY=0;}
+  const len=Math.hypot(input.x||0,input.y||0);let mx=input.x||0,my=input.y||0;
+  actor.walking=len>0&&len<.6;if(len>1){mx/=len;my/=len;}
+  if(input.jump&&!actor.controlPreviousInput.jump&&!actor.wingHover)startJump(actor);
+  actor.jumpHeld=!!input.jump;
+  if(input.attack&&!actor.bowAiming)actor.charge=Math.min(1.2,(actor.charge||0)+dt*(1+(itemKind(actor.equipment?.hand1)==='bow'?stat(actor,'bowDrawSpeed'):0)));
+  if(!input.attack&&actor.controlPreviousInput.attack&&actor.charge&&!actor.swimming){g.attack(actor,actor.charge);actor.charge=0;}
+  const speed=actor.dashTime>0?rules.dashSpeed:133*(1+stat(actor,'speedBonus'));
+  if(actor.bowAiming){actor.moving=false;actor.walking=false;}
+  else if(!actor.sleeping){const motion=iceMotion(g,actor,mx,my,speed,dt);g.moveActor(actor,motion.dx,motion.dy);}
+  actor.controlPreviousInput={...input};
+  actor.controllerOwner=owner.id;
+}
 export const EVENTS = [
   {
     name: "The golden hunter",
@@ -553,7 +576,7 @@ export function cameraTarget(players, w, h, reveal = null, mapMode='bounded') {
 export function expeditionCameraTarget(game, w, h) {
   if (game.phase === "play" && game.openingBoard)
     return openingCamera(w,h);
-  const worldPlayers = game.players.filter((p) => !p.room);
+  const worldPlayers = game.players.filter((p) => !p.room).map(p => controlledUnit(game,p) || p);
   // Keep the world centered on players who are still playing while another
   // player has an inventory or storage panel open. This keeps multiplayer
   // action visible instead of letting a UI panel pull the camera away.
@@ -1381,10 +1404,12 @@ export class Game {
       this.reveal.life -= dt;
       if (this.reveal.life <= 0) this.reveal = null;
     }
-    for (const p of this.players) {
-      if(!tickWingFlight(this,p,inputs[p.device]||{},dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
-      tickQuicksand(this,p,inputs[p.device]||{},dt);
-      tickSwimming(this,p,inputs[p.device]||{},dt);
+    for (const owner of this.players) {
+      const controlled=controlledUnit(this,owner),p=controlled?prepareControlledUnit(owner,controlled):owner;
+      const ownerInput=inputs[owner.device]||{};
+      if(!tickWingFlight(this,p,ownerInput,dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
+      tickQuicksand(this,p,ownerInput,dt);
+      tickSwimming(this,p,ownerInput,dt);
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
@@ -1400,6 +1425,7 @@ export class Game {
       p.invuln = Math.max(0, p.invuln - dt);
       p.trapCooldown = Math.max(0, p.trapCooldown - dt);
       p.hit = Math.max(0, p.hit - dt);
+      if(controlled){tickControlledUnit(this,owner,p,ownerInput,dt);continue;}
       if(isCharmed(p)){tickCharmedPlayer(this,p,dt);continue;}
       const input = inputs[p.device] || {};
       p.bowAiming = !!input.block && hasAimWeapon(p) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !this.openingBoard;

@@ -243,7 +243,11 @@ export class HeroUI {
       const fill=el('span','','inventory-xp-fill');fill.style.width=Math.min(100,Math.max(0,(p.xp||0)/needed*100))+'%';
       xp.append(fill,el('span',`${p.xp||0} / ${needed} XP`, 'inventory-xp-label'));
       progressRow.append(el('span',(p.coins||0)+' GOLD','coin-balance'),xp);
-      panel.append(head,progressRow);
+      // Dialogue has its own parchment title bar and should not inherit the
+      // inventory HUD's XP/gold strip; keeping that strip out also gives the
+      // 9-sliced conversation frame more room for wrapped text.
+      panel.append(head);
+      if (p.ui?.shop !== 'npc-dialogue') panel.append(progressRow);
       const button = (text, action, fn) => {
         const b = el("button", text);
         b.dataset.action = action;
