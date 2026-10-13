@@ -19,6 +19,8 @@ export const DEFAULT_EFFECTS={
   bubbles:{name:'Diving bubbles',count:7,life:.65,speedX:0,speedY:-12,spread:12,gravity:0,size:2,orbit:3,shape:'square',blend:'source-over',start:'#dbfff9',end:'#6ab8ce'},
   'swim-wake':{name:'Swimming wake',count:10,life:.65,speedX:0,speedY:2,spread:20,gravity:0,size:2,orbit:8,shape:'square',blend:'source-over',start:'#b5f4e9',end:'#3c91a7'},
   torch:{name:'Temple torch fire',count:44,life:1.1,speedX:0,speedY:-25,spread:7,gravity:-9,size:4,orbit:0,shape:'square',blend:'lighter',start:'#fff0a3',end:'#e74c21'},
+  'campfire-flame':{name:'Campfire flame',count:54,life:1.2,speedX:0,speedY:-28,spread:15,gravity:-10,size:5,orbit:2,shape:'square',blend:'lighter',start:'#fff1a2',end:'#e24a20',loop:true},
+  'campfire-smoke':{name:'Campfire smoke',count:18,life:3.2,speedX:2,speedY:-14,spread:12,gravity:-2,size:5,orbit:4,shape:'square',blend:'source-over',start:'#d4d0b7',end:'#58645c',loop:true},
   rain:{name:'Rain study (preview only)',count:160,life:.8,speedX:-28,speedY:230,spread:500,gravity:0,size:1,orbit:0,shape:'streak',blend:'source-over',start:'#abcbd8',end:'#608fa8'},
   knockout:{name:'Knocked-out stars',count:7,life:2,speedX:0,speedY:-12,spread:3,gravity:0,size:3,orbit:15,shape:'star',blend:'source-over',start:'#fff5ba',end:'#d6ad5b'},
 };

@@ -8,6 +8,7 @@ import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {locationClearing} from './location-clearing.mjs';
 import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
   wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance} from './mausoleum-crypt.mjs';
 
@@ -165,6 +166,8 @@ export function spawnOldWell(g, preferred = null, {test=false} = {}) {
   let spot = preferred && validWellSpawn(g, preferred) ? preferred : null;
   const focus = preferred || g.players.find(p => p.hp > 0 && !p.room) || {x: 800, y: 960};
   const candidates = [];
+  const clearing=locationClearing(g,focus,g.seed||0);
+  for(const point of clearing.points||[])candidates.push({x:Math.round(point.x/32)*32+16,y:Math.round(point.y/32)*32+16});
   const minX = g.mapMode === 'boundless' ? Math.floor(focus.x / 32) * 32 + 16 - 512 : 80;
   const minY = g.mapMode === 'boundless' ? Math.floor(focus.y / 32) * 32 + 16 - 512 : 80;
   const maxX = g.mapMode === 'boundless' ? minX + 1024 : 1520;
@@ -175,7 +178,7 @@ export function spawnOldWell(g, preferred = null, {test=false} = {}) {
       x > r.x - 50 && y > r.y - 50 && x < r.x + r.w + 50 && y < r.y + r.h + 50)) continue;
     candidates.push({x, y});
   }
-  candidates.sort((a, b) => Math.abs(distance(a, focus) - 170) - Math.abs(distance(b, focus) - 170));
+  candidates.sort((a, b) => Math.abs(distance(a, focus) - 220) - Math.abs(distance(b, focus) - 220));
   if (!spot) spot = candidates.find(p => validWellSpawn(g, p));
   if (!spot) {g.message?.('There is no clear ground for the old well.'); return null;}
   const id = 'old-well-' + g.nextId++;

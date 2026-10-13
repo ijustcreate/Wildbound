@@ -42,7 +42,7 @@ export function spawnQuestNpc(g){
   if(!existing&&(g.questNpcs||[]).length>=4)return false;
   const sites=merchantSites(g),position=sites[Math.floor(Math.max(0,Math.min(.999,g.random?.()??.5))*sites.length)];
   if(!position&&!existing){g.message?.('The wayfarer could not find a safe campsite.');return false;}
-  const npc=existing||{id:g.nextId++,npcId:config.id,...position,campX:position.x,campY:position.y,hp:1,maxHp:1,faction:'ally',invincible:true,unattackable:true,
+  const npc=existing||{id:g.nextId++,npcId:config.id,sprite:'player',...position,campX:position.x,campY:position.y,hp:1,maxHp:1,faction:'ally',invincible:true,unattackable:true,
     faceX:0,faceY:1,moving:false,step:0,equipment:clone(config.equipment),appearance:clone(config.appearance||DEFAULT_APPEARANCE),name:config.name,title:config.title};
   npc.encounter=`${scene(g)}:${g.nextId++}`;
   if(!existing)(g.questNpcs||=[]).push(npc);
@@ -53,6 +53,7 @@ export function openNpcDialogue(g,p){
   if(p.ui||p.room||p.hp<=0||g.phase!=='play')return false;
   const npc=(g.questNpcs||[]).filter(n=>distance(n,p)<=68).sort((a,b)=>distance(a,p)-distance(b,p))[0];if(!npc)return false;
   const config=getNpcQuestConfig();meet(p,npc);establishObjective(g,p,npc);
+  npc.talked=true;npc.animationAction='sit';npc.moving=false;
   p.ui={shop:'npc-dialogue',ownerDevice:p.device,npcId:npc.npcId,node:config.dialogue.start,index:0};
   p.consumeInput=true;p.charge=0;p.interactUsed=true;p.menuRepeat=0;g.onSound?.('ui',p);g.persist?.();return true;
 }
@@ -128,9 +129,9 @@ export function tickNpcQuests(g,dt){
   if(g.questSpawnTimer<=0){g.questSpawnTimer=1;for(const npc of g.questNpcs||[])for(const p of g.players)if(p.npcQuests?.[npc.npcId]?.active)establishObjective(g,p,npc);}
 }
 export function drawQuestNpc(c,g,npc,animator){
-  const config=getNpcQuestConfig();animator.draw(c,{...npc,equipment:config.equipment,appearance:config.appearance},g.time,48);
+  const config=getNpcQuestConfig();animator.draw(c,{...npc,sprite:'player',equipment:config.equipment,appearance:config.appearance,animationAction:npc.talked?'sit':'idle'},g.time,48);
   c.save();c.textAlign='center';c.font='bold 10px sans-serif';c.fillStyle='#b6e8d6';c.fillText(config.name,npc.x,npc.y-94);
-  c.font='9px sans-serif';c.fillStyle='#efd5a1';c.fillText('Interact · Talk',npc.x,npc.y+18);c.fillStyle='#ead090';c.fillRect(npc.x-1,npc.y-110,3,7);c.fillRect(npc.x-1,npc.y-100,3,2);c.restore();
+  c.font='9px sans-serif';c.fillStyle='#efd5a1';c.fillText(npc.talked?'Talked to':'Interact · Talk',npc.x,npc.y+18);c.fillStyle='#ead090';c.fillRect(npc.x-1,npc.y-110,3,7);c.fillRect(npc.x-1,npc.y-100,3,2);c.restore();
 }
 export function drawNpcQuestMarkers(c,g,visible=()=>true){
   c.save();for(const p of g.players){const s=p.npcQuests?.[getNpcQuestConfig().id],a=s?.active;if(!a?.target||a.world!==g.questSceneToken||a.contract.objective.type==='collect'||!visible(a.target))continue;

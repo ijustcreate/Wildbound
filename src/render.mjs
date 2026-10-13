@@ -78,6 +78,7 @@ import {meleeProfile} from './melee-geometry.mjs';
 import {SealVortex,sealSurfaceSize} from './seal-vortex.mjs';
 import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
 import {drawGraveyardGround,drawGraveEmergence} from './graveyard-art.mjs';
+import {drawCampfire,drawCampfireLabel} from './campfire-art.mjs';
 import {drawGraveyardEcology} from './graveyard-ecology.mjs';
 import {drawCryptWeaponFlames} from './crypt-gear.mjs';
 const hash = (x, y) => {
@@ -270,6 +271,7 @@ export class Renderer {
     drawLivingEcosystem(ctx, game, 'ground');
     drawGraveyardEcology(ctx,game,'ground');
     drawHazards(ctx, game);
+    for(const npc of game.questNpcs||[]) if(this.visible(npc,w,h,120)){drawCampfire(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10,game.time,npc.id);drawCampfireLabel(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10);}
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
     for (const orb of game.xpOrbs || []) {
       if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;

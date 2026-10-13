@@ -2,6 +2,8 @@ import {ITEMS,sellValue} from './items.mjs';
 import {protectedItem} from './field-systems.mjs';
 import {drawTorchFlame} from './torch-flame.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
+import {locationClearing} from './location-clearing.mjs';
+import {drawCampfire,drawCampfireLabel} from './campfire-art.mjs';
 export function merchantSites(g){
  const queue=[[25,25]],seen=new Set(['25:25']),sites=[];
  for(let i=0;i<queue.length;i++){const [tx,ty]=queue[i],x=tx*32+16,y=ty*32+16;
@@ -14,8 +16,8 @@ export function merchantSites(g){
 }
 export function spawnMerchant(g){
  if(g.merchant)return true;
- const sites=merchantSites(g),site=sites[Math.min(sites.length-1,Math.floor(g.random()*sites.length))];
- if(site){const {x,y}=site;
+  const sites=merchantSites(g),site=sites[Math.min(sites.length-1,Math.floor(g.random()*sites.length))];
+  if(site){const clear=locationClearing(g,site,g.seed||0),{x,y}=clear.center;
   g.merchant={x,y,campX:x,campY:y,faceX:0,faceY:1,step:0,name:'Marlow Moss',stock:[{item:{type:'critter_net',qty:1},price:24},{item:{type:'empty_jar',qty:1},price:4},{item:{type:'critter_cage',qty:1},price:8}],horse:{x:x+48,y:y+12,faceX:-1,faceY:0,step:0},revision:0};
   g.message('Marlow Moss has made camp. “The board takes chances. I take coins.”');return true;
  }return false;
@@ -63,7 +65,7 @@ export function merchantPanel(panel,g,p,button){
 export function drawMerchant(c,g,animator){const m=g.merchant;if(!m)return;
  animator.draw(c,{...m,hp:100,equipment:{},appearance:{...DEFAULT_APPEARANCE,skin:'#c29b73',shirt:'#647c54',pants:'#51493b',hairColor:'#5b4632'}},g.time,43);
  c.save();c.translate(m.x,m.y);c.fillStyle='#c5ac66';c.fillRect(-13,-37,26,3);c.fillStyle='#e1c47a';c.fillRect(-8,-44,16,7);c.fillStyle='#6e643e';c.fillRect(-8,-38,16,2);
- c.restore();c.save();c.translate((m.campX??m.x)-32,(m.campY??m.y)+5);c.fillStyle='#644730';c.fillRect(-9,5,20,4);c.fillRect(-3,0,5,12);drawTorchFlame(c,0,0,g.time,m.x);c.restore();
+  c.restore();drawCampfire(c,m.campX??m.x,(m.campY??m.y)+10,g.time,m.x);drawCampfireLabel(c,m.campX??m.x,(m.campY??m.y)+10);c.save();c.translate((m.campX??m.x)-32,(m.campY??m.y)+5);c.fillStyle='#644730';c.fillRect(-9,5,20,4);c.fillRect(-3,0,5,12);drawTorchFlame(c,0,0,g.time,m.x);c.restore();
  if(m.horse)drawPackHorse(c,m.horse,g.time);
  c.save();c.textAlign='center';c.font='9px sans-serif';c.fillStyle='#f1e1b9';c.fillText('Marlow Moss · Trade E / Y',m.x,m.y+33);c.restore();
 }

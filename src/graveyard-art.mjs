@@ -180,9 +180,10 @@ function tree(c,p,forest=false) {
   }
   ivy(c,-6,-1,26,p.x);
   if(forest) {
+    const palette={oak:['#263c33','#36503d','#52664a'],birch:['#394a3e','#58644c','#8c956d'],pine:['#203a34','#2b5140','#426b4b'],deadwood:['#26302d','#3d493c','#596050'],willow:['#294337','#3c5a42','#62714d']}[p.treeType]||['#263c33','#2b4438','#36503d'];
     for(let n=0;n<16;n++) {
       const x=-h*.36+graveyardHash(p.x,n,p.y)*h*.72,y=-h+graveyardHash(p.y,n,p.x)*h*.56;
-      pixel(c,x,y,18+n%4*3,8+n%3*3,['#263c33','#2b4438','#36503d','#405b45'][n%4]);
+      pixel(c,x,y,18+n%4*3,8+n%3*3,palette[n%palette.length]);
       pixel(c,x+3,y,8,2,'#52664a');
     }
   } else if(v===2){pixel(c,1,-h*.6,4,7,'#182a26');pixel(c,-1,-h*.59,2,2,'#838676');}

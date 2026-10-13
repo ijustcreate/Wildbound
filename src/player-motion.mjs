@@ -123,6 +123,15 @@ export function defaultPlayerMotion() {
           },
         ],
       },
+      sit: {
+        fps: 4,
+        length: 8,
+        loop: true,
+        keys: [
+          { frame: 0, joints: { pelvis:[0,0,-7], chest:[0,-3,-2], head:[0,-4,-1], hipL:[0,0,-3], hipR:[0,0,-3], kneeL:[-2,-8,-7], kneeR:[2,-8,-7], footL:[-2,-10,-11], footR:[2,-10,-11], handL:[-1,-5,-2], handR:[1,-5,-2] } },
+          { frame: 4, joints: { pelvis:[0,0,-7], chest:[0,-3,-1], head:[0,-4,0], hipL:[0,0,-3], hipR:[0,0,-3], kneeL:[-2,-8,-7], kneeR:[2,-8,-7], footL:[-2,-10,-11], footR:[2,-10,-11], handL:[-1,-5,-1], handR:[1,-5,-1] } },
+        ],
+      },
       run: {
         fps: 12,
         length: 8,

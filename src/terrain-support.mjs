@@ -19,6 +19,11 @@ export function stumpShape(p){
   const top=p.procedural&&p.kind!=='palm'?-6:-4;
   return {x:p.x-7*scale,y:base+top*scale,w:14*scale,h:7*scale,height:6*scale};
 }
+export function rockSurface(p){
+  if(!p?.procedural||p.kind!=='rock'||p.falling||p.depleted)return null;
+  const scale=(p.size||64)/64,w=Math.max(10,25-(p.chipped||0)*3)*scale;
+  return {x:p.x-w/2,y:p.y-24*scale,w,h:20*scale,height:12*scale};
+}
 export function bridgeAt(g,x,y){
   if(g?.phase==='won')return false;
   const tx=Math.floor(x/32),ty=Math.floor(y/32);
@@ -30,11 +35,11 @@ export function terrainSupport(g,a,offset=0){
   const feet=a.y+(a.kind?offset:0);
   const chest=VICTORY_CHEST;
   if(g?.victoryChest&&a.x>=chest.x&&a.x<=chest.x+chest.w&&feet>=chest.y&&feet<=chest.y+chest.h)height=Math.max(height,chest.height);
-  for(const p of g?.scenery||[]){const s=stumpShape(p);if(s&&a.x>=s.x&&a.x<=s.x+s.w&&feet>=s.y&&feet<=s.y+s.h)height=Math.max(height,s.height);}
+  for(const p of g?.scenery||[]){const s=stumpShape(p)||rockSurface(p);if(s&&a.x>=s.x&&a.x<=s.x+s.w&&feet>=s.y&&feet<=s.y+s.h)height=Math.max(height,s.height);}
   return height;
 }
 export function terrainActorDepth(g,a,depth=a.y){
-  for(const p of g.scenery||[]){const s=stumpShape(p);if(s&&(a.jumpHeight||a.groundHeight||0)>=s.height&&a.x>=s.x&&a.x<=s.x+s.w&&a.y>=s.y-14&&a.y<=s.y+s.h)depth=Math.max(depth,s.y+s.h+.1);}
+  for(const p of g.scenery||[]){const s=stumpShape(p)||rockSurface(p);if(s&&(a.jumpHeight||a.groundHeight||0)>=s.height&&a.x>=s.x&&a.x<=s.x+s.w&&a.y>=s.y-14&&a.y<=s.y+s.h)depth=Math.max(depth,s.y+s.h+.1);}
   const chest=VICTORY_CHEST;
   if(g.victoryChest&&(a.jumpHeight||a.groundHeight||0)>=chest.height&&a.x>=chest.x&&a.x<=chest.x+chest.w&&a.y>=chest.y&&a.y<=chest.y+chest.h)depth=Math.max(depth,chest.y+chest.h+.1);
   return depth;
