@@ -29,6 +29,7 @@ function tickStorageJump(game,p,input,dt){
 
 // The expedition and lobby use the same room movement and station interactions.
 export function tickStorageRoom(game,p,input,dt,interact=false){
+  if(input.attack&&!p.previousInput?.attack){p.attack=.3;game.onSound?.('swing',p);}
   tickStorageJump(game,p,input,dt);
   const beforeX=p.roomX,beforeY=p.roomY;
   const nx=Math.max(25,Math.min(295,p.roomX+(input.x||0)*90*dt));

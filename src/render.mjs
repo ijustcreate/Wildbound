@@ -1,5 +1,6 @@
 import {drawVictoryChest} from './victory-chest.mjs';
 import {drawOldWells} from './old-well.mjs';
+import {drawRoomScene} from './hero-ui.mjs';
 import {anacondaRenderParts,drawAnacondaSegment,drawAnacondaShadow} from './anaconda-art.mjs';
 import {drawMerchant} from './traveling-merchant.mjs';
 import {drawQuestNpc,drawNpcQuestMarkers} from './npc-quests.mjs';
@@ -201,6 +202,17 @@ export class Renderer {
     const { w, h } = this.resize(),
       ctx = this.ctx;
     this.age += dt;
+    const roomPlayer=game.players.find(p=>p.room),roomPortal=roomPlayer&&game.portals?.find(d=>d.id===roomPlayer.room);
+    if(roomPlayer&&roomPortal){
+      // Room spaces use the same game canvas and animator as the expedition.
+      // The scene is letterboxed only when necessary; it is no longer a
+      // miniature inventory-style card rendered by HeroUI.
+      const scale=Math.min(3,w/320,h/240),left=(w-320*scale)/2,top=(h-240*scale)/2;
+      ctx.fillStyle='#091512';ctx.fillRect(0,0,w,h);
+      ctx.save();ctx.translate(left,top);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
+      drawRoomScene(ctx,game,roomPlayer,roomPortal,this);
+      ctx.restore();applyCelShading(ctx);return;
+    }
     this.decor =
       game.bloom >= 3
         ? game.scenery || []

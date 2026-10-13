@@ -19,6 +19,7 @@ import { controllerButtonNames, controllerFamily, CONTROLLER_NAMES } from "./con
 import { chestName } from "./items.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
 import { drawStorageRobot, drawRobotPortrait } from "./robot-art.mjs";
+import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawStorageBackdrop,drawStorageChest,drawStorageLight,drawStorageDust} from './storage-art.mjs';
 import {storageVisualActor} from './storage-room.mjs';
 import {robotOnline,nearStorageRobot,ROBOT_REPAIR_SECONDS} from './storage-repair.mjs';
@@ -128,19 +129,16 @@ export class HeroUI {
   }
   draw(game, renderer, onlyId = null) {
     const wanted = new Set();
-    const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && (p.ui || p.room));
+    // Rooms are rendered by the main game canvas now. HeroUI only owns actual
+    // inventory/shop panels, so underground spaces no longer become a small
+    // secondary map card.
+    const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && p.ui);
     const bounds = this.root.getBoundingClientRect();
     const layoutKey = [bounds.width, bounds.height, ...open.map((p) => p.id)].join('|');
     let layoutChanged = layoutKey !== this.layoutKey;
     for (const p of game.players) {
       if (onlyId !== null && p.id !== onlyId) continue;
       if (!p.ui && !p.room) continue;
-      // A shared underground room is rendered once. The room renderer already
-      // draws every occupant, so duplicate room cards only waste half the view.
-      if (p.room && !p.ui) {
-        const roomLead = game.players.find(q => q.room === p.room && !q.ui);
-        if (roomLead && roomLead.id !== p.id) continue;
-      }
       wanted.add(p.id);
       if(p.ui)p.ui.ownerDevice??=p.device;
       let panel = this.panels.get(p.id);
@@ -1052,10 +1050,20 @@ export class HeroUI {
       c.textAlign = "center";
       c.font = "8px monospace";
       c.fillText(q.name, q.roomX, q.roomY + 12);
+      for(const pet of [q.hunterPet,q.ritualPet].filter(pet=>pet?.room===d.id))
+        drawHunterPet(c,{...pet,x:pet.roomX??q.roomX+24,y:pet.roomY??q.roomY+12},q,roomTime,43);
     }
     drawStorageDust(c,roomTime,d.owner||0);
     drawRoomSpellEffects(c,g,p.room);
     drawWetDrips(c,g,p.room);
     c.restore();
   }
+}
+
+// The main renderer uses the same room art and animation path as the legacy
+// overlay while it is being retired. Keeping this adapter here avoids a second
+// copy of storage-room drawing code and lets inventory remain an ordinary DOM
+// overlay on top of the full game canvas.
+export function drawRoomScene(c, game, player, portal, renderer) {
+  return HeroUI.prototype.room.call({ roomAnimator: renderer?.animator }, c, game, player, portal, renderer);
 }

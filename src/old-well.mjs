@@ -5,6 +5,7 @@ import {graveyardBlocked} from './graveyard-world.mjs';
 import {ignite} from './hazards.mjs';
 import {createRoomHealingBolt, spellHealingTargets, spellHealingPoint, hitHealingBolt} from './healing-magic.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
+import {drawHunterPet} from './hunter-pet-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
 import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
@@ -578,6 +579,8 @@ export function drawOldWellRoom(c, g, p, animator = null) {
     if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, g.time, 29);
     else {rect(c, q.roomX - 4, q.roomY - 14, 8, 12, q.color || '#87b8f2'); rect(c, q.roomX - 3, q.roomY - 19, 6, 6, '#e2bc88');}
     if (q.attack > 0) rect(c, q.roomX + (q.faceX || 1) * 12, q.roomY - 8 + (q.faceY || 0) * 10, 8, 2, '#edd7b0');
+    for(const pet of [q.hunterPet,q.ritualPet].filter(pet=>pet?.room===d.id))
+      drawHunterPet(c,{...pet,x:pet.roomX??q.roomX+24,y:pet.roomY??q.roomY+12},q,g.time,29);
   }
   // Darken unseen cells last, including decorations and unrevealed treasure.
   for (let ty = 0; ty < s.height; ty++) for (let tx = 0; tx < s.width; tx++)
