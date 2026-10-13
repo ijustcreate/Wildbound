@@ -89,6 +89,10 @@ The README uses current Wildbound presentation and production art. The older con
 </div>
 
 Current production art and direction sheets are in [`design/`](design/). Runtime-ready art references are documented in the [asset manifest](assets/FIELD_KIT_ASSETS.md).
+## Latest update: Beholder encounters
+
+The current build adds Beholder and Lesser Beholder encounters with dedicated rig subjects, palette variants, ranged ray attacks, wind-up telegraphs, and new encounter cards across forest, desert, temple, and ice environments. It also adds burrower encounters beneath the desert sands. The viewer snapshot records the Beholder motion provenance in [`assets/beholder/motion-provenance.json`](assets/beholder/motion-provenance.json).
+
 ## Default controls
 
 | Action | Keyboard / mouse | Controller |

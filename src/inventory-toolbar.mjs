@@ -11,7 +11,7 @@ export function inventoryToolbar(game,p,pad){
   const item=gear?{type,qty:1}:p.inventory[u.index],def=ITEMS[type];
   const keyboard=p.device==='keyboard',carrying=!!u.carry,empty='Select an item first.';
   const canUse=def&&(def.slot||def.bag||def.recipe||type.startsWith('caught_')||['potion','stamina_potion','coconut','honeycomb','trap'].includes(type));
-  const dropReason=!def?empty:!pack&&!gear?'Select an item in your bag or equipment.':!canDropInventoryItem(game,p)?'Items can only be dropped during an expedition.':protectedItem(p,type)?'Unlock this item in Field Kit first.':'';
+  const dropReason=!def?empty:!pack&&!gear?'Select an item in your bag or equipment.':!canDropInventoryItem(game,p)?'Items can only be dropped in the lobby or during an expedition.':protectedItem(p,type)?'Unlock this item in Field Kit first.':'';
   const option=(id,label,key,action,reason='')=>({id,label,key,action,reason:carrying&&id!=='move-item'?'Place or cancel the held item first.':reason});
   return {item,def,gear,options:[
     option('use',gear?'Unequip':def?.bag?'Open bag':def?.recipe?'Learn recipe':def?.slot?'Equip':'Use',keyboard?'Enter':pad[0],gear?'use':'equip',!def?empty:!gear&&!canUse?type==='arrow'?'Arrows are used automatically when you fire a bow.':'This item has no direct use yet.':''),
