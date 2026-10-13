@@ -1,5 +1,6 @@
 import {drawVictoryChest} from './victory-chest.mjs';
-import {drawOldWell} from './old-well.mjs';
+import {drawOldWells} from './old-well.mjs';
+import {drawRoomScene} from './hero-ui.mjs';
 import {anacondaRenderParts,drawAnacondaSegment,drawAnacondaShadow} from './anaconda-art.mjs';
 import {drawMerchant} from './traveling-merchant.mjs';
 import {drawQuestNpc,drawNpcQuestMarkers} from './npc-quests.mjs';
@@ -77,6 +78,8 @@ import {meleeProfile} from './melee-geometry.mjs';
 import {SealVortex,sealSurfaceSize} from './seal-vortex.mjs';
 import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
 import {drawGraveyardGround,drawGraveEmergence} from './graveyard-art.mjs';
+import {controlledUnit} from './controlled-unit.mjs';
+import {drawCampfire,drawCampfireLabel} from './campfire-art.mjs';
 import {drawGraveyardEcology} from './graveyard-ecology.mjs';
 import {drawCryptWeaponFlames} from './crypt-gear.mjs';
 const hash = (x, y) => {
@@ -201,6 +204,17 @@ export class Renderer {
     const { w, h } = this.resize(),
       ctx = this.ctx;
     this.age += dt;
+    const roomPlayer=game.players.find(p=>p.room),roomPortal=roomPlayer&&game.portals?.find(d=>d.id===roomPlayer.room);
+    if(roomPlayer&&roomPortal){
+      // Room spaces use the same game canvas and animator as the expedition.
+      // The scene is letterboxed only when necessary; it is no longer a
+      // miniature inventory-style card rendered by HeroUI.
+      const scale=Math.min(3,w/320,h/240),left=(w-320*scale)/2,top=(h-240*scale)/2;
+      ctx.fillStyle='#091512';ctx.fillRect(0,0,w,h);
+      ctx.save();ctx.translate(left,top);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
+      drawRoomScene(ctx,game,roomPlayer,roomPortal,this);
+      ctx.restore();applyCelShading(ctx);return;
+    }
     this.decor =
       game.bloom >= 3
         ? game.scenery || []
@@ -258,6 +272,7 @@ export class Renderer {
     drawLivingEcosystem(ctx, game, 'ground');
     drawGraveyardEcology(ctx,game,'ground');
     drawHazards(ctx, game);
+    for(const npc of game.questNpcs||[]) if(this.visible(npc,w,h,120)){drawCampfire(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10,game.time,npc.id);drawCampfireLabel(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10);}
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
     for (const orb of game.xpOrbs || []) {
       if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;
@@ -353,9 +368,9 @@ export class Renderer {
       }
       ctx.restore();
     }
+    if(game.portals?.some(d=>d.oldWell))drawOldWells(ctx,game);
     for (const d of game.portals) {
-      if(d.temple)continue;
-      if(d.oldWell){drawOldWell(ctx,d,game.time);continue;}
+      if(d.temple||d.oldWell)continue;
       const owner = game.players.find((p) => p.id === d.owner);
       drawPortal(
         ctx,
@@ -450,10 +465,15 @@ export class Renderer {
     const actors = this.actorQueue;
     actors.length = 0;
     for(const chest of game.supplyChests||[])actors.push({...chest,isSupplyChest:true,drawDepth:chest.y});
-    for(const pet of hunterPets(game))if(!sealCapture&&Number.isFinite(pet.x))actors.push({...pet,drawDepth:pet.y+(pet.roostHeight>0?1:0)});
-    for (const p of game.players)
-      if (!sealCapture&&!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
+    for(const pet of hunterPets(game))if(!sealCapture&&Number.isFinite(pet.x)&&!game.players.some(owner=>controlledUnit(game,owner)===pet))actors.push({...pet,drawDepth:pet.y+(pet.roostHeight>0?1:0)});
+    for (const owner of game.players) {
+      const controlled=controlledUnit(game,owner),p=controlled||owner;
+      if(sealCapture||p.room)continue;
+      actors.push({...p,isPlayer:true,controlledBy:controlled?owner.id:undefined,name:p.name||owner.name,color:p.color||owner.color,drawDepth:terrainActorDepth(game,p,boardActorDepth(game,p))});
+    }
     for(const ghost of game.ghosts||[])if(!sealCapture&&!ghost.room)actors.push({...ghost,isGhostActor:true,drawDepth:terrainActorDepth(game,ghost,boardActorDepth(game,ghost))});
+    const queued=new Set(actors.map(a=>a.id).filter(Boolean));
+    for(const follower of game.followers||[])if(!sealCapture&&!follower.room&&!queued.has(follower.id)&&this.visible(follower,w,h,180))actors.push({...follower,isPlayer:game.players.some(owner=>controlledUnit(game,owner)===follower),drawDepth:terrainActorDepth(game,follower,boardActorDepth(game,follower))});
     for (const e of game.enemies){
       // Long bodies need individual depth entries: roots and jumping heroes
       // can pass between coils, even when the snake's head is off-camera.
@@ -604,7 +624,7 @@ export class Renderer {
         ctx.beginPath();
         ctx.ellipse(contact.x, contact.y, 18, 6, 0, 0, Math.PI * 2);
         ctx.stroke();
-        if (a.id === game.current?.id) {
+        if (a.id === game.current?.id || a.controlledBy === game.current?.id) {
           ctx.fillStyle = a.color;
           ctx.beginPath();
           const lift=a.swimming?-20:(a.groundHeight||0)+(a.jumpHeight||0);

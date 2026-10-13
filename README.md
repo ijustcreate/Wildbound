@@ -7,3 +7,7 @@ The site root redirects to `/viewer/index.html`. The viewer offers a unit carous
 Feedback lives in the Site's D1 `DB` binding, table `feedback`; it is not in browser storage or static site files. The schema and append-only migration are in `db/schema.ts` and `drizzle/`. On a later request to retrieve the review data, use the Sites database read tool for project ID in `.openai/hosting.json`, table `feedback`. Tags are stored as JSON arrays in `good_tags` and `bad_tags`. Keep the same Site project ID and D1 binding on future publishes so notes survive version changes. Do not replace or clear the database when refreshing rig assets.
 
 To update the rig snapshot after Wildbound changes, copy `authored/rigs.json`, `src/`, and the four sprite JSON files (`animations.json`, `library.json`, `parts.json`, `animal-parts.json`) into matching paths under `public/viewer/`, then rebuild and republish this Site. Existing feedback stays tied to its recorded rig revision.
+
+## Latest Wildbound update
+
+The current viewer snapshot includes the new Beholder and Lesser Beholder enemy rigs, palettes, ray telegraphs, ranged AI, and encounter cards. It also includes desert burrower encounters and the related editor definitions and rig subject tracks. The new motion provenance is recorded in `public/viewer/assets/beholder/motion-provenance.json`.

@@ -176,6 +176,10 @@ export class PlayableLobby {
   renderPanel(p){
     const s=this.state.members.get(p.id);this.nodes.get(p.id)?.remove();
     const panel=document.createElement('section');panel.className='lobby-player-panel';panel.classList.toggle('board-menu',s.panel==='board');panel.dataset.ownerDevice=p.device;panel.style.setProperty('--player-color',p.color);panel.setAttribute('aria-label',p.name+' lobby controls');
+    // UI clicks belong to the panel. Do not let them fall through to the world
+    // canvas and become an interaction/jump on the same input frame.
+    panel.addEventListener('pointerdown',e=>e.stopPropagation());
+    panel.addEventListener('click',e=>e.stopPropagation());
     panel.classList.toggle('map-menu',s.panel==='environment');
     const tag=document.createElement('small');tag.textContent=p.device==='keyboard'?'KEYBOARD':'PLAYER '+(this.getGame().players.indexOf(p)+1);panel.append(tag);
     const heading=document.createElement('h2');panel.append(heading);
@@ -223,7 +227,10 @@ export class PlayableLobby {
         mapChoices=document.createElement('div');mapChoices.className='map-choices';panel.append(mapChoices);
       }
       for(const option of select.options){const b=button('',()=>{
-        select.value=option.value;select.dispatchEvent(new Event('change'));this.close(p);
+        select.value=option.value;select.dispatchEvent(new Event('change'));
+        // Keep the map table open so the choice is visibly selected. The
+        // player can close it with the right face button or Close.
+        this.renderPanel(p);
       });if(s.panel==='difficulty'){
         b.classList.add('difficulty-choice');
         b.setAttribute('aria-label',`${option.text}. ${DIFFICULTY_DETAILS[option.value]}`);
@@ -366,6 +373,13 @@ export class PlayableLobby {
       delete s.storageUiOpened;
     }
     const practiceInputs={...inputs},tvCommands={};
+    // A lobby panel owns controller input. Without this guard, the same
+    // button used to select/back out of a panel could also make the explorer
+    // jump in the practice scene underneath it.
+    for(const p of players){
+      const s=this.state.members.get(p.id);
+      if(s?.panel||p.ui)practiceInputs[p.device]={x:0,y:0,attack:false,jump:false,dodge:false};
+    }
     for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
     for(const p of players)if(this.television?.players.has(p.id)){
       const input=inputs[p.device]||{};

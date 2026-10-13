@@ -19,6 +19,7 @@ import { controllerButtonNames, controllerFamily, CONTROLLER_NAMES } from "./con
 import { chestName } from "./items.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
 import { drawStorageRobot, drawRobotPortrait } from "./robot-art.mjs";
+import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawStorageBackdrop,drawStorageChest,drawStorageLight,drawStorageDust} from './storage-art.mjs';
 import {storageVisualActor} from './storage-room.mjs';
 import {robotOnline,nearStorageRobot,ROBOT_REPAIR_SECONDS} from './storage-repair.mjs';
@@ -74,7 +75,7 @@ export class HeroUI {
       if (!stats.children.length) stats.append(el('span', 'No equipment stat change', 'item-tooltip-muted'));
       tip.append(stats);
       if(button.dataset.mode==='pack'&&salvageYield(item.type,item).length){
-        tip.append(el('p','Salvage one: '+salvageYield(item.type,item).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ')+'. Hold '+(p.device==='keyboard'?'V':controllerButtonNames(liveControllerFamily(p))[7])+' for 1.25 seconds.','item-tooltip-salvage'));
+        tip.append(el('p','Hold '+(p.device==='keyboard'?'V':controllerButtonNames(liveControllerFamily(p))[7])+' for 1.25 seconds to salvage.','item-tooltip-salvage'));
       }
       if (def.set && GEAR_SETS[def.set]) {
         const set = setProgress(p, def.set), checklist = el('section', null, 'item-tooltip-set');
@@ -128,7 +129,10 @@ export class HeroUI {
   }
   draw(game, renderer, onlyId = null) {
     const wanted = new Set();
-    const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && (p.ui || p.room));
+    // Rooms are rendered by the main game canvas now. HeroUI only owns actual
+    // inventory/shop panels, so underground spaces no longer become a small
+    // secondary map card.
+    const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && p.ui);
     const bounds = this.root.getBoundingClientRect();
     const layoutKey = [bounds.width, bounds.height, ...open.map((p) => p.id)].join('|');
     let layoutChanged = layoutKey !== this.layoutKey;
@@ -239,7 +243,11 @@ export class HeroUI {
       const fill=el('span','','inventory-xp-fill');fill.style.width=Math.min(100,Math.max(0,(p.xp||0)/needed*100))+'%';
       xp.append(fill,el('span',`${p.xp||0} / ${needed} XP`, 'inventory-xp-label'));
       progressRow.append(el('span',(p.coins||0)+' GOLD','coin-balance'),xp);
-      panel.append(head,progressRow);
+      // Dialogue has its own parchment title bar and should not inherit the
+      // inventory HUD's XP/gold strip; keeping that strip out also gives the
+      // 9-sliced conversation frame more room for wrapped text.
+      panel.append(head);
+      if (p.ui?.shop !== 'npc-dialogue') panel.append(progressRow);
       const button = (text, action, fn) => {
         const b = el("button", text);
         b.dataset.action = action;
@@ -343,7 +351,8 @@ export class HeroUI {
     // Content caching must not freeze a neighbour's position when a panel opens,
     // closes, changes chest mode, or the game window is resized.
     if (layoutChanged) {
-      for (const p of open) this.place(this.panels.get(p.id), p, game, renderer, bounds, open);
+      const placedOpen = open.filter(p => this.panels.has(p.id));
+      for (const p of placedOpen) this.place(this.panels.get(p.id), p, game, renderer, bounds, placedOpen);
       this.layoutKey = layoutKey;
     }
     for(const panel of this.panels.values()){
@@ -734,7 +743,7 @@ export class HeroUI {
       if(option.id==='salvage-hold'){
         const ring=el('span',null,'salvage-ring');ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
         b.className='salvage-button';b.append(ring);b.onclick=()=>{};
-        b.title=option.reason||'Hold '+option.key+' for 1.25 seconds to salvage one item. '+salvageYield(item?.type,item).map(v=>v.qty+' '+ITEMS[v.type].name).join(' + ');
+        b.title=option.reason||'Hold '+option.key+' for 1.25 seconds to salvage one item.';
         b.setAttribute('aria-label',b.title);
         b.onpointerdown=e=>{if(b.disabled||e.button!==0)return;e.preventDefault();b.setPointerCapture(e.pointerId);if(p.ui)p.ui.salvagePointer=true;};
         const stop=()=>{if(p.ui)p.ui.salvagePointer=false;};b.onpointerup=stop;b.onpointercancel=stop;b.onlostpointercapture=stop;b.onblur=stop;
@@ -875,17 +884,21 @@ export class HeroUI {
       panel.classList.toggle('party-panel',open.length>1);panel.style.width=width+'px';panel.style.height=height+'px';panel.style.maxHeight=height+'px';panel.style.left=left+'px';panel.style.top=top+'px';return;
     }
     panel.style.height='';
-    const compactRobot = p.ui?.shop === "robot" && bounds.height < 760,
+    const sharedRoom = p.room && !p.ui && game.players.filter(q => q.room === p.room && !q.ui).length > 1,
+      roomWidth = sharedRoom
+        ? Math.max(410, bounds.width - 20)
+        : Math.min(
+            800,
+            Math.max(410, ((bounds.height - 260) * 320) / 240 + 28),
+          ),
+      compactRobot = p.ui?.shop === "robot" && bounds.height < 760,
       w = Math.min(
         panel.classList.contains("storage-session")
           ? game.storageFor(p)
             ? 1160
             : 820
           : p.room && !p.ui
-            ? Math.min(
-                800,
-                Math.max(410, ((bounds.height - 260) * 320) / 240 + 28),
-              )
+            ? roomWidth
             : 410,
         bounds.width - 20,
       ),
@@ -1041,10 +1054,20 @@ export class HeroUI {
       c.textAlign = "center";
       c.font = "8px monospace";
       c.fillText(q.name, q.roomX, q.roomY + 12);
+      for(const pet of [q.hunterPet,q.ritualPet].filter(pet=>pet?.room===d.id))
+        drawHunterPet(c,{...pet,x:pet.roomX??q.roomX+24,y:pet.roomY??q.roomY+12},q,roomTime,43);
     }
     drawStorageDust(c,roomTime,d.owner||0);
     drawRoomSpellEffects(c,g,p.room);
     drawWetDrips(c,g,p.room);
     c.restore();
   }
+}
+
+// The main renderer uses the same room art and animation path as the legacy
+// overlay while it is being retired. Keeping this adapter here avoids a second
+// copy of storage-room drawing code and lets inventory remain an ordinary DOM
+// overlay on top of the full game canvas.
+export function drawRoomScene(c, game, player, portal, renderer) {
+  return HeroUI.prototype.room.call({ roomAnimator: renderer?.animator }, c, game, player, portal, renderer);
 }

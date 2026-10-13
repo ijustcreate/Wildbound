@@ -88,7 +88,7 @@ export function graveyardWorld(seed=0) {
     const gateApron=x>=GRAVEYARD_GATE.x-20 && x<=GRAVEYARD_GATE.x+GRAVEYARD_GATE.w+20 && y>=1160 && y<=1320;
     if(inside(graveyard.bounds,x,y,72)||graveyardTrailDistance(graveyard,x,y)<90||gateApron)continue;
     const size=100+Math.floor(graveyardHash(seed,col+79,row)*52);
-    prop('grave_forest_tree',Math.round(x),Math.round(y),size,{variant:(col+row)%3,
+    prop('grave_forest_tree',Math.round(x),Math.round(y),size,{variant:Math.floor(graveyardHash(seed,col+31,row+17)*5),treeType:['oak','birch','pine','deadwood','willow'][Math.floor(graveyardHash(seed,col+7,row+3)*5)],
       graveyardFootprint:{x:Math.round(x)-11,y:Math.round(y)-8,w:22,h:16}});
   }
   return {terrain,scenery,graveyard,house:null,webs:[],forestLandscape:null,graveyardVersion:1};

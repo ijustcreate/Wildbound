@@ -275,6 +275,8 @@ for (const name of [
   "dragon",
   "fire_elemental",
   "water_elemental",
+  "beholder",
+  "lesser_beholder",
           ...GRAVEYARD_EVENTS.map(e=>e.kind),
   "explorer-teal",
   "explorer-coral",
@@ -299,6 +301,16 @@ creatures.banshee_queen=creatureDefaults('banshee_queen');
 Object.assign(creatures.banshee_queen.stats,{hp:340,speed:44,damage:24,windup:.8,rangedRange:420,rangedCooldown:2.4});
 Object.assign(creatures.banshee_queen.behaviors,{ranged:true,melee:false,loot:true});
 creatures.banshee_queen.lootDrops=BANSHEE_SET.map(item=>({item,qty:1,chance:100}));
+for (const [kind, stats] of [
+  ['beholder', {hp:520,speed:34,damage:34,detection:620,rangedRange:340,rangedCooldown:2.8,rayWindup:.58}],
+  ['lesser_beholder', {hp:145,speed:42,damage:16,detection:520,rangedRange:300,rangedCooldown:3.2,rayWindup:.68}],
+]) {
+  creatures[kind] = creatureDefaults(kind);
+  creatures[kind].name = kind === 'beholder' ? 'Beholder' : 'Lesser beholder';
+  creatures[kind].aiKind = kind;
+  Object.assign(creatures[kind].stats, stats);
+  Object.assign(creatures[kind].behaviors, {ranged:true,melee:false,loot:true,jump:false,dash:false});
+}
 creatures.succubus=creatureDefaults('succubus');
 Object.assign(creatures.succubus.stats,{hp:180,speed:56,damage:18,detection:520,attackRange:112,windup:.75,recovery:1.6});
 Object.assign(creatures.succubus.behaviors,{ranged:true,melee:true,loot:true,dash:false,jump:false});
@@ -732,8 +744,10 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "white_lion",
           "snow_leopard",
           "dragon",
-  "fire_elemental",
-  "water_elemental",
+          "fire_elemental",
+          "water_elemental",
+          "beholder",
+          "lesser_beholder",
         ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||e.environment==='graveyard')&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);

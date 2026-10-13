@@ -5,8 +5,10 @@ import {graveyardBlocked} from './graveyard-world.mjs';
 import {ignite} from './hazards.mjs';
 import {createRoomHealingBolt, spellHealingTargets, spellHealingPoint, hitHealingBolt} from './healing-magic.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
+import {drawHunterPet} from './hunter-pet-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {locationClearing} from './location-clearing.mjs';
 import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
   wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance} from './mausoleum-crypt.mjs';
 
@@ -164,6 +166,8 @@ export function spawnOldWell(g, preferred = null, {test=false} = {}) {
   let spot = preferred && validWellSpawn(g, preferred) ? preferred : null;
   const focus = preferred || g.players.find(p => p.hp > 0 && !p.room) || {x: 800, y: 960};
   const candidates = [];
+  const clearing=locationClearing(g,focus,g.seed||0);
+  for(const point of clearing.points||[])candidates.push({x:Math.round(point.x/32)*32+16,y:Math.round(point.y/32)*32+16});
   const minX = g.mapMode === 'boundless' ? Math.floor(focus.x / 32) * 32 + 16 - 512 : 80;
   const minY = g.mapMode === 'boundless' ? Math.floor(focus.y / 32) * 32 + 16 - 512 : 80;
   const maxX = g.mapMode === 'boundless' ? minX + 1024 : 1520;
@@ -174,7 +178,7 @@ export function spawnOldWell(g, preferred = null, {test=false} = {}) {
       x > r.x - 50 && y > r.y - 50 && x < r.x + r.w + 50 && y < r.y + r.h + 50)) continue;
     candidates.push({x, y});
   }
-  candidates.sort((a, b) => Math.abs(distance(a, focus) - 170) - Math.abs(distance(b, focus) - 170));
+  candidates.sort((a, b) => Math.abs(distance(a, focus) - 220) - Math.abs(distance(b, focus) - 220));
   if (!spot) spot = candidates.find(p => validWellSpawn(g, p));
   if (!spot) {g.message?.('There is no clear ground for the old well.'); return null;}
   const id = 'old-well-' + g.nextId++;
@@ -471,10 +475,14 @@ export function drawOldWell(c, d, time = 0) {
 export function drawOldWells(c, g) {
   for (const d of (g.portals || []).filter(d => d.oldWell)) {
     drawOldWell(c, d, g.time);
+    c.save(); c.fillStyle = '#ffe7a9'; c.font = 'bold 8px sans-serif'; c.textAlign = 'center';
+    c.fillText(d.mausoleum ? 'MAUSOLEUM' : 'OLD WELL', d.x, d.y - 64);
     if (g.players.some(p => !p.room && p.hp > 0 && distance(p, d) <= 74 && !p.ui)) {
-      c.save(); c.fillStyle = '#ffe7a9'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
-      c.fillText(d.mausoleum ? 'E / Y · ENTER MAUSOLEUM' : 'E / Y · INVESTIGATE OLD WELL', d.x, d.y - 67); c.restore();
+      const interact = g.controlLabels?.interact || 'E / Y';
+      c.font = 'bold 7px sans-serif';
+      c.fillText(d.mausoleum ? `${interact} · ENTER` : `${interact} · INVESTIGATE`, d.x, d.y - 75);
     }
+    c.restore();
   }
 }
 function shaft(c, exit, time) {
@@ -574,6 +582,8 @@ export function drawOldWellRoom(c, g, p, animator = null) {
     if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, g.time, 29);
     else {rect(c, q.roomX - 4, q.roomY - 14, 8, 12, q.color || '#87b8f2'); rect(c, q.roomX - 3, q.roomY - 19, 6, 6, '#e2bc88');}
     if (q.attack > 0) rect(c, q.roomX + (q.faceX || 1) * 12, q.roomY - 8 + (q.faceY || 0) * 10, 8, 2, '#edd7b0');
+    for(const pet of [q.hunterPet,q.ritualPet].filter(pet=>pet?.room===d.id))
+      drawHunterPet(c,{...pet,x:pet.roomX??q.roomX+24,y:pet.roomY??q.roomY+12},q,g.time,29);
   }
   // Darken unseen cells last, including decorations and unrevealed treasure.
   for (let ty = 0; ty < s.height; ty++) for (let tx = 0; tx < s.width; tx++)

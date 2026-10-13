@@ -410,13 +410,14 @@ export const adventureMethods = {
   },
   collectArrow(p, arrow) {
     if (!arrow || !this.arrows.includes(arrow) || dist(p, arrow) > 65) return false;
-    if (!give(p.inventory, arrow.ammoType||"arrow", 1)) {
+    const qty = Math.max(1, Number(arrow.qty) || 1);
+    if (!give(p.inventory, arrow.ammoType||"arrow", qty)) {
       this.inventoryFullNotice(p, "arrow");
       return false;
     }
     this.arrows = this.arrows.filter((a) => a !== arrow);
     this.onSound("loot", p);
-    this.message("Recovered arrow.");
+    this.message(`Recovered ${qty} arrow${qty === 1 ? "" : "s"}.`);
     this.persist();
     return true;
   },
@@ -543,7 +544,9 @@ export const adventureMethods = {
     cancelRobotRepair(p);
     p.charge = 0;
     p.ui = null;
-    if(p.hunterPet?.spiritGhost){p.hunterPet.room=door.id;p.hunterPet.roomX=p.roomX+24;p.hunterPet.roomY=p.roomY+12;}
+    for(const pet of [p.hunterPet,p.ritualPet].filter(Boolean)){
+      pet.room=door.id;pet.roomX=p.roomX+24;pet.roomY=p.roomY+12;
+    }
     if (p.id === door.owner) {
       door.closing = null;
       door.entered = true;
@@ -565,7 +568,9 @@ export const adventureMethods = {
     cancelRobotRepair(p);
     p.x = d.x;
     p.y = d.y;
-    if(p.hunterPet?.spiritGhost){p.hunterPet.room=null;p.hunterPet.x=d.x-24;p.hunterPet.y=d.y+12;}
+    for(const pet of [p.hunterPet,p.ritualPet].filter(Boolean)){
+      pet.room=null;pet.x=d.x-24;pet.y=d.y+12;
+    }
     d.entryReady = (d.entryReady || []).filter((id) => id !== p.id);
     if (forced) {
       p.hp = Math.max(0, p.hp - p.maxHp * rules.portalDamage);

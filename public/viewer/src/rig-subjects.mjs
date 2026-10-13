@@ -216,6 +216,8 @@ export const RIG_SUBJECTS = {
           fire_elemental: "flameCrown",
           water_elemental: "crest",
           dragon: "head",
+          beholder: "eye",
+          lesser_beholder: "eye",
           snake: "head",
           monkey: "handR",
           golem: "handR",
@@ -230,6 +232,8 @@ export const RIG_SUBJECTS = {
               ? ["bodyWidth", "headRadius", "limbWidth"]
               : null,
         tracks: {
+          beholder: ["eye", "stalk0Tip", "stalk1Tip", "stalk3Tip", "stalk4Tip"],
+          lesser_beholder: ["eye", "stalk0Tip", "stalk1Tip", "stalk3Tip", "stalk4Tip"],
           fire_elemental: [
             "head",
             "handL",
@@ -262,5 +266,10 @@ export const RIG_SUBJECTS = {
 };
 RIG_SUBJECTS.tiger={...RIG_SUBJECTS.lion,name:"Tiger / lion rig",data:tigerMotion,defaults:()=>defaultLionMotion(),replace:replaceTigerMotion,sprite:"tiger",draw:(c,a,t,m,p)=>drawLion(c,{...a,skin:"tiger"},t,m||tigerMotion,p)};
 RIG_SUBJECTS.tsetse={...RIG_SUBJECTS.bat,name:"Tsetse fly / winged rig",sprite:"bat"};
+// Boatless Captain uses the editable humanoid rig until a dedicated motion pack is authored.
+RIG_SUBJECTS.boatless_captain={...RIG_SUBJECTS.player,name:"Boatless Captain / controller humanoid",sprite:"boatless_captain"};
+RIG_SUBJECTS.coatless_captain={...RIG_SUBJECTS.boatless_captain,name:"Coatless Captain / controller humanoid",sprite:"coatless_captain"};
+RIG_SUBJECTS.april={...RIG_SUBJECTS.boatless_captain,name:"April / controller humanoid",sprite:"april"};
+RIG_SUBJECTS.captain={...RIG_SUBJECTS.boatless_captain,name:"Captain / controller humanoid",sprite:"captain"};
 export const rigSubject = (name) =>
   RIG_SUBJECTS[name?.startsWith("explorer") ? "player" : name==='baby_spider'?'spider':name==='tsetse'?'tsetse':name];

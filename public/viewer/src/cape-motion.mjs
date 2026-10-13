@@ -1,12 +1,12 @@
 // Stateless cloth approximation: pinned shoulders, delayed travelling folds,
 // and a trailing/lifting hem. Deterministic when scrubbing or rendering replays.
-export function capeRows(top,bottom,actor,time,style='',shoulders){
+export function capeRows(top,bottom,actor,time,style='',shoulders,options={}){
  const moving=actor.moving||['run','walk','dash'].includes(actor.animationAction);
  const drive=actor.dashTime>0||actor.animationAction==='dash'?2.5:moving?1:0;
   const motion=0.6;
  const airborne=Math.min(1,(actor.jumpHeight||0)/30);
  const descent=Math.min(1,Math.max(0,-(actor.jumpVelocity||0))/190)*airborne;
- const length=style==='tattered'?1.35:['short','pointed'].includes(style)?.5:1;
+ const length=options.length??(style==='tattered'?1.35:['short','pointed'].includes(style)?.5:1);
  const hems=style==='tattered'?[1,.62,.86,1]:null;
  return Array.from({length:25},(_,i)=>{
   const t=i/24,free=Math.sin(t*Math.PI/2),phase=time*(drive?10:3.5)-t*5;

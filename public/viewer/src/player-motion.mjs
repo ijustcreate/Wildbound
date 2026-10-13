@@ -123,6 +123,15 @@ export function defaultPlayerMotion() {
           },
         ],
       },
+      sit: {
+        fps: 4,
+        length: 8,
+        loop: true,
+        keys: [
+          { frame: 0, joints: { pelvis:[0,0,-7], chest:[0,-3,-2], head:[0,-4,-1], hipL:[0,0,-3], hipR:[0,0,-3], kneeL:[-2,-8,-7], kneeR:[2,-8,-7], footL:[-2,-10,-11], footR:[2,-10,-11], handL:[-1,-5,-2], handR:[1,-5,-2] } },
+          { frame: 4, joints: { pelvis:[0,0,-7], chest:[0,-3,-1], head:[0,-4,0], hipL:[0,0,-3], hipR:[0,0,-3], kneeL:[-2,-8,-7], kneeR:[2,-8,-7], footL:[-2,-10,-11], footR:[2,-10,-11], handL:[-1,-5,-1], handR:[1,-5,-1] } },
+        ],
+      },
       run: {
         fps: 12,
         length: 8,
@@ -820,8 +829,19 @@ export function drawPlayer(
     const left = projectPoint([top[0] - 4, top[1] - 3, top[2]], d),
       right = projectPoint([top[0] + 4, top[1] - 3, top[2]], d);
     const capeStyle=ITEMS[gear.cape]?.style;
-    const clothRows=capeRows(top,bottom,actor,time,capeStyle,{left:positions.shoulderL,right:positions.shoulderR});
-    const rows=(ITEMS[gear.cape]?.bansheeGear?widenBansheeCape(clothRows):clothRows).map(row=>({...row,left:projectPoint(row.left,d),right:projectPoint(row.right,d),segments:row.segments.map(s=>({...s,left:projectPoint(s.left,d),right:projectPoint(s.right,d)}))}));
+    const bansheeCape=ITEMS[gear.cape]?.bansheeGear;
+    const clothRows=capeRows(
+      top,
+      bottom,
+      actor,
+      time,
+      capeStyle,
+      {left:positions.shoulderL,right:positions.shoulderR},
+      // The generic tattered cape is deliberately long; the Banshee cape is
+      // fitted armor and should stop above the boots in every pose.
+      bansheeCape ? {length:.86} : undefined,
+    );
+    const rows=(bansheeCape?widenBansheeCape(clothRows):clothRows).map(row=>({...row,left:projectPoint(row.left,d),right:projectPoint(row.right,d),segments:row.segments.map(s=>({...s,left:projectPoint(s.left,d),right:projectPoint(s.right,d)}))}));
     const a=rows.at(-1).left,b=rows.at(-1).right;
     add(
       p.chest.depth + (back ? 2 : -2),
@@ -1115,7 +1135,13 @@ export function drawPlayer(
     // The grip is part of this arm. A projected hand depth can fall behind
     // its own forearm in profile poses, hiding a shield or wand in the sleeve.
     if(['shield','wand','staff'].includes(itemKind(gear[side === 'R' ? 'hand1' : 'hand2'])))
-      queue.at(-1).attachmentOrder={anchors:['Arm '+side],behind:false};
+      queue.at(-1).attachmentOrder={
+        // Shields extend down beside the body. Include the matching leg in
+        // the attachment order so it can pass behind/in front of the leg
+        // according to the projected pose instead of always floating over it.
+        anchors:['Leg '+side,'Arm '+side],
+        behind:hand.depth<foot.depth,
+      };
   }
   add(
     p.chest.depth,
@@ -1223,10 +1249,10 @@ export function drawPlayer(
             c.fillRect(Math.round(clasp.x) - 1, Math.round(clasp.y), 2, 2);
           } else {
             const gem = attach(0, 4, -4);
-            limb(c, attach(-3, 2, 1), gem, 1, "#f2ce7c");
-            limb(c, attach(3, 2, 1), gem, 1, "#f2ce7c");
-            ellipse(c, gem.x, gem.y, 2.6, 3.3, ITEMS[gear.neck]?.warlockGear?'#302b3c':"#9c5724");
-            ellipse(c, gem.x, gem.y, 1.9, 2.6, ITEMS[gear.neck]?.warlockGear?'#81ceb1':"#ffb43e");
+            limb(c, attach(-2.5, 2, 1), gem, 1, "#f2ce7c");
+            limb(c, attach(2.5, 2, 1), gem, 1, "#f2ce7c");
+            ellipse(c, gem.x, gem.y, 2, 2.5, ITEMS[gear.neck]?.warlockGear?'#302b3c':"#9c5724");
+            ellipse(c, gem.x, gem.y, 1.5, 2, ITEMS[gear.neck]?.warlockGear?'#81ceb1':"#ffb43e");
             c.fillStyle = "#fff0ad";
             c.fillRect(Math.round(gem.x) - 1, Math.round(gem.y) - 1, 1, 2);
           }

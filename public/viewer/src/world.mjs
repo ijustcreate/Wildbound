@@ -222,6 +222,10 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   return false;
 }
 export function isOccluded(prop, sprite, player) {
+  if(prop.graveyard&&prop.kind==='grave_forest_tree') {
+    const base=prop.rootY??prop.y;
+    return player.y+10<base&&player.y>base-prop.size*1.15&&Math.abs(player.x-prop.x)<prop.size*.5;
+  }
   if(prop.coastal&&['tree','palm','beach_arch'].includes(prop.kind)){const base=prop.rootY;return player.y+8<base&&player.y>base-prop.size*.86&&Math.abs(player.x-prop.x)<prop.size*.46;}
   if(prop.kind==='forest_ruin')return player.y<prop.y&&player.y>prop.y-prop.depth-prop.height&&Math.abs(player.x-prop.x)<prop.width/2+8;
   if(prop.procedural&&['tree','snow_tree'].includes(prop.kind)) {

@@ -30,7 +30,7 @@ import {isCharmed,clearCharm,tickCharmStatuses,charmInputs,tickCharmedPlayer,cha
 import {seedWildFauna,tickWildFauna} from './wild-fauna.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {initializeAnaconda,updateAnacondaBody,anacondaBlocks} from './anaconda-body.mjs';
-import {stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
+import {stumpShape,rockSurface,raisedSurfaceBlocked} from './terrain-support.mjs';
 import {victoryChestBlocked} from './victory-chest.mjs';
 import {catchCritter} from './living-ecosystem.mjs';
 import {updateBoundlessWorld, BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
@@ -77,6 +77,8 @@ import {spawnRavenFlock,tickRaven,dropRavenLoot} from './raven.mjs';
 import {flamingMeleeHit,onFlamingHarvest} from './crypt-gear.mjs';
 import {healingAdventureMethods} from './healing-magic.mjs';
 import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
+import {BEHOLDER_EVENT,LESSER_BEHOLDER_EVENT,beholderPaletteFor,tickBeholder} from './beholder.mjs';
+import {controlledUnit,prepareControlledUnit} from './controlled-unit.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
   WORLD = TILE * MAP_SIZE,
@@ -90,6 +92,28 @@ export const COLORS = [
   "#c5a0ed",
   "#b6d77c",
 ];
+
+function tickControlledUnit(g, owner, actor, input, dt) {
+  actor.controlPreviousInput ||= {};
+  if (actor.hp <= 0 || actor.room || actor.ui || actor.stun > 0 || g.openingBoard) {
+    actor.moving = false; actor.charge = 0; actor.bowAiming = false;
+    actor.controlPreviousInput = {...input}; return;
+  }
+  updateAimFacing(actor,input);
+  actor.bowAiming=!!input.block&&hasAimWeapon(actor)&&!actor.swimming&&!actor.sleeping&&!actor.stun;
+  if(actor.bowAiming){actor.blocking=false;actor.dashTime=0;actor.slideX=actor.slideY=0;}
+  const len=Math.hypot(input.x||0,input.y||0);let mx=input.x||0,my=input.y||0;
+  actor.walking=len>0&&len<.6;if(len>1){mx/=len;my/=len;}
+  if(input.jump&&!actor.controlPreviousInput.jump&&!actor.wingHover)startJump(actor);
+  actor.jumpHeld=!!input.jump;
+  if(input.attack&&!actor.bowAiming)actor.charge=Math.min(1.2,(actor.charge||0)+dt*(1+(itemKind(actor.equipment?.hand1)==='bow'?stat(actor,'bowDrawSpeed'):0)));
+  if(!input.attack&&actor.controlPreviousInput.attack&&actor.charge&&!actor.swimming){g.attack(actor,actor.charge);actor.charge=0;}
+  const speed=actor.dashTime>0?rules.dashSpeed:133*(1+stat(actor,'speedBonus'));
+  if(actor.bowAiming){actor.moving=false;actor.walking=false;}
+  else if(!actor.sleeping){const motion=iceMotion(g,actor,mx,my,speed,dt);g.moveActor(actor,motion.dx,motion.dy);}
+  actor.controlPreviousInput={...input};
+  actor.controllerOwner=owner.id;
+}
 export const EVENTS = [
   {
     name: "The golden hunter",
@@ -409,6 +433,87 @@ EVENTS.push(structuredClone(BANSHEE_EVENT));
 EVENTS.push(structuredClone(SUCCUBUS_EVENT));
 EVENTS.push(structuredClone(IMP_EVENT));
 EVENTS.push(structuredClone(ZOMBIE_EVENT));
+EVENTS.push(structuredClone(BEHOLDER_EVENT));
+EVENTS.push(structuredClone(LESSER_BEHOLDER_EVENT));
+// Beholder variants: keep these appended so saved/editor event indices remain stable.
+EVENTS.push(
+  {
+    name: 'The crimson eye over the dunes',
+    kind: 'beholder',
+    environment: 'desert',
+    count: 1,
+    hp: 610,
+    speed: 30,
+    damage: 42,
+    weight: 3,
+    paletteVariant: 'fire',
+    verse: 'The heat bends around one watching eye.\nThe dunes have found a master.',
+    tip: 'The crimson watcher hits harder but floats slowly. Keep circling during its ray wind-up.',
+  },
+  {
+    name: 'The watcher in the jade stair',
+    kind: 'beholder',
+    environment: 'temple',
+    count: 1,
+    hp: 560,
+    speed: 36,
+    damage: 36,
+    weight: 3,
+    paletteVariant: 'arcane',
+    verse: 'Purple light leaks between the stones.\nSomething above the stair is awake.',
+    tip: 'Break line of sight behind temple cover, then punish the watcher after each beam.',
+  },
+  {
+    name: 'The lesser brood',
+    kind: 'lesser_beholder',
+    environment: 'forest',
+    count: 4,
+    hp: 125,
+    speed: 46,
+    damage: 14,
+    weight: 6,
+    paletteVariant: 'swamp',
+    verse: 'Four small eyes blink beneath the leaves.\nThe forest is looking back.',
+    tip: 'Split the brood apart. Their rotating rays become dangerous when several have a clear shot.',
+  },
+  {
+    name: 'The ember-eyed scouts',
+    kind: 'lesser_beholder',
+    environment: 'ice',
+    count: 3,
+    hp: 165,
+    speed: 44,
+    damage: 18,
+    weight: 5,
+    paletteVariant: 'fire',
+    verse: 'Warm lights drift through the snow.\nThree little watchers search the white.',
+    tip: 'Use the open snow to stay mobile; focus one scout down before the next ray cycle.',
+  },
+  {
+    name: 'Burrowers beneath the dunes',
+    kind: 'burrower',
+    environment: 'desert',
+    count: 3,
+    hp: 80,
+    speed: 64,
+    damage: 18,
+    weight: 8,
+    verse: 'The sand rolls against the wind.\nSomething hungry tunnels below.',
+    tip: 'Watch the moving sand trails and step away from the emergence rings before striking.',
+  },
+  {
+    name: 'Sand jaws',
+    kind: 'burrower',
+    environment: 'desert',
+    count: 5,
+    hp: 62,
+    speed: 72,
+    damage: 14,
+    weight: 10,
+    verse: 'Five ridges race across the waste.\nThe dunes open one mouth at a time.',
+    tip: 'Keep moving across open ground. Focus exposed burrowers before the next one emerges.',
+  },
+);
 EVENTS.push({name:'Velvet feet in the sand',kind:'tarantula',count:2,hp:110,speed:48,damage:16,weight:8,spiderNest:true,verse:'Soft gold hides eight silent feet.\nThe velvet hunters guard their keep.',tip:'Tarantulas are slower and tougher than black spiders. Avoid their bite and destroy the eggs.'});
 EVENTS.push(structuredClone(OLD_WELL_EVENT));
 EVENTS.push(...GRAVEYARD_EVENTS.map(e=>structuredClone(e)));
@@ -471,7 +576,7 @@ export function cameraTarget(players, w, h, reveal = null, mapMode='bounded') {
 export function expeditionCameraTarget(game, w, h) {
   if (game.phase === "play" && game.openingBoard)
     return openingCamera(w,h);
-  const worldPlayers = game.players.filter((p) => !p.room);
+  const worldPlayers = game.players.filter((p) => !p.room).map(p => controlledUnit(game,p) || p);
   // Keep the world centered on players who are still playing while another
   // player has an inventory or storage panel open. This keeps multiplayer
   // action visible instead of letting a UI panel pull the camera away.
@@ -562,10 +667,10 @@ export class Game {
     return (
       !flying &&
       nearbyScenery(this.scenery, x, y + footOffset, radius).some((prop) => {
-        const stump=stumpShape(prop);
+        const stump=stumpShape(prop),rock=rockSurface(prop),raised=stump||rock;
         // Player rigs are anchored at their visible feet. The legacy sprite
         // offset otherwise makes a short stump block empty ground above it.
-        if(stump){const offset=from&&!from.kind?0:footOffset;return elevation<stump.height&&raisedSurfaceBlocked(stump,x,y+offset,radius,projectile?null:from,offset);}
+        if(raised){const offset=from&&!from.kind?0:footOffset;return elevation<raised.height&&raisedSurfaceBlocked(raised,x,y+offset,radius,projectile?null:from,offset);}
         return footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius);
       })
     );
@@ -1180,6 +1285,9 @@ export class Game {
         tacticTime: 1.4 + this.random() * 1.8,
         skin: spawnedKind,
       };
+      if (spawnedKind === 'beholder' || spawnedKind === 'lesser_beholder') {
+        e.beholderPalette = beholderPaletteFor(this.event.paletteVariant || (spawnedKind === 'beholder' ? 'classic' : 'swamp'));
+      }
       if(spawnedKind==='banshee_queen')initializeBansheeQueen(e);
       if(spawnedKind==='succubus')initializeSuccubus(e);
       if(spawnedKind==='imp')initializeImp(e);
@@ -1296,10 +1404,12 @@ export class Game {
       this.reveal.life -= dt;
       if (this.reveal.life <= 0) this.reveal = null;
     }
-    for (const p of this.players) {
-      if(!tickWingFlight(this,p,inputs[p.device]||{},dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
-      tickQuicksand(this,p,inputs[p.device]||{},dt);
-      tickSwimming(this,p,inputs[p.device]||{},dt);
+    for (const owner of this.players) {
+      const controlled=controlledUnit(this,owner),p=controlled?prepareControlledUnit(owner,controlled):owner;
+      const ownerInput=inputs[owner.device]||{};
+      if(!tickWingFlight(this,p,ownerInput,dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
+      tickQuicksand(this,p,ownerInput,dt);
+      tickSwimming(this,p,ownerInput,dt);
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
@@ -1315,6 +1425,7 @@ export class Game {
       p.invuln = Math.max(0, p.invuln - dt);
       p.trapCooldown = Math.max(0, p.trapCooldown - dt);
       p.hit = Math.max(0, p.hit - dt);
+      if(controlled){tickControlledUnit(this,owner,p,ownerInput,dt);continue;}
       if(isCharmed(p)){tickCharmedPlayer(this,p,dt);continue;}
       const input = inputs[p.device] || {};
       p.bowAiming = !!input.block && hasAimWeapon(p) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !this.openingBoard;
@@ -1777,6 +1888,7 @@ export class Game {
         }
       }
       if(e.kind==='banshee_queen'&&beh.ranged){tickBansheeQueen(this,e,p,dt,cfg.stats,beh);continue;}
+      if((e.kind==='beholder'||e.kind==='lesser_beholder')&&beh.ranged){tickBeholder(this,e,p,dt,cfg.stats);continue;}
       if (beh.ranged) {
         enemyQuiver(e);
         if(e.state!=='snared'&&retrieveEnemyArrows(this,e,dt))continue;

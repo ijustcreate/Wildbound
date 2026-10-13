@@ -1,6 +1,6 @@
 export const EVENT_HISTORY_LIMIT=24;
 export const EVENT_COVERAGE_LIMIT=256;
-const bosses=new Set(['anaconda','banshee_queen','succubus','gorilla','dragon','skeleton_boss','necromancer','hunter','krampus']);
+const bosses=new Set(['anaconda','banshee_queen','succubus','gorilla','dragon','skeleton_boss','necromancer','hunter','krampus','beholder']);
 const weather=new Set(['monsoon','sandstorm','thunderstorm','blizzard']);
 export const eventBoss=event=>bosses.has(event.kind);
 function state(g){

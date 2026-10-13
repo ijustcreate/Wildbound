@@ -157,7 +157,19 @@ const skeletons = {
     hingeR: ["pelvis", 12, 0, 2],
     jawR: ["hingeR", 16, 0, 3],
   },
+  beholder: {
+    pelvis: ["", 0, 0, 14],
+    body: ["pelvis", 0, 0, 22],
+    eye: ["body", 0, 7, 28],
+    stalk0: ["body", -9, 2, 25], stalk0Tip: ["stalk0", -4, 1, 35],
+    stalk1: ["body", -7, 5, 26], stalk1Tip: ["stalk1", -7, 2, 34],
+    stalk2: ["body", -4, 8, 27], stalk2Tip: ["stalk2", -9, 3, 33],
+    stalk3: ["body", 9, 2, 25], stalk3Tip: ["stalk3", 4, 1, 35],
+    stalk4: ["body", 7, 5, 26], stalk4Tip: ["stalk4", 7, 2, 34],
+    stalk5: ["body", 4, 8, 27], stalk5Tip: ["stalk5", 9, 3, 33],
+  },
 };
+skeletons.lesser_beholder = skeletons.beholder;
 const labels = {
   dragon: "Dragon / winged quadruped",
   fire_elemental: "Fire elemental / living flame",
@@ -167,6 +179,8 @@ const labels = {
   golem: "Golem / stone",
   vine: "Snapping plant / rooted",
   trap: "Trap / mechanism",
+  beholder: "Beholder / eyestalk aberration",
+  lesser_beholder: "Lesser beholder / eyestalk aberration",
 };
 const palette = {
   body: "#7b9351",
@@ -194,7 +208,21 @@ function makeKeys(kind, action) {
     const t = frame / 7,
       a = (frame * Math.PI) / 4,
       j = zero(spec);
-    if (kind === "snake") {
+    if (kind === "beholder" || kind === "lesser_beholder") {
+      const bob = action === "death" ? -t * 7 : Math.sin(a) * (action === "idle" ? 1.2 : 2.4);
+      for (const n of Object.keys(spec)) j[n] = [0, 0, bob];
+      for (let i = 0; i < 6; i++) {
+        const phase = a + i * 0.75;
+        j[`stalk${i}`] = [Math.sin(phase) * 1.5, Math.cos(phase) * 1.2, bob];
+        j[`stalk${i}Tip`] = [
+          Math.sin(phase + .5) * (action === "attack" ? 3 : 1.5),
+          Math.cos(phase + .5) * 1.5,
+          bob + (action === "attack" ? Math.sin(t * Math.PI) * 3 : 0),
+        ];
+      }
+      if (action === "hurt") for (const n of Object.keys(j)) j[n][1] -= (1 - t) * 3;
+      if (action === "death") j.eye[2] -= 4 * t;
+    } else if (kind === "snake") {
       const coil = ["coil", "windup", "snared"].includes(action),
         strike = action === "strike";
       for (let i = 0; i < 8; i++) {
@@ -382,7 +410,9 @@ export function defaultCreatureMotion(kind) {
   const spec = skeletons[kind];
   if (!spec) throw Error("Unknown creature rig");
   const clips =
-    kind === "fire_elemental"
+    kind === "beholder" || kind === "lesser_beholder"
+      ? ["idle", "float", "attack", "recover", "hurt", "death"]
+      : kind === "fire_elemental"
       ? ["idle", "walk", "run", "cast", "hurt", "snared"]
       : kind === "dragon"
         ? [
@@ -463,6 +493,16 @@ export function defaultCreatureMotion(kind) {
       face: "#bcb88b",
       detail: "#e1dcc1",
     });
+  if (kind === "beholder" || kind === "lesser_beholder")
+    Object.assign(pal, {
+      body: "#667b9b",
+      shade: "#3b3155",
+      light: "#8da6c2",
+      face: "#ffb94e",
+      detail: "#f7d878",
+      eye: "#fff1b0",
+      outline: "#241c36",
+    });
   return {
     version: 1,
     type: kind,
@@ -515,6 +555,7 @@ export function defaultCreatureMotion(kind) {
           length: 8,
           loop: [
             "idle",
+            "float",
             "breath",
             "tailSwipe",
             "attack",
@@ -525,7 +566,7 @@ export function defaultCreatureMotion(kind) {
             "snared",
             "hold",
           ].includes(action),
-          keys: makeKeys(kind, action),
+          keys: makeKeys(kind === "lesser_beholder" ? "beholder" : kind, action),
         },
       ]),
     ),
@@ -572,6 +613,13 @@ export function replaceCreatureMotion(kind, m) {
   Object.assign(creatureMotions[kind], upgradeCreatureMotion(kind, m));
 }
 export function creatureAction(kind, a) {
+  if (kind === "beholder" || kind === "lesser_beholder") {
+    if (a.hp <= 0 || a.state === "death") return "death";
+    if (a.beholderRayTime > 0 || a.attack > 0) return "attack";
+    if (a.flash > 0 || a.hit > 0) return "hurt";
+    if (a.state === "recover") return "recover";
+    return a.moving ? "float" : "idle";
+  }
   if (kind === "vine" && a.spitTime > 0) return "bite";
   if (["fire_elemental", "water_elemental"].includes(kind)) {
     if (a.animationAction)
@@ -704,6 +752,8 @@ export function drawCreature(
         creatureAction(kind, actor),
         creatureFrame(kind, actor, time, model),
       );
+  if (kind === "beholder" || kind === "lesser_beholder")
+    return drawBeholder(c, actor, time, model, pose, d);
   if(kind==='monkey'&&actor.jumpHeight>0&&!suppliedPose){for(const name of ['footL','footR','kneeL','kneeR'])pose[name]=[pose[name][0],pose[name][1]+3,pose[name][2]+5];for(const name of ['handL','handR'])pose[name]=[pose[name][0],pose[name][1],pose[name][2]+8];}
   const p = Object.fromEntries(
       Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]),
@@ -1161,6 +1211,52 @@ export function drawCreature(
         ball(n, kind === "golem" ? 1.7 : 1, pal.eye);
       });
   paintLayers(queue, model, d, c, p);
+  return p;
+}
+
+function drawBeholder(c, actor, time, model, pose, d) {
+  const p = Object.fromEntries(Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]));
+  const pal = {...model.palette, ...(actor.beholderPalette || {})};
+  const s = model.shape || {}, action = creatureAction(model.type, actor);
+  const eye = p.eye, body = p.body;
+  const beam = action === "attack" && actor.hp > 0;
+  const radius = model.type === "lesser_beholder" ? 9 : 12;
+  const limbEye = (base, tip, scale = 1) => {
+    limb(c, p[base], p[tip], 3.5 * scale, pal.outline);
+    limb(c, p[base], p[tip], 2.2 * scale, pal.shade);
+    ellipse(c, p[tip].x, p[tip].y, 3.2 * scale, 3.2 * scale, pal.outline);
+    ellipse(c, p[tip].x, p[tip].y, 2.2 * scale, 2.2 * scale, pal.face);
+    c.fillStyle = pal.outline;
+    c.fillRect(Math.round(p[tip].x - .7), Math.round(p[tip].y - 1.7), 1.5, 3.5);
+    c.fillStyle = pal.detail;
+    c.fillRect(Math.round(p[tip].x - 1.5), Math.round(p[tip].y - 1.5), 1, 1);
+  };
+  for (let i = 0; i < 6; i++) limbEye(`stalk${i}`, `stalk${i}Tip`, model.type === "lesser_beholder" ? .8 : 1);
+  ellipse(c, body.x, body.y + 2, radius + 2, radius * .86 + 2, pal.outline);
+  ellipse(c, body.x, body.y, radius, radius * .86, pal.body);
+  ellipse(c, body.x - 2, body.y - 3, radius * .7, radius * .38, pal.light);
+  ellipse(c, eye.x, eye.y, 7, 7, pal.outline);
+  ellipse(c, eye.x, eye.y, 5.8, 5.8, pal.face);
+  c.fillStyle = pal.outline;
+  c.fillRect(Math.round(eye.x - 1.5), Math.round(eye.y - 4), 3, 8);
+  c.fillStyle = pal.detail;
+  c.fillRect(Math.round(eye.x - 2.5), Math.round(eye.y - 2.5), 2, 2);
+  c.fillStyle = pal.outline;
+  c.beginPath(); c.arc(body.x, body.y + 7, 5, 0, Math.PI); c.fill();
+  c.fillStyle = pal.detail;
+  c.fillRect(Math.round(body.x - 3), Math.round(body.y + 7), 2, 2);
+  c.fillRect(Math.round(body.x + 1), Math.round(body.y + 7), 2, 2);
+  if (beam) {
+    const dx = actor.faceX || 1, dy = actor.faceY || 0;
+    c.save(); c.globalAlpha = .8; c.strokeStyle = pal.detail; c.lineWidth = 5;
+    c.beginPath(); c.moveTo(eye.x, eye.y); c.lineTo(eye.x + dx * 58, eye.y + dy * 58); c.stroke();
+    c.globalAlpha = 1; c.strokeStyle = "#c15cff"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(eye.x, eye.y); c.lineTo(eye.x + dx * 58, eye.y + dy * 58); c.stroke(); c.restore();
+  }
+  if (action === "hurt") {
+    c.strokeStyle = "#fff0c4"; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(body.x - 7, body.y - 7); c.lineTo(body.x + 7, body.y + 7); c.moveTo(body.x + 7, body.y - 7); c.lineTo(body.x - 7, body.y + 7); c.stroke();
+  }
   return p;
 }
 export const creatureRigLabels = labels;

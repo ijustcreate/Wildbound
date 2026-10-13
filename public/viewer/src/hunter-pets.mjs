@@ -5,6 +5,7 @@ import {tickJump} from './jumping.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {nearbyRoost,moveBatToRoost} from './bat-roost.mjs';
 import {companionMovement} from './companion-locomotion.mjs';
+import {controlledUnit} from './controlled-unit.mjs';
 
 export const TAMABLE_KINDS=['lion','wolf','bat','panther','tiger'];
 export const hunterPets=g=>g.players.filter(p=>!p.room).flatMap(p=>[p.hunterPet,p.ritualPet]).filter(Boolean);
@@ -83,6 +84,7 @@ export function tickHunterPets(g,dt,inputs={}){
  for(const p of g.players){
   const pet=p.hunterPet;if(!pet)continue;
   pet.hunterPet=true;pet.owner=p.id;pet.id??=g.nextId++;pet.equipment??={};pet.inventory??=[];
+  if(controlledUnit(g,p)===pet){pet.moving=false;pet.pvpTarget=null;continue;}
   if(!Number.isFinite(pet.x)||!Number.isFinite(pet.y))placeNearOwner(g,p,pet);
   const finish=companionMovement(pet,dt);
   try{
