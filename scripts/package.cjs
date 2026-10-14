@@ -11,6 +11,9 @@ packager({
   name: "Wildbound",
   platform: "win32",
   arch: "x64",
+  // The renderer dynamically imports app.mjs. Keep the app as a normal
+  // directory so Electron's file:// module loader can resolve that graph.
+  asar: false,
   overwrite: !preview,
   prune: true,
   ignore: [

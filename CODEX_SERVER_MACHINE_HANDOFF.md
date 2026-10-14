@@ -66,3 +66,24 @@ The packaged app must launch from the desktop shortcut, load `app.mjs`, load the
 - Update `README.md` with exact server start, client connect, LAN, and public deployment instructions.
 
 Do not claim the live server is complete while the control panel only reports offline or while clients still run independent local worlds.
+
+## Handoff update for the next Codex
+
+This handoff was refreshed on 2026-10-14. The latest GitHub commit is the source of truth; do not use the older `public/viewer` Site mirror as the server project. The server project has the Electron app at the repository root (`main.cjs`, `app.mjs`, `src/`, `assets/`, and `package.json`).
+
+Use this order on the server PC:
+
+```powershell
+git pull origin main
+pnpm install --frozen-lockfile
+pnpm test
+```
+
+Then implement the server runtime and client connection before spending time on icons or launchers. `Server Control.cmd` is only a control-panel client; if it says offline, that is expected until the dedicated runtime owns port `4184` and implements the documented API.
+
+The Electron packaging changes in this branch are intentional:
+
+- `pnpm-workspace.yaml` approves Electron's install/build script with `electron: true`.
+- `scripts/package.cjs` uses `asar: false` because the renderer dynamically imports `app.mjs`; an ASAR build produced `Failed to fetch dynamically imported module ... resources/app.asar/app.mjs`.
+
+After the server is implemented, run `pnpm run package`, launch the fresh executable, and verify the title screen before creating or updating a desktop shortcut. Do not call a control-panel smoke check or a local LAN room a successful persistent-server test.
