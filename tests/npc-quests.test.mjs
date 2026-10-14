@@ -40,7 +40,7 @@ test('house-world revisits never roll back character quest chain',()=>{
  const g=new Game(()=>.3);g.environment='house';g.addPlayer('keyboard','Traveler');g.start();g.houseWorldsEnabled=true;travelHouseWorlds(g,5);npcQuestState(g.players[0]).completed.push({stageId:'trail-signs',reward:'keeper_crown'});g.players[0].inventory[0]={type:'keeper_crown',qty:1};travelHouseWorlds(g,8);assert.equal(npcQuestState(g.players[0]).completed.length,1);assert.ok(g.players[0].inventory.some(i=>i?.type==='keeper_crown'));
 });
 test('invalid graph imports are atomic and NPC event is appended after old content',()=>{
- const c=structuredClone(getNpcQuestConfig()),broken=structuredClone(c);broken.dialogue.nodes.greeting.choices[0].next='missing';assert.equal(validateNpcQuestConfig(broken),false);assert.throws(()=>replaceNpcQuestConfig(broken));assert.deepEqual(getNpcQuestConfig(),c);assert.equal(EVENTS.at(-1).type,'friendly_npc');
+ const c=structuredClone(getNpcQuestConfig()),broken=structuredClone(c);broken.dialogue.nodes.greeting.choices[0].next='missing';assert.equal(validateNpcQuestConfig(broken),false);assert.throws(()=>replaceNpcQuestConfig(broken));assert.deepEqual(getNpcQuestConfig(),c);assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS.filter(e=>e.type==='friendly_npc').length,1);
 });
 test('starter chest visible position and collision move together into table row',()=>{
  const chest=LOBBY_OBJECTS.find(o=>o.id==='starter-chest');assert.equal(chest.y,LOBBY_OBJECTS.find(o=>o.id==='environment').y);assert.equal(chest.y,LOBBY_OBJECTS.find(o=>o.id==='dice-count').y);assert.equal(LOBBY_FIXTURES.find(o=>o.id===chest.id).y,516);

@@ -1,6 +1,7 @@
 param([switch]$Check)
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'checkout-identity.ps1')
 try {
   $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
   $version = [string](Get-Content -Raw (Join-Path $root 'package.json') | ConvertFrom-Json).version
@@ -15,8 +16,8 @@ try {
   if ([string]$manifest.version -ne $version -or $manifest.preview) {
     throw "Build identity does not match source version $version. Rebuild with node scripts/package.cjs."
   }
-  $commit = (& git -C $root rev-parse HEAD 2>$null)
-  if ($LASTEXITCODE -eq 0 -and $commit -ne [string]$manifest.sourceCommit) {
+  $commit = Get-WildboundCheckoutCommit -Root $root
+  if ($commit -ne [string]$manifest.sourceCommit) {
     throw "The desktop build is from commit $($manifest.sourceCommit). This checkout is at $commit. Rebuild with node scripts/package.cjs."
   }
   if ($manifest.sourceDirty) {

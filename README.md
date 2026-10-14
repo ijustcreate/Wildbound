@@ -1,4 +1,12 @@
-# Wildbound Character Viewer
+# Wildbound
+
+The repository root is the Electron desktop game and its dedicated persistent multiplayer server. Launch the verified desktop build with `Play Wildbound.cmd`. Start this PC's server and its operator panel with `Server Control.cmd`.
+
+Players choose **Shared forest** in the desktop lobby, enter the operator's `ws://.../game` or `wss://.../game` address and player join key, and select an explorer name. Progress belongs to the server world; local expeditions and characters remain in the normal desktop profile. Reconnect with the same explorer name on the same client to recover server progress.
+
+See [persistent server setup, networking, saves and verification](docs/PERSISTENT_SERVER.md). For source/build migration, read [the development handoff](docs/DEVELOPMENT_HANDOFF.md). Server settings and saves live in ignored `server-data/`; never include that folder in a client package or source push.
+
+## Character Viewer
 
 This is a separate Site project for reviewing Wildbound character and unit animations. It uses a snapshot of the game's shared rig data and rendering modules under `public/viewer/`; the game checkout and saves are independent.
 

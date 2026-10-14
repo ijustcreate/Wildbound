@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildHeroGeneration } from '../src/hero-generation.mjs';
-import { defaultPlayerMotion, validatePlayerMotion, playerPose, playerAction, playerFrame, poseAt } from '../src/player-motion.mjs';
+import { defaultPlayerMotion, validatePlayerMotion, upgradePlayerMotion, playerPose, playerAction, playerFrame, poseAt } from '../src/player-motion.mjs';
 
 const source=defaultPlayerMotion(), model=buildHeroGeneration(source);
 const distance=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
@@ -15,7 +15,7 @@ test('Hero generation preserves editor extensions and clip durations without mut
   assert.deepEqual(result.wearableOverrides,custom.wearableOverrides);
   assert.deepEqual(result.animationLayers,custom.animationLayers);
   assert.ok(validatePlayerMotion(result));
-  assert.equal(Object.keys(result.clips).length,36);
+  assert.equal(Object.keys(result.clips).length,37);
   for(const [name,clip] of Object.entries(result.clips).filter(([name])=>name!=='sleep'))
     assert.equal(clip.length/clip.fps,source.clips[name].length/source.clips[name].fps,name);
 });
@@ -63,5 +63,5 @@ test('Shipping authored player uses the new generation and every supported actio
   const shipping=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
   assert.equal(shipping.artGeneration,3);
   assert.ok(validatePlayerMotion(shipping));
-  assert.deepEqual(Object.keys(shipping.clips).sort(),Object.keys(model.clips).sort());
+  assert.deepEqual(Object.keys(upgradePlayerMotion(shipping).clips).sort(),Object.keys(model.clips).sort());
 });

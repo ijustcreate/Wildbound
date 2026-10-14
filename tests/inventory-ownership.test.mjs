@@ -30,8 +30,9 @@ test('gear drops work with a full backpack and retain sockets, including two-han
  p.equipment.hand1='bow';p.equipment.hand2='occupied';p.ui.index=SLOTS.indexOf('hand2');g.inventoryAction(p,action);assert.equal(p.equipment.hand1,null);assert.equal(p.equipment.hand2,null);assert.equal(g.loot[1].type,'bow');
  }
 });
-test('gear drops are blocked in lobby and rooms and respect protected gear',()=>{
+test('gear drops are available in lobby, blocked in rooms and respect protected gear',()=>{
  const {g,p}=setup();p.equipment.hand1='moon_blade';p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');
- g.phase='lobby';g.inventoryAction(p,'drop');g.phase='play';p.room='room';g.inventoryAction(p,'drop');assert.equal(g.loot.length,0);assert.equal(p.equipment.hand1,'moon_blade');
- p.room=null;p.field.favorites=['moon_blade'];g.inventoryAction(p,'drop');assert.equal(g.loot.length,0);
+ g.phase='lobby';g.inventoryAction(p,'drop');assert.equal(g.loot.length,1);assert.equal(p.equipment.hand1,null);p.equipment.hand1='moon_blade';
+ g.phase='play';p.room='room';g.inventoryAction(p,'drop');assert.equal(g.loot.length,1);assert.equal(p.equipment.hand1,'moon_blade');
+ p.room=null;p.field.favorites=['moon_blade'];g.inventoryAction(p,'drop');assert.equal(g.loot.length,1);assert.equal(p.equipment.hand1,'moon_blade');
 });

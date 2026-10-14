@@ -3,6 +3,8 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { createHash, randomUUID } = require("node:crypto");
 let window;
+const bootSmoke = process.argv.includes('--boot-smoke-test');
+const testMode = bootSmoke || process.argv.includes('--smoke-test');
 const preview = process.argv.includes('--preview');
 if (preview) app.setPath('userData', path.join(app.getPath('appData'), 'Wildbound Night Hunt Preview'));
 let releaseControllerClaims = () => {};
@@ -14,7 +16,7 @@ if (process.argv.includes("--software-rendering"))
   app.disableHardwareAcceleration();
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
-if (process.argv.includes("--smoke-test"))
+if (testMode)
   app.setPath("userData", path.join(testOutput, "profile"));
 app.whenReady().then(async () => {
   const controllerClaimRoot = path.join(
@@ -96,7 +98,7 @@ app.whenReady().then(async () => {
     icon: path.join(__dirname, 'assets', 'wildbound-icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
-      additionalArguments: [`--wildbound-version=${app.getVersion()}`, ...(preview ? ["--preview"] : []), ...(process.argv.includes("--smoke-test") ? ["--wildbound-test"] : [])],
+      additionalArguments: [`--wildbound-version=${app.getVersion()}`, ...(preview ? ["--preview"] : []), ...(testMode ? ["--wildbound-test"] : [])],
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
@@ -114,10 +116,10 @@ app.whenReady().then(async () => {
     try { fs.appendFileSync(rendererLog, `[${new Date().toISOString()}] renderer-gone ${JSON.stringify(details)}\n`); } catch {}
   });
   window.once("ready-to-show", () => {
-    if (!process.argv.includes("--smoke-test")) window.show();
+    if (!testMode) window.show();
   });
   window.on('page-title-updated', event => { if(preview)event.preventDefault(); });
-  if (process.argv.includes("--smoke-test"))
+  if (testMode)
     window.webContents.setAudioMuted(true);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, url) => {
@@ -142,7 +144,7 @@ app.whenReady().then(async () => {
   const rigStore = require('./project-rig-store.cjs').createRigStore({
     appPath: app.getAppPath(), exePath: app.getPath('exe'),
     userData: app.getPath('userData'), packaged: app.isPackaged,
-    testMode: process.argv.includes('--smoke-test'),
+    testMode,
     isolated: preview,
   });
   ipcMain.handle('project-rigs-load', () => rigStore.load());
@@ -162,9 +164,17 @@ app.whenReady().then(async () => {
   ipcMain.handle("room-join", (_e, address, name) => room.join(address, name));
   ipcMain.on("room-send", (_e, data) => room.send(data));
   ipcMain.handle("room-stop", () => room.stop());
+  const {ServerTransport} = require('./server-transport.cjs');
+  const persistent = new ServerTransport(data => {
+    if (!window.isDestroyed()) window.webContents.send('server-event', data);
+  });
+  ipcMain.handle('server-connect', (_e, address, name, joinToken, resumeToken, candidates) => persistent.connect(address,name,joinToken,resumeToken,candidates));
+  ipcMain.on('server-send', (_e, data) => persistent.send(data));
+  ipcMain.handle('server-disconnect', () => persistent.stop());
   app.on("before-quit", () => {
     releaseControllerClaims();
     room.stop();
+    persistent.stop();
   });
   ipcMain.handle("profiles-load", () => store.read(profilePath, "profiles"));
   ipcMain.handle("profiles-save", (_e, data) =>
@@ -178,7 +188,9 @@ app.whenReady().then(async () => {
     return true;
   });
   await window.loadFile("index.html");
-  if (process.argv.includes("--smoke-test"))
+  if (bootSmoke)
+    await require('./scripts/boot-smoke.cjs')({window,testOutput,app});
+  else if (process.argv.includes("--smoke-test"))
     await require("./scripts/smoke-runner.cjs")({ window, testOutput, app });
   else window.show();
 });

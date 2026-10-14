@@ -11,10 +11,10 @@
   <main>
     <header><div><small>WILDBOUND</small><h1>Persistent forest server</h1></div><span id="state" class="state">Checking…</span></header>
     <p class="subtitle">Control this PC's dedicated forest server. The game’s LAN room host is separate.</p>
-    <section class="connection"><span>Local control endpoint</span><code>127.0.0.1:4184</code><label>Admin token <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Enter server token"></label><button id="refresh">Check status</button></section>
+    <section class="connection"><span>Local control endpoint</span><code>Loopback · private admin listener</code><label>Admin token override <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Uses this PC’s private server config when blank"></label><button id="refresh">Check status</button></section>
     <p id="notice" role="status" aria-live="polite">Checking for a server…</p>
     <section class="health" aria-label="Connection health"><p>Authority processes: <strong id="authority-count">—</strong> · Tunnel processes: <strong id="tunnel-count">—</strong></p><p>Local health: <strong id="local-health">—</strong> · Public health: <strong id="public-health">—</strong></p><p id="checked">Not checked yet</p></section>
-    <section class="address"><label>Public connection address <input id="public-address" readonly placeholder="No public address recorded"></label><button id="copy-address" disabled>Copy address</button></section>
+    <section class="address"><label>Player connection address <input id="public-address" readonly placeholder="No connection address recorded"></label><button id="copy-address" disabled>Copy address</button><button id="copy-join-key">Copy player join key</button></section>
     <section class="metrics" aria-label="Server status">
       <article><span>Uptime</span><strong id="uptime">—</strong></article>
       <article><span>Connected players</span><strong id="players">—</strong></article>

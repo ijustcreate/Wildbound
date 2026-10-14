@@ -1,5 +1,13 @@
 import { applyIK } from './ik.mjs';
 
+// Keep authored poses intact. Missing posture metadata can use the current
+// defaults without replacing edited joint positions or animation keys.
+export function upgradeHeroPosture(model, defaults) {
+  if (!model?.joints || !model.clips) return model;
+  if (model.ik === undefined && defaults?.ik) model.ik = structuredClone(defaults.ik);
+  return model;
+}
+
 const faceNames=['eyeL','eyeR','earL','earR','nose','mouth'];
 const rest={pelvis:[0,0,14],chest:[0,0,24],head:[0,0,31],
   eyeL:[-2,3,32.5],eyeR:[2,3,32.5],earL:[-4,0,31],earR:[4,0,31],nose:[0,4,31],mouth:[0,3,29.5],

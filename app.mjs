@@ -287,6 +287,7 @@ function show(next) {
   if (next === "workshop") workshop?.render();
 }
 function newLobby({ keepParty = false } = {}) {
+  if (rooms.role === 'client') keepParty = false;
   const returning = keepParty ? game.players.map(p=>({
     device:p.device,
     name:p.name,
@@ -294,7 +295,8 @@ function newLobby({ keepParty = false } = {}) {
     controllerFamily:p.controllerFamily,
     controllerName:p.controllerName,
   })) : [];
-  if (game.phase !== "lobby" && game.phase !== "lost") profiles.capture(game);
+  if (rooms.role !== 'client' && game.phase !== "lobby" && game.phase !== "lost") profiles.capture(game);
+  if (rooms.persistent) {rooms.stop().catch(()=>{});serverConnection.hidden=true;}
   boardPinned = false;
   boardDismissedRoll = null;
   game = new Game();
@@ -314,6 +316,20 @@ function newLobby({ keepParty = false } = {}) {
   renderLobby();
 }
 function onRoomEvent(data) {
+  if(data.type==='ack'&&data.persistent){rooms.acknowledge(data);return;}
+  if (data.type === 'connection') {
+    if (!rooms.persistent) return;
+    rooms.connection=data.state;
+    serverConnection.hidden=false;
+    serverConnectionText.textContent=data.state==='connected'?'Shared forest · connected':data.message||('Shared forest · '+data.state);
+    $('server-status').textContent=data.message||data.state;
+    return;
+  }
+  if (data.persistent && ['announcement','notice','server-error','stopping'].includes(data.type)) {
+    game.message((data.type==='announcement'?'Server: ':'')+data.message);
+    serverConnectionText.textContent=data.message;
+    return;
+  }
   if (rooms.role === "host") {
     if (data.type === "hello") {
       let p = game.players.find((p) => p.device === "net:" + data.peer);
@@ -370,15 +386,22 @@ function onRoomEvent(data) {
       }
     }
   } else if (rooms.role === "client") {
-    if (data.type === "welcome" && !rooms.peer) {
+    if (data.type === "welcome" && (!rooms.peer || data.persistent)) {
       rooms.peer = data.peer;
       rooms.playerId = data.playerId;
+      if (data.persistent) {
+        const identities=readServerIdentities();
+        identities[serverIdentityKey(data.address,$('server-name').value)]={resumeToken:data.resumeToken,instanceId:data.instanceId};
+        try {localStorage.setItem('wildbound-server-identities-v1',JSON.stringify(identities));}
+        catch {serverConnectionText.textContent='Connected. Reconnect identity could not be stored; keep this client open.';}
+      }
     }
     if (data.type === "disconnected") {
       rooms.role = null;
       pause("Room connection lost. Return home and rejoin the host.");
     }
     if (data.type === "state") {
+      if (data.persistent && (data.version !== 1 || !data.state?.players?.some(p=>p.id===rooms.playerId))) return;
       const oldSeed = game.seed;
       Object.assign(game, data.state);
       restoreForestLandscape(game,data.state.forestLandscapeVersion??0);
@@ -387,6 +410,19 @@ function onRoomEvent(data) {
         game.scenery = generateWorld(game.seed).scenery;
       game.explored = new Set(data.state.explored);
       game.spriteLibrary = assets.library;
+      game.remoteAuthoritative = !!data.persistent;
+      if (data.persistent) {
+        const owner=game.players.find(p=>p.id===rooms.playerId);
+        if(owner){owner.device=rooms.localDevice;if(owner.ui)owner.ui.ownerDevice=rooms.localDevice;}
+        for (const action of ['openShop','openForestPassage']) game[action]=(p,arg)=>{
+          if(p?.id===rooms.playerId)rooms.send({type:'action',action,...(arg!==undefined?{arg}:{})});
+        };
+        game.moveInventoryItem=(p,from,to)=>{if(p.id===rooms.playerId)rooms.send({type:'action',action:'moveInventoryItem',arg:{from,to}});return false;};
+        game.bagTransfer=(p,operation,index=0,mode='pack')=>{if(p.id===rooms.playerId)rooms.send({type:'action',action:'bagTransfer',arg:{operation,index,mode}});return false;};
+        game.serverAction=(p,action,arg)=>p.id===rooms.playerId?rooms.requestAction(action,arg):Promise.reject(Error('Choose your own server explorer.'));
+        if(fieldKit.dialog.open)fieldKit.player=owner;
+        if(fieldKit.dialog.open)fieldKit.render();
+      }
       for (const action of [
         "portal",
         "usePotion",
@@ -435,6 +471,41 @@ $("room-host").onclick = async () => {
   } catch (e) {
     $("room-status").textContent = e.message;
   }
+};
+function readServerIdentities() {
+  try {const data=JSON.parse(localStorage.getItem('wildbound-server-identities-v1')||'{}');return data&&typeof data==='object'&&!Array.isArray(data)?data:{};}
+  catch {return {};}
+}
+const serverIdentityKey=(address,name)=>new URL(address).href+'|'+name.trim();
+const serverDialog=document.createElement('dialog');
+serverDialog.id='server-dialog';
+serverDialog.innerHTML='<h2>Shared forest</h2><p>Enter a persistent world with explorers on other computers. Your server explorer and inventory stay with that world. Your local expedition stays saved on this PC.</p><label>Explorer name <input id="server-name" maxlength="16" value="Explorer"></label><label>Server address <input id="server-address" placeholder="ws://192.168.1.10:4183/game" value="ws://127.0.0.1:4183/game" spellcheck="false"></label><label>Join key <input id="server-key" type="password" autocomplete="off" spellcheck="false"></label><p id="server-status" role="status" aria-live="polite"></p><button id="server-join">Enter forest</button><button id="server-close">Close</button>';
+document.body.append(serverDialog);
+const serverButton=document.createElement('button');
+serverButton.textContent='SHARED FOREST';serverButton.className='text-button';roomButton.after(serverButton);
+serverButton.onclick=()=>serverDialog.showModal();
+$('server-close').onclick=()=>serverDialog.close();
+const serverConnection=document.createElement('aside');
+serverConnection.id='server-connection';serverConnection.hidden=true;
+serverConnection.setAttribute('aria-live','polite');
+const serverConnectionText=document.createElement('span');
+const leaveServer=document.createElement('button');leaveServer.textContent='Leave server';
+leaveServer.onclick=()=>{newLobby();};
+serverConnection.append(serverConnectionText,leaveServer);document.body.append(serverConnection);
+$('server-join').onclick=async()=>{
+  $('server-join').disabled=true;
+  try {
+    if(!ready)throw Error('The game is still loading. Try again in a moment.');
+    if(!window.desktop?.connectServer)throw Error('Shared forest requires the desktop game.');
+    const address=$('server-address').value.trim(),name=$('server-name').value.trim();
+    const identities=readServerIdentities(),identity=identities[serverIdentityKey(address,name)];
+    const candidates=Object.entries(identities).filter(([key])=>key.endsWith('|'+name)).map(([,value])=>value);
+    await persistSession();
+    if(game.saveError)throw Error('Save your local expedition before joining: '+game.saveError);
+    await rooms.joinServer(address,name,$('server-key').value.trim(),identity?.resumeToken,candidates);
+    serverDialog.close();$('server-key').value='';
+  }catch(error){$('server-status').textContent=error.message;serverConnection.hidden=true;}
+  finally{$('server-join').disabled=false;}
 };
 $("room-join").onclick = async () => {
   try {
@@ -754,6 +825,8 @@ function updateHud() {
       game.roll.dice.join(" + ") + " = " + game.roll.total;
   $("game-hint").textContent = game.openingBoard
     ? "The board is waking. Hit it to roll; movement unlocks when the first event appears."
+    : rooms.persistent
+      ? "Shared forest · Other explorers enter with this server’s address and join key."
     : game.locked
       ? controlHelp(mapping) + " · Field Kit: " + game.controlLabels.field
       : "First round: use a controller to control your solo hero; Start/Menu on an unused controller or Enter adds a player";
@@ -1662,7 +1735,8 @@ function frame(now) {
       framesWorkshop?.animate(now / 1000);
     }
     if (screen === "play" && renderer) {
-      const effective = rooms.tick(game, dt, inputs);
+      const effective = rooms.tick(game, dt, rooms.persistent&&blocked?{}:inputs);
+      if(rooms.persistent){const owner=game.players.find(p=>p.id===rooms.playerId);if(owner){owner.device=rooms.localDevice;if(owner.ui)owner.ui.ownerDevice=rooms.localDevice;}}
       if (!paused && rooms.role !== "client")
         metrics.measure("simulation", () =>
           fixedClock.advance(elapsed, (step) => game.update(step, effective)),
@@ -1776,8 +1850,8 @@ try {
         : JSON.parse(localStorage.getItem("wildbound-session") || "null");
       if (!saved) throw Error("No saved expedition yet. Start a party first.");
       if(saved.state?.players?.some(p=>profiles.data.deletedIds?.includes(p.profileId))){newLobby();$('party-status').textContent='A saved explorer was deleted. Gather a new party.';return;}
-      rooms.role = null;
-      window.desktop?.stopRoom();
+      await rooms.stop();
+      serverConnection.hidden=true;
       game = restoreSession(saved);
       const stash = game.sharedStash;
       wireGame();
@@ -1797,6 +1871,10 @@ try {
   playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
   playableLobby.showLootDetails=()=>lootDetailsVisible;
   ready = true;
+  if(window.desktop?.testMode)window.wildboundServerTest={
+    inspect:()=>({ready,screen,role:rooms.role,persistent:rooms.persistent,connection:rooms.connection,playerId:rooms.playerId,seed:game.seed,time:game.time,phase:game.phase,players:structuredClone(game.players),errors:[...diagnosticErrors]}),
+    action:(action,arg)=>{const owner=game.players.find(p=>p.id===rooms.playerId);return game.serverAction(owner,action,arg);},
+  };
   newLobby();
   $("loading").classList.add("done");
 } catch (e) {

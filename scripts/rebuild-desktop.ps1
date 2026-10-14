@@ -1,5 +1,6 @@
 param(
-  [string]$DesktopPath = [Environment]::GetFolderPath('Desktop')
+  [string]$DesktopPath = [Environment]::GetFolderPath('Desktop'),
+  [ValidateRange(1, 8)][int]$TestConcurrency = 1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,7 +19,7 @@ try {
     throw 'Desktop dependencies are missing. Install Node.js/npm and run npm ci, then rerun this script.'
   }
   $tests = @(Get-ChildItem -Path 'tests' -Filter '*.test.mjs' -File | ForEach-Object FullName)
-  & node --test --test-concurrency=1 @tests
+  & node --test --test-concurrency=$TestConcurrency @tests
   if ($LASTEXITCODE -ne 0) { throw 'Tests failed. The desktop build was not replaced.' }
   & node scripts/package.cjs
   if ($LASTEXITCODE -ne 0) { throw 'Packaging failed. The desktop shortcut was not changed.' }

@@ -108,10 +108,10 @@ test('coins collect once and mushrooms absorb an enemy hit',()=>{
  const box=tv.blocks(0,200).find(v=>v.kind==='question');assert.ok(box);
  Object.assign(p,{x:box.x+2,y:box.y+box.h+1,vy:-120,grounded:false});tv.move(p,.02,true);
  assert.ok(tv.released.has(box.section));
- const mushroom=tv.pickups().find(v=>v.kind==='mushroom');assert.ok(mushroom.y<box.y);
+ const mushroom=tv.pickups().find(v=>v.kind===tv.scene(box.section).powerup);assert.ok(mushroom.y<box.y);
  Object.assign(p,{x:mushroom.x,y:mushroom.y,vy:0});tv.step(.016,{});assert.equal(p.powered,true);
  assert.deepEqual([p.w,p.h],[14,20]);
- Object.assign(p,{x:32,y:104,vy:0,invulnerable:0});tv.enemies.set('test',{x:32,y:108,w:13,h:12,vx:0,vy:0,alive:true});tv.step(.016,{});
+ p.fire=false;Object.assign(p,{x:32,y:104,vy:0,invulnerable:0});tv.enemies.set('test',{x:32,y:108,w:13,h:12,vx:0,vy:0,alive:true});tv.step(.016,{});
  assert.equal(p.alive,true);assert.equal(p.powered,false);assert.deepEqual([p.w,p.h],[12,16]);assert.ok(p.invulnerable>1);
 });
 test('stomping defeats a goomba and bounces the player',()=>{

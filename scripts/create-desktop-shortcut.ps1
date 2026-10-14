@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'checkout-identity.ps1')
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $package = Get-Content -Raw (Join-Path $root 'package.json') | ConvertFrom-Json
 $version = [string]$package.version
@@ -25,7 +26,7 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
   throw "Build identity not found: $manifestPath. Rebuild with node scripts/package.cjs."
 }
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-$commit = (& git -C $root rev-parse HEAD).Trim()
+$commit = Get-WildboundCheckoutCommit -Root $root
 if ([string]$manifest.version -ne $version -or $manifest.preview -or [string]$manifest.sourceCommit -ne $commit) {
   throw "The packaged build does not match this checkout ($commit). Rebuild with node scripts/package.cjs."
 }

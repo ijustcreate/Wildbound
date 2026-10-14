@@ -3,6 +3,8 @@ node_modules/
 dist/
 test-output/
 *.log
+server-data/
+server-config.local.json
 build/*.zip
 authored/*.tmp
 authored/*.bak

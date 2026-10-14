@@ -33,7 +33,11 @@ export function createGameDebug({getGame,events,items}) {
    const eventLabel=el('label','Event'),event=el('select');event.dataset.debug='event';
    events.forEach((e,i)=>{const o=el('option',`${i}: ${e.name||e.kind||e.type}`);o.value=i;event.append(o);});eventLabel.append(event);root.append(eventLabel);
    const tools=el('div',null,'debug-tools'),spawn=el('button','Spawn selected event');spawn.onclick=()=>{getGame().spawnEvent(Number(event.value));say({ok:true,message:'Spawned '+(events[event.value]?.name||'event')});};tools.append(spawn);
-   const forest=el('button',FOREST_PORTAL_EVENT.name+' (dev only)');forest.dataset.debugEvent='forest-portal';forest.onclick=()=>say(openForestPortal(getGame(),ownerId));tools.append(forest);
+   const forest=el('button',FOREST_PORTAL_EVENT.name+' (dev only)');forest.dataset.debugEvent='forest-portal';forest.onclick=()=>{
+     const g=getGame();
+     if(g.remoteAuthoritative){g.openForestPassage(g.players.find(p=>p.id===ownerId));say({ok:true,message:'Heartwood Passage requested from the server.'});}
+     else say(openForestPortal(g,ownerId));
+   };tools.append(forest);
    const inv=el('label'),check=el('input');check.type='checkbox';check.onchange=()=>{for(const p of getGame().players)p.invincible=check.checked;say({ok:true,message:check.checked?'Party invincibility enabled':'Party invincibility disabled'});};inv.append(check,' Party invincible');tools.append(inv);root.append(tools);
    const itemLabel=el('label','Item'),item=el('select');item.dataset.debug='item';
    Object.entries(items).filter(([,v])=>v).sort((a,b)=>(a[1].name||a[0]).localeCompare(b[1].name||b[0])).forEach(([id,v])=>{const o=el('option',`${v.name||id} (${id})`);o.value=id;item.append(o);});itemLabel.append(item);root.append(itemLabel);
@@ -48,6 +52,14 @@ export function createGameDebug({getGame,events,items}) {
   target.textContent=owner?'Item target: '+owner.name+' · only your backpack is changed':'No player selected. Reopen this menu from your explorer.';
   status.textContent='Choose an item, amount and destination.';status.dataset.error='false';
   host.append(root);root.querySelector('select')?.focus();
+  if(game.remoteAuthoritative){
+    for(const button of root.querySelectorAll('button'))button.disabled=!button.dataset.debugEvent&&button.textContent!=='Close';
+    for(const input of root.querySelectorAll('input'))input.disabled=true;
+    status.textContent='Shared world: Heartwood Passage is handled by the server. Other development tools are local only.';
+  } else {
+    for(const button of root.querySelectorAll('button'))button.disabled=false;
+    for(const input of root.querySelectorAll('input'))input.disabled=false;
+  }
  };
  return {open};
 }

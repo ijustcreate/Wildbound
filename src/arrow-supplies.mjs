@@ -1,6 +1,7 @@
 import {ARROW_TYPES} from './quiver.mjs';
 export {ARROW_TYPES,quiverType,loadQuiver,consumeQuiver} from './quiver.mjs';
 import {footprintHit} from './world.mjs';
+import {rockSurface,stumpShape,raisedSurfaceBlocked} from './terrain-support.mjs';
 import {navigateEnemy} from './navigation.mjs';
 
 export function arrowDrop(g,a,qty=1,source='Recovered arrows'){
@@ -12,7 +13,11 @@ export function arrowDrop(g,a,qty=1,source='Recovered arrows'){
  g.loot.push(item);return item;
 }
 export function arrowScenery(g,x,y){
- return g.scenery.find(s=>!s.depleted&&!s.falling&&footprintHit(s,g.spriteLibrary?.[s.kind],x,y+(g.house?0:14),2));
+ return g.scenery.find(s=>{
+  if(s.depleted||s.falling)return false;
+  const raised=rockSurface(s)||stumpShape(s);
+  return raised?raisedSurfaceBlocked(raised,x,y+(g.house?0:14),2):footprintHit(s,g.spriteLibrary?.[s.kind],x,y+(g.house?0:14),2);
+ });
 }
 export function compactArrowDrops(g){
  const bins=new Map(),removed=new Set();

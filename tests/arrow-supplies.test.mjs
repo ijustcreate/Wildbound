@@ -84,7 +84,8 @@ test('Legacy elemental arrows no longer freeze enemies or create frost patches',
 test('Rock impacts break arrows; tree impacts lodge without growing their shaft',()=>{
  for(const kind of ['rock','tree']){
   const {g}=setup(),prop={x:500,y:400,size:64,procedural:true,kind};g.scenery=[prop];
-  const y=400+64*(kind==='rock'?.19:.35)-14;
+  // Raised rocks use the same top footprint as walking/support collision.
+  const y=kind==='rock'?400-14-14:400+64*.35-14;
   const a={x:470,y,vx:300,vy:0,vz:0,z:18,gravity:0,shaftLength:24,embedDepth:5,damage:1};g.arrows=[a];
   for(let i=0;i<15&&g.arrows.length;i++)g.tickAdventure(.02,{});
   if(kind==='rock'){assert.equal(g.loot.filter(l=>l.type==='arrow').length,0);assert.ok(g.effects.some(e=>e.text==='Splinter'));}

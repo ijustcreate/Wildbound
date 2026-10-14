@@ -15,13 +15,26 @@ packager({
   // directory so Electron's file:// module loader can resolve that graph.
   asar: false,
   overwrite: !preview,
-  prune: true,
+  // Stage real production packages, resolving npm or pnpm links at the source.
+  // The pruner assumes a flattened installation and fails on pnpm's virtual
+  // dependency tree. Development tools are excluded before copying instead.
+  prune: false,
+  afterCopy: [({buildPath}) => require('./copy-runtime-dependencies.cjs')(path.resolve(__dirname,'..'),buildPath)],
   ignore: [
+    /^\/node_modules/,
     /^\/Progress pictures/,
+    /^\/docs/,
+    /^\/public/,
+    /^\/\.openai/,
+    /^\/drizzle/,
+    /^\/db/,
     /^\/design/,
     /^\/scripts\/(upgrade|integrate|extract|fix|finish|optimize|polish|cleanup)/,
     /^\/\.tools/,
     /^\/test-output/,
+    /^\/server-data/,
+    /^\/server-config\.local\.json/,
+    /\.log$/,
     /^\/art\/player\/detail-native-v[234]/,
     /^\/tests/,
     /^\/dist/,

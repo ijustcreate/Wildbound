@@ -16,15 +16,15 @@ async function refresh() {
   try {
     const data = await window.serverControl.request('status',$('token').value);
     const publicHealthy = data.publicHealth === true;
-    setOnline(true,publicHealthy ? 'Public multiplayer is online.' : 'Dedicated server responded; public connection is not verified.');
-    $('state').textContent = publicHealthy ? 'Active · public' : 'Local only';
+    setOnline(true, data.fault || data.saveError || data.tunnelError || (publicHealthy ? 'Configured public endpoint reaches this server.' : 'Dedicated server ready; public connection is not verified.'));
+    $('state').textContent = data.localHealth === false ? 'Paused · needs attention' : publicHealthy ? 'Active · public' : 'Local only';
     $('authority-count').textContent = String(data.authorityCount ?? 1);
     $('tunnel-count').textContent = data.tunnelCount == null ? '—' : String(data.tunnelCount);
     $('local-health').textContent = data.localHealth === false ? 'OFFLINE' : 'OK';
     $('public-health').textContent = publicHealthy ? 'OK' : data.publicHealth === false ? 'OFFLINE' : 'UNVERIFIED';
     $('checked').textContent = `Checked ${new Date().toLocaleTimeString()}`;
-    $('public-address').value = data.publicAddress || '';
-    $('copy-address').disabled = !data.publicAddress;
+    $('public-address').value = data.publicAddress || data.localAddress || '';
+    $('copy-address').disabled = !($('public-address').value);
     $('uptime').textContent = formatUptime(data.uptimeSeconds);
     $('players').textContent = String(data.playerCount ?? data.players?.length ?? 0);
     $('seed').textContent = data.worldSeed == null ? '—' : String(data.worldSeed);
@@ -57,6 +57,7 @@ async function action(name, payload) {
   } catch (error) { $('notice').textContent = error.message || 'Server command failed.'; }
 }
 $('refresh').onclick = refresh;
+$('copy-join-key').onclick=async()=>{try{const result=await window.serverControl.request('copyJoinKey','');$('notice').textContent=result.message;}catch(error){$('notice').textContent=error.message;}};
 $('copy-address').onclick = async () => {
   try { await navigator.clipboard.writeText($('public-address').value); $('notice').textContent = 'Public address copied.'; }
   catch { $('public-address').select(); $('notice').textContent = 'Select the address and copy it manually.'; }

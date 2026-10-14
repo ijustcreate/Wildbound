@@ -338,3 +338,13 @@ export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId){
   c.fillStyle=dark;c.fillRect(hand.x+.3,hand.y-.2,.3,1.1);c.fillRect(hand.x-.3,hand.y+.3,.3,.8);
   return true;
 }
+
+export function detailedNeck(c, p, skin) {
+  if (!p.chest || !p.head) return false;
+  return detailedChain(c, [p.chest, {x:p.head.x,y:p.head.y+3}], [4.4,3.4], skin, 12);
+}
+export function detailedPelvis(c, p, direction, color, back) {
+  if (!c.__humanoidDetail || !humanoidArtAvailable(c) || c.__legacyHumanoid) return false;
+  if (!p.pelvis || !p.hipL || !p.hipR) return false;
+  return detailedChain(c, [p.hipL,p.pelvis,p.hipR], [4.4,6,4.4], color, c.__humanoidMaterials?.get(color) ?? 0);
+}

@@ -794,25 +794,25 @@ export class HeroUI {
       popup.setAttribute('aria-label', ITEMS[bag.type].name);
       const bagName=el('strong',ITEMS[bag.type].name);
       bagName.style.color=RARITIES[ITEMS[bag.type].rarity]||RARITIES.common;
-      popup.append(bagName, button('\u00d7', 'bag-close', () => { delete u.bag; panel.uiSignature = null; }));
+      popup.append(bagName, button('\u00d7', 'bag-close', () => { if(game.remoteAuthoritative)game.bagTransfer(p,'close');else delete u.bag; panel.uiSignature = null; }));
       const grid = el('div', null, 'bag-grid');
       const changed = ok => { u.notice = ok ? 'Item moved.' : 'No room, or this bag cannot hold that item.'; game.persist(); panel.uiSignature = null; };
       const canStore = item => !protectedItem(p, item?.type) && (s.mode !== 'chest' || canAccess(game, p, false));
       for (let n = 0; n < rule.slots; n++) {
-        const item = bag.contents?.[n], b = button(item ? String(item.qty) : '+', 'bag-slot-' + n, () => { if (item) changed((s.mode !== 'chest' || canAccess(game,p,true)) && takeFromBag(bag, n, p.inventory)); });
+        const item = bag.contents?.[n], b = button(item ? String(item.qty) : '+', 'bag-slot-' + n, () => { if (item) {if(game.remoteAuthoritative)game.bagTransfer(p,'take',n);else changed((s.mode !== 'chest' || canAccess(game,p,true)) && takeFromBag(bag, n, p.inventory));} });
         b.classList.toggle('selected', n === (s.selected || 0));
         b.setAttribute('aria-label', item ? 'Take ' + ITEMS[item.type].name : 'Empty bag slot');
         if (item) { const icon = el('canvas'); icon.width = icon.height = 24; drawItem(icon.getContext('2d'), item.type, 12, 12, 24); b.prepend(icon); this.itemTooltip(panel, b, game, p, item); }
         grid.append(b);
       }
       grid.ondragover = e => { if (this.dragItem?.player === p) e.preventDefault(); };
-      grid.ondrop = e => { e.preventDefault(); const source = this.dragItem; this.dragItem = null; if (source?.player !== p || source.from.mode === 'gear') return; const from = source.from.mode === 'pack' ? p.inventory : game.storageFor(p); if (from?.[source.from.index] !== source.ref) return; changed(canStore(source.ref) && (source.from.mode !== 'chest' || canAccess(game,p,true)) && storeInBag(from, bag, source.from.index)); };
+      grid.ondrop = e => { e.preventDefault(); const source = this.dragItem; this.dragItem = null; if (source?.player !== p || source.from.mode === 'gear') return; const from = source.from.mode === 'pack' ? p.inventory : game.storageFor(p); if (from?.[source.from.index] !== source.ref) return; if(game.remoteAuthoritative)game.bagTransfer(p,'store',source.from.index,source.from.mode);else changed(canStore(source.ref) && (source.from.mode !== 'chest' || canAccess(game,p,true)) && storeInBag(from, bag, source.from.index)); };
       popup.append(grid, el('small', `${(bag.contents || []).filter(Boolean).length} / ${rule.slots}`));
       const eligible = p.inventory.map((item, index) => ({item, index})).filter(({item}) => bagAccepts(bag, item));
       if (eligible.length) {
         const choices = el('select'); choices.setAttribute('aria-label', 'Item to store');
         for (const {item, index} of eligible) { const o = el('option', ITEMS[item.type].name + ' x' + item.qty); o.value = index; choices.append(o); }
-        popup.append(choices, button('Store', 'bag-store', () => changed(canStore(p.inventory[Number(choices.value)]) && storeInBag(p.inventory, bag, Number(choices.value)))));
+        popup.append(choices, button('Store', 'bag-store', () => {if(game.remoteAuthoritative)game.bagTransfer(p,'store',Number(choices.value));else changed(canStore(p.inventory[Number(choices.value)]) && storeInBag(p.inventory, bag, Number(choices.value)));}));
       }
       anchorPopup(popup, s.mode, s.index);
     }

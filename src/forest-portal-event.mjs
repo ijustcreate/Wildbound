@@ -1,6 +1,7 @@
 import {snapshot} from './rooms.mjs';
 import {seatOpeningParty} from './opening-board.mjs';
 import {restoreForestLandscape} from './forest-landscape.mjs';
+import {checkpointBoundlessWorld} from './boundless-world.mjs';
 
 export const FOREST_PORTAL_EVENT = Object.freeze({
   name: 'Heartwood Passage',
@@ -10,9 +11,11 @@ export const FOREST_PORTAL_EVENT = Object.freeze({
 const protectedKeys = new Set([
   'forestJourney', 'random', 'persist', 'onSound', 'spriteLibrary',
   'saving', 'saveError', 'controlLabels',
+  'persistentWorld',
 ]);
 
 function capture(g) {
+  checkpointBoundlessWorld(g);
   const state = snapshot(g);
   delete state.forestJourney;
   return structuredClone(state);
@@ -84,7 +87,7 @@ export function travelThroughForestPortal(g, door) {
     if (journey.active !== 'home') return false;
     journey.home = capture(g);
     if (!journey.forest) {
-      const fresh = new g.constructor();
+      const fresh = new g.constructor(g.random);
       fresh.players = structuredClone(g.players);
       fresh.seed = (g.seed + 7919) % 1000000;
       fresh.environment = 'forest';

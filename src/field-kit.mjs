@@ -82,7 +82,7 @@ export class FieldKit {
   }
   open(player) {
     if (this.dialog.open || document.querySelector("dialog[open]")) return;
-    this.player = player || this.game().players[0];
+    this.player = player || this.game().players.find(p=>p.device==='keyboard') || this.game().players[0];
     if (!this.player) return;
     this.dialog.dataset.ownerDevice=this.player.device;
     initializeField(this.player);
@@ -495,6 +495,7 @@ export class FieldKit {
       ],
       f.trap,
       (v) => {
+        if(g.remoteAuthoritative){g.serverAction(p,'trapMode',v).then(message=>{this.notice=message;this.render();}).catch(error=>{this.notice=error.message;this.render();});return;}
         f.trap = v;
         g.persist();
       },
@@ -521,10 +522,11 @@ export class FieldKit {
             .join(" + "),
         ),
       );
-      this.action("Craft", () => craft(p, r.id), card);
+      this.action("Craft", () => g.remoteAuthoritative?g.serverAction(p,'craft',r.id):craft(p, r.id), card);
       this.body.append(card);
     }
     this.action("Deploy barricade · lasts 30 seconds", () => {
+      if(g.remoteAuthoritative)return g.serverAction(p,'deployBarricade');
       if (p.room || p.hp <= 0 || g.openingBoard)
         return "Deploy in an active expedition.";
       const x = p.x + p.faceX * 60,
@@ -541,7 +543,7 @@ export class FieldKit {
   }
   skills(g, p, f) {
     const ranger=node('article',null,'field-card');ranger.append(node('h3','Ranger · Tame companion'),node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.'));
-    const tame=this.action('Tame nearby animal',()=>{tamePet(g,p);return 'Use R / RB while near a wild animal.';},ranger);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
+    const tame=this.action('Tame nearby animal',()=>{if(g.remoteAuthoritative)return g.serverAction(p,'tamePet');tamePet(g,p);return 'Use R / RB while near a wild animal.';},ranger);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
     if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},ranger);this.body.append(ranger);
     this.body.append(node("p", `Spend XP on permanent field skills. XP: ${p.xp || 0} · Next level: ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} to go.`, "field-card"));
     for (const s of SKILLS) {
@@ -549,7 +551,7 @@ export class FieldKit {
       const card = node("article", null, "field-card");
       card.append(node("h3", `${s.name} · ${rank}/${s.max}`), node("p", s.detail));
       const unlocked=skillAvailable(p,s.id);
-      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : `Train · ${s.cost} XP`, () => trainSkill(p,s.id), card);
+      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : `Train · ${s.cost} XP`, () => g.remoteAuthoritative?g.serverAction(p,'trainSkill',s.id):trainSkill(p,s.id), card);
       button.disabled = !unlocked || rank >= s.max;
       this.body.append(card);
     }

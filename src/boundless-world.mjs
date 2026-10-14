@@ -119,7 +119,12 @@ export function updateBoundlessWorld(g, dt) {
     const [cx, cy] = key.split(',').map(Number);
     const prefix=`boundless:${cx}:${cy}:`;
     const existing=(g.scenery||[]).filter(prop=>prop.id?.startsWith(prefix));
-    const entry = { key, scenery: existing.length?existing:createChunkProps(g, cx, cy) };
+    const generated=createChunkProps(g,cx,cy);
+    const changes=g.persistentWorld?g.boundlessChunkChanges?.[key]:null;
+    const removed=new Set(changes?.removed||[]),changedProps=new Map((changes?.changed||[]).map(prop=>[prop.id,prop]));
+    const restored=generated.filter(prop=>!removed.has(prop.id)).map(prop=>structuredClone(changedProps.get(prop.id)||prop));
+    const entry = { key, scenery: existing.length?existing:restored,
+      ...(g.persistentWorld?{baseline:generated.map(prop=>structuredClone(prop))}:{}) };
     if(!existing.length)g.scenery.push(...entry.scenery);
     loaded.push(entry); byKey.set(key, entry); changed = true;
     // Spread chunk creation across frames so entering Boundless never builds
@@ -128,7 +133,9 @@ export function updateBoundlessWorld(g, dt) {
   }
   if (loaded.length !== needed.size || loaded.some(entry => !needed.has(entry.key))) {
     for (let i = loaded.length - 1; i >= 0; i--) if (!needed.has(loaded[i].key)) {
-      const old = new Set(loaded[i].scenery); g.scenery = g.scenery.filter(p => !old.has(p)); loaded.splice(i, 1); changed = true;
+      if(g.persistentWorld)recordChunkChanges(g,loaded[i]);
+      const prefix=`boundless:${loaded[i].key.replace(',',':')}:`;
+      g.scenery = g.scenery.filter(p => !p.id?.startsWith(prefix)); loaded.splice(i, 1); changed = true;
     }
   }
   if (changed) g.boundlessSceneryRevision = (g.boundlessSceneryRevision || 0) + 1;
@@ -144,4 +151,24 @@ export function updateBoundlessWorld(g, dt) {
   }
   // Cull encounters that are far outside every player's active region.
   if (players.length) g.enemies = g.enemies.filter(e => !e.boundlessThreat || e.hp > 0 || players.some(p => Math.hypot(e.x - p.x, e.y - p.y) < 600));
+}
+
+function recordChunkChanges(g, entry) {
+  const prefix=`boundless:${entry.key.replace(',',':')}:`;
+  const current=new Map(g.scenery.filter(prop=>prop.id?.startsWith(prefix)).map(prop=>[prop.id,prop]));
+  const changed=[],removed=[];
+  for(const original of entry.baseline||[]){
+    const prop=current.get(original.id);
+    if(!prop)removed.push(original.id);
+    else if(JSON.stringify(prop)!==JSON.stringify(original))changed.push(structuredClone(prop));
+  }
+  const chunks=g.boundlessChunkChanges||={};
+  if(changed.length||removed.length)chunks[entry.key]={changed,removed};
+  else delete chunks[entry.key];
+}
+
+// Commit edits before saving too, including a fully cleared active chunk.
+export function checkpointBoundlessWorld(g) {
+  if(!g.persistentWorld)return;
+  for(const entry of g.boundlessLoadedChunks||[])recordChunkChanges(g,entry);
 }

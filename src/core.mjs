@@ -434,6 +434,11 @@ EVENTS.push(structuredClone(SUCCUBUS_EVENT));
 EVENTS.push(structuredClone(IMP_EVENT));
 EVENTS.push(structuredClone(ZOMBIE_EVENT));
 EVENTS.push(structuredClone(BEHOLDER_EVENT));
+// Existing expedition/deck saves refer to these cards by index (59–69).
+// New watcher/desert encounters append after them.
+EVENTS.push(structuredClone(OLD_WELL_EVENT));
+EVENTS.push(...GRAVEYARD_EVENTS.map(e=>structuredClone(e)));
+EVENTS.push({...NPC_QUEST_EVENT});
 EVENTS.push(structuredClone(LESSER_BEHOLDER_EVENT));
 // Beholder variants: keep these appended so saved/editor event indices remain stable.
 EVENTS.push(
@@ -515,9 +520,6 @@ EVENTS.push(
   },
 );
 EVENTS.push({name:'Velvet feet in the sand',kind:'tarantula',count:2,hp:110,speed:48,damage:16,weight:8,spiderNest:true,verse:'Soft gold hides eight silent feet.\nThe velvet hunters guard their keep.',tip:'Tarantulas are slower and tougher than black spiders. Avoid their bite and destroy the eggs.'});
-EVENTS.push(structuredClone(OLD_WELL_EVENT));
-EVENTS.push(...GRAVEYARD_EVENTS.map(e=>structuredClone(e)));
-EVENTS.push({...NPC_QUEST_EVENT});
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {

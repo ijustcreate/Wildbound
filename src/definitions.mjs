@@ -748,7 +748,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "water_elemental",
           "beholder",
           "lesser_beholder",
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||e.environment==='graveyard')&&!d.events.some(old=>old.name===e.name),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (old.environment??'forest')===(e.environment??'forest')) || (e.type==='mystery'||e.environment==='graveyard')&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }

@@ -1,10 +1,20 @@
-const {app, BrowserWindow, ipcMain, Tray, Menu} = require('electron');
+const {app, BrowserWindow, ipcMain, Tray, Menu, clipboard} = require('electron');
 const http = require('node:http');
 const path = require('node:path');
 const fs = require('node:fs');
 
-const controlHost = '127.0.0.1';
-const controlPort = 4184;
+let controlHost = '127.0.0.1';
+let controlPort = 4184;
+let configuredToken = '';
+let configuredJoinKey = '';
+const configIndex = process.argv.indexOf('--config');
+const configPath = configIndex >= 0 ? process.argv[configIndex+1] : path.join(__dirname,'server-data','config.json');
+if (configPath && fs.existsSync(configPath)) {
+  const config = JSON.parse(fs.readFileSync(configPath,'utf8'));
+  if (!['127.0.0.1','localhost','::1'].includes(config.adminHost)) throw Error('Admin control must use loopback.');
+  controlHost = config.adminHost; controlPort = config.adminPort; configuredToken = config.adminToken;
+  configuredJoinKey = config.joinToken;
+}
 const allowed = new Map([
   ['status', ['GET', '/admin/status']],
   ['save', ['POST', '/admin/save']],
@@ -21,7 +31,7 @@ function requestControl(action, token, payload) {
       hostname: controlHost, port: controlPort, method: route[0], path: route[1],
       timeout: 4000,
       headers: {
-        'x-wildbound-admin-token': String(token || '').slice(0, 256),
+        'x-wildbound-admin-token': String(token || configuredToken).slice(0, 256),
         'content-type': 'application/json',
         'content-length': Buffer.byteLength(body),
       },
@@ -71,6 +81,10 @@ app.whenReady().then(async () => {
   }
   ipcMain.handle('persistent-server-control', (_event, action, token, payload) => {
     if (_event.sender !== window.webContents) throw Error('Control window required.');
+    if(action==='copyJoinKey'){
+      if(!configuredJoinKey)throw Error('No local server join key is configured.');
+      clipboard.writeText(configuredJoinKey);return {message:'Join key copied. Share it only with your players.'};
+    }
     if (action === 'announce') {
       const message = String(payload?.message || '').trim().slice(0, 240);
       if (!message) throw Error('Enter an announcement.');

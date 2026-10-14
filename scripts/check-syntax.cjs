@@ -12,6 +12,7 @@ function checkSyntax(root = path.resolve(__dirname, '..')) {
   }
   collect(root, false);
   collect(path.join(root, 'src'), true);
+  if (fs.existsSync(path.join(root, 'server'))) collect(path.join(root, 'server'), true);
   for (const file of files) execFileSync(process.execPath, ['--check', file], {stdio: 'inherit'});
   console.log(`Syntax checked ${files.length} runtime files.`);
 }

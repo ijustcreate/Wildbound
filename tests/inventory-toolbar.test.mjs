@@ -23,8 +23,8 @@ test('place stays available over an empty destination while other actions cannot
  const options=toolbar(g,p).options;assert.equal(options.find(o=>o.id==='move-item').label,'Place');
  assert.equal(options.find(o=>o.id==='move-item').reason,'');assert.ok(options.filter(o=>o.id!=='move-item').every(o=>o.reason));
 });
-test('lobby drops, protected items and occupied offhand socket controls are disabled',()=>{
- const {g,p}=setup();p.inventory[0]={type:'sword',qty:1};g.phase='lobby';assert.ok(toolbar(g,p).options.find(o=>o.id==='drop').reason);
+test('lobby drops are available while protected items and occupied offhand socket controls are disabled',()=>{
+ const {g,p}=setup();p.inventory[0]={type:'sword',qty:1};g.phase='lobby';assert.equal(toolbar(g,p).options.find(o=>o.id==='drop').reason,'');
  g.phase='play';p.field.favorites=['sword'];assert.ok(toolbar(g,p).options.find(o=>o.id==='drop').reason);
  p.equipment.hand1='bow';p.equipment.hand2='occupied';p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand2');
  const result=toolbar(g,p);assert.equal(result.item.type,'bow');assert.ok(!result.options.find(o=>o.id==='use').reason);assert.ok(result.options.find(o=>o.id==='sockets-gear').reason);

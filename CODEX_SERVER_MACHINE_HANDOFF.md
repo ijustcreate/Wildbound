@@ -1,5 +1,11 @@
 # Codex task: make Wildbound's persistent forest server live
 
+## Implementation update — 2026-10-14
+
+The authority, protocol, separate atomic world save, authenticated loopback admin API, desktop Shared forest connection, reconnect identities, authoritative inventory/crafting/companion actions, and server-owned Heartwood Passage are now implemented in this checkout. This computer is the intended host. `Server Control.cmd` starts the actual runtime. Read [docs/PERSISTENT_SERVER.md](docs/PERSISTENT_SERVER.md) and the latest history note for verification/build details. Private configuration and saves remain excluded from Git and client packages.
+
+The older task description below records the original requirements and pre-implementation symptoms. Do not treat its statement that no runtime exists as current status. Do not commit or push without the user's request.
+
 This file is an implementation handoff for the Codex instance running on the server PC.
 
 ## Goal
