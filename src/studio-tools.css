@@ -19,12 +19,12 @@
 .designer-dialog .player-studio[data-mode="setup"] { grid-template-rows:auto minmax(400px,1fr) auto; }
 .designer-dialog .player-studio[data-mode="setup"] .ps-timeline { display:none; }
 .designer-dialog.player-designer .studio-body { padding:10px; }
-.designer-dialog .player-studio { display:grid;grid-template-rows:auto minmax(340px,1fr) auto auto;gap:8px;min-height:650px;height:100%; }
+.designer-dialog .player-studio { display:grid;grid-template-rows:auto minmax(380px,1fr) auto auto;gap:8px;min-height:730px;height:100%; }
 .designer-dialog .player-studio,.designer-dialog .player-studio > *,.designer-dialog .ps-layout > * { min-width:0;max-width:100%; }
 .designer-dialog .ps-timeline { overflow:hidden; }
 .designer-dialog .ps-heading { display:none; }
 .designer-dialog .ps-toolbar { margin:0;gap:6px;flex-wrap:wrap; }
-.designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:200px minmax(260px,1fr) 290px;height:auto;min-height:0;gap:10px; }
+.designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:200px minmax(200px,1fr) 290px minmax(200px,1fr);grid-template-rows:minmax(380px,1fr);height:auto;min-height:380px;gap:10px; }
 .designer-dialog.player-designer .ps-layout > aside { height:100%;max-height:100%;min-height:0;overflow:auto;padding:10px; }
 .designer-dialog.player-designer .ps-stage { position:relative;height:100%;min-height:0;overflow:hidden;padding:0;background:#343b3e; }
 .designer-dialog.player-designer .ps-canvas { position:absolute;inset:0;width:100%;height:100%;max-height:none;max-width:none; }
@@ -86,12 +86,26 @@
 .designer-dialog .item-sprite-list figure { margin:0;padding:8px;background:#102125;border:1px solid #395a50; }
 .designer-dialog .item-sprite-list figcaption { font-size:11px;max-width:180px;margin-top:6px; }
 @media(max-width:1000px) {
-  .designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:155px minmax(210px,1fr) 245px; }
+  .designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:135px minmax(180px,1fr) 220px minmax(180px,1fr); }
   .designer-dialog .item-studio-preview { grid-template-columns:1fr; }
 }
+.designer-dialog .ps-live-preview{position:relative;display:block;min-width:0;min-height:0;border:1px solid #395a50;border-radius:6px;background:#152d2c;overflow:hidden}
+.designer-dialog .ps-live-preview canvas{position:absolute;left:0;top:34px;width:100%;height:calc(100% - 53px);min-width:0;max-width:none;max-height:none;margin:0;object-fit:fill;image-rendering:pixelated}
+.designer-dialog .ps-live-controls{position:absolute;inset:0 0 auto;display:flex;flex-wrap:nowrap;gap:4px;height:34px;padding:3px 5px;box-sizing:border-box;align-items:center;z-index:1}
+.designer-dialog .ps-live-controls strong{font-size:10px;color:#b9e6a1}
+.designer-dialog .ps-live-controls button,.designer-dialog .ps-live-controls select{font-size:10px;min-width:0;max-width:100%;padding:3px 5px;height:25px;margin:0;line-height:16px}
+.designer-dialog .ps-live-controls select{width:75px;flex:1;overflow:hidden;text-overflow:ellipsis}
+.designer-dialog .ps-live-controls label{display:flex;align-items:center;white-space:nowrap;font-size:10px;gap:2px;margin:0}
+.designer-dialog .ps-live-controls input{width:13px;height:13px;margin:0}
+.designer-dialog .ps-live-keyboard[aria-pressed=true]{background:#276c89;border-color:#69d9ee}
+.designer-dialog .ps-live-preview .ps-live-status{position:absolute;bottom:0;left:0;right:0;box-sizing:border-box;height:19px;margin:0;padding:2px 6px;font:10px system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#152d2c;color:#b8cabe}
+.designer-dialog .ps-live-preview .ps-live-help{position:absolute;bottom:24px;left:8px;right:8px;margin:0;padding:9px;background:#102525f5;border:1px solid #668879;border-radius:4px;color:#f3e6c6;font:12px/1.5 system-ui}
+.designer-dialog .ps-live-preview [hidden]{display:none!important}
+@media(max-width:1300px){.designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout{grid-template-columns:130px minmax(160px,1fr) 220px minmax(160px,1fr)}}
 @media(max-width:760px) {
   .designer-dialog .player-studio { height:auto;display:flex;flex-direction:column; }
-  .designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:135px minmax(210px,1fr); }
+  .designer-dialog .ps-layout,.designer-dialog .editing-player .ps-layout { grid-template-columns:110px minmax(180px,1fr);grid-template-rows:380px 360px 380px;min-height:1140px; }
   .designer-dialog .ps-inspector { grid-column:1/-1;max-height:360px !important; }
+  .designer-dialog .ps-live-preview {grid-column:1/-1;}
   .designer-dialog.player-designer .ps-canvas { width:100%; }
 }

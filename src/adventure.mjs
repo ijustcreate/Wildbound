@@ -6,7 +6,6 @@ import {dropRavenLoot,spawnRavenFlock} from './raven.mjs';
 import {spawnSurfaceEcology,releaseGraveyardCritter} from './graveyard-ecology.mjs';
 import {dropHiveHoney,useHoneycomb} from './honeycomb.mjs';
 import {enterOldWell,leaveOldWell,interactOldWell,oldWellRoomStep,tickOldWells,wellForPlayer} from './old-well.mjs';
-import {travelThroughForestPortal} from './forest-portal-event.mjs';
 import {robotShopAction} from './robot-shop.mjs';
 import {bansheeArrowBonus,bansheeArrowImpact} from './banshee-queen.mjs';
 import {isCharmed,clearCharm,charmShot,playerCombatTargets,tickSuccubusKisses} from './succubus-charm.mjs';
@@ -268,6 +267,7 @@ export const adventureMethods = {
     this.persist();
   },
   newExpedition() {
+    if(this.localWorld){this.message('This world is persistent. Use Worlds to create a separate expedition.');return false;}
     this.eventTestBoard=null;
     this.footprints = [];
     this.environmentParticles = [];
@@ -535,11 +535,7 @@ export const adventureMethods = {
   },
   enterRoom(p, door) {
     if(door?.oldWell)return enterOldWell(this,p,door);
-    // Heartwood portals are world transitions, not storage-room portals.
-    // Route them before the generic room renderer assigns p.room; otherwise
-    // the client opens an empty room scene and the party never enters the
-    // boundless forest.
-    if(door?.forestTravel)return travelThroughForestPortal(this,door);
+    if(door?.forestTravel)return false; // Legacy journey portals are retired.
     if (p.hp <= 0 || p.room || dist(p, door) > 26) return false;
     p.room = door.id;
     p.roomX = 160;

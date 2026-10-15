@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="src/inventory-workbench.css" />
     <link rel="stylesheet" href="src/character-creator.css" />
     <link rel="stylesheet" href="src/ui-polish.css" />
+    <link rel="stylesheet" href="src/worlds.css" />
     <link rel="stylesheet" href="src/npc-dialogue.css" />
   </head>
   <body>
@@ -36,7 +37,7 @@
       <nav>
         <button id="nav-play" class="nav active">ADVENTURE</button
         ><button id="nav-workshop" class="nav">SPRITE WORKSHOP</button
-        ><button id="live-world-button" class="live-world-button" type="button" title="Optional persistent multiplayer world">LIVE WORLD <small id="live-world-status">OFFLINE</small></button
+        ><button id="worlds-button" class="nav" type="button">WORLDS</button
         ><button
           id="settings-button"
           class="icon-button"
@@ -116,7 +117,7 @@
           ><strong id="round-label">ROUND 01</strong>
         </div>
         <div class="game-top-right">
-          <span id="live-world-play-status" class="live-world-play-status" hidden>LIVE WORLD · CONNECTED</span>
+          <button id="world-status-button" class="small-button" hidden>LOCAL WORLD</button>
           <button id="board-button" class="small-button">BOARD · B</button>
           <span id="threat-label">0 CREATURES</span
           ><button id="pause-button" class="small-button">Ⅱ PAUSE</button>

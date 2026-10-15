@@ -30,6 +30,7 @@ import { renderLayers, captureLayers, releaseLayers, boneSprites } from "./rende
 import { saveRigSpriteOverride, removeRigSpriteOverride } from "./rig-sprite-storage.mjs";
 import { ANGLE_JOINTS, jointAngle, wrapAngle } from "./joint-angles.mjs";
 import { BoneTools, transformBones } from './bone-tools.mjs';
+import {RigLivePreview} from './rig-live-preview.mjs';
 const copy = (v) => structuredClone(v);
 export class RigStudio {
   constructor(save) {
@@ -115,6 +116,7 @@ export class RigStudio {
     this.timelineDrag = null;
   }
   mount(root) {
+    this.livePreview?.dispose();
     this.resizeObserver?.disconnect();
     this.root = root;
     root.tabIndex = 0;
@@ -144,6 +146,8 @@ export class RigStudio {
     <footer><button data-do="save">Save rig to game</button><button data-do="export">Export rig</button><label class="ps-import">Import rig <input class="ps-file" type="file" accept=".json"></label><button data-do="reset">Reset to reference style</button><span class="ps-status" role="status">Ready · eight-direction pixel rig</span></footer>`;
     const $ = (s) => root.querySelector(s);
     this.$ = $;
+    const live=document.createElement('section');live.className='ps-live-preview';$('.ps-layout').append(live);
+    this.livePreview=new RigLivePreview(this,live);
     const picker = document.createElement("select");
     picker.className = "ps-subject";
     picker.setAttribute("aria-label", "Rig subject");
@@ -397,6 +401,7 @@ export class RigStudio {
     const stage=this.$('.ps-stage'),fitCanvas=()=>{
       if(!stage.clientHeight)return;
       this.$('.ps-canvas').width=Math.max(120,Math.round(380*stage.clientWidth/stage.clientHeight));
+      if(!this.dragging&&!this.panning)this.scale=Math.min(this.scale,Math.max(2,(this.$('.ps-canvas').width-32)/38));
       this.animate(0);
     };
     this.resizeObserver=new ResizeObserver(fitCanvas);this.resizeObserver.observe(stage);fitCanvas();
@@ -1092,6 +1097,7 @@ export class RigStudio {
   }
   animate(dt) {
     if (!this.root?.isConnected) return;
+    this.livePreview?.animate(dt);
     const clip = this.model.clips[this.clip];
     if (this.playing && this.mode === "animate") {
       this.frame += dt * clip.fps;

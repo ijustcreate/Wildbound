@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { createHash, randomUUID } = require("node:crypto");
 let window;
-const bootSmoke = process.argv.includes('--boot-smoke-test');
+const worldsSmoke=process.argv.includes('--worlds-smoke-test');
+const bootSmoke = process.argv.includes('--boot-smoke-test')||worldsSmoke;
 const testMode = bootSmoke || process.argv.includes('--smoke-test');
 const preview = process.argv.includes('--preview');
 if (preview) app.setPath('userData', path.join(app.getPath('appData'), 'Wildbound Night Hunt Preview'));
@@ -94,7 +95,7 @@ app.whenReady().then(async () => {
     backgroundColor: "#101e1b",
     title: preview
       ? `Wildbound · Night Hunt Preview · v${app.getVersion()}`
-      : `Wildbound • The Living Board · v${app.getVersion()}`,
+      : `Wildbound Worlds · v${app.getVersion()}`,
     icon: path.join(__dirname, 'assets', 'wildbound-icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -153,6 +154,29 @@ app.whenReady().then(async () => {
   ipcMain.handle("session-save", (_e, data) =>
     store.write(sessionPath, data, "session"),
   );
+  const worldStore=require('./world-store.cjs').createWorldStore(path.join(app.getPath('userData'),'Worlds'));
+  const packStore=require('./pack-store.cjs').createPackStore({appPath:app.getAppPath(),userData:app.getPath('userData')});
+  ipcMain.handle('worlds-list',()=>worldStore.list());
+  ipcMain.handle('worlds-load',(_e,id)=>worldStore.load(id));
+  ipcMain.handle('worlds-save',(_e,record)=>worldStore.save(record));
+  ipcMain.handle('worlds-folder',()=>shell.openPath(worldStore.root));
+  ipcMain.handle('world-packs-list',()=>packStore.list());
+  ipcMain.handle('world-pack-assets',(_e,id)=>packStore.assets(id));
+  ipcMain.handle('world-packs-import',async()=>{
+    const result=await dialog.showOpenDialog(window,{title:'Install a local world pack',filters:[{name:'World pack manifest',extensions:['json']}],properties:['openFile']});
+    return result.canceled?null:packStore.install(result.filePaths[0]);
+  });
+  let closing=false;
+  window.on('close',async event=>{
+    if(closing||testMode)return;
+    event.preventDefault();
+    try{
+      await window.webContents.executeJavaScript('window.wildboundFlushLocalWorld?.()');
+      closing=true;window.close();
+    }catch(error){
+      await dialog.showMessageBox(window,{type:'error',title:'Your world could not be saved',message:'Wildbound stayed open so you can retry saving.',detail:error.message});
+    }
+  });
   const houseDesignPath = path.join(app.getPath('userData'),'house-designs-v1.json');
   ipcMain.handle('house-designs-load',()=>store.read(houseDesignPath,'house'));
   ipcMain.handle('house-designs-save',(_e,data)=>store.write(houseDesignPath,data,'house'));
@@ -164,17 +188,9 @@ app.whenReady().then(async () => {
   ipcMain.handle("room-join", (_e, address, name) => room.join(address, name));
   ipcMain.on("room-send", (_e, data) => room.send(data));
   ipcMain.handle("room-stop", () => room.stop());
-  const {ServerTransport} = require('./server-transport.cjs');
-  const persistent = new ServerTransport(data => {
-    if (!window.isDestroyed()) window.webContents.send('server-event', data);
-  });
-  ipcMain.handle('server-connect', (_e, address, name, joinToken, resumeToken, candidates) => persistent.connect(address,name,joinToken,resumeToken,candidates));
-  ipcMain.on('server-send', (_e, data) => persistent.send(data));
-  ipcMain.handle('server-disconnect', () => persistent.stop());
   app.on("before-quit", () => {
     releaseControllerClaims();
     room.stop();
-    persistent.stop();
   });
   ipcMain.handle("profiles-load", () => store.read(profilePath, "profiles"));
   ipcMain.handle("profiles-save", (_e, data) =>
@@ -188,7 +204,9 @@ app.whenReady().then(async () => {
     return true;
   });
   await window.loadFile("index.html");
-  if (bootSmoke)
+  if(worldsSmoke)
+    await require('./scripts/verify-worlds-desktop.cjs')({window,testOutput,app});
+  else if (bootSmoke)
     await require('./scripts/boot-smoke.cjs')({window,testOutput,app});
   else if (process.argv.includes("--smoke-test"))
     await require("./scripts/smoke-runner.cjs")({ window, testOutput, app });

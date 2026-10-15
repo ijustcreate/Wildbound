@@ -1,4 +1,5 @@
 import {boardSettings,BOARD_PIECES} from './board-settings.mjs';
+import {packAssets} from './world-pack-assets.mjs';
 import {drawBoardMagic} from './board-magic.mjs';
 import {PAWN_ATLAS} from './board-pawn-atlas.mjs';
 import {boardDicePose} from './board-sequence.mjs';
@@ -35,10 +36,11 @@ export function drawAnimalPawn(c,x,y,animal,direction,color,size=17,hop=0){
 }
 export function drawBoardScene(c,game,time,options,trail,point){
   const settings=options.settings||boardSettings;c.save();
-  const selected=backgrounds[boardArtBiome(game)];
+  const override=packAssets(game).board;
+  const selected=override?.complete&&override.naturalWidth?override:backgrounds[boardArtBiome(game)];
   const background=selected?.complete&&selected.naturalWidth?selected:backgrounds.forest;
   c.fillStyle='#30251a';c.fillRect(-140,-96,280,192);
-  if(boardArtBiome(game)==='graveyard')drawCemeteryBoard(c,trail);
+  if(boardArtBiome(game)==='graveyard'&&!(override?.complete&&override.naturalWidth))drawCemeteryBoard(c,trail);
   else if(background?.complete&&background.naturalWidth){c.save();c.filter=`brightness(${settings.boardLight})`;c.drawImage(background,-140,-96,280,192);c.restore();}
   else{c.strokeStyle='#d5c49a';c.lineWidth=10;c.beginPath();trail.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.stroke();}
   drawEntryStone(c);

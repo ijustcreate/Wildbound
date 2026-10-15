@@ -34,6 +34,7 @@ import {stumpShape,rockSurface,raisedSurfaceBlocked} from './terrain-support.mjs
 import {victoryChestBlocked} from './victory-chest.mjs';
 import {catchCritter} from './living-ecosystem.mjs';
 import {updateBoundlessWorld, BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
+import {tickLocalWorld,noteLocalAnimalRemoved} from './world-runtime.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
 import {tickQuicksand} from './quicksand.mjs';
@@ -1147,7 +1148,7 @@ export class Game {
   spawnEvent(index,{test=false}={}) {
     this.eventOnBoard=false;
     if (index === undefined) {
-      index=selectEvent(this,EVENTS,eventAvailable);
+      index=selectEvent(this,EVENTS,(g,e,...args)=>(!g.localWorld?.pack.events||g.localWorld.pack.events.includes(EVENTS.indexOf(e)))&&eventAvailable(g,e,...args));
       if(index===null)return;
     }
     if(!EVENTS[index]||!test&&!eventHasStartingAreas(this,EVENTS[index]))return false;
@@ -1392,7 +1393,8 @@ export class Game {
     rewardNightHunts(this);
     updateLivingEcosystem(this, dt);
     updateBoundlessWorld(this,dt);
-    seedWildFauna(this);
+    tickLocalWorld(this,dt);
+    if(!this.localWorld)seedWildFauna(this);
     if (this.phase === "sealing") return;
     this.bloom = Math.min(3, (this.bloom || 0) + dt);
     this.time += dt;
@@ -2173,6 +2175,7 @@ export class Game {
       }
     }
     for (const e of this.enemies.filter((e) => e.hp <= 0 && !e.defeated)) {
+      noteLocalAnimalRemoved(this,e);
       recordNpcQuestKill(this,e);
       e.defeated = true;
       e.deathTimer = 0;

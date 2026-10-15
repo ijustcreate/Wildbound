@@ -23,6 +23,9 @@ export function restoreSession(saved) {
     throw Error("Invalid expedition save");
   const g = new Game();
   Object.assign(g, saved.state);
+  // The experimental nested Heartwood journey is retired on the Worlds branch.
+  g.portals=(g.portals||[]).filter(d=>!d.forestTravel);
+  delete g.forestJourney;
   migrateLegacySupplies(g.sharedStash);
   // World drops retain their original anchors; do not merge distant arrows.
   for(const item of g.loot||[])migrateLegacySupplies([item]);

@@ -1,10 +1,10 @@
 # Wildbound
 
-The repository root is the Electron desktop game and its dedicated persistent multiplayer server. Launch the verified desktop build with `Play Wildbound.cmd`. Start this PC's server and its operator panel with `Server Control.cmd`.
+The repository root is the self-contained Electron desktop game. Version 1.2.0 on `Wildbound_worlds` adds local living worlds. Launch the verified desktop build with `Play Wildbound.cmd` or the **Wildbound Worlds (1.2.0)** desktop shortcut.
 
-Players choose **Shared forest** in the desktop lobby, enter the operator's `ws://.../game` or `wss://.../game` address and player join key, and select an explorer name. Progress belongs to the server world; local expeditions and characters remain in the normal desktop profile. Reconnect with the same explorer name on the same client to recover server progress.
+Choose explorers in the lobby, open **Worlds**, choose a pack and seed, then **Create & explore**. Existing worlds have independent saves and can be reopened through the same menu. Heartwood, Cemetery, Beach and Jungle are bundled. No internet, account, hosted service or separately running simulation process is required. Couch co-op remains available; networking is a dormant future adapter.
 
-See [persistent server setup, networking, saves and verification](docs/PERSISTENT_SERVER.md). For source/build migration, read [the development handoff](docs/DEVELOPMENT_HANDOFF.md). Server settings and saves live in ignored `server-data/`; never include that folder in a client package or source push.
+See [local worlds, content packs and simulation limits](docs/LOCAL_WORLDS.md) and [the development handoff](docs/DEVELOPMENT_HANDOFF.md). Old server documentation describes the archived experiment; its runtime, connection UI and Heartwood journey portals have been removed from this branch. Existing private server data and desktop profiles are preserved on disk.
 
 ## Character Viewer
 

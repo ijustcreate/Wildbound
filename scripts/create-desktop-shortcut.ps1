@@ -37,7 +37,7 @@ if (-not (Test-Path -LiteralPath $DesktopPath -PathType Container)) {
   New-Item -ItemType Directory -Path $DesktopPath | Out-Null
 }
 
-$shortcutPath = Join-Path $DesktopPath "Wildbound Latest ($version).lnk"
+$shortcutPath = Join-Path $DesktopPath "Wildbound Worlds ($version).lnk"
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
 $shortcut.TargetPath = $launcher

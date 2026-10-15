@@ -4,8 +4,8 @@ module.exports=async({window,testOutput,app})=>{
   window.webContents.on('console-message',(_event,level,message)=>{if(level>=3)errors.push(message);});
   try{
     await window.webContents.executeJavaScript(`Promise.race([window.wildboundBoot.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('Boot timed out')),30000))])`);
-    const state=await window.webContents.executeJavaScript(`({title:document.title,bootError:window.wildboundBoot.error,game:window.wildboundServerTest?.inspect(),sharedForest:!!document.getElementById('server-join'),audioMutedTest:window.desktop.testMode})`);
-    const failed=state.bootError||!state.game?.ready||state.game?.errors.length||!state.sharedForest||errors.length?1:0;
+    const state=await window.webContents.executeJavaScript(`({title:document.title,bootError:window.wildboundBoot.error,game:window.wildboundWorldsTest?.inspect(),worlds:!!document.getElementById('worlds-button'),audioMutedTest:window.desktop.testMode})`);
+    const failed=state.bootError||!state.game?.ready||state.game?.errors.length||!state.worlds||errors.length?1:0;
     const report={failed,exe:app.getPath('exe'),appPath:app.getAppPath(),version:app.getVersion(),state,errors};
     await fs.mkdir(testOutput,{recursive:true});
     await fs.writeFile(path.join(testOutput,'boot-smoke.json'),JSON.stringify(report,null,2));

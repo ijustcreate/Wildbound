@@ -1,4 +1,5 @@
 import {drawVictoryChest} from './victory-chest.mjs';
+import {packAssets} from './world-pack-assets.mjs';
 import {drawOldWells} from './old-well.mjs';
 import {drawRoomScene} from './hero-ui.mjs';
 import {anacondaRenderParts,drawAnacondaSegment,drawAnacondaShadow} from './anaconda-art.mjs';
@@ -250,6 +251,8 @@ export class Renderer {
       ctx.restore();applyCelShading(ctx);return;
     }
     this.floor(ctx, w, h, game);
+    const cemeteryGround=packAssets(game).cemetery;
+    if(game.generatedEnvironment==='graveyard'&&cemeteryGround?.complete&&cemeteryGround.naturalWidth)ctx.drawImage(cemeteryGround,0,0,1600,1600);
     drawBeachGulls(ctx,game,p=>this.visible(p,w,h,40));
     drawBridges(ctx,game);
     drawPuddles(ctx,game);

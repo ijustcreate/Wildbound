@@ -20,6 +20,7 @@ const chunkOf = n => Math.floor(n / BOUNDLESS_CHUNK_SIZE);
 const chunkSeed = (seed, x, y) => Math.floor(Math.abs(terrainHash(seed + x * 127.1, y * 311.7) * 2147483647));
 
 export function boundlessBiomeAt(g, x, y) {
+  if(g.localWorld)return g.localWorld.pack.environment;
   if(g.generatedEnvironment==='graveyard')return 'graveyard';
   const cx = chunkOf(x), cy = chunkOf(y);
   if (cx === 0 && cy === 0) {
@@ -46,6 +47,8 @@ export function boundlessTerrainAt(g, tx, ty) {
     return 'sand';
   }
   if (biome === 'ice') return r > .82 ? 'ice' : 'snow';
+  if (biome === 'beach') return lx>36?'water':lx>32?'shallow':'sand';
+  if (biome === 'graveyard') return r>.88?'dirt':'grass';
   if (biome === 'temple' && r > .93) return 'temple_stone';
   // Occasional connected river ribbons with walkable crossings.
   const riverX = 12 + Math.round(Math.sin(ly * .17 + seed * .013 + chunkX) * 3);
@@ -123,6 +126,7 @@ export function updateBoundlessWorld(g, dt) {
     const changes=g.persistentWorld?g.boundlessChunkChanges?.[key]:null;
     const removed=new Set(changes?.removed||[]),changedProps=new Map((changes?.changed||[]).map(prop=>[prop.id,prop]));
     const restored=generated.filter(prop=>!removed.has(prop.id)).map(prop=>structuredClone(changedProps.get(prop.id)||prop));
+    restored.push(...structuredClone(changes?.added||[]));
     const entry = { key, scenery: existing.length?existing:restored,
       ...(g.persistentWorld?{baseline:generated.map(prop=>structuredClone(prop))}:{}) };
     if(!existing.length)g.scenery.push(...entry.scenery);
@@ -145,7 +149,7 @@ export function updateBoundlessWorld(g, dt) {
   g.boundlessSpawnTimer = Math.max(0, (g.boundlessSpawnTimer || 0) - Math.min(dt, .05));
   const explorer = players.find(p => Math.hypot(p.x - 800, p.y - 800) > BOUNDLESS_SAFE_RADIUS);
   const activeThreats = g.enemies.filter(e => e.hp > 0 && e.boundlessThreat);
-  if (explorer && activeThreats.length < 8 && g.boundlessSpawnTimer <= 0) {
+  if (!g.localWorld && explorer && activeThreats.length < 8 && g.boundlessSpawnTimer <= 0) {
     if (spawnThreat(g, explorer)) g.boundlessSpawnTimer = 18 + g.random() * 8;
     else g.boundlessSpawnTimer = 2;
   }
@@ -156,14 +160,19 @@ export function updateBoundlessWorld(g, dt) {
 function recordChunkChanges(g, entry) {
   const prefix=`boundless:${entry.key.replace(',',':')}:`;
   const current=new Map(g.scenery.filter(prop=>prop.id?.startsWith(prefix)).map(prop=>[prop.id,prop]));
-  const changed=[],removed=[];
+  const changed=[],removed=[],added=[];
+  const ids=new Set((entry.baseline||[]).map(p=>p.id));
+  for(const prop of current.values())if(!ids.has(prop.id))added.push(structuredClone(prop));
   for(const original of entry.baseline||[]){
     const prop=current.get(original.id);
+    if(g.localWorld&&['tree','snow_tree','leafless_tree','bush','fern','flower'].includes(original.kind)&&(!prop||prop.fallen||prop.depleted||prop.harvested)){
+      const harvests=g.localWorld.harvests||={};harvests[original.id]||={hour:Math.floor(g.localWorld.seconds/3600),prop:structuredClone(original)};
+    }
     if(!prop)removed.push(original.id);
     else if(JSON.stringify(prop)!==JSON.stringify(original))changed.push(structuredClone(prop));
   }
   const chunks=g.boundlessChunkChanges||={};
-  if(changed.length||removed.length)chunks[entry.key]={changed,removed};
+  if(changed.length||removed.length||added.length)chunks[entry.key]={changed,removed,...(added.length?{added}:{})};
   else delete chunks[entry.key];
 }
 

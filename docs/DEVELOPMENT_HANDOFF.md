@@ -1,6 +1,6 @@
 # Moving Wildbound development between computers
 
-Latest desktop build: [1.1.0 persistent server and launcher repair](history/2026-10-14-persistent-server-1.1.0.md). The older release notes below are historical.
+Latest desktop build: [1.2.0 offline worlds and playable rig studio](history/2026-10-15-local-worlds-1.2.0.md), branch `Wildbound_worlds`. Rebuild the desktop on a receiving machine. All release notes below this paragraph describe historical versions, including the retired server experiment.
 
 Desktop/server 1.1.0 is described in [the persistent server operations guide](PERSISTENT_SERVER.md). Its shared-world authority is `server/start.mjs`; `Server Control.cmd` now starts that authority and its panel. Private server settings/saves are in ignored `server-data/`, separate from Electron profiles. See the latest dated history note for the exact build identity and verification limits; older release paragraphs below are historical context.
 
