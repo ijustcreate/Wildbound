@@ -376,7 +376,8 @@ export class Renderer {
         ctx,
         { ...d, color: owner?.color || d.color },
         game.time,
-        "PRIVATE STORAGE",
+        d.forestTravel === 'outbound' ? 'HEARTWOOD PASSAGE' :
+          d.forestTravel === 'return' ? 'RETURN TO GAME' : 'PRIVATE STORAGE',
       );
     }
     for (const d of this.decor)
