@@ -494,12 +494,13 @@ export class Renderer {
       if (!p.controlledFollowerId&&!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
       else if(p.controlledFollowerId&&p.controlPetPosition&&!p.controlPetPosition.room){
         const hero={...p,...p.controlPetPosition,...(p.controlMainLoadout||{}),controlledFollowerId:null,controlledByFollower:true,moving:!!p.controlPetPosition.moving,walking:true,attack:0,charge:0,jumpHeight:0,groundHeight:0,dodge:0,dashTime:0,blocking:false,bowAiming:false};
-        actors.push({...hero,isPlayer:true,drawDepth:terrainActorDepth(game,hero,boardActorDepth(game,hero))});
+        actors.push({...hero,isPlayer:true,hidePlayerMarker:true,drawDepth:terrainActorDepth(game,hero,boardActorDepth(game,hero))});
       }
     }
-    for(const ghost of game.ghosts||[])if(!sealCapture&&!ghost.room)actors.push({...ghost,isGhostActor:true,drawDepth:terrainActorDepth(game,ghost,boardActorDepth(game,ghost))});
+    const controlledPresentation=actor=>{const owner=game.players.find(p=>controlledUnit(game,p)===actor);return owner?{...actor,isPlayer:true,controlledBy:owner.id,name:owner.name,color:owner.color}:actor;};
+    for(const ghost of game.ghosts||[])if(!sealCapture&&!ghost.room){const shown=controlledPresentation(ghost);actors.push({...shown,isGhostActor:true,drawDepth:terrainActorDepth(game,shown,boardActorDepth(game,shown))});}
     const queued=new Set(actors.map(a=>a.id).filter(Boolean));
-    for(const follower of game.followers||[])if(!sealCapture&&!follower.room&&!queued.has(follower.id)&&this.visible(follower,w,h,180))actors.push({...follower,isPlayer:game.players.some(owner=>controlledUnit(game,owner)===follower),drawDepth:terrainActorDepth(game,follower,boardActorDepth(game,follower))});
+    for(const follower of game.followers||[])if(!sealCapture&&!follower.room&&!queued.has(follower.id)&&this.visible(follower,w,h,180)){const shown=controlledPresentation(follower);actors.push({...shown,drawDepth:terrainActorDepth(game,shown,boardActorDepth(game,shown))});}
     for (const e of game.enemies){
       // Long bodies need individual depth entries: roots and jumping heroes
       // can pass between coils, even when the snake's head is off-camera.
@@ -507,8 +508,9 @@ export class Renderer {
         for(const part of anacondaRenderParts(e))if(canSee(game,part)&&this.visible(part,w,h,60))actors.push(part);
       }else if (canSee(game, e) && this.visible(e, w, h, 180)) {
         const actor = e;
+        const shown=controlledPresentation(actor);
         actors.push({
-          ...actor,
+          ...shown,
           drawDepth: terrainActorDepth(game,actor,boardActorDepth(game,actor,actor.y + (rigSubject(e.kind)||WILD_FAUNA_KINDS.includes(e.kind) ? 0 : 14))),
         });
       }
@@ -531,7 +533,7 @@ export class Renderer {
     if(game.merchant)actors.push({isMerchant:true,drawDepth:game.merchant.y+12});
     if(!sealCapture)for(const npc of game.questNpcs||[])if(this.visible(npc,w,h,90))actors.push({...npc,isQuestNpc:true,drawDepth:npc.y});
     if(!sealCapture&&game.villageCampState?.fire){const fire=game.villageCampState.fire;actors.push({isVillagerCampfire:true,x:fire.x,y:fire.y,drawDepth:fire.y});}
-    if(!sealCapture)for(const v of visibleVillagers(game))if(this.visible(v,w,h,90))actors.push({...v,isVillager:true,drawDepth:v.y});
+    if(!sealCapture)for(const v of visibleVillagers(game))if(this.visible(v,w,h,90)){const shown=controlledPresentation(v);actors.push({...shown,isVillager:true,drawDepth:v.y});}
     actors.sort((a, b) => a.drawDepth - b.drawDepth);
     for (const a of actors) {
       if(a.isAnacondaSegment){ctx.save();ctx.globalAlpha*=Math.min(enemyVisibility(game,a.anacondaActor),nightEnemyOpacity(game,a.anacondaActor));
@@ -541,7 +543,7 @@ export class Renderer {
       if(a.isVictoryChest){drawVictoryChest(ctx,game);continue;}
       if(a.isMerchant){drawMerchant(ctx,game,this.animator);continue;}
       if(a.isVillagerCampfire){drawVillagerCampfire(ctx,game,game.villageCampState.fire);continue;}
-      if(a.isVillager){drawVillagerNpc(ctx,game,a,this.animator);continue;}
+      if(a.isVillager){drawVillagerNpc(ctx,game,a,this.animator);if(a.isPlayer){ctx.save();ctx.strokeStyle=a.color;ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(a.x,a.y+10,18,6,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle=a.color;ctx.font='5px monospace';ctx.textAlign='center';ctx.fillText(a.name.toUpperCase(),a.x,a.y+29);ctx.restore();}continue;}
       if(a.isQuestNpc){drawQuestNpc(ctx,game,a,this.animator);continue;}
       if(a.isSupplyChest){drawSupplyChest(ctx,game,a);continue;}
       if(a.isEventTestBoard){this.eventTestBoard(ctx,game);continue;}
@@ -649,12 +651,14 @@ export class Renderer {
           ctx.stroke();
           ctx.restore();
         }
+        if(!a.hidePlayerMarker){
         ctx.strokeStyle = a.color;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.ellipse(contact.x, contact.y, 18, 6, 0, 0, Math.PI * 2);
         ctx.stroke();
-        if (a.id === game.current?.id || a.controlledBy === game.current?.id) {
+        }
+        if (!a.hidePlayerMarker&&(a.id === game.current?.id || a.controlledBy === game.current?.id)) {
           ctx.fillStyle = a.color;
           ctx.beginPath();
           const lift=a.swimming?-20:(a.groundHeight||0)+(a.jumpHeight||0);
@@ -820,7 +824,7 @@ export class Renderer {
         ctx.textAlign = "center";
         ctx.font = "5px monospace";
         ctx.fillStyle = a.color;
-        ctx.fillText(
+        if(!a.hidePlayerMarker)ctx.fillText(
           a.hp <= 0 ? "HOLD INTERACT TO REVIVE" : a.name.toUpperCase(),
           a.x,
           a.y + 29,

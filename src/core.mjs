@@ -770,8 +770,8 @@ export class Game {
       maxHp: 100,
       // Keep player jumps quick and grounded: roughly the same apex as the
       // original arc, with a much faster rise and fall.
-      jumpImpulse: 180,
-      jumpGravity: 720,
+      jumpImpulse: 230,
+      jumpGravity: 1200,
       progress: 0,
       boardProgress: 0,
       rolls: 0,

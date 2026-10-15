@@ -61,8 +61,8 @@ export function restoreSession(saved) {
     // Older saves carry the original 125 impulse and no gravity setting.
     // Restore the quick-rise, quick-fall player arc without changing custom
     // jump values on newer saves.
-    if (p.jumpImpulse === undefined || p.jumpImpulse === 125) p.jumpImpulse = 180;
-    if (p.jumpGravity === undefined || p.jumpGravity === 360) p.jumpGravity = 720;
+    if (p.jumpImpulse === undefined || p.jumpImpulse === 125 || p.jumpImpulse === 180 || p.jumpImpulse === 205) p.jumpImpulse = 230;
+    if (p.jumpGravity === undefined || p.jumpGravity === 360 || p.jumpGravity === 720) p.jumpGravity = 1200;
     migrateEquipment(p);
     p.previousInput = {};
     p.charge = 0;

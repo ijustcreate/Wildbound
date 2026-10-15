@@ -179,28 +179,59 @@ function mausoleum(c,p,time) {
   candle(c,-35,-5,time,p.x);candle(c,33,-5,time,p.y);
 }
 function tree(c,p,forest=false) {
-  const h=p.size || 120,v=p.variant || 0;
+  const h=p.size || 120,v=((p.variant||0)%5+5)%5,type=p.treeType||'oak';
   pixel(c,-18,-2,37,6,'#23332d');
-  // Bent trunks, roots, angular forks and twig silhouettes at native scale.
-  line(c,-7,0,-3,-h*.35,'#28322f',10);line(c,-3,-h*.35,5,-h*.7,'#28322f',8);
-  line(c,5,-h*.7,v===1?-8:8,-h,'#28322f',4);
-  line(c,-5,0,-1,-h*.4,'#586052',3);line(c,0,-h*.4,7,-h*.76,'#6c7060',2);
-  for(const side of [-1,1]) {
-    line(c,-3,0,side*20,3,'#465447',3);
-    line(c,1,-h*.44,side*h*.28,-h*.63,'#2b3530',5);
-    line(c,side*h*.28,-h*.63,side*h*.35,-h*.86,'#2b3530',3);
-    line(c,side*h*.27,-h*.64,side*h*.45,-h*.66,'#2b3530',2);
-    line(c,side*h*.35,-h*.83,side*h*.46,-h*.91,'#465044',2);
-    line(c,4,-h*.7,side*h*.17,-h*.89,'#2b3530',3);
+  // Five distinct, seeded silhouettes make the cemetery canopy read as
+  // individual trees at gameplay zoom, while the root/contact footprint stays put.
+  const midX=[-3,-12,4,1,-5][v],midY=[-.35,-.28,-.43,-.38,-.32][v];
+  const crownX=[8,-14,3,0,-7][v],crownY=[-.70,-.64,-.72,-.66,-.73][v];
+  line(c,-7,0,midX,h*midY,'#28322f',10);
+  line(c,midX,h*midY,crownX,h*crownY,'#28322f',8);
+  if(v===2){
+    line(c,crownX,h*crownY,-h*.12,-h*.88,'#28322f',5);
+    line(c,-h*.12,-h*.88,-h*.22,-h,'#28322f',3);
+    line(c,crownX,h*crownY,h*.23,-h*.87,'#28322f',4);
+  } else if(v===3) {
+    line(c,crownX,h*crownY,-h*.30,-h*.83,'#28322f',4);
+    line(c,-h*.30,-h*.83,-h*.34,-h*.63,'#465044',2);
+    line(c,crownX,h*crownY,h*.31,-h*.88,'#28322f',4);
+    line(c,h*.31,-h*.88,h*.38,-h*.68,'#465044',2);
+  } else {
+    line(c,crownX,h*crownY,v===1?h*.27:-h*.22,-h*.98,'#28322f',4);
+    line(c,crownX,h*crownY,v===1?-h*.30:h*.25,-h*.88,'#28322f',4);
+  }
+  line(c,-5,0,-1,-h*.4,'#586052',3);line(c,midX,h*midY,crownX+3,h*(crownY-.06),'#6c7060',2);
+  for(const side of [-1,1])line(c,-3,0,side*(18+v%3*3),3,'#465447',3);
+  const branches=v===1?[[.48,-.49,.10,-.77,6],[.70,-.64,.42,-.73,3],[.31,-.52,.20,-.90,3]]:
+    v===4?[[-.35,-.47,-.76,-.65,5],[.23,-.62,.62,-.77,4],[-.76,-.65,-.82,-.82,2],[.62,-.77,.76,-.93,2]]:
+    [[-.44,-.47,-.72,-.70,5],[.39,-.51,.69,-.69,5],[-.72,-.70,-.84,-.88,3],[.69,-.69,.84,-.89,3]];
+  for(const [y,x1,y1,x2,w] of branches){
+    const originX=midX+(crownX-midX)*((-.45-y)/Math.max(.1,Math.abs(crownY-midY)));
+    line(c,originX,h*y,x1*h,y1*h,'#2b3530',w);
+    if(v===3){line(c,x1*h,y1*h,x2*h,(y1+.14)*h,'#465044',Math.max(1,w-2));}
+    else {line(c,x1*h,y1*h,x2*h,y1*h-.1*h,'#465044',Math.max(1,w-2));line(c,x2*h,y1*h-.1*h,x2*h*1.08,y1*h-.2*h,'#465044',2);}
   }
   ivy(c,-6,-1,26,p.x);
   if(forest) {
-    const palette={oak:['#263c33','#36503d','#52664a'],birch:['#394a3e','#58644c','#8c956d'],pine:['#203a34','#2b5140','#426b4b'],deadwood:['#26302d','#3d493c','#596050'],willow:['#294337','#3c5a42','#62714d']}[p.treeType]||['#263c33','#2b4438','#36503d'];
-    for(let n=0;n<16;n++) {
-      const x=-h*.36+graveyardHash(p.x,n,p.y)*h*.72,y=-h+graveyardHash(p.y,n,p.x)*h*.56;
-      pixel(c,x,y,18+n%4*3,8+n%3*3,palette[n%palette.length]);
-      pixel(c,x+3,y,8,2,'#52664a');
+    const palette={oak:['#263c33','#36503d','#52664a'],birch:['#394a3e','#58644c','#8c956d'],pine:['#203a34','#2b5140','#426b4b'],deadwood:['#26302d','#3d493c','#596050'],willow:['#294337','#3c5a42','#62714d']}[type]||['#263c33','#2b4438','#36503d'];
+    const count=type==='deadwood'?4:type==='birch'?11:type==='pine'?13:type==='willow'?12:16;
+    for(let n=0;n<count;n++) {
+      let x,y,w,hh;
+      if(type==='pine'){
+        const tier=n%4,side=Math.floor(n/4)-1;
+        x=side*h*(.10+tier*.045);y=-h*(.38+tier*.15);w=h*(.26-tier*.035);hh=8+tier%3*3;
+      } else if(type==='birch'){
+        x=(graveyardHash(p.x,n,p.y)-.5)*h*.40;y=-h*(.45+graveyardHash(p.y,n,p.x)*.49);w=12+n%3*4;hh=8+n%2*3;
+      } else if(type==='willow'){
+        const side=n%2?1:-1,branch=Math.floor(n/2);
+        x=side*h*(.18+branch%3*.055);y=-h*(.63+branch%4*.075);w=14+n%3*3;hh=13+n%4*4;
+      } else {
+        x=-h*.36+graveyardHash(p.x,n,p.y)*h*.72;y=-h+graveyardHash(p.y,n,p.x)*h*.56;w=18+n%4*3;hh=8+n%3*3;
+      }
+      pixel(c,x,y,w,hh,palette[n%palette.length]);
+      if(type!=='deadwood')pixel(c,x+3,y,Math.max(3,w*.42),2,palette[(n+1)%palette.length]);
     }
+    if(type==='willow')for(const side of [-1,1])for(let n=0;n<3;n++)line(c,side*h*(.24+n*.09),-h*.65,side*h*(.27+n*.09),-h*(.36+n*.025),'#294337',2);
   } else if(v===2){pixel(c,1,-h*.6,4,7,'#182a26');pixel(c,-1,-h*.59,2,2,'#838676');}
 }
 

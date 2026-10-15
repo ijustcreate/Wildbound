@@ -22,7 +22,7 @@ test('Adventure uses the same bow aim lock and clears it when switching to shiel
 });
 test('Lobby tables block walking, support jumps and allow walking off; totem stays solid',()=>{
  const {practice,tick}=setup();tick({});const p=practice.players[0];
- for(const table of practice.house.furniture){Object.assign(p,{x:table.x-20,y:table.y+table.h/2,groundHeight:0,jumpHeight:0});practice.moveActor(p,35,0);assert.ok(p.x<table.x);startJump(p);for(let i=0;i<26;i++)tickJump(p,.02,practice);practice.moveActor(p,35,0);assert.ok(p.x>table.x);for(let i=0;i<100;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,table.surfaceHeight);practice.moveActor(p,0,-65);for(let i=0;i<50;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,0);}
+ for(const table of practice.house.furniture){Object.assign(p,{x:table.x-20,y:table.y+table.h/2,groundHeight:0,jumpHeight:0});practice.moveActor(p,35,0);assert.ok(p.x<table.x);startJump(p);for(let i=0;i<14;i++)tickJump(p,.02,practice);practice.moveActor(p,35,0);assert.ok(p.x>table.x);for(let i=0;i<100;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,table.surfaceHeight);practice.moveActor(p,0,-65);for(let i=0;i<50;i++)tickJump(p,.02,practice);assert.equal(p.groundHeight,0);}
  assert.equal(practice.blocked(955,165,8,false,false,false,0,40),true);
 });
 test('Every lobby object has a solid visible footprint and remains reachable for interaction',()=>{

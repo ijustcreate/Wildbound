@@ -161,12 +161,12 @@ const skeletons = {
     pelvis: ["", 0, 0, 14],
     body: ["pelvis", 0, 0, 22],
     eye: ["body", 0, 7, 28],
-    stalk0: ["body", -9, 2, 25], stalk0Tip: ["stalk0", -4, 1, 35],
-    stalk1: ["body", -7, 5, 26], stalk1Tip: ["stalk1", -7, 2, 34],
-    stalk2: ["body", -4, 8, 27], stalk2Tip: ["stalk2", -9, 3, 33],
-    stalk3: ["body", 9, 2, 25], stalk3Tip: ["stalk3", 4, 1, 35],
-    stalk4: ["body", 7, 5, 26], stalk4Tip: ["stalk4", 7, 2, 34],
-    stalk5: ["body", 4, 8, 27], stalk5Tip: ["stalk5", 9, 3, 33],
+    stalk0: ["body", -12, -7, 24], stalk0Tip: ["stalk0", -8, -8, 35],
+    stalk1: ["body", -14, 0, 25], stalk1Tip: ["stalk1", -12, -1, 34],
+    stalk2: ["body", -10, 8, 24], stalk2Tip: ["stalk2", -8, 10, 34],
+    stalk3: ["body", 12, -7, 24], stalk3Tip: ["stalk3", 8, -8, 35],
+    stalk4: ["body", 14, 0, 25], stalk4Tip: ["stalk4", 12, -1, 34],
+    stalk5: ["body", 10, 8, 24], stalk5Tip: ["stalk5", 8, 10, 34],
   },
 };
 skeletons.lesser_beholder = skeletons.beholder;
@@ -213,10 +213,11 @@ function makeKeys(kind, action) {
       for (const n of Object.keys(spec)) j[n] = [0, 0, bob];
       for (let i = 0; i < 6; i++) {
         const phase = a + i * 0.75;
-        j[`stalk${i}`] = [Math.sin(phase) * 1.5, Math.cos(phase) * 1.2, bob];
+        const idleSway=action==='idle'?1:1.5;
+        j[`stalk${i}`] = [Math.sin(phase) * idleSway, Math.cos(phase) * idleSway, bob];
         j[`stalk${i}Tip`] = [
-          Math.sin(phase + .5) * (action === "attack" ? 3 : 1.5),
-          Math.cos(phase + .5) * 1.5,
+          Math.sin(phase + .5) * (action === "attack" ? 3 : action==='idle'?2.5:1.5),
+          Math.cos(phase + .5) * (action==='idle'?2.2:1.5),
           bob + (action === "attack" ? Math.sin(t * Math.PI) * 3 : 0),
         ];
       }
@@ -1221,26 +1222,38 @@ function drawBeholder(c, actor, time, model, pose, d) {
   const eye = p.eye, body = p.body;
   const beam = action === "attack" && actor.hp > 0;
   const radius = model.type === "lesser_beholder" ? 9 : 12;
-  const limbEye = (base, tip, scale = 1) => {
+  const limbEye = (base, tip, scale = 1, index = 0) => {
     limb(c, p[base], p[tip], 3.5 * scale, pal.outline);
     limb(c, p[base], p[tip], 2.2 * scale, pal.shade);
     ellipse(c, p[tip].x, p[tip].y, 3.2 * scale, 3.2 * scale, pal.outline);
     ellipse(c, p[tip].x, p[tip].y, 2.2 * scale, 2.2 * scale, pal.face);
-    c.fillStyle = pal.outline;
-    c.fillRect(Math.round(p[tip].x - .7), Math.round(p[tip].y - 1.7), 1.5, 3.5);
-    c.fillStyle = pal.detail;
-    c.fillRect(Math.round(p[tip].x - 1.5), Math.round(p[tip].y - 1.5), 1, 1);
+    const idle=action==='idle',phase=time*.78+index*2.13;
+    const blink=idle?Math.pow(Math.max(0,Math.cos(phase)),34):0;
+    if(blink>.22){
+      c.fillStyle=pal.face;c.fillRect(Math.round(p[tip].x-2*scale),Math.round(p[tip].y-.7*scale),Math.ceil(4*scale),Math.max(1,Math.ceil(1.4*scale)));
+      c.fillStyle=pal.outline;c.fillRect(Math.round(p[tip].x-2*scale),Math.round(p[tip].y-.7*scale),Math.ceil(4*scale),1);
+    }else{
+      const gx=idle?Math.round(Math.sin(time*.63+index*1.71)*scale):0;
+      const gy=idle?Math.round(Math.cos(time*.51+index*2.27)*scale*.55):0;
+      c.fillStyle=pal.outline;
+      c.fillRect(Math.round(p[tip].x-.7*scale+gx),Math.round(p[tip].y-1.7*scale+gy),Math.max(1,Math.ceil(1.5*scale)),Math.ceil(3.5*scale));
+      c.fillStyle=pal.detail;
+      c.fillRect(Math.round(p[tip].x-1.5*scale+gx),Math.round(p[tip].y-1.5*scale+gy),Math.max(1,Math.ceil(scale)),Math.max(1,Math.ceil(scale)));
+    }
   };
-  for (let i = 0; i < 6; i++) limbEye(`stalk${i}`, `stalk${i}Tip`, model.type === "lesser_beholder" ? .8 : 1);
+  for (let i = 0; i < 6; i++) limbEye(`stalk${i}`, `stalk${i}Tip`, model.type === "lesser_beholder" ? .8 : 1,i);
   ellipse(c, body.x, body.y + 2, radius + 2, radius * .86 + 2, pal.outline);
   ellipse(c, body.x, body.y, radius, radius * .86, pal.body);
   ellipse(c, body.x - 2, body.y - 3, radius * .7, radius * .38, pal.light);
   ellipse(c, eye.x, eye.y, 7, 7, pal.outline);
   ellipse(c, eye.x, eye.y, 5.8, 5.8, pal.face);
-  c.fillStyle = pal.outline;
-  c.fillRect(Math.round(eye.x - 1.5), Math.round(eye.y - 4), 3, 8);
-  c.fillStyle = pal.detail;
-  c.fillRect(Math.round(eye.x - 2.5), Math.round(eye.y - 2.5), 2, 2);
+  const centralPhase=time*.78+9.1,centralBlink=action==='idle'?Math.pow(Math.max(0,Math.cos(centralPhase)),34):0;
+  if(centralBlink>.22){c.fillStyle=pal.face;c.fillRect(Math.round(eye.x-4),Math.round(eye.y-1),8,2);c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x-4),Math.round(eye.y-1),8,1);}
+  else{
+    const gx=action==='idle'?Math.round(Math.sin(time*.63+4.6)*1.5):0,gy=action==='idle'?Math.round(Math.cos(time*.51+3.7)):0;
+    c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x-1.5+gx),Math.round(eye.y-4+gy),3,8);
+    c.fillStyle=pal.detail;c.fillRect(Math.round(eye.x-2.5+gx),Math.round(eye.y-2.5+gy),2,2);
+  }
   c.fillStyle = pal.outline;
   c.beginPath(); c.arc(body.x, body.y + 7, 5, 0, Math.PI); c.fill();
   c.fillStyle = pal.detail;

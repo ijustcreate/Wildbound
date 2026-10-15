@@ -5,6 +5,7 @@ import {startFollowerAttack,tickFollowerAttack} from '../src/follower-attacks.mj
 import {Game,EVENTS} from '../src/core.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {Profiles} from '../src/profiles.mjs';
+import {controlledUnit} from '../src/controlled-unit.mjs';
 import {applyDefinitions} from '../src/definitions.mjs';
 import fs from 'node:fs';
 
@@ -31,6 +32,10 @@ test("death of the controlled follower restores the main character immediately",
   assert.equal(controlledFollower(game, player), null);
   assert.deepEqual([player.x, player.y], [10, 20]);
 });
+test('controlled-unit lookup includes tamed, pet, ghost and village-follower pools',()=>{
+ const p={id:1,controlledFollowerId:4},village={id:4,hp:10,kind:'villager'};
+ assert.equal(controlledUnit({players:[p],villageFollowers:[village]},p),village);
+});
 
 test('creature bags stay separate and persistent through switching, session reload and profile capture',()=>{
  const g=new Game(),p=g.addPlayer('keyboard','Hero');p.profileId='recovery-hero';
@@ -53,6 +58,14 @@ test('hero follows behind the controlled creature and returns at its following p
  for(let i=0;i<120;i++)syncControlledFollower(g,p,1/60);
  assert.equal(f.x,350);assert.ok(Math.hypot(p.controlPetPosition.x-f.x,p.controlPetPosition.y-f.y)>40);
  const x=p.controlPetPosition.x;cycleFollowerControl(g,p);assert.equal(p.x,x);
+});
+
+test('controlled-creature attack stays combat while Interact opens nearby supplies',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('pad:0','Hero');g.start();g.openingBoard=false;
+ const chest=g.supplyChests[0],wolf={id:9001,kind:'wolf',allyOwner:p.id,faction:'ally',hp:70,maxHp:70,damage:12,speed:40,x:chest.x,y:chest.y,faceX:1,faceY:0,inventory:[],equipment:{},equipmentSockets:{}};
+ g.enemies=[wolf];cycleFollowerControl(g,p);g.update(.02,{'pad:0':{attack:true}});assert.equal(chest.opened,false);
+ g.update(.02,{'pad:0':{attack:false}});assert.ok(wolf.controlledAttack,'Attack starts the creature-native attack');assert.equal(chest.opened,false);
+ g.update(.02,{'pad:0':{interact:true}});assert.equal(chest.opened,true,'Interact opens the chest independently');
 });
 
 test('controlled Captain uses native slash/thrust, damages once and cannot attack frozen',()=>{

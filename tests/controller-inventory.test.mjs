@@ -23,11 +23,13 @@ test('Each controller family labels the same accept/back positions correctly',()
  }
 });
 
-test('Controller primary press opens nearby supplies once without charging an attack',()=>{
- const g=new Game(()=>.5),p=g.addPlayer('pad:0');g.start();g.openingBoard=false;
+test('Controller Attack remains combat-only and Interact opens nearby supplies once',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('pad:0');g.start();g.openingBoard=false;p.x=500;p.y=600;
  g.enemies=[];g.loot=[];g.supplyChests=[{id:'test',x:p.x+25,y:p.y,opened:false,potions:1,name:'Supplies'}];
  g.update(.016,{'pad:0':{attack:true}});
- assert.equal(g.supplyChests[0].opened,true);assert.equal(p.charge,0);
- const drops=g.loot.length;g.update(.016,{'pad:0':{attack:true}});assert.equal(g.loot.length,drops);assert.equal(p.charge,0);
- g.update(.016,{'pad:0':{attack:false}});assert.equal(p.charge,0);
+ assert.equal(g.supplyChests[0].opened,false);assert.ok(p.charge>0);
+ g.update(.016,{'pad:0':{attack:true}});assert.equal(g.supplyChests[0].opened,false);
+ g.update(.016,{'pad:0':{attack:false}});assert.equal(g.supplyChests[0].opened,false);assert.equal(p.charge,0);
+ g.update(.016,{'pad:0':{interact:true}});assert.equal(g.supplyChests[0].opened,true);
+ const drops=g.loot.length;g.update(.016,{'pad:0':{interact:true}});assert.equal(g.loot.length,drops);
 });

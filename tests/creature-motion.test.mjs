@@ -11,6 +11,7 @@ import {
 import {
   defaultCreatureMotion,
   creatureAction,
+  drawCreature,
   validateCreatureMotion,
 } from "../src/creature-motion.mjs";
 const kinds = [
@@ -136,4 +137,15 @@ test("Dragon is in the main rig list and animates travel, breath and tail swipes
     poseAt(dragon, "tailSwipe", 1).tailTip,
     poseAt(dragon, "tailSwipe", 6).tailTip,
   );
+});
+test('Beholder stalks emerge around its body and idle eyes independently look and blink',()=>{
+ for(const kind of ['beholder','lesser_beholder']){
+  const m=defaultCreatureMotion(kind),roots=Array.from({length:6},(_,i)=>m.joints[`stalk${i}`].position);
+  assert.equal(new Set(roots.map(p=>p.slice(0,2).join(','))).size,6);
+  assert.ok(roots.some(p=>p[0]<-10)&&roots.some(p=>p[0]>10));
+  assert.ok(roots.some(p=>p[1]<-5)&&roots.some(p=>p[1]>5));
+  const render=time=>{const pixels=[],c={fillStyle:'#000',beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},stroke(){},ellipse(){},arc(){},fillRect(x,y,w,h){pixels.push([Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h),this.fillStyle]);}};drawCreature(c,{kind,hp:100,x:0,y:0,faceX:0,faceY:1,moving:false},time,m);return pixels;};
+  assert.notDeepEqual(render(0),render(1),'idle gaze changes instead of staring straight ahead');
+  assert.notDeepEqual(render(.2),render(8),'occasional eyelid closure changes the rendered eye pixels');
+ }
 });

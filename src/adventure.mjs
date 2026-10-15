@@ -1118,7 +1118,7 @@ export const adventureMethods = {
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
         if(!sealPriority&&!this.openingBoard&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
-        if (!sealPriority && !this.openingBoard && (edge('interact') || (p.device?.startsWith('pad:') && edge('attack')&&!canHitEventTestBoard(this,p))) && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
+        if (!sealPriority && !this.openingBoard && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
           const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }

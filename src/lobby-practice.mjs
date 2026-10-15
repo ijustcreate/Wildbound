@@ -42,7 +42,7 @@ export class LobbyPractice extends Game {
     const actor=this.addPlayer(player.device,player.name),id=actor.id;
     Object.assign(actor,structuredClone(player),{id:player.id,previousInput:{},ui:null,room:null,progress:0,hp:player.maxHp||100});
     this.nextId=Math.max(this.nextId,id+1,player.id+1);
-    Object.assign(actor,{x:state.x,y:state.y,faceX:state.faceX,faceY:state.faceY,step:state.step,jumpImpulse:390});
+    Object.assign(actor,{x:state.x,y:state.y,faceX:state.faceX,faceY:state.faceY,step:state.step,jumpImpulse:570,jumpGravity:1900});
     actor.hunterPet=restoreHunterPet(petRecord(player.hunterPet));
     return actor;
   }

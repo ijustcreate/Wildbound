@@ -6,6 +6,7 @@ import {combos,saveCombos,nextCombo,DEFAULT_COMBOS,loadoutKind} from '../src/com
 import {startJump,tickJump} from '../src/jumping.mjs';
 import {creatures} from '../src/definitions.mjs';
 import {cleanInput} from '../src/rooms.mjs';
+import {restoreSession,saveSession} from '../src/session.mjs';
 const setup=()=>{const g=new Game(()=>.5);g.environment='forest';const p=g.addPlayer('keyboard');g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');Object.assign(p,{x:600,y:600,faceX:0,faceY:1,mana:100});return {g,p};};
 test('dual wand spells originate at their own animated tip in all eight directions',()=>{
  for(let d=0;d<8;d++){
@@ -45,6 +46,13 @@ test('combo finisher gains reach and an attack press can buffer during recovery'
 test('jump input is network-safe, lands, has a cooldown and cannot double jump',()=>{
  const a={hp:100};assert.equal(cleanInput({jump:true}).jump,true);assert.ok(startJump(a));assert.equal(startJump(a),false);for(let i=0;i<50;i++)tickJump(a,.02);assert.equal(a.jumpHeight,0);assert.ok(a.jumpCooldown>0);
  const {g,p}=setup();g.update(.02,{keyboard:{jump:true}});assert.ok(p.jumpHeight>0);assert.equal(playerAction(p),'jump_takeoff');
+});
+test('player jump arc has a quick, weighty landing and legacy saves receive it',()=>{
+ const a={hp:100,jumpImpulse:230,jumpGravity:1200};assert.ok(startJump(a));let peak=0,air=0;
+ for(let i=0;i<120&&a.jumpHeight>0;i++){tickJump(a,1/120);peak=Math.max(peak,a.jumpHeight);air+=1/120;}
+ assert.ok(peak>=20&&peak<24,'enough height for low props without a floaty apex');assert.ok(air>=.32&&air<=.40,'short hang time');assert.equal(a.jumpHeight,0);
+ const {g}=setup(),saved=JSON.parse(JSON.stringify(saveSession(g)));saved.state.players[0].jumpImpulse=180;saved.state.players[0].jumpGravity=720;
+ const restored=restoreSession(saved).players[0];assert.equal(restored.jumpImpulse,230);assert.equal(restored.jumpGravity,1200);
 });
 test('jump ability defaults and the temple tiger encounter',()=>{
  assert.equal(creatures.skeleton.behaviors.jump,false);assert.equal(creatures.monkey.behaviors.jump,true);assert.equal(creatures.lion.behaviors.jump,true);assert.equal(creatures.tiger.behaviors.jump,true);

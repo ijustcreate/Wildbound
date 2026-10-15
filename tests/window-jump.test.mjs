@@ -9,7 +9,7 @@ import {creatures} from '../src/definitions.mjs';
 test('legacy saves migrate the old floaty player jump to the quick grounded arc',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();p.jumpImpulse=125;delete p.jumpGravity;
  const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),hero=restored.players[0];
- assert.equal(hero.jumpImpulse,180);assert.equal(hero.jumpGravity,720);
+ assert.equal(hero.jumpImpulse,230);assert.equal(hero.jumpGravity,1200);
 });
 test('Broken windows allow jumps above the sill in both wall orientations, never intact glass',()=>{
  for(const rect of [{x:300,y:300,w:64,h:16},{x:300,y:300,w:16,h:64}]){

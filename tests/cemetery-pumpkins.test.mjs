@@ -6,8 +6,17 @@ import {pickPumpkin,carvePumpkin,hasCarvingKnife} from '../src/pumpkins.mjs';
 import {inventoryToolbar} from '../src/inventory-toolbar.mjs';
 import {ITEMS,count} from '../src/items.mjs';
 import {pumpkinHeadgear} from '../src/pumpkin-art.mjs';
+import {drawGraveyardProp} from '../src/graveyard-art.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 const setup=()=>{const g=new Game(()=>.5);g.environment='graveyard';const p=g.addPlayer('keyboard');g.start();g.openingBoard=false;g.enemies=[];p.inventory=Array(24).fill(null);return {g,p};};
+test('graveyard forest tree species and seed variants render stable distinct silhouettes',()=>{
+ const signature=p=>{const pixels=[],ctx={fillStyle:'#000',save(){},restore(){},translate(){},rotate(){},scale(){},beginPath(){},rect(){},clip(){},fillRect(x,y,w,h){pixels.push([Math.round(x),Math.round(y),Math.round(w),Math.round(h),this.fillStyle]);}};drawGraveyardProp(ctx,p,0);return JSON.stringify(pixels);};
+ const base={kind:'grave_forest_tree',graveyard:true,procedural:true,x:500,y:500,rootY:500,size:120,graveyardFootprint:{x:489,y:492,w:22,h:16}};
+ const trees=['oak','birch','pine','deadwood','willow'].map((treeType,variant)=>({...base,treeType,variant}));
+ assert.ok(trees.every(p=>signature(p)===signature(p)),'same tree seed produces identical art');
+ assert.equal(new Set(trees.map(signature)).size,trees.length,'each forest type has its own canopy silhouette');
+ assert.deepEqual(new Set(trees.map(p=>JSON.stringify(p.graveyardFootprint))),new Set([JSON.stringify(base.graveyardFootprint)]),'visual variety does not change collision footprints');
+});
 test('closed mausoleum threshold is solid, only an opened door gains an approach',()=>{
  const {g,p}=setup(),s=g.scenery.find(s=>s.kind==='mausoleum');
  for(const x of [s.x-20,s.x,s.x+20])for(const y of [s.y-9,s.y-5,s.y])assert.equal(graveyardBlocked(g,x,y,8),true);

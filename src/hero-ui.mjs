@@ -23,6 +23,8 @@ import { controllerButtonNames, controllerFamily, CONTROLLER_NAMES } from "./con
 import { chestName } from "./items.mjs";
 import { ROOM_STATIONS } from "./shops.mjs";
 import { drawStorageRobot, drawRobotPortrait } from "./robot-art.mjs";
+import {controlledUnit} from './controlled-unit.mjs';
+import {creatureRenderSize} from './render-settings.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawStorageBackdrop,drawStorageChest,drawStorageLight,drawStorageDust} from './storage-art.mjs';
 import {storageVisualActor} from './storage-room.mjs';
@@ -170,10 +172,12 @@ export class HeroUI {
         : null;
       const portal = game.portals.find((door) => door.id === p.room);
       const owner = game.players.find((q) => q.id === portal?.owner);
+      const controlled=controlledUnit(game,p);
       if(p.ui&&game.storageFor(p)&&!p.ui.loot){p.ui.loot=true;p.ui.panel='chest';p.ui.index=Math.max(0,game.storageFor(p).findIndex(Boolean));}
       const signature = [
         game.uiRevision || 0,
         p.name,
+        controlled?.id,controlled?.name,controlled?.kind,
         liveControllerFamily(p),
         p.level,
         p.xp,
@@ -204,7 +208,7 @@ export class HeroUI {
         portal?.closing == null ? "" : Math.ceil(portal.closing),
         portal?.oldWell?Math.hypot(p.roomX-portal.well.exit.x,p.roomY-portal.well.exit.y)<36:'',
       ].join("|");
-      this.preview(panel, p, game.time);
+      this.preview(panel, p, game.time,game);
       const repairProgress=panel.querySelector('.robot-repair-progress');
       if(repairProgress){const progress=(p.robotRepair?.progress||0)/ROBOT_REPAIR_SECONDS;repairProgress.style.setProperty('--repair-progress',progress*100+'%');repairProgress.setAttribute('aria-valuenow',String(Math.round(progress*100)));}
       panel.querySelectorAll('.salvage-ring').forEach(r=>{const progress=salvageProgress(p);r.style.setProperty('--salvage-fill',progress*360+'deg');r.setAttribute('aria-valuenow',String(Math.round(progress*100)));});
@@ -248,7 +252,7 @@ export class HeroUI {
       panel.style.borderColor = p.color;
       const head = el(
         "header",
-        panel.classList.contains('inventory-workbench')?`${p.name} · LV ${p.level}`:p.name +
+        controlled?`${controlled.name||controlled.kind} · CONTROLLED UNIT`:panel.classList.contains('inventory-workbench')?`${p.name} · LV ${p.level}`:p.name +
           " · " +
           (p.ui?.shop === "merchant" ? "TRADING POST" : p.ui?.storage === "victory" ? "VICTORY SPOILS" : wellForPlayer(game,p)?(wellForPlayer(game,p).mausoleum?'MAUSOLEUM CRYPT':WELL_TITLE.toUpperCase()):p.room === "temple-upper" ? "UPPER SANCTUM" : p.room ? "THE BETWEEN" : "BACKPACK") +
           " · LV " +
@@ -352,7 +356,7 @@ export class HeroUI {
       } else if (p.ui && !p.ui.shop) {
         this.storagePanels(panel, game, p, button);
       }
-      this.preview(panel, p, game.time);
+      this.preview(panel, p, game.time,game);
       if(p.ui?.shop==='npc-dialogue')drawNpcDialoguePortraits(panel,game,p,renderer?.animator||(this.roomAnimator||=new Animator()));
       if (focus)
         panel
@@ -844,7 +848,7 @@ export class HeroUI {
     }
   }
 
-  preview(panel, p, time) {
+  preview(panel, p, time,game) {
     const canvas = panel.querySelector(".equipment-preview");
     if (!canvas) return;
     // Preview keeps breathing even while the lobby/game simulation is paused.
@@ -872,7 +876,12 @@ export class HeroUI {
     c.save();
     c.translate(canvas.width / 2, canvas.height-14);
     c.scale(4.1, 4.1);
-    drawPlayer(
+    const controlled=controlledUnit(game,p);
+    if(controlled){
+      const unit={...controlled,x:0,y:0,faceX:Math.sin((p.ui?.previewDirection||0)*Math.PI/4),faceY:Math.cos((p.ui?.previewDirection||0)*Math.PI/4),animationAction:'idle',moving:false,attack:0,charge:0,flash:0,hit:0,playerFrame:undefined,poseTime:undefined};
+      (this.roomAnimator||=new Animator()).draw(c,unit,time,creatureRenderSize(unit.kind));
+      canvas.setAttribute('aria-label',(controlled.name||controlled.kind)+' · controlled-unit preview');
+    }else {canvas.setAttribute('aria-label',p.name+' · live equipped character');drawPlayer(
       c,
       {
         ...p,
@@ -884,7 +893,7 @@ export class HeroUI {
         playerFrame: undefined,
       },
       time,
-    );
+    );}
     c.restore();
   }
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), layout = planPlayerPanels(game.players, game.players.filter(q => q.ui || q.room), bounds.width, bounds.height)) {
