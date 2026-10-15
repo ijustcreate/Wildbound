@@ -24,7 +24,11 @@ The older broad editor/debug smoke run still has 16 failures, including stale UI
 
 The host's existing normal-profile build is `dist/1.1.0/Wildbound-win32-x64/Wildbound.exe`, built at `2026-10-14T17:47:58.190Z` from base `6d47142` plus modified source. Launcher refinements followed packaging. Desktop Latest shortcut targets repository `Play Wildbound.cmd`; Server Control shortcut targets `Server Control.cmd`. Neither points directly at an old executable. Read the actual manifest before launching after a checkout change.
 
-Private `server-data/` configuration, tokens, live worlds, logs, Electron profiles, local house drafts/characters, dependencies, generated builds and shortcuts are excluded from this branch. Do not replace them or publish them. Configure the receiving client separately; obtain the current host address/player join key privately from Server Control. Do not copy the admin secret to clients.
+Private `server-data/` configuration, tokens, live worlds, logs, Electron profiles, local house drafts/characters, dependencies, generated builds and shortcuts are excluded from this branch. The user has explicitly approved publishing the player join key in this repository for this playtest, so the host Codex must update the tracked `server-connection.json` after the server is running. Put the public game address in `address`, the player join key (not the admin token) in `joinKey`, and leave `autoConnect` true. Do not publish the admin secret.
+
+## Client connection handoff
+
+After starting the persistent server and confirming its public tunnel/address, update `server-connection.json` with the live values and commit/push it to this same branch. The desktop client reads that file: the user can click **LIVE WORLD** in the header and connect without copying an address or join key. If the quick-tunnel hostname changes after a server restart, update this file again and push the new value.
 
 ## Safe integration on the other computer
 
