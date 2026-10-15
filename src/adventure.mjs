@@ -20,7 +20,6 @@ import {playerInput} from './inventory-input.mjs';
 import {magicBoltGlow} from './magic-bolt-render.mjs';
 import {merchantAction,openMerchant} from './traveling-merchant.mjs';
 import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
-import {travelThroughForestPortal} from './forest-portal-event.mjs';
 import {canHitEventTestBoard} from './event-test-board.mjs';
 import {LOBBY_PLAYER_SIZE,PLAYER_RENDER_SIZE} from './render-settings.mjs';
 import {equipmentAction} from './equipment-actions.mjs';
@@ -461,7 +460,7 @@ export const adventureMethods = {
       this.leaveRoom(p);
       return;
     }
-    let door = this.portals.find((d) => !d.temple && !d.oldWell && !d.forestTravel && d.owner === p.id);
+    let door = this.portals.find((d) => !d.temple && !d.oldWell && d.owner === p.id);
     if (door) {
       if (this.players.some((q) => q.room === door.id)) {
         // Repeated presses must not extend a guest's existing escape countdown.
@@ -477,7 +476,7 @@ export const adventureMethods = {
     // A nearby private portal is already the shared entry for this storage room.
     // Reuse it instead of spawning a second portal on top of the first one.
     const nearby = this.portals.find(
-      (d) => !d.temple && !d.oldWell && !d.forestTravel && d.owner !== p.id && dist(p, d) <= 70,
+      (d) => !d.temple && !d.oldWell && d.owner !== p.id && dist(p, d) <= 70,
     );
     if (!door && nearby) {
       if (dist(p, nearby) <= 26) this.enterRoom(p, nearby);
@@ -1001,8 +1000,7 @@ export const adventureMethods = {
           if (dist(p, door) > 34 && !door.entryReady.includes(p.id))
             door.entryReady.push(p.id);
           if (dist(p, door) <= 26 && door.entryReady.includes(p.id)) {
-            if (door.forestTravel) travelThroughForestPortal(this, door);
-            else this.enterRoom(p, door);
+            this.enterRoom(p, door);
             break;
           }
         }
