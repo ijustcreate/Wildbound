@@ -144,3 +144,11 @@
 .hero-panel.npc-dialogue-session .npc-dialogue-choice-key, .hero-panel.npc-dialogue-session .npc-dialogue-choice-detail { color: #102b22; }
 .hero-panel.npc-dialogue-session > header { color: #294b3e; }
 
+/* Global inventory polish resets borders with !important. Preserve this
+   conversation-specific authored sprite instead of the generic panel edge. */
+.hero-panel.inventory-redesign.npc-dialogue-session {
+  border: 22px solid transparent !important;
+  border-image: var(--dialogue-frame) 256 fill / 22px / 0 stretch !important;
+  border-radius: 0 !important;
+}
+

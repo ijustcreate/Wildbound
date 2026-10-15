@@ -45,14 +45,16 @@ collision, inventory actions, local-world keyboard input and canvas/context room
 rendering. Creature bags rebind after JSON restore and owned ecology companions
 are not unloaded as distant wildlife.
 
-Full Node suite: 1,285 passed before final focused save/room integration checks.
-Final save/control tests: 19 passed. Muted isolated Electron checks passed for
+Final full Node suite: 1,285 passed, including the save/room integration repairs.
+Focused save/control tests: 19 passed. Muted isolated Electron checks passed for
 offline creation/reopen/day advance, zero network requests, studio layout at two
 sizes, keyboard movement/jump and synthetic controller movement/disconnection.
 Recovered native-control Electron checks cover actual input-driven selection,
 movement, following, jump, Captain attack, damage, reload and hero gear recovery.
 Lobby/chest viewport and ownership checks, 54 cemetery/art/cat checks, victory
-report viewports/contrast and Xbox/Switch vending-navigation checks passed.
+report viewports/contrast, 17 dialogue/input/party-layout checks and Xbox/Switch
+vending-navigation checks passed. Dialogue framing explicitly overrides the
+generic inventory border reset so the recovered nine-slice sprite is visible.
 
 Build with `node scripts/package.cjs`, then verify packaged content and run
 `Play Wildbound.cmd --check`. The build's `wildbound-build.json` is authoritative
