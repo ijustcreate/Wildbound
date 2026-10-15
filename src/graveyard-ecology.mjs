@@ -1,4 +1,5 @@
 import {graveyardHash,graveyardBlocked,GRAVEYARD_SAFE_AREA} from './graveyard-world.mjs';
+import {fleeGhostCritter} from './ghost-fear.mjs';
 import {drawGraveyardCritter} from './graveyard-art.mjs';
 import {ITEMS,give,take,clearSlot,migrateLegacySupplies} from './items.mjs';
 import {CRITTER_CONTAINERS,critterContainer} from './critter-containers.mjs';
@@ -68,13 +69,59 @@ export function spawnSurfaceEcology(g) {
   return s.animals;
 }
 
+/** An attack attempt toward a nearby cat frightens it without making it a combat target. */
+export function startleGraveyardCats(g,p) {
+  if(!active(g)||g.phase!=='play'||g.paused||!p||p.hp<=0||p.room||p.ui||![p.x,p.y].every(Number.isFinite))return false;
+  const fx=finite(p.faceX),fy=finite(p.faceY),facing=Math.hypot(fx,fy);
+  if(!facing)return false;
+  let startled=false;
+  for(const a of spawnSurfaceEcology(g)) {
+    if(a.kind!=='graveyard_cat')continue;
+    const dx=a.x-p.x,dy=a.y-(p.y+14),distance=Math.hypot(dx,dy);
+    if(distance>160||(distance>16&&(dx*fx+dy*fy)/distance/facing<.15))continue;
+    // Solid graves and crypt walls hide a cat from an attack on the other side.
+    const steps=Math.max(1,Math.ceil(distance/8));let blocked=false;
+    for(let n=1;n<steps;n++)if(graveyardBlocked(g,p.x+dx*n/steps,p.y+14+dy*n/steps,0,false)){blocked=true;break;}
+    if(blocked)continue;
+    a.flee={remaining:2.5,x:p.x,y:p.y+14,owner:p.id};a.idle='run';startled=true;
+  }
+  return startled;
+}
+
+function fleeGraveyardCat(g,a,dt) {
+  const flee=a.flee,owner=(g.players||[]).find(p=>p.id===flee.owner&&p.hp>0&&!p.room);
+  const tx=owner?.x??flee.x,ty=owner?owner.y+14:flee.y;
+  const steps=Math.max(1,Math.ceil(115*dt/3)),step=115*dt/steps;
+  a.idle='run';
+  for(let n=0;n<steps;n++) {
+    const dx=a.x-tx,dy=a.y-ty,angle=Math.hypot(dx,dy)>.01?Math.atan2(dy,dx):(a.faceX<0?Math.PI:0);
+    let best=null;
+    // Look ahead and steer around headstones; every actual step is at most three pixels.
+    for(const turn of [0,-Math.PI/6,Math.PI/6,-Math.PI/3,Math.PI/3,-Math.PI/2,Math.PI/2]) {
+      const vx=Math.cos(angle+turn),vy=Math.sin(angle+turn),x=a.x+vx*step,y=a.y+vy*step;
+      if(!graveyardHabitat(g,a.kind,x,y))continue;
+      let clearance=0;
+      for(let d=3;d<=24;d+=3){if(!graveyardHabitat(g,a.kind,a.x+vx*d,a.y+vy*d))break;clearance=d;}
+      const score=clearance+Math.cos(turn)*12;
+      if(!best||score>best.score)best={x,y,score};
+    }
+    if(!best)break;
+    if(Math.abs(best.x-a.x)>.001)a.faceX=Math.sign(best.x-a.x);
+    a.x=best.x;a.y=best.y;a.moving=true;
+  }
+  flee.remaining=Math.max(0,finite(flee.remaining)-dt);
+  if(!flee.remaining){delete a.flee;a.homeX=a.x;a.homeY=a.y;a.idle='sit';a.moving=false;}
+}
+
 /** Adapter also works on live animals owned by initLivingEcosystem's runtime. */
 export function tickGraveyardCritter(g,a,dt,time=0,target=null) {
   if(!active(g)||g.phase!=='play'||g.paused||!known(a?.kind)||!Number.isFinite(dt)||dt<=0)return false;
   dt=Math.min(dt,1);time=finite(time);a.phase=finite(a.phase);a.moving=false;
+  if(fleeGhostCritter(g,a,dt,(x,y)=>graveyardHabitat(g,a.kind,x,y)))return true;
   const cat=a.kind==='graveyard_cat';
   if(cat) {
-    // Mostly seated or curled up; the cat never flees, hunts, attacks or enters AI.
+    if(a.flee){fleeGraveyardCat(g,a,dt);return true;}
+    // Mostly seated or curled up when no player has frightened it.
     const cycle=(time+a.phase*3)%24;
     a.idle=cycle<12?'sit':cycle<20?'sleep':'walk';
     if(a.idle!=='walk')return true;

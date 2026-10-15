@@ -1,4 +1,6 @@
 import {dropIceRecipe} from './ice-crafting.mjs';
+import {drawStarterChest} from './starter-chest.mjs';
+import {ensureChestCritter,drawChestCritter} from './supply-chest-critters.mjs';
 // A small, seeded supply route, selected from ground reachable from the board.
 export const LEVEL_SUPPLIES = {
  forest: {item:'fern_pendant',name:'Woodland supplies',color:'#8fb779'},
@@ -32,7 +34,8 @@ export function seedSupplyChests(g, force=false) {
  g.supplyChests=[];
  for(const a of candidates){
   if(g.supplyChests.some(b=>Math.hypot(a.x-b.x,a.y-b.y)<220))continue;
-  g.supplyChests.push({...a,id:'supply:'+g.seed+':'+g.supplyChests.length,opened:false,...theme,potions:1+Math.min(2,Math.floor(g.random()*3)),reward:g.random()<.12?theme.item:null});
+  const chest={...a,id:'supply:'+g.seed+':'+g.supplyChests.length,biome:g.generatedEnvironment,opened:false,...theme,potions:1+Math.min(2,Math.floor(g.random()*3)),reward:g.random()<.12?theme.item:null};
+  ensureChestCritter(chest,g.generatedEnvironment);g.supplyChests.push(chest);
   if(g.supplyChests.length>=count)break;
  }
 }
@@ -48,10 +51,15 @@ export function openSupplyChest(g,p){
  g.onSound('loot',chest);g.message(chest.name+' opened. Collect the supplies with Interact.');g.persist();return true;
 }
 export function drawSupplyChest(c,g,a){
- c.save();c.translate(a.x,a.y);c.fillStyle='#0005';c.beginPath();c.ellipse(0,4,24,8,0,0,7);c.fill();
- c.fillStyle='#503c2d';c.fillRect(-20,-20,40,24);c.fillStyle=a.color;c.fillRect(-20,a.opened?-34:-24,40,9);
- c.fillStyle='#a78d54';c.fillRect(-15,-20,4,24);c.fillRect(11,-20,4,24);c.fillStyle=a.opened?'#211d1a':'#ffe29a';c.fillRect(-4,-14,8,8);
+ c.save();c.translate(a.x,a.y);c.fillStyle='#0005';c.beginPath();c.ellipse(0,9,29,7,0,0,7);c.fill();
+ c.save();c.scale(.5,.5);drawStarterChest(c,{x:0,y:0},a.opened?1:0);
+ const biome=a.biome||g.generatedEnvironment,lid=-38-(a.opened?18:0);
+ if(biome==='ice'){
+  c.fillStyle='#accbd0';c.fillRect(-49,lid+1,98,5);c.fillStyle='#ecf1dc';c.fillRect(-42,lid-2,84,5);c.fillRect(-32,lid-4,35,3);c.fillRect(20,lid+2,19,7);
+ }else if(biome==='desert'){
+  c.fillStyle='#b69259';c.fillRect(-44,lid+2,88,4);c.fillStyle='#ddc087';c.fillRect(-34,lid,68,4);c.fillRect(-12,lid-2,36,3);
+ }c.restore();
  if(!a.opened&&g.players.some(p=>!p.room&&p.hp>0&&Math.hypot(p.x-a.x,p.y-a.y)<70)){
   const text='Open supplies · '+(g.controlLabels?.interact||'E / Y');c.font='9px sans-serif';c.textAlign='center';const w=c.measureText(text).width;c.fillStyle='#102c25ed';c.fillRect(-w/2-5,10,w+10,17);c.fillStyle='#fff0c9';c.fillText(text,0,22);
- }c.restore();
+ }c.restore();drawChestCritter(c,a,g.time||0);
 }

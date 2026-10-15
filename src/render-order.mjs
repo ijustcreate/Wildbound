@@ -31,7 +31,17 @@ export function paintLayers(queue, model, direction, context, joints, posedDepth
   const defaultOrder = sorted.map(p=>p.id);
   const all = [...new Set([...order.filter(id=>defaultOrder.includes(id)), ...defaultOrder])];
   if (order.length) sorted.sort((a,b)=>all.indexOf(a.id)-all.indexOf(b.id));
-  for(const part of sorted.filter(p=>p.attachmentOrder)){
+  // Place attachments after their anchors in dependency order. A held item
+  // can anchor to a forearm, while that forearm can itself anchor to the
+  // torso; processing the item from the raw depth sort first leaves it loose
+  // at the end of the queue in crossed poses.
+  const pending=sorted.filter(p=>p.attachmentOrder).slice();
+  while(pending.length){
+    const part=pending.find(candidate=>{
+      const anchors=candidate.attachmentOrder?.anchors||[];
+      return !pending.some(other=>other!==candidate&&anchors.includes(other.id));
+    })||pending[0];
+    pending.splice(pending.indexOf(part),1);
     const {anchors,behind}=part.attachmentOrder;
     sorted.splice(sorted.indexOf(part),1);
     const indices=sorted.flatMap((p,i)=>anchors.includes(p.id)?[i]:[]);
@@ -52,8 +62,21 @@ export function paintLayers(queue, model, direction, context, joints, posedDepth
     };
     if(editing.has(model) && context && anchor) {
       const pixels=new Map(), fill=context.fillRect;
-      context.fillRect=function(x,y,w,h){for(let yy=Math.floor(y);yy<y+h;yy++)for(let xx=Math.floor(x);xx<x+w;xx++)pixels.set(xx+','+yy,this.fillStyle);return fill.call(this,x,y,w,h);};
-      try {paint();} finally {context.fillRect=fill;}
+      // Generated part images must remain visible to the existing sprite editor.
+      // Capture in rig coordinates, independent of editor zoom and translation.
+      const draw=context.drawImage;
+      const surface=context.getTransform&&typeof document!=='undefined'?document.createElement('canvas'):null;
+      let pen,inverse;
+      if(surface){surface.width=surface.height=256;pen=surface.getContext('2d');pen.imageSmoothingEnabled=false;inverse=context.getTransform().inverse();}
+      const transform=()=>{const m=inverse.multiply(context.getTransform());pen.setTransform(m.a,m.b,m.c,m.d,m.e+128,m.f+128);pen.globalAlpha=context.globalAlpha;};
+      context.fillRect=function(x,y,w,h){
+        if(pen){transform();pen.fillStyle=this.fillStyle;pen.fillRect(x,y,w,h);}
+        else for(let yy=Math.floor(y);yy<y+h;yy++)for(let xx=Math.floor(x);xx<x+w;xx++)pixels.set(xx+','+yy,this.fillStyle);
+        return fill.call(this,x,y,w,h);
+      };
+      if(pen&&draw)context.drawImage=function(...args){transform();pen.drawImage(...args);return draw.apply(this,args);};
+      try {paint();} finally {context.fillRect=fill;if(draw)context.drawImage=draw;}
+      if(pen){const image=pen.getImageData(0,0,256,256);for(let y=0;y<256;y++)for(let x=0;x<256;x++){const i=(y*256+x)*4;if(image.data[i+3]<128)continue;const color='#'+[image.data[i],image.data[i+1],image.data[i+2]].map(n=>n.toString(16).padStart(2,'0')).join('');pixels.set((x-128)+','+(y-128),color);}}
       const points=[...pixels.keys()].map(k=>k.split(',').map(Number));
       const x=points.length?Math.min(...points.map(p=>p[0])):Math.round(anchor.x)-8, y=points.length?Math.min(...points.map(p=>p[1])):Math.round(anchor.y)-8;
       const width=points.length?Math.max(...points.map(p=>p[0]))-x+1:16,height=points.length?Math.max(...points.map(p=>p[1]))-y+1:16;

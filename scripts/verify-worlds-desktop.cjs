@@ -28,6 +28,7 @@ module.exports=async({window,testOutput,app})=>{
   check('world reopens from disk',await js(`window.wildboundWorldsTest.game.localWorld.id===${JSON.stringify(identity.id)}`));
   await js('document.querySelector("[data-world-close]").click();window.wildboundWorldsTest.openStudio()');
   window.setSize(1762,1030);await wait('!!document.querySelector(".ps-live-preview canvas")');
+  await settle();
   const layout=await js(`(()=>{const s=window.wildboundWorldsTest.studio;s.animate(.016);const rect=q=>{const r=document.querySelector(q).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};return {stage:rect('.ps-stage'),inspector:rect('.ps-inspector'),live:rect('.ps-live-preview'),canvas:rect('.ps-canvas'),center:s.viewCenterX};})()`);
   check('compact rig workspace with adjacent inspector and playable panel',layout.stage.x<layout.inspector.x&&layout.inspector.x<layout.live.x&&Math.abs(layout.stage.w-layout.live.w)<6,layout);
   check('editor content centered in resized canvas',Math.abs(layout.center*2-(await js('document.querySelector(".ps-canvas").width')))<1);

@@ -7,7 +7,7 @@ import {spawnQuestNpc,openNpcDialogue,npcDialogueAction,npcDialogueView,npcQuest
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {travelHouseWorlds} from '../src/house-worlds.mjs';
 import {LOBBY_OBJECTS} from '../src/playable-lobby.mjs';
-import {LOBBY_FIXTURES} from '../src/lobby-practice.mjs';
+import {LOBBY_FURNITURE} from '../src/lobby-practice.mjs';
 
 function setup(){const g=new Game(()=>.31);g.environment='forest';const p=g.addPlayer('keyboard','Quest QA');g.start();g.openingBoard=false;p.inventory=Array(24).fill(null);const n=spawnQuestNpc(g);assert.ok(n);Object.assign(p,{x:n.x,y:n.y+30});assert.ok(openNpcDialogue(g,p));return {g,p,n};}
 function accept(g,p,branch=0){p.ui.node='quests';npcDialogueAction(g,p,'offer:'+branch);npcDialogueAction(g,p,'accept');assert.ok(npcQuestState(p).active);}
@@ -16,7 +16,7 @@ function fulfill(g,p){const a=npcQuestState(p).active,o=a.contract.objective;if(
 test('six gated stages award full real gear set through either branch',()=>{
  for(const branch of [0,1]){const {g,p,n}=setup();for(let stage=0;stage<6;stage++){
   if(stage){spawnQuestNpc(g);if(!p.ui)openNpcDialogue(g,p);}accept(g,p,branch);fulfill(g,p);const reward=npcQuestState(p).active.reward;
-  assert.ok(npcDialogueView(g,p).quest.ready);npcDialogueAction(g,p,'claim');assert.ok(p.inventory.some(i=>i?.type===reward));assert.ok(ITEMS[reward].questReward);
+  assert.ok(npcDialogueView(g,p).quest.ready);assert.match(npcDialogueView(g,p).choices[0].label,/Turn in quest/);assert.equal(npcDialogueView(g,p).choices[0].action,'claim');npcDialogueAction(g,p,'turnIn');assert.ok(p.inventory.some(i=>i?.type===reward));assert.ok(ITEMS[reward].questReward);
   assert.equal(npcQuestState(p).completed.length,stage+1);npcDialogueAction(g,p,'claim');assert.equal(npcQuestState(p).completed.length,stage+1);
   p.ui.node='quests';npcDialogueAction(g,p,'offer:0');npcDialogueAction(g,p,'accept');assert.equal(npcQuestState(p).active,null);
  }assert.match(npcDialogueView(g,p).text,/full Keeper/);assert.equal(n.faction,'ally');assert.ok(n.unattackable);assert.ok(!g.enemies.includes(n));}
@@ -24,6 +24,11 @@ test('six gated stages award full real gear set through either branch',()=>{
 test('full backpack preserves ready quest and supplies until a slot is freed',()=>{
  const {g,p}=setup();accept(g,p);p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));p.inventory[0]={type:'stick',qty:3};npcDialogueAction(g,p,'claim');assert.ok(npcQuestState(p).active);assert.equal(p.inventory[0].qty,3);assert.match(p.ui.notice,/Free one/);
  p.inventory[8]=null;npcDialogueAction(g,p,'claim');assert.equal(p.inventory[8].type,getNpcQuestConfig().stages[0].reward);assert.equal(p.inventory[0],null);assert.equal(npcQuestState(p).completed.length,1);
+});
+test('a ready quest can be turned in directly from the Keeper greeting with a controller reply',()=>{
+ const {g,p}=setup();accept(g,p);const a=npcQuestState(p).active;p.ui.node='greeting';p.inventory[0]={type:a.contract.objective.item,qty:a.contract.objective.count};
+ const view=npcDialogueView(g,p);assert.equal(view.choices[0].action,'claim');assert.match(view.choices[0].label,/Turn in completed quest/);
+ npcDialogueAction(g,p,'use');assert.equal(npcQuestState(p).active,null);assert.ok(p.inventory.some(i=>i?.type===a.reward));
 });
 test('different devices cannot share dialogue ownership or quest progress',()=>{
  const {g,p,n}=setup(),q=g.addPlayer('pad:0','Second');q.inventory=Array(24).fill(null);Object.assign(q,{x:n.x+20,y:n.y});assert.ok(openNpcDialogue(g,q));accept(g,p);accept(g,q,1);assert.equal(npcQuestState(p).active.contract.objective.item,'stick');assert.equal(npcQuestState(q).active.contract.objective.item,'stone');
@@ -40,10 +45,10 @@ test('house-world revisits never roll back character quest chain',()=>{
  const g=new Game(()=>.3);g.environment='house';g.addPlayer('keyboard','Traveler');g.start();g.houseWorldsEnabled=true;travelHouseWorlds(g,5);npcQuestState(g.players[0]).completed.push({stageId:'trail-signs',reward:'keeper_crown'});g.players[0].inventory[0]={type:'keeper_crown',qty:1};travelHouseWorlds(g,8);assert.equal(npcQuestState(g.players[0]).completed.length,1);assert.ok(g.players[0].inventory.some(i=>i?.type==='keeper_crown'));
 });
 test('invalid graph imports are atomic and NPC event is appended after old content',()=>{
- const c=structuredClone(getNpcQuestConfig()),broken=structuredClone(c);broken.dialogue.nodes.greeting.choices[0].next='missing';assert.equal(validateNpcQuestConfig(broken),false);assert.throws(()=>replaceNpcQuestConfig(broken));assert.deepEqual(getNpcQuestConfig(),c);assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS.filter(e=>e.type==='friendly_npc').length,1);
+ const c=structuredClone(getNpcQuestConfig()),broken=structuredClone(c);broken.dialogue.nodes.greeting.choices[0].next='missing';assert.equal(validateNpcQuestConfig(broken),false);assert.throws(()=>replaceNpcQuestConfig(broken));assert.deepEqual(getNpcQuestConfig(),c);assert.equal(EVENTS[69].type,'friendly_npc');
 });
 test('starter chest visible position and collision move together into table row',()=>{
- const chest=LOBBY_OBJECTS.find(o=>o.id==='starter-chest');assert.equal(chest.y,LOBBY_OBJECTS.find(o=>o.id==='environment').y);assert.equal(chest.y,LOBBY_OBJECTS.find(o=>o.id==='dice-count').y);assert.equal(LOBBY_FIXTURES.find(o=>o.id===chest.id).y,516);
+ const chest=LOBBY_OBJECTS.find(o=>o.id==='starter-chest');assert.equal(chest.y,LOBBY_OBJECTS.find(o=>o.id==='environment').y);assert.equal(chest.y,LOBBY_OBJECTS.find(o=>o.id==='dice-count').y);const top=LOBBY_FURNITURE.find(o=>o.id===chest.id);assert.ok(top.y>=chest.y&&top.y+top.h<=chest.y+30);assert.equal(top.jumpable,true);
 });
 test('quest gear travels without losing displaced ordinary gear or reviving relinquished rewards',()=>{
  const source={inventory:[{type:'keeper_band',qty:1}],equipment:{head:'keeper_crown'},equipmentSockets:{head:['azure_bead']},chests:[],field:{overflow:[]}};

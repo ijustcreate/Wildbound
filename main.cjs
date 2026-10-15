@@ -18,7 +18,7 @@ if (process.argv.includes("--software-rendering"))
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 if (testMode)
-  app.setPath("userData", path.join(testOutput, "profile"));
+  {fs.mkdirSync(testOutput,{recursive:true});app.setPath("userData",fs.mkdtempSync(path.join(testOutput,"profile-")));}
 app.whenReady().then(async () => {
   const controllerClaimRoot = path.join(
     app.getPath("temp"),

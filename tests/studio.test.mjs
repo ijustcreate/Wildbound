@@ -130,7 +130,7 @@ test("Behavior modules turn off pursuit and contact damage independently", () =>
     };
     for (let i = 0; i < 10; i++) g.update(0.05, {});
     assert.equal(p.hp, 100);
-    assert.equal(e.x, 520);
+    assert.ok(Math.abs(e.x - 520) < 2, "disabled pursuit allows only the small body-spacing correction");
   } finally {
     creatures.lion = before;
   }

@@ -27,6 +27,13 @@ test('D-pad reaches the actual ready tray and confirm collects instead of buying
   assert.equal(p.ui.vendingView,'catalog');assert.equal(p.ui.index,9);
 });
 
+test('Ready purchases leave catalog rows navigable; Down enters tray only from the bottom row',()=>{
+  const {p,press,ready}=setup();ready();
+  for(const index of [3,6,9]){press({down:true});assert.equal(p.ui.index,index);assert.equal(p.ui.vendingView,'catalog');}
+  press({down:true});assert.equal(p.ui.vendingView,'tray');
+  press({up:true});assert.equal(p.ui.vendingView,'catalog');assert.equal(p.ui.index,9);
+});
+
 test('Shoulder toggle and tray navigation select stable order IDs, not backpack actions',()=>{
   const {g,p,press,ready}=setup(),first=ready(),second=ready(1);
   p.inventory=[{type:'potion',qty:3}];const before=JSON.stringify(p.inventory);

@@ -1,0 +1,15 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..'),skill=process.env.WILDBOUND_ASSET_SKILL||path.join(root,'.agents/skills/wildbound-pixel-assets');
+const {validate}=require(path.join(skill,'scripts/check-atlas.cjs'));
+const manifest={version:1,subject:'player',pixelDensity:2,parts:[{id:'validation-fixture',joint:'head',views:Array.from({length:8},(_,direction)=>({direction,file:'heads.png',rect:[0,0,443,443],pivot:[221,280],size:[16,16],offset:[0,0]}))}]};
+const base=path.join(root,'assets/humanoid-hd');
+assert.equal(validate(manifest,base,root).ok,true);
+const missing=structuredClone(manifest);missing.parts[0].views.pop();assert.equal(validate(missing,base,root).ok,false);
+const crop=structuredClone(manifest);crop.parts[0].views[0].rect=[0,0,9999,9999];assert.equal(validate(crop,base,root).ok,false);
+const pivot=structuredClone(manifest);pivot.parts[0].views[0].pivot=[-1,0];assert.equal(validate(pivot,base,root).ok,false);
+const joint=structuredClone(manifest);joint.parts[0].joint='missing_joint';assert.equal(validate(joint,base,root).ok,false);
+const opaque=structuredClone(manifest);for(const view of opaque.parts[0].views)view.file='materials.png';assert.equal(validate(opaque,base,root).ok,false);
+const mirror=structuredClone(manifest);mirror.parts[0].views[6]={direction:6,mirrorFrom:2};assert.equal(validate(mirror,base,root).ok,true);
+mirror.parts[0].views[2]={direction:2,mirrorFrom:6};assert.equal(validate(mirror,base,root).ok,false);
+fs.writeFileSync(path.join(root,'test-output/asset-skill-validation.json'),JSON.stringify({passed:8,checks:['valid PNG regions','missing angle rejected','oversize crop rejected','bad pivot rejected','unknown joint rejected','opaque background rejected','direct mirror accepted','mirror cycle rejected']},null,2));
+console.log('Asset skill: 8 behavioral checks passed.');

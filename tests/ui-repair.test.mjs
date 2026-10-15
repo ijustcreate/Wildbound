@@ -36,7 +36,7 @@ test('vending resets on new expedition, not session resume, and preserves paid p
  const {g,p}=setup();p.coins=100;p.vendingStock=vendingStock();purchaseVending(p,p,0);
  const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(restored.players[0].vendingStock[0].qty,4);
  assert.equal(restored.players[0].vendingOrders.length,1);assert.equal(restored.players[0].coins,90);
- g.start();assert.ok(p.vendingStock.every(s=>s.qty===5));assert.equal(p.vendingOrders.length,1);assert.equal(p.coins,90);
+ g.start();assert.deepEqual(p.vendingStock,vendingStock());assert.equal(p.vendingOrders.length,1);assert.equal(p.coins,90);
 });
 const mockCanvas=()=>{
  const ops=[],c={globalAlpha:1,save(){ops.push(['save']);},restore(){ops.push(['restore']);},translate(...a){ops.push(['translate',...a]);},scale(){},transform(){},rotate(...a){ops.push(['rotate',...a]);},beginPath(){},rect(...a){ops.push(['clip-rect',...a]);},clip(){},fillRect(...a){ops.push(['pixel',this.fillStyle,...a]);}};

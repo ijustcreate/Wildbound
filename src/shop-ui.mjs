@@ -3,6 +3,7 @@ import { ITEMS, sellValue } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { controllerButtonNames } from "./controls.mjs";
 import {robotBuybackIndices,robotBuying} from './robot-shop.mjs';
+import {ensureVendingStock} from './shops.mjs';
 const node = (tag, text, cls) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
@@ -51,7 +52,7 @@ export function shopPanel(panel, game, p, button,tooltip) {
       pop.append(node('strong','Split stack'),amount,button('Confirm split','split-confirm',()=>game.inventoryAction(p,'use')),button('Cancel','split-cancel',()=>game.inventoryAction(p,'close')));panel.append(pop);}
   } else {
     panel.classList.add('vending-refresh');
-    panel.append(node("h3", "BETWEEN-MART · Potion dispenser"));
+    panel.append(node("h3", "BETWEEN-MART · Expedition essentials"));
     const catalog=node('div',null,'vending-catalog');
     const machine = node("div", null, "vending-machine"),
       canvas = node("canvas");
@@ -60,14 +61,14 @@ export function shopPanel(panel, game, p, button,tooltip) {
     canvas.height = 520;
     machine.append(canvas);
     const slots = node("div", null, "vending-slots");
-    owner.vendingStock.forEach((item, i) => {
+    ensureVendingStock(owner).forEach((item, i) => {
       const b = button(
         '',
         "vend-" + i,
         () => game.purchaseVending(p, i),
       );
-      b.append(icon(item.type),node('strong',ITEMS[item.type].name,'vending-item-name'),node('span',item.price+' gold','vending-price'),node('small',item.qty?'Stock: '+item.qty:'Sold out','vending-stock'));
-      b.classList.toggle("selected", u.index === i);
+      b.append(icon(item.type),node('strong',ITEMS[item.type].name+(item.bundle>1?' ×'+item.bundle:''),'vending-item-name'),node('span',item.price+' gold','vending-price'),node('small',item.qty?'Stock: '+item.qty:'Sold out','vending-stock'));
+      b.classList.toggle("selected", u.vendingView !== 'tray' && u.index === i);
       b.disabled = !item.qty||(p.coins||0)<item.price;
       b.title = "Buy " + ITEMS[item.type].name;
       slots.append(b);
@@ -82,7 +83,10 @@ export function shopPanel(panel, game, p, button,tooltip) {
         game.collectVending(p, order.id),
       );
       b.prepend(icon(order.type));
-      b.title = "Collect " + ITEMS[order.type].name;
+      b.classList.toggle('selected',u.vendingView==='tray'&&u.vendingOrderId===order.id);
+      b.setAttribute('aria-pressed',String(u.vendingView==='tray'&&u.vendingOrderId===order.id));
+      b.setAttribute('aria-label','Collect '+ITEMS[order.type].name+(order.qty>1?' ×'+order.qty:''));
+      b.title = "Collect " + ITEMS[order.type].name + (order.qty>1?" ×"+order.qty:"");
       tray.append(b);
     }
     if (!orders.some((o) => o.ready))
@@ -98,7 +102,7 @@ export function shopPanel(panel, game, p, button,tooltip) {
       tray,
       node(
         "p",
-        u.notice ||
+        (u.notice?.startsWith('Dispensing')&&orders.some(o=>o.ready)?'Ready to collect. Move down to the tray or use quick collect.':u.notice) ||
           "Select a slot, then collect the falling item from the tray.",
         "storage-notice",
       ),
@@ -109,9 +113,9 @@ export function shopPanel(panel, game, p, button,tooltip) {
     node(
       "small",
       (() => {
-        if (p.device === 'keyboard') return u.shop === "robot" ? "Arrows: select · Enter: confirm · 2: split · Tab: backpack / buyback · Esc: room" : "Arrows: select slot · Enter: buy · 2: collect tray · Esc: room";
+        if (p.device === 'keyboard') return u.shop === "robot" ? "Arrows: select · Enter: confirm · 2: split · Tab: backpack / buyback · Esc: room" : "Arrows: select · Down from bottom row: tray · Enter: buy / collect · 2: quick collect · Esc: room";
         const n = controllerButtonNames(p.controllerFamily || 'generic');
-        return u.shop === "robot" ? `D-pad: select · ${n[0]}: confirm · ${n[3]}: split · LB / RB: backpack / buyback · ${n[1]}: room` : `D-pad: select slot · ${n[0]}: buy · ${n[3]}: collect tray · ${n[1]}: room`;
+        return u.shop === "robot" ? `D-pad: select · ${n[0]}: confirm · ${n[3]}: split · LB / RB: backpack / buyback · ${n[1]}: room` : `D-pad: select · ↓ from bottom row: tray · ${n[0]}: buy / collect · ${n[3]}: quick collect · ${n[1]}: room`;
       })(),
     ),
   );

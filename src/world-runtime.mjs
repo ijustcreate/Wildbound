@@ -4,6 +4,7 @@ import {advanceWorld,visitRegion,simulationTier,hash,REGION_SIZE,WORLD_RATE,reco
 const runtime=new WeakMap();
 const regionKey=e=>`${Math.floor(e.x/REGION_SIZE)},${Math.floor(e.y/REGION_SIZE)}`;
 const clone=v=>structuredClone(v);
+const companion=e=>e.friendly||e.owner!=null||e.allyOwner!=null||e.faction==='ally';
 export function noteLocalAnimalRemoved(g,e){
   if(!g.localWorld||!e.localEcology||e.worldRecorded)return;
   e.worldRecorded=true;const region=visitRegion(g.localWorld,...regionKey(e).split(',').map(Number));
@@ -21,7 +22,7 @@ export function tickLocalWorld(g,dt) {
   for(const p of g.players.filter(p=>p.hp>0&&!p.room))visitRegion(s,Math.floor(p.x/REGION_SIZE),Math.floor(p.y/REGION_SIZE));
   // Persist existing animals before unloading. Tamed companions always stay live.
   for(const e of g.enemies){
-    if(!e.localEcology||e.friendly||e.owner!=null)continue;
+    if(!e.localEcology||companion(e))continue;
     const region=visitRegion(s,...regionKey(e).split(',').map(Number));
     if(simulationTier(region,g.players)!=='active'){
       const list=s.dormantActors[regionKey(e)]||=[];
@@ -34,7 +35,7 @@ export function tickLocalWorld(g,dt) {
     if(region.tier!=='active')continue;
     const dormant=s.dormantActors[key]||[];
     g.enemies.push(...dormant.map(e=>{delete e.worldSleeping;return e;}));delete s.dormantActors[key];
-    const living=g.enemies.filter(e=>e.localEcology&&regionKey(e)===key&&e.hp>0);
+    const living=g.enemies.filter(e=>e.localEcology&&!companion(e)&&regionKey(e)===key&&e.hp>0);
     for(const e of g.enemies.filter(e=>e.localEcology&&regionKey(e)===key&&e.hp<=0&&!e.worldRecorded)){
       noteLocalAnimalRemoved(g,e);
     }
@@ -58,7 +59,7 @@ export function tickLocalWorld(g,dt) {
     }
     // Local predator/prey encounters affect actual actors as well as summaries.
     // Do not remove prey beside an explorer or award the player hunt loot/XP.
-    for(const predator of living.filter(e=>e.ecologyRole==='predator'&&!e.friendly&&e.owner==null)){
+    for(const predator of living.filter(e=>e.ecologyRole==='predator'&&!companion(e))){
       predator.ecologyHuntAt??=s.seconds+600;
       if(s.seconds<predator.ecologyHuntAt)continue;
       const prey=living.filter(e=>e.ecologyRole==='prey'&&e.hp>0&&Math.hypot(e.x-predator.x,e.y-predator.y)<90&&!g.players.some(p=>Math.hypot(p.x-e.x,p.y-e.y)<120)).sort((a,b)=>Math.hypot(a.x-predator.x,a.y-predator.y)-Math.hypot(b.x-predator.x,b.y-predator.y))[0];
@@ -84,7 +85,7 @@ export function tickLocalWorld(g,dt) {
     const existing=g.scenery.find(p=>p.id===id);
     if(existing){for(const k of Object.keys(existing))delete existing[k];Object.assign(existing,clone(harvest.prop),{localOriginal:clone(harvest.prop)});}
     else if(!prefix||(g.boundlessLoadedChunks||[]).some(c=>prefix===`boundless:${c.key.replace(',',':')}:`))g.scenery.push({...clone(harvest.prop),localOriginal:clone(harvest.prop)});
-    if(prefix){const key=id.split(':').slice(1,3).join(','),changes=g.boundlessChunkChanges?.[key];if(changes){changes.removed=changes.removed.filter(v=>v!==id);changes.changed=changes.changed.filter(p=>p.id!==id);}}
+    if(prefix){const key=id.split(':').slice(1,3).join(','),changes=g.boundlessChunkChanges?.[key];if(changes){changes.removed=changes.removed.filter(v=>v!==id);changes.changed=changes.changed.filter(p=>p.id!==id);}if(g.boundlessChunkEdits?.[key]?.props)delete g.boundlessChunkEdits[key].props[id];}
     delete s.harvests[id];recordWorldEvent(s,'plant-regrowth',{prop:id});
   }
   for(const prop of g.scenery||[]){

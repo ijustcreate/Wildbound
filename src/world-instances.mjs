@@ -3,10 +3,14 @@ import {creatures} from './definitions.mjs';
 import {saveSession,restoreSession} from './session.mjs';
 import {generateWorld} from './world.mjs';
 import {tickLocalWorld} from './world-runtime.mjs';
-import {checkpointBoundlessWorld} from './boundless-world.mjs';
+import {checkpointBoundlessWorld,initializeBoundlessWorld} from './boundless-world.mjs';
 import {createWorldState,validateWorldState,catchUpWorld,validatePack,hash,recordWorldEvent} from './world-simulation.mjs';
 const baselines=new WeakMap();
 const clone=v=>structuredClone(v);
+function worldBaseline(seed,environment){
+ const base={...generateWorld(seed,environment),seed,environment,generatedEnvironment:environment,mapMode:'boundless'};
+ initializeBoundlessWorld(base,{fresh:true});return base;
+}
 export function seededRandom(seed){let a=seed>>>0;return()=>{a+=0x6d2b79f5;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 export function createLocalWorld({id,name,seed,pack,party,now=Date.now()}) {
   if(!party?.length)throw Error('Choose at least one explorer in the lobby before creating a world.');
@@ -18,7 +22,7 @@ export function createLocalWorld({id,name,seed,pack,party,now=Date.now()}) {
   g.start();g.openingBoard=false;g.persistentWorld=true;g.localWorld=s;
   // Fresh identity: no old nested Heartwood journey or remote authority.
   g.portals=g.portals.filter(d=>!d.forestTravel);delete g.forestJourney;
-  baselines.set(g,clone(generateWorld(seed,s.pack.environment)));
+  baselines.set(g,worldBaseline(seed,s.pack.environment));
   rememberPlants(g);
   g.message(name+' · local world · saved on this computer.');return g;
 }
@@ -39,7 +43,7 @@ function sceneryDelta(current,original){
 export function saveLocalWorld(g,now=Date.now()) {
   validateWorldState(g.localWorld);checkpointBoundlessWorld(g);
   g.localWorld.lastWall=Math.max(g.localWorld.lastWall,now);
-  const baseline=baselines.get(g)||generateWorld(g.seed,g.generatedEnvironment);
+  const baseline=baselines.get(g)||worldBaseline(g.seed,g.generatedEnvironment);
   baselines.set(g,baseline);
   const live=new Map(g.scenery.map(p=>[p.id,p]));
   const harvests=g.localWorld.harvests||={};
@@ -60,21 +64,23 @@ export function saveLocalWorld(g,now=Date.now()) {
   delete session.state.scenery;delete session.state.terrain;delete session.state.forestLandscape;
   delete session.state.boundlessLoadedChunks;delete session.state.forestJourney;
   session.state.localWorld=clone(g.localWorld);
-  return {version:1,id:g.localWorld.id,savedAt:now,session,delta,terrain};
+  return {version:1,generationVersion:g.boundlessGenerationVersion,id:g.localWorld.id,savedAt:now,session,delta,terrain};
 }
 export function restoreLocalWorld(record,now=Date.now()) {
   if(record?.version!==1||!record.session?.state?.localWorld||record.id!==record.session.state.localWorld.id||!record.delta||!Array.isArray(record.terrain))throw Error('Invalid world snapshot.');
   const s=validateWorldState(clone(record.session.state.localWorld));
   validatePack(s.pack);
-  const base=generateWorld(s.seed,s.pack.environment);
+  const base=record.generationVersion?worldBaseline(s.seed,s.pack.environment):generateWorld(s.seed,s.pack.environment);
   const removed=new Set(record.delta.removed),changed=new Map(record.delta.changed.map(p=>[p.id,p]));
   const scenery=base.scenery.filter(p=>!removed.has(p.id)).map(p=>clone(changed.get(p.id)||p));
   scenery.push(...clone(record.delta.added));
   const terrain=clone(base.terrain);
   for(const [i,t]of record.terrain){if(!Number.isInteger(i)||i<0||i>=terrain.length||typeof t!=='string')throw Error('Invalid terrain edit.');terrain[i]=t;}
   const g=restoreSession({...record.session,state:{...record.session.state,localWorld:s,scenery,terrain}});
+  // Legacy snapshots retain their edited tiles even when the streamer upgrades.
+  g.terrain=terrain;
   g.random=seededRandom(Math.floor(hash(s.seed,s.seconds)*4294967296));
-  baselines.set(g,clone(base));
+  baselines.set(g,worldBaseline(s.seed,s.pack.environment));
   const elapsed=catchUpWorld(g.localWorld,now);
   g.boundlessLoadedChunks=[];g.persistentWorld=true;g.remoteAuthoritative=false;
   g.portals=(g.portals||[]).filter(d=>!d.forestTravel);delete g.forestJourney;

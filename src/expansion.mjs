@@ -11,11 +11,12 @@ export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','gra
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
-export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false,from=null){
+export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false,from=null,flying=false){
  if(!projectile&&boardTableBlocked(g,x,y,r,elevation,from))return true;
  const hit=b=>raisedSurfaceBlocked(b,x,y+footOffset,r);
- if((g.house?.walls||[]).some(w=>!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y+footOffset,r)))return true;
- if((g.house?.doors||[]).some(d=>!d.open&&!canOpenDoors&&sectionBlocked(d,x,y+footOffset,r)))return true;
+ const clearsFence=!projectile&&(flying||from?.wingHover&&elevation>=32);
+ if((g.house?.walls||[]).some(w=>!(clearsFence&&w.kind==='fence')&&!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y+footOffset,r)))return true;
+ if((g.house?.doors||[]).some(d=>!(clearsFence&&d.kind==='gate')&&!d.open&&!canOpenDoors&&sectionBlocked(d,x,y+footOffset,r)))return true;
  return (g.house?.furniture||[]).some(f=>{
   if(f.destroyed||['rug','plant'].includes(f.kind))return false;
   const height=furnitureHeight(f);
@@ -26,7 +27,7 @@ export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elev
 export function breakWindow(g,x,y,r=1){
  if(breakDamagedWindow(g,x,y,r))return true;
  const pane=g.house?.walls.find(w=>w.kind==='window'&&!w.broken&&Math.hypot(x-Math.max(w.x,Math.min(x,w.x+w.w)),y-Math.max(w.y,Math.min(y,w.y+w.h)))<r);
- if(!pane)return false;pane.broken=true;g.onSound?.('hit',{x,y});g.message?.('Glass shattered. Shoot or jump through the opening.');return true;
+ if(!pane)return false;pane.broken=true;g.onSound?.('glassBreak',{x,y});g.message?.('Glass shattered. Shoot or jump through the opening.');return true;
 }
 export function toggleDoor(g,p){
   const d=g.house?.doors.find(d=>!d.destroyed&&Math.hypot(p.x-d.x-d.w/2,p.y-d.y-d.h/2)<64);

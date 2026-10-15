@@ -1,0 +1,9 @@
+# Player menu docking and controller focus
+
+Inventory height was halved whenever a second player opened a UI. Popup placement also depended on the order of currently open menus, and rebuilding a lobby character selector removed and re-appended it, swapping two selectors' flex positions. The level menu advanced through button reading order instead of following its visible grid.
+
+Player inventory, chest, shop and room panels now use stable left/right docks based on player index. Two opposing menus retain full height, leave at least 25% (and normally at least 240 CSS pixels) of the center clear, and the world camera eases its focus into that open play area. When more players share a side, panels stack within that rail. Lobby panels use the same docks. A character selector replaces its own DOM node in place, controller focus stays with the owning player, and map navigation follows screen-space rows and columns. Selected controls use a brighter fill and stronger contrast ring.
+
+Muted Electron checks passed for 30 inventory layouts across three window sizes, two UI scales, and up to six panels; inventory geometry at three heights; chest transfer and selection; a full lobby flow; two simultaneous character selectors with isolated controller inputs; directional map navigation; and camera focus returning to center when UI closes. The focused Node tests passed (33/33). A full concurrent Node run passed 1,200/1,201; the Golem knockback test failed once under that run and passed when rerun in the focused suite. No physical controllers were available for hardware testing.
+
+Source remains uncommitted. The existing `1.0.99-alan` packaged game was running during this work, so it was not overwritten or relaunched. These changes are verified in muted source Electron windows and are not yet in the running packaged executable.

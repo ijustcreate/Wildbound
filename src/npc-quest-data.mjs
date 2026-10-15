@@ -49,8 +49,8 @@ export const npcQuestConfig = {
       branch('stones', 'Restore the workshop hearth', 'Collect eight stones to repair the workshop hearth.', { type: 'collect', item: 'stone', count: 8 }, 'Warmth and patient hands restore what was lost. This blade is yours.'),
     ]),
     stage('guardian', 'A circle of remembrance', 'keeper_band', [
-      branch('skeletons', 'Keep the way home open', 'Defeat five skeletons threatening the route home.', { type: 'defeat', kind: 'skeleton', count: 5 }, 'You gather, mend, and guide with care. Keep this band, and remember those still lost.'),
-      branch('spiders', 'Protect the quiet paths', 'Defeat five spiders threatening the quiet travelers paths.', { type: 'defeat', kind: 'spider', count: 5 }, 'No path is too small to protect. This band remembers the care you have given.'),
+      branch('skeletons', 'Keep the way home open', 'Defeat five skeletons threatening the route home.', { type: 'defeat', kind: 'skeleton', count: 5 }, 'You gather, mend, and guide with care. Keep this amulet, and remember those still lost.'),
+      branch('spiders', 'Protect the quiet paths', 'Defeat five spiders threatening the quiet travelers paths.', { type: 'defeat', kind: 'spider', count: 5 }, 'No path is too small to protect. This amulet remembers the care you have given.'),
     ]),
   ],
 };

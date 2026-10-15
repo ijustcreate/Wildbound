@@ -25,6 +25,11 @@ test('house starts players and first lion indoors, other encounters outdoors; do
  p.x=d.x+d.w/2;p.y=d.y+d.h/2;d.open=true;toggleDoor(g,p);assert.equal(d.open,true,'cannot close on an actor');
  assert.equal(g.projectileBlocked(480,600),true);
 });
+test('controller attack does not open a door; Interact does',()=>{
+ const g=game('house'),p=g.players[0];p.device='pad:0';const d=g.house.doors[0];Object.assign(p,{x:d.x+d.w/2,y:d.y-40});
+ g.update(.05,{'pad:0':{attack:true}});assert.equal(d.open,false);
+ g.update(.05,{'pad:0':{attack:false}});g.update(.05,{'pad:0':{interact:true}});assert.equal(d.open,true);
+});
 test('spider event creates exactly two adults, three timed eggs and webbed nearby trees',()=>{
  const g=game('forest');g.spawnEvent(EVENTS.findIndex(e=>e.kind==='spider'));
  assert.equal(g.enemies.filter(e=>e.kind==='spider').length,2);const eggs=g.enemies.filter(e=>e.kind==='spider_egg');assert.equal(eggs.length,3);assert.equal(g.webs.length,1);

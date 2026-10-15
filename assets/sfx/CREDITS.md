@@ -15,3 +15,5 @@ These sound libraries are CC0. Music is separate and is not covered by these lic
 License: https://creativecommons.org/publicdomain/zero/1.0/
 
 Original files are retained. Runtime processing normalizes peaks, varies pitch, fades and trims long calls, and applies stereo positioning and distance attenuation. Creature voices use pitch-treated monster recordings; they are not authentic recordings of every species. Monkey recordings are voice imitations. Rain and wind loops crossfade their endpoints. Extra source variants are retained for editing.
+
+Original encounter, travel and seal compositions: [encounters/CREDITS.md](encounters/CREDITS.md). Scores and reproducible recipes are in encounters/manifest.json.

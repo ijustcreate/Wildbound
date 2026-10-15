@@ -1,7 +1,13 @@
+import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
+import {drawGhost} from './ghost-motion.mjs';
+import {tickGhostTrail} from './ghost-ai.mjs';
 import {ITEMS, stat, itemKind} from './items.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {merchantSites} from './traveling-merchant.mjs';
+import {UNDERGROUND_VIEW} from './underground-view.mjs';
+import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
 
 export const CRYPT_TITLE = 'The mausoleum crypt';
 export const CRYPT_BOSS_KIND = 'crypt_skeleton_boss';
@@ -18,7 +24,7 @@ const hash = (seed, x, y) => {
 
 /** JSON-only state: the old-well/session/inventory code owns d.well unchanged. */
 export function generateMausoleumCrypt(seed = 0) {
-  const s = {version: 1, theme: 'mausoleum', seed, width: 72, height: 48, tile: TILE,
+  const s = {version: 1, ghostRosterVersion:1, theme: 'mausoleum', seed, width: 72, height: 48, tile: TILE,
     tiles: Array(72 * 48).fill(0), explored: [], enemies: [], bolts: [], drops: [], hazards: [],
     rooms: [
       {name: 'THE DESCENT', x: 3, y: 3, w: 10, h: 9},
@@ -61,11 +67,12 @@ export function generateMausoleumCrypt(seed = 0) {
   for (const [room, kind, dx, dy] of [[1, 'zombie', 28, 12], [1, 'spider', -44, -8],
     [2, 'skeleton', 28, 8], [2, 'bat', -24, 22], [3, 'bat', -20, -8],
     [3, 'spider', 30, 30], [4, 'zombie', -24, -8], [4, 'skeleton', 30, 20],
-    [5, 'skeleton', 30, 24], [5, 'zombie', -28, 0], [6, 'spider', 20, 12]]) {
-    const p = roomPoint(room), hp = {zombie: 82, skeleton: 64, spider: 20, bat: 24}[kind];
+    [5, 'skeleton', 30, 24], [5, 'zombie', -28, 0], [6, 'spider', 20, 12],
+    [2,'ghost',-30,-24],[5,'ghost',10,-35]]) {
+    const p = roomPoint(room), hp = {ghost:76,zombie: 82, skeleton: 64, spider: 20, bat: 24}[kind];
     s.enemies.push({id: 'crypt-creature-' + s.enemies.length, kind, x: p.x + dx, y: p.y + dy,
-      hp, maxHp: hp, speed: {zombie: 23, skeleton: 37, spider: 32, bat: 58}[kind],
-      damage: {zombie: 13, skeleton: 11, spider: 4, bat: 5}[kind],
+      hp, maxHp: hp, speed: {ghost:54,zombie: 23, skeleton: 37, spider: 32, bat: 58}[kind],
+      damage: {ghost:12,zombie: 13, skeleton: 11, spider: 4, bat: 5}[kind],
       state: 'idle', cooldown: 0, attack: 0, step: 0, moving: false, faceX: 0, faceY: 1});
   }
   s.enemies.push({id: 'crypt-coffin-warden', kind: CRYPT_BOSS_KIND,
@@ -80,11 +87,11 @@ export function generateMausoleumCrypt(seed = 0) {
  * Marks doorOpen and door.open, so an environment renderer can reuse its art.
  * Returns one persistent oldWell portal, or null if no mausoleum exists.
  */
-export function spawnMausoleumEvent(g) {
+export function spawnMausoleumEvent(g,{test=false}={}) {
   g.portals ||= [];
   const existing = g.portals.find(d => d.mausoleum && d.oldWell);
   if (existing) return existing;
-  if (g.generatedEnvironment !== 'graveyard') return null;
+  if (!test&&g.generatedEnvironment !== 'graveyard') return null;
   const records = [...(g.scenery || []).filter(s => s.kind === 'mausoleum'),
     ...(g.mausoleums || []), ...(g.graveyard?.mausoleums || [])];
   const ids = new Set();
@@ -96,7 +103,8 @@ export function spawnMausoleumEvent(g) {
     .filter(s => !s.depleted && Number.isFinite(s.x) && Number.isFinite(s.y));
   const focus = g.players?.find(p => p.hp > 0 && !p.room) || {x: 800, y: 800};
   candidates.sort((a, b) => distance(a, focus) - distance(b, focus));
-  const building = candidates[0];
+  // Debug runs also need a usable crypt entrance on maps without mausoleums.
+  const building = candidates[0]||(test?merchantSites(g).sort((a,b)=>distance(a,focus)-distance(b,focus))[0]:null);
   if (!building) {g.message?.('No mausoleum can be opened here.'); return null;}
   const x = building.doorX ?? building.door?.x ?? building.x;
   const y = building.doorY ?? building.door?.y ?? building.rootY ?? building.y;
@@ -114,6 +122,28 @@ export function spawnMausoleumEvent(g) {
   g.message?.('A mausoleum door opens. Descend the stairs to explore the crypt.');
   g.onSound?.('doorOpen', d); g.persist?.();
   return d;
+}
+
+export function closeMausoleumEntrances(g) {
+  for (const world of [g, ...Object.values(g.houseWorlds?.worlds || {})]) {
+    const entrances = (world.portals || []).filter(d => d.mausoleum);
+    const ids = new Set(entrances.map(d => d.id));
+    world.portals = (world.portals || []).filter(d => !d.mausoleum);
+    for (const record of [...(world.scenery || []), ...(world.mausoleums || []), ...(world.graveyard?.mausoleums || [])]) {
+      if (!record.cryptPortalId) continue;
+      delete record.cryptPortalId;
+      record.doorOpen = false;
+      if (record.door && typeof record.door === 'object') record.door.open = false;
+    }
+    if (world !== g) continue;
+    for (const p of g.players || []) if (ids.has(p.room)) {
+      p.room = null; p.ui = null; p.x = 800; p.y = 850;
+      delete p.wellReturn; delete p.wellExitArmed;
+      for (const pet of [p.hunterPet, p.ritualPet]) if (pet && ids.has(pet.room)) {
+        pet.room = null; pet.x = p.x + 24; pet.y = p.y + 20;
+      }
+    }
+  }
 }
 
 export const cryptEnemyCanBeHit = e => e.hp > 0 &&
@@ -178,7 +208,20 @@ function hurtInCrypt(g, d, p, amount, source) {
 }
 
 /** Internal old-well adapter. Helpers use the shared tunnel collision/pathing. */
+export function upgradeMausoleumGhosts(s){
+ if(s.ghostRosterVersion>=1)return false;
+ s.ghostRosterVersion=1;
+ if(s.coffin?.defeated||s.completed)return false;
+ s.enemies ||= [];
+ if(s.enemies.some(e=>e.kind==='ghost'))return false;
+ for(const [n,dx,dy]of [[2,-30,-24],[5,10,-35]]){
+  const r=s.rooms?.[n];if(!r)continue;
+  s.enemies.push({id:'crypt-ghost-upgrade-'+n,kind:'ghost',x:(r.x+Math.floor(r.w/2))*TILE+8+dx,y:(r.y+Math.floor(r.h/2))*TILE+8+dy,hp:76,maxHp:76,speed:54,damage:12,state:'idle',cooldown:0,attack:0,step:0,moving:false,faceX:0,faceY:1});
+ }
+ return true;
+}
 export function tickMausoleumCrypt(g, d, occupants, dt, helpers) {
+  upgradeMausoleumGhosts(d.well);
   const s = d.well;
   s.hazards ||= [];
   const alive = () => occupants.filter(p => p.hp > 0 && p.room === d.id);
@@ -195,6 +238,8 @@ export function tickMausoleumCrypt(g, d, occupants, dt, helpers) {
   }
   s.hazards = s.hazards.filter(h => h.life > 0);
   for (const e of s.enemies) {
+    e.room=d.id;e.roomX=e.x;e.roomY=e.y;
+    if(e.kind==='ghost')tickGhostTrail(e,dt);
     // World hazards tick g.enemies, not persistent underground enemies. Carry
     // shared ignite fields here, using the same hit/death/reward path.
     if (e.hp > 0 && e.burning > 0) {
@@ -209,7 +254,8 @@ export function tickMausoleumCrypt(g, d, occupants, dt, helpers) {
     e.hit = Math.max(0, (e.hit || 0) - dt); e.attack = Math.max(0, (e.attack || 0) - dt);
     e.cooldown = Math.max(0, (e.cooldown || 0) - dt); e.moving = false;
     if (e.hp <= 0 || e.state === 'dormant') continue;
-    const boss = e.kind === CRYPT_BOSS_KIND;
+    const boss = e.kind === CRYPT_BOSS_KIND,ghost=e.kind==='ghost';
+    if(ghost){e.frozen=Math.max(0,(e.frozen||0)-dt);if(e.frozen>0){if(e.state==='windup'){e.state='hunt';e.timer=0;e.attack=0;}continue;}}
     if (e.state === 'rising') {
       e.timer = Math.max(0, e.timer - dt); e.rise = 1 - e.timer / 2;
       if (e.timer <= 0) {e.state = 'hunt'; g.persist?.();}
@@ -230,7 +276,7 @@ export function tickMausoleumCrypt(g, d, occupants, dt, helpers) {
       } else for (const q of targets) {
         const t = point(q), len = distance(e, t), facing =
           ((t.x - e.x) * e.aimX + (t.y - e.y) * e.aimY) / (len || 1);
-        if (len < (boss ? 62 : 28) && facing > (boss ? -.2 : -.5) && helpers.sight(s, e, t))
+        if (len < (boss ? 62 : ghost?60:28) && facing > (boss ? -.2 : ghost?.5:-.5) && helpers.sight(s, e, t))
           hurtInCrypt(g, d, q, e.damage, e);
       }
       e.state = 'recover'; e.timer = boss ? .75 : .45; e.attack = .3;
@@ -238,12 +284,12 @@ export function tickMausoleumCrypt(g, d, occupants, dt, helpers) {
       continue;
     }
     if (e.state === 'recover') {e.timer -= dt; if (e.timer <= 0) e.state = 'hunt'; continue;}
-    if (e.cooldown <= 0 && helpers.sight(s, e, target) && (separation < (boss ? 57 : 26) || boss && separation < 225)) {
+    if (e.cooldown <= 0 && helpers.sight(s, e, target) && (separation < (boss ? 57 : ghost?56:26) || boss && separation < 225)) {
       e.attackKind = boss && (separation >= 57 || e.attackCount % 2 === 1) ? 'volley' : 'sweep';
       e.attackCount = (e.attackCount || 0) + 1;
       e.aimX = (target.x - e.x) / (separation || 1); e.aimY = (target.y - e.y) / (separation || 1);
       e.faceX = e.aimX; e.faceY = e.aimY;
-      e.state = 'windup'; e.timer = boss ? (e.attackKind === 'volley' ? .9 : .65) : .45;
+      e.state = 'windup'; e.timer = boss ? (e.attackKind === 'volley' ? .9 : .65) : ghost?.6:.45;
       e.attack = e.timer; continue;
     }
     const goal = helpers.waypoint(s, e, target), len = distance(e, goal) || 1;
@@ -428,13 +474,14 @@ export function drawMausoleumEntrance(c, d, time = 0) {
 }
 
 /** Called by drawOldWellRoom; camera/exploration remain old-well compatible. */
-export function drawMausoleumRoom(c, g, p, d, camera, animator = null) {
+export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDERGROUND_VIEW) {
   const s = d.well, known = new Set(s.explored), lights = mausoleumLights(g, d), time = g.time || 0;
-  const minX = Math.max(0, Math.floor(camera.x / TILE)), maxX = Math.min(s.width - 1, Math.ceil((camera.x + 320) / TILE));
-  const minY = Math.max(0, Math.floor(camera.y / TILE)), maxY = Math.min(s.height - 1, Math.ceil((camera.y + 192) / TILE));
+  const {width:w,height:h,top,bottom,zoom=1}=view,worldW=w/zoom,worldH=(h-top-bottom)/zoom;
+  const minX = Math.max(0, Math.floor(camera.x / TILE)), maxX = Math.min(s.width - 1, Math.ceil((camera.x + worldW) / TILE));
+  const minY = Math.max(0, Math.floor(camera.y / TILE)), maxY = Math.min(s.height - 1, Math.ceil((camera.y + worldH) / TILE));
   const knownPoint = a => known.has(Math.floor(a.y / TILE) * s.width + Math.floor(a.x / TILE));
-  c.save(); c.imageSmoothingEnabled = false; rect(c, 0, 0, 320, 240, '#080a14');
-  c.save(); c.beginPath(); c.rect(0, 26, 320, 192); c.clip(); c.translate(-camera.x, 26 - camera.y);
+  c.save(); c.imageSmoothingEnabled = false; rect(c, 0, 0, w, h, '#080a14');
+  c.save(); c.beginPath(); c.rect(0, top, w, h-top-bottom); c.clip(); c.translate(0,top);c.scale(zoom,zoom);c.translate(-camera.x,-camera.y);
   for (let ty = minY; ty <= maxY; ty++) for (let tx = minX; tx <= maxX; tx++) {
     const index = ty * s.width + tx, x = tx * TILE, y = ty * TILE, h = hash(s.seed, tx, ty);
     if (!known.has(index)) continue;
@@ -481,14 +528,14 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null) {
       else for (let n = 15; n < 130; n += 10) rect(c, e.x + e.aimX * n - 1, e.y + e.aimY * n - 1, 3, 3, '#e8b99b');
       c.restore();
     }
-    const standard = ['skeleton','zombie','bat','spider'].includes(e.kind);
+    const standard = ['skeleton','zombie','ghost','bat','spider'].includes(e.kind);
     if (standard && animator) {
-      const size=e.kind==='bat'?34:e.kind==='spider'?32:47;
-      animator.draw(c,{...e,sprite:e.kind},time,size);
+      animator.draw(c,{...e,sprite:e.kind},time,creatureRenderSize(e.kind));
     } else if (e.kind===CRYPT_BOSS_KIND && animator) {
       animator.draw(c,{...e,kind:'skeleton',sprite:'skeleton',equipment:{hand1:'sword'}},time,50);
       drawCryptBossGear(c,e,time);
-    } else if (['skeleton', 'zombie', CRYPT_BOSS_KIND].includes(e.kind)) drawUndead(c, e, time);
+    } else if(e.kind==='ghost'){c.save();c.translate(e.x,e.y);drawGhost(c,e,time);c.restore();}
+    else if (['skeleton', 'zombie', CRYPT_BOSS_KIND].includes(e.kind)) drawUndead(c, e, time);
     else drawVermin(c, e, time);
   }
   for (const b of s.bolts) {
@@ -496,8 +543,9 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null) {
     else rect(c, b.x - 2, b.y - 2, b.magic ? 4 : 5, 2, b.magic ? '#b9eadd' : '#e7c47d');
   }
   for (const h of s.hazards || []) {rect(c, h.x - 5, h.y - 1, 10, 2, '#d8ccb7'); rect(c, h.x - 5, h.y - 2, 2, 4, '#b7adab');}
+  drawRoomVillagerFollowers(c,g,d.id,animator,48);
   for (const q of g.players.filter(q => q.room === d.id)) {
-    if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, time, 29);
+    if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, time, PLAYER_RENDER_SIZE);
     else {rect(c, q.roomX - 4, q.roomY - 14, 8, 12, q.color || '#87b8f2'); rect(c, q.roomX - 3, q.roomY - 19, 6, 6, '#e2bc88');}
     if (q.attack > 0) rect(c, q.roomX + (q.faceX || 1) * 12, q.roomY - 8 + (q.faceY || 0) * 10, 8, 2, '#edd7b0');
   }
@@ -513,19 +561,19 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null) {
     c.globalAlpha = 1;
   }
   c.restore();
-  c.textAlign = 'center'; c.font = 'bold 11px sans-serif'; c.fillStyle = '#d7c9cd'; c.fillText(CRYPT_TITLE, 160, 15);
+  c.textAlign = 'center'; c.font = 'bold 11px sans-serif'; c.fillStyle = '#d7c9cd'; c.fillText(CRYPT_TITLE, w/2, 15);
   c.font = '9px sans-serif'; c.fillStyle = '#c0b5b2';
   const prompt = distance(point(p), s.exit) < 36 ? 'USE / INTERACT · STAIRS TO GRAVEYARD' :
     distance(point(p), ch) < 38 ? 'USE / INTERACT · ' + (ch.items.some(Boolean) ? 'OPEN LANTERN CHEST' : 'EMPTY CHEST') :
     distance(point(p), s.coffin) < 42 && !s.coffin.awakened ? 'USE / INTERACT · OPEN COFFIN' :
     'Follow the catacombs · Candles and lanterns light the dark';
-  c.fillText(prompt, 160, 231);
+  c.fillText(prompt, w/2, h-9);
   const boss = s.enemies.find(e => e.kind === CRYPT_BOSS_KIND);
   if (boss && boss.hp > 0 && !['dormant'].includes(boss.state) && knownPoint(boss)) {
-    rect(c, 80, 18, 160, 4, '#352d3a'); rect(c, 80, 18, Math.round(160 * boss.hp / boss.maxHp), 4, '#bc785e');
+    rect(c, w/2-80, 18, 160, 4, '#352d3a'); rect(c, w/2-80, 18, Math.round(160 * boss.hp / boss.maxHp), 4, '#bc785e');
   }
   // Scaled minimap fits the longer crypt inside the existing 320px panel.
-  for (const index of s.explored) if (s.tiles[index]) rect(c, 264 + Math.floor(index % s.width * .7), 29 + Math.floor(Math.floor(index / s.width) * .7), 1, 1, '#797482');
-  rect(c, 264 + Math.floor(p.roomX / TILE * .7), 29 + Math.floor(p.roomY / TILE * .7), 2, 2, p.color || '#87b8f2');
+  for (const index of s.explored) if (s.tiles[index]) rect(c, w-56 + Math.floor(index % s.width * .7), top+3 + Math.floor(Math.floor(index / s.width) * .7), 1, 1, '#797482');
+  rect(c, w-56 + Math.floor(p.roomX / TILE * .7), top+3 + Math.floor(p.roomY / TILE * .7), 2, 2, p.color || '#87b8f2');
   c.restore(); return true;
 }

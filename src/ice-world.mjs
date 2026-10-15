@@ -56,7 +56,7 @@ export function interactIce(g,p){
 }
 export function tickSnow(g,dt){if(g.generatedEnvironment!=='ice'){g.snowDepth=0;return;}if(g.weather?.type==='blizzard')g.snowDepth=Math.min(1,(g.snowDepth||0)+dt/22);else g.snowDepth=Math.max(0,(g.snowDepth||0)-dt/150);}
 export function drawSnowGround(c,g){if(!g.snowDepth)return;c.save();const depth=g.snowDepth;c.fillStyle='#e7f4f7';c.globalAlpha=depth*.18;c.fillRect(0,0,1600,1600);c.globalAlpha=depth*.5;c.strokeStyle='#ffffff';c.lineWidth=1;for(let y=0;y<25;y++)for(let x=0;x<25;x++){const h=hash(x,y);if(h>.58){const ox=hash(x+8,y)-.5,oy=hash(x,y+8)-.5;c.beginPath();c.moveTo(x*64+8+ox*8,y*64+30+oy*5);c.quadraticCurveTo(x*64+28+ox*8,y*64+20-h*6+oy*5,x*64+46+ox*8,y*64+28+oy*5);c.stroke();}}c.restore();}
-export function clipSnow(c,g,x,base,width){const d=snowAt(g,x,base)*7;if(d<.1)return;c.beginPath();c.rect(x-width/2,base-300,width,300-d);c.clip();}
+export function clipSnow(c,g,x,base,width,reach=300){const d=snowAt(g,x,base)*7;if(d<.1)return;c.beginPath();c.rect(x-width/2,base-reach,width,reach-d);c.clip();}
 export function snowRim(c,g,x,base,width){const d=snowAt(g,x,base)*7;if(d<.1)return;c.fillStyle='#e3f0f3';c.beginPath();c.ellipse(x,base-d+1,width/2,Math.max(1,d*.3),0,0,Math.PI*2);c.fill();}
 export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return false;
  const b=iceBase(p),scale=p.size/64;if(!p.falling&&!p.used&&['ice_spire','frost_shrub','frozen_log'].includes(p.kind)&&drawBiomeSprite(c,p.kind,b.x,b.y,p.size,p.kind==='ice_spire'?p.size*1.3:p.size))return true;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}

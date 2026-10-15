@@ -1,4 +1,4 @@
-import {ITEMS,sellValue} from './items.mjs';
+import {ITEMS,sellValue,MARLOW_EQUIPMENT} from './items.mjs';
 import {protectedItem} from './field-systems.mjs';
 import {drawTorchFlame} from './torch-flame.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
@@ -31,14 +31,24 @@ export function tickMerchant(g,dt){
  const h=m.horse;if(h){const gap=Math.hypot(h.x-m.x,h.y-m.y);if(gap>44)walk(h,m.x-(m.faceX||1)*35,m.y-(m.faceY||0)*35,25,14);else h.moving=false;}
 }
 export function openMerchant(g,p){const m=g.merchant;if(!m||p.room||Math.hypot(p.x-m.x,p.y-m.y)>65)return false;p.ui={shop:'merchant',panel:'stock',index:0,page:0,notice:'“Mind the horse. She counts your change.”'};return true;}
+export function merchantRows(g,p){
+ const mode=p.ui?.panel,owner=p.profileId||p.id;
+ return (mode==='pack'?p.inventory:g.merchant?.stock||[]).flatMap((entry,index)=>{
+  const item=mode==='pack'?entry:entry?.item;
+  if(!item||mode!=='pack'&&(mode==='buyback'?entry.seller!==owner:entry.seller!=null))return [];
+  return [{index,item,price:mode==='pack'?sellValue(item.type)*item.qty:entry.price}];
+ });
+}
 export function merchantAction(g,p,action){
  const u=p.ui;if(u?.shop!=='merchant')return false;const m=g.merchant;
  if(!m||action==='close'||p.room||Math.hypot(p.x-m.x,p.y-m.y)>100){p.ui=null;return true;}
- const list=u.panel==='pack'?p.inventory:m.stock;
- if(action.startsWith('panel:')||action==='tab'||action==='panel'||action==='panelNext'||action==='panelPrev'){u.panel=action.startsWith('panel:')?action.slice(6):u.panel==='pack'?'stock':'pack';u.index=0;u.page=0;}
- else if(action.startsWith('select:')){const n=Number(action.slice(7));if(Number.isInteger(n)&&n>=0&&n<Math.max(1,list.length))u.index=n;}
- else if(action==='pageNext'||action==='pagePrev'){const pages=Math.max(1,Math.ceil(list.length/8));u.page=((u.page||0)+(action==='pageNext'?1:-1)+pages)%pages;u.index=u.page*8;}
- else if(['next','prev','up','down'].includes(action)){const step=action==='next'?1:action==='prev'?-1:action==='down'?2:-2;u.index=Math.max(0,Math.min(Math.max(0,list.length-1),u.index+step));u.page=Math.floor(u.index/8);}
+ const rows=merchantRows(g,p),at=Math.max(0,rows.findIndex(row=>row.index===u.index));
+ if(action.startsWith('panel:')||action==='tab'||action==='panel'||action==='panelNext'||action==='panelPrev'){
+  const tabs=['stock','pack','buyback'];u.panel=action.startsWith('panel:')?action.slice(6):tabs[(tabs.indexOf(u.panel)+(action==='panelPrev'?2:1))%3];
+  if(!tabs.includes(u.panel))u.panel='stock';u.index=merchantRows(g,p)[0]?.index??0;u.page=0;u.notice='';
+ }
+ else if(action.startsWith('select:')){const n=Number(action.slice(7));if(rows.some(row=>row.index===n))u.index=n;}
+ else if(['next','prev','up','down','pageNext','pagePrev'].includes(action)){const step=['next','down','pageNext'].includes(action)?1:-1;u.index=rows[Math.max(0,Math.min(rows.length-1,at+step))]?.index??0;}
  else if(action==='use'){
   if(u.panel==='pack'){
    const item=p.inventory[u.index];if(!item)return true;
@@ -51,21 +61,15 @@ export function merchantAction(g,p,action){
    const slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=24){u.notice='Make one free backpack slot.';return true;}
    if(slot<0)p.inventory.push(structuredClone(entry.item));else p.inventory[slot]=structuredClone(entry.item);
    p.coins-=entry.price;if(entry.seller)m.stock.splice(u.index,1);u.index=Math.min(u.index,Math.max(0,m.stock.length-1));u.page=Math.floor(u.index/8);u.notice='“A fine trade. Try not to get eaten.”';
-  }m.revision++;g.uiRevision=(g.uiRevision||0)+1;g.persist?.();
+  }const remaining=merchantRows(g,p);if(!remaining.some(row=>row.index===u.index))u.index=remaining[Math.min(at,remaining.length-1)]?.index??0;
+  u.tradeSerial=(u.tradeSerial||0)+1;m.revision++;g.uiRevision=(g.uiRevision||0)+1;g.persist?.();
  }return true;
 }
-export function merchantPanel(panel,g,p,button){
- const m=g.merchant;if(!m)return;const u=p.ui,el=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text||'';if(cls)e.className=cls;return e;};
- const box=el('section','', 'merchant-workshop');box.append(el('h2','Marlow Moss'),el('p','“Six roads, no refunds. Except yours—I kept the receipt.”'));
- const tabs=el('div');for(const [key,title]of [['stock','Buy / buy back'],['pack','Sell from backpack']]){const b=button(title,'merchant-'+key,()=>{merchantAction(g,p,'panel:'+key);});b.classList.toggle('selected',u.panel===key);tabs.append(b);}box.append(tabs);
- const list=u.panel==='pack'?p.inventory:m.stock,start=(u.page||0)*8,grid=el('div','','merchant-grid');
- for(let n=start;n<start+8;n++){const entry=list[n],item=u.panel==='pack'?entry:entry?.item,price=item?(u.panel==='pack'?sellValue(item.type)*item.qty:entry.price):0;const b=button(item?`${ITEMS[item.type]?.name||item.type} ×${item.qty} · ${price} gold${entry?.seller?' · Buy back':''}`:'—','merchant-item-'+n,()=>{u.index=n;merchantAction(g,p,'use');});b.disabled=!item;b.classList.toggle('selected',u.index===n);grid.append(b);}box.append(grid);
- const pages=el('div','','merchant-pages');pages.append(button('‹ Previous','merchant-prev',()=>merchantAction(g,p,'pagePrev')),el('span',`${(u.page||0)+1} / ${Math.max(1,Math.ceil(list.length/8))}`),button('Next ›','merchant-next',()=>merchantAction(g,p,'pageNext')));box.append(pages,el('p',u.notice||'','merchant-notice'),el('small','D-pad: select · LB/RB: buy / sell · A: trade · B: close'));panel.append(box);
-}
+export function marlowVisual(m){return {...m,sprite:'player',kind:'player',hp:100,equipment:MARLOW_EQUIPMENT,
+ appearance:{...DEFAULT_APPEARANCE,skin:'#c29b73',shirt:'#657c51',pants:'#5a5142',shoes:'#554535',hair:'sidepart',hairColor:'#4e3929',face:'stubble'}};}
 export function drawMerchant(c,g,animator){const m=g.merchant;if(!m)return;
- animator.draw(c,{...m,hp:100,equipment:{},appearance:{...DEFAULT_APPEARANCE,skin:'#c29b73',shirt:'#647c54',pants:'#51493b',hairColor:'#5b4632'}},g.time,43);
- c.save();c.translate(m.x,m.y);c.fillStyle='#c5ac66';c.fillRect(-13,-37,26,3);c.fillStyle='#e1c47a';c.fillRect(-8,-44,16,7);c.fillStyle='#6e643e';c.fillRect(-8,-38,16,2);
-  c.restore();drawCampfire(c,m.campX??m.x,(m.campY??m.y)+10,g.time,m.x);drawCampfireLabel(c,m.campX??m.x,(m.campY??m.y)+10);c.save();c.translate((m.campX??m.x)-32,(m.campY??m.y)+5);c.fillStyle='#644730';c.fillRect(-9,5,20,4);c.fillRect(-3,0,5,12);drawTorchFlame(c,0,0,g.time,m.x);c.restore();
+ animator.draw(c,marlowVisual(m),g.time,43);
+ c.save();c.translate((m.campX??m.x)-32,(m.campY??m.y)+5);c.fillStyle='#644730';c.fillRect(-9,5,20,4);c.fillRect(-3,0,5,12);drawTorchFlame(c,0,0,g.time,m.x);c.restore();
  if(m.horse)drawPackHorse(c,m.horse,g.time);
  c.save();c.textAlign='center';c.font='9px sans-serif';c.fillStyle='#f1e1b9';c.fillText('Marlow Moss · Trade E / Y',m.x,m.y+33);c.restore();
 }

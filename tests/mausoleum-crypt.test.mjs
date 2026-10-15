@@ -72,7 +72,7 @@ function canvas() {
     translate(x, y) {this.x += x; this.y += y;},
     fillRect(x, y, w, h) {calls.push({kind: 'rect', x: x + this.x, y: y + this.y, w, h, color: this.fillStyle, alpha: this.globalAlpha});},
     fillText(text, x, y) {calls.push({kind: 'text', text, x, y});},
-    strokeText() {}, beginPath() {}, rect() {}, clip() {},
+    strokeText() {}, beginPath() {}, rect() {}, clip() {}, scale() {},
   };
   return c;
 }
@@ -133,6 +133,28 @@ test('Actual mausoleum event spawns a room portal without adding a surface comba
   const index = EVENTS.findIndex(e => e.type === 'mausoleum'); assert.ok(index >= 0);
   g.spawnEvent(index); assert.ok(g.portals.some(d => d.mausoleum && d.oldWell));
   assert.equal(g.event.type, 'mausoleum'); assert.equal(g.enemies.length, count);
+});
+
+test('calling WILDBOUND closes the mausoleum entrance in the active and visited worlds', () => {
+  const {g, p, d} = setup();
+  const surface = g.scenery.find(s => s.cryptPortalId === d.id);
+  const metadata = g.graveyard.mausoleums.find(s => s.cryptPortalId === d.id);
+  const visited = structuredClone({portals: [d], scenery: [surface], graveyard: {mausoleums: [metadata]}});
+  g.houseWorlds = {worlds: {graveyard: visited}};
+  const guest = g.addPlayer('pad:1', 'Crypt guest'); guest.room = d.id;
+  p.progress = 48; p.x = 800; p.y = 800;
+  assert.equal(g.beginSeal(p), true); g.completeVictory();
+  assert.equal(g.phase, 'won'); assert.equal(guest.room, null);
+  for (const world of [g, visited]) {
+    assert.ok(!world.portals.some(portal => portal.mausoleum));
+    for (const record of [...world.scenery.filter(s => s.kind === 'mausoleum'), ...world.graveyard.mausoleums]) {
+      assert.equal(record.cryptPortalId, undefined);
+      if (record.id === d.mausoleumId) assert.equal(record.doorOpen, false);
+    }
+  }
+  assert.equal(surface.doorOpen, false); assert.equal(metadata.doorOpen, false);
+  assert.ok(!saveSession(g).state.portals.some(portal => portal.mausoleum));
+  assert.ok(!restore(g).portals.some(portal => portal.mausoleum));
 });
 
 test('Main update enters through existing Interact, safely explores, transfers lantern and returns without changing expedition', () => {

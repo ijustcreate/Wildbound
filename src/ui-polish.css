@@ -64,12 +64,12 @@
 .hero-panel.vending-refresh .vending-slots button:is(.selected,:focus-visible),
 .hero-panel.scrap-shop .robot-item-slot:is(.selected,:focus-visible) {outline:2px solid #f3ce75;outline-offset:-2px;border-color:#f3ce75!important;box-shadow:inset 0 0 0 3px #162d20;}
 /* Map setup uses the room's available height, with all choices visible. */
-/* Slot tooltips hold loot details; no fixed-height duplicate detail section. */
+/* Keep transaction feedback from resizing the character preview and item wells. */
 .hero-panel.inventory-redesign.inventory-workbench,
-.hero-panel.inventory-redesign.inventory-workbench.inventory-tight {grid-template-rows:auto auto minmax(0,1fr) auto 44px auto!important;}
+.hero-panel.inventory-redesign.inventory-workbench.inventory-tight {grid-template-rows:auto auto minmax(0,1fr) 17px 44px auto!important;}
 .hero-panel.inventory-redesign.inventory-workbench>.inventory-selection {display:block;grid-template-rows:none;min-height:0;padding:2px 0;background:none;border:0;}
-.hero-panel.inventory-redesign.inventory-workbench>.inventory-selection.status-empty {display:none;}
-.hero-panel.inventory-redesign.inventory-workbench .inventory-selection>.storage-notice {white-space:normal;line-height:13px!important;}
+.hero-panel.inventory-redesign.inventory-workbench>.inventory-selection.status-empty {visibility:hidden;}
+.hero-panel.inventory-redesign.inventory-workbench .inventory-selection>.storage-notice {white-space:normal;line-height:13px!important;max-height:13px!important;overflow:auto;}
 .hero-panel.scrap-shop {grid-template-rows:auto auto 82px 92px minmax(0,1fr) 40px auto auto!important;}
 .hero-panel.scrap-shop.inventory-compact {grid-template-rows:auto auto 58px 70px minmax(0,1fr) 36px auto auto!important;}
 .hero-panel.scrap-shop.inventory-tight {grid-template-rows:auto auto 40px 56px minmax(0,1fr) 30px auto auto!important;}
@@ -85,6 +85,8 @@
 .lobby-player-panel.map-menu>small {font-size:9px;}
 .lobby-player-panel.map-menu>.lobby-error:empty {display:none;}
 .map-choices {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;min-width:0;}
+.lobby-player-panel.map-menu>.wildbound-mode-choice{margin-bottom:7px;}
+.lobby-player-panel.map-menu>.map-menu-close{margin-top:8px;}
 .lobby-player-panel.map-menu .map-choice {min-width:0;min-height:48px;padding:5px 7px;gap:7px;font-family:system-ui;}
 .lobby-player-panel.map-menu .map-choice-icon {width:30px!important;height:30px!important;flex:0 0 30px;image-rendering:pixelated;}
 .lobby-player-panel.map-menu .map-choice strong {font:650 12px/1.2 system-ui;}
@@ -97,6 +99,8 @@
 .map-mode-toggle[aria-pressed=true] i {background:#367b51;}
 .map-mode-toggle[aria-pressed=true] i::after {left:15px;}
 .map-mode-toggle small {font:10px/1.2 system-ui;letter-spacing:0;color:#435a46;}
+.lobby-player-panel.map-menu .wildbound-mode-choice {width:100%;text-align:left;}
+.lobby-player-panel.map-menu .wildbound-mode-choice small {display:block;}
 @container (max-height:420px) {
  .lobby-player-panel.map-menu {padding:8px;gap:4px;}
  .lobby-player-panel.map-menu::before {display:none;}
@@ -107,3 +111,78 @@
  .lobby-player-panel.map-menu .map-mode-toggle {min-height:38px;}
  .lobby-player-panel.map-menu>button:not(.map-mode-toggle) {min-height:30px;padding:3px;}
 }
+
+/* The current controller choice must stand apart from idle wells and buttons. */
+:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.lobby-dialog,.lobby-player-panel,.character-gallery)
+ button:is(.selected,.menu-focus,.lobby-focus,.creation-focus,.picker-focus,:focus-visible):not(:disabled):not(.merchant-row):not(.merchant-confirm) {
+  z-index:2;
+  outline:3px solid #ffe276!important;outline-offset:-3px!important;
+  box-shadow:inset 0 0 0 2px #132a20,0 0 0 2px #fff1bd,0 0 13px 2px #f4c75f99!important;
+}
+.hero-panel.inventory-redesign.inventory-workbench :is(.paper-doll,.item-grid) button:is(.selected,:focus-visible),
+.hero-panel.loot-popup .storage-slots button:is(.selected,:focus-visible) {
+  background:linear-gradient(145deg,#a6d68b,#70aa61)!important;
+  border-color:#ffe276!important;
+  color:#14281c!important;
+}
+.hero-panel.loot-popup .storage-container-heading[aria-pressed="true"] {
+  background:#244b34!important;color:#fff0bd!important;
+  border:2px solid #f4c75f!important;border-radius:3px;
+  padding:4px 7px;
+  box-shadow:0 0 0 2px #4b643e;
+}
+.hero-panel.loot-popup .storage-container-heading[aria-pressed="true"] .storage-capacity {color:#fff0bd;}
+/* Hide native scroll chrome throughout the UI. Keep wheel/touch/focus scrolling
+   so long menus remain usable without cutting off options. */
+html,body,body * {scrollbar-width:none!important;scrollbar-gutter:auto!important;}
+*::-webkit-scrollbar {display:none!important;width:0!important;height:0!important;}
+
+
+#lobby.playable-lobby.lobby-exploring .party-heading,#lobby.playable-lobby.lobby-exploring .party-help{visibility:hidden;}
+
+/* Chest menu: independently sized containers and a footer outside the grids.
+   Dedicated rules prevent inherited equipment-sheet/button sizes from leaking. */
+.hero-panel.inventory-redesign.loot-popup.chest-redesign{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:42px minmax(0,1fr) auto!important;gap:10px!important;padding:12px!important;overflow:hidden!important;}
+.hero-panel.chest-redesign>header{grid-row:1;display:flex!important;flex-direction:column!important;justify-content:center;align-items:flex-start!important;gap:2px;min-width:0;min-height:0;height:42px!important;max-height:42px!important;margin:0!important;padding:0 36px 7px 0!important;border-bottom:1px solid #ac8b56;overflow:hidden;background:transparent!important;}
+.hero-panel.chest-redesign .chest-menu-title{font:700 21px/23px Georgia,serif;color:#283e31;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.hero-panel.chest-redesign .chest-menu-owner{font:600 10px/13px system-ui;color:#6a5939;letter-spacing:1px;}
+.hero-panel.chest-redesign>.inventory-progress-row{display:none!important;}
+.hero-panel.chest-redesign>[data-action=close]{position:absolute!important;top:12px!important;right:12px!important;left:auto!important;width:28px!important;height:28px!important;min-height:28px!important;padding:0!important;z-index:3;}
+.hero-panel.chest-redesign>.storage-containers{grid-row:2;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(2,minmax(0,1fr))!important;gap:12px!important;min-height:0;min-width:0;height:100%;overflow:hidden;}
+.hero-panel.chest-redesign:not(.chest-transfer)>.storage-containers{grid-template-rows:minmax(0,1fr)!important;}
+.hero-panel.chest-redesign.chest-wide>.storage-containers{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:minmax(0,1fr)!important;}
+.hero-panel.chest-redesign .storage-container{display:flex!important;flex-direction:column!important;gap:5px!important;padding:6px!important;border:1px solid #9e8556!important;border-radius:3px;background:#c5b17d44!important;overflow:hidden!important;min-width:0;min-height:0;}
+.hero-panel.chest-redesign .storage-container.active{background:#ead8a955!important;border-color:#596d43!important;}
+.hero-panel.chest-redesign button.storage-container-heading{position:static!important;flex:0 0 28px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;height:28px!important;min-height:28px!important;max-height:28px!important;padding:3px 5px!important;margin:0!important;border:0!important;border-radius:2px!important;background:#cdbb8e!important;color:#3f4c35!important;font:700 14px/20px system-ui!important;overflow:hidden!important;}
+.hero-panel.chest-redesign .storage-container.active button.storage-container-heading{background:#395942!important;color:#fff0ca!important;box-shadow:none!important;outline:0!important;}
+.hero-panel.chest-redesign .storage-capacity{font:11px/16px system-ui!important;color:inherit!important;letter-spacing:0!important;flex:none;}
+.hero-panel.chest-redesign .storage-slots{position:static!important;flex:1 1 0!important;display:grid!important;grid-template-columns:repeat(var(--chest-columns,6),minmax(0,1fr))!important;grid-template-rows:repeat(var(--chest-rows,4),minmax(0,1fr))!important;gap:4px!important;min-height:0!important;min-width:0;max-height:none!important;height:auto!important;width:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;}
+.hero-panel.chest-redesign .storage-slots button{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;margin:0!important;padding:2px!important;border:1px solid #6f7d58!important;border-bottom:3px solid var(--rarity,#6f7d58)!important;border-radius:2px!important;background:#203e32!important;box-shadow:none!important;overflow:hidden!important;}
+.hero-panel.chest-redesign .storage-slots button.empty-slot{background:#9f9e7540!important;border-color:#af9b6e!important;}
+.hero-panel.chest-redesign .storage-slots button.selected{background:#59744b!important;border-color:#ffd777!important;box-shadow:inset 0 0 0 2px #f2cf7a!important;outline:0!important;}
+.hero-panel.chest-redesign .storage-slots canvas.item-icon{position:static!important;display:block!important;width:auto!important;height:100%!important;max-width:75%!important;max-height:90%!important;min-width:0!important;min-height:0!important;aspect-ratio:1;object-fit:contain;filter:none!important;}
+.hero-panel.chest-redesign .inventory-quantity{right:2px!important;bottom:2px!important;font:700 11px/12px system-ui!important;padding:1px 3px!important;}
+.hero-panel.chest-redesign .storage-pages{flex:0 0 23px!important;height:23px!important;min-height:23px!important;margin:0!important;}
+.hero-panel.chest-redesign .storage-pages button{height:22px!important;min-height:22px!important;max-height:22px!important;}
+.hero-panel.chest-redesign>.chest-menu-footer{grid-row:3;display:flex;flex-direction:column;gap:5px;min-height:0;min-width:0;margin:0;padding-top:7px;border-top:1px solid #ac8b56;}
+.hero-panel.chest-redesign .storage-popup-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(80px,.55fr)!important;gap:8px!important;margin:0!important;}
+.hero-panel.chest-redesign .storage-popup-actions button{width:100%!important;height:34px!important;min-height:34px!important;max-height:34px!important;font:600 12px/16px system-ui!important;padding:4px!important;white-space:normal!important;}
+.hero-panel.chest-redesign .loot-notice{min-height:0!important;height:auto!important;max-height:30px!important;margin:0!important;padding:0!important;font:11px/14px system-ui!important;color:#4b3c26;overflow:hidden!important;}
+.hero-panel.chest-redesign .storage-selected-detail{display:flex;flex-direction:column;gap:2px;min-height:0;margin:0;padding:4px 6px;border-left:3px solid #6b8152;background:#d1c294;color:#302f24;font:11px/1.25 system-ui;}
+.hero-panel.chest-redesign .storage-selected-detail strong{font:700 12px/1.2 Georgia,serif;color:#263b30;}
+.hero-panel.chest-redesign .storage-selected-detail span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
+.hero-panel.chest-redesign .storage-help{display:block!important;font:10px/13px system-ui!important;margin:0!important;padding:0!important;letter-spacing:0!important;}
+.hero-panel.chest-redesign.chest-tabs>.storage-containers{display:flex!important;flex-direction:column!important;gap:5px!important;}
+.hero-panel.chest-redesign.chest-tabs .storage-container.active{flex:1 1 0!important;}
+.hero-panel.chest-redesign.chest-tabs .storage-container:not(.active){flex:none!important;}
+.hero-panel.chest-redesign.chest-tabs .storage-container:not(.active) :is(.storage-slots,.storage-pages){display:none!important;}
+.hero-panel.chest-redesign.loot-tight{padding:8px!important;gap:5px!important;grid-template-rows:34px minmax(0,1fr) auto!important;}
+.hero-panel.chest-redesign.loot-tight>header{height:34px!important;max-height:34px!important;}
+.hero-panel.chest-redesign.loot-tight .chest-menu-title{font-size:17px;line-height:18px;}
+.hero-panel.chest-redesign.loot-tight .storage-popup-actions button{height:28px!important;min-height:28px!important;max-height:28px!important;font-size:10px!important;}
+.hero-panel.chest-redesign.loot-tight .starter-stock-help{display:none!important;}
+
+.hero-panel.chest-redesign>header::before{display:none!important;content:none!important;}
+.hero-panel.chest-redesign>header{box-sizing:border-box!important;padding-bottom:3px!important;}
+.hero-panel.chest-redesign>header>:is(strong,small){flex-shrink:0!important;margin:0!important;padding:0!important;}
+.hero-panel.chest-redesign.loot-tight .chest-menu-owner{font-size:9px;line-height:10px;}

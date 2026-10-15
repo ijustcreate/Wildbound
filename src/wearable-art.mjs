@@ -2,7 +2,9 @@ import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
 import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
 import {drawSuccubusHorns} from './succubus-attachments.mjs';
+import {drawGhostHood} from './ghost-art.mjs';
 import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
+import {drawAlanTurtleHelmet} from './alan-gear-art.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
   if(detailedProcedural(c,p.chest,pen=>wearableDetails(pen,p,gear,look,d,time,cosmetics),materialIndex(gear.chest||gear.pants)))return;
@@ -53,6 +55,14 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
       rect(chest.x - 3, y, 2, 1, material.light);
       if (!side) {rect(chest.x + 1, y, 2, 2, material.dark);rect(chest.x + 1, y, 2, 1, material.light);}
     }
+    if(gear.chest==='alan_tunic'){
+      const hem=p.pelvis;
+      for(const [offset,fall] of [[-4,3],[-2,5],[1,4],[3,6]]){
+        rect(hem.x+offset,hem.y+1,2,fall,'#4c3824');
+        rect(hem.x+offset+1,hem.y+1,1,fall-1,offset<0?'#b79357':'#8e6d42');
+      }
+      if(!back){rect(chest.x-3,chest.y+3,1,7,'#6a4a2b');rect(chest.x+2,chest.y+2,1,8,'#725132');}
+    }
   }
   if (gear.pants)
     for (const side of ["L", "R"]) {
@@ -63,7 +73,18 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
       if(style==='plated'||style==='scales') {rect(k.x-1,k.y+1,3,1,material.light);rect(k.x,k.y,1,1,material.shine);}
       if(style==='striped')rect(k.x-2,k.y-2,1,5,material.light);
       if(style==='safari') {rect(k.x-2,k.y-3,4,2,material.dark);rect(k.x-2,k.y-3,4,1,material.light);}
+      if(style==='wilderness'){rect(k.x-2,k.y-3,4,1,'#6e512d');rect(k.x-1,k.y-1,3,1,'#bb9357');}
     }
+  if(gear.shoulders==='alan_leaf_mantle'&&!back){
+    for(const [side,base]of [[-1,-6],[1,3]])for(const [n,len]of [[0,7],[1,10],[2,8]]){
+      const x=chest.x+base+n*2;
+      for(let y=0;y<len;y++){
+        const taper=Math.floor(y/4),left=side<0?x+taper:x;
+        rect(left,chest.y+y,Math.max(1,3-taper),1,'#24482d');
+        rect(left+1,chest.y+y,1,1,y%3===0?'#95af65':n===1?'#4a7c3f':'#356c38');
+      }
+    }
+  }
   if (look?.face === "freckles" && !back) {
     rect(head.x - 3, head.y, 1, 1, "#985e42");
     rect(head.x + 2, head.y, 1, 1, "#985e42");
@@ -78,6 +99,7 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
 export function directionalHelmet(c, id, h, d, cosmetics = {}) {
   const def=ITEMS[id];
   if(!def) return false;
+  if(def.spectralHood)return drawGhostHood(c,h,d);
   if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics),materialIndex(id,'metal')))return true;
   const p=gearPalette(id,cosmetics.dye),r=gearPixels(c,h);
   const back=d>=3&&d<=5,side=d===2||d===6;
@@ -97,6 +119,7 @@ export function directionalHelmet(c, id, h, d, cosmetics = {}) {
     }
     r(-5,4,11,1,p.ink);r(-4,3,9,1,p.base);r(front,-8,1,2,'#baa780');return true;
   }
+  if(style==='turtle')return drawAlanTurtleHelmet(c,h,d);
   if(style==='halo') {
     const y=-12,w=side?5:7;
     r(-w+2,y,w*2-3,1,'#fff9d8');r(-w,y+1,2,3,'#ffe8a0');r(w-1,y+1,2,3,'#d5ae59');
@@ -120,7 +143,7 @@ export function directionalHelmet(c, id, h, d, cosmetics = {}) {
     const w=style==='cap'?6:8;
     r(-w,-2,w*2+1,2,p.ink);r(-w+1,-2,w*2-1,1,p.light);
     r(-4,-4,9,1,p.leather);
-    if(style==='safari') {r(front,-8,1,4,p.shine);r(front-1,-4,3,1,p.trim);}
+    if(style==='safari') {r(-2,-10,5,2,p.ink);r(-1,-11,3,2,p.base);r(0,-12,1,2,p.light);r(front,-8,1,4,p.shine);r(front-1,-4,3,1,p.trim);}
     return true;
   }
   if(back) {

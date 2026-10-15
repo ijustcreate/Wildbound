@@ -19,6 +19,7 @@ export function befriendCreature(actor,owner){
 // Allies need the same transient-state upkeep as hostiles. Skipping it used to
 // leave friendship-wand cats permanently flashing, biting or mid-pounce.
 export function tickFriendlyCreature(g,e,dt,cfg=creatures[e.kind]){
+ if(e.controlledBy)return;
  const finish=companionMovement(e,dt);
  try{return tickFriendly(g,e,dt,cfg);}finally{finish();}
 }

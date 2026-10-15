@@ -11,7 +11,7 @@ function setup(kind){
   const g=kind==='lobby'?new LobbyPractice():new Game();
   g.phase='play';g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');
   let surface;
-  if(kind==='lobby')surface=g.house.furniture[2];
+  if(kind==='lobby')surface=g.house.furniture.find(f=>f.id==='board');
   else if(kind==='furniture'){
     surface={kind:'table',x:300,y:300,w:50,h:30,surfaceHeight:16};
     g.house={walls:[],doors:[],furniture:[surface],pools:[]};

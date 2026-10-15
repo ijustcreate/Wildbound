@@ -74,7 +74,7 @@ test('Bow ready pose keeps hands forward, feet planted, and correct saved-order 
   if(d===0)assert.ok(order.indexOf('Bow')>order.indexOf('Body and pelvis'));
  }
 });
-test('shields and wands depth-sort beside their holding arm and leg at every viewing angle',()=>{
+test('shields and wands stay visible at their holding forearm at every viewing angle',()=>{
  const c=new Proxy({}, {get:(target,key)=>target[key]??(()=>{}),set:(target,key,value)=>{target[key]=value;return true;}});
  const model=defaultPlayerMotion();
  for(const action of ['idle','walk','run','cast','block'])for(let d=0;d<8;d++){
@@ -86,8 +86,8 @@ test('shields and wands depth-sort beside their holding arm and leg at every vie
   for(const side of ['L','R']){
    const arm=order.indexOf(`Arm ${side}`),held=order.indexOf(`Held item ${side}`);
    assert.ok(arm>=0&&held>=0,`${action} ${d} ${side} drawn`);
-   const leg=order.indexOf(`Leg ${side}`),behind=pose['hand'+side].depth<pose['foot'+side].depth;
-   assert.ok(behind?held<arm&&held<leg:held>arm&&held>leg,`${action} ${d} ${side} item follows the projected limb depth`);
+   const forearm=order.indexOf(`Forearm ${side}`);
+   assert.ok(held>(forearm>=0?forearm:arm),`${action} ${d} ${side} grip remains visible above its own forearm`);
   }
  }
 });

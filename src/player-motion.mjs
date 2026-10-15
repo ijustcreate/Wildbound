@@ -1,16 +1,21 @@
+import {addReaperClips} from './reaper-clips.mjs';
+import {drawLobbyController} from './lobby-controller-art.mjs';
+import {reaperHood,reaperRibs,reaperGlove,reaperSleeve,reaperSkirt,drawScythe} from './reaper-art.mjs';
 import {drawTorchFlame} from './torch-flame.mjs';
 import {detailedLimb,humanoidArtAvailable,materialIndex,withDetailedHeadScale,detailedChain,detailedArm,detailedNeck,detailedPelvis} from './humanoid-hd.mjs';
 import {drawWhip} from './whip-visual.mjs';
 import {humanoidClips} from './humanoid-clips.mjs';
 import { applyIK } from './ik.mjs';
-import { fitHeroGrip,upgradeHeroPosture } from './hero-generation.mjs';
+import { fitHeroGrip,upgradeHeroPosture,buildHeroGeneration } from './hero-generation.mjs';
 import {fitCombatLoadout,combatWeaponVector,combatPhase,castWandVector,SWING_ACTIONS} from './combat-animation.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {SALVAGE_SECONDS} from './salvage.mjs';
 import {defaultAnimationLayers,validAnimationLayers,blendJointMask} from './animation-layers.mjs';
 import { capeRows } from './cape-motion.mjs';
+import {drawGhostRobe,drawGhostMist,drawGhostClaws,drawGhostEyes,SPECTRAL_CLOTH} from './ghost-art.mjs';
 import {widenBansheeCape} from './banshee-gear-art.mjs';
 import {keeperGearDetails,keeperHeadgear,keeperStaff,keeperBlade,keeperBand} from './keeper-gear-art.mjs';
+import {pumpkinHeadgear} from './pumpkin-art.mjs';
 import {SUCCUBUS_JOINTS,attachmentPose,drawHumanoidWing,drawHumanoidTail} from './succubus-attachments.mjs';
 import { wearableDetails, directionalHelmet } from "./wearable-art.mjs";
 import { drawHumanHead, skinPalette } from './human-head.mjs';
@@ -19,7 +24,7 @@ import {drawHeroTorso,withPixelRotation,unrotateFace} from './hero-art.mjs';
 import { gearPalette, fittedGear, fittedShield, withBootPose } from './gear-art.mjs';
 import { paintLayers } from "./render-order.mjs";
 import { jointAngle, validAngles } from "./joint-angles.mjs";
-import { ITEMS, count, itemKind } from "./items.mjs";
+import { ITEMS, count, itemKind, stat } from "./items.mjs";
 import { drawItem, paintItem } from "./item-art.mjs";
 import { shade, drawHair, DEFAULT_APPEARANCE } from "./appearance.mjs";
 import { quiverType } from './quiver.mjs';
@@ -238,6 +243,7 @@ export function defaultPlayerMotion() {
     },
   };
   Object.assign(model.clips,humanoidClips(model.clips));
+  addReaperClips(model);
   model.animationLayers=defaultAnimationLayers(model);
   model.clips.sleep = {
     fps: 4, length: 2, loop: true,
@@ -298,6 +304,7 @@ export function upgradePlayerMotion(input) {
   ]};
   const canonical=value=>JSON.stringify(value,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
   if(canonical(m.clips.swim)===canonical(legacySwim))m.clips.swim=clone(defaults.clips.swim);
+  if(!m.clips.wing_hover&&m.artGeneration===3)m.clips.wing_hover=clone(buildHeroGeneration(defaults).clips.wing_hover);
   for(const [name,clip] of Object.entries(defaults.clips))m.clips[name] ??= clone(clip);
   m.visibility ??= humanVisibility();
   m.wearables ??= {};
@@ -505,7 +512,7 @@ export function playerAction(actor) {
   if(actor.sleeping > 0)return 'sleep';
   if (actor.hit > 0) return "hurt";
   if((actor.salvageHold?.elapsed>0&&!actor.salvageHold.latched)||actor.salvageFinish>0)return 'salvage';
-  if(actor.jumpHeight>0)return actor.wingHover?'jump_air':actor.jumpAge<.1?'jump_takeoff':actor.jumpVelocity>0?'jump_air':'jump_fall';
+  if(actor.jumpHeight>0)return actor.wingHover?'wing_hover':actor.jumpAge<.1?'jump_takeoff':actor.jumpVelocity>0?'jump_air':'jump_fall';
   if(actor.swimming)return actor.moving?'swim':'idle';
   if(actor.landTime>0)return 'land';
   if(actor.getUpTime>0)return 'get_up';
@@ -748,6 +755,12 @@ export function drawPlayer(
     });
   const queue = [];
   const add = (depth, fn, id, bones) => queue.push({ depth, fn, id, bones });
+  if(actor.lobbyController){
+    const grip={x:(p.handL.x+p.handR.x)/2,y:(p.handL.y+p.handR.y)/2+2};
+    const depth=(p.handL.depth+p.handR.depth)/2;
+    add(depth+.2,()=>{drawLobbyController(c,grip.x,grip.y,actor.lobbyController.slot,d===2||d===6?5:12,6);for(const hand of [p.handL,p.handR]){pixel(hand.x-1,hand.y,2,2,pal.head);}},'Arcade controller');
+    queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:depth<p.chest.depth};
+  }
   if(ITEMS[gear.shoulders]?.humanoidWings||model.humanoidTail===true){
     const attached=attachmentPose(positions,actor,time,model),points=Object.fromEntries(Object.entries(attached).map(([n,v])=>[n,projectPoint(v,d)]));
     for(const name of Object.keys(SUCCUBUS_JOINTS))if(name.startsWith('wing')?ITEMS[gear.shoulders]?.humanoidWings:model.humanoidTail===true)p[name]=points[name];
@@ -848,23 +861,24 @@ export function drawPlayer(
       () => {
         wear("cape", p.chest, () => {
           const cloth=gearPalette(gear.cape,cosmetics.dye);
+          const safariLining=gear.cape==='safari_cape'&&!back?(ITEMS[gear.cape]?.lining||'#8d252d'):null;
+          if(gear.cape==='alan_leaf_cape')Object.assign(cloth,{base:'#3e6838',dark:'#264b30',light:'#80a458',ink:'#203b29',trim:'#6f9048'});
+          if(gear.cape==='deaths_shroud')Object.assign(cloth,{base:'#30323b',dark:'#202127',light:'#484a52',ink:'#101114',trim:'#202127'});
+          if(capeStyle==='spectral')Object.assign(cloth,SPECTRAL_CLOTH);
           for (let n = 0; n < rows.length; n++) {
             const row=rows[n];
-            for(const segment of row.segments)limb(
-              c,
-              segment.left,
-              segment.right,
-              2,
-              segment.hem?cloth.trim:n<3?cloth.light:row.fold<-.6?cloth.dark:cloth.base,
-            );
+            for(const segment of row.segments){
+              limb(c,segment.left,segment.right,2,segment.hem?cloth.trim:n<3?cloth.light:row.fold<-.6?cloth.dark:cloth.base);
+              if(safariLining&&n>1){const innerLeft={x:segment.left.x+(segment.right.x-segment.left.x)*.12,y:segment.left.y+(segment.right.y-segment.left.y)*.12},innerRight={x:segment.left.x+(segment.right.x-segment.left.x)*.88,y:segment.left.y+(segment.right.y-segment.left.y)*.88};limb(c,innerLeft,innerRight,1.5,safariLining);}
+            }
           }
           for(let n=1;n<rows.length;n++)for(const edge of ['left','right'])limb(c,rows[n-1][edge],rows[n][edge],1,cloth.ink);
-          if(capeStyle!=='tattered'){
+          if(capeStyle!=='tattered'&&capeStyle!=='wilderness'&&capeStyle!=='spectral'){
             limb(c, a, b, 2, cloth.ink);
             limb(c,{x:a.x,y:a.y-1},{x:b.x,y:b.y-1},1,cloth.trim);
           }
           for(const t of [.25,.7])for(let n=1;n<rows.length;n++){
-            if(capeStyle==='tattered'&&n>15)continue;
+            if((capeStyle==='tattered'||capeStyle==='wilderness'||capeStyle==='spectral')&&n>15)continue;
             const point=row=>({x:row.left.x+(row.right.x-row.left.x)*t,y:row.left.y+(row.right.y-row.left.y)*t});
             limb(c,point(rows[n-1]),point(rows[n]),1,t<.5?cloth.light:cloth.dark);
           }
@@ -880,6 +894,16 @@ export function drawPlayer(
     const shoulder = p["shoulder" + side],
       elbow = p["elbow" + side],
       hand = p["hand" + side];
+    // Existing painted whole arms and authored whole-arm orders retain their
+    // original layer contract. Automatic art can put each segment around the
+    // torso independently, without a swinging wrist reordering the sleeve.
+    const armId='Arm '+side,upperId='Upper arm '+side,order=model.renderOrder?.[d]||[];
+    const splitArm=human&&humanoidArtAvailable(c)&&!c.__legacyHumanoid&&
+      !model.boneSprites?.[armId]?.[d]&&(!order.includes(armId)||order.includes(upperId));
+    const lowerId=splitArm?'Forearm '+side:armId;
+    const paintShoulder=()=>{
+      if(gear.shoulders)wear('shoulders',shoulder,()=>fittedGear(c,gear.shoulders,shoulder,d,side,cosmetics.dye));
+    };
     add(
       (hip.depth + knee.depth + foot.depth) / 3,
       () => {
@@ -887,6 +911,7 @@ export function drawPlayer(
             ? ITEMS[gear.pants]?.artColor || "#819a9b"
             : pal.legs,
           shade = gear.pants ? gearPalette(gear.pants,cosmetics.dye).dark : pal.legShade;
+        if(ITEMS[gear.pants]?.spectralLegs)return;
         wear("pants", hip, () => {
           if(human&&detailedChain(c,[hip,knee,foot],[5.3,4.5,3.8],color,materialIndex(gear.pants),'leg'))return;
           if (human) {
@@ -937,12 +962,18 @@ export function drawPlayer(
       },
       "Leg " + side,
     );
+    const upperBias=back?-.35:.15;
+    const forearmBias=back?-.45:.75;
+    if(splitArm)add(shoulder.depth+upperBias,()=>{
+      if(model.type==='zombie'&&actor.missingArm===side){ellipse(c,shoulder.x,shoulder.y,2.5,2.5,pal.headShade);pixel(shoulder.x-1,shoulder.y-1,2,2,pal.head);return;}
+      detailedArm(c,shoulder,elbow,hand,gear.chest?ITEMS[gear.chest]?.artColor||'#6c8580':pal.arms,pal.head,gear.chest,'upper');
+      paintShoulder();
+    },upperId,['shoulder'+side,'elbow'+side]);
     add(
-      // Preserve near/far arm occlusion in diagonal and profile views.
-      (shoulder.depth + elbow.depth + hand.depth) / 3 + (back ? -0.35 : 0.35),
+      (splitArm?(elbow.depth+hand.depth)/2:(shoulder.depth+elbow.depth+hand.depth)/3)+forearmBias,
       () => {
-        if(model.type==='zombie'&&actor.missingArm===side){ellipse(c,shoulder.x,shoulder.y,2.5,2.5,pal.headShade);pixel(shoulder.x-1,shoulder.y-1,2,2,pal.head);return;}
-        const hdArm=human&&detailedArm(c,shoulder,elbow,hand,gear.chest?ITEMS[gear.chest]?.artColor||'#6c8580':pal.arms,pal.head,gear.chest);
+        if(model.type==='zombie'&&actor.missingArm===side){if(!splitArm){ellipse(c,shoulder.x,shoulder.y,2.5,2.5,pal.headShade);pixel(shoulder.x-1,shoulder.y-1,2,2,pal.head);}return;}
+        const hdArm=human&&detailedArm(c,shoulder,elbow,hand,gear.chest?ITEMS[gear.chest]?.artColor||'#6c8580':pal.arms,pal.head,gear.chest,splitArm?'lower':'all');
         if(!hdArm){
         if (human) {
           limb(c, shoulder, elbow, sculpted?5.5:4.5, ink);
@@ -987,23 +1018,25 @@ export function drawPlayer(
           limb(c,{x:elbow.x-.8,y:elbow.y-1},{x:elbow.x+.8,y:elbow.y-1},c.__humanoidDetail?.75:2,"#d2c6a7");
         }
         }
+        reaperSleeve(c,gear.chest,elbow,hand);
         if(model.type==='zombie')drawZombieClaws(c,hand,d);
         if (gear.gloves)
           wear("gloves", hand, () => {
-            fittedGear(c,gear.gloves,hand,d,side,cosmetics.dye);
+            if(ITEMS[gear.gloves]?.spectralClaws)drawGhostClaws(c,hand,elbow,d,side);
+            else if(!reaperGlove(c,gear.gloves,hand))fittedGear(c,gear.gloves,hand,d,side,cosmetics.dye);
           });
-        if (gear.shoulders)
-          wear("shoulders", shoulder, () =>
-            fittedGear(c,gear.shoulders,shoulder,d,side,cosmetics.dye),
-          );
-        else if(sculpted&&!gear.chest&&!hdArm){
+        if(!splitArm)paintShoulder();
+        if(!gear.shoulders&&sculpted&&!gear.chest&&!hdArm){
           ellipse(c,shoulder.x,shoulder.y,2.7,1.8,ink);
           ellipse(c,shoulder.x,shoulder.y-.3,2,1.2,'#8c704b');
           pixel(shoulder.x-1,shoulder.y-1,2,1,'#c6a16a');
         }
       },
-      "Arm " + side,
+      lowerId,
+      splitArm?['elbow'+side,'hand'+side]:undefined,
     );
+    if(splitArm&&(d===0||(d===1||d===7)&&shoulder.depth>p.chest.depth))
+      queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:false};
     add(hand.depth + .6, () => {
         if(model.type==='zombie'&&actor.missingArm===side)return;
         const weaponId = gear[side === "R" ? "hand1" : "hand2"],
@@ -1019,9 +1052,13 @@ export function drawPlayer(
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
             const aim = { x: (actor.faceX ?? 0) / length, y: (actor.faceY ?? 1) / length };
-            const aimed=sculpted&&['draw','ranged'].includes(equipmentPose.action);
-            const butt = aimed?{x:p.shoulderR.x,y:p.shoulderR.y+1}:{ x: hand.x - aim.x * 6, y: hand.y - aim.y * 3 };
-            const muzzle = aimed?{x:p.handL.x+(p.handL.x-hand.x)*1.5,y:p.handL.y+(p.handL.y-hand.y)*1.5}:{ x: hand.x + aim.x * 21, y: hand.y + aim.y * 11 - 2 };
+            const hunterAimed=actor.sprite==='safari_hunter'&&['hunter_kneel_aim','hunter_shoot'].includes(equipmentPose.action);
+            const aimed=sculpted&&(['draw','ranged'].includes(equipmentPose.action)||hunterAimed);
+            const safariReady=actor.sprite==='safari_hunter'&&['hunter_rifle_idle','hunter_rifle_walk'].includes(equipmentPose.action);
+            const across={x:p.handL.x-hand.x,y:p.handL.y-hand.y};
+            if(safariReady&&Math.abs(across.x)<4){across.x=(d<4?-1:1)*12;across.y=0;}
+            const butt = aimed?{x:p.shoulderR.x,y:p.shoulderR.y+1}:safariReady?{x:hand.x-across.x*.45,y:hand.y-across.y*.45+1}:{ x: hand.x - aim.x * 6, y: hand.y - aim.y * 3 };
+            const muzzle = hunterAimed?(Math.abs(p.handL.x-hand.x)<4?{x:hand.x+(d<4?-1:1)*23,y:hand.y-2}:{x:p.handL.x+(p.handL.x-hand.x)*.35,y:p.handL.y+(p.handL.y-hand.y)*.35}):aimed?{x:p.handL.x+(p.handL.x-hand.x)*1.5,y:p.handL.y+(p.handL.y-hand.y)*1.5}:safariReady?{x:p.handL.x+across.x*.65,y:p.handL.y+across.y*.65-1}:{ x: hand.x + aim.x * 21, y: hand.y + aim.y * 11 - 2 };
             limb(c,butt,hand,6,ink);limb(c,hand,muzzle,4,ink);
             limb(c, butt, hand, 4, "#916642");
             limb(c, hand, muzzle, 2.5, "#39434b");
@@ -1062,6 +1099,14 @@ export function drawPlayer(
               limb(c,hand,tip,2,'#a78652');
               limb(c,{x:hand.x-1,y:hand.y},{x:tip.x-1,y:tip.y},1,'#d0b17a');
               limb(c,{x:tip.x-(tip.x-hand.x)*.3,y:tip.y-(tip.y-hand.y)*.3},{x:tip.x+3,y:tip.y+3},2,'#a78652');
+            }else if(weaponId==='alan_jungle_knife'){
+              const curve={x:tip.x+3,y:tip.y-2},hook={x:curve.x+2,y:curve.y+2};
+              limb(c,hand,tip,4,'#263a28');limb(c,hand,tip,2,'#d8d5ad');
+              limb(c,{x:hand.x+(tip.x-hand.x)*.6,y:hand.y+(tip.y-hand.y)*.6},curve,3,'#344638');
+              limb(c,{x:hand.x+(tip.x-hand.x)*.6,y:hand.y+(tip.y-hand.y)*.6},curve,2,'#e7e8c7');
+              limb(c,curve,hook,1,'#c2d3ac');
+              limb(c,hand,{x:hand.x+2,y:hand.y+4},3,'#634322');
+              c.fillStyle='#5b8f3e';c.fillRect(Math.round(hand.x)-1,Math.round(hand.y)-2,2,2);
             }else if(!keeperBlade(c,weaponId,hand,tip)){
             const bladeWidth=style==='broad'?4:2;
             const bladeLength=Math.hypot(tip.x-hand.x,tip.y-hand.y)||1;
@@ -1093,6 +1138,7 @@ export function drawPlayer(
             }
             }
           }
+          if(weapon==='scythe')drawScythe(c,hand,d,equipmentPose.action,equipmentPose.frame/(model.clips[equipmentPose.action]?.length-1||1),projectPoint,weaponId==='reaper_scythe'&&stat(actor,'reaperDamage')>0);
           if(weapon==='staff'){
             const material=gearPalette(weaponId),action=equipmentPose.action,t=equipmentPose.frame/(model.clips[action]?.length-1||1);
             const angle=(action==='slash'?Math.sin(Math.max(0,Math.min(1,t))*Math.PI)*1.15:.09)*(d<4?-1:1),dx=Math.sin(angle),dy=-Math.cos(angle);
@@ -1123,7 +1169,7 @@ export function drawPlayer(
           if (weapon === "shield") {
             fittedShield(c,weaponId,hand,d,actor.blocking,cosmetics.dye);
           }
-          if(['wand','staff','sword','dagger','rifle'].includes(weapon)) {
+          if(['wand','staff','sword','dagger','rifle','scythe'].includes(weapon)) {
             pixel(hand.x-1,hand.y-1,3,2,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).base:pal.head);
             pixel(hand.x-1,hand.y+1,2,1,gear.gloves?gearPalette(gear.gloves,cosmetics.dye).dark:pal.headShade);
           }
@@ -1134,14 +1180,9 @@ export function drawPlayer(
     );
     // The grip is part of this arm. A projected hand depth can fall behind
     // its own forearm in profile poses, hiding a shield or wand in the sleeve.
-    if(['shield','wand','staff'].includes(itemKind(gear[side === 'R' ? 'hand1' : 'hand2'])))
-      queue.at(-1).attachmentOrder={
-        // Shields extend down beside the body. Include the matching leg in
-        // the attachment order so it can pass behind/in front of the leg
-        // according to the projected pose instead of always floating over it.
-        anchors:['Leg '+side,'Arm '+side],
-        behind:hand.depth<foot.depth,
-      };
+    const heldKind=itemKind(gear[side === 'R' ? 'hand1' : 'hand2']);
+    if(['shield','wand','staff'].includes(heldKind)||splitArm&&heldKind&&heldKind!=='bow')
+      queue.at(-1).attachmentOrder={anchors:[lowerId],behind:false};
   }
   add(
     p.chest.depth,
@@ -1151,7 +1192,8 @@ export function drawPlayer(
           : pal.body,
         shade = gear.chest ? gearPalette(gear.chest,cosmetics.dye).dark : pal.bodyShade;
       wear("chest", p.chest, () => {
-        if(sculpted){
+        if(ITEMS[gear.chest]?.spectralRobe)drawGhostRobe(c,p,d);
+        else if(sculpted){
           if(!detailedNeck(c,p,pal.head))limb(c,p.chest,{x:p.head.x,y:p.head.y+3},4,pal.headShade);
           drawHeroTorso(c,p,d,color,pal.head,back);
         }else{
@@ -1183,8 +1225,9 @@ export function drawPlayer(
             limb(c,{x:x+2,y:y+2},{x:p.pelvis.x+2,y:p.pelvis.y-2},1,shade);
           }
         }
-        wearableDetails(c, p, {chest:gear.chest}, {skin:pal.head}, d, time, cosmetics);
+        if(!ITEMS[gear.chest]?.spectralRobe)wearableDetails(c, p, {chest:gear.chest,shoulders:gear.shoulders}, {skin:pal.head}, d, time, cosmetics);
         keeperGearDetails(c,gear.chest,p,d,cosmetics.dye);
+        if(gear.chest==='reaper_chest')reaperRibs(c,p,d);
         if (model.skeleton && !gear.chest) {
           limb(c, p.pelvis, p.chest, 1, pal.head);
           c.fillStyle = pal.outline;
@@ -1199,6 +1242,7 @@ export function drawPlayer(
       });
       if (!model.skeleton || gear.pants) {
         wear("pants", p.pelvis, () => {
+          if(gear.pants==='reaper_skirt'||ITEMS[gear.pants]?.spectralLegs)return;
           const pantsColor = gear.pants ? ITEMS[gear.pants]?.artColor || "#819a9b" : pal.legs;
           const pantsShade = gear.pants ? gearPalette(gear.pants,cosmetics.dye).dark : pal.legShade;
           if(human&&detailedPelvis(c,p,d,pantsColor,back)){
@@ -1249,10 +1293,17 @@ export function drawPlayer(
             c.fillRect(Math.round(clasp.x) - 1, Math.round(clasp.y), 2, 2);
           } else {
             const gem = attach(0, 4, -4);
-            limb(c, attach(-2.5, 2, 1), gem, 1, "#f2ce7c");
-            limb(c, attach(2.5, 2, 1), gem, 1, "#f2ce7c");
-            ellipse(c, gem.x, gem.y, 2, 2.5, ITEMS[gear.neck]?.warlockGear?'#302b3c':"#9c5724");
-            ellipse(c, gem.x, gem.y, 1.5, 2, ITEMS[gear.neck]?.warlockGear?'#81ceb1':"#ffb43e");
+            limb(c, attach(-3, 2, 1), gem, 1, "#f2ce7c");
+            limb(c, attach(3, 2, 1), gem, 1, "#f2ce7c");
+            if(gear.neck==='mosquito_charm'){
+              const x=Math.round(gem.x),y=Math.round(gem.y);
+              c.fillStyle='#473a28';c.fillRect(x-1,y-2,2,7);
+              c.fillStyle='#b8ce86';c.fillRect(x-3,y-1,2,3);c.fillRect(x+1,y-1,2,3);
+              c.fillStyle='#d7a963';c.fillRect(x,y-2,1,5);c.fillRect(x,y+3,1,3);return;
+            }
+            ellipse(c, gem.x, gem.y, 2.6, 3.3, ITEMS[gear.neck]?.warlockGear?'#302b3c':gear.neck==='alan_medallion'?'#493321':"#9c5724");
+            ellipse(c, gem.x, gem.y, 1.9, 2.6, ITEMS[gear.neck]?.warlockGear?'#81ceb1':gear.neck==='alan_medallion'?'#bc9558':"#ffb43e");
+            if(gear.neck==='alan_medallion'){c.fillStyle='#563d25';c.fillRect(Math.round(gem.x),Math.round(gem.y),1,2);c.fillRect(Math.round(gem.x)-1,Math.round(gem.y),2,1);}
             c.fillStyle = "#fff0ad";
             c.fillRect(Math.round(gem.x) - 1, Math.round(gem.y) - 1, 1, 2);
           }
@@ -1261,6 +1312,14 @@ export function drawPlayer(
     },
     "Body and pelvis",
   );
+  if(ITEMS[gear.pants]?.spectralLegs){
+    add(p.pelvis.depth+.4,()=>wear('pants',p.pelvis,()=>drawGhostMist(c,p,time,actor)),'Spectral mist',['pelvis','hipL','hipR','footL','footR']);
+    queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:false};
+  }
+  if(gear.pants==='reaper_skirt'){
+    add(p.pelvis.depth+.3,()=>wear('pants',p.pelvis,()=>reaperSkirt(c,p,d)),'Robe skirt',['pelvis','hipL','hipR','footL','footR']);
+    queue.at(-1).attachmentOrder={anchors:['Leg L','Leg R','Body and pelvis'],behind:false};
+  }
   add(
     p.head.depth + 0.15,
     () => {
@@ -1328,6 +1387,7 @@ export function drawPlayer(
         if (
           gear.head &&
           ITEMS[gear.head]?.style !== "circlet" &&
+          ITEMS[gear.head]?.coversHair !== false &&
           c.save &&
           c.rect &&
           c.clip
@@ -1345,9 +1405,10 @@ export function drawPlayer(
       // Hair is cosmetic and sits beneath head equipment.
       if (gear.head)
         wear("head", h, () => {
-          if (!keeperHeadgear(c,gear.head,h,d) && !directionalHelmet(c, gear.head, h, d, cosmetics))
+          if (!reaperHood(c,gear.head,h,d) && !pumpkinHeadgear(c,gear.head,h,d,time) && !keeperHeadgear(c,gear.head,h,d) && !directionalHelmet(c, gear.head, h, d, cosmetics))
             drawItem(c, gear.head, h.x, h.y - 2, 14, cosmetics.dye);
         });
+      if(ITEMS[gear.head]?.spectralEyes)drawGhostEyes(c,facePoints,d,time,actor,visible);
       }));
     },
     "Head and headwear",

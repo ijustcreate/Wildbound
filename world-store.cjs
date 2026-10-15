@@ -37,7 +37,7 @@ exports.createWorldStore=(root)=>{
       await atomic(file,body);
       const s=body.session.state.localWorld;
       await atomic(path.join(dir,'world.json'),{version:1,id:s.id,name:s.name,seed:s.seed,pack:s.pack,seconds:s.seconds,savedAt:body.savedAt});
-      await atomic(path.join(dir,'terrain','changes.json'),{scenery:body.delta,tiles:body.terrain,chunks:body.session.state.boundlessChunkChanges||{}});
+      await atomic(path.join(dir,'terrain','changes.json'),{scenery:body.delta,tiles:body.terrain,chunks:body.session.state.boundlessChunkEdits||body.session.state.boundlessChunkChanges||{}});
       await atomic(path.join(dir,'ecology','regions.json'),s.regions);
       await atomic(path.join(dir,'settlements','state.json'),Object.fromEntries(Object.entries(s.regions).map(([k,r])=>[k,r.settlement])));
       await atomic(path.join(dir,'discovered-events','history.json'),{events:s.events,quests:s.quests});

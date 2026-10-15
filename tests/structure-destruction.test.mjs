@@ -47,6 +47,13 @@ test('40-pixel sections accumulate sparse damage and invalidate collision only o
   assert.equal(JSON.stringify(b), before);
   assert.equal(destructionStats(g).particles, particles);
 });
+test('A pane shatters audibly even when it breaks immediately after a lighter impact',()=>{
+ const {g}=setup(),sounds=[];g.onSound=cue=>sounds.push(cue);
+ g.house.walls.push(wall({kind:'window'}));
+ assert.equal(damageStructureProjectile(g,bolt({damage:10})),true);
+ g.time=.01;assert.equal(damageStructureProjectile(g,bolt({damage:20})),true);
+ assert.deepEqual(sounds,['hit','glassBreak']);
+});
 
 test('the final partial-width cell must break before the entire asset is destroyed', () => {
   const {g} = setup(), b = wall({w: 95, h: 20});

@@ -6,8 +6,10 @@ export function capeRows(top,bottom,actor,time,style='',shoulders,options={}){
   const motion=0.6;
  const airborne=Math.min(1,(actor.jumpHeight||0)/30);
  const descent=Math.min(1,Math.max(0,-(actor.jumpVelocity||0))/190)*airborne;
- const length=options.length??(style==='tattered'?1.35:['short','pointed'].includes(style)?.5:1);
- const hems=style==='tattered'?[1,.62,.86,1]:null;
+ // Keep every trailing cape above the feet. Long cloth styles used to extend
+ // below the character's boots when equipped, especially during movement.
+ const length=style==='spectral'?.76:style==='tattered'?.72:style==='wilderness'?.68:['short','pointed'].includes(style)?.5:.68;
+ const hems=style==='spectral'?[.82,1,.67,.9]:style==='tattered'?[1,.62,.86,1]:style==='wilderness'?[.78,1,.66,.9]:null;
  return Array.from({length:25},(_,i)=>{
   const t=i/24,free=Math.sin(t*Math.PI/2),phase=time*(drive?10:3.5)-t*5;
   const wave=Math.sin(phase)+.35*Math.sin(phase*1.8+.7);
@@ -16,7 +18,7 @@ export function capeRows(top,bottom,actor,time,style='',shoulders,options={}){
   const trail=free*(drive*7*motion+airborne*5+wave*(.7+drive*1.2)*motion)*length+fallLag*2.5*length;
   const z=top[2]+(Math.max(3,bottom[2]-11)-top[2])*t*length+free*(drive*5*motion+airborne*7+Math.sin(phase+.8)*(1+drive*3)*motion)*length+fallLag*6*length;
   const x=top[0]+(bottom[0]-top[0])*t+sway,y=top[1]-3+(bottom[1]-top[1]-1)*t-trail;
-  const width=style==='pointed'?Math.max(.15,4*(1-t)):4+2*t;
+  const width=style==='pointed'?Math.max(.15,4*(1-t)):style==='safari'?5+5*t:4+2*t;
   const left=[x-width,y,z+free*Math.sin(phase+.5)*(.4+drive)],right=[x+width,y,z-free*Math.sin(phase+.5)*(.4+drive)];
   if(shoulders)for(const [edge,pin,sign] of [[left,shoulders.left,-1],[right,shoulders.right,1]]){
     const rest=[top[0]+sign*4,top[1]-3,top[2]];

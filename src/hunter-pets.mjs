@@ -119,8 +119,8 @@ export function tickHunterPets(g,dt,inputs={}){
    }
   }else{
    if((g.time||0)-(pet.lastFight??-10)>5)pet.hp=Math.min(pet.maxHp,pet.hp+pet.maxHp*.01*dt);
-   const idle=pet.ownerIdle>=30,angle=(pet.id||0)*1.7+Math.floor((g.time||0)/6)*.9;
-   const spot=pet.kind==='bat'?{x:p.x-(p.faceX||0)*18+12,y:p.y-(p.faceY||1)*18}:{x:p.x+(idle?28:Math.cos(angle)*42),y:p.y+(idle?6:Math.sin(angle)*28)};
+   const idle=pet.ownerIdle>=30,face=Math.hypot(p.faceX||0,p.faceY||0)||1,fx=(p.faceX||0)/face,fy=(p.faceY??1)/face;
+   const spot=pet.kind==='bat'?{x:p.x-fx*18+12,y:p.y-fy*18}:{x:p.x-fx*(idle?24:42)+fy*20,y:p.y-fy*(idle?24:42)-fx*20};
    if(pet.kind==='bat'&&idle){
     pet.roostScan=(pet.roostScan||0)-dt;
     if(pet.roostScan<=0){pet.roostPoint=nearbyRoost(g,p,120);pet.roostScan=.5;}
@@ -129,7 +129,7 @@ export function tickHunterPets(g,dt,inputs={}){
    const d=distance(pet,spot);
    if(d>7){
     if(pet.kind==='bat'){pet.faceX=(spot.x-pet.x)/d;pet.faceY=(spot.y-pet.y)/d;g.moveActor(pet,pet.faceX*Math.min(d,pet.speed*dt),pet.faceY*Math.min(d,pet.speed*dt),true);}
-    else navigateEnemy(g,pet,spot,dt);
+    else navigateEnemy(g,pet,spot,dt*Math.min(1,d/28));
    }else{pet.faceX=p.x-pet.x;pet.faceY=p.y-pet.y;pet.animationAction=idle&&pet.kind!=='bat'?'sit':null;}
    pet.happyClock=(pet.happyClock||0)+dt;
    if(pet.happyClock>=9){pet.happyClock=0;g.effects.push({x:pet.x,y:pet.y-36,text:'☺',color:'#ffe9a1',life:1.5});}

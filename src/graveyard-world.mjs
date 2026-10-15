@@ -7,8 +7,15 @@ export const GRAVE_EMERGENCE_SECONDS = 2.4;
 export const GRAVEYARD_SAFE_AREA = Object.freeze({x:700,y:700,w:200,h:178});
 export const GRAVEYARD_BOUNDS = Object.freeze({x:352,y:288,w:896,h:928});
 export const GRAVEYARD_GATE = Object.freeze({x:704,y:1216,w:192});
+export const CEMETERY_SMALL_GATES = Object.freeze([
+  {id:'west',x:352,y:864,orientation:'vertical'},
+  {id:'east',x:1248,y:864,orientation:'vertical'},
+  {id:'north',x:944,y:288,orientation:'horizontal'},
+]);
+const gateGap=p=>CEMETERY_SMALL_GATES.some(g=>g.orientation===p.orientation&&
+  (g.orientation==='vertical'?p.x===g.x&&Math.abs(p.y-g.y)<32:p.y===g.y&&Math.abs(p.x-g.x)<32));
 // Only grave-break spawns are authored here; the parent owns cemetery eventfilter.
-export const GRAVE_BREAK_ENEMY_KINDS = Object.freeze(['skeleton','zombie']);
+export const GRAVE_BREAK_ENEMY_KINDS = Object.freeze(['skeleton','zombie','ghost']);
 export const graveyardHash = (seed, x = 0, y = 0) => {
   let n = (Number.isFinite(seed) ? seed : 0) | 0;
   n = Math.imul(n ^ ((x * 1009) | 0), 0x45d9f3b);
@@ -36,7 +43,7 @@ export function graveyardTrailDistance(graveyard,x,y) {
 export function graveyardWorld(seed=0) {
   seed=Number.isFinite(seed)?seed:0;
   const terrain=Array(2500).fill('grass'),scenery=[];
-  const graveyard={version:1,seed,bounds:{...GRAVEYARD_BOUNDS},safeArea:{...GRAVEYARD_SAFE_AREA},
+  const graveyard={version:1,featuresVersion:2,seed,bounds:{...GRAVEYARD_BOUNDS},safeArea:{...GRAVEYARD_SAFE_AREA},
     board:{x:800,y:800},gate:{...GRAVEYARD_GATE,open:true},plots:[],mausoleums:[],
     trail:[{x:800,y:880},{x:800,y:1264},{x:972,y:1344},{x:1024,y:1440},{x:904,y:1520},{x:904,y:1600}],
     trailWidth:96,breakEnemyKinds:[...GRAVE_BREAK_ENEMY_KINDS],breakCount:0};
@@ -54,11 +61,19 @@ export function graveyardWorld(seed=0) {
   // Panels meet without cracks. The south fence has a real, permanently open gap.
   for(const y of [288,1216])for(let x=352;x<1248;x+=32) {
     if(y===1216 && x>=704 && x<896)continue;
+    if(gateGap({x:x+16,y,orientation:'horizontal'}))continue;
     prop('cemetery_fence',x+16,y,48,{orientation:'horizontal',width:32,
       graveyardFootprint:{x,y:y-4,w:32,h:8}});
   }
-  for(const x of [352,1248])for(let y=288;y<1216;y+=32)prop('cemetery_fence',x,y+16,48,
-    {orientation:'vertical',width:32,graveyardFootprint:{x:x-4,y,w:8,h:32}});
+  for(const x of [352,1248])for(let y=288;y<1216;y+=32){
+    if(gateGap({x,y:y+16,orientation:'vertical'}))continue;
+    prop('cemetery_fence',x,y+16,48,{orientation:'vertical',width:32,graveyardFootprint:{x:x-4,y,w:8,h:32}});
+  }
+  for(const gate of CEMETERY_SMALL_GATES){
+    const vertical=gate.orientation==='vertical';
+    prop('cemetery_gate',gate.x,gate.y,80,{small:true,gateId:gate.id,orientation:gate.orientation,open:true,
+      blockers:[-1,1].map(side=>vertical?{x:gate.x-5,y:gate.y+side*36-5,w:10,h:10}:{x:gate.x+side*36-5,y:gate.y-5,w:10,h:10})});
+  }
   prop('cemetery_gate',800,1216,212,{open:true,blockers:[
     {x:694,y:1206,w:10,h:24},{x:896,y:1206,w:10,h:24},
     {x:694,y:1230,w:8,h:46},{x:898,y:1230,w:8,h:46}]});
@@ -81,6 +96,9 @@ export function graveyardWorld(seed=0) {
   for(const [x,y,size] of [[400,808,126],[1200,820,138],[405,1142,118],[1200,1146,136],[616,396,100],[976,398,112]])
     prop('leafless_tree',x,y,size,{variant:Math.floor(graveyardHash(seed,x,y)*3),
       graveyardFootprint:{x:x-10,y:y-7,w:20,h:14}});
+  // Two walkable pumpkin beds, below the final grave row and off the main path.
+  for(const [patch,x0] of [[0,520],[1,1040]])for(let row=0;row<2;row++)for(let col=0;col<3;col++)
+    prop('pumpkin_crop',x0+col*40,1148+row*32,30,{patch,variant:col+row,picked:false});
   // A dense outer canopy with an uninterrupted 96px walking lane through it.
   for(let row=0;row<19;row++)for(let col=0;col<19 && scenery.length<GRAVEYARD_SCENERY_LIMIT;col++) {
     const x=48+col*84+(graveyardHash(seed,col,row)-.5)*28;
@@ -95,31 +113,44 @@ export function graveyardWorld(seed=0) {
 }
 
 /** Input is the ground/feet plane, NOT the actor's drawing origin. */
-export function graveyardBlocked(g,x,y,radius=8,flying=false) {
+export function graveyardBlocked(g,x,y,radius=8,flying=false,elevation=0,actor=null) {
   if(!active(g)||flying||g.phase==='won'||!Number.isFinite(x)||!Number.isFinite(y))return false;
   radius=Number.isFinite(radius)?Math.max(0,radius):8;
   return (g.scenery || []).some(p=>{
     if(!p.graveyard || p.depleted || p.falling) return false;
+    if(actor?.wingHover&&elevation>=32&&['cemetery_fence','cemetery_gate'].includes(p.kind))return false;
     // Leave a clean approach to every mausoleum doorway. The structure still
     // blocks its walls, but the player can stand at the threshold and use the
     // interaction before or after the event opens the gate.
-    if(p.kind==='mausoleum' && Math.abs(x-(p.x||0))<=26 && y >= (p.rootY??p.y)-10) return false;
+    if(p.kind==='mausoleum' && p.doorOpen && Math.abs(x-(p.x||0))<=26 && y >= (p.rootY??p.y)-10) return false;
     return (p.graveyardFootprint && rectHit(p.graveyardFootprint,x,y,radius) ||
       (p.blockers || []).some(r=>rectHit(r,x,y,radius)));
   });
 }
 
-function emerge(g,stone,plot,roll) {
-  const kind=roll<GRAVE_BREAK_SPAWN_CHANCE/2?'skeleton':'zombie';
+// Add only the new props/apertures to older expeditions, preserving opened crypts,
+// broken graves, collected items, and all existing scenery IDs.
+export function upgradeCemeteryFeatures(g){
+  if(!active(g)||g.graveyard.featuresVersion>=2||g.phase==='won')return false;
+  const fresh=graveyardWorld(g.graveyard.seed??g.seed);
+  g.scenery=(g.scenery||[]).filter(p=>p.kind!=='cemetery_fence'||!gateGap(p));
+  for(const p of fresh.scenery.filter(p=>p.small&&p.kind==='cemetery_gate'||p.kind==='pumpkin_crop'))
+    if(!g.scenery.some(old=>old.kind===p.kind&&old.x===p.x&&old.y===p.y))g.scenery.push({...p,id:'cemetery-extra:'+p.kind+':'+p.x+':'+p.y});
+  g.graveyard.featuresVersion=2;return true;
+}
+
+function emerge(g,stone,plot,roll,disturber) {
+  const kind=GRAVE_BREAK_ENEMY_KINDS[Math.min(2,Math.floor(roll/GRAVE_BREAK_SPAWN_CHANCE*3))];
   const id=Number.isInteger(g.nextId)?g.nextId++:'grave-undead:'+stone.id;
   const x=plot.x+plot.w/2,y=plot.y+Math.round(plot.h*.65)-14;
-  const hp=kind==='zombie'?80:55;
-  const e={id,kind,skin:kind,x,y,hp,maxHp:hp,speed:kind==='zombie'?32:52,damage:14,
+  const hp=kind==='ghost'?76:kind==='zombie'?80:55;
+  const e={id,kind,skin:kind,x,y,hp,maxHp:hp,speed:kind==='zombie'?32:kind==='ghost'?54:52,damage:kind==='ghost'?12:14,
     state:'emerging',timer:1,cooldown:1,flash:0,step:0,dx:0,dy:0,attackX:0,attackY:0,
     attack:0,moving:false,faceX:0,faceY:1,temperament:'patient',orbit:1,tacticTime:2,
     group:'grave:'+plot.id,ambientGraveSpawn:true,eventBound:false,equipment:{},
     graveEmergence:{elapsed:0,duration:GRAVE_EMERGENCE_SECONDS,origin:{x,y,groundY:y+14,plotId:plot.id}}};
   if(kind==='zombie')e.zombieVariant=['shambler','one_arm','broken_jaw'][Math.floor(graveyardHash(g.seed,x,y)*3)];
+  if(disturber){e.aggro=true;e.zombieLastSeen={id:disturber.id,x:disturber.x,y:disturber.y,remaining:6};}
   g.configureCreature?.(e,false);
   e.state='emerging';e.moving=false;
   (g.enemies ||= []).push(e);
@@ -146,13 +177,14 @@ export function harvestGravestone(g,p,damage,range=64) {
     // No quota, shared roll, compensating spawns, or retries. Every stone is independent.
     const roll=typeof g.random==='function'?g.random():graveyardHash(g.graveyard.seed,stone.x,stone.rootY+173);
     stone.breakRoll=roll;
-    if(roll>=0 && roll<GRAVE_BREAK_SPAWN_CHANCE)emerge(g,stone,plot,roll);
+    if(roll>=0 && roll<GRAVE_BREAK_SPAWN_CHANCE)emerge(g,stone,plot,roll,p);
   }
   return true;
 }
 
 /** Parent skips normal enemy AI while e.graveEmergence exists. Seconds, no catch-up. */
 export function tickGraveyard(g,dt) {
+  upgradeCemeteryFeatures(g);
   if(!active(g)||g.phase!=='play'||g.paused||!Number.isFinite(dt)||dt<=0)return false;
   let changed=false;
   for(const e of g.enemies || []) {
@@ -160,7 +192,11 @@ export function tickGraveyard(g,dt) {
     if(e.hp<=0){delete e.graveEmergence;changed=true;continue;}
     s.elapsed=Math.min(s.duration,s.elapsed+Math.min(dt,1));
     e.x=s.origin.x;e.y=s.origin.y;e.moving=false;e.attack=0;e.state='emerging';
-    if(s.elapsed>=s.duration){delete e.graveEmergence;e.state='hunt';e.cooldown=Math.max(e.cooldown || 0,.6);changed=true;}
+    if(s.elapsed>=s.duration){
+      const disturber=(g.players||[]).find(p=>p.id===e.zombieLastSeen?.id&&p.hp>0&&!p.room&&Math.hypot(p.x-e.x,p.y-e.y)<360);
+      if(disturber)e.zombieLastSeen={id:disturber.id,x:disturber.x,y:disturber.y,remaining:6};
+      delete e.graveEmergence;e.state='hunt';e.cooldown=Math.max(e.cooldown || 0,.6);changed=true;
+    }
   }
   return changed;
 }

@@ -12,7 +12,8 @@ function canvas(){const calls=[];return {calls,fillStyle:'',fillRect(x,y,w,h){as
 
 test('shared shipped beetle upgrades without rewriting authored rigs or losing custom artwork',()=>{
  const saved=JSON.parse(fs.readFileSync(new URL('../authored/rigs.json',import.meta.url))).beastMotions.beetle,legacy=legacyInsectMotion();
- assert.ok(validateBeastMotion('beetle',saved));assert.deepEqual(upgradeBeetleMotion(saved,legacy),defaultBeetleMotion());
+ const normalizedMotion=value=>JSON.parse(JSON.stringify(value,(_key,n)=>typeof n==='number'?Number(n.toFixed(12)):n));
+ assert.ok(validateBeastMotion('beetle',saved));assert.deepEqual(normalizedMotion(upgradeBeetleMotion(saved,legacy)),normalizedMotion(defaultBeetleMotion()));
  const custom=structuredClone(legacy);custom.palette.body='#112233';custom.joints.head.position[0]=2;custom.visibility.foot0L[2]=false;custom.clips.walk.keys[2].joints.foot0L=[1,2,3];
  custom.boneSprites={Body:{2:{width:1,height:1,x:0,y:0,palette:['transparent','#abcdef'],pixels:[1]}}};custom.renderOrder={2:['Head','Body']};
  const upgraded=upgradeBeetleMotion(custom,legacy);

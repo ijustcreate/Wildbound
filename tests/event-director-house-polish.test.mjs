@@ -18,15 +18,12 @@ test('Tiny custom pools fall back safely and never select a disabled or unavaila
  for(let n=0;n<8;n++){assert.equal(selectEvent(g,events,()=>true),0);rememberEvent(g,events[0],0);}
  assert.equal(selectEvent(g,events,()=>false),null);
 });
-test('Bosses need three preceding encounters, three breathing-room events and no surviving hostile group',()=>{
- const g={random:()=>.9999,players:[],enemies:[]};
- for(let n=0;n<3;n++){const i=selectEvent(g,pool,()=>true);assert.ok(!eventBoss(pool[i]));rememberEvent(g,pool[i],i);}
- assert.equal(selectEvent(g,pool,()=>true),4);rememberEvent(g,pool[4],4);
- for(let n=0;n<3;n++){const i=selectEvent(g,pool,()=>true);assert.notEqual(i,4);rememberEvent(g,pool[i],i);}
- g.enemies=[{kind:'lion',hp:1,faction:'enemy'}];assert.notEqual(selectEvent(g,pool,()=>true),4);
+test('Bosses remain eligible with unresolved bosses, weather and downed heroes',()=>{
+ const g={random:()=>.9,players:[{hp:0}],enemies:[{kind:'dragon',hp:300,faction:'enemy'}],weather:{life:20}};
+ assert.equal(selectEvent(g,[pool[4]],()=>true),0);rememberEvent(g,pool[4],0);assert.equal(selectEvent(g,[pool[4]],()=>true),0);
 });
 test('Active weather, merchant, mystery and crowded hostile groups cannot be stacked by a random roll',()=>{
- const g={random:()=>.9,players:[],enemies:Array.from({length:12},()=>({kind:'lion',hp:1,faction:'enemy'})),weather:{life:20},merchant:{},mystery:{done:false},volcanoes:[{life:20}]};
+ const g={random:()=>.9,players:[],enemies:Array.from({length:36},()=>({kind:'lion',hp:1,faction:'enemy'})),weather:{life:20},merchant:{},mystery:{done:false},volcanoes:[{life:20}]};
  const e=[pool[0],{name:'Rain',kind:'monsoon',type:'monsoon'},{name:'Shop',kind:'merchant',type:'merchant'},{name:'Mystery',kind:'skeleton',type:'mystery'},{name:'Crater',kind:'volcano',type:'volcano'}];
  assert.equal(selectEvent(g,e,()=>true),null);
 });
@@ -48,7 +45,7 @@ test('Every encounter uses its own author stats; squad, edited species and expli
  const definitions={lion:{edited:true,stats:{hp:155,speed:61,damage:19}}};assert.equal(eventUnitStats(pool[0],null,'lion',definitions).hp,155);assert.equal(eventUnitStats(pool[0],{manualOverride:true,hp:90},'lion',definitions).hp,90);
 });
 test('Default event roster has unique save keys, two-line flavor and actionable tips without generic placeholder copy',()=>{
- assert.equal(EVENTS.length,78);assert.equal(new Set(EVENTS.map(e=>e.name)).size,78);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');
+ assert.equal(EVENTS.length,92);assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
  for(const e of EVENTS){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
 });
 test('Native House architecture is read-only, balanced and honors saved open doors and floor bounds',()=>{

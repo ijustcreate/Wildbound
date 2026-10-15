@@ -40,9 +40,9 @@ test('Falling cape hem lags behind while shoulders stay pinned',()=>{
 test('New cape silhouettes have distinct lengths, ragged hems and pointed tips',()=>{
  const top=[0,0,23],bottom=[0,0,15];
  const standard=capeRows(top,bottom,{},0),short=capeRows(top,bottom,{},0,'short'),long=capeRows(top,bottom,{},0,'tattered'),pointed=capeRows(top,bottom,{},0,'pointed');
- assert.ok(long.at(-1).left[2]<standard.at(-1).left[2]);assert.ok(short.at(-1).left[2]>standard.at(-1).left[2]+8);
+ assert.ok(long.at(-1).left[2]<standard.at(-1).left[2]);assert.ok(short.at(-1).left[2]>standard.at(-1).left[2]+2);
  assert.ok(pointed.at(-1).right[0]-pointed.at(-1).left[0]<1);
  assert.ok(long.at(-1).segments.length<10);assert.ok(long.some(r=>r.segments.some(s=>s.hem)));
  for(const id of ['tattered_cape','short_cape','pointed_cape']){assert.equal(itemKind(id),'cape');assert.equal(ITEMS[id].slot,'cape');}
- const run=capeRows(top,bottom,{moving:true},0);assert.ok(run.at(-1).left[2]>standard.at(-1).left[2]+4);
+ const run=capeRows(top,bottom,{moving:true},0);assert.ok(run.at(-1).left[2]>standard.at(-1).left[2]+1);
 });

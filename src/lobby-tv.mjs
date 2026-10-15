@@ -1,6 +1,9 @@
 // A tiny, self-contained platform game rendered into the lobby's television.
 // World coordinates are pixels; terrain is generated from a repeatable sequence.
 import {TV_SCENES,TV_CAVERN_SCENES,TV_SECTION_TILES,TV_SCENES_PER_LEVEL,tvSceneIndex} from './lobby-tv-levels.mjs';
+import {drawLobbyController} from './lobby-controller-art.mjs';
+import {drawControllerCable} from './lobby-controller-cable.mjs';
+import {lobbyControllerGrip} from './lobby-scene.mjs';
 const W=256,H=144,GROUND=120,TILE=16;
 const COURSE_END=TV_SCENES_PER_LEVEL*TV_SECTION_TILES*TILE;
 const FLAG_X=COURSE_END+17*TILE,CASTLE_X=COURSE_END+23*TILE;
@@ -9,7 +12,7 @@ const FIREBALL_SPEED=155;
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 
 export class LobbyTelevision {
-  constructor(seed=Math.floor(Math.random()*0xffffffff)){this.seed=seed;this.players=new Map();this.enemies=new Map();this.fireballs=[];this.broken=new Set();this.released=new Set();this.particles=[];this.camera=0;this.time=0;this.started=false;this.completed=false;this.score=0;this.coins=0;this.collected=new Set();this.area='overworld';this.level=1;this.flagged=new Set();this.finishTimer=0;this.stageNotice=0;this.pipeCooldown=0;this.screen=null;}
+  constructor(seed=Math.floor(Math.random()*0xffffffff)){this.seed=seed;this.players=new Map();this.enemies=new Map();this.fireballs=[];this.broken=new Set();this.released=new Set();this.particles=[];this.camera=0;this.time=0;this.started=false;this.completed=false;this.score=0;this.coins=0;this.collected=new Set();this.area='overworld';this.level=1;this.flagged=new Set();this.finishTimer=0;this.stageNotice=0;this.pipeCooldown=0;this.screen=null;this.controllers=[{x:721,y:225,owner:null},{x:849,y:225,owner:null}];}
   scene(section){return (this.level===1?TV_SCENES:TV_CAVERN_SCENES)[tvSceneIndex(section,this.seed)];}
   join(id){
     if(this.players.has(id))return true;
@@ -17,11 +20,11 @@ export class LobbyTelevision {
     this.started=true;
     const slot=[0,1].find(n=>![...this.players.values()].some(p=>p.slot===n));
     const p={x:0,y:0,w:12,h:16,vx:0,vy:0,grounded:false,alive:true,respawn:0,jumpHeld:false,jumps:0,powered:false,fire:false,fireCooldown:0,invulnerable:1,slot};
-    this.spawnPlayer(p);this.players.set(id,p);
+    this.spawnPlayer(p);this.players.set(id,p);this.controllers[slot].owner=id;
     return true;
   }
-  leave(id){this.players.delete(id);}
-  reset(){this.players.clear();this.enemies.clear();this.fireballs=[];this.broken.clear();this.released.clear();this.collected.clear();this.particles=[];this.camera=0;this.time=0;this.started=false;this.completed=false;this.score=0;this.coins=0;this.area='overworld';this.level=1;this.flagged.clear();this.finishTimer=0;this.stageNotice=0;this.returnState=null;this.pipeCooldown=0;}
+  leave(id,ground){const p=this.players.get(id);if(p&&this.controllers){const pad=this.controllers[p.slot];if(ground){pad.x=ground.x;pad.y=ground.y+8;}pad.owner=null;}this.players.delete(id);}
+  reset(){for(const pad of this.controllers)pad.owner=null;this.players.clear();this.enemies.clear();this.fireballs=[];this.broken.clear();this.released.clear();this.collected.clear();this.particles=[];this.camera=0;this.time=0;this.started=false;this.completed=false;this.score=0;this.coins=0;this.area='overworld';this.level=1;this.flagged.clear();this.finishTimer=0;this.stageNotice=0;this.returnState=null;this.pipeCooldown=0;}
   spawnPlayer(p){
     const blocks=this.blocks(this.camera+16,this.camera+W-24);
     const floor=blocks.find(b=>b.kind==='ground'&&b.x>=this.camera+20+p.slot*16)||blocks.find(b=>b.kind==='ground');
@@ -238,14 +241,28 @@ export class LobbyTelevision {
 
 export function drawLobbyTelevision(c,tv,o){
   const x=o.x,y=o.y;
-  c.fillStyle='#30363b';c.beginPath();c.ellipse(x,y+31,88,15,0,0,Math.PI*2);c.fill();
-  c.strokeStyle='#252b2b';c.lineWidth=3;
-  for(const side of [-1,1]){c.beginPath();c.moveTo(x+side*10,y+27);c.bezierCurveTo(x+side*32,y+57,x+side*55,y+39,x+side*64,y+51);c.stroke();}
-  c.fillStyle='#543a30';c.fillRect(x-76,y-64,152,86);c.fillStyle='#b28a5b';c.fillRect(x-73,y-61,146,78);
+  c.fillStyle='#17251e55';c.fillRect(x-72,y+19,157,10);
+  // Visible cabinet top and side, with a solid footprint only at floor level.
+  c.fillStyle='#382a23';c.fillRect(x-76,y-72,152,94);
+  c.fillStyle='#b28a5b';c.fillRect(x-73,y-61,138,78);
+  c.fillStyle='#d0aa70';c.fillRect(x-73,y-70,146,9);
+  c.fillStyle='#e4c48a';c.fillRect(x-72,y-71,145,2);
+  c.fillStyle='#785638';c.fillRect(x+65,y-61,11,78);
+  c.fillStyle='#4a372a';c.fillRect(x-73,y+17,149,5);
   c.fillStyle='#282d30';c.fillRect(x-66,y-54,120,68);
   if(tv.started)tv.draw(c,x-62,y-50,112,60);
   else {c.fillStyle='#142638';c.fillRect(x-62,y-50,112,60);c.fillStyle='#456b6c';c.fillRect(x-58,y-45,104,2);c.fillRect(x-58,y+1,104,2);}
-  c.fillStyle='#352e28';c.fillRect(x+57,y-45,10,42);c.fillStyle='#d9b96f';c.fillRect(x+60,y-38,4,4);c.fillRect(x+60,y-28,4,4);
-  c.fillStyle='#655242';c.fillRect(x-24,y+20,48,12);c.fillStyle='#b3a795';c.fillRect(x-21,y+19,42,9);c.fillStyle='#473e36';c.fillRect(x-16,y+22,11,3);c.fillRect(x+13,y+22,4,3);
-  for(const side of [-1,1]){const cx=x+side*64,cy=y+50;c.fillStyle='#dad2bb';c.fillRect(cx-14,cy-5,28,10);c.fillRect(cx-10,cy-8,20,16);c.fillStyle='#4d4a44';c.fillRect(cx-8,cy-2,8,3);c.fillRect(cx-6,cy-5,3,9);c.fillStyle='#a85250';c.fillRect(cx+5,cy-3,4,4);c.fillRect(cx+9,cy,3,3);}
+  c.fillStyle='#352e28';c.fillRect(x+57,y-45,7,42);c.fillStyle='#d9b96f';c.fillRect(x+59,y-38,3,4);c.fillRect(x+59,y-28,3,4);
+  c.fillStyle='#655242';c.fillRect(x-24,y+23,48,12);c.fillStyle='#b3a795';c.fillRect(x-21,y+21,42,10);
+  c.fillStyle='#473e36';c.fillRect(x-16,y+25,11,3);c.fillRect(x+13,y+25,4,3);
+  // Two sockets live on the front face of the console, not the TV screen.
+  c.fillRect(x-12,y+30,5,3);c.fillRect(x+7,y+30,5,3);
+}
+export function drawLobbyControllers(c,tv,actors){
+  for(const [slot,pad]of tv.controllers.entries()){
+    const actor=pad.owner===null?null:actors.find(a=>a.id===pad.owner);
+    const grip=actor?lobbyControllerGrip(actor,slot):pad;
+    drawControllerCable(c,{x:785+(slot?9:-9),y:198},grip);
+    if(!actor){c.fillStyle='#14221c44';c.fillRect(Math.round(pad.x-14),Math.round(pad.y+7),28,4);drawLobbyController(c,pad.x,pad.y,slot);}
+  }
 }

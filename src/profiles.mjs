@@ -124,15 +124,20 @@ export class Profiles {
     for (const p of g.players) {
       let h = this.data.heroes.find((h) => h.id === p.profileId);
       if (!h) continue; // New local heroes must pass the name dialog first.
+      // While a creature is controlled, the shared UI temporarily points the
+      // player at that creature's bag and equipment. Persist the saved hero
+      // loadout instead, so opening the creature inventory cannot replace the
+      // selected character's permanent gear.
+      const loadout=p.controlMainLoadout||p;
       Object.assign(h, {
         field: structuredClone(p.field || {}),
         name: p.name,
         npcQuests: structuredClone(p.npcQuests || {}),
         hunterPet:petRecord(p.hunterPet),
         appearance: structuredClone(p.appearance || null),
-        inventory: structuredClone(p.inventory),
-        equipment: { ...p.equipment },
-        equipmentSockets:structuredClone(p.equipmentSockets||{}),
+        inventory: structuredClone(loadout.inventory||[]),
+        equipment: { ...(loadout.equipment||{}) },
+        equipmentSockets:structuredClone(loadout.equipmentSockets||{}),
         chests: structuredClone(p.chests),
         starterChest: structuredClone(p.starterChest || null),
         chestNames: structuredClone(p.chestNames || []),

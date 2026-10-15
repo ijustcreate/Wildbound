@@ -1,0 +1,17 @@
+# Cemetery doors, small gates, and pumpkins
+
+Fixed the unconditional doorway exemption in `graveyardBlocked`: closed mausoleums now block their entire threshold footprint. Only an opened mausoleum receives the existing short approach gap; side walls and deeper interior remain solid. Existing opened crypt portals are preserved.
+
+Added permanently open 64px pedestrian apertures with small purpose-drawn gates at west/east sides (y864), and north/rear (x944), retaining the large south entrance. Solid posts match collision; surrounding fence panels are removed only across these openings. Older expeditions receive additive props/gaps without regenerating graves, buildings, or enemy state.
+
+Added two cemetery pumpkin beds with twelve individually pickable plants. Interact (or controller object attack shortcut) picks one; a full pack leaves the crop in place. Harvest state saves with scenery. Pumpkin stacks to twelve. Equipping any dagger/knife variant in either hand reveals **Carve** as the primary backpack action, with the usual Enter/controller accept label. Carving converts exactly one pumpkin to one jack-o’-lantern, never consumes the knife, and is atomic when full. A single pumpkin can reuse its emptied slot. Without an equipped knife, Carve is absent and the disabled Use button explains the requirement.
+
+Jack-o’-lantern is real head-slot equipment, exactly +2 armor, no sockets, and excluded from random gear rolls. Normal drop/collect/equip/save paths apply. Shared native pixel art serves crop, inventory icon, animated head attachment in eight views, and ground decoration. Fiery eye flicker is bounded time-sampled pixels, no particle allocation. Jack-o’-lantern wearers bypass the idle raster cache so the eye flicker does not freeze. Existing rigs, clips and custom wearable transforms remain untouched (Wildbound pixel-assets workflow).
+
+Verification: focused cemetery, inventory-toolbar, gear-art and pumpkin tests; isolated Electron checks actual Carve button, conversion, equipping, inventory portrait, runtime world rendering, studio preview, creator regression render, 176 assembled poses including complete walk/run cycles and eight directions; zero captured renderer errors and rig data unchanged. Generated eight-view head attachment contract passes without warnings. Native/enlarged contact sheet and inventory/patch previews inspected under ignored `test-output/cemetery-pumpkins`. No physical-controller or GPU performance benchmark claimed.
+
+Source-only follow-up: no new package, version bump, launcher, commit, push, or web deployment in this request. Concurrent work preserved.
+
+## Reference-driven helmet revision
+
+User rejected the initial oversized, striped jack-o’-lantern. Revised the shared pumpkin art to a squat rounded form with warm rust-orange lobes, slanted fiery eyes, a triangular nose and a continuous zigzag grin. Overlapping broad filled masses replace individual scanline strips. Worn coverage is now 15×12 logical pixels (previous width 19), with a very short stem; ground and inventory art retain a larger readable silhouette. The existing head pivot, eight directions, wearable overrides and +2 armor stay intact. Added explicit worn bounds and flicker regression assertions. Rechecked the 176-pose Electron contact sheet, inventory, studio and creator renderer; no rig mutations or captured renderer errors. This revision is also source-only.

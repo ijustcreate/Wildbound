@@ -1,3 +1,6 @@
+import {shoreGoblinMotion,defaultShoreGoblinMotion,replaceShoreGoblinMotion,drawShoreGoblin} from './shore-goblin-motion.mjs';
+import {reaperMotion,defaultReaperMotion,replaceReaperMotion,drawReaper} from './reaper-motion.mjs';
+import {dreadmaneLionMotion,defaultDreadmaneLionMotion,replaceDreadmaneLionMotion,drawDreadmaneLion} from './dreadmane-lion-motion.mjs';
 import {wolfMotion, defaultWolfMotion, replaceWolfMotion, drawWolf} from './wolf-motion.mjs';
 import {murkWolfMotion, defaultMurkWolfMotion, replaceMurkWolfMotion, drawMurkWolf} from './murk-wolf-motion.mjs';
 import {warlockMotion,defaultWarlockMotion,replaceWarlockMotion,drawWarlock} from './warlock-motion.mjs';
@@ -5,6 +8,7 @@ import {bansheeMotion,defaultBansheeMotion,replaceBansheeMotion,drawBanshee} fro
 import {succubusMotion,defaultSuccubusMotion,replaceSuccubusMotion,drawSuccubus} from './succubus-motion.mjs';
 import {impMotion,defaultImpMotion,replaceImpMotion,drawImp} from './imp-motion.mjs';
 import {zombieMotion,defaultZombieMotion,replaceZombieMotion,drawZombie} from './zombie-motion.mjs';
+import {ghostMotion,defaultGhostMotion,replaceGhostMotion,drawGhost} from './ghost-motion.mjs';
 import { NIGHT_KINDS, nightMotions, nightRigLabels, defaultNightMotion, replaceNightMotion, drawNightRig } from './night-rigs.mjs';
 import {
   BEAST_KINDS,
@@ -59,9 +63,23 @@ import {
   drawCreature,
   creatureRigLabels,
 } from "./creature-motion.mjs";
+import {oathlessCaptainMotion,defaultOathlessCaptainMotion,replaceOathlessCaptainMotion,drawOathlessCaptain} from './oathless-captain-motion.mjs';
+import {safariHunterMotion,defaultSafariHunterMotion,replaceSafariHunterMotion,drawSafariHunter} from './safari-hunter-motion.mjs';
+import {alanMotion,defaultAlanMotion,replaceAlanMotion,drawAlan} from './alan-motion.mjs';
+import {villagerMotion,defaultVillagerMotion,replaceVillagerMotion,drawVillager} from './villager-motion.mjs';
+import {slimeMotion,defaultSlimeMotion,replaceSlimeMotion,drawSlime} from './slime-motion.mjs';
 export const RIG_SUBJECTS = {
+  ghost:{name:'Ghost / spectral humanoid',data:ghostMotion,defaults:defaultGhostMotion,replace:replaceGhostMotion,draw:drawGhost,sprite:'ghost',selected:'head',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'claw',scale:5},
+  shore_goblin:{name:'Shore goblin / Murloc motion',data:shoreGoblinMotion,defaults:defaultShoreGoblinMotion,replace:replaceShoreGoblinMotion,draw:drawShoreGoblin,sprite:'shore_goblin',selected:'head',palette:Object.keys(shoreGoblinMotion.palette),shapeKeys:Object.keys(shoreGoblinMotion.shape),tracks:['handR','handL','footR','footL','mouth'],clip:'run',scale:6},
+  villager:{name:'Villager / April and friends',data:villagerMotion,defaults:defaultVillagerMotion,replace:replaceVillagerMotion,draw:drawVillager,sprite:'villager',selected:'head',palette:Object.keys(villagerMotion.palette),shapeKeys:Object.keys(villagerMotion.shape),tracks:['handR','handL','swordTip','footR','footL'],clip:'wave',scale:6},
+  grim_reaper:{name:'Grim Reaper / equipped humanoid',data:reaperMotion,defaults:defaultReaperMotion,replace:replaceReaperMotion,draw:drawReaper,sprite:'grim_reaper',selected:'handR',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'reaper_channel',scale:5},
+  oathless_captain:{name:'Oathless Captain / WoW human motion',data:oathlessCaptainMotion,defaults:defaultOathlessCaptainMotion,replace:replaceOathlessCaptainMotion,draw:drawOathlessCaptain,sprite:'oathless_captain',selected:'head',palette:Object.keys(oathlessCaptainMotion.palette),shapeKeys:Object.keys(oathlessCaptainMotion.shape),tracks:['handR','handL','swordTip','footR','footL'],clip:'walk',scale:6},
+  dreadmane_lion:{name:'Dreadmane Lion / WoW motion',data:dreadmaneLionMotion,defaults:defaultDreadmaneLionMotion,replace:replaceDreadmaneLionMotion,draw:drawDreadmaneLion,sprite:'dreadmane_lion',selected:'head',palette:Object.keys(dreadmaneLionMotion.palette),shapeKeys:Object.keys(dreadmaneLionMotion.shape),tracks:['frontPawL','frontPawR','rearPawL','rearPawR','jawTip'],clip:'run',scale:6},
+  slime:{name:'Slime / WoW slime motion',data:slimeMotion,defaults:defaultSlimeMotion,replace:replaceSlimeMotion,draw:drawSlime,sprite:'slime',selected:'crest',palette:Object.keys(slimeMotion.palette),shapeKeys:Object.keys(slimeMotion.shape),tracks:['crest','eyeL','eyeR','rimL','rimR'],clip:'run',scale:6},
   murk_wolf:{name:'Murk Wolf / motion transfer test',data:murkWolfMotion,defaults:defaultMurkWolfMotion,replace:replaceMurkWolfMotion,draw:drawMurkWolf,sprite:'murk_wolf',selected:'head',palette:Object.keys(murkWolfMotion.palette),shapeKeys:Object.keys(murkWolfMotion.shape),tracks:['frontPawL','frontPawR','rearPawL','rearPawR','jawTip'],clip:'run',scale:6},
   zombie:{name:'Zombie / shambling humanoid',data:zombieMotion,defaults:defaultZombieMotion,replace:replaceZombieMotion,draw:drawZombie,sprite:'zombie',selected:'handR',palette:['head','body','arms','legs'],tracks:['handR','handL','footR','footL'],clip:'walk',scale:5},
+  safari_hunter:{name:'Safari Hunter / Oathless Captain rig',data:safariHunterMotion,defaults:defaultSafariHunterMotion,replace:replaceSafariHunterMotion,draw:drawSafariHunter,sprite:'safari_hunter',selected:'head',palette:['head','body','arms','legs'],shapeKeys:Object.keys(safariHunterMotion.shape),tracks:['handR','handL','footR','footL'],clip:'hunter_kneel_aim',scale:6},
+  alan:{name:'Alan / Oathless Captain wilderness rig',data:alanMotion,defaults:defaultAlanMotion,replace:replaceAlanMotion,draw:drawAlan,sprite:'alan',selected:'head',palette:['head','body','arms','legs'],shapeKeys:Object.keys(alanMotion.shape),tracks:['handR','handL','footR','footL'],clip:'walk',scale:6},
   succubus:{name:'Succubus / winged humanoid',data:succubusMotion,defaults:defaultSuccubusMotion,replace:replaceSuccubusMotion,draw:drawSuccubus,sprite:'succubus',selected:'wingTipL',palette:['head','body','arms','legs'],tracks:['handL','handR','wingTipL','wingTipR','tailTip'],clip:'fly',scale:5},
   imp:{name:'Ember imp / small winged demon',data:impMotion,defaults:defaultImpMotion,replace:replaceImpMotion,draw:drawImp,sprite:'imp',selected:'wingTipL',palette:['head','body','arms','legs'],tracks:['handR','wingTipL','wingTipR','tailTip'],clip:'fly',scale:5},
   banshee_queen:{name:'Banshee Queen / equipped humanoid',data:bansheeMotion,defaults:defaultBansheeMotion,replace:replaceBansheeMotion,draw:drawBanshee,sprite:'banshee_queen',selected:'handL',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'draw',scale:5},

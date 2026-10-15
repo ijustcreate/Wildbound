@@ -792,7 +792,7 @@ export class Designer {
       event.spread ??= 0.45;
       event.intensity ??= 1;
       this.field(fields, "Event type", event, "type", {
-        options: ["encounter", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede"],
+        options: ["encounter", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede", "villager_camp"],
         change:()=>{this.render();return true;},
       });
       for (const k of ["weight", "duration", "spread", "intensity"])
@@ -815,6 +815,7 @@ export class Designer {
         this.field(section,'Reward quantity',m,'qty',{min:1,max:99,step:1});
         this.dialog.append(section);
       }
+      if(event.type!=='villager_camp'){
       this.field(fields, "Creature", event, "kind", {
         options: Object.keys(creatures),
       });
@@ -847,6 +848,7 @@ export class Designer {
       });
       this.button(enemyPanel, "+  Add creature", () => { const kind = this.kind in creatures ? this.kind : "lion", cfg = creatures[kind]; enemies.push({ kind, count: 1, manualOverride: false, hp: cfg.stats.hp, speed: cfg.stats.speed, damage: cfg.stats.damage }); this.render(); }).className = "add-module-button";
       this.dialog.append(enemyPanel);
+      }else{const camp=element('section');camp.className='event-builder-section';camp.append(element('h3','Three campers'),element('p','Three randomly chosen campers gather around a fire. After their stories, April runs in and offers to follow the first player who invites her. Edit their pixel parts and colors in the Villager rig.'));this.dialog.append(camp);}
 
       const chain = this.eventChainDefaults(event);
       const chainPanel = element("section");

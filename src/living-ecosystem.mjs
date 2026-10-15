@@ -6,6 +6,7 @@ import {seedCoastalCritters,tickCoastalCritter,nearbyFishWater,drawCoastalCritte
 import { propBase, waterAt } from './environment.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
 import { nearbyScenery } from './performance.mjs';
+import {fleeGhostCritter} from './ghost-fear.mjs';
 
 /** Parent integration (world coordinates, seconds):
  * initLivingEcosystem(game) after world creation/restore; updateLivingEcosystem(game, dt)
@@ -72,6 +73,10 @@ function sites(g) {
 export function initLivingEcosystem(g) {
   const old=g.livingEcosystem;
   const compatible=old?.version===1&&old.biome===biome(g)&&old.seed===finite(g.seed);
+  const ambient=compatible&&old.ambient;
+  if(ambient&&Array.isArray(ambient.animals)&&ambient.animals.length<=LIVING_LIMITS.animals&&ambient.animals.every(a=>a&&typeof a.kind==='string'&&Number.isFinite(a.x)&&Number.isFinite(a.y))){
+    runtime.set(g,{state:old,animals:ambient.animals,time:finite(ambient.time),attractionIn:finite(ambient.attractionIn),targets:new Map()});return old;
+  }
   const saved=new Map((compatible&&Array.isArray(old.vines)?old.vines:[]).slice(0,24).map(v=>[v?.id,v]));
   const vines=sites(g).map(v=>{
     const prior=saved.get(v.id);
@@ -99,6 +104,10 @@ export function initLivingEcosystem(g) {
   for(const a of animals.filter(a=>a.kind==='frog')){const bank=banks[(a.id*17)%banks.length];if(bank)Object.assign(a,{...bank,homeX:bank.x,homeY:bank.y,wait:a.phase});}
   runtime.set(g,{state,animals:animals.filter(a=>(a.kind!=='frog'||banks.length)&&!state.caught.includes(a.id)),time:0,attractionIn:0,targets:new Map()});
   return state;
+}
+// Preserve the tiny ambient simulation when a Wildbound map is put to sleep.
+export function captureLivingAmbient(g){
+ const r=runtime.get(g);if(r&&r.state===g.livingEcosystem)r.state.ambient={animals:r.animals,time:r.time,attractionIn:r.attractionIn};
 }
 function ensure(g) {
   let r=runtime.get(g);
@@ -147,6 +156,7 @@ export function updateLivingEcosystem(g,dt) {
     }
   }
   for(const a of r.animals) {
+    if(fleeGhostCritter(g,a,dt,(x,y)=>a.kind==='fish'?['water','shallow'].includes(waterAt(g,x,y)):openSpot(g,x,y,4)&&!livingEcosystemBlocked(g,x,y,4,['dragonfly','bird','fairy','grave_moth'].includes(a.kind),0)))continue;
     if(['crab','fish'].includes(a.kind)){
       const owner=a.releasedOwner!=null?g.players.find(p=>p.id===a.releasedOwner&&p.hp>0&&!p.room):null;
       tickCoastalCritter(g,a,dt,r.time,owner&&Math.hypot(owner.x-a.x,owner.y-a.y)>25?owner:null);continue;
@@ -219,6 +229,14 @@ export function cutLivingVines(g,p,range=64) {
 }
 
 /** Snapshot for optional depth sorting/debugging. Animals are ambient, never core actors. */
+// Live target access stays bounded to this ecosystem; death uses the catch/remove persistence path.
+export function livingDrainTargets(g){return (runtime.get(g)?.animals||[]).filter(a=>!a.dead);}
+export function drainLivingAnimal(g,id,amount,execute=false){
+ const r=runtime.get(g),a=r?.animals.find(a=>a.id===id);if(!a)return 0;
+ a.hp??=12;const taken=execute?a.hp:Math.min(amount,Math.max(0,a.hp));a.hp-=taken;
+ if(execute||a.hp<=0){a.dead=true;if(a.releasedOwner==null&&!r.state.caught.includes(a.id))r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);captureLivingAmbient(g);g.persist?.();}
+ return taken;
+}
 export function livingAnimals(g) {return (runtime.get(g)?.animals||[]).map(a=>({...a}));}
 
 /** Procedural, integer pixel sprites. ctx is an ordinary CanvasRenderingContext2D. */
@@ -295,3 +313,5 @@ export function releaseCritter(g,p,index){
  p.inventory=copy;const r=ensure(g),spot=water||{x:p.x+18,y:p.y+18};r.animals.push({id:'released-'+p.id+'-'+(g.nextId++),kind,...spot,homeX:spot.x,homeY:spot.y,phase:r.time,releasedOwner:p.id,hopHeight:0});
  p.ui.notice='Released! Your critter follows for this level. Catch it again before quitting.';g.uiRevision=(g.uiRevision||0)+1;g.persist?.();return true;
 }
+
+

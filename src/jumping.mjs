@@ -26,7 +26,7 @@ export function tickJump(a,dt,g=null,offset=0){
   else return;
  }
  const previous=a.jumpHeight;
- a.jumpAge=(a.jumpAge||0)+dt;a.jumpVelocity-=360*dt;a.jumpHeight=Math.max(0,a.jumpHeight+a.jumpVelocity*dt);
+ a.jumpAge=(a.jumpAge||0)+dt;a.jumpVelocity-=(a.jumpGravity||360)*dt;a.jumpHeight=Math.max(0,a.jumpHeight+a.jumpVelocity*dt);
  const landed=a.jumpVelocity<=0&&previous>=support&&a.jumpHeight<=support;
  if(landed||!a.jumpHeight){a.groundHeight=landed?support:0;a.jumpHeight=0;a.jumpVelocity=0;a.landTime=.22;if(!a.kind&&!a.groundHeight)a.trackImpulse={x:a.x,y:a.y,kind:'landing'};}
 }

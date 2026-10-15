@@ -1,9 +1,10 @@
 import {ITEMS,SLOTS,socketCount,socketTrinket,removeTrinket,gearStat} from './items.mjs';
+import {essenceWeapon} from './dark-essence.mjs';
 import {drawItem} from './item-art.mjs';
 import {controllerButtonNames} from './controls.mjs';
 export function socketTarget(p){const s=p.ui?.socket;if(!s)return null;return s.target.mode==='gear'?{type:p.equipment[s.target.slot],sockets:p.equipmentSockets?.[s.target.slot]||[]}:p.inventory[s.target.index];}
 export function socketChoices(p){const item=socketTarget(p);if(!item)return [];const filled=(item.sockets||[]).map((type,index)=>({kind:'remove',type,index}));
- return [...filled,...((item.sockets||[]).length<socketCount(item.type)?p.inventory.flatMap((g,index)=>ITEMS[g?.type]?.trinket?[{kind:'insert',type:g.type,index}]:[]):[])];}
+ return [...filled,...((item.sockets||[]).length<socketCount(item.type)?p.inventory.flatMap((g,index)=>ITEMS[g?.type]?.trinket&&(!ITEMS[g.type].weaponOnly||essenceWeapon(item.type))?[{kind:'insert',type:g.type,index}]:[]):[])];}
 export function socketAction(g,p,action){
  const u=p.ui;
  if(!u.socket){
@@ -45,12 +46,13 @@ export function drawSocketWorkshop(panel,g,p,button,el){
   const b=button('','socket-'+i,()=>g.inventoryAction(p,'socketSelect:'+i));
   b.classList.toggle('selected',i===s.index);b.setAttribute('aria-pressed',String(i===s.index));
   const label=el('span',null,'socket-choice-name');label.append(el('strong',ITEMS[c.type].name),el('small',c.kind==='insert'?'Insert from backpack':'Remove to backpack'));
-  b.append(icon(c.type),label,el('span',`${c.kind==='insert'?'+':'-'}${ITEMS[c.type].maxMana} mana`,'socket-delta'));list.append(b);
+  b.append(icon(c.type),label,el('span',c.type==='dark_essence'?'Consumes to heal':`${c.kind==='insert'?'+':'-'}${ITEMS[c.type].maxMana} mana`,'socket-delta'));list.append(b);
  });
  if(!choices.length)list.append(el('p','No available trinkets','socket-empty-state'));root.append(list);
  const preview=el('div',null,'socket-preview');preview.setAttribute('aria-live','polite');
  const next=choice?mana+(choice.kind==='insert'?1:-1)*ITEMS[choice.type].maxMana:mana;
  preview.append(el('span','ITEM MANA'),el('strong',`+${mana}  →  +${next}`));root.append(preview);
+ if(item.sockets?.includes('dark_essence')||choice?.type==='dark_essence')root.append(el('p',ITEMS.dark_essence.description,'socket-essence-help'));
  if(s.confirm&&choice){const confirmation=el('p',`${choice.kind==='insert'?'Insert':'Remove'} ${ITEMS[choice.type].name}?`,'socket-confirmation');confirmation.setAttribute('role','status');root.append(confirmation);}
  const keys=p.device==='keyboard'?['Enter','Esc']:controllerButtonNames(p.controllerFamily||'generic');
  const actions=el('footer',null,'socket-actions');

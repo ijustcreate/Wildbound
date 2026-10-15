@@ -26,7 +26,7 @@ test('Hold Jump rises smoothly to a bounded hover and never moves the ground anc
  const {g,p}=field(),start={x:p.x,y:p.y};
  assert.ok(tickWingFlight(g,p,{jump:true},.05));assert.ok(p.jumpHeight>0&&p.jumpHeight<10);
  frames(g,p,500);assert.equal(p.jumpHeight,WING_HOVER_HEIGHT);assert.equal(p.jumpVelocity,0);assert.ok(p.wingHover);
- assert.deepEqual({x:p.x,y:p.y},start);assert.equal(playerAction(p),'jump_air');
+ assert.deepEqual({x:p.x,y:p.y},start);assert.equal(playerAction(p),'wing_hover');
  assert.equal(defaultPlayerMotion().joints.wingTipL,undefined);
 });
 

@@ -12,6 +12,7 @@ export function snapshot(g) {
     "explored",
     "forestLandscape",
     "boundlessLoadedChunks",
+    "realmViewerId",
   ]);
   return {
     ...Object.fromEntries(
@@ -53,6 +54,8 @@ export function cleanInput(input) {
         "use",
         "store",
         "offhand",
+        "sockets",
+        "controlCycle",
         "salvage",
         "drop",
         "dropOne",
@@ -93,7 +96,6 @@ export class Rooms {
     }
   }
   tick(g, dt, inputs) {
-    // Local simulation owns its state; networking is a dormant future adapter.
     if (this.role === "host") {
       this.age += dt;
       if (this.age > 0.1) {

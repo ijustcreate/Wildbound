@@ -36,12 +36,12 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
   const preview=()=>{const time=performance.now()/1000;drawCreationPreview(art.getContext('2d'),look,{width:art.width,height:art.height,time});if(popupPreview)drawCreationPreview(popupPreview.getContext('2d'),look,{width:popupPreview.width,height:popupPreview.height,mode:popupMode,direction:popupDirection,time});};
   const refreshers=[];
   const refresh=()=>{preview();refreshers.forEach(fn=>fn());};
-  let popup=null,opener=null,popupFocus=0,wheel=null,popupPreview=null,popupMode='full',popupDirection=0;
+  let popup=null,opener=null,popupFocus=0,wheel=null,popupPreview=null,popupMode='full',popupDirection=0,carousel=null;
   const buttons=()=>[...(popup||body).querySelectorAll('button')];
   const highlight=()=>{const list=buttons();let index=popup?popupFocus:s.focus;index=Math.max(0,Math.min(index,list.length-1));if(popup)popupFocus=index;else s.focus=index;panel.querySelectorAll('button').forEach(b=>b.classList.remove('lobby-focus'));list[index]?.classList.add('lobby-focus');list[index]?.scrollIntoView({block:'nearest'});};
-  const close=()=>{popup?.remove();popup=null;wheel=null;popupPreview=null;body.inert=false;highlight();opener?.focus({preventScroll:true});};
+  const close=()=>{popup?.remove();popup=null;wheel=null;popupPreview=null;carousel=null;body.inert=false;highlight();opener?.focus({preventScroll:true});};
   const open=(title,source)=>{
-    popup?.remove();wheel=null;popupPreview=null;opener=source;body.inert=true;popupFocus=0;
+    popup?.remove();wheel=null;popupPreview=null;carousel=null;opener=source;body.inert=true;popupFocus=0;
     popup=document.createElement('div');popup.className='creation-popup';popup.setAttribute('role','dialog');popup.setAttribute('aria-label',title);
     const h=document.createElement('h3');h.textContent=title;popup.append(h);panel.append(popup);return popup;
   };
@@ -78,15 +78,24 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
   }
   const select=(key,label,options,fallback)=>{
     const b=add('',()=>{
-      const box=open(label,b);box.classList.add('creation-detail-popup');popupMode=key==='face'?'face':'hair';popupDirection=0;
-      popupPreview=document.createElement('canvas');popupPreview.width=240;popupPreview.height=190;popupPreview.className='creation-detail-preview';popupPreview.setAttribute('aria-label',label+' close-up preview');box.append(popupPreview);
+      const box=open(label,b);box.classList.add('creation-detail-popup','creation-carousel-popup');popupMode=key==='face'?'face':'hair';popupDirection=0;
+      popupPreview=document.createElement('canvas');popupPreview.width=280;popupPreview.height=236;popupPreview.className='creation-detail-preview';popupPreview.setAttribute('aria-label',label+' close-up preview');box.append(popupPreview);
+      const picker=document.createElement('div');picker.className='creation-style-carousel';box.append(picker);
+      const previous=add('‹',()=>carousel.step(-1),picker);previous.setAttribute('aria-label','Previous '+label.toLowerCase());
+      const chosen=document.createElement('div');chosen.className='creation-carousel-choice';chosen.setAttribute('aria-live','polite');picker.append(chosen);
+      const next=add('›',()=>carousel.step(1),picker);next.setAttribute('aria-label','Next '+label.toLowerCase());
+      const count=document.createElement('small');count.className='creation-carousel-count';box.append(count);
       const views=document.createElement('div');views.className='creation-preview-views';box.append(views);
       add('↶ View',()=>rotatePreview(-1),views);add('View ↷',()=>rotatePreview(1),views);
-      const grid=document.createElement('div');grid.className='creation-option-grid';box.append(grid);
-      const selection=()=>grid.querySelectorAll('button').forEach(q=>{const selected=q.dataset.optionValue===(look[key]||fallback);q.setAttribute('aria-pressed',String(selected));q.textContent=(selected?'✓ ':'')+q.dataset.optionName;});
-      for(const [value,name] of options){const q=add(name,()=>{look[key]=value;refresh();selection();},grid);q.dataset.optionValue=value;q.dataset.optionName=name;}
-      add('Done',close,box);const help=document.createElement('small');help.dataset.creationHelp='detail';box.append(help);updateLabels();selection();refresh();
-      popupFocus=buttons().indexOf(grid.querySelector('[aria-pressed="true"]')||grid.firstElementChild);highlight();buttons()[popupFocus]?.focus({preventScroll:true});
+      add('Done',close,box).classList.add('creation-carousel-done');const help=document.createElement('small');help.dataset.creationHelp='detail';box.append(help);
+      carousel={step:delta=>{
+        const index=Math.max(0,options.findIndex(([value])=>value===(look[key]||fallback)));
+        const [value,name]=options[(index+delta+options.length)%options.length];
+        look[key]=value;chosen.textContent=name;count.textContent=`${(index+delta+options.length)%options.length+1} / ${options.length}`;refresh();
+      }};
+      const index=Math.max(0,options.findIndex(([value])=>value===(look[key]||fallback)));
+      chosen.textContent=options[index][1];count.textContent=`${index+1} / ${options.length}`;
+      updateLabels();refresh();popupFocus=0;highlight();previous.focus({preventScroll:true});
     });
     refreshers.push(()=>{b.textContent=label;const value=document.createElement('span');value.textContent=(options.find(([id])=>id===(look[key]||fallback))||options[0])[1]+' ›';b.append(value);});b.className='creation-select-row';
   };
@@ -108,7 +117,7 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
     if(back){if(popup)close();else onBack();return;}
     if(x||y){const list=buttons(),grid=popup?.querySelector('.creation-palette');let index=popup?popupFocus:s.focus;
       if(grid)index=y?Math.max(0,Math.min(16,index+y*4)):(index<16?Math.floor(index/4)*4+(index%4+x+4)%4:0);
-      else if(popup?.querySelector('.creation-option-grid')){const step=y?y*2:x;index=Math.max(0,Math.min(list.length-1,index+step));}
+      else if(carousel){if(x){carousel.step(x);return;}index=Math.max(0,Math.min(list.length-1,index+y));}
       else if(!popup&&y&&list[index]?.parentElement===colors){
         const first=list.indexOf(colors.firstElementChild),offset=index-first;
         index=y>0?(offset<2?index+2:offset<4?first+4:first+5):(offset>=2?first+(offset===4?2:offset-2):first-1);

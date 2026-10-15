@@ -2,6 +2,7 @@ import {ITEMS,clearSlot,refreshVitals,give} from './items.mjs';
 import {critterContainer} from './critter-containers.mjs';
 export const SALVAGE_SECONDS=1.25;
 export function salvageYield(type,metadata={}){
+ if(type?.startsWith('starter_')&&ITEMS[type]?.slot)return [{type:'relic_dust',qty:1}];
  if(type?.startsWith('caught_')&&ITEMS[type])return [{type:'dark_essence',qty:1},{type:critterContainer(type,metadata),qty:1}];
  const item=ITEMS[type];if(!item||item.gmOnly||!(item.slot||item.relic))return [];
  const tier=item.rarity||'common',dust={common:1,rare:2,unique:4,legendary:8}[tier]||1;

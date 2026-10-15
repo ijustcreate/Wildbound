@@ -22,11 +22,12 @@ test("Character names reject case and whitespace duplicates", () => {
   assert.ok(characterNameError("x", []));
   assert.equal(characterNameError("Scout", []), "");
 });
-test("Low-level victory rewards scale with party size and guarantee a rare", () => {
+test("Earned low-level victory rewards scale with trial credit and guarantee a rare", () => {
   const g = setup();
   g.sharedStash = Array.from({ length: 24 }, () => ({ type: "sword", qty: 1 }));
   g.dropLoot(400, 400, "hat");
-  g.completeVictory();
+  g.expeditionTrials.entries=Array.from({length:4},()=>({role:'elite',complete:true}));
+ g.completeVictory();
   assert.deepEqual(g.loot, []);
   assert.equal(g.victoryRewards.length, 5);
   assert.equal(g.victoryRewards.filter((i) => ITEMS[i.type].rarity === "rare").length, 1);

@@ -14,8 +14,12 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  pumpkin:{name:'Pumpkin',stack:12,color:'#ed962f',material:true,sellPrice:1,description:'Picked from a cemetery pumpkin patch. Equip a knife in either hand to reveal Carve in your backpack.'},
+  jack_o_lantern:{name:'Jack-o’-lantern',base:'hat',slot:'head',stack:1,armor:2,sockets:0,supplyOnly:true,color:'#ed962f',artColor:'#ed962f',style:'pumpkin',description:'A carved pumpkin helmet with flickering fiery eyes. Armor +2. Drop it to decorate the ground.'},
   unknown_mushroom:{name:'Strange mushroom',stack:999,rarity:'unique',color:'#c58bfa',sellPrice:0,description:'A mysterious mushroom found inside a question block in the TV world. Purple quality. Its purpose is unknown; no use yet.'},
-  dark_essence:{name:'Dark Essence',stack:999,color:'#a269cb',material:true,description:'Extracted by salvaging a captured creature. No use yet.'},
+  dark_essence:{name:'Dark Essence',stack:999,color:'#a269cb',material:true,trinket:true,maxMana:0,weaponOnly:true,description:'Socket in a weapon: heal 20% of damage dealt, up to 8 health per hit. Each healing hit consumes one essence; your backpack refills the socket when stocked. Extracted from captured creatures.'},
+  trial_letter:{name:'A letter from the living board',stack:1,color:'#eddbad',sellPrice:0,description:'The dice may hurry, feet may flee;\nNo borrowed courage pays the tree.\nThe trials you leave, the gifts forego—\nBrave roots alone make treasure grow.'},
+  mosquito_charm:{supplyOnly:true,name:'Oversized mosquito charm',base:'charm',slot:'neck',stack:1,rarity:'unique',color:'#d7a963',artColor:'#b8ce86',maxHp:8,description:'“They used to be smaller.” A tiny brass mosquito with an absurdly large proboscis. +8 maximum health. A playful living-jungle movie nod.'},
   starter_boomerang:{name:'Starter boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:12,range:210,speed:330,stack:1,supplyOnly:true,color:'#bf9658',artColor:'#bf9658',description:'Throw and catch. Returns to you; no ammunition needed. One throw at a time.'},
   boomerang:{name:'Trail boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:20,range:260,speed:380,stack:1,rarity:'common',color:'#be9251',artColor:'#be9251',description:'A returning weapon. Hits each enemy once per throw; no ammunition needed.'},
   moon_boomerang:{name:'Moonsteel boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:30,range:310,speed:430,stack:1,rarity:'rare',color:'#8cd6e8',artColor:'#8cd6e8',description:'A swift moonsteel returning weapon. One throw at a time; no ammunition needed.'},
@@ -901,22 +905,49 @@ for (const [id, name, base, rarity, artColor, stats, style] of gearVariants)
     variant: gearVariants.findIndex((v) => v[0] === id) + 1,
   };
 export const SAFARI_HUNTER_SET = Object.freeze({
-  head: "safari_hat", shoulders: "safari_shoulders", chest: "safari_vest",
+  head: "safari_hat", shoulders: "safari_shoulders", chest: "safari_vest", cape: "safari_cape",
   gloves: "safari_gloves", pants: "safari_pants", feet: "safari_boots",
 });
 for (const [slot, id] of Object.entries(SAFARI_HUNTER_SET)) {
-  const base = { head: "hat", shoulders: "shoulder_armor", chest: "armor",
+  const base = { head: "hat", shoulders: "shoulder_armor", chest: "armor", cape:"cape",
     gloves: "gloves", pants: "pants", feet: "boots" }[slot];
   ITEMS[id] = {
-    name: { head: "Safari pith helmet", shoulders: "Safari epaulettes",
+    name: { head: "Safari pith helmet", shoulders: "Safari epaulettes", cape:"Safari hunter's red-lined cape",
       chest: "Safari pocket vest", gloves: "Safari leather gloves",
       pants: "Safari cargo trousers", feet: "Safari field boots" }[slot],
     base, slot, stack: 1, armor: slot === "chest" ? 3 : 1,
     set: "safari_hunter", style: "safari", rarity: "common",
-    color: "#c7b17a", artColor: ["gloves", "feet"].includes(slot) ? "#836044" : "#c7b17a",
+    color: {head:'#a3652d',shoulders:'#ad642a',chest:'#b56b30',cape:'#262629',gloves:'#71462b',pants:'#945b2d',feet:'#29282b'}[slot],
+    artColor: {head:'#a3652d',shoulders:'#ad642a',chest:'#b56b30',cape:'#262629',gloves:'#71462b',pants:'#945b2d',feet:'#29282b'}[slot],
     description: "Safari hunter set · individually equippable field gear.",
   };
 }
+ITEMS.safari_cape={...ITEMS.safari_cape,style:'safari',lining:'#8d252d',description:'Red-lined field cape · Safari hunter set.'};
+export const SAFARI_HUNTER_EQUIPMENT=SAFARI_HUNTER_SET;
+export const ALAN_EQUIPMENT=Object.freeze({head:'alan_turtle_helmet',shoulders:'alan_leaf_mantle',chest:'alan_tunic',cape:'alan_leaf_cape',gloves:'alan_wrappings',pants:'alan_trousers',feet:'alan_boots',neck:'alan_medallion',hand1:'alan_jungle_knife'});
+export const MARLOW_EQUIPMENT=Object.freeze({head:'marlow_hat',shoulders:'marlow_shoulders',chest:'marlow_vest',cape:'marlow_cape',gloves:'marlow_gloves',pants:'marlow_trousers',feet:'marlow_boots'});
+for(const [slot,id,name,base,color,style] of [
+ ['head','marlow_hat','Marlow’s broad-brim hat','hat','#b79b63','brim'],
+ ['shoulders','marlow_shoulders','Marlow’s leather shoulder straps','shoulder_armor','#755d3e','plain'],
+ ['chest','marlow_vest','Marlow’s moss-green trade vest','armor','#657c51','plain'],
+ ['cape','marlow_cape','Marlow’s weathered half-cloak','cape','#425b43','short'],
+ ['gloves','marlow_gloves','Marlow’s work gloves','gloves','#806947','plain'],
+ ['pants','marlow_trousers','Marlow’s trail trousers','pants','#5a5142','plain'],
+ ['feet','marlow_boots','Marlow’s road boots','boots','#554535','tall'],
+])ITEMS[id]={name,base,slot,style,color,artColor:color,stack:1,npcOnly:true,armor:1,description:'Marlow Moss’s fitted traveling gear.'};
+for(const [slot,id,name,base,color,style,armor] of [
+ ['head','alan_turtle_helmet','Alan’s turtle-shell helmet','hat','#56763d','turtle',2],
+ ['shoulders','alan_leaf_mantle','Wilderness leaf mantle','shoulder_armor','#436b39','wilderness',2],
+ ['chest','alan_tunic','Alan’s ragged tunic','armor','#b79357','wilderness',3],
+ ['cape','alan_leaf_cape','Wilderness leaf cloak','cape','#3e6035','wilderness',1],
+ ['gloves','alan_wrappings','Wilderness wrist wraps','gloves','#655039','wilderness',1],
+ ['pants','alan_trousers','Alan’s trail trousers','pants','#9c7140','wilderness',2],
+ ['feet','alan_boots','Alan’s trail boots','boots','#654527','wilderness',1],
+ ['neck','alan_medallion','Jumanji relic medallion','charm','#a37b48','wilderness',0],
+ ['hand1','alan_jungle_knife','Jumanji jungle knife','dagger','#d8d1a0','wilderness',0],
+])ITEMS[id]={name,base,slot,stack:1,armor,damage:id==='alan_jungle_knife'?24:undefined,
+  rarity:'rare',color,artColor:color,style,alanGear:true,
+  description:'Alan’s wilderness gear, fitted to the Oathless Captain humanoid rig.'};
 export const RANGER_SET=['ranger_hood','ranger_jacket','ranger_bracers','ranger_trailboots','ranger_quiver'];
 for(const [id,name,base,slot,stats] of [
  ['ranger_hood','Ranger hood','hat','head',{bowDamage:.10}],
@@ -929,6 +960,12 @@ ITEMS.leather_quiver={name:'Leather quiver',base:'quiver',slot:'back',stack:1,ra
 ITEMS.starter_quiver={name:'Starter quiver',base:'quiver',slot:'back',stack:1,rarity:'common',color:'#b68a5d',artColor:'#9d724d',bowDrawSpeed:.2,arrowSpeed:.1,description:'Back-slot archery gear · arrows travel 10% faster · bow charges 20% faster. Uses ordinary arrows automatically.'};
 // Enemy costume pieces use the same fitted humanoid equipment system. They are
 // deliberately outside random loot pools; the warlock's existing rewards stay intact.
+export const REAPER_EQUIPMENT=Object.freeze({head:'reaper_hood',chest:'reaper_chest',gloves:'reaper_gloves',pants:'reaper_skirt',cape:'deaths_shroud',hand1:'reaper_scythe',hand2:'occupied'});
+ITEMS.scythe={name:'Harvest scythe',base:'scythe',slot:'hand1',twoHanded:true,damage:26,reach:76,stack:1,rarity:'rare',color:'#bdc8c4',artColor:'#bdc8c4',description:'A two-handed curved blade with sweeping scythe attacks.'};
+ITEMS.reaper_scythe={...ITEMS.scythe,name:"Reaper's scythe",damage:34,rarity:'unique',reaperGear:true,description:'The long crescent blade of the Grim Reaper. Sweep, return, and reap.'};
+for(const [id,name,base,slot,armor]of [['reaper_hood','Skullface cowl','hat','head',4],['reaper_chest','Reaper ribcage vestment','armor','chest',7],['reaper_gloves','Skeletal gloves','gloves','gloves',3],['reaper_skirt','Reaper robe skirt','pants','pants',5]])ITEMS[id]={name,base,slot,armor,stack:1,rarity:'unique',reaperGear:true,color:'#81858f',artColor:'#30323b',description:'Dark cloth and old ivory, fitted to the humanoid rig.'};
+export const REAPER_SET=Object.freeze(['reaper_hood','reaper_chest','reaper_gloves','reaper_skirt','deaths_shroud','reaper_scythe']);
+ITEMS.deaths_shroud={name:"Death's Shroud",base:'cape',slot:'cape',style:'tattered',armor:3,stack:1,rarity:'unique',reaperGear:true,color:'#81858f',artColor:'#30323b',description:'A dark flowing cape from the Grim Reaper set.'};
 export const WARLOCK_EQUIPMENT=Object.freeze({head:'warlock_hood',neck:'warlock_sigil',shoulders:'warlock_mantle',chest:'warlock_robe',gloves:'warlock_gloves',pants:'warlock_trousers',feet:'warlock_boots',cape:'warlock_cape',hand1:'warlock_staff'});
 for(const [slot,id]of Object.entries(WARLOCK_EQUIPMENT)){
  const base={head:'hat',neck:'charm',shoulders:'shoulder_armor',chest:'armor',gloves:'gloves',pants:'pants',feet:'boots',cape:'cape',hand1:'staff'}[slot];
@@ -945,11 +982,20 @@ for(const [id,name,color,bonus,description] of [
 // Five distinct Queen drops. The remaining outfit pieces are enemy costume only.
 export const BANSHEE_SET=Object.freeze(['banshee_bow','banshee_quiver','banshee_hood','banshee_cape','banshee_shoulders']);
 export const SUCCUBUS_DROPS=Object.freeze(['succubus_horns','succubus_whip','succubus_wings']);
-ITEMS.imp_horns={name:'Imp bone horns',base:'hat',slot:'head',color:'#d6bd87',artColor:'#d6bd87',style:'succubus_horns',hornsPalette:{ink:'#382325',base:'#b39164',light:'#e9d3a1',trim:'#8c493b'},stack:1,rarity:'unique',npcOnly:true};
-ITEMS.imp_wings={name:'Imp ember wings',base:'shoulder_armor',slot:'shoulders',color:'#c54e3a',artColor:'#c54e3a',style:'bat_wings',humanoidWings:true,wingPalette:{ink:'#401c29',base:'#b63d38',dark:'#702939',light:'#ef8251',bone:'#dba475'},stack:1,rarity:'unique',npcOnly:true};
+export const GHOST_EQUIPMENT=Object.freeze({head:'ghost_hood',chest:'ghost_robe',gloves:'ghost_claws',pants:'ghost_mist',cape:'ghost_cape'});
+export const GHOST_DROPS=Object.freeze(Object.values(GHOST_EQUIPMENT));
+for(const [id,name,base,slot,flags,description]of [
+ ['ghost_hood','Ghost hood','hat','head',{spectralHood:true,spectralEyes:true},'A pale hood with glowing spectral eyes and a small eye trail.'],
+ ['ghost_robe','Ghost robe','armor','chest',{spectralRobe:true},'Pale torn cloth from a restless cemetery ghost.'],
+ ['ghost_claws','Ghost claws','gloves','gloves',{spectralClaws:true,damage:2},'Long, curved spectral fingers.'],
+ ['ghost_mist','Ghost mist wraps','pants','pants',{spectralLegs:true},'Your legs dissolve into drifting wisps. A visual effect; your footing and collision stay the same.'],
+ ['ghost_cape','Spectral cape','cape','cape',{},'A ragged pale cape that trails like haunted mist.'],
+])ITEMS[id]={name,base,slot,style:id==='ghost_cape'?'spectral':'ghost',color:'#b8d9c4',artColor:'#b8d9c4',rarity:'rare',stack:1,armor:1,...flags,description};
+ITEMS.imp_horns={name:'Imp bone horns',base:'hat',slot:'head',color:'#d6bd87',artColor:'#d6bd87',style:'succubus_horns',coversHair:false,hornsPalette:{ink:'#382325',base:'#b39164',light:'#e9d3a1',trim:'#8c493b'},stack:1,rarity:'unique',npcOnly:true};
+ITEMS.imp_wings={name:'Imp ember wings',base:'shoulder_armor',slot:'shoulders',color:'#c54e3a',artColor:'#c54e3a',style:'bat_wings',humanoidWings:true,wingShape:'upright',wingPalette:{ink:'#401c29',base:'#b63d38',dark:'#702939',light:'#ef8251',bone:'#dba475'},stack:1,rarity:'unique',npcOnly:true};
 export const SUCCUBUS_EQUIPMENT=Object.freeze({head:'succubus_horns',hand1:'succubus_whip',shoulders:'succubus_wings',chest:'succubus_cuirass',gloves:'succubus_bracers',pants:'succubus_legguards',feet:'succubus_boots'});
 for(const [id,name,base,slot,color,style,stats]of [
- ['succubus_horns','Succubus horn crown','hat','head','#873f54','succubus_horns',{armor:3,description:'Curved crimson horns on a gilded headband. Dropped by succubi.'}],
+ ['succubus_horns','Succubus horns','hat','head','#873f54','succubus_horns',{armor:3,coversHair:false,description:'Curved crimson horns that leave your hair uncovered. Dropped by succubi.'}],
  ['succubus_whip','Succubus thorn whip','sword','hand1','#974863','whip',{damage:25,reach:112,description:'A rose-braided lash with a long, snapping reach. Does not charm players.'}],
  ['succubus_wings','Succubus wings','shoulder_armor','shoulders','#564065','bat_wings',{armor:2,humanoidWings:true,wingShape:'upright',wingFlight:true,description:'Hold Jump to rise and hover on articulated bat wings. Release to descend. Worn in the shoulder slot; no tail.'}],
  ['succubus_cuirass','Velvet cuirass','armor','chest','#443343','plate',{armor:2,npcOnly:true}],
@@ -970,6 +1016,9 @@ for(const [id,name,base,slot,color,style,stats] of [
  ['banshee_boots','Queen\u2019s armored boots','boots','feet','#352c39','tall',{}],
 ])ITEMS[id]={name,base,slot,artColor:color,color,style,stack:1,rarity:'unique',bansheeGear:true,...stats,...(BANSHEE_SET.includes(id)?{bossOnly:true,description:'Banshee set \u00b7 dropped by the Banshee Queen. 2 pieces: arrows have a 20% freeze chance (1.5s). 5 pieces: cosmetic icy footsteps.'}:{npcOnly:true,description:'Custom fitted armor worn by the Banshee Queen.'})};
 export const GEAR_SETS={
+ alan:{name:'Jumanji Wilderness',groups:Object.values(ALAN_EQUIPMENT).map(id=>[id]),full:{jumanjiVines:1},
+   fullText:'Jungle’s call: Jumanji jungle knife hits summon grasping vines every 12 seconds, holding a monster for 2 seconds and healing you for 8.'},
+ reaper:{name:'Death',groups:REAPER_SET.map(id=>[id]),three:{deathSteps:1},full:{reaperDamage:20,reaperLifeSteal:.05},threeText:'Black soul particles follow your footsteps',fullText:"Reaper's Scythe: glowing blade, +20 damage and 5% life steal"},
  banshee:{name:'Banshee',groups:BANSHEE_SET.map(id=>[id]),two:{arrowFreezeChance:.2},three:{},full:{icySteps:1},twoText:'Your arrows have a 20% chance to freeze enemies for 1.5 seconds',fullText:'Icy footprints follow your steps (cosmetic only)'},
  ranger:{name:'Ranger',groups:RANGER_SET.map(id=>[id]),three:{arrowVolley:2},full:{},skills:['tame_pet'],threeText:'Fire three arrows in a spread for one arrow',fullText:'Tame a lion, wolf, bat, panther, or tiger with R / RB. Your companion stays when gear is removed.'},
  moon:{name:'Moonbound',groups:[['moon_circlet','moon_helm'],['moon_shoulders'],['moon_steps'],['moon_blade','moon_bow','moon_shield']],three:{maxMana:30},full:{manaRegen:4,manaDiscount:.25,castHeal:3},threeText:'+30 maximum mana',fullText:'Lunar grace: 25% cheaper spells, +4 mana/sec, heal 3 on each cast'},
@@ -981,9 +1030,7 @@ for(const [set,def] of Object.entries(GEAR_SETS))for(const group of def.groups)f
 for(const [id,item] of Object.entries(ITEMS))if(item.slot){
  item.maxHp??=Math.max(0,Number(item.armor)||0)*2;
  if(id.startsWith('moon_'))item.maxMana=id.includes('blade')||id.includes('bow')?20:15;
- // Stackable slotted materials such as sticks are supplies, not gear
- // instances. Only singleton equipment may receive trinket sockets.
- if((item.stack??1)===1&&['sword','dagger','bow','wand','shield','armor','hat','charm'].includes(item.base||id)&&!item.utility)item.sockets??=item.twoHanded?2:1;
+ if(['sword','dagger','bow','wand','staff','rifle','boomerang','scythe','shield','armor','hat','charm'].includes(item.base||id)&&!item.utility)item.sockets??=item.twoHanded?2:1;
 }
 for(const [id,name,mana,regen,rarity,color] of [['azure_bead','Azure bead',15,0,'common','#70c9ec'],['moon_prism','Moon prism',25,0,'rare','#b49cfa'],['starheart','Starheart',40,0,'unique','#80f4d5'],['mana_rune','Mana rune',0,1,'common','#78d6e8'],['void_sigil','Void sigil',0,2,'rare','#9f82e8'],['astral_heart','Astral heart',0,3,'unique','#e48cff']])ITEMS[id]={name,base:'trinket',trinket:true,maxMana:mana,manaRegen:regen,stack:1,rarity,color,artColor:color,description:`Socket into compatible gear: +${regen?regen+' mana/sec':mana+' maximum mana'}. No bonus while loose in your bag.`};
 export const socketCount=type=>ITEMS[type]?.slot&&!ITEMS[type]?.trinket?Math.max(0,Math.min(3,Math.floor(Number(ITEMS[type].sockets)||0))):0;
@@ -998,6 +1045,7 @@ export function refreshVitals(p){
 export function socketTrinket(p,target,index){
  const gear=target.mode==='gear'?{type:p.equipment[target.slot],sockets:p.equipmentSockets?.[target.slot]||[]}:p.inventory[target.index];
  const gem=p.inventory[index];if(!gear||(gear.qty||1)!==1||!ITEMS[gem?.type]?.trinket||(gear.sockets||[]).length>=socketCount(gear.type))return false;
+ if(ITEMS[gem.type].weaponOnly&&!['sword','dagger','bow','wand','staff','boomerang','rifle','scythe'].includes(ITEMS[gear.type]?.base||gear.type))return false;
  const gems=[...(gear.sockets||[]),gem.type];
  if(target.mode==='gear'){p.equipmentSockets||={};p.equipmentSockets[target.slot]=gems;}else gear.sockets=gems;
  if(--gem.qty===0)clearSlot(p.inventory,index);refreshVitals(p);return true;
@@ -1247,7 +1295,7 @@ export function migrateEquipment(p) {
   p.coins = Math.max(0, Math.floor(Number(p.coins) || 0));
 }
 export const sellValue = (type) =>
-  ITEMS[type]?.sellPrice ?? (ITEMS[type]?.slot || ITEMS[type]?.relic
+  (type?.startsWith('starter_')&&ITEMS[type]?.slot?3:ITEMS[type]?.sellPrice) ?? (ITEMS[type]?.slot || ITEMS[type]?.relic
     ? { common: 8, rare: 24, unique: 60, legendary: 150 }[ITEMS[type].rarity] ||
       8
     : { stamina_potion: 5, potion: 3, trap: 2, arrow: 1, fruit: 1, meat: 1 }[
@@ -1400,3 +1448,4 @@ ITEMS.halo={name:'Halo',base:'hat',slot:'head',healingHalo:true,
   outgoingSpellHealing:.25,incomingSpellHealing:.25,stack:1,sockets:1,maxHp:0,rarity:'rare',
   color:RARITIES.rare,artColor:'#ffe8a0',style:'halo',
   description:'A floating ring of warm light: +25% outgoing and +25% incoming spell healing (multiplicative). Combine with a healing wand for three one-second healing ticks per hit, up to 3 stacks.'};
+

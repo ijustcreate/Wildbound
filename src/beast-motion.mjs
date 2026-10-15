@@ -5,6 +5,7 @@ import {validateSprite} from './pixels.mjs';
 import { defaultRhinoMotion, drawRhino } from "./rhino-motion.mjs";
 import {defaultBeetleMotion,upgradeBeetleMotion,drawBeetle} from './beetle-motion.mjs';
 import {defaultSpiderMotion,upgradeSpiderMotion,drawSpider} from './spider-motion.mjs';
+import {applyWowCreatureMotion,upgradeWowCreatureMotion} from './wow-creature-transfer.mjs';
 import {
   poseAt,
   projectPoint,
@@ -66,9 +67,12 @@ export function defaultBeastMotion(kind) {
       }
     return addPantherClips(m);
   }
-  if (kind === "boar") {
+  if (kind === "boar") return applyWowCreatureMotion(nativeBoarMotion(), 'boar');
+  return legacyInsectMotion(kind);
+}
+export function nativeBoarMotion() {
     const m = defaultRhinoMotion();
-    m.type = kind;
+    m.type = 'boar';
     m.name = "Boar";
     Object.assign(m.palette, {
       body: "#80604a",
@@ -90,8 +94,6 @@ export function defaultBeastMotion(kind) {
     m.joints.smallHornTip.position = [7, 28, 16];
     m.joints.tailTip.position = [2, -23, 15];
     return m;
-  }
-  return legacyInsectMotion(kind);
 }
 export function legacyInsectMotion(kind='beetle') {
   const m = {
@@ -180,7 +182,7 @@ export const beastMotions = Object.fromEntries(
 );
 export const beastMotionRevisions=Object.fromEntries(BEAST_KINDS.map(kind=>[kind,0]));
 export function validateBeastMotion(kind, m) {
-  if(kind==='spider'&&m?.artGeneration!==2){
+  if(kind==='spider'&&(m?.artGeneration||0)<2){
     if(!validateMotion(m,legacyInsectMotion('spider')))return false;
     m=upgradeSpiderMotion(m,legacyInsectMotion('spider'));
   }
@@ -202,7 +204,7 @@ export function validateBeastMotion(kind, m) {
 }
 export function replaceBeastMotion(kind, m) {
   if (!validateBeastMotion(kind, m)) throw Error("Invalid " + kind + " rig");
-  Object.assign(beastMotions[kind], kind==='spider'?upgradeSpiderMotion(m,legacyInsectMotion('spider')):kind==='beetle'?upgradeBeetleMotion(m,legacyInsectMotion('beetle')):['panther','white_lion','snow_leopard'].includes(kind)?withCompanionClips(structuredClone(m)):structuredClone(m));
+  Object.assign(beastMotions[kind], kind==='spider'?upgradeSpiderMotion(m,legacyInsectMotion('spider')):kind==='boar'?upgradeWowCreatureMotion(m,nativeBoarMotion(),defaultBeastMotion('boar')):kind==='beetle'?upgradeBeetleMotion(m,legacyInsectMotion('beetle')):['panther','white_lion','snow_leopard'].includes(kind)?withCompanionClips(structuredClone(m)):structuredClone(m));
   beastMotionRevisions[kind]++;
 }
 export function drawBeast(

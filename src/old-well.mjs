@@ -1,3 +1,6 @@
+import {finishDiscovery,trialState} from './expedition-trials.mjs';
+import {locationClearing} from './location-clearing.mjs';
+import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {OLD_WELL_EVENT} from './definitions.mjs';
 import {ITEMS, give, take, stat, itemKind} from './items.mjs';
 import {waterAt} from './environment.mjs';
@@ -8,14 +11,15 @@ import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
-import {locationClearing} from './location-clearing.mjs';
+import {UNDERGROUND_VIEW} from './underground-view.mjs';
+import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
 import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
   wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance} from './mausoleum-crypt.mjs';
 
 export {OLD_WELL_EVENT};
 export const WELL_TITLE = 'The bottom of the well';
 export const WELL_TILE = 16;
-export const WELL_VIEW = {width: 320, height: 240, top: 26, bottom: 22};
+export const WELL_VIEW = UNDERGROUND_VIEW;
 const wet = new Set(['water', 'shallow', 'floodbridge', 'mud', 'quicksand']);
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -261,7 +265,9 @@ export function leaveOldWell(g, p) {
 export function lootOldWellChest(g, p) {
   const d = wellForPlayer(g, p);
   if (!d || p.hp <= 0 || distance(roomPoint(p), d.well.chest) > 38) return false;
-  const chest = d.well.chest; chest.opened = true;
+  const chest = d.well.chest;
+  if(!chest.opened){const entry=trialState(g).entries.findLast(t=>!t.complete&&t.kind===(d.mausoleum?'mausoleum':'old_well'));if(entry)finishDiscovery(g,entry.name);}
+  chest.opened = true;
   g.openInventory(p, 'old-well');
   Object.assign(p.ui, {panel: 'chest', loot: true, index: Math.max(0, chest.items.findIndex(Boolean))});
   g.message?.(chest.items.some(Boolean) ? (d.mausoleum ? 'The lantern treasure chest opened.' : 'The old well treasure chest opened.') : 'The chest is empty.');
@@ -328,8 +334,10 @@ export function oldWellRoomStep(g, p, input, dt) {
   dt = clamp(Number(dt) || 0, 0, .2);
   p.wellAttackCooldown = Math.max(0, (p.wellAttackCooldown || 0) - dt);
   const a = roomPoint(p), ix = clamp(input.x || 0, -1, 1), iy = clamp(input.y || 0, -1, 1), norm = Math.max(1, Math.hypot(ix, iy));
-  const moved = moveInTunnels(s, a, ix / norm * 78 * dt, iy / norm * 78 * dt);
+  const speed=133*(p.field?.boon==='scout'?1.12:1)*(1+stat(p,'speedBonus'));
+  const moved = moveInTunnels(s, a, ix / norm * speed * dt, iy / norm * speed * dt);
   p.roomX = a.x; p.roomY = a.y; p.roomMoving = moved > 0; p.roomStep = (p.roomStep || 0) + moved * .13;
+  p.walking=moved>0&&Math.hypot(ix,iy)<.6;
   if (moved) {p.faceX = ix / norm; p.faceY = iy / norm;}
   p.blocking = !!input.block && itemKind(p.equipment?.hand2) === 'shield';
   revealWell(s, p.roomX, p.roomY);
@@ -523,19 +531,20 @@ function drawCaveCreature(c, e, time) {
   if (e.state === 'windup') {rect(c, -9, -21, 18, 2, '#e99a64');}
   c.restore();
 }
-export function wellRoomCamera(p, s) {
-  return {x: Math.round(clamp(p.roomX - 160, 0, s.width * WELL_TILE - 320)),
-    y: Math.round(clamp(p.roomY - 96, 0, s.height * WELL_TILE - 192))};
+export function wellRoomCamera(p, s, view=WELL_VIEW) {
+  const w=view.width/(view.zoom||1),h=(view.height-view.top-view.bottom)/(view.zoom||1);
+  return {x: Math.round(clamp(p.roomX - w/2, 0, Math.max(0,s.width * WELL_TILE-w))),
+    y: Math.round(clamp(p.roomY - h/2, 0, Math.max(0,s.height * WELL_TILE-h)))};
 }
-export function drawOldWellRoom(c, g, p, animator = null) {
+export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
   const d = wellForPlayer(g, p); if (!d) return false;
-  const s = d.well, camera = wellRoomCamera(p, s), known = new Set(s.explored);
-  if (d.mausoleum) return drawMausoleumRoom(c, g, p, d, camera, animator);
+  const s = d.well, camera = wellRoomCamera(p, s,view), known = new Set(s.explored),{width:w,height:h,top,bottom,zoom=1}=view,worldW=w/zoom,worldH=(h-top-bottom)/zoom;
+  if (d.mausoleum) return drawMausoleumRoom(c, g, p, d, camera, animator,view);
   c.save(); c.imageSmoothingEnabled = false;
-  rect(c, 0, 0, 320, 240, '#101218');
-  c.save(); c.beginPath(); c.rect(0, 26, 320, 192); c.clip(); c.translate(-camera.x, 26 - camera.y);
-  for (let ty = Math.floor(camera.y / WELL_TILE); ty <= Math.min(s.height - 1, Math.ceil((camera.y + 192) / WELL_TILE)); ty++)
-    for (let tx = Math.floor(camera.x / WELL_TILE); tx <= Math.min(s.width - 1, Math.ceil((camera.x + 320) / WELL_TILE)); tx++) {
+  rect(c, 0, 0, w, h, '#101218');
+  c.save(); c.beginPath(); c.rect(0, top, w, h-top-bottom); c.clip(); c.translate(0,top);c.scale(zoom,zoom);c.translate(-camera.x,-camera.y);
+  for (let ty = Math.floor(camera.y / WELL_TILE); ty <= Math.min(s.height - 1, Math.ceil((camera.y + worldH) / WELL_TILE)); ty++)
+    for (let tx = Math.floor(camera.x / WELL_TILE); tx <= Math.min(s.width - 1, Math.ceil((camera.x + worldW) / WELL_TILE)); tx++) {
       const index = tileIndex(s, tx, ty), x = tx * WELL_TILE, y = ty * WELL_TILE, h = hash(s.seed, tx, ty);
       if (!known.has(index) && distance({x: x + 8, y: y + 8}, roomPoint(p)) > 88) continue;
       if (s.tiles[index]) {
@@ -572,33 +581,35 @@ export function drawOldWellRoom(c, g, p, animator = null) {
   rect(c, ch.x - 8, ch.y - 11, 2, 14, '#d2ba79'); rect(c, ch.x + 6, ch.y - 11, 2, 14, '#d2ba79');
   rect(c, ch.x - 2, ch.y - 6, 4, 4, '#edcf80');
   for (const drop of s.drops) rect(c, drop.x - 2, drop.y - 2, 4, 4, ITEMS[drop.type].color);
-  for (const e of s.enemies.filter(e => e.hp > 0)) if (known.has(tileIndex(s, Math.floor(e.x / 16), Math.floor(e.y / 16))))
-    drawCaveCreature(c, e, g.time || 0);
+  for (const e of s.enemies.filter(e => e.hp > 0)) if (known.has(tileIndex(s, Math.floor(e.x / 16), Math.floor(e.y / 16)))) {
+    if(animator)animator.draw(c,e,g.time||0,creatureRenderSize(e.kind));else drawCaveCreature(c,e,g.time||0);
+  }
   for (const b of s.bolts) {
     if (b.healing) drawMagicBolt(c, b);
     else rect(c, b.x - 2, b.y - 2, b.magic ? 4 : 5, 2, b.magic ? '#b9eadd' : '#e7c47d');
   }
   for (const q of g.players.filter(q => q.room === d.id)) {
-    if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, g.time, 29);
+    if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, g.time, PLAYER_RENDER_SIZE);
     else {rect(c, q.roomX - 4, q.roomY - 14, 8, 12, q.color || '#87b8f2'); rect(c, q.roomX - 3, q.roomY - 19, 6, 6, '#e2bc88');}
     if (q.attack > 0) rect(c, q.roomX + (q.faceX || 1) * 12, q.roomY - 8 + (q.faceY || 0) * 10, 8, 2, '#edd7b0');
     for(const pet of [q.hunterPet,q.ritualPet].filter(pet=>pet?.room===d.id))
       drawHunterPet(c,{...pet,x:pet.roomX??q.roomX+24,y:pet.roomY??q.roomY+12},q,g.time,29);
   }
+  drawRoomVillagerFollowers(c,g,d.id,animator,48);
   // Darken unseen cells last, including decorations and unrevealed treasure.
   for (let ty = 0; ty < s.height; ty++) for (let tx = 0; tx < s.width; tx++)
     if (!known.has(tileIndex(s, tx, ty))) rect(c, tx * 16, ty * 16, 16, 16, '#101218');
   drawRoomSpellEffects(c, g, d.id);
   c.restore();
-  c.textAlign = 'center'; c.font = 'bold 11px sans-serif'; c.fillStyle = '#eddbb3'; c.fillText(WELL_TITLE, 160, 15);
+  c.textAlign = 'center'; c.font = 'bold 11px sans-serif'; c.fillStyle = '#eddbb3'; c.fillText(WELL_TITLE, w/2, 15);
   c.font = '9px sans-serif'; c.fillStyle = '#c7b68c';
   const prompt = distance(roomPoint(p), s.exit) < 36 ? 'E / Y · CLIMB ROPE TO RETURN' :
     distance(roomPoint(p), ch) < 38 ? 'E / Y · ' + (ch.items.some(Boolean) ? 'OPEN TREASURE CHEST' : 'EMPTY CHEST') :
     'Explore the tunnels · Attack spiders and bats';
-  c.fillText(prompt, 160, 231);
+  c.fillText(prompt, w/2, h-9);
   // Shared exploration, separate camera for every co-op room panel.
-  for (const index of s.explored) if (s.tiles[index]) rect(c, 274 + index % s.width, 29 + Math.floor(index / s.width), 1, 1, '#8c876f');
-  rect(c, 274 + Math.floor(s.exit.x / 16), 29 + Math.floor(s.exit.y / 16), 2, 2, '#f2df98');
-  rect(c, 274 + Math.floor(p.roomX / 16), 29 + Math.floor(p.roomY / 16), 2, 2, p.color || '#87b8f2');
+  for (const index of s.explored) if (s.tiles[index]) rect(c, w-46 + index % s.width, top+3 + Math.floor(index / s.width), 1, 1, '#8c876f');
+  rect(c, w-46 + Math.floor(s.exit.x / 16), top+3 + Math.floor(s.exit.y / 16), 2, 2, '#f2df98');
+  rect(c, w-46 + Math.floor(p.roomX / 16), top+3 + Math.floor(p.roomY / 16), 2, 2, p.color || '#87b8f2');
   c.restore(); return true;
 }

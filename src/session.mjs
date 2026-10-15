@@ -1,3 +1,5 @@
+import {initializeBoundlessWorld} from './boundless-world.mjs';
+import {restoreFollowerControl} from './follower-control.mjs';
 import { migrateEquipment, migrateLegacySupplies } from "./items.mjs";
 import { Game } from "./core.mjs";
 import { snapshot } from "./rooms.mjs";
@@ -10,6 +12,8 @@ import {cancelRobotRepair} from './storage-repair.mjs';
 import {tickCharmStatuses} from './succubus-charm.mjs';
 import {ensureOldWells} from './old-well.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
+import {upgradeCemeteryFeatures} from './graveyard-world.mjs';
+import {trialState} from './expedition-trials.mjs';
 export function saveSession(game) {
   return { version: 1, state: snapshot(game) };
 }
@@ -23,9 +27,9 @@ export function restoreSession(saved) {
     throw Error("Invalid expedition save");
   const g = new Game();
   Object.assign(g, saved.state);
-  // The experimental nested Heartwood journey is retired on the Worlds branch.
   g.portals=(g.portals||[]).filter(d=>!d.forestTravel);
   delete g.forestJourney;
+  if(!saved.state.expeditionTrials){delete g.expeditionTrials;trialState(g);}
   migrateLegacySupplies(g.sharedStash);
   // World drops retain their original anchors; do not merge distant arrows.
   for(const item of g.loot||[])migrateLegacySupplies([item]);
@@ -45,6 +49,7 @@ export function restoreSession(saved) {
   if (saved.state.openingBoard === undefined)
     g.openingBoard = !g.event && !g.players.some((p) => p.rolls > 0);
   g.explored = new Set(saved.state.explored || []);
+  g.boundlessLoadedChunks=[];
   g.scenery =
     g.phase === "won"&&!houseKeepsWorld(g)
       ? []
@@ -60,8 +65,11 @@ export function restoreSession(saved) {
     cancelRobotRepair(p);
     p.dashHeld = false;
   }
+  initializeBoundlessWorld(g);
+  for(const p of g.players)restoreFollowerControl(g,p);
   initLivingEcosystem(g);
   tickCharmStatuses(g,0);
   ensureOldWells(g);
+  upgradeCemeteryFeatures(g);
   return g;
 }

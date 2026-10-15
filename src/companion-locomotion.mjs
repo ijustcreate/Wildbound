@@ -14,9 +14,13 @@ export function companionMovement(actor,dt){
   };
 }
 export function companionVisualActor(actor,model){
+  if(actor.hunterPet===true&&actor.hp>0&&actor.attack>0&&!(actor.hit>0||actor.flash>0||actor.frozen>0)){
+    const action=actor.kind==='bat'?'dive':'bite',clip=model?.clips?.[action];
+    if(clip)return {...actor,animationAction:action,playerFrame:Math.max(0,1-actor.attack/.34)*(clip.length-1),poseTime:undefined,animationProgress:undefined};
+  }
   if(!(actor.faction==='ally'||actor.hunterPet===true)||!actor.moving||actor.hp<=0||actor.hit>0||actor.flash>0||actor.attack>0||actor.frozen>0||actor.state==='snared'||actor.jumpHeight>0||actor.summonPulse>0||actor.healEffect>0||actor.animationAction)return actor;
   const clips=model?.clips;if(!clips)return actor;
-  const preferred=['bat','pelican','dragon'].includes(actor.kind)?['fly','run','walk']:actor.kind==='snake'?['slither','walk','run']:(actor.locomotionSpeed??actor.speed??90)<=110?['walk','run','stalk']:['run','walk','stalk'];
+  const preferred=['bat','pelican','dragon'].includes(actor.kind)?['fly','run','walk']:actor.kind==='snake'?['slither','walk','run']:(actor.locomotionSpeed??actor.speed??90)<=170?['walk','run','stalk']:['run','walk','stalk'];
   const action=preferred.find(name=>clips[name]);if(!action)return actor;
   const clip=clips[action],stride=actor.kind==='beetle'?(action==='walk'?54:70):action==='walk'?70:100;
   // Flying loops are time-driven; footed gaits cover a consistent distance/cycle.

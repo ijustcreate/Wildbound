@@ -24,6 +24,7 @@ export function drawFlyingArrow(c,a={},time=0){
  c.restore();
  c.fillStyle='#ba9763';c.fillRect(-length,-.7,length-2,1.4);drawArrowFletching(c,-length+1);
  c.fillStyle='#c6d2c8';c.beginPath();c.moveTo(0,0);c.lineTo(-5,-2);c.lineTo(-4,0);c.lineTo(-5,2);c.closePath();c.fill();
+ if(a.bansheeFrost){c.fillStyle='#80ddff';c.fillRect(-length,-1,length-3,2);c.fillStyle='#e8ffff';c.fillRect(-8,-1,8,2);for(let i=0;i<5;i++){const x=-5-i*7;c.fillStyle=i%2?'#9ce7ff':'#e0fbff';c.fillRect(x,Math.sin(time*18+i*2)*3,2,2);}}
 }
 export function drawEmbeddedArrow(c,a,time=0,showQuantity=false){
  c.save();

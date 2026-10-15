@@ -27,7 +27,12 @@ function createRigStore({ appPath, exePath, userData, packaged, testMode, isolat
     },
     save(data) {
       if (data?.version !== 1) return Promise.reject(Error('Invalid rig file version.'));
-      const body = JSON.stringify(data, null, 2) + '\n';
+      // Dense motion keys otherwise spend most of the file limit on whitespace.
+      // Keep small authored rigs readable; large native rigs also have dense keys.
+      const body = '{\n' + Object.entries(data).map(([key, value]) =>
+        '  ' + JSON.stringify(key) + ': ' + JSON.stringify(value, null,
+          value?.provenance || JSON.stringify(value).length > 250_000 ? 0 : 2).replace(/\n/g, '\n  ')
+      ).join(',\n') + '\n}\n';
       if (Buffer.byteLength(body) > 20_000_000) return Promise.reject(Error('Rig file exceeds 20 MB.'));
       const task = queue.catch(() => {}).then(async () => {
         await fs.promises.mkdir(path.dirname(file), { recursive: true });

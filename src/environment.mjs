@@ -18,11 +18,9 @@ export function waterAt(g, x, y) {
   if (g.phase === "won"&&!houseKeepsWorld(g)) return "grass";
   const tx = Math.floor(x / 32),
     ty = Math.floor(y / 32);
-  if (tx < 0 || ty < 0 || tx >= 50 || ty >= 50) {
-    if(g.mapMode==='boundless')return boundlessTerrainAt(g,tx,ty);
-    return "water";
-  }
-  let base = g.terrain?.[ty * 50 + tx] || "grass";
+  const outside=tx<0||ty<0||tx>=50||ty>=50;
+  if(outside&&g.mapMode!=='boundless')return 'water';
+  let base=outside?boundlessTerrainAt(g,tx,ty):g.terrain?.[ty*50+tx]||'grass';
   // Beach pier boards are bridge tiles: water routes remain traversable
   // underneath instead of becoming a solid dry collision strip.
   if (g.generatedEnvironment === 'beach' && base === 'wood') return 'bridge';
@@ -40,8 +38,9 @@ export function waterAt(g, x, y) {
     ]) {
       const nx = tx + dx,
         ny = ty + dy;
-      if (nx < 0 || ny < 0 || nx >= 50 || ny >= 50) continue;
-      if (["water", "shallow", "bridge"].includes(g.terrain?.[ny * 50 + nx]))
+      if ((nx < 0 || ny < 0 || nx >= 50 || ny >= 50)&&g.mapMode!=='boundless') continue;
+      const neighbor=g.mapMode==='boundless'?boundlessTerrainAt(g,nx,ny):g.terrain?.[ny*50+nx];
+      if (["water", "shallow", "bridge"].includes(neighbor))
         return "shallow";
     }
   return base;

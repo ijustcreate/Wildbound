@@ -1,0 +1,4040 @@
+[
+  {
+    "id": "encounter-00",
+    "name": "The golden hunter",
+    "role": "ordinary",
+    "voice": "growl",
+    "file": "assets/sfx/encounters/encounter-00.wav",
+    "duration": 1.2837394100613893,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.231,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.169,
+        "duration": 0.317,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.307,
+        "duration": 0.129,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.497,
+        "duration": 0.456,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-01",
+    "name": "Wings in the rafters",
+    "role": "ordinary",
+    "voice": "flutter",
+    "file": "assets/sfx/encounters/encounter-01.wav",
+    "duration": 1.3393588742008433,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.393,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.157,
+        "duration": 0.445,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.285,
+        "duration": 0.225,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-02",
+    "name": "Coils beneath the table",
+    "role": "ordinary",
+    "voice": "hiss",
+    "file": "assets/sfx/encounters/encounter-02.wav",
+    "duration": 1.2745195240247995,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.379,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.167,
+        "duration": 0.351,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.336,
+        "duration": 0.437,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.447,
+        "duration": 0.263,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.625,
+        "duration": 0.338,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.775,
+        "duration": 0.245,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-03",
+    "name": "Eyes in the water",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-03.wav",
+    "duration": 1.097718183719553,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.388,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.195,
+        "duration": 0.22,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.383,
+        "duration": 0.361,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.597,
+        "duration": 0.233,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.772,
+        "duration": 0.422,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-04",
+    "name": "A debt of bananas",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-04.wav",
+    "duration": 1.4134667297592387,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.344,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.215,
+        "duration": 0.226,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.332,
+        "duration": 0.441,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-05",
+    "name": "The room takes root",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-05.wav",
+    "duration": 1.5075429018586874,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.42,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.153,
+        "duration": 0.326,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.291,
+        "duration": 0.214,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.505,
+        "duration": 0.448,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-06",
+    "name": "Thunder without rain",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-06.wav",
+    "duration": 1.0580870036035777,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.288,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.17,
+        "duration": 0.297,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.371,
+        "duration": 0.326,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.471,
+        "duration": 0.287,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-07",
+    "name": "A thousand little wings",
+    "role": "ordinary",
+    "voice": "buzz",
+    "file": "assets/sfx/encounters/encounter-07.wav",
+    "duration": 1.4133911890210584,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.423,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.17,
+        "duration": 0.424,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.315,
+        "duration": 0.187,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.436,
+        "duration": 0.288,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.576,
+        "duration": 0.378,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-08",
+    "name": "The stone remembers",
+    "role": "elite",
+    "voice": "stone",
+    "file": "assets/sfx/encounters/encounter-08.wav",
+    "duration": 1.495406942628324,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.381,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.153,
+        "duration": 0.402,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.258,
+        "duration": 0.39,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.366,
+        "duration": 0.154,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-09",
+    "name": "The silver clearing",
+    "role": "ordinary",
+    "voice": "growl",
+    "file": "assets/sfx/encounters/encounter-09.wav",
+    "duration": 1.434011750924401,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.231,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.159,
+        "duration": 0.39,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.302,
+        "duration": 0.454,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-10",
+    "name": "Stripes in the sanctum",
+    "role": "ordinary",
+    "voice": "growl",
+    "file": "assets/sfx/encounters/encounter-10.wav",
+    "duration": 1.4323902410222218,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.14,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.229,
+        "duration": 0.351,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.429,
+        "duration": 0.364,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-11",
+    "name": "Emerald shells",
+    "role": "ordinary",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-11.wav",
+    "duration": 1.501849146396853,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.328,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.154,
+        "duration": 0.299,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.372,
+        "duration": 0.221,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.538,
+        "duration": 0.303,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.681,
+        "duration": 0.269,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-12",
+    "name": "Keeper of the blade",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-12.wav",
+    "duration": 1.3895169964060188,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.305,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.176,
+        "duration": 0.404,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.363,
+        "duration": 0.314,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.577,
+        "duration": 0.411,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-13",
+    "name": "Arrows of the forgotten",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-13.wav",
+    "duration": 1.0964324369095266,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.384,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.13,
+        "duration": 0.217,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.351,
+        "duration": 0.405,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.489,
+        "duration": 0.406,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-14",
+    "name": "A bargain with the bushes",
+    "role": "peaceful",
+    "voice": "coin",
+    "file": "assets/sfx/encounters/encounter-14.wav",
+    "duration": 1.2831137009896338,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.368,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.167,
+        "duration": 0.293,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.284,
+        "duration": 0.128,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.47,
+        "duration": 0.235,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-15",
+    "name": "The dunes take flight",
+    "role": "hazard",
+    "voice": "hiss",
+    "file": "assets/sfx/encounters/encounter-15.wav",
+    "duration": 1.4806216383120046,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.285,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.136,
+        "duration": 0.416,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.271,
+        "duration": 0.401,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-16",
+    "name": "A knock from the sky",
+    "role": "hazard",
+    "voice": "drum",
+    "file": "assets/sfx/encounters/encounter-16.wav",
+    "duration": 1.1859352126019076,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.332,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.199,
+        "duration": 0.164,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.404,
+        "duration": 0.435,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.521,
+        "duration": 0.292,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.691,
+        "duration": 0.388,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-17",
+    "name": "The roof remembers rain",
+    "role": "hazard",
+    "voice": "drum",
+    "file": "assets/sfx/encounters/encounter-17.wav",
+    "duration": 1.0514709549723193,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.211,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.192,
+        "duration": 0.439,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.337,
+        "duration": 0.289,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-18",
+    "name": "The white hush",
+    "role": "hazard",
+    "voice": "chime",
+    "file": "assets/sfx/encounters/encounter-18.wav",
+    "duration": 1.4186212042812258,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.425,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.164,
+        "duration": 0.34,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.272,
+        "duration": 0.356,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.441,
+        "duration": 0.251,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.586,
+        "duration": 0.447,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.749,
+        "duration": 0.306,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-19",
+    "name": "The sky breaks open",
+    "role": "hazard",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-19.wav",
+    "duration": 1.057068068254739,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.395,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.247,
+        "duration": 0.207,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.358,
+        "duration": 0.433,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.535,
+        "duration": 0.188,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-20",
+    "name": "A mountain wakes",
+    "role": "hazard",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-20.wav",
+    "duration": 1.365803389181383,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.324,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.171,
+        "duration": 0.219,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.339,
+        "duration": 0.155,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.471,
+        "duration": 0.322,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.696,
+        "duration": 0.154,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-21",
+    "name": "Twenty thunders",
+    "role": "hazard",
+    "voice": "drum",
+    "file": "assets/sfx/encounters/encounter-21.wav",
+    "duration": 1.0650578513275832,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.35,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.158,
+        "duration": 0.35,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.334,
+        "duration": 0.338,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.552,
+        "duration": 0.408,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.686,
+        "duration": 0.42,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.856,
+        "duration": 0.399,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-22",
+    "name": "Footsteps without a shadow",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-22.wav",
+    "duration": 1.2705475331284106,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.16,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.197,
+        "duration": 0.221,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.33,
+        "duration": 0.458,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.464,
+        "duration": 0.436,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-23",
+    "name": "The hungry circle",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-23.wav",
+    "duration": 1.162137075746432,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.227,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.14,
+        "duration": 0.201,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.364,
+        "duration": 0.451,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.521,
+        "duration": 0.169,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.718,
+        "duration": 0.21,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.853,
+        "duration": 0.234,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-24",
+    "name": "Something below",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-24.wav",
+    "duration": 1.4471067346865312,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.205,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.158,
+        "duration": 0.457,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.299,
+        "duration": 0.169,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.499,
+        "duration": 0.277,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.614,
+        "duration": 0.395,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-25",
+    "name": "The path uncurls",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-25.wav",
+    "duration": 1.2319898546673358,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.212,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.243,
+        "duration": 0.305,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.352,
+        "duration": 0.459,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.554,
+        "duration": 0.323,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-26",
+    "name": "A hungry bloom",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-26.wav",
+    "duration": 1.219964230270125,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.247,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.149,
+        "duration": 0.459,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.341,
+        "duration": 0.456,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.454,
+        "duration": 0.223,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.573,
+        "duration": 0.219,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-27",
+    "name": "A bristling garden",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-27.wav",
+    "duration": 1.4731992778368295,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.434,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.138,
+        "duration": 0.275,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.257,
+        "duration": 0.249,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.378,
+        "duration": 0.446,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-28",
+    "name": "The longest two minutes",
+    "role": "boss",
+    "voice": "metal",
+    "file": "assets/sfx/encounters/encounter-28.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.44,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.196,
+        "duration": 0.44,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.425,
+        "duration": 0.297,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.58,
+        "duration": 0.356,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.689,
+        "duration": 0.469,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.9,
+        "duration": 0.537,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 1.077,
+        "duration": 0.129,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-29",
+    "name": "Heavy footsteps",
+    "role": "peaceful",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-29.wav",
+    "duration": 1.4067124588880688,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.132,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.131,
+        "duration": 0.309,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.295,
+        "duration": 0.368,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.446,
+        "duration": 0.141,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.563,
+        "duration": 0.186,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.703,
+        "duration": 0.199,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-30",
+    "name": "Stripes in motion",
+    "role": "peaceful",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-30.wav",
+    "duration": 1.2026342356810347,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.328,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.202,
+        "duration": 0.45,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.415,
+        "duration": 0.258,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.644,
+        "duration": 0.324,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.834,
+        "duration": 0.358,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-31",
+    "name": "A low sweep",
+    "role": "peaceful",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-31.wav",
+    "duration": 1.1801274845609442,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.4,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.195,
+        "duration": 0.154,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.379,
+        "duration": 0.124,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.569,
+        "duration": 0.167,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.67,
+        "duration": 0.444,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-32",
+    "name": "The Knight in the Empty Gallery",
+    "role": "discovery",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-32.wav",
+    "duration": 1.317901846091263,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.317,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.163,
+        "duration": 0.401,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.384,
+        "duration": 0.245,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-33",
+    "name": "The Phantom of the Old Organ",
+    "role": "discovery",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-33.wav",
+    "duration": 1.2853693377226592,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.189,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.215,
+        "duration": 0.318,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.383,
+        "duration": 0.392,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.571,
+        "duration": 0.336,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-34",
+    "name": "The Miner Beneath the Lantern",
+    "role": "discovery",
+    "voice": "stone",
+    "file": "assets/sfx/encounters/encounter-34.wav",
+    "duration": 1.3683309582527727,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.214,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.225,
+        "duration": 0.327,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.444,
+        "duration": 0.398,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.629,
+        "duration": 0.361,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.784,
+        "duration": 0.245,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.914,
+        "duration": 0.397,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-35",
+    "name": "The Krampus comes down",
+    "role": "boss",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-35.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.272,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.179,
+        "duration": 0.194,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.305,
+        "duration": 0.769,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.501,
+        "duration": 0.579,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.645,
+        "duration": 0.467,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.769,
+        "duration": 0.159,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.981,
+        "duration": 0.315,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-36",
+    "name": "The sleeping sickness",
+    "role": "ordinary",
+    "voice": "buzz",
+    "file": "assets/sfx/encounters/encounter-36.wav",
+    "duration": 1.1907497735926882,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.403,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.255,
+        "duration": 0.293,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.395,
+        "duration": 0.14,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.521,
+        "duration": 0.239,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.643,
+        "duration": 0.345,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-37",
+    "name": "The frost throne",
+    "role": "elite",
+    "voice": "bell",
+    "file": "assets/sfx/encounters/encounter-37.wav",
+    "duration": 1.4612573413876817,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.326,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.171,
+        "duration": 0.222,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.35,
+        "duration": 0.195,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-38",
+    "name": "The armory wakes",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-38.wav",
+    "duration": 1.1431940914597363,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.363,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.189,
+        "duration": 0.4,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.31,
+        "duration": 0.167,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.498,
+        "duration": 0.44,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.619,
+        "duration": 0.185,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.73,
+        "duration": 0.162,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-39",
+    "name": "Winter's last scholar",
+    "role": "elite",
+    "voice": "bell",
+    "file": "assets/sfx/encounters/encounter-39.wav",
+    "duration": 1.3118897542124615,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.413,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.133,
+        "duration": 0.235,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.314,
+        "duration": 0.417,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-40",
+    "name": "Cinder in the canopy",
+    "role": "ordinary",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-40.wav",
+    "duration": 1.3438920547021553,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.25,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.176,
+        "duration": 0.362,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.374,
+        "duration": 0.291,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-41",
+    "name": "The pool that walks",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-41.wav",
+    "duration": 1.0630654671229423,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.332,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.224,
+        "duration": 0.385,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.426,
+        "duration": 0.163,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.647,
+        "duration": 0.283,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-42",
+    "name": "The wolf pack",
+    "role": "ordinary",
+    "voice": "howl",
+    "file": "assets/sfx/encounters/encounter-42.wav",
+    "duration": 1.3237611969932914,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.387,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.165,
+        "duration": 0.453,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.39,
+        "duration": 0.35,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.561,
+        "duration": 0.184,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-43",
+    "name": "The old sky's hunger",
+    "role": "boss",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-43.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.124,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.195,
+        "duration": 0.276,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.369,
+        "duration": 0.567,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.505,
+        "duration": 0.416,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.642,
+        "duration": 0.563,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.82,
+        "duration": 0.612,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.936,
+        "duration": 0.268,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-44",
+    "name": "Empty-handed dead",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-44.wav",
+    "duration": 1.4997268446721137,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.357,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.247,
+        "duration": 0.246,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.423,
+        "duration": 0.38,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.537,
+        "duration": 0.183,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-45",
+    "name": "The horned king",
+    "role": "boss",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-45.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.246,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.229,
+        "duration": 0.478,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.429,
+        "duration": 0.254,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.571,
+        "duration": 0.504,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.783,
+        "duration": 0.513,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 1.008,
+        "duration": 0.156,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 1.158,
+        "duration": 0.492,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-46",
+    "name": "The purple warlock",
+    "role": "boss",
+    "voice": "bell",
+    "file": "assets/sfx/encounters/encounter-46.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.228,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.166,
+        "duration": 0.647,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.379,
+        "duration": 0.309,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.488,
+        "duration": 0.203,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.712,
+        "duration": 0.664,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.818,
+        "duration": 0.218,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.994,
+        "duration": 0.487,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-47",
+    "name": "The stoneguard patrol",
+    "role": "elite",
+    "voice": "stone",
+    "file": "assets/sfx/encounters/encounter-47.wav",
+    "duration": 1.3076777873327956,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.28,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.219,
+        "duration": 0.189,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.358,
+        "duration": 0.305,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-48",
+    "name": "Embers on the dunes",
+    "role": "ordinary",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-48.wav",
+    "duration": 1.4578719640383497,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.356,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.176,
+        "duration": 0.387,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.324,
+        "duration": 0.326,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.507,
+        "duration": 0.375,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.702,
+        "duration": 0.346,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-49",
+    "name": "Keeper of the jade stair",
+    "role": "boss",
+    "voice": "drum",
+    "file": "assets/sfx/encounters/encounter-49.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.455,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.187,
+        "duration": 0.364,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.339,
+        "duration": 0.711,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.568,
+        "duration": 0.33,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.78,
+        "duration": 0.68,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.926,
+        "duration": 0.468,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 1.039,
+        "duration": 0.193,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-50",
+    "name": "The ivory king",
+    "role": "ordinary",
+    "voice": "growl",
+    "file": "assets/sfx/encounters/encounter-50.wav",
+    "duration": 1.5221892214147374,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.344,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.214,
+        "duration": 0.297,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.418,
+        "duration": 0.375,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-51",
+    "name": "Ghosts of the glacier",
+    "role": "ordinary",
+    "voice": "growl",
+    "file": "assets/sfx/encounters/encounter-51.wav",
+    "duration": 1.4981868277071044,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.388,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.161,
+        "duration": 0.221,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.262,
+        "duration": 0.278,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-52",
+    "name": "Eight legs, three promises",
+    "role": "ordinary",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-52.wav",
+    "duration": 1.4643833059351892,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.385,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.147,
+        "duration": 0.41,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.275,
+        "duration": 0.203,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.377,
+        "duration": 0.413,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.523,
+        "duration": 0.446,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.681,
+        "duration": 0.255,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-53",
+    "name": "The emerald river coils",
+    "role": "boss",
+    "voice": "hiss",
+    "file": "assets/sfx/encounters/encounter-53.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.384,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.154,
+        "duration": 0.179,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.308,
+        "duration": 0.263,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.442,
+        "duration": 0.47,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.588,
+        "duration": 0.369,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.768,
+        "duration": 0.37,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.9,
+        "duration": 0.441,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-54",
+    "name": "The Banshee Queen",
+    "role": "boss",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-54.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.288,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.185,
+        "duration": 0.301,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.373,
+        "duration": 0.423,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.509,
+        "duration": 0.651,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.665,
+        "duration": 0.317,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.815,
+        "duration": 0.357,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.981,
+        "duration": 0.674,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-55",
+    "name": "A kiss with thorns",
+    "role": "boss",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-55.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.486,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.237,
+        "duration": 0.477,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.397,
+        "duration": 0.603,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.577,
+        "duration": 0.559,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.717,
+        "duration": 0.279,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.881,
+        "duration": 0.498,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 1.077,
+        "duration": 0.127,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-56",
+    "name": "Three sparks of trouble",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-56.wav",
+    "duration": 1.0801522847730667,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.34,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.132,
+        "duration": 0.348,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.333,
+        "duration": 0.207,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.503,
+        "duration": 0.124,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.632,
+        "duration": 0.35,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.789,
+        "duration": 0.272,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-57",
+    "name": "Footsteps without a heartbeat",
+    "role": "ordinary",
+    "voice": "grave",
+    "file": "assets/sfx/encounters/encounter-57.wav",
+    "duration": 1.412296702573076,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.245,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.209,
+        "duration": 0.276,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.419,
+        "duration": 0.358,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.597,
+        "duration": 0.37,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.794,
+        "duration": 0.4,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 1.015,
+        "duration": 0.257,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-58",
+    "name": "Velvet feet in the sand",
+    "role": "elite",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-58.wav",
+    "duration": 1.3998429825995118,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.233,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.163,
+        "duration": 0.266,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.285,
+        "duration": 0.252,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.492,
+        "duration": 0.144,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.703,
+        "duration": 0.174,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.806,
+        "duration": 0.157,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-59",
+    "name": "The old well",
+    "role": "discovery",
+    "voice": "drip",
+    "file": "assets/sfx/encounters/encounter-59.wav",
+    "duration": 1.35722636426799,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.28,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.236,
+        "duration": 0.155,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.377,
+        "duration": 0.406,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.582,
+        "duration": 0.207,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.759,
+        "duration": 0.188,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.955,
+        "duration": 0.409,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-60",
+    "name": "The graves answer",
+    "role": "ordinary",
+    "voice": "grave",
+    "file": "assets/sfx/encounters/encounter-60.wav",
+    "duration": 1.1811976908473298,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.364,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.132,
+        "duration": 0.195,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.275,
+        "duration": 0.206,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-61",
+    "name": "Bones on the midnight path",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-61.wav",
+    "duration": 1.4345337303355337,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.139,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.254,
+        "duration": 0.353,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.424,
+        "duration": 0.125,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.553,
+        "duration": 0.15,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-62",
+    "name": "Hands beneath the headstones",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-62.wav",
+    "duration": 1.0525086279492826,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.181,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.144,
+        "duration": 0.298,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.354,
+        "duration": 0.27,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.555,
+        "duration": 0.182,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.769,
+        "duration": 0.374,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.974,
+        "duration": 0.266,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-63",
+    "name": "The bell tower stirs",
+    "role": "ordinary",
+    "voice": "flutter",
+    "file": "assets/sfx/encounters/encounter-63.wav",
+    "duration": 1.2698247984051705,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.124,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.193,
+        "duration": 0.301,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.347,
+        "duration": 0.227,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.488,
+        "duration": 0.156,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-64",
+    "name": "Silk beneath the stones",
+    "role": "ordinary",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-64.wav",
+    "duration": 1.3899798228638247,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.418,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.145,
+        "duration": 0.313,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.279,
+        "duration": 0.179,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.411,
+        "duration": 0.2,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.584,
+        "duration": 0.285,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-65",
+    "name": "Three black watchers",
+    "role": "peaceful",
+    "voice": "flutter",
+    "file": "assets/sfx/encounters/encounter-65.wav",
+    "duration": 1.0779795252718032,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.151,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.17,
+        "duration": 0.326,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.334,
+        "duration": 0.151,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.495,
+        "duration": 0.137,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-66",
+    "name": "A murder of crows",
+    "role": "peaceful",
+    "voice": "flutter",
+    "file": "assets/sfx/encounters/encounter-66.wav",
+    "duration": 1.4390235525323078,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.281,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.399,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.463,
+        "duration": 0.314,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-67",
+    "name": "The mourning keeper",
+    "role": "boss",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-67.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.406,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.758,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.363,
+        "duration": 0.685,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.586,
+        "duration": 0.442,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.733,
+        "duration": 0.568,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.869,
+        "duration": 0.157,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 1.089,
+        "duration": 0.71,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-68",
+    "name": "A door beneath the ivy",
+    "role": "discovery",
+    "voice": "bell",
+    "file": "assets/sfx/encounters/encounter-68.wav",
+    "duration": 1.1812931935535744,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.338,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.217,
+        "duration": 0.362,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.35,
+        "duration": 0.345,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.576,
+        "duration": 0.279,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.802,
+        "duration": 0.305,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-69",
+    "name": "The Keeper",
+    "role": "peaceful",
+    "voice": "bell",
+    "file": "assets/sfx/encounters/encounter-69.wav",
+    "duration": 1.4650492936605588,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.141,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.136,
+        "duration": 0.373,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.331,
+        "duration": 0.239,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.456,
+        "duration": 0.368,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.617,
+        "duration": 0.454,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-70",
+    "name": "The Dreadmane wakes",
+    "role": "boss",
+    "voice": "growl",
+    "file": "assets/sfx/encounters/encounter-70.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.206,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.238,
+        "duration": 0.551,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.445,
+        "duration": 0.418,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.577,
+        "duration": 0.646,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.802,
+        "duration": 0.701,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 1.029,
+        "duration": 0.428,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 1.179,
+        "duration": 0.559,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-71",
+    "name": "The broken oath",
+    "role": "elite",
+    "voice": "metal",
+    "file": "assets/sfx/encounters/encounter-71.wav",
+    "duration": 1.4259571814443917,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.397,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.159,
+        "duration": 0.254,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.338,
+        "duration": 0.226,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.479,
+        "duration": 0.321,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.688,
+        "duration": 0.424,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.827,
+        "duration": 0.206,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-72",
+    "name": "The last harvest",
+    "role": "boss",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-72.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.274,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.213,
+        "duration": 0.468,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.357,
+        "duration": 0.223,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.49,
+        "duration": 0.53,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.593,
+        "duration": 0.274,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.811,
+        "duration": 0.441,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 1.021,
+        "duration": 0.38,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-73",
+    "name": "Seven faces by the fire",
+    "role": "peaceful",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-73.wav",
+    "duration": 1.2498453551204876,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.242,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.178,
+        "duration": 0.31,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.282,
+        "duration": 0.422,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.431,
+        "duration": 0.456,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.598,
+        "duration": 0.214,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-74",
+    "name": "The board takes a breath",
+    "role": "peaceful",
+    "voice": "pluck",
+    "file": "assets/sfx/encounters/encounter-74.wav",
+    "duration": 1.279955135146156,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.325,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.222,
+        "duration": 0.178,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.368,
+        "duration": 0.316,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.508,
+        "duration": 0.22,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.609,
+        "duration": 0.406,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.76,
+        "duration": 0.136,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-75",
+    "name": "The kelpguard shore goblins",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-75.wav",
+    "duration": 1.4905833318596706,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.297,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.206,
+        "duration": 0.384,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.312,
+        "duration": 0.122,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-76",
+    "name": "Some things do not stay buried",
+    "role": "ordinary",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-76.wav",
+    "duration": 1.5101542874006555,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.213,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.193,
+        "duration": 0.291,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.412,
+        "duration": 0.224,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-77",
+    "name": "The green that moved",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-77.wav",
+    "duration": 1.3956330180633814,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.137,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.246,
+        "duration": 0.316,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.382,
+        "duration": 0.456,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.594,
+        "duration": 0.365,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.742,
+        "duration": 0.343,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.921,
+        "duration": 0.134,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-78",
+    "name": "Oasis broth",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-78.wav",
+    "duration": 1.3117078304756433,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.429,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.196,
+        "duration": 0.134,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.392,
+        "duration": 0.263,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.507,
+        "duration": 0.284,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.729,
+        "duration": 0.419,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.944,
+        "duration": 0.458,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-79",
+    "name": "Jelly under ice",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-79.wav",
+    "duration": 1.406827161856927,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.338,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.247,
+        "duration": 0.153,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.47,
+        "duration": 0.207,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.605,
+        "duration": 0.412,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.802,
+        "duration": 0.349,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-80",
+    "name": "Gel in the jade stair",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-80.wav",
+    "duration": 1.1098904200596735,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.402,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.436,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.434,
+        "duration": 0.424,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-81",
+    "name": "Tidepool blobs",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-81.wav",
+    "duration": 1.16620202078484,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.186,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.243,
+        "duration": 0.399,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.374,
+        "duration": 0.206,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.49,
+        "duration": 0.238,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.713,
+        "duration": 0.444,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.889,
+        "duration": 0.243,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-82",
+    "name": "Grave ooze",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-82.wav",
+    "duration": 1.4010677348822356,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.156,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.181,
+        "duration": 0.191,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.333,
+        "duration": 0.384,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.509,
+        "duration": 0.328,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-83",
+    "name": "Pantry pudding",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-83.wav",
+    "duration": 1.2767327652079985,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.185,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.133,
+        "duration": 0.424,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.357,
+        "duration": 0.379,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-84",
+    "name": "The many-eyed watcher",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-84.wav",
+    "duration": 1.3406877263449133,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.418,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.132,
+        "duration": 0.259,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.326,
+        "duration": 0.327,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.532,
+        "duration": 0.343,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-85",
+    "name": "A lesser watcher",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-85.wav",
+    "duration": 1.1748473153682426,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.431,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.158,
+        "duration": 0.397,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.307,
+        "duration": 0.288,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.461,
+        "duration": 0.127,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.624,
+        "duration": 0.322,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-86",
+    "name": "The crimson eye over the dunes",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-86.wav",
+    "duration": 1.524494440597482,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.383,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.145,
+        "duration": 0.357,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.304,
+        "duration": 0.183,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.513,
+        "duration": 0.406,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.733,
+        "duration": 0.222,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-87",
+    "name": "The watcher in the jade stair",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-87.wav",
+    "duration": 1.5055763162206859,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.293,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.197,
+        "duration": 0.428,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.311,
+        "duration": 0.18,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.511,
+        "duration": 0.198,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.676,
+        "duration": 0.299,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.792,
+        "duration": 0.159,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-88",
+    "name": "The lesser brood",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-88.wav",
+    "duration": 1.0623556124744937,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.423,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.148,
+        "duration": 0.261,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.338,
+        "duration": 0.215,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-89",
+    "name": "The ember-eyed scouts",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-89.wav",
+    "duration": 1.378151352587156,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.298,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.425,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.378,
+        "duration": 0.283,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-90",
+    "name": "Burrowers beneath the dunes",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-90.wav",
+    "duration": 1.235613469220698,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.18,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.207,
+        "duration": 0.263,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.432,
+        "duration": 0.458,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.56,
+        "duration": 0.4,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-91",
+    "name": "Sand jaws",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-91.wav",
+    "duration": 1.37955595117528,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.337,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.254,
+        "duration": 0.211,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.427,
+        "duration": 0.383,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.566,
+        "duration": 0.183,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.773,
+        "duration": 0.134,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-forest",
+    "name": "Travel · forest",
+    "voice": "wood",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-forest.wav",
+    "duration": 1.2812806807458401,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.263,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.227,
+        "duration": 0.22,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.368,
+        "duration": 0.411,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.497,
+        "duration": 0.209,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-desert",
+    "name": "Travel · desert",
+    "voice": "hiss",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-desert.wav",
+    "duration": 1.2080956848338247,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.42,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.378,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.35,
+        "duration": 0.142,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.534,
+        "duration": 0.381,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-ice",
+    "name": "Travel · ice",
+    "voice": "chime",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-ice.wav",
+    "duration": 1.1499499529134483,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.331,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.166,
+        "duration": 0.202,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.354,
+        "duration": 0.133,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.565,
+        "duration": 0.382,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.704,
+        "duration": 0.383,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.824,
+        "duration": 0.317,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-house",
+    "name": "Travel · house",
+    "voice": "pluck",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-house.wav",
+    "duration": 1.2029495063005016,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.248,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.13,
+        "duration": 0.296,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.3,
+        "duration": 0.342,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-temple",
+    "name": "Travel · temple",
+    "voice": "bell",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-temple.wav",
+    "duration": 1.3861952342092991,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.36,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.16,
+        "duration": 0.352,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.275,
+        "duration": 0.206,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.408,
+        "duration": 0.189,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-graveyard",
+    "name": "Travel · graveyard",
+    "voice": "ghost",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-graveyard.wav",
+    "duration": 1.3923877540044487,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.434,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.151,
+        "duration": 0.386,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.288,
+        "duration": 0.432,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.41,
+        "duration": 0.436,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-beach",
+    "name": "Travel · beach",
+    "voice": "water",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-beach.wav",
+    "duration": 1.0938478321302683,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.234,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.183,
+        "duration": 0.456,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.301,
+        "duration": 0.217,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.513,
+        "duration": 0.155,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.65,
+        "duration": 0.167,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.812,
+        "duration": 0.373,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "seal-start",
+    "name": "The seal begins",
+    "voice": "bell",
+    "role": "boss",
+    "file": "assets/sfx/encounters/seal-start.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.292,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.2,
+        "duration": 0.232,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.399,
+        "duration": 0.53,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.585,
+        "duration": 0.557,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.696,
+        "duration": 0.66,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.837,
+        "duration": 0.565,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 1.05,
+        "duration": 0.26,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "seal-complete",
+    "name": "The world is sealed",
+    "voice": "chime",
+    "role": "resolution",
+    "file": "assets/sfx/encounters/seal-complete.wav",
+    "duration": 2.35,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.44,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.143,
+        "duration": 0.229,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.372,
+        "duration": 0.145,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "expedition-defeat",
+    "name": "The board waits again",
+    "voice": "ghost",
+    "role": "resolution",
+    "file": "assets/sfx/encounters/expedition-defeat.wav",
+    "duration": 2.35,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.19,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.23,
+        "duration": 0.262,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.404,
+        "duration": 0.142,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.532,
+        "duration": 0.325,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.739,
+        "duration": 0.179,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  }
+]

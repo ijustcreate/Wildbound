@@ -1,4 +1,6 @@
+import {boundlessTerrainAt} from './boundless-world.mjs';
 import {graveyardHash} from './graveyard-world.mjs';
+import {drawPumpkinCrop} from './pumpkin-art.mjs';
 
 // All scenery, textures and creatures are native integer Canvas pixels.
 const pixel=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -37,17 +39,18 @@ function drawPlot(c,plot,seed) {
 /** bounds are exclusive tile indices, tile32; no document/Image dependency. */
 export function drawGraveyardGround(c,g,bounds) {
   if(!g?.graveyard||g.generatedEnvironment!=='graveyard'||!bounds)return false;
-  const b={sx:Math.max(0,Math.floor(bounds.sx)),sy:Math.max(0,Math.floor(bounds.sy)),
-    ex:Math.min(50,Math.ceil(bounds.ex)),ey:Math.min(50,Math.ceil(bounds.ey))};
+  const endless=g.mapMode==='boundless';
+  const b={sx:endless?Math.floor(bounds.sx):Math.max(0,Math.floor(bounds.sx)),sy:endless?Math.floor(bounds.sy):Math.max(0,Math.floor(bounds.sy)),
+    ex:endless?Math.ceil(bounds.ex):Math.min(50,Math.ceil(bounds.ex)),ey:endless?Math.ceil(bounds.ey):Math.min(50,Math.ceil(bounds.ey))};
   if(!Object.values(b).every(Number.isFinite)||b.ex<=b.sx||b.ey<=b.sy)return false;
   c.save();c.beginPath();c.rect(b.sx*32,b.sy*32,(b.ex-b.sx)*32,(b.ey-b.sy)*32);c.clip();
   const seed=g.graveyard.seed;
   for(let ty=b.sy;ty<b.ey;ty++)for(let tx=b.sx;tx<b.ex;tx++) {
     const x=tx*32,y=ty*32;
-    if(g.phase==='won'||Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(x+16-800,y+16-800)>g.bloom*430) {
+    if(g.phase==='won'||g.mapMode!=='boundless'&&Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(x+16-800,y+16-800)>g.bloom*430) {
       pixel(c,x,y,32,32,'#888a8e');continue;
     }
-    const kind=g.terrain?.[ty*50+tx] || 'grass',colors=palettes[kind] || palettes.grass;
+    const kind=endless?boundlessTerrainAt(g,tx,ty):g.terrain?.[ty*50+tx] || 'grass',colors=palettes[kind] || palettes.grass;
     const tone=Math.sin(x*.011)+Math.cos(y*.008)+Math.sin((x+y)*.018);
     pixel(c,x,y,32,32,colors[Math.max(0,Math.min(3,Math.floor((tone+3)*.65)))]);
     for(let n=0;n<12;n++) {
@@ -67,7 +70,7 @@ export function drawGraveyardGround(c,g,bounds) {
   }
   // Plots are floor art, not tall sprites or blockers. The marker is at their head.
   for(const plot of g.graveyard.plots || []) {
-    if(!visibleRect(plot,b)||Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(plot.stoneX-800,plot.stoneY-800)>g.bloom*430||g.phase==='won')continue;
+    if(!visibleRect(plot,b)||g.mapMode!=='boundless'&&Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(plot.stoneX-800,plot.stoneY-800)>g.bloom*430||g.phase==='won')continue;
     drawPlot(c,plot,seed);
   }
   c.restore();return true;
@@ -123,7 +126,19 @@ function fence(c,p) {
   }
   if(Math.round(p.x+p.y)%3===0)ivy(c,-10,0,23,p.x);
 }
-function gate(c,time) {
+function gate(c,time,p) {
+  if(p.small){
+    const vertical=p.orientation==='vertical';
+    for(const side of [-1,1]){
+      const x=vertical?0:side*36,y=vertical?side*36:0;
+      pixel(c,x-5,y-30,10,32,'#53625a');pixel(c,x-3,y-29,6,29,'#859283');
+      pixel(c,x-7,y-34,14,5,'#b0b29a');pixel(c,x-1,y-27,2,24,'#c1c3a7');
+      // Folded leaves sit outside the walkable aperture, not across it.
+      if(vertical){pixel(c,x+4,y-22,22,3,'#75857a');pixel(c,x+4,y-9,22,2,'#75857a');for(let n=4;n<26;n+=6)pixel(c,x+n,y-26,2,25,'#344941');}
+      else{pixel(c,x-2,y+5,3,22,'#344941');pixel(c,x-1,y+5,1,22,'#91a28b');}
+    }
+    return;
+  }
   for(const side of [-1,1]) {
     const x=side*101;
     pixel(c,x-8,-54,16,57,'#53625a');pixel(c,x-6,-52,12,51,'#859283');
@@ -216,16 +231,20 @@ function leaflessTree(c,p,forest=false) {
 }
 
 export function drawGraveyardProp(c,p,time=0,g) {
-  if(!p?.graveyard||!['gravestone','cemetery_fence','cemetery_gate','grave_fence','grave_gate','mausoleum','leafless_tree','grave_forest_tree','grave_candles'].includes(p.kind))return false;
+  if(!p?.graveyard||!['gravestone','cemetery_fence','cemetery_gate','grave_fence','grave_gate','mausoleum','leafless_tree','grave_forest_tree','grave_candles','pumpkin_crop'].includes(p.kind))return false;
   if(p.depleted && !['leafless_tree','grave_forest_tree'].includes(p.kind))return true;
   c.save();c.translate(Math.round(p.x),Math.round(p.rootY ?? p.y));
   if(p.kind==='gravestone')stone(c,p,time);
   else if(p.kind==='cemetery_fence'||p.kind==='grave_fence')fence(c,p);
-  else if(p.kind==='cemetery_gate'||p.kind==='grave_gate')gate(c,time);
+  else if(p.kind==='cemetery_gate'||p.kind==='grave_gate')gate(c,time,p);
+  else if(p.kind==='pumpkin_crop')drawPumpkinCrop(c,{...p,x:0,y:0});
   else if(p.kind==='mausoleum')mausoleum(c,p,time);
   else if(p.kind==='leafless_tree')leaflessTree(c,p);
   else if(p.kind==='grave_forest_tree')leaflessTree(c,p,true);
   else {candle(c,-5,0,time,p.x);if(p.variant)candle(c,4,-2,time,p.y);pixel(c,-10,2,19,3,'#4e5d43');}
+  if(p.kind==='pumpkin_crop'&&!p.picked&&(g?.players||[]).some(a=>!a.room&&!a.ui&&a.hp>0&&Math.hypot(a.x-p.x,a.y+14-p.rootY)<48)){
+    c.fillStyle='#f4dfa7';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText('INTERACT · PICK PUMPKIN',0,-34);
+  }
   c.restore();return true;
 }
 
@@ -252,7 +271,14 @@ export function drawGraveyardCritter(c,a,time=0) {
   } else {
     if(a.faceX<0)c.scale(-1,1);
     pixel(c,-13,1,28,4,'#203b3055');
-    if(a.idle==='sleep') {
+    if(a.idle==='run') {
+      const leap=Math.sin(phase*22)>0?2:0,reach=leap?3:-2;
+      pixel(c,-13,-13-leap,23,10,'#565f5d');pixel(c,-10,-14-leap,17,5,'#8d9286');
+      pixel(c,-11-reach,-5-leap,4,8,'#b5b3a2');pixel(c,5+reach,-5-leap,4,8,'#b5b3a2');
+      pixel(c,7,-19-leap,11,10,'#656e67');pixel(c,8,-23-leap,3,5,'#8f988c');pixel(c,14,-22-leap,3,4,'#8f988c');
+      pixel(c,14,-16-leap,2,2,'#d2d795');pixel(c,15,-16-leap,1,2,'#2b3b36');pixel(c,18,-12-leap,2,1,'#c39d93');
+      line(c,-12,-9-leap,-20,-14-leap,'#848d81',3);line(c,-20,-14-leap,-24,-13-leap,'#b3b5a5',2);
+    } else if(a.idle==='sleep') {
       pixel(c,-10,-7,20,9,'#53595b');pixel(c,-8,-9,14,4,'#797c79');pixel(c,5,-5,8,6,'#afb0a0');
       pixel(c,7,-3,4,1,'#444b4a');pixel(c,-13,-2,12,3,'#9b9d92');
     } else {

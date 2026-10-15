@@ -9,6 +9,7 @@ import {updateBoundlessWorld,checkpointBoundlessWorld} from '../src/boundless-wo
 import {Game} from '../src/core.mjs';import {give} from '../src/items.mjs';
 import storeModule from '../world-store.cjs';
 import {previewInput} from '../src/rig-live-preview.mjs';
+import {DEFAULT_MAPPING} from '../src/controls.mjs';
 const state=()=>createWorldState({id:'test-world',name:'Test forest',seed:411,pack:BUILTIN_PACKS[0],now:1000});
 const fresh=(pack=BUILTIN_PACKS[0])=>{const lobby=new Game();lobby.addPlayer('keyboard','Tester');return createLocalWorld({id:'world-one',name:'Test world',seed:411,pack,party:lobby.players,now:1000});};
 test('seed and clock reproduce ecosystem statistics independent of update cadence',()=>{
@@ -37,7 +38,7 @@ test('streamed scenery changes and complete clearing persist after unload and re
  const g=fresh();g.players[0].x=3300;g.players[0].y=3300;updateBoundlessWorld(g,.05);
  const chunk=g.boundlessLoadedChunks[0];assert.ok(chunk);const prefix='boundless:'+chunk.key.replace(',',':')+':';
  g.scenery=g.scenery.filter(p=>!p.id?.startsWith(prefix));checkpointBoundlessWorld(g);
- assert.ok(g.boundlessChunkChanges[chunk.key].removed.length>0);
+ assert.ok(Object.values(g.boundlessChunkEdits[chunk.key].props).filter(p=>p===null).length>0);
  const saved=saveLocalWorld(g,1000),r=restoreLocalWorld(JSON.parse(JSON.stringify(saved)),1000);updateBoundlessWorld(r,.05);
  assert.equal(r.scenery.filter(p=>p.id?.startsWith(prefix)).length,0);
 });
@@ -77,5 +78,5 @@ test('packs reject unsafe resource paths and bad manifests',()=>{
 });
 test('sandbox input normalizes keyboard and respects gamepad mapping',()=>{
  const k=previewInput(new Set(['KeyW','KeyD','Space','KeyJ']),null);assert.ok(Math.abs(Math.hypot(k.x,k.y)-1)<1e-9);assert.equal(k.jump,true);assert.equal(k.attack,true);
- const pad={axes:[-.8,0,0,.4],buttons:[{pressed:true},{pressed:false}]};assert.equal(previewInput(new Set(),pad).attack,true);assert.equal(previewInput(new Set(),null).attack,false);
+ const pad={axes:[-.8,0,0,.4],buttons:Array.from({length:17},(_,i)=>({pressed:i===DEFAULT_MAPPING.attack}))};assert.equal(previewInput(new Set(),pad).attack,true);assert.equal(previewInput(new Set(),null).attack,false);
 });

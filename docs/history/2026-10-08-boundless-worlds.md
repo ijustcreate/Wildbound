@@ -1,0 +1,11 @@
+# Boundless destination worlds — 2026-10-08
+
+The user reported absent outer ground/scenery and different maps combined into one expedition. Outer regions previously chose random forest/desert/ice/temple biomes, repeated local river ribbons, and supplied only generic scenery. Cemetery surface drawing stopped at tile 50 and the finite-board bloom could cover distant terrain with grey. Enemy navigation also clamped to the original board.
+
+Implemented destination-preserving seeded region plans, shared path entrances, clear route shoulders and river crossings. Beach becomes a large irregular island with an ocean perimeter and offshore islands. Cemetery regions contain offset burial grounds, connected real gates, graves/plots and mausoleums. Other destinations have distinct terrain fields, native scenery and landmarks; see ../BOUNDLESS_GENERATION.md for each map's contract. Forest WFC masonry is reused for paving; path connectivity uses shared region constraints rather than claiming that local WFC alone guarantees routes.
+
+Added bounded terrain caches, nearest-first loading, modified-region journals, save migration and local enemy path grids for distant/negative coordinates. Temporary ambient changes do not create save entries. Outer grass textures are cached. Normal bounded worlds, the separate house-travel campaign, authored rigs and player profiles are preserved.
+
+Verification complete: the full Node suite passed 1,260 tests. The final 10 generation/navigation/save tests passed after removing the legacy cemetery trail at region boundaries. Muted isolated Electron against the packaged archive passed 28 floor probes (positive, negative, far and seam for all seven map types), seven full renderer views and seven destination save checks, with no blank ground, erased grey tiles or renderer errors. All 12 changed runtime modules byte-match the packaged archive. Screenshots are test-output/boundless-world/*.png.
+
+Source is modified/uncommitted at bc1b432d20f4b0de0b04d4d3b34600f7a9fe0a70. Verified normal-profile desktop build: 1.0.114-boundless-worlds, built 2026-10-08T21:30:18.452Z. The versioned desktop shortcut targets Play Wildbound.cmd; launcher --check resolves the correct executable. No commit/push or player-process termination.

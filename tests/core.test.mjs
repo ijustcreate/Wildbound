@@ -93,6 +93,8 @@ test("All events have working spawns, including mixed squads", () => {
     g.enemies = [];
     g.mystery=null;
     g.generatedEnvironment=EVENTS[i].environment||'forest';
+    // Shore encounters require real sand, not only a renamed forest map.
+    if(EVENTS[i].requiredStartArea==='sand')g.terrain.fill('sand');
     g.spawnEvent(i);
     if(EVENTS[i].type==='mystery'){
       assert.equal(g.mystery.stage,1);
@@ -155,10 +157,13 @@ test("A finisher holds interact to seal even with enemies and unfinished friends
   assert.equal(g.enemies.length, 0);
   assert.equal(g.scenery.length, 0);
   const seed = g.seed;
-  g.hitTable(p);
-  assert.equal(g.phase, "play");
-  assert.notEqual(g.seed, seed);
-  assert.equal(p.progress, 0);
+  let boardPrompts = 0;
+  g.onVictoryBoard = () => boardPrompts++;
+  assert.equal(g.hitTable(p), true);
+  assert.equal(boardPrompts, 1);
+  assert.equal(g.phase, "won");
+  assert.equal(g.seed, seed);
+  assert.equal(p.progress, FINISH);
 });
 test("Movement respects world boundary and table collider", () => {
   const g = game(),

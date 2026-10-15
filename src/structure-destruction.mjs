@@ -15,7 +15,7 @@ const at=(b,n)=>({x:b.x+(n%cols(b))*WALL_SECTION_SIZE,y:b.y+Math.floor(n/cols(b)
 const rectDistance=(r,x,y)=>Math.hypot(x-clamp(x,r.x,r.x+r.w),y-clamp(y,r.y,r.y+r.h));
 const material=(g,b)=>b.kind==='window'?'glass':b.kind==='fence'||b.destructionGroup==='doors'||b.destructionGroup==='furniture'?'wood':g.house?.temple?'stone':'plaster';
 const toughness=(g,b)=>({glass:24,wood:65,plaster:110,stone:180})[material(g,b)];
-function state(g){let s=visuals.get(g);if(!s||s.house!==g.house){s={house:g.house,particles:[],soundAt:-Infinity,saveAt:-Infinity};visuals.set(g,s);}return s;}
+function state(g){let s=visuals.get(g);if(!s||s.house!==g.house){s={house:g.house,particles:[],soundAt:-Infinity,shatterAt:-Infinity,saveAt:-Infinity};visuals.set(g,s);}return s;}
 function index(g){
   const h=g.house;if(!h)return null;
   let s=indices.get(h);
@@ -60,7 +60,8 @@ function burst(g,r,b,dx,dy,broken){
     s.particles.push({x:r.x+r.w/2,y:r.y+r.h/2,z:3+seed%12,vx:Math.cos(a)*speed+dx*35,vy:Math.sin(a)*speed*.55+dy*25,vz:35+seed%70,
       age:0,life:.55+(seed%40)/100,size:2+seed%3,color:colors[n%3],dust:n%4===0});
   }
-  if((g.time||0)-s.soundAt>.09){g.onSound?.(broken?(m==='stone'?'mine':m==='glass'?'hatch':'fall'):'hit',{x:r.x+r.w/2,y:r.y+r.h/2});s.soundAt=g.time||0;}
+  const now=g.time||0,shatter=broken&&m==='glass';
+  if(now-(shatter?s.shatterAt:s.soundAt)>.09){g.onSound?.(shatter?'glassBreak':broken?(m==='stone'?'mine':'fall'):'hit',{x:r.x+r.w/2,y:r.y+r.h/2});if(shatter)s.shatterAt=now;else s.soundAt=now;}
 }
 function damageCell(g,b,n,damage,dx=0,dy=0){
   b.sectionDamage||={};const old=b.sectionDamage[n];if(old?.broken)return false;

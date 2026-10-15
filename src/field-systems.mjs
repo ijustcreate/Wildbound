@@ -258,8 +258,8 @@ export function choosePath(g, p, choice) {
     g.message("A tonic waits in Recovery.");
   } else if (choice === "treasure") {
     g.spawnEvent();
-    give(p.field.overflow, "charm", 1, Infinity);
-    g.message("Another encounter answers. An Amber charm waits in Recovery.");
+    p.field.pendingTrialTreasure=true;
+    g.message("Another encounter answers. Clear a trial to claim its Amber charm.");
   } else {
     p.field.curse = true;
     p.coins = (p.coins || 0) + 20;

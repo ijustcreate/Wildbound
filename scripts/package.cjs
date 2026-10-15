@@ -36,6 +36,8 @@ packager({
     /^\/server-data/,
     /^\/server-config\.local\.json/,
     /\.log$/,
+    /^\/assets\/shore-goblin\/source/,
+    /^\/assets\/(?:spider|boar|elephant)-wow\//,
     /^\/art\/player\/detail-native-v[234]/,
     /^\/tests/,
     /^\/dist/,

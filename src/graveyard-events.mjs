@@ -10,7 +10,8 @@ export const GRAVEYARD_EVENTS = [
  {name:'The mourning keeper',kind:'banshee_queen',count:1,hp:310,speed:54,damage:18,weight:3,graveyard:true,environment:'graveyard',verse:'A mourning voice beneath the yew.\nThe cemetery calls for you.',tip:'Avoid the banshee’s scream and keep the party spread out.'},
  {name:'A door beneath the ivy',type:'mausoleum',kind:'mausoleum',count:0,weight:10,graveyard:true,environment:'graveyard',verse:'The ivy parts. The hinges cry.\nBelow the stone, old secrets lie.',tip:'Investigate the opened mausoleum. Bring light; the crypt stairs return to the surface.'},
 ];
-export const cemeteryEvent = event => event?.graveyard===true||event?.environment==='graveyard';
+export const GHOST_EVENT=Object.freeze({name:'Some things do not stay buried',kind:'ghost',count:3,hp:76,speed:54,damage:12,weight:7,graveyard:true,environment:'graveyard',graveRise:true,verse:'White hoods drift where headstones lean.\nTwo pale eyes haunt the space between.',tip:'The restless ghosts claw at close range. Dodge their reaching hands; small creatures flee their presence.'});
+export const cemeteryEvent = event => event?.kind==='grim_reaper'||event?.graveyard===true||event?.environment==='graveyard';
 export function appendGraveyardEvents(events){
- for(const event of GRAVEYARD_EVENTS)if(!events.some(e=>e.name===event.name&&e.environment==='graveyard'))events.push(structuredClone(event));
+ for(const event of [...GRAVEYARD_EVENTS,GHOST_EVENT])if(!events.some(e=>e.name===event.name&&e.environment==='graveyard'))events.push(structuredClone(event));
 }
