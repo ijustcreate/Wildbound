@@ -9,6 +9,7 @@ packager({
   dir: path.resolve(__dirname, ".."),
   out: path.join("dist", buildFolder),
   name: "Wildbound",
+    icon: path.join(__dirname, "..", "assets", "wildbound-icon.ico"),
   platform: "win32",
   arch: "x64",
   // The renderer dynamically imports app.mjs. Keep the app as a normal
