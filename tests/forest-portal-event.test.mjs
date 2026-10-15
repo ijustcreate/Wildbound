@@ -12,6 +12,7 @@ registerHooks({
   },
 });
 const {openForestPortal,travelThroughForestPortal} = await import('../src/forest-portal-event.mjs');
+const {Game} = await import('../src/core.mjs');
 
 class TestGame {
   constructor() {
@@ -57,4 +58,21 @@ test('dev portal carries the live party into a saved forest and back to its boar
   assert.equal(travelThroughForestPortal(game, game.portals[0]), true);
   assert.equal(game.mapMode, 'boundless');
   assert.equal(game.boardProgress, 7);
+});
+
+test('touching a Heartwood portal performs a world transition instead of opening an empty room', () => {
+  const game = new Game(() => .5);
+  const player = game.addPlayer('server:1', 'Scout');
+  game.start();
+  game.openingBoard = false;
+  player.x = 740;
+  player.y = 800;
+  assert.equal(openForestPortal(game, player.id).ok, true);
+  const outbound = game.portals[0];
+  player.x = outbound.x;
+  player.y = outbound.y;
+  assert.equal(game.enterRoom(player, outbound), true);
+  assert.equal(game.mapMode, 'boundless');
+  assert.equal(player.room, null);
+  assert.equal(game.portals[0].forestTravel, 'return');
 });
