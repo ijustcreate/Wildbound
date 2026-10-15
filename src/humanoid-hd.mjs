@@ -361,15 +361,19 @@ export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId,part='all')
   const length=Math.hypot(hand.x-elbow.x,hand.y-elbow.y)||1,ux=(hand.x-elbow.x)/length,uy=(hand.y-elbow.y)/length;
   const wrist={x:hand.x-ux*.85,y:hand.y-uy*.85};
   const segments=part==='upper'?[0]:part==='lower'?[1,2]:null;
-  if(!detailedChain(c,[shoulder,elbow,wrist,hand],[3.5,3.2,2.4,3],skin,12,'round',segments))return false;
+  if(!detailedChain(c,[shoulder,elbow,wrist,hand],[3.5,3.2,2.4,4],skin,12,'round',segments))return false;
   if(part!=='lower'){
     const sleeveLength=chestId==='reaper_chest'?1:.55;const sleeveEnd={x:shoulder.x+(elbow.x-shoulder.x)*sleeveLength,y:shoulder.y+(elbow.y-shoulder.y)*sleeveLength};
     detailedChain(c,[shoulder,sleeveEnd],[4.4,3.9],shirt,materialIndex(chestId),'sleeve');
   }
   if(part==='upper')return true;
-  const base=rgb(skin),dark='#'+base.map(n=>clamp(n-30).toString(16).padStart(2,'0')).join('');
+  const base=rgb(skin),dark='#'+base.map(n=>clamp(n-30).toString(16).padStart(2,'0')).join(''),light='#'+base.map(n=>clamp(n+24).toString(16).padStart(2,'0')).join('');
+  // Broaden the palm around the existing hand joint. Weapon/wand attachments
+  // still use the untouched joint, so their authored scale and pivots stay exact.
   c.save();c.translate(hand.x,hand.y);c.rotate(-Math.atan2(ux,uy));
-  c.fillStyle=dark;c.fillRect(.1,.05,.25,.85);c.fillRect(-.5,.2,.25,.55);c.restore();
+  c.fillStyle=dark;c.fillRect(-2,-1,4,4);c.fillRect(1.5,.25,1,1.5);
+  c.fillStyle=skin;c.fillRect(-1.5,-.75,3,3);c.fillRect(1.25,.5,.75,1);
+  c.fillStyle=light;c.fillRect(-1,-.5,1.5,1);c.restore();
   return true;
 }
 

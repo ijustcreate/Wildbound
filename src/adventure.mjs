@@ -467,7 +467,9 @@ export const adventureMethods = {
     }
     record(p, "lootRecovered", l.qty);
     p.inventoryFullNoticeUntil = 0;
-    if (quick && ITEMS[l.type].slot)
+    // Quick pickup equips singleton gear, but a stackable improvised weapon
+    // (notably sticks) must stay in the backpack instead of vanishing into a hand.
+    if (quick && ITEMS[l.type].slot && (ITEMS[l.type].stack || 1) === 1)
       equip(
         p,
         p.inventory.findIndex((i) => i?.type === l.type),

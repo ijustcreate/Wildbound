@@ -58,6 +58,11 @@ export function restoreSession(saved) {
     const data = structuredClone(p);
     initHero(p);
     Object.assign(p, data);
+    // Older saves carry the original 125 impulse and no gravity setting.
+    // Restore the quick-rise, quick-fall player arc without changing custom
+    // jump values on newer saves.
+    if (p.jumpImpulse === undefined || p.jumpImpulse === 125) p.jumpImpulse = 180;
+    if (p.jumpGravity === undefined || p.jumpGravity === 360) p.jumpGravity = 720;
     migrateEquipment(p);
     p.previousInput = {};
     p.charge = 0;

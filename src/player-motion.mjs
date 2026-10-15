@@ -999,13 +999,13 @@ export function drawPlayer(
           c,
           hand.x,
           hand.y,
-          1.6,
-          1.5,
+          human ? 2.2 : 1.6,
+          human ? 2 : 1.5,
           pal.headShade,
         );
         if (human && !gear.gloves) {
-          ellipse(c, hand.x, hand.y, sculpted?2:1.7, sculpted?2:1.8, ink);
-          ellipse(c, hand.x, hand.y - 0.5, sculpted?1.5:1.1, sculpted?1.5:1.3, pal.head);
+          ellipse(c, hand.x, hand.y, sculpted?2.7:2.4, sculpted?2.5:2.3, ink);
+          ellipse(c, hand.x, hand.y - 0.5, sculpted?2:1.8, sculpted?1.9:1.7, pal.head);
           pixel(hand.x-1,hand.y-1,1,1,skinPalette(pal.head).light);
         }
         if (human) {

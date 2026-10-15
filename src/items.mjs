@@ -1030,7 +1030,10 @@ for(const [set,def] of Object.entries(GEAR_SETS))for(const group of def.groups)f
 for(const [id,item] of Object.entries(ITEMS))if(item.slot){
  item.maxHp??=Math.max(0,Number(item.armor)||0)*2;
  if(id.startsWith('moon_'))item.maxMana=id.includes('blade')||id.includes('bow')?20:15;
- if(['sword','dagger','bow','wand','staff','rifle','boomerang','scythe','shield','armor','hat','charm'].includes(item.base||id)&&!item.utility)item.sockets??=item.twoHanded?2:1;
+ // Stackable slotted supplies (especially sticks) are still materials; only
+ // singleton equipment gets socket capacity. Otherwise give() treats the
+ // whole stack as one socketed instance and refuses to combine pickups.
+ if((item.stack??1)===1&&['sword','dagger','bow','wand','staff','rifle','boomerang','scythe','shield','armor','hat','charm'].includes(item.base||id)&&!item.utility)item.sockets??=item.twoHanded?2:1;
 }
 for(const [id,name,mana,regen,rarity,color] of [['azure_bead','Azure bead',15,0,'common','#70c9ec'],['moon_prism','Moon prism',25,0,'rare','#b49cfa'],['starheart','Starheart',40,0,'unique','#80f4d5'],['mana_rune','Mana rune',0,1,'common','#78d6e8'],['void_sigil','Void sigil',0,2,'rare','#9f82e8'],['astral_heart','Astral heart',0,3,'unique','#e48cff']])ITEMS[id]={name,base:'trinket',trinket:true,maxMana:mana,manaRegen:regen,stack:1,rarity,color,artColor:color,description:`Socket into compatible gear: +${regen?regen+' mana/sec':mana+' maximum mana'}. No bonus while loose in your bag.`};
 export const socketCount=type=>ITEMS[type]?.slot&&!ITEMS[type]?.trinket?Math.max(0,Math.min(3,Math.floor(Number(ITEMS[type].sockets)||0))):0;

@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import {structureBlocked} from '../src/expansion.mjs';
 import {navigateEnemy} from '../src/navigation.mjs';
 import {tickJump} from '../src/jumping.mjs';
+import {Game} from '../src/core.mjs';
+import {saveSession,restoreSession} from '../src/session.mjs';
 import {creatures} from '../src/definitions.mjs';
+test('legacy saves migrate the old floaty player jump to the quick grounded arc',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();p.jumpImpulse=125;delete p.jumpGravity;
+ const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),hero=restored.players[0];
+ assert.equal(hero.jumpImpulse,180);assert.equal(hero.jumpGravity,720);
+});
 test('Broken windows allow jumps above the sill in both wall orientations, never intact glass',()=>{
  for(const rect of [{x:300,y:300,w:64,h:16},{x:300,y:300,w:16,h:64}]){
   const pane={...rect,kind:'window',broken:true},g={house:{walls:[pane],doors:[],furniture:[]}};

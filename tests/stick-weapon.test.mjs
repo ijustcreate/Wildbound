@@ -9,6 +9,13 @@ test('equipping a dragged stick stack takes exactly one and uses sword combat',(
  assert.ok(moveInventoryItem(p,null,{mode:'pack',index:0},{mode:'gear',slot:'hand1'}));
  assert.equal(p.inventory[0].qty,19);assert.equal(p.equipment.hand1,'stick');assert.equal(itemKind('stick'),'sword');
 });
+test('quick pickup leaves stackable sticks in the backpack instead of auto-equipping one',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');p.inventory=[{type:'stick',qty:6}];
+ g.dropLoot(p.x,p.y,'stick',3,'Tree',true);const loot=g.loot.at(-1);
+ assert.ok(g.collect(p,loot,true));
+ assert.equal(p.inventory.filter(i=>i?.type==='stick').length,1);
+ assert.equal(p.inventory[0].qty,9);assert.equal(p.equipment.hand1,null);
+});
 test('stick breaks on a successful melee hit below 5%, not on a miss or at 5%',()=>{
  for(const [random,hit,broken]of [[.049,true,true],[.05,true,false],[0,false,false]]){
   const g=new LobbyPractice(),p=g.addPlayer('keyboard');p.equipment={hand1:'stick'};p.inventory=[{type:'stick',qty:19}];p.x=280;p.y=hit?165:300;p.faceX=0;p.faceY=-1;g.random=()=>random;
