@@ -486,6 +486,7 @@ const serverButton=document.createElement('button');
 serverButton.textContent='SHARED FOREST';serverButton.className='text-button';roomButton.after(serverButton);
 const liveWorldButton=$('live-world-button');
 const liveWorldStatus=$('live-world-status');
+const liveWorldPlayStatus=$('live-world-play-status');
 const liveConnectionKey='wildbound-live-connection-v1';
 let checkedInLiveConnection=null;
 fetch('./server-connection.json',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(value=>{if(value?.address&&value?.joinKey)checkedInLiveConnection=value;}).catch(()=>{});
@@ -495,7 +496,7 @@ function saveLiveConnection(){
   localStorage.setItem(liveConnectionKey,JSON.stringify({address:$('server-address').value.trim(),name:$('server-name').value.trim(),key:$('server-key').value.trim()}));
 }
 function fillLiveConnection(){const saved=readLiveConnection(),preset=checkedInLiveConnection||{};const value=saved||preset;if(!value)return;$('server-address').value=value.address||$('server-address').value;$('server-name').value=value.name||value.explorerName||$('server-name').value;$('server-key').value=value.key||value.joinKey||'';}
-function syncLiveWorldButton(){const connected=rooms.persistent&&rooms.connection==='connected';liveWorldStatus.textContent=connected?'CONNECTED':'OFFLINE';liveWorldButton.classList.toggle('connected',connected);}
+function syncLiveWorldButton(){const connected=rooms.persistent&&rooms.connection==='connected';liveWorldStatus.textContent=connected?'CONNECTED':'OFFLINE';liveWorldButton.classList.toggle('connected',connected);if(liveWorldPlayStatus){liveWorldPlayStatus.hidden=!rooms.persistent;liveWorldPlayStatus.textContent=connected?'LIVE WORLD · CONNECTED':rooms.connection==='connecting'?'LIVE WORLD · CONNECTING':'LIVE WORLD · OFFLINE';}}
 function openLiveWorld(){fillLiveConnection();if((checkedInLiveConnection?.autoConnect||readLiveConnection()?.key)&&!rooms.persistent){$('server-join').click();return;}serverDialog.showModal();}
 serverButton.onclick=openLiveWorld;
 liveWorldButton.onclick=openLiveWorld;

@@ -15,6 +15,16 @@ body[data-screen="play"] #site-header {
 body[data-screen="play"] #play {
   height: 100vh;
 }
+.live-world-play-status {
+  border: 1px solid #d5ad64;
+  border-radius: 4px;
+  padding: 7px 10px;
+  color: #f6e5b2;
+  background: #173c30e8;
+  font: 600 10px system-ui;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
 .roster-card {
   width: calc(190px * var(--ui-scale));
 }
