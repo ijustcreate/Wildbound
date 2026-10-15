@@ -17,6 +17,7 @@ export function bansheeVisualActor(actor,model=bansheeMotion){
   if(actor.hp<=0)visual.animationAction='death';
   else if(actor.flash>0){visual.animationAction='hurt';visual.playerFrame=Math.max(0,1-actor.flash/.2)*(model.clips.hurt.length-1);}
   else if(actor.frozen>0||actor.state==='snared'){visual.animationAction='idle';visual.moving=false;}
+  else if(actor.bansheeDashLeft>0){visual.animationAction='dash';visual.playerFrame=(1-actor.bansheeDashLeft/.32)*(model.clips.dash.length-1);}
   else if(actor.bansheeDrawLeft>0&&actor.faction!=='ally'){
    visual.charge=1.2*Math.max(.05,1-actor.bansheeDrawLeft/(actor.bansheeDrawDuration||.8));visual.bowAiming=true;
   }else if(actor.attack>0){visual.animationAction='ranged';visual.playerFrame=Math.max(0,1-actor.attack/.34)*(model.clips.ranged.length-1);}

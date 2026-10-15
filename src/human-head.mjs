@@ -112,6 +112,22 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
     r(-1,5,3,1,shade(hair));r(-2,3,2,1,hair);r(1,4,2,1,hair);
     if(!profile){r(-2,2,2,1,hair);r(1,2,2,1,hair);r(0,3,1,1,p.lip);}
   }
+  if(look?.face==='alan'){
+    const dark='#332319',base='#553721',light='#805537',offset=profile?turn:0;
+    for(let y=2;y<=8;y++){
+      const half=profile?Math.max(2,4-Math.floor((y-2)/3)):Math.max(2,5-Math.floor((y-2)/2));
+      r(offset-half,y,half*2+1,1,dark);
+      r(offset-half+1,y,half*2-1,1,y%2?base:dark);
+      if(y<6){r(offset-half+2,y,1,1,light);r(offset+half-2,y,1,1,light);}
+    }
+    r(offset-4,1,3,2,base);r(offset+2,1,3,2,base);
+    r(offset-1,3,3,1,'#211a16');r(offset,4,1,1,'#b98058');
+  }
+  if(look?.face==='safari_hunter'){
+    const moustache='#46352d',grey='#aaa59a';
+    if(profile){r(turn<0?-1:-2,2,4,2,moustache);r(turn<0?0:-1,4,3,2,grey);r(turn<0?1:0,6,1,1,'#665d57');}
+    else{r(-4,2,3,1,moustache);r(2,2,3,1,moustache);r(-3,3,3,1,moustache);r(1,3,3,1,moustache);r(-2,4,5,1,grey);r(-1,5,3,1,grey);r(0,6,1,1,'#665d57');}
+  }
   if(look?.face==='stubble')for(const [x,y] of [[-3,2],[-2,3],[0,4],[2,3],[3,2]])r(x,y,1,1,p.brow);
   if(look?.face==='goatee'){const hair=look.hairColor||'#593923';r(-1,3,3,2,shade(hair));r(0,5,1,1,hair);if(!profile){r(-2,2,2,1,hair);r(1,2,2,1,hair);}}
   if(look?.face==='warpaint'){r(profile?turn*3:-4,1,profile?2:3,1,'#57798a');if(!profile)r(2,1,3,1,'#57798a');r(-1,-3,2,1,'#b56855');}

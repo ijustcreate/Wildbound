@@ -6,7 +6,7 @@ import {poseAt} from '../src/player-motion.mjs';
 import {tickPanther,pantherBranch} from '../src/panther-ai.mjs';
 import {Game,EVENTS} from '../src/core.mjs';
 
-const makeGame=()=>({scenery:[],traps:[],hits:[],sounds:[],moveActor(e,x,y){e.x+=x;e.y+=y;return Math.hypot(x,y);},hurt(p,damage){p.hp-=damage;this.hits.push(damage);},onSound(cue){this.sounds.push(cue);}});
+const makeGame=()=>({scenery:[],traps:[],projectileBlocked:()=>false,hits:[],sounds:[],moveActor(e,x,y){e.x+=x;e.y+=y;return Math.hypot(x,y);},hurt(p,damage){p.hp-=damage;this.hits.push(damage);},onSound(cue){this.sounds.push(cue);}});
 const makePanther=()=>({kind:'panther',x:0,y:0,faceX:1,faceY:0,orbit:1,state:'hunt',cooldown:0,speed:80,damage:15,hp:100});
 
 test('authored Panther has distinct complete animation clips and passes rig validation',()=>{

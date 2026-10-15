@@ -202,8 +202,13 @@ export function drawRhino(
     const skin={...pal,outline:pal.shade};
     for(const n of ['pelvis','chest'])pixelVolume(c,pose[n],s.bodyWidth*.52,12,s.bodyWidth*.53,d,skin);
     pixelVolume(c,pose.neck,s.bodyWidth*.44,7,8,d,skin);
-    // Armor-like folds follow the posed shoulder and hip, not the screen.
-    for(const n of ['chest','pelvis'])for(const offset of [-3,2]){
+    // A boar has a coarse raised mane; keep the plate folds for the rhino.
+    if(model.type==='boar')for(let i=0;i<11;i++){
+      const t=i/10,v=[pose.pelvis[0]*(1-t)+pose.chest[0]*t,pose.pelvis[1]*(1-t)+pose.chest[1]*t,pose.pelvis[2]*(1-t)+pose.chest[2]*t];
+      const a=projectPoint([v[0],v[1],v[2]+7],d),b=projectPoint([v[0],v[1]-1.5,v[2]+10+(i%3)],d);
+      pixelLine(c,a,b,pal.shade,i%3===0?2:1);
+    }
+    else for(const n of ['chest','pelvis'])for(const offset of [-3,2]){
       const v=pose[n],points=[[-.45,6],[0,9],[.45,6]].map(([x,z])=>projectPoint([v[0]+x*s.bodyWidth,v[1]+offset,v[2]+z],d));
       pixelLine(c,points[0],points[1],pal.shade);pixelLine(c,points[1],points[2],pal.shade);
       pixelLine(c,{x:points[0].x,y:points[0].y-1},{x:points[1].x,y:points[1].y-1},pal.light);

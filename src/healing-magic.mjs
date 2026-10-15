@@ -18,10 +18,11 @@ const pending = new WeakMap();
 const playerOwner = (g, source) => (g.players || []).find(p => p === source || p.id === source?.owner);
 const actors = g => [...new Set([
   ...(g.players || []), ...(g.enemies || []), ...(g.ghosts || []),
-  ...(g.players || []).flatMap(p => [p.hunterPet, p.ritualPet]).filter(Boolean),
+  ...(g.players || []).flatMap(p => [p.hunterPet, p.ritualPet]).filter(Boolean), ...(g.villageFollowers || []),
 ])];
 const companionOwner = (g, target) => target.allyOwner ?? target.owner ??
-  (g.players || []).find(p => p.hunterPet === target || p.ritualPet === target)?.id;
+  (g.players || []).find(p => p.hunterPet === target || p.ritualPet === target)?.id ??
+  (g.players || []).find(p => String(p.profileId || p.id) === target.ownerKey)?.id;
 
 export const spellHealingPoint = target => target.room ?
   {x:target.roomX, y:target.roomY} : {x:target.x, y:target.y};
@@ -44,7 +45,8 @@ export function canSpellHeal(g, source, target) {
     (target.faction == null && petOwner != null &&
       ((g.ghosts || []).includes(target) || target.hunterPet || target.ritualPet));
   const present=(g.enemies || []).includes(target) || (g.ghosts || []).includes(target) ||
-    (g.players || []).some(p => p.hunterPet===target || p.ritualPet===target);
+    (g.players || []).some(p => p.hunterPet===target || p.ritualPet===target) ||
+    (g.villageFollowers || []).includes(target);
   return present && friendly && (!g.pvp || petOwner == null || petOwner === owner.id);
 }
 

@@ -130,7 +130,9 @@ test('Runtime death timers advance and clamp death/wilt despite stale attack pha
     actor.deathTimer = .25;
     assert.equal(nightFrame(kind, actor, 100, model), .25 * clip.fps);
     assert.notDeepEqual(poseAt(model, action, 0), poseAt(model, action, nightFrame(kind, actor, 100, model)));
-    actor.deathTimer = 3;
+    // Imported clips may be longer than three seconds. Test the actual end
+    // of this clip rather than assuming every species shares a duration.
+    actor.deathTimer = Math.max(3,clip.length/clip.fps+1);
     assert.equal(nightFrame(kind, actor, 100, model), clip.length - 1);
     assert.equal(nightFrame(kind, { ...actor, playerFrame: 2 }, 100, model), 2);
     assert.equal(nightFrame(kind, { ...actor, poseTime: .5 }, 100, model), (clip.length - 1) * .5);

@@ -5,6 +5,7 @@ fs.mkdirSync(out,{recursive:true});app.disableHardwareAcceleration();app.setPath
 const timer=setTimeout(()=>app.exit(1),180000);
 app.whenReady().then(async()=>{
  const w=new BrowserWindow({show:false,width:1280,height:850,useContentSize:true,webPreferences:{offscreen:true}}),errors=[];
+ w.webContents.setAudioMuted(true);
  w.webContents.on('console-message',event=>{if(event.level==='error')errors.push(event.message);});
  const run=s=>w.webContents.executeJavaScript('(async()=>{'+s+'})()');
  try{
@@ -90,6 +91,9 @@ app.whenReady().then(async()=>{
    const testCanvas=document.createElement('canvas');testCanvas.width=320;testCanvas.height=240;
    for(let n=0;n<60;n++)well.drawOldWellRoom(testCanvas.getContext('2d'),g,p,r.animator);
    const milliseconds=performance.now()-started;check(Number.isFinite(milliseconds)&&s.hazards.length===0,'Sixty real room renders complete with cleared boss hazards');
+   p.room=null;p.progress=48;p.x=800;p.y=800;
+   check(g.beginSeal(p),'Player can call WILDBOUND after leaving the crypt');g.completeVictory();r.draw(g,0);
+   check(!g.portals.some(a=>a.mausoleum)&&scenery.every(a=>!a.cryptPortalId),'Victory removes the crypt portal and closes its surface doorway');
    return {checks,pictures,movementFrames:walked,roomRender60Milliseconds:milliseconds};
   `);
   for(const [name,png]of Object.entries(report.pictures))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(png.split(',')[1],'base64'));delete report.pictures;

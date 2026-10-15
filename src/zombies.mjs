@@ -16,7 +16,11 @@ export function tickZombie(g,e,targets,dt,stats={},behaviors={}){
  if(e.hp<=0||e.faction==='ally'){cancel(e);return;}if(e.frozen>0){e.moving=false;return;}
  if(e.state==='snared'){cancel(e);e.timer-=dt;if(e.timer<=0)e.hp=0;return;}
  if(e.flash>0){cancel(e);e.cooldown=Math.max(e.cooldown,.5);return;}
- const visible=targets.filter(p=>zombieCanSee(g,e,p,stats)),p=visible.reduce((a,b)=>!a||distance(e,b)<distance(e,a)?b:a,null);
+ const visible=targets.filter(p=>zombieCanSee(g,e,p,stats)),seen=visible.reduce((a,b)=>!a||distance(e,b)<distance(e,a)?b:a,null);
+ if(e.zombieLastSeen)e.zombieLastSeen.remaining=Math.max(0,e.zombieLastSeen.remaining-dt);
+ if(seen)e.zombieLastSeen={id:seen.id,x:seen.x,y:seen.y,remaining:6};
+ const memory=e.zombieLastSeen,remembered=memory?.remaining>0&&targets.find(q=>q.id===memory.id&&q.hp>0&&!q.room);
+ const p=seen||(remembered?{...remembered,x:memory.x,y:memory.y}:null);
  if(e.zombieWindup>0){
   e.zombieWindup=Math.max(0,e.zombieWindup-dt);e.moving=false;
   if(!visible.some(p=>p.id===e.zombieTarget)){cancel(e);e.cooldown=.5;return;}
@@ -26,8 +30,9 @@ export function tickZombie(g,e,targets,dt,stats={},behaviors={}){
  }
  if(!p){e.state='idle';e.moving=false;return;}
  const d=distance(e,p)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;e.state='hunt';
- if(behaviors.melee!==false&&d<=(stats.attackRange||54)&&e.cooldown<=0){e.zombieWindup=e.zombieWindupDuration=Math.max(.5,stats.windup||.65);e.zombieAim={x:e.faceX,y:e.faceY};e.zombieTarget=p.id;e.moving=false;return;}
- if(behaviors.hunt!==false&&d>38){const step=Math.min(d-38,e.speed*(e.rooted>0?.45:1)*dt),travel=g.moveActor(e,e.faceX*step,e.faceY*step);if(travel<step*.3)navigateEnemy(g,e,p,dt);}
+ if(seen&&behaviors.melee!==false&&d<=(stats.attackRange||54)&&e.cooldown<=0){e.zombieWindup=e.zombieWindupDuration=Math.max(.5,stats.windup||.65);e.zombieAim={x:e.faceX,y:e.faceY};e.zombieTarget=p.id;e.moving=false;return;}
+ const stop=seen?38:8;
+ if(behaviors.hunt!==false&&d>stop){const step=Math.min(d-stop,e.speed*(e.rooted>0?.45:1)*dt),travel=g.moveActor(e,e.faceX*step,e.faceY*step);if(travel<step*.3)navigateEnemy(g,e,p,dt);}
 }
 export function drawZombieTells(c,g){
  c.save();for(const e of g.enemies)if(e.kind==='zombie'&&e.hp>0&&e.zombieWindup>0&&e.zombieAim){

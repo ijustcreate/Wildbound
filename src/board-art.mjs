@@ -4,7 +4,7 @@ import {PAWN_ATLAS} from './board-pawn-atlas.mjs';
 import {boardDicePose} from './board-sequence.mjs';
 import {BOARD_ENTRY_TILE_PIXELS,boardImagePoint} from './board-layout.mjs';
 const load=path=>{if(typeof Image==='undefined')return null;const image=new Image();image.src=new URL(path,import.meta.url).href;return image;};
-export const BOARD_ART_ASSETS=Object.freeze({forest:'../assets/board-minimal.png',desert:'../assets/board-desert-v1.png',beach:'../assets/board-beach-v1.png',temple:'../assets/board-temple-v1.png',house:'../assets/board-house-v1.png'});
+export const BOARD_ART_ASSETS=Object.freeze({forest:'../assets/board-minimal.png',desert:'../assets/board-desert-v1.png',beach:'../assets/board-beach-v1.png',temple:'../assets/board-temple-v1.png',house:'../assets/board-house-v1.png',graveyard:'../assets/board-cemetery-v1.png'});
 const backgrounds=Object.fromEntries(Object.entries(BOARD_ART_ASSETS).map(([biome,path])=>[biome,load(path)])),pieces=load('../assets/board-pawns.png');
 export const boardArtBiome=game=>(game.generatedEnvironment||game.environment)==='graveyard'?'graveyard':Object.hasOwn(BOARD_ART_ASSETS,game.generatedEnvironment||game.environment)?game.generatedEnvironment||game.environment:'forest';
 function drawCemeteryBoard(c,trail){
@@ -38,14 +38,15 @@ export function drawBoardScene(c,game,time,options,trail,point){
   const selected=backgrounds[boardArtBiome(game)];
   const background=selected?.complete&&selected.naturalWidth?selected:backgrounds.forest;
   c.fillStyle='#30251a';c.fillRect(-140,-96,280,192);
-  if(boardArtBiome(game)==='graveyard')drawCemeteryBoard(c,trail);
-  else if(background?.complete&&background.naturalWidth){c.save();c.filter=`brightness(${settings.boardLight})`;c.drawImage(background,-140,-96,280,192);c.restore();}
+  if(background?.complete&&background.naturalWidth){c.save();c.filter=`brightness(${settings.boardLight})`;c.drawImage(background,-140,-96,280,192);c.restore();}
+  else if(boardArtBiome(game)==='graveyard')drawCemeteryBoard(c,trail);
   else{c.strokeStyle='#d5c49a';c.lineWidth=10;c.beginPath();trail.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.stroke();}
   drawEntryStone(c);
   const resolved=game.roll?.resolved&&game.event;
-  const title=options.previewTitle??(resolved?game.event.name:game.event&&game.eventTime>0?game.event.name:'');
-  const warning=options.previewWarning??(resolved?game.event.tip:'');
-  const age=options.previewAge??(resolved?Math.max(0,game.roll.elapsed-game.roll.landingAt):(game.eventTime||0));
+  const center=game.roll?.centerLanding||(!game.roll&&game.players?.some(p=>p.progress>=48));
+  const title=options.previewTitle??(center?'WILDBOUND':resolved?game.event.name:game.event&&game.eventTime>0?game.event.name:'');
+  const warning=options.previewWarning??(center?'':resolved?game.event.tip:'');
+  const age=options.previewAge??(game.roll?.resolved?Math.max(0,game.roll.elapsed-game.roll.landingAt):center?10:(game.eventTime||0));
   drawBoardMagic(c,time,settings,{title,warning,age});
   if(settings.showPath){c.font='3px system-ui';c.textAlign='center';for(const [i,p]of trail.entries()){c.fillStyle='#0c211ccc';c.fillRect(p.x-2,p.y-2,4,4);c.fillStyle='#ffffff';c.fillText(String(i),p.x,p.y+1);}}
   const pawns=(game.players||[]).map((p,i)=>{const progress=p.boardProgress??p.progress??0,v=Math.max(0,Math.min(48,progress)),q=point(v),next=point(Math.min(48,v+.1)),prev=point(Math.max(0,v-.1));
@@ -53,5 +54,7 @@ export function drawBoardScene(c,game,time,options,trail,point){
     return {p,i,x:q.x+(crowded?(slot%3-1)*1.1:0),y:q.y+(crowded?(Math.floor(slot/3)-(Math.ceil(occupants.length/3)-1)/2)*1.4:0),hop:q.hop,d:pawnFacing(next.x-prev.x,next.y-prev.y)};}).sort((a,b)=>a.y-b.y);
   for(const a of pawns){drawAnimalPawn(c,a.x,a.y,settings.pieces[a.i%6]||BOARD_PIECES[a.i%6],a.d,a.p.color||'#b9dbbc',settings.pieceSize,a.hop);c.font='bold 3px system-ui';c.textAlign='center';c.fillStyle='#fff8dc';c.fillText(String(a.i+1),a.x,a.y+4);}
   if(game.roll&&options.drawDie)for(let i=0;i<game.roll.dice.length;i++){const d=boardDicePose(game.roll,i);options.drawDie(c,d.x,d.y,d.size,d.value,d.angle);}
+  // Keep the finish word readable below the pawns resting in the well.
+  if(center&&age>.6){c.font='bold 5px system-ui';c.textAlign='center';c.fillStyle='#032a24';c.fillRect(-20,9,40,7);c.fillStyle='#ffe6a6';c.fillText('WILDBOUND',0,14.5);}
   c.restore();
 }

@@ -1,0 +1,1036 @@
+{
+  "checked": "2026-10-07",
+  "rigCount": 47,
+  "scope": "Current Rig Studio subjects; recommendations are anatomical assessments, not completed imports.",
+  "verification": "Catalog links verified from the site. Playback/controls inspected for WoW Lion, TFT13 Elise spider, Murk Wolf Mini, Grumpy Lion and Batnivia. Other export/clip sets are not yet tested. Captain Lancy Revshon inspected and transferred through its external skeleton.",
+  "wow": {
+    "reference": {
+      "name": "WoW lion — NPC 55491",
+      "url": "https://www.wowhead.com/npc=55491/lion#modelviewer"
+    },
+    "exporter": "https://github.com/Kruithne/wow.export",
+    "implementation": "https://github.com/Kruithne/wow.export/blob/main/src/js/3D/exporters/M2Exporter.js",
+    "status": "Exact lion transferred directly from M2: display 39134, model 124781, 69 source bones, 49 entries / 38 distinct sequences, 37 native joints. New Dreadmane Lion enemy; original lions unchanged.",
+    "workflow": [
+      "Resolve NPC 55491 to display 39134 and model 124781 using public viewer metadata.",
+      "Read MD21/MD20 v272 skeletal tracks and the eight AFID external animation files.",
+      "Convert into 37 native Wildbound joints, keeping 49 source entries with alias provenance.",
+      "Assemble editable pixel body, mane, skull, eyes, ears, muzzle, nose and jaw.",
+      "Register dreadmane_lion and The Dreadmane wakes encounter with claw combo, roar and telegraphed pounce."
+    ],
+    "viewerClips": [
+      "AttackUnarmed",
+      "CombatCritical",
+      "CombatWound",
+      "Death",
+      "DressingRoom",
+      "Drown",
+      "Drowned",
+      "DruidCatClaw",
+      "DruidCatCower",
+      "DruidCatPounce",
+      "DruidCatRake",
+      "DruidCatRavage",
+      "DruidCatRip",
+      "EmoteDance",
+      "EmoteUseStanding",
+      "Fall",
+      "Jump",
+      "JumpEnd",
+      "JumpStart",
+      "KneelEnd",
+      "KneelStart",
+      "Loot",
+      "MountSpecial",
+      "Run",
+      "ShuffleLeft",
+      "ShuffleRight",
+      "SitGround",
+      "SitGroundDown",
+      "SitGroundUp",
+      "Sleep",
+      "SleepDown",
+      "SleepUp",
+      "SpecialUnarmed",
+      "SpellKneelEnd",
+      "SpellKneelStart",
+      "Stand",
+      "StandWound",
+      "Swim",
+      "SwimBackwards",
+      "SwimIdle",
+      "SwimLeft",
+      "SwimRight",
+      "UseStandingLoop",
+      "Walk",
+      "Walkbackwards"
+    ]
+  },
+  "currentRigs": [
+    {
+      "ids": [
+        "oathless_captain"
+      ],
+      "subject": "Oathless Captain",
+      "refs": [
+        {
+          "name": "Captain Lancy Revshon — NPC 49877",
+          "url": "https://www.wowhead.com/npc=49877/captain-lancy-revshon#modelviewer"
+        }
+      ],
+      "fit": "Transferred",
+      "notes": "Exact display 36758, human female model 1000764 and external skeleton 2137789. 34 native joints and 31 selected actions. Separate enemy with sword/thrust, shield bash and a charge; existing player rig unchanged."
+    },
+    {
+      "ids": [
+        "dreadmane_lion"
+      ],
+      "subject": "Dreadmane Lion",
+      "refs": [
+        {
+          "name": "WoW lion — NPC 55491",
+          "url": "https://www.wowhead.com/npc=55491/lion#modelviewer"
+        }
+      ],
+      "fit": "Transferred",
+      "notes": "Separate enemy from exact NPC 55491. 37 native joints; 49 animation entries, 38 distinct sequences. Two-hit claws, area roar, pounce and sleep/wake. Original lion and white lion remain separate."
+    },
+    {
+      "ids": [
+        "murk_wolf",
+        "wolf",
+        "carrion_pack"
+      ],
+      "subject": "Wolves / scavenger pack",
+      "refs": [
+        {
+          "name": "Murk Wolf (Mini)",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_murkwolfmini&id=0"
+        },
+        {
+          "name": "Murk Wolf",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_murkwolf&id=0"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=950000",
+          "name": "Naafiri"
+        }
+      ],
+      "fit": "Strong",
+      "notes": "Mini already transferred in the separate Murk test. Naafiri is an alternative canine; its extra blades would be omitted from native art."
+    },
+    {
+      "ids": [
+        "lion",
+        "white_lion"
+      ],
+      "subject": "Lion / white lion",
+      "refs": [
+        {
+          "name": "WoW lion — NPC 55491",
+          "url": "https://www.wowhead.com/npc=55491/lion#modelviewer"
+        },
+        {
+          "name": "Nidalee cougar — TFT 7",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft7_nidaleecougar&id=0"
+        },
+        {
+          "name": "Grumpy Lion pet",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=durian_grumpylion&id=0"
+        }
+      ],
+      "fit": "Strong via WoW",
+      "notes": "WoW is the strongest natural lion reference. Cougar is a useful LoL alternative. Grumpy Lion is a round, stylized pet, not a natural lion gait. Rengar is upright and a poor quadruped donor."
+    },
+    {
+      "ids": [
+        "panther",
+        "snow_leopard",
+        "tiger"
+      ],
+      "subject": "Other large cats",
+      "refs": [
+        {
+          "name": "Nidalee cougar — TFT 7",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft7_nidaleecougar&id=0"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=76000",
+          "name": "Nidalee"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Use cougar form. Different body proportions still need a bone mapping and stride/foot-contact check."
+    },
+    {
+      "ids": [
+        "spider",
+        "tarantula"
+      ],
+      "subject": "Spider / tarantula",
+      "refs": [
+        {
+          "name": "Elise spider — TFT 13",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft13_elisespider&id=0"
+        },
+        {
+          "name": "Elise spiderling — TFT 13",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft13_elisespiderling&id=0"
+        },
+        {
+          "name": "Elise spider — TFT 12",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft12_elisespider&id=0"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "TFT 13 viewer tested: Run, Attack1, Attack2, Crit, Death, Idle1, KnockUp, Celebration, heal and jump. Confirm each leg chain against our eight-leg rig before transfer."
+    },
+    {
+      "ids": [
+        "night_stalker"
+      ],
+      "subject": "Crouching predator",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=950000",
+          "name": "Naafiri"
+        },
+        {
+          "name": "Nidalee cougar — TFT 7",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft7_nidaleecougar&id=0"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Choose canine or feline movement first; the current creature is an invented predator."
+    },
+    {
+      "ids": [
+        "boar"
+      ],
+      "subject": "Boar",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=113000",
+          "name": "Sejuani"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Bristle is a useful boar reference, but the rider and mount are one character setup. Isolating mount bones is extra work."
+    },
+    {
+      "ids": [
+        "beetle"
+      ],
+      "subject": "Six-legged scarab",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=72000",
+          "name": "Skarner"
+        },
+        {
+          "name": "Scuttle Crab",
+          "url": "https://modelviewer.lol/extras/sru_crab"
+        },
+        {
+          "name": "Voidgrub",
+          "url": "https://modelviewer.lol/extras/sru_horde"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Scorpion/crab/grub alternatives. None is a verified six-legged scarab drop-in; confirm limb count and gait."
+    },
+    {
+      "ids": [
+        "crocodile"
+      ],
+      "subject": "Crocodile / alligator",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=58000",
+          "name": "Renekton"
+        },
+        {
+          "name": "Map prop - Lizard",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_lizard&id=0"
+        }
+      ],
+      "fit": "Poor match",
+      "notes": "Renekton walks upright. The lizard is a small map prop with an unverified clip set. No suitable natural crocodile donor confirmed here."
+    },
+    {
+      "ids": [
+        "elephant"
+      ],
+      "subject": "Elephant",
+      "refs": [],
+      "fit": "Not found",
+      "notes": "No convincing trunked quadruped candidate found in the inspected site catalog."
+    },
+    {
+      "ids": [
+        "rhino"
+      ],
+      "subject": "Rhino",
+      "refs": [],
+      "fit": "Not found",
+      "notes": "No convincing natural rhinoceros candidate found in the inspected catalog."
+    },
+    {
+      "ids": [
+        "zebra"
+      ],
+      "subject": "Zebra",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=120000",
+          "name": "Hecarim"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=876000",
+          "name": "Lillia"
+        }
+      ],
+      "fit": "Poor match",
+      "notes": "Centaur bodies provide four-leg reference only; their humanoid torsos change the balance and stride. No natural zebra/horse rig confirmed here."
+    },
+    {
+      "ids": [
+        "pelican"
+      ],
+      "subject": "Pelican",
+      "refs": [
+        {
+          "name": "Map prop - Bird",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_bird&id=0"
+        },
+        {
+          "name": "Map prop - Duck",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_duck&id=0"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=34000",
+          "name": "Anivia"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Bird body or flight reference. No pelican beak/pouch skeleton confirmed; map-prop animation sets need checking."
+    },
+    {
+      "ids": [
+        "bat"
+      ],
+      "subject": "Bat",
+      "refs": [
+        {
+          "name": "Morgana Batnivia — TFT 12",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft12_morganabatnivia&id=0"
+        }
+      ],
+      "fit": "Promising",
+      "notes": "Dedicated Bat_Mat model loads and animates in the viewer. Full wing mapping and export remain unchecked."
+    },
+    {
+      "ids": [
+        "tsetse"
+      ],
+      "subject": "Tsetse fly",
+      "refs": [
+        {
+          "name": "crepe_flyguy",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=crepe_flyguy&id=0"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=121000",
+          "name": "Kha'Zix"
+        }
+      ],
+      "fit": "Unverified / partial",
+      "notes": "Flyguy is a catalog lead, not a validated fly. Kha’Zix is an insect monster, not a fly gait."
+    },
+    {
+      "ids": [
+        "dragon"
+      ],
+      "subject": "Winged dragon",
+      "refs": [
+        {
+          "name": "Dragon",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_dragon&id=0"
+        },
+        {
+          "name": "Dragon (Elder)",
+          "url": "https://modelviewer.lol/extras/sru_dragon_elder"
+        },
+        {
+          "name": "Shyvana dragon — TFT 12",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft12_shyvanadragon&id=0"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Compare wing and leg topology before choosing. Some dragon forms have different supporting limbs."
+    },
+    {
+      "ids": [
+        "snake"
+      ],
+      "subject": "Segmented snake",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=69000",
+          "name": "Cassiopeia"
+        },
+        {
+          "name": "Baron",
+          "url": "https://modelviewer.lol/extras/sru_baron"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Cassiopeia is a snake-bodied humanoid; Baron is a large rooted serpent. Neither is a verified ordinary ground snake."
+    },
+    {
+      "ids": [
+        "monkey"
+      ],
+      "subject": "Monkey",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=62000",
+          "name": "Wukong"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Wukong is an upright staff fighter. Useful for a humanoid monkey NPC, less suitable for natural quadruped motion."
+    },
+    {
+      "ids": [
+        "golem"
+      ],
+      "subject": "Stone golem",
+      "refs": [
+        {
+          "name": "Blue Sentinel",
+          "url": "https://modelviewer.lol/extras/sru_blue"
+        },
+        {
+          "name": "Krug",
+          "url": "https://modelviewer.lol/extras/sru_krug"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=54000",
+          "name": "Malphite"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Blue Sentinel for heavy biped movement; Krug for a squat rock creature."
+    },
+    {
+      "ids": [
+        "fire_elemental"
+      ],
+      "subject": "Fire elemental",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=63000",
+          "name": "Brand"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Good humanoid casting/body reference. Flame effects need native Wildbound art and effects."
+    },
+    {
+      "ids": [
+        "water_elemental"
+      ],
+      "subject": "Water elemental",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=154000",
+          "name": "Zac"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=267000",
+          "name": "Nami"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Zac offers fluid body motion; Nami offers aquatic/serpentine movement. Neither is a matching water-elemental skeleton."
+    },
+    {
+      "ids": [
+        "carnivorous_flower",
+        "vine"
+      ],
+      "subject": "Carnivorous flower / snapping plant",
+      "refs": [
+        {
+          "name": "Zyra thorn plant — TFT 15",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft15_zyrathornplant&id=0"
+        },
+        {
+          "name": "Zyra grasping plant — TFT 15",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft15_zyragraspingplant&id=0"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Dedicated rooted attack plants; inspect jaw and stem chains before transfer."
+    },
+    {
+      "ids": [
+        "mimic_vine"
+      ],
+      "subject": "Grasping vine",
+      "refs": [
+        {
+          "name": "Zyra grasping plant — TFT 15",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=tft15_zyragraspingplant&id=0"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Rooted plant/tendril reference. Not yet confirmed to provide a long wrapping chain like our rig."
+    },
+    {
+      "ids": [
+        "poison_pod"
+      ],
+      "subject": "Poison / spore pod",
+      "refs": [
+        {
+          "name": "Plant - Blast Cone",
+          "url": "https://modelviewer.lol/extras/sru_plant_satchel"
+        },
+        {
+          "name": "Plant - Honeyfruit",
+          "url": "https://modelviewer.lol/extras/sru_plant_health"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Useful plant/pod silhouette and possible hit/pop reference; not a verified walking or breathing creature rig."
+    },
+    {
+      "ids": [
+        "burrower"
+      ],
+      "subject": "Burrowing monster",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=421000",
+          "name": "Rek'Sai"
+        },
+        {
+          "name": "Voidgrub",
+          "url": "https://modelviewer.lol/extras/sru_horde"
+        }
+      ],
+      "fit": "Strong concept",
+      "notes": "Rek’Sai is the closest burrower behavior. Different limb and segment layout requires adaptation."
+    },
+    {
+      "ids": [
+        "trap"
+      ],
+      "subject": "Mechanical trap",
+      "refs": [],
+      "fit": "Not found",
+      "notes": "No direct match verified for our trap mechanism. Native authored opening/closing keys are likely simpler."
+    },
+    {
+      "ids": [
+        "player"
+      ],
+      "subject": "Humanoid base",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=64000",
+          "name": "Lee Sin"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=86000",
+          "name": "Garen"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=89000",
+          "name": "Leona"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Lee Sin for unarmed motion, Garen for sword combat, Leona for sword and shield. Weapon-specific clips need matching Wildbound hand grips."
+    },
+    {
+      "ids": [
+        "hunter"
+      ],
+      "subject": "Rifle hunter",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=104000",
+          "name": "Graves"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Two-handed firearm stance; gun proportions and grip spacing require remapping."
+    },
+    {
+      "ids": [
+        "zombie"
+      ],
+      "subject": "Zombie",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=63004",
+          "name": "Zombie Brand"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=14000",
+          "name": "Sion"
+        },
+        {
+          "name": "Yorick melee ghoul",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=ruby_yorickghoulmelee&id=0"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Zombie Brand for humanoid shambling; Sion for a heavy brute; ghoul for a hunched creature."
+    },
+    {
+      "ids": [
+        "skeleton",
+        "skeleton_boss"
+      ],
+      "subject": "Sword skeleton / boss",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=86000",
+          "name": "Garen"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=14000",
+          "name": "Sion"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=412000",
+          "name": "Thresh"
+        }
+      ],
+      "fit": "Motion substitute",
+      "notes": "Use sword/brute/undead motion on our skeleton art. These are not plain skeleton meshes."
+    },
+    {
+      "ids": [
+        "archer",
+        "banshee_queen"
+      ],
+      "subject": "Archer / Banshee Queen",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=22000",
+          "name": "Ashe"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=110000",
+          "name": "Varus"
+        }
+      ],
+      "fit": "Strong motion candidate",
+      "notes": "Both Wildbound subjects use equipped humanoid/archery motion. For a floating spirit variant, Thresh or Karthus is a separate design choice."
+    },
+    {
+      "ids": [
+        "skeleton_unarmed"
+      ],
+      "subject": "Unarmed skeleton",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=64000",
+          "name": "Lee Sin"
+        }
+      ],
+      "fit": "Motion substitute",
+      "notes": "Use the unarmed human skeleton motion; retain our own skeletal pixel parts."
+    },
+    {
+      "ids": [
+        "frost_skeleton_mage",
+        "necromancer"
+      ],
+      "subject": "Skeletal mage / necromancer",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=30000",
+          "name": "Karthus"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=13000",
+          "name": "Ryze"
+        }
+      ],
+      "fit": "Strong candidate",
+      "notes": "Karthus for undead staff casting; Ryze for humanoid casting. Frost styling stays in Wildbound art."
+    },
+    {
+      "ids": [
+        "succubus"
+      ],
+      "subject": "Winged humanoid",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=25000",
+          "name": "Morgana"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=28000",
+          "name": "Evelynn"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Morgana has a winged humanoid form. Evelynn supplies demonic humanoid motion but not equivalent wings."
+    },
+    {
+      "ids": [
+        "imp"
+      ],
+      "subject": "Small winged demon",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=18024",
+          "name": "Little Demon Tristana"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Useful small demon character reference; cannon/body animations are not verified flying-imp motion."
+    },
+    {
+      "ids": [
+        "krampus"
+      ],
+      "subject": "Krampus / horned humanoid",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=48000",
+          "name": "Trundle"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=516000",
+          "name": "Ornn"
+        }
+      ],
+      "fit": "Partial",
+      "notes": "Trundle for a lumbering club-wielding creature; Ornn for a heavy horned character. No exact Krampus donor confirmed."
+    }
+  ],
+  "fantasy": [
+    {
+      "subject": "Minotaur",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=12000",
+          "name": "Alistar"
+        }
+      ],
+      "notes": "Bull-headed biped; strong silhouette and melee reference."
+    },
+    {
+      "subject": "Troll / ogre",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=48000",
+          "name": "Trundle"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=14000",
+          "name": "Sion"
+        }
+      ],
+      "notes": "Club fighter or massive undead brute."
+    },
+    {
+      "subject": "Werewolf",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=19000",
+          "name": "Warwick"
+        }
+      ],
+      "notes": "Hunched claw fighter; distinct from an ordinary four-legged wolf."
+    },
+    {
+      "subject": "Treant / awakened tree",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=57000",
+          "name": "Maokai"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=427000",
+          "name": "Ivern"
+        }
+      ],
+      "notes": "Heavy tree monster or slender woodland NPC."
+    },
+    {
+      "subject": "Ooze / slime",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=154000",
+          "name": "Zac"
+        }
+      ],
+      "notes": "Elastic creature; its deformations exceed our simple positional transfer."
+    },
+    {
+      "subject": "Gargoyle / stone guardian",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=3000",
+          "name": "Galio"
+        }
+      ],
+      "notes": "Large winged stone humanoid."
+    },
+    {
+      "subject": "Phoenix / giant bird",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=34000",
+          "name": "Anivia"
+        }
+      ],
+      "notes": "Bird-flight and attack reference."
+    },
+    {
+      "subject": "Centaur / fey deer person",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=120000",
+          "name": "Hecarim"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=876000",
+          "name": "Lillia"
+        }
+      ],
+      "notes": "Horse or deer lower body with humanoid upper body."
+    },
+    {
+      "subject": "Medusa / lamia",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=69000",
+          "name": "Cassiopeia"
+        }
+      ],
+      "notes": "Snake tail with humanoid upper body."
+    },
+    {
+      "subject": "Merfolk",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=267000",
+          "name": "Nami"
+        }
+      ],
+      "notes": "Aquatic tail and staff-bearing upper body."
+    },
+    {
+      "subject": "Floating eye / aberration",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=161000",
+          "name": "Vel'Koz"
+        }
+      ],
+      "notes": "Tentacled floating eye; a beholder-like starting point, not an actual D&D beholder."
+    },
+    {
+      "subject": "Large fiend / alien monster",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=31000",
+          "name": "Cho'Gath"
+        },
+        {
+          "name": "Atakhan",
+          "url": "https://modelviewer.lol/extras/sru_atakhan"
+        }
+      ],
+      "notes": "Bulky boss shapes with specialized limb layouts."
+    },
+    {
+      "subject": "Shadow / wraith",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=56000",
+          "name": "Nocturne"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=412000",
+          "name": "Thresh"
+        }
+      ],
+      "notes": "Floating shadow or armed spectral figure."
+    },
+    {
+      "subject": "Lich / undead priest",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=30000",
+          "name": "Karthus"
+        }
+      ],
+      "notes": "Undead caster with staff."
+    },
+    {
+      "subject": "Mummy",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=32000",
+          "name": "Amumu"
+        }
+      ],
+      "notes": "Small stylized mummy; proportions differ from a human."
+    },
+    {
+      "subject": "Scarecrow / haunted construct",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=9000",
+          "name": "Fiddlesticks"
+        }
+      ],
+      "notes": "Asymmetric horror creature; more complex mapping."
+    },
+    {
+      "subject": "Yeti / giant bear",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=20000",
+          "name": "Nunu & Willump"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=106000",
+          "name": "Volibear"
+        }
+      ],
+      "notes": "Nunu includes a rider; Volibear is a massive upright bear."
+    },
+    {
+      "subject": "Giant toad / frog demon",
+      "refs": [
+        {
+          "name": "Gromp",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_gromp&id=0"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=223000",
+          "name": "Tahm Kench"
+        }
+      ],
+      "notes": "Gromp for a squat creature; Tahm Kench for an upright NPC monster."
+    },
+    {
+      "subject": "Giant crab / scorpion",
+      "refs": [
+        {
+          "name": "Scuttle Crab",
+          "url": "https://modelviewer.lol/extras/sru_crab"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=72000",
+          "name": "Skarner"
+        }
+      ],
+      "notes": "Check actual supporting limb chains before export."
+    },
+    {
+      "subject": "Small fantasy pet",
+      "refs": [
+        {
+          "name": "Poro",
+          "url": "https://modelviewer.lol/extras/ha_ap_poro"
+        },
+        {
+          "name": "Grumpy Lion pet",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=durian_grumpylion&id=0"
+        }
+      ],
+      "notes": "Poro or the inspected round, horned lion-like pet."
+    },
+    {
+      "subject": "Knight / guard / paladin",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=86000",
+          "name": "Garen"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=89000",
+          "name": "Leona"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=44000",
+          "name": "Taric"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=201000",
+          "name": "Braum"
+        }
+      ],
+      "notes": "Sword, sword/shield, mace, or large shield fighting styles."
+    },
+    {
+      "subject": "Wizard / priest / healer",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=13000",
+          "name": "Ryze"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=45000",
+          "name": "Veigar"
+        },
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=16000",
+          "name": "Soraka"
+        }
+      ],
+      "notes": "Human-scale caster, small wizard, or staff healer."
+    },
+    {
+      "subject": "Small folk warrior",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=78000",
+          "name": "Poppy"
+        }
+      ],
+      "notes": "Short hammer-wielding humanoid; possible gnome/halfling motion base."
+    },
+    {
+      "subject": "Blacksmith / horned artisan",
+      "refs": [
+        {
+          "url": "https://modelviewer.lol/model-viewer?id=516000",
+          "name": "Ornn"
+        }
+      ],
+      "notes": "Heavy hammer-bearing fantasy NPC."
+    },
+    {
+      "subject": "Merchant / shopkeeper",
+      "refs": [
+        {
+          "name": "Shopkeeper (Chaos)",
+          "url": "https://modelviewer.lol/extras/sru_storekeepernorth"
+        },
+        {
+          "name": "Shopkeeper (Order)",
+          "url": "https://modelviewer.lol/extras/sru_storekeepersouth"
+        },
+        {
+          "name": "Norra shopkeeper",
+          "url": "https://modelviewer.lol/model-viewer?group=extras&alias=brawl_shopkeeper_norra&id=0"
+        }
+      ],
+      "notes": "Actual NPC references. Do not assume stationary merchants have full locomotion clips."
+    }
+  ]
+}

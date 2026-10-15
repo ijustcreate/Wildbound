@@ -1,3 +1,4 @@
+import {weaponHitContext} from './dark-essence.mjs';
 import { ITEMS, take } from "./items.mjs";
 import {isCharmed,charmShot,playerCombatTargets} from './succubus-charm.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
@@ -32,7 +33,7 @@ export function tryEquipmentAttack(g, p, charge = 0) {
   p.attack = p.attackDuration = 0.25;
   p.attackClip = "draw";
   (g.rifleShots ||= []).push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y,
-    ...charmShot(p),
+    ...charmShot(p),...weaponHitContext(p),
     vx: x * cfg.speed, vy: y * cfg.speed, remaining: cfg.range,
     owner: p.id, playerOwned: !!g.players?.includes(p), damage: def.damage,
     aimed: Number.isFinite(charge) && charge >= cfg.aimTime });
@@ -144,7 +145,7 @@ export function tickNightEquipment(g, dt) {
         .sort((a, z) => Math.hypot(a.x - previous.x, a.y - previous.y) - Math.hypot(z.x - previous.x, z.y - previous.y))[0];
       if (hit) {
         if (players.includes(hit)) g.hurt(hit, b.damage, b);
-        else { damageEnemy(hit,b.damage); hit.killedBy = b.owner; hit.ritualKill = false; hit.aggro = true; hit.flash = 0.2; }
+        else { damageEnemy(hit,b.damage,'physical',{g,p:g.players?.find(p=>p.id===b.owner),shot:b}); hit.killedBy = b.owner; hit.ritualKill = false; hit.aggro = true; hit.flash = 0.2; }
         b.remaining = 0; break;
       }
     }

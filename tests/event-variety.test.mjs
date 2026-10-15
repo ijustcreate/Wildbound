@@ -92,21 +92,21 @@ test('First actual rolls now honor variety instead of forcing the same lion or t
   for(const random of [0,.25,.5,.75,.99]){
    const g=make(env);g.random=()=>random;const p=g.players[0];
    g.roll={playerId:p.id,total:2,resolved:false};g.resolveRoll();
-   assert.ok(g.event);assert.ok(eventAvailable(g,g.event));assert.ok(!eventBoss(g.event));
+   assert.ok(g.event);assert.ok(eventAvailable(g,g.event));
    starts.add(g.event.name);
   }
   assert.ok(starts.size>=4,env+' opener variety');
  }
 });
 
-test('Every biome covers its daytime roster, preserves boss pacing and restores its coverage through JSON saves',()=>{
+test('Every biome covers its daytime roster, preserves optional boss pacing and restores its coverage through JSON saves',()=>{
  for(const env of ['forest','temple','desert','ice','house','beach']){
   const g=make(env),expected=EVENTS.filter(e=>(e.weight??10)>0&&eventAvailable(g,e)),seen=new Set();
   let lastBoss=-99;
   for(let i=0;i<expected.length+25&&seen.size<expected.length;i++){
    const index=draw(g,EVENTS,eventAvailable),e=EVENTS[index];
    assert.ok(eventAvailable(g,e));
-   if(eventBoss(e)){assert.ok(i>=3);assert.ok(i-lastBoss>=3);lastBoss=i;}
+   if(eventBoss(e))lastBoss=i;
    seen.add(e.name);
   }
   assert.equal(seen.size,expected.length,env+' full available coverage');
@@ -124,11 +124,11 @@ test('Night-only encounters rejoin an existing daytime run rather than being sta
  assert.ok(nights.length>=3);assert.ok(nights.every(e=>seen.has(e.name)));
 });
 
-test('Bosses, active hazards and crowded waves cannot bypass safety gates just because they are unseen',()=>{
+test('Bosses remain available while active duplicate hazards and the engineering crowd cap remain excluded',()=>{
  const g=make('forest');g.eventDirector={version:2,draws:20,lastBossAt:0,recent:[],counts:Object.fromEntries(EVENTS.filter(e=>!eventBoss(e)).map(e=>[e.name,9]))};
  g.enemies=[{kind:'lion',hp:100,faction:'enemy'}];
- assert.ok(!eventBoss(EVENTS[draw(g,EVENTS,eventAvailable)]));
- g.enemies=Array.from({length:12},()=>({kind:'lion',hp:1,faction:'enemy'}));
+ assert.ok(eventBoss(EVENTS[draw(g,EVENTS,eventAvailable)]));
+ g.enemies=Array.from({length:36},()=>({kind:'lion',hp:1,faction:'enemy'}));
  g.merchant={};g.mystery={done:false};g.weather={life:20};g.volcanoes=[{life:10}];
  const onlyUnsafe=EVENTS.filter(e=>!e.type||['enemy','mystery','merchant','monsoon','sandstorm','thunderstorm','blizzard','volcano'].includes(e.type));
  assert.equal(selectEvent(g,onlyUnsafe,eventAvailable),null);

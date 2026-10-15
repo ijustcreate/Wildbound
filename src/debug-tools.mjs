@@ -1,6 +1,33 @@
 import {SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
+  window.verifyVendingUI=async(family='xbox')=>{
+    await window.showcase('vending-shop');
+    const g=ctx.game,p=g.players[0],original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
+    const pad={index:0,id:family==='switch'?'Nintendo Switch Pro Controller':'Xbox Wireless Controller',mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};
+    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[pad]});ctx.previousPads.clear();
+    p.device='pad:0';p.controllerFamily=family;p.ui.ownerDevice=p.device;p.coins=200;p.ui.index=0;
+    for(const order of p.vendingOrders)order.ready=true;
+    const draw=()=>ctx.heroUI.draw(g,ctx.renderer),step=()=>{g.update(.05,ctx.inputFrame());draw();},press=button=>{step();pad.buttons[button]={pressed:true,value:1};step();pad.buttons[button]={pressed:false,value:0};step();};
+    const assert=(v,m)=>{if(!v)throw Error(m);};
+    try{
+      draw();for(const index of [3,6,9]){press(13);assert(p.ui.index===index&&p.ui.vendingView==='catalog','Catalog row unreachable');}
+      press(13);let panel=ctx.heroUI.panels.get(p.id);
+      assert(panel.querySelector('.vending-tray button.selected'),'Collect cursor missing');assert(!panel.querySelector('.vending-slots .selected'),'Two selections');
+      const gold=p.coins;press(0);assert(!p.vendingOrders.length&&p.coins===gold,'Confirm failed to collect or bought again');
+      g.purchaseVending(p,0);p.vendingOrders[0].ready=true;press(3);assert(!p.vendingOrders.length,'Top-face quick collect failed');
+      g.purchaseVending(p,1);p.vendingOrders[0].ready=true;draw();press(13);
+      panel=ctx.heroUI.panels.get(p.id);assert(panel.querySelector('.vending-tray button.selected'),'Final tray cursor missing');
+      const text=panel.textContent;assert(text.includes(family==='switch'?'B: buy / collect':'A: buy / collect'),'Wrong confirm prompt');
+      window.vendingUIQA={g,p,panel,draw};return {family,checks:'Actual inputFrame D-pad rows, visible tray selection, confirm collection, quick collection, family labels'};
+    }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();}
+  };
+  window.previewCharacterSelect=()=>{
+    ctx.newLobby();const lobby=ctx.playableLobby,game=ctx.game;
+    const hero=ctx.profiles.data.heroes[0]||ctx.profiles.create('Preview Explorer');
+    const first=game.addPlayer('keyboard');lobby.sync();ctx.renderLobby();
+    return {lobby,game,first,hero,join:()=>{const second=game.addPlayer('pad:0');lobby.sync();return second;}};
+  };
   window.verifyCharacterCreator=async()=>{
     ctx.newLobby();const g=ctx.game,lobby=ctx.playableLobby;
     const original=Object.getOwnPropertyDescriptor(navigator,'getGamepads');
@@ -15,13 +42,13 @@ export function installDebugTools(ctx) {
       if(!a.textContent.includes('A: choose')||!b.textContent.includes('B: choose'))throw Error('Creator families wrong');
       const row=(panel,label)=>[...panel.querySelectorAll('.creation-select-row')].find(q=>q.textContent.startsWith(label));
       row(b,'Hair style').click();
-      if(b.querySelectorAll('.creation-option-grid button').length!==19)throw Error('Hair styles missing');
+      if(b.querySelector('.creation-carousel-count')?.textContent!=='2 / 19')throw Error('Hair carousel missing');
       const c=b.querySelector('.creation-detail-preview'),before=c.toDataURL();
-      b.querySelector('[data-option-value="afro"]').click();if(c.toDataURL()===before)throw Error('Hair preview did not update');
+      b.querySelector('[aria-label="Next hair style"]').click();if(c.toDataURL()===before)throw Error('Hair preview did not update');
       press(1,5);if(!b.querySelector('.creation-popup')||c.toDataURL()===before)throw Error('Preview rotation closed picker');
       a.querySelector('button').focus();const qBefore=JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook);press(1,13);if(JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook)!==qBefore)throw Error('Other controller changed look');
-      press(1,1);row(b,'Face details').click();if(b.querySelectorAll('.creation-option-grid button').length!==8)throw Error('Face details missing');
-      b.querySelector('[data-option-value="warpaint"]').click();if(lobby.state.members.get(heroes[1].id).creationLook.face!=='warpaint')throw Error('Face selection not applied');press(1,1);
+      press(1,1);row(b,'Face details').click();if(b.querySelector('.creation-carousel-count')?.textContent!=='1 / 8')throw Error('Face carousel missing');
+      b.querySelector('[aria-label="Next face details"]').click();if(lobby.state.members.get(heroes[1].id).creationLook.face!=='freckles')throw Error('Face selection not applied');press(1,1);
       b.querySelector('.creation-name button').click();let kb=document.querySelector('#controller-keyboard');
       if(kb.dataset.ownerDevice!=='pad:1'||!kb.textContent.includes('Y: delete')||!kb.textContent.includes('+: done'))throw Error('Keyboard labels/owner wrong');
       const nameBefore=kb.querySelector('output').textContent;press(0,0);if(kb.querySelector('output').textContent!==nameBefore)throw Error('Wrong owner typed');
@@ -33,7 +60,7 @@ export function installDebugTools(ctx) {
       dialog.querySelector('[aria-label="Hair style"]').focus();step();if(dialog.querySelector('canvas').dataset.previewMode!=='hair')throw Error('Drop-in hair close-up missing');
       dialog.querySelector('[aria-label="Face details"]').focus();step();if(dialog.querySelector('canvas').dataset.previewMode!=='face'||!dialog.textContent.includes('B: choose'))throw Error('Drop-in face close-up/family missing');dialog.querySelector('.name-cancel').click();
       row(b,'Hair style').click();window.creatorVerification={g,lobby,heroes,a,b,press};
-      return {checks:'Actual inputFrame: Xbox/Switch prompts, 19 hair and 8 face options, live close-ups/rotation, independent look control, keyboard cursor and owner-only typing/delete/Plus commit; drop-in creator close-ups'};
+      return {checks:'Actual inputFrame: Xbox/Switch prompts, 19 hair and 8 face carousel options, live close-ups/rotation, independent look control, keyboard cursor and owner-only typing/delete/Plus commit; drop-in creator close-ups'};
     }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();ctx.keys.clear();}
   };
   window.verifyStarterChestControls=async()=>{
@@ -240,7 +267,7 @@ export function installDebugTools(ctx) {
     const assert=(value,message)=>{if(!value)throw Error(message);};
     const click=(device,text)=>{
       const panel=document.querySelector(`.lobby-player-panel[data-owner-device="${device}"]`);
-      const button=[...panel?.querySelectorAll('button')||[]].find(b=>b.textContent===text);
+      const button=[...panel?.querySelectorAll('button')||[]].find(b=>b.textContent.trim().startsWith(text));
       assert(button,'Missing '+device+' control: '+text);button.click();
     };
     window.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
@@ -255,16 +282,20 @@ export function installDebugTools(ctx) {
     assert(lobby.state.members.get(p.id).x>before,'Player moves while another selects');
     assert(!lobby.available(q).some(h=>h.id===p.profileId),'Cannot select the same hero twice');
     const pad={index:7,axes:[0,0],buttons:Array.from({length:16},()=>({pressed:false}))};
-    // The first saved hero is in use: focus moves to New character, then A opens it.
-    lobby.state.members.get(q.id).focus=1;pad.buttons[0].pressed=true;ctx.lobbyController(pad,[]);
+    // Saved heroes may already exist in this test profile. Find New by label.
+    const choices=[...lobby.nodes.get(q.id).querySelectorAll('button')];
+    lobby.state.members.get(q.id).focus=choices.findIndex(button=>button.textContent.startsWith('+ New character'));
+    lobby.highlight(q);pad.buttons[0].pressed=true;ctx.lobbyController(pad,[]);
     assert(lobby.state.members.get(q.id).panel==='create','Controller owns its creation panel');
     document.querySelector('[data-owner-device="pad:7"] input').value='Other '+Date.now().toString().slice(-6);click('pad:7','Create & join');
-    const s=lobby.state.members.get(p.id);s.x=635;s.y=210;
-    lobby.update(.01,{keyboard:{interact:true}});
+    const s=lobby.state.members.get(p.id);s.x=625;s.y=548;s.held={};
+    lobby.update(.01,{keyboard:{lobbyInteract:true}});
     assert(s.panel==='environment','E opens nearby map object');
     p.ready=true;q.ready=true;click('keyboard','Forest');assert(!p.ready&&!q.ready,'Changing map resets everyone');
-    const interactBoard=player=>{const m=lobby.state.members.get(player.id);m.x=770;m.y=420;m.held={};lobby.update(.01,{[player.device]:{interact:true}});assert(m.panel==='board','Board opens prompt');click(player.device,'Ready');};
-    interactBoard(p);assert(!q.ready,'Readiness is per player');interactBoard(q);
+    const boardState=lobby.state.members.get(p.id);boardState.x=770;boardState.y=420;boardState.held={};lobby.update(.01,{keyboard:{lobbyInteract:true}});
+    assert(lobby.boardReadyMenuOpen&&document.querySelectorAll('.board-ready-menu').length===1,'Board opens one shared ready screen');
+    document.querySelector('.board-ready-confirm').click();assert(p.ready&&!q.ready,'Keyboard ready toggle only readies its player');
+    const readyPad={index:7,axes:[0,0],buttons:Array.from({length:16},()=>({pressed:false}))};readyPad.buttons[0].pressed=true;ctx.lobbyController(readyPad,[]);assert(q.ready&&!lobby.boardReadyMenuOpen,'Each controller bottom button readies its player and closes when all are ready');
     lobby.update(1,{});assert(lobby.state.countdown>0,'All ready starts countdown');
     p.ready=false;lobby.update(.01,{});assert(lobby.state.countdown===null,'Cancel aborts countdown');
     p.ready=true;lobby.update(3.1,{});assert(ctx.screen==='play','Countdown starts expedition');
@@ -499,6 +530,57 @@ export function installDebugTools(ctx) {
     return canvas.toDataURL("image/png");
   };
   window.showcase = async (view) => {
+    if(view==='dreadmane-fight') {
+      for(const d of document.querySelectorAll('dialog[open]'))d.close();
+      const {EVENTS}=await import('./core.mjs');
+      ctx.game=new ctx.Game(()=>.42);ctx.wireGame();
+      const g=ctx.game,p=g.addPlayer('keyboard','Lion trial');g.start();
+      g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.enemies=[];
+      g.house=null;g.weather=null;g.bloom=3;g.explored=new Set(Array.from({length:2500},(_,i)=>i));
+      Object.assign(p,{x:700,y:1000,hp:300,maxHp:300,faceX:1,faceY:0});p.equipment.hand1='starter_sword';
+      g.spawnEvent(EVENTS.findIndex(e=>e.kind==='dreadmane_lion'),{test:true});g.reveal=null;g.eventTime=0;
+      const lion=g.enemies.find(e=>e.kind==='dreadmane_lion');if(!lion)throw Error('Dreadmane encounter did not spawn');
+      Object.assign(lion,{x:900,y:1000,faceX:-1,faceY:0});
+      ctx.renderer=new ctx.Renderer(ctx.$('game-canvas'),ctx.assets);ctx.renderer.camera={x:800,y:1000,zoom:2};
+      ctx.show('play');ctx.paused=false;ctx.boardPinned=false;ctx.updateHud();
+      g.message('Dreadmane trial: dodge the roar circle, cross the pounce lane, and watch for the second claw.');
+      window.dreadmaneFight={game:g,player:p,lion,renderer:ctx.renderer};
+      return {kind:lion.kind,hp:lion.hp,playerHp:p.hp};
+    }
+    if(view==='villager-camp') {
+      for(const d of document.querySelectorAll('dialog[open]'))d.close();
+      const {EVENTS}=await import('./core.mjs');
+      ctx.game=new ctx.Game(()=>.42);ctx.wireGame();
+      const g=ctx.game,p=g.addPlayer('keyboard','Village visitor');g.start();
+      g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.enemies=[];g.house=null;g.weather=null;g.bloom=3;
+      g.explored=new Set(Array.from({length:2500},(_,i)=>i));
+      Object.assign(p,{x:800,y:1080,hp:100,maxHp:100,faceX:0,faceY:-1});
+      g.spawnEvent(EVENTS.findIndex(e=>e.type==='villager_camp'),{test:true});
+      const campCenter={x:g.villagers.reduce((n,v)=>n+v.x,0)/g.villagers.length,y:g.villagers.reduce((n,v)=>n+v.y,0)/g.villagers.length};
+      Object.assign(p,{x:campCenter.x,y:campCenter.y+115});
+      g.reveal=null;g.eventTime=0;
+      ctx.renderer=new ctx.Renderer(ctx.$('game-canvas'),ctx.assets);ctx.renderer.camera={x:campCenter.x,y:campCenter.y+35,zoom:2};
+      ctx.show('play');ctx.paused=false;ctx.boardPinned=false;ctx.updateHud();
+      window.villagerCamp={game:g,player:p,renderer:ctx.renderer,refresh:()=>{ctx.renderer.draw(g,0);ctx.heroUI.draw(g,ctx.renderer)}};
+      return {villagers:g.villagers.map(v=>v.name)};
+    }
+    if(view==='captain-fight') {
+      for(const d of document.querySelectorAll('dialog[open]'))d.close();
+      const {EVENTS}=await import('./core.mjs');
+      ctx.game=new ctx.Game(()=>.42);ctx.wireGame();
+      const g=ctx.game,p=g.addPlayer('keyboard','Captain trial');g.start();
+      g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.enemies=[];
+      g.house=null;g.weather=null;g.bloom=3;g.explored=new Set(Array.from({length:2500},(_,i)=>i));
+      Object.assign(p,{x:700,y:1000,hp:300,maxHp:300,faceX:1,faceY:0});p.equipment.hand1='starter_sword';
+      g.spawnEvent(EVENTS.findIndex(e=>e.kind==='oathless_captain'),{test:true});g.reveal=null;g.eventTime=0;
+      const captain=g.enemies.find(e=>e.kind==='oathless_captain');if(!captain)throw Error('Captain encounter did not spawn');
+      Object.assign(captain,{x:900,y:1000,faceX:-1,faceY:0});
+      ctx.renderer=new ctx.Renderer(ctx.$('game-canvas'),ctx.assets);ctx.renderer.camera={x:800,y:1000,zoom:2};
+      ctx.show('play');ctx.paused=false;ctx.boardPinned=false;ctx.updateHud();
+      g.message('Captain trial: sidestep the blue charge lane and punish the shield bash recovery.');
+      window.captainFight={game:g,player:p,captain,renderer:ctx.renderer};
+      return {kind:captain.kind,hp:captain.hp,playerHp:p.hp};
+    }
     if (view === "event-text" || view === "music-settings") {
       await window.showcase("game");
       if (view === "event-text") {

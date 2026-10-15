@@ -3,6 +3,7 @@ import {boardTableSupport} from './board-table.mjs';
 import {playThunder} from './thunder.mjs';
 import {CUES,creatureCue,SOUND_FILES} from './sound-bank.mjs';
 import {audioDistance,audioPosition,sameAudioRoom} from './adaptive-music-threat.mjs';
+import {isUndergroundRoom,createUndergroundReverb} from './underground-audio.mjs';
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
 export const AMBIENT_TRACKS={forest:'forest_ambient',desert:null,ice:null,house:null,temple:null};
 export const AUDIO_LIMITS=Object.freeze({voices:24,cache:96,cooldowns:128,variants:96});
@@ -80,6 +81,7 @@ export class GameAudio {
   const cue=typeof name==='object'?name:CUES[name];if(!cue?.files?.length||!clamp(this.settings[cue.bus||'sfx']))return;
   const {attenuation}=this.spatial(cue,actor);if(attenuation<=.002)return;
   const key=cue.key|| (typeof name==='string'?name:cue.files[0]),now=performance.now();
+  if(cue.group==='notification')this.duckUntil=now+1200;
   let cooldowns=this.last;
   if(actor&&typeof actor==='object'){if(!this.actorLast.has(actor))this.actorLast.set(actor,new Map());cooldowns=this.actorLast.get(actor);}
   if(now-(cooldowns.get(key)??-10000)<(cue.cooldown??160))return;
@@ -95,12 +97,17 @@ export class GameAudio {
   if(!this.reserve(token))return;this.pending.delete(token);
   const s=this.ctx.createBufferSource(),g=this.ctx.createGain(),p=this.ctx.createStereoPanner();
   s.buffer=buffer;s.playbackRate.value=(cue.rate||1)*(cue.bus==='ui'?1:.97+Math.random()*.06);p.pan.value=pos.pan;
-  const duration=Math.min(buffer.duration/s.playbackRate.value,cue.maxDuration||2.5),t=this.ctx.currentTime,volume=(cue.gain??.25)*pos.attenuation;
+  const duration=Math.min(buffer.duration/s.playbackRate.value,cue.maxDuration||2.5),t=this.ctx.currentTime,volume=(cue.gain??.25)*pos.attenuation*(cue.key?.endsWith(':spawn')&&now<this.duckUntil?.2:1);
   const attack=Math.min(.008,duration/4),release=Math.min(.07,duration/3);
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(volume,t+attack);g.gain.setValueAtTime(volume,t+duration-release);g.gain.linearRampToValueAtTime(0,t+duration);
-  s.connect(g);g.connect(p);p.connect(this.buses[cue.bus||'sfx']);this.voices.add(s);this.voiceInfo.set(s,{...token,source:s});
+  s.connect(g);g.connect(p);p.connect(this.buses[cue.bus||'sfx']);
+  const room=actor?actor.room||null:(this.listeners.length&&this.listeners.every(q=>q.room===this.listeners[0].room)?this.listeners[0].room:null);
+  if((cue.bus||'sfx')==='sfx'&&isUndergroundRoom(this.game,room)){
+    this.undergroundFx??=createUndergroundReverb(this.ctx,this.buses.sfx);p.connect(this.undergroundFx.input);
+  }
+  this.voices.add(s);this.voiceInfo.set(s,{...token,source:s});
   s.onended=()=>{this.voices.delete(s);s.disconnect();g.disconnect();p.disconnect();};s.start();s.stop(t+duration);
-  if(['event','win','lose','death'].includes(name))this.duckUntil=now+1200;
+  if(cue.group==='notification'||['event','win','lose','death'].includes(name))this.duckUntil=now+1200;
   return s;
  }
  async ambient(name){

@@ -11,7 +11,9 @@ export function humanoidClips(base){
   {handR:[-sign*(big?14:10),12,big?8:4],elbowR:[-sign*5,6,4],chest:[-sign*2,2,-1],handL:[2,3,4]},{}
  ],big?10:7);
  const crouch={pelvis:[0,0,-4],chest:[0,2,-4],head:[0,2,-4],kneeL:[-1,3,0],kneeR:[1,3,0],handL:[0,-3,2],handR:[0,-3,2]};
- const air={kneeL:[0,3,5],kneeR:[0,-2,4],footL:[0,2,7],footR:[0,-3,6],handL:[-3,0,12],handR:[3,0,12]};
+ // Tuck both legs together in the air. The old crossed front/back offsets
+ // made the feet splay apart and read like a broken run pose while jumping.
+ const air={kneeL:[-1,3,4],kneeR:[1,3,4],footL:[-1,-4,4],footR:[1,-4,4],handL:[-3,0,12],handR:[3,0,12]};
  const down={pelvis:[0,3,-5],chest:[0,5,-6],head:[0,7,-7],kneeL:[-2,4,-1],kneeR:[2,4,-1],handL:[-4,5,-2],handR:[4,5,-2]};
  const itemUp={chest:[0,0,2],head:[0,0,3],handL:[-2,5,17],handR:[2,5,17],elbowL:[-1,3,8],elbowR:[1,3,8]};
  const overhead={chest:[0,1,1],head:[0,1,2],handL:[-3,4,20],handR:[3,4,20],elbowL:[-2,3,11],elbowR:[2,3,11]};
@@ -29,7 +31,8 @@ export function humanoidClips(base){
     {handL:[5,6,11],handR:[-5,6,11],elbowL:[2,3,5],elbowR:[-2,3,5]},
     {handL:[-2,6,8],handR:[2,6,8],elbowL:[0,2,3],elbowR:[0,2,3]},{}
   ],12),
-  jump_takeoff:clip([crouch,air],4),jump_air:clip([air],4,true),jump_fall:clip([{...air,handL:[-4,1,8],handR:[4,1,8],footL:[0,0,3],footR:[0,0,3]}],4,true),land:clip([crouch,{}],5),
+  wing_hover:clip([{handL:[-.5,0,1],handR:[.5,0,1],kneeL:[0,2,1],kneeR:[0,2,1],footL:[0,-1.5,1.8],footR:[0,-1.5,1.8]},{handL:[-.5,0,1.3],handR:[.5,0,1.3],kneeL:[0,2.2,1],kneeR:[0,2.2,1],footL:[0,-1.5,2.1],footR:[0,-1.5,2.1]}],8,true),
+  jump_takeoff:clip([crouch,air],4),jump_air:clip([air],4,true),jump_fall:clip([{...air,handL:[-4,1,8],handR:[4,1,8]}],4,true),land:clip([crouch,{}],5),
   interact:clip([{}, {chest:[0,4,-3],head:[0,4,-3],handL:[2,9,1],handR:[-2,9,1]},{}],8),
   pickup:clip([down,{...down,handL:[-3,7,2],handR:[3,7,2]},itemUp,{}],9),
   carry:clip([{chest:[0,1,0],head:[0,1,1],handL:[-6,3,9],handR:[6,3,9],elbowL:[-4,1,5],elbowR:[4,1,5]},{chest:[0,1,1],head:[0,1,2],handL:[-6,3,10],handR:[6,3,10],elbowL:[-4,1,6],elbowR:[4,1,6]}],8,true),

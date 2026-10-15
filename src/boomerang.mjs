@@ -1,3 +1,4 @@
+import {weaponHitContext} from './dark-essence.mjs';
 import {ITEMS,stat} from './items.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {clearShot} from './navigation.mjs';
@@ -9,7 +10,7 @@ export function throwBoomerang(g,p){
  const active=(g.boomerangs||=[]);
  if(active.some(b=>b.owner===p.id))return true;
  const length=Math.hypot(p.faceX||0,p.faceY||0)||1;
- active.push({...charmShot(p),owner:p.id,type:id,x:p.x,y:p.y,vx:(p.faceX??0)/length*weapon.speed,vy:(p.faceY??1)/length*weapon.speed,age:0,travel:0,returning:false,hits:[],damage:weapon.damage+stat(p,'damageBonus')});
+ active.push({...charmShot(p),...weaponHitContext(p),owner:p.id,type:id,x:p.x,y:p.y,vx:(p.faceX??0)/length*weapon.speed,vy:(p.faceY??1)/length*weapon.speed,age:0,travel:0,returning:false,hits:[],damage:weapon.damage+stat(p,'damageBonus')});
  p.attack=p.attackDuration=.34;p.attackClip='ranged';g.onSound?.('attack',p);
  return true;
 }
@@ -29,7 +30,7 @@ export function tickBoomerangs(g,dt){
    if(b.travel>=weapon.range)b.returning=true;
    for(const e of playerCombatTargets(g,b)){
     if(e.hp<=0||e.room||b.hits.includes(e.id)||Math.hypot(e.x-b.x,e.y-b.y)>22||!clearShot(g,b,e))continue;
-    b.hits.push(e.id);if(g.players.includes(e))g.hurt(e,b.damage,b);else{damageEnemy(e,b.damage,'physical');e.killedBy=p.id;e.ritualKill=false;e.aggro=true;e.flash=.2;}g.onSound?.('hit',e);
+    b.hits.push(e.id);if(g.players.includes(e))g.hurt(e,b.damage,b);else{damageEnemy(e,b.damage,'physical',{g,p,shot:b});e.killedBy=p.id;e.ritualKill=false;e.aggro=true;e.flash=.2;}g.onSound?.('hit',e);
    }
   }
  }

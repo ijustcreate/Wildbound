@@ -1,0 +1,10 @@
+# Shore goblin art corrections — 2026-10-08
+
+The user marked visible gaps at the neck/upper torso, rear hips and profile eyes. The initial gap-fill pass introduced square caps and was also rejected. This pass replaces the planar skull/torso with solid projected silhouettes, then removes the square neck stroke caps and places a rounded tapered neck behind the head and shoulders. Kelp clothing follows a pelvis-local volume instead of a fixed screen-facing waistband. Hip coverage closes the thigh joins. Body and skull keep broad flat color clusters.
+
+Profile eye visibility was reversed for this donor's handedness: the near eye was hidden and the far eye exposed. Corrected the source default and only migrated the matching default visibility arrays in the shore_goblin authored entry. Custom painted parts, palettes, render ordering, source bone positions and all animation keys remain intact. The original 67-bone donor motion and beach trio mechanics are unchanged. Other authored entries pass the rig guard unchanged.
+
+QA: 18 focused tests pass, including near/far eye visibility in both profiles across idle, run, attack, spear and cast. Muted isolated Electron checks sample 16,000 animation poses and verify native part capture/edit isolation, actual Studio, gameplay healing/guarding and saves. Review captures include idle, run, attack, spear, cast, death, swim and gameplay. An added overlap check covers head/neck/body connections across five actions in eight directions. Visual review is a revised proposal; the user has not approved this appearance.
+
+Desktop revision: 1.0.106-shore-goblin-art, modified source based on bc1b432d20f4b0de0b04d4d3b34600f7a9fe0a70, normal profile. No commit/push or normal-profile writes. The previous full suite passed 1,213 tests; this localized artwork correction runs the relevant focused tests and Electron checks rather than claiming a new full-suite run.
+Final packaged QA: 16,000 poses and all 40 head/neck/body overlap samples pass; zero renderer errors. Exact 1.0.106 executable and build manifest exist; normal-profile desktop shortcut and Play Wildbound.cmd --check verified.

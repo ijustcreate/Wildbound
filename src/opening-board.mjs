@@ -7,6 +7,7 @@ export function seatOpeningParty(players){
   players.forEach((p,i)=>{[p.x,p.y]=seats[i%seats.length];p.jumpHeight=0;p.groundHeight=0;p.dashTime=0;p.slideX=p.slideY=0;p.room=null;faceOpeningBoard(p);});
 }
 export function openingCamera(w,h){
-  // Tight stage includes the party's heads and the table's feet, with no world reveal.
-  return {x:800,y:783,zoom:Math.min((w-24)/146,Math.max(100,h-60)/132)};
+  // Frame the board and seated party as one close intro shot, trimming away
+  // the empty floor while keeping the table top readable on short displays.
+  return {x:800,y:790,zoom:Math.min((w-24)/90,Math.max(100,h-60)/86)};
 }

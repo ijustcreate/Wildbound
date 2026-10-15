@@ -9,6 +9,10 @@ export async function loadHouseStorage(){
   globalThis.localStorage.setItem(HOUSE_STATE_KEY,JSON.stringify(disk));
   if(disk.library)globalThis.localStorage.setItem(HOUSE_KEY,JSON.stringify(disk.library));
  }
+ // A saved copy of the original built-in floorplan predates the gallery
+ // layout. Persist the safe upgrade before another launch reloads the disk.
+ houseLibrary();
+ if(defaultHouseUpgradePending){try{await flushHouseStorage();defaultHouseUpgradePending=false;}catch(e){console.warn('House layout upgrade could not reach disk',e);}}
 }
 export function houseDraft(){try{return JSON.parse(globalThis.localStorage?.getItem(HOUSE_STATE_KEY)||'null')?.draft||null;}catch{return null;}}
 export function preserveHouseDraft(h,id){
@@ -25,8 +29,10 @@ export function flushHouseStorage(){
  return pendingSave;
 }
 export const contains=(r,x,y)=>x>=r.x&&y>=r.y&&x<r.x+r.w&&y<r.y+r.h;
+let defaultHouseUpgradePending=false;
+const legacyDefaultFingerprint=h=>{const json=JSON.stringify(h);let hash=2166136261;for(let i=0;i<json.length;i++){hash^=json.charCodeAt(i);hash=Math.imul(hash,16777619);}return json.length===4068&&(hash>>>0)===0xf0817f23;};
 export const LOW_FURNITURE={bed:12,table:16,desk:16,sofa:10,chair:8,bench:8,counter:16};
-export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
+export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(f.lobbySurface?100:18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
 export function upgradeHouseFeatures(h){
  if(!h.lightingVersion){
   h.lightingVersion=1;
@@ -78,7 +84,17 @@ export function validateHouse(h){
  return h.floors.some(r=>contains(r,800,800))&&!h.walls.concat(h.doors,h.pools,h.furniture.filter(f=>!['rug','plant'].includes(f.kind))).some(r=>r.x<900&&r.x+r.w>700&&r.y<878&&r.y+r.h>700);
 }
 export function houseLibrary(){
- try{const data=JSON.parse(globalThis.localStorage?.getItem(HOUSE_KEY)||'null');if(data?.designs?.length&&data.designs.every(d=>typeof d.id==='string'&&validateHouse(d.house))){for(const d of data.designs)upgradeHouseFeatures(d.house);return data;}}catch{}
+ try{const data=JSON.parse(globalThis.localStorage?.getItem(HOUSE_KEY)||'null');if(data?.designs?.length&&data.designs.every(d=>typeof d.id==='string'&&validateHouse(d.house))){
+  const original=data.designs.find(d=>d.id==='default');
+  if(original&&legacyDefaultFingerprint(original.house)){
+   const archived=structuredClone(original);archived.id='original-house-floorplan';archived.house.name='The Living House (original layout)';
+   for(let suffix=2;data.designs.some(d=>d.id===archived.id);suffix++)archived.id='original-house-floorplan-'+suffix;
+   data.designs.push(archived);
+   original.house=defaultHouse();defaultHouseUpgradePending=true;
+   globalThis.localStorage.setItem(HOUSE_KEY,JSON.stringify(data));
+  }
+  for(const d of data.designs)upgradeHouseFeatures(d.house);return data;
+ }}catch{}
  return {active:'default',designs:[{id:'default',house:defaultHouse()}]};
 }
 export function activeHouse(){const lib=houseLibrary();return structuredClone((lib.designs.find(d=>d.id===lib.active)||lib.designs[0]).house);}

@@ -237,7 +237,7 @@ export class Designer {
     const header=this.dialog.querySelector(':scope > header'),nav=this.dialog.querySelector(':scope > nav'),body=element('main');body.className='studio-body';body.id='studio-panel';body.setAttribute('role','tabpanel');body.setAttribute('aria-label',this.tab);
     for(const child of [...this.dialog.children])if(child!==header&&child!==nav)body.append(child);this.dialog.append(body);
     nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor jobs');
-    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Forest','Board'];
+    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Forest','Board','Servers'];
     [...nav.children].forEach((b,i)=>{const active=labels[i]===this.tab;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(active));b.setAttribute('aria-controls','studio-panel');b.tabIndex=active?0:-1;b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?labels.length-1:(i+(e.key==='ArrowLeft'?-1:1)+labels.length)%labels.length;this.tab=labels[next];this.render();this.dialog.querySelector('[aria-selected="true"]')?.focus();};});
   }
   render() {
@@ -272,6 +272,7 @@ export class Designer {
       "Combos",
       "Forest",
       "Board",
+      "Servers",
     ])
       this.button(
         nav,
@@ -285,6 +286,11 @@ export class Designer {
       );
     this.dialog.append(nav);
     this.dialog.classList.toggle("player-designer", this.tab === "Players");
+    if(this.tab==='Servers'){
+      const root=element('section');this.dialog.append(root);
+      if(this.realmClient)this.realmClient.mount(root);else root.append(element('p','Server setup is loading.'));
+      this.shell();return;
+    }
     if (this.tab === "Players") {
       const root = element("section");
       this.dialog.append(root);
@@ -792,7 +798,7 @@ export class Designer {
       event.spread ??= 0.45;
       event.intensity ??= 1;
       this.field(fields, "Event type", event, "type", {
-        options: ["encounter", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede"],
+        options: ["encounter", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede", "villager_camp"],
         change:()=>{this.render();return true;},
       });
       for (const k of ["weight", "duration", "spread", "intensity"])
@@ -815,6 +821,7 @@ export class Designer {
         this.field(section,'Reward quantity',m,'qty',{min:1,max:99,step:1});
         this.dialog.append(section);
       }
+      if(event.type!=='villager_camp'){
       this.field(fields, "Creature", event, "kind", {
         options: Object.keys(creatures),
       });
@@ -847,6 +854,7 @@ export class Designer {
       });
       this.button(enemyPanel, "+  Add creature", () => { const kind = this.kind in creatures ? this.kind : "lion", cfg = creatures[kind]; enemies.push({ kind, count: 1, manualOverride: false, hp: cfg.stats.hp, speed: cfg.stats.speed, damage: cfg.stats.damage }); this.render(); }).className = "add-module-button";
       this.dialog.append(enemyPanel);
+      }else{const camp=element('section');camp.className='event-builder-section';camp.append(element('h3','Three campers'),element('p','Three randomly chosen campers gather around a fire. After their stories, April runs in and offers to follow the first player who invites her. Edit their pixel parts and colors in the Villager rig.'));this.dialog.append(camp);}
 
       const chain = this.eventChainDefaults(event);
       const chainPanel = element("section");

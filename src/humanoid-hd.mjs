@@ -2,7 +2,7 @@
 // Pose/appearance IDs and authored wearable overrides remain owned by the rig.
 import {ITEMS, itemKind} from './items.mjs';
 
-export const HUMANOID_DETAIL_SCALE = 2;
+export const HUMANOID_DETAIL_SCALE = 4;
 export const HAIR_ATLAS_ROWS = {
   a: ['crop','bob','long','ponytail','mohawk','curls'],
   b: ['sidepart','undercut','pixie','waves','afro','braids'],
@@ -22,11 +22,11 @@ const rgb = value => /^#[0-9a-f]{6}$/i.test(value || '') ? value.slice(1).match(
 const clamp = value => Math.max(0,Math.min(255,Math.round(value)));
 function canvas(width,height){const out=document.createElement('canvas');out.width=width;out.height=height;return out;}
 function keep(cache,key,value,limit){if(cache.size>=limit)cache.delete(cache.keys().next().value);cache.set(key,value);return value;}
-export function humanoidArtStatus(){return {ready:sheets.size===6,loaded:[...sheets.keys()],revision,tints:tinted.size,details:details.size};}
+export function humanoidArtStatus(){return {ready:sheets.size===7,loaded:[...sheets.keys()],revision,tints:tinted.size,details:details.size};}
 export function loadHumanoidArt(){
   if(loading)return loading;
   if(typeof Image==='undefined'||typeof document==='undefined')return Promise.resolve(false);
-  loading=Promise.all(['heads','hair-a','hair-b','hair-c','hair-rear','materials'].map(name=>new Promise(resolve=>{
+  loading=Promise.all(['heads','hair-a','hair-b','hair-c','hair-rear','hair-chunky','materials'].map(name=>new Promise(resolve=>{
     const image=new Image();
     image.onload=()=>{sheets.set(name,image);revision++;cells.clear();tinted.clear();details.clear();resolve(true);};
     image.onerror=()=>resolve(false);
@@ -44,8 +44,8 @@ export function withDetailedHeadScale(c,h,enabled,paint){
 function cell(name,index){
   const key=name+':'+index;if(cells.has(key))return cells.get(key);
   const source=sheets.get(name);if(!source)return null;
-  const columns=name==='hair-rear'?3:4,column=index%columns,row=Math.floor(index/columns),cw=source.naturalWidth/columns;
-  const band=name==='hair-rear'?rearBands[column][row]:name.startsWith('hair-')?bands[name.at(-1)][row]:[row*source.naturalHeight/(name==='heads'?2:4),(row+1)*source.naturalHeight/(name==='heads'?2:4)];
+  const columns=name==='hair-chunky'?5:name==='hair-rear'?3:4,column=index%columns,row=Math.floor(index/columns),cw=source.naturalWidth/columns;
+  const band=name==='hair-chunky'?[row*source.naturalHeight/3,(row+1)*source.naturalHeight/3]:name==='hair-rear'?rearBands[column][row]:name.startsWith('hair-')?bands[name.at(-1)][row]:[row*source.naturalHeight/(name==='heads'?2:4),(row+1)*source.naturalHeight/(name==='heads'?2:4)];
   const raw=canvas(Math.ceil(cw),Math.ceil(band[1]-band[0])),ctx=raw.getContext('2d',{willReadFrequently:true});
   ctx.drawImage(source,column*cw,band[0],cw,band[1]-band[0],0,0,raw.width,raw.height);
   let box=[0,0,raw.width,raw.height];
@@ -54,9 +54,8 @@ function cell(name,index){
     for(let y=0;y<raw.height;y++)for(let x=0;x<raw.width;x++)if(data[(y*raw.width+x)*4+3]>80){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}
     if(x1>=x0&&y1>=y0)box=[x0,y0,x1-x0+1,y1-y0+1];
   }
-  // Retain enough source pixels for closeups; nearest sampling keeps authored
-  // square clusters. All derived canvases keep the source alpha channel.
-  const width=name==='materials'?64:name==='heads'?52:32,height=Math.max(1,Math.round(width*box[3]/box[2]));
+  // Hair uses a few bold clusters, not fine strand texture.
+  const width=name==='materials'?64:name==='heads'?52:24,height=Math.max(1,Math.round(width*box[3]/box[2]));
   const result=canvas(width,height),pen=result.getContext('2d');pen.imageSmoothingEnabled=false;pen.drawImage(raw,...box,0,0,width,height);
   return keep(cells,key,result,128);
 }
@@ -70,12 +69,13 @@ function colored(name,index,color){
     if(head){
       // Warm skin pixels only: preserve the ivory sclera, green irises and ink.
       if(r<g*1.12||r<b*1.18||r<65)continue;
-      const l=Math.round((r+g+b)/3/18)*18,relative=(l-151)*.85;
+      const l=(r+g+b)/3,relative=l<95?-48:l<145?-22:l<185?0:28;
       for(let n=0;n<3;n++)image.data[i+n]=clamp(target[n]+relative*(relative>0?.72:1));
     }else{
       if(r>g*1.15&&g>b*1.2)continue; // Gold braid/ponytail ties.
-      const l=Math.round((r+g+b)/3/14)*14;
-      for(let n=0;n<3;n++)image.data[i+n]=clamp(l<25?target[n]*.20:target[n]*.72+(l-65)*1.25+12);
+      const l=(r+g+b)/3,level=l<22?0:l<53?1:l<100?2:3;
+      for(let n=0;n<3;n++)image.data[i+n]=clamp(level===0?target[n]*.22:level===1?target[n]*.68:level===2?target[n]:target[n]+32);
+      image.data[i+3]=image.data[i+3]<128?0:255;
     }
   }
   c.putImageData(image,0,0);return keep(tinted,key,out,192);
@@ -92,26 +92,40 @@ function sprite(c,image,x,y,width,height,mirror=false){
 function eyeAsset(view,side,closed,eyeColor){
   const index=closed?view+5:view,key='eye:'+index+':'+side+':'+eyeColor;
   if(tinted.has(key))return tinted.get(key);
-  const source=cell('heads',index);if(!source)return null;
-  const box=view===0?(side==='L'?[.12,.37,.31,.36]:[.57,.37,.31,.36]):view===1?(side==='L'?[.01,.38,.20,.36]:[.30,.37,.33,.36]):[.04,.36,.37,.39];
-  const out=canvas(Math.ceil(source.width*box[2]),Math.ceil(source.height*box[3])),pen=out.getContext('2d');pen.imageSmoothingEnabled=false;
-  pen.drawImage(source,box[0]*source.width,box[1]*source.height,box[2]*source.width,box[3]*source.height,0,0,out.width,out.height);
-  const pixels=pen.getImageData(0,0,out.width,out.height),target=eyeColor?rgb(eyeColor):null;
-  for(let i=0;i<pixels.data.length;i+=4){
-    const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];
-    // Material mask removes source skin. Eyebrow, lash, iris and sclera pixels
-    // remain independent transparent sprites attached to the existing eye joint.
-    if(r>100&&r>g*1.1&&r>b*1.15)pixels.data[i+3]=0;
-    else if(target&&g>r*1.02&&g>b*1.2)for(let n=0;n<3;n++)pixels.data[i+n]=clamp(target[n]*(r+g+b)/240);
+  // Readable whites, a colored iris and one highlight. Each mark is a deliberate
+  // pixel; keep the expression simple instead of shrinking a detailed portrait.
+  const pattern=closed?['.......','.......','.......','.DDDDD.','..DDD..','.......','.......']:view===2
+    ?['DDDD.','DGGG.','WGPD.','WGPD.','WGLG.','.LL..','.....']
+    :view===1&&side==='L'
+      ?['DDDD','DGGG','WGPD','WGHD','WGLG','.LL.','....']
+      :['.DDDD.','GGPPG.','GGPGG.','WGGLG.','WWLL..','.WW...'];
+  const target=rgb(eyeColor||'#628373'),hex=values=>'#'+values.map(n=>clamp(n).toString(16).padStart(2,'0')).join('');
+  const palette={D:'#292c2a',P:hex(target.map(n=>n*.45)),G:hex(target),L:hex(target.map(n=>n+35)),W:'#eee8d6',H:'#fff4d7'};
+  const out=canvas(pattern[0].length,pattern.length),pen=out.getContext('2d');
+  for(let y=0;y<pattern.length;y++)for(let x=0;x<pattern[y].length;x++){
+    const color=palette[pattern[y][x]];if(color){pen.fillStyle=color;pen.fillRect(x,y,1,1);}
   }
-  pen.putImageData(pixels,0,0);return keep(tinted,key,out,192);
+  return keep(tinted,key,out,192);
 }
 export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
   if(!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
   const h=points.head;
+  if(!c.__faceRaster){
+    const names=['head','eyeL','eyeR','earL','earR','nose','mouth'];
+    const local=Object.fromEntries(names.map(name=>[name,{...points[name],x:12+Math.round((points[name].x-h.x)*4)/4,y:12+Math.round((points[name].y-h.y)*4)/4}]));
+    const visibility=names.map(name=>visible(name));
+    const key=JSON.stringify(['face',d,skin,look?.face,look?.eyeColor,look?.hair,look?.hairColor,look?.eyesClosed,foreground,visibility,names.map(name=>[local[name].x,local[name].y])]);
+    let entry=details.get(key);
+    if(!entry){
+      const out=canvas(96,96),pen=out.getContext('2d');pen.imageSmoothingEnabled=false;pen.__faceRaster=true;pen.scale(4,4);
+      drawDetailedHead(pen,local,d,skin,look,name=>visibility[names.indexOf(name)],foreground);
+      entry=keep(details,key,{image:out},256);
+    }
+    c.save();c.imageSmoothingEnabled=false;c.drawImage(entry.image,h.x-12,h.y-12,24,24);c.restore();return true;
+  }
   const back=d>=3&&d<=5,profile=d===2||d===6,turn=d===0||d===4?0:d<4?-1:1;
   const skinRGB=rgb(skin),shade=(delta)=>'#'+skinRGB.map(n=>clamp(n+delta).toString(16).padStart(2,'0')).join('');
-  const rect=(x,y,w,height,color)=>{c.fillStyle=color;c.fillRect(h.x+x,h.y+y,w,height);};
+  const rect=(x,y,w,height,color)=>{c.fillStyle=color;c.fillRect(Math.round((h.x+x)*4)/4,Math.round((h.y+y)*4)/4,Math.max(.25,Math.round(w*4)/4),Math.max(.25,Math.round(height*4)/4));};
   if(!foreground){
     for(let y=-6;y<=4;y+=.5){
       const t=(y+1.2)/5.7,half=Math.sqrt(Math.max(0,1-t*t))*(profile?5:5.5);
@@ -137,7 +151,7 @@ export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
       const q=points[name],far=(d===1&&name==='eyeL')||(d===7&&name==='eyeR');
       const x=q.x-h.x+(profile?turn*.5:0),y=q.y-h.y-(d===1&&name==='eyeR'||d===7&&name==='eyeL'?.8:0);
       const feature=eyeAsset(profile?2:d===0?0:1,far?'L':d===0?(name==='eyeL'?'L':'R'):'R',!!look?.eyesClosed,look?.eyeColor);
-      sprite(c,feature,h.x+x,h.y+y-2.65,far?2.05:profile?2.85:3.2,3.5,d>4);
+      sprite(c,feature,h.x+x,h.y+y-2.4,far?1.75:profile?2.25:3,3.25,d>4);
     }
     if(visible('nose')){
       const q=points.nose,x=q.x-h.x,y=q.y-h.y+(profile?.7:.2);
@@ -164,6 +178,23 @@ export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
   if(face==='freckles')for(const x of cheeks)for(const [dx,dy]of [[0,0],[.8,.25],[.4,.8]])rect(x+dx,1+dy,.28,.28,shade(-55));
   if(face==='scar')for(let i=0;i<7;i++){rect((profile?turn*2.5:2.8)+i*.12,-.5+i*.45,.28,.52,shade(-30));rect((profile?turn*2.5:2.8)+i*.12+.27,-.5+i*.45,.16,.45,shade(23));}
   if(face==='warpaint')for(const x of cheeks){rect(x-.3,1.1,1.7,.42,'#3b617b');rect(x,1.9,1.3,.32,'#75939c');}
+  if(face==='alan'){
+    const base='#563923',dark='#33231b',light='#80563a',shift=profile?turn*.8:0;
+    for(let y=2.25;y<8;y+=.25){
+      const half=profile?Math.max(1.8,4.2-(y-2.25)*.3):Math.max(2.2,5.1-(y-2.25)*.43);
+      for(let x=-half;x<half;x+=.25){
+        if(y<3.7&&Math.abs(x)<1.1)continue;
+        const edge=Math.abs(x)>half-.5||y>7.4;
+        rect(x+shift,y,.25,.3,edge?dark:((Math.round(x*2)+Math.round(y*3))%5===0?light:base));
+      }
+    }
+    for(const side of [-1,1]){
+      rect(shift+side*3.2-(side<0?.8:0),.9,.85,3.1,dark);
+      rect(shift+side*3.1-(side<0?.8:0),1.4,.55,2.4,base);
+      rect(shift+side*2.3-(side<0?1.5:0),2.5,1.5,.7,base);
+    }
+    rect(shift-.65,3.7,1.4,.6,'#261b18');rect(shift-.3,4.3,.7,.35,'#b98059');
+  }
   if(['beard','goatee','stubble'].includes(face)){
     const hair=rgb(look.hairColor),color='#'+hair.map(n=>clamp(n*.75).toString(16).padStart(2,'0')).join('');
     for(let y=2.8;y<5.1;y+=.25)for(let x=-3.5;x<3.5;x+=.25){
@@ -183,7 +214,10 @@ export function drawDetailedHair(c,h,look,d,frame=0,action='idle'){
   const group=Object.keys(HAIR_ATLAS_ROWS).find(key=>HAIR_ATLAS_ROWS[key].includes(style));if(!group)return false;
   const column=d===0?0:d===1||d===7?1:d===2||d===6?2:3;
   const rear=d===3||d===5;
-  const image=colored(rear?'hair-rear':'hair-'+group,rear?Object.values(HAIR_ATLAS_ROWS).flat().indexOf(style):HAIR_ATLAS_ROWS[group].indexOf(style)*4+column,look.hairColor||'#593923');if(!image)return false;
+  const chunkyRow=['crop','long','ponytail'].indexOf(style),chunkyColumn=[0,1,2,3,4,3,2,1][d];
+  const image=chunkyRow>=0&&sheets.has('hair-chunky')
+    ?colored('hair-chunky',chunkyRow*5+chunkyColumn,look.hairColor||'#593923')
+    :colored(rear?'hair-rear':'hair-'+group,rear?Object.values(HAIR_ATLAS_ROWS).flat().indexOf(style):HAIR_ATLAS_ROWS[group].indexOf(style)*4+column,look.hairColor||'#593923');if(!image)return false;
   const [width,height,top]=hairFit[style],moving=!['idle','sleep','death'].includes(action);
   const sway=moving&&['long','ponytail','braids','twinbraids','sideponytail','locs','waves'].includes(style)?Math.sin(frame*.7)*.55:0;
   c.save();c.translate(h.x,h.y+top);
@@ -209,23 +243,15 @@ function materialSample(index){
   let mean=0;for(let i=0;i<data.data.length;i+=4)mean+=data.data[i];mean/=source.width*source.height;
   const value={data:data.data,width:data.width,height:data.height,mean};samples.set(index,value);return value;
 }
-// Preserve every equipment silhouette, motif and color while adding generated
-// fabric/metal detail and quarter-pixel edge highlights to its actual raster.
+// Keep the native item pixels. Enlargement must not invent fabric grain or bevels.
 export function detailRaster(source,material=0,scale=4){
   const out=canvas(source.width*scale,source.height*scale),c=out.getContext('2d',{willReadFrequently:true});c.imageSmoothingEnabled=false;c.drawImage(source,0,0,out.width,out.height);
-  const image=c.getImageData(0,0,out.width,out.height),original=new Uint8ClampedArray(image.data),m=materialSample(material);
-  const at=(x,y)=>x<0||y<0||x>=out.width||y>=out.height?-1:(y*out.width+x)*4;
-  for(let y=0;y<out.height;y++)for(let x=0;x<out.width;x++){
-    const i=at(x,y);if(!original[i+3])continue;
-    const l=(original[i]+original[i+1]+original[i+2])/3;if(l<43)continue;
-    const left=at(x-1,y),up=at(x,y-1),right=at(x+1,y),down=at(x,y+1);
-    const different=j=>j<0||!original[j+3]||Math.abs(original[i]-original[j])+Math.abs(original[i+1]-original[j+1])+Math.abs(original[i+2]-original[j+2])>70;
-    const bevel=(different(up)||different(left)?13:0)-(different(down)||different(right)?10:0);
-    const mx=Math.floor(x/out.width*(m?.width||1)),my=Math.floor(y/out.height*(m?.height||1));
-    const texture=m?(m.data[(my*m.width+mx)*4]-m.mean)*.22:0;
-    for(let n=0;n<3;n++)image.data[i+n]=clamp(original[i+n]+bevel+texture);
-  }
-  c.putImageData(image,0,0);return out;
+  return out;
+}
+function chunkyBody(source){
+  const small=canvas(Math.ceil(source.width/2),Math.ceil(source.height/2)),pen=small.getContext('2d');pen.imageSmoothingEnabled=false;
+  pen.drawImage(source,0,0,small.width,small.height);
+  const out=source.getContext('2d');out.clearRect(0,0,source.width,source.height);out.imageSmoothingEnabled=false;out.drawImage(small,0,0,source.width,source.height);return source;
 }
 export function detailedProcedural(c,anchor,paint,material=0){
   if(!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
@@ -258,10 +284,10 @@ export function detailedLimb(c,a,b,width,color){
       const xx=(x+.5)/4-(width+1)/2,yy=(y+.5)/4-radius-.5,dy=yy<0?yy:yy>len?yy-len:0;
       if(xx*xx+dy*dy>radius*radius)continue;
       const i=(y*w+x)*4,light=base.reduce((a,b)=>a+b)/3;
-      const shade=light<43?0:-xx/radius*8+(m&&material!==12?(m.data[(Math.floor(y/h*m.height)*m.width+Math.floor(x/w*m.width))*4]-m.mean)*.18:0);
+      const shade=light<43?0:xx<-radius*.3?12:xx>radius*.4?-18:0;
       for(let n=0;n<3;n++)image.data[i+n]=clamp(base[n]+shade);image.data[i+3]=255;
     }
-    pen.putImageData(image,0,0);entry=keep(details,key,{image:out},256);
+    pen.putImageData(image,0,0);entry=keep(details,key,{image:chunkyBody(out)},256);
   }
   c.save();c.imageSmoothingEnabled=false;c.translate(a.x,a.y);c.rotate(-Math.atan2(b.x-a.x,b.y-a.y));c.drawImage(entry.image,-(width+1)/2,-width/2-.5,entry.image.width/4,entry.image.height/4);c.restore();return true;
 }
@@ -280,7 +306,7 @@ export function detailedTorso(c,p,d,color,skin,back){
         if(Math.abs(x)>half)continue;
         const edge=Math.abs(x)>half-.5||y>len+.5;
         const tx=Math.min(m?.width-1||0,Math.floor((x+width)/(width*2)*(m?.width||1))),ty=Math.floor((y+2)/(len+4)*(m?.height||1));
-        const v=-x/width*15+(m?(m.data[(ty*m.width+tx)*4]-m.mean)*.2:0);
+        const v=x<-width*.55?16:x>width*.55?-23:0;
         r(x,y,.25,.25,edge?ink:'#'+base.map(n=>clamp(n+v).toString(16).padStart(2,'0')).join(''));
       }
     }
@@ -292,19 +318,18 @@ export function detailedTorso(c,p,d,color,skin,back){
       for(const y of [2.5,4.75,7])if(y<len-1){r(.2,y,.45,.45,'#c5a268');r(.2,y,.2,.2,'#f4df9f');}
       r(-4.4,3,2.1,.35,'#b7a57c');r(-4.2,3.4,.25,2,'#514b38');r(-2.4,3.4,.25,2,'#514b38');r(-4.2,5.2,2,.25,'#514b38');
     }else{r(-3,-.5,6,.3,'#4b4d3b');r(.8,1,.3,Math.max(1,len-2),'#555a44');}
-    r(-3.4,len-.7,6.8,1.2,'#57412f');r(-3.2,len-.7,6.4,.25,'#987045');
-    if(!back){r(-.8,len-.8,1.8,1.4,'#c19b59');r(-.45,len-.5,1.1,.7,'#483b2c');}
-    entry=keep(details,key,{image:out},256);
+    // The pelvis owns the waistband. A second belt here produces a bulky double hem.
+    entry=keep(details,key,{image:chunkyBody(out)},256);
   }
   c.save();c.imageSmoothingEnabled=false;c.translate(p.chest.x,p.chest.y);c.rotate(-Math.atan2(dx,dy));c.drawImage(entry.image,-7.5,-2.5,15,entry.image.height/4);c.restore();return true;
 }
 
 // Render connected skin/fabric around the existing joint chain in one pass.
 // This removes the dark circles at elbows/knees caused by overlapping capsules.
-export function detailedChain(c,points,widths,color,material=0){
+export function detailedChain(c,points,widths,color,material=0,caps='round',segmentsToPaint=null){
   if(!c.__humanoidDetail||!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
   const origin=points[0],local=points.map(q=>[Math.round((q.x-origin.x)*4)/4,Math.round((q.y-origin.y)*4)/4]);
-  const key=JSON.stringify(['chain',local,widths,color,material]);let entry=details.get(key);
+  const key=JSON.stringify(['chain',local,widths,color,material,caps,segmentsToPaint]);let entry=details.get(key);
   if(!entry){
     const pad=Math.max(...widths)/2+1,x0=Math.floor(Math.min(...local.map(q=>q[0]))-pad),y0=Math.floor(Math.min(...local.map(q=>q[1]))-pad);
     const w=Math.ceil(Math.max(...local.map(q=>q[0]))+pad-x0),h=Math.ceil(Math.max(...local.map(q=>q[1]))+pad-y0);
@@ -312,29 +337,77 @@ export function detailedChain(c,points,widths,color,material=0){
     const out=canvas(w*4,h*4),pen=out.getContext('2d'),image=pen.createImageData(w*4,h*4),base=rgb(color),m=materialSample(material);
     const segments=local.slice(1).map((q,i)=>({a:local[i],dx:q[0]-local[i][0],dy:q[1]-local[i][1],index:i}));
     for(let y=0;y<out.height;y++)for(let x=0;x<out.width;x++){
-      const xx=x0+(x+.5)/4,yy=y0+(y+.5)/4;let edge=-Infinity,normal=0;
+      const xx=x0+(x+.5)/4,yy=y0+(y+.5)/4;let edge=-Infinity,normal=0,owner=0;
       for(const s of segments){
         const sq=s.dx*s.dx+s.dy*s.dy,t=Math.max(0,Math.min(1,((xx-s.a[0])*s.dx+(yy-s.a[1])*s.dy)/(sq||1)));
         const rx=xx-s.a[0]-s.dx*t,ry=yy-s.a[1]-s.dy*t,radius=(widths[s.index]+(widths[s.index+1]-widths[s.index])*t)/2;
         const inside=radius-Math.hypot(rx,ry);
-        if(inside>edge){edge=inside;normal=(rx*s.dy-ry*s.dx)/(Math.sqrt(sq)||1)/radius;}
+        if(inside>edge){edge=inside;normal=(rx*s.dy-ry*s.dx)/(Math.sqrt(sq)||1)/radius;owner=s.index;}
       }
-      if(edge<0)continue;const i=(y*out.width+x)*4;
-      const texture=material===12?0:m?(m.data[(Math.floor(y/out.height*m.height)*m.width+Math.floor(x/out.width*m.width))*4]-m.mean)*.11:0;
-      const shift=(normal<-.55?22:normal<-.12?8:normal<.4?-4:-27)+Math.round(texture/8)*8;
-      const first=segments[0],beforeStart=(xx-first.a[0])*first.dx+(yy-first.a[1])*first.dy<0;
-      if(beforeStart)continue;
+      // Split coverage from the complete silhouette. Both pieces share the
+      // same elbow pixels and shading without an extra outline at the join.
+      if(edge<0||segmentsToPaint&&!segmentsToPaint.includes(owner))continue;const i=(y*out.width+x)*4;
+      const first=segments[0],last=segments.at(-1),end=local.at(-1);
+      if(caps==='leg'&&(xx-first.a[0])*first.dx+(yy-first.a[1])*first.dy<0)continue;
+      if(caps==='sleeve'&&(xx-end[0])*last.dx+(yy-end[1])*last.dy>0)continue;
+      const shift=normal<-.4?16:normal<.5?0:-24;
       for(let n=0;n<3;n++)image.data[i+n]=edge<.4?[48,43,43][n]:clamp(base[n]+shift);image.data[i+3]=255;
     }
-    pen.putImageData(image,0,0);entry=keep(details,key,{image:out,x:x0,y:y0,w,h},256);
+    pen.putImageData(image,0,0);entry=keep(details,key,{image:chunkyBody(out),x:x0,y:y0,w,h},256);
   }
   c.save();c.imageSmoothingEnabled=false;c.drawImage(entry.image,origin.x+entry.x,origin.y+entry.y,entry.w,entry.h);c.restore();return true;
 }
-export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId){
-  if(!detailedChain(c,[shoulder,elbow,hand],[4.4,3.8,3.4],skin,12))return false;
-  const sleeveEnd={x:shoulder.x+(elbow.x-shoulder.x)*.45,y:shoulder.y+(elbow.y-shoulder.y)*.45};
-  detailedChain(c,[shoulder,sleeveEnd],[5.1,4.5],shirt,materialIndex(chestId));
+export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId,part='all'){
+  const length=Math.hypot(hand.x-elbow.x,hand.y-elbow.y)||1,ux=(hand.x-elbow.x)/length,uy=(hand.y-elbow.y)/length;
+  const wrist={x:hand.x-ux*.85,y:hand.y-uy*.85};
+  const segments=part==='upper'?[0]:part==='lower'?[1,2]:null;
+  if(!detailedChain(c,[shoulder,elbow,wrist,hand],[3.5,3.2,2.4,3],skin,12,'round',segments))return false;
+  if(part!=='lower'){
+    const sleeveLength=chestId==='reaper_chest'?1:.55;const sleeveEnd={x:shoulder.x+(elbow.x-shoulder.x)*sleeveLength,y:shoulder.y+(elbow.y-shoulder.y)*sleeveLength};
+    detailedChain(c,[shoulder,sleeveEnd],[4.4,3.9],shirt,materialIndex(chestId),'sleeve');
+  }
+  if(part==='upper')return true;
   const base=rgb(skin),dark='#'+base.map(n=>clamp(n-30).toString(16).padStart(2,'0')).join('');
-  c.fillStyle=dark;c.fillRect(hand.x+.3,hand.y-.2,.3,1.1);c.fillRect(hand.x-.3,hand.y+.3,.3,.8);
+  c.save();c.translate(hand.x,hand.y);c.rotate(-Math.atan2(ux,uy));
+  c.fillStyle=dark;c.fillRect(.1,.05,.25,.85);c.fillRect(-.5,.2,.25,.55);c.restore();
   return true;
 }
+
+export function detailedNeck(c,p,skin){
+  if(!c.__humanoidDetail||!humanoidArtAvailable(c))return false;
+  const dx=p.chest.x-p.head.x,dy=p.chest.y-p.head.y,len=Math.hypot(dx,dy)||1;
+  // The upper end sits under the jaw; the lower end is hidden by the collar.
+  const top={x:p.head.x+dx/len*3.2,y:p.head.y+dy/len*3.2};
+  const bottom={x:p.chest.x-dx/len*.25,y:p.chest.y-dy/len*.25};
+  return detailedChain(c,[top,bottom],[2.8,3.5],skin,12);
+}
+
+export function detailedPelvis(c,p,d,color,back){
+  if(!c.__humanoidDetail||!humanoidArtAvailable(c))return false;
+  const dx=p.pelvis.x-p.chest.x,dy=p.pelvis.y-p.chest.y,len=Math.hypot(dx,dy)||1;
+  const down={x:dx/len,y:dy/len},right={x:down.y,y:-down.x};
+  const local=q=>({x:(q.x-p.pelvis.x)*right.x+(q.y-p.pelvis.y)*right.y,y:(q.x-p.pelvis.x)*down.x+(q.y-p.pelvis.y)*down.y});
+  const hips=[local(p.hipL),local(p.hipR)],side=d===2||d===6;
+  const waist=side?3.3:3.8,left=Math.min(...hips.map(q=>q.x))-2.25,rightEdge=Math.max(...hips.map(q=>q.x))+2.25;
+  const bottom=Math.max(1.5,Math.min(3.25,Math.max(...hips.map(q=>q.y))+1.5));
+  const base=rgb(color),shade=n=>'#'+base.map(v=>clamp(v+n).toString(16).padStart(2,'0')).join('');
+  c.save();c.translate(p.pelvis.x,p.pelvis.y);c.rotate(-Math.atan2(dx,dy));
+  // A shallow hip yoke joins both thighs; it does not hang as a rectangle below them.
+  for(let y=-.6;y<bottom;y+=.25){
+    const t=(y+.6)/(bottom+.6),a=-waist+(left+waist)*Math.sin(t*Math.PI/2),b=waist+(rightEdge-waist)*Math.sin(t*Math.PI/2);
+    for(let x=a;x<b;x+=.25){
+      const edge=x<a+.35||x>b-.4;
+      c.fillStyle=edge?'#302b2b':shade(x<-.6?10:x>1?-18:-2);
+      c.fillRect(Math.round(x*4)/4,y,.25,.25);
+    }
+  }
+  c.fillStyle='#44362b';c.fillRect(-waist,-.85,waist*2,1.15);
+  c.fillStyle='#906b43';c.fillRect(-waist+.35,-.85,waist*2-.7,.25);
+  if(!back&&!side){
+    c.fillStyle='#bc9554';c.fillRect(-.65,-.9,1.4,1.2);
+    c.fillStyle='#493b2c';c.fillRect(-.35,-.6,.8,.6);
+    c.fillStyle=shade(-27);c.fillRect(0,.65,.25,Math.max(.5,bottom-.85));
+  }
+  c.restore();return true;
+}
+

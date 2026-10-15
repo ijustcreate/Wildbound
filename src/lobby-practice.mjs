@@ -6,16 +6,16 @@ import {restoreHunterPet,petRecord} from './hunter-pets.mjs';
 
 export const LOBBY_FURNITURE=[
  // Match the visible lower-row tables; the old footprints were on the top wall.
- {id:'environment',kind:'table',x:578,y:513,w:94,h:56,surfaceHeight:16,jumpable:true},
- {id:'dice-count',kind:'table',x:737,y:514,w:86,h:55,surfaceHeight:16,jumpable:true},
+ {id:'environment',kind:'table',x:578,y:551,w:94,h:12,surfaceHeight:39,lobbySurface:true,jumpable:true},
+ {id:'dice-count',kind:'table',x:737,y:551,w:86,h:12,surfaceHeight:39,lobbySurface:true,jumpable:true},
+ {id:'character-station',kind:'desk',x:593,y:175,w:84,h:11,surfaceHeight:50,lobbySurface:true,jumpable:true},
+ {id:'television',kind:'table',x:709,y:172,w:152,h:12,surfaceHeight:78,lobbySurface:true,jumpable:true},
+ {id:'starter-chest',kind:'table',x:894,y:551,w:112,h:12,surfaceHeight:44,lobbySurface:true,jumpable:true},
  {...LOBBY_BOARD},
 ];
 export const LOBBY_FIXTURES=[
- {id:'character-station',x:593,y:127,w:84,h:59},
- {id:'television',x:709,y:101,w:152,h:94},
- {id:'difficulty',x:934,y:100,w:42,h:76},
- {id:'target-lever',x:450,y:514,w:30,h:41},
- {id:'starter-chest',x:892,y:516,w:116,h:52},
+ {id:'difficulty',x:934,y:158,w:42,h:18},
+ {id:'target-lever',x:447,y:545,w:36,h:15},
 ];
 
 // A separate simulation uses the real combat/movement code without touching saves.
@@ -33,15 +33,16 @@ export class LobbyPractice extends Game {
     return false;
   }
   toggleTargets(){this.targetsMoving=!this.targetsMoving;return this.targetsMoving;}
-  updateTargets(dt){if(this.targetsMoving)this.targetClock+=dt;for(const t of this.targets){if(this.targetsMoving){const travel=Math.sin(this.targetClock*1.4+t.id*Math.PI*.5)*42;t.x=t.homeX+Math.cos(t.angle)*travel;t.y=t.homeY+Math.sin(t.angle)*travel;}t.flash=Math.max(0,t.flash-dt);t.state='idle';for(const [i,f] of t.combatText.entries()){f.age+=dt;f.life-=dt;f.offset+=(i*19-f.offset)*(1-Math.exp(-dt*24));}t.combatText=t.combatText.filter(f=>f.life>0);}}
+  updateTargets(dt){if(this.targetsMoving)this.targetClock+=dt;for(const t of this.targets){if(this.targetsMoving){const travel=Math.sin(this.targetClock*1.4+t.id*Math.PI*.5)*42;t.x=t.homeX+Math.cos(t.angle)*travel;t.y=t.homeY+Math.sin(t.angle)*travel;}t.reportRemaining=Math.max(0,(t.reportRemaining||0)-dt);t.flash=Math.max(0,t.flash-dt);t.state='idle';for(const [i,f] of t.combatText.entries()){f.age+=dt;f.life-=dt;f.offset+=(i*19-f.offset)*(1-Math.exp(-dt*24));}t.combatText=t.combatText.filter(f=>f.life>0);}}
   canHitBoard(){return false;}
+  collect(p,l,quick=false){const collected=super.collect(p,l,quick);if(collected)this.onLobbyPickup?.(p,l);return collected;}
   portal(){return false;}
   beginSeal(){return false;}
   createActor(player,state){
     const actor=this.addPlayer(player.device,player.name),id=actor.id;
     Object.assign(actor,structuredClone(player),{id:player.id,previousInput:{},ui:null,room:null,progress:0,hp:player.maxHp||100});
     this.nextId=Math.max(this.nextId,id+1,player.id+1);
-    Object.assign(actor,{x:state.x,y:state.y,faceX:state.faceX,faceY:state.faceY,step:state.step});
+    Object.assign(actor,{x:state.x,y:state.y,faceX:state.faceX,faceY:state.faceY,step:state.step,jumpImpulse:285});
     actor.hunterPet=restoreHunterPet(petRecord(player.hunterPet));
     return actor;
   }

@@ -19,6 +19,8 @@ packager({
     /^\/scripts\/(upgrade|integrate|extract|fix|finish|optimize|polish|cleanup)/,
     /^\/\.tools/,
     /^\/test-output/,
+    /^\/assets\/shore-goblin\/source/,
+    /^\/assets\/(?:spider|boar|elephant)-wow\//,
     /^\/art\/player\/detail-native-v[234]/,
     /^\/tests/,
     /^\/dist/,
@@ -37,6 +39,12 @@ packager({
       preview,
     };
     for (const packageDir of packages) {
+      const runtime=path.join(packageDir,'forest-server-runtime');
+      fs.mkdirSync(runtime,{recursive:true});
+      fs.copyFileSync(path.join(root,'realm-server.mjs'),path.join(runtime,'realm-server.mjs'));
+      fs.cpSync(path.join(root,'src'),path.join(runtime,'src'),{recursive:true});
+      fs.cpSync(path.join(root,'node_modules','ws'),path.join(runtime,'node_modules','ws'),{recursive:true});
+      fs.copyFileSync(path.join(root,'Start Wildbound Forest Server.cmd'),path.join(packageDir,'Start Wildbound Forest Server.cmd'));
       fs.writeFileSync(path.join(packageDir, 'wildbound-build.json'), JSON.stringify(build, null, 2) + '\n');
       console.log(`Packaged ${packageDir} from ${build.sourceCommit.slice(0, 12)}${build.sourceDirty ? ' (modified source)' : ''}`);
     }

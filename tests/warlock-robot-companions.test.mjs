@@ -60,7 +60,7 @@ test('friendship conversion clears pinned frames and hostile phases for every ta
   }
 });
 test('Ranger pet movement advances gait exactly once and blocked pets stay idle',()=>{
-  for(const kind of TAMABLE_KINDS){const {g,p}=setup();p.hunterPet=restoreHunterPet({kind});Object.assign(p.hunterPet,{x:450,y:300});const pet=p.hunterPet;tickHunterPets(g,.05);assert.ok(pet.moving);assert.ok(pet.step>0);assert.equal(companionVisualActor(pet,rigSubject(kind).data).animationAction,kind==='bat'?'fly':'run');
+  for(const kind of TAMABLE_KINDS){const {g,p}=setup();p.hunterPet=restoreHunterPet({kind});Object.assign(p.hunterPet,{x:450,y:300});const pet=p.hunterPet;tickHunterPets(g,.05);assert.ok(pet.moving);assert.ok(pet.step>0);assert.equal(companionVisualActor(pet,rigSubject(kind).data).animationAction,kind==='bat'?'fly':'walk');
     const before=pet.step;g.blocked=()=>true;tickHunterPets(g,.05);assert.equal(pet.moving,false);assert.equal(pet.step,before);
   }
   const actor={x:0,y:0,hp:50,speed:90,step:0},finish=companionMovement(actor,.1);actor.x=9;actor.step=9*.13;finish();assert.equal(actor.step,9*.13);

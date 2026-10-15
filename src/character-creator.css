@@ -13,7 +13,7 @@
 .creation-preview-views{display:flex;gap:7px;justify-content:center;flex:0 0 auto}
 .creation-preview-views button{flex:1;min-height:27px!important;font:12px system-ui!important;padding:4px 8px!important}
 .creation-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:auto;min-height:46px;flex:1 1 auto;padding:3px}
-.creation-menu .creation-option-grid button{min-height:32px;text-align:left;font-size:12px;padding:5px 7px}
+.creation-menu .creation-option-grid button{min-width:0;overflow-wrap:anywhere;min-height:32px;text-align:left;font-size:12px;padding:5px 7px}
 .creation-menu .creation-option-grid button[aria-pressed=true]{border-color:#e5ce84;background:#345a46;color:#fff1bc}
 .creation-menu .creation-popup .lobby-focus,.creation-menu button:focus{outline:3px solid #f4d676;outline-offset:1px;background:#3c674e;color:#fff8d9;box-shadow:inset 4px 0 #f4d676}
 .creation-detail-popup>small{flex:0 0 auto;line-height:1.4}
@@ -22,3 +22,14 @@
 #character-name-dialog .creation-preview-views{max-width:240px;margin:7px auto}
 @media(max-height:600px){.creation-menu .creation-detail-preview{height:108px;max-height:108px;flex-basis:108px}.creation-detail-popup{padding:9px;gap:5px}.creation-detail-popup h3{font-size:18px}}
 @media(max-height:450px){.creation-menu .creation-detail-preview{height:80px;max-height:80px;flex-basis:80px}.creation-detail-popup>small{font-size:9px}.creation-menu .creation-option-grid button{min-height:27px}}
+@media(max-width:650px){.creation-option-grid{grid-template-columns:minmax(0,1fr)}}
+.creation-carousel-popup{gap:9px;padding:16px}
+.creation-menu .creation-carousel-popup .creation-detail-preview{height:auto;max-height:none;min-height:0;flex:1 1 auto;object-fit:contain}
+.creation-style-carousel{display:grid;grid-template-columns:43px minmax(0,1fr) 43px;align-items:center;gap:9px;flex:0 0 auto}
+.creation-menu .creation-style-carousel button{min-width:0;min-height:44px;font:28px/1 Georgia,serif;padding:0;border-radius:8px}
+.creation-carousel-choice{min-width:0;text-align:center;color:#f5e8c9;font:20px/1.2 Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.creation-carousel-count{text-align:center;color:#a8c3ac!important;font:11px/1 system-ui!important;letter-spacing:1px}
+.creation-carousel-popup .creation-preview-views{margin:0 10px}
+.creation-carousel-popup .creation-carousel-done{flex:0 0 auto;border-radius:7px}
+.creation-carousel-popup>small[data-creation-help]{text-align:center}
+@media(max-height:630px){.creation-carousel-popup{padding:10px;gap:5px}.creation-style-carousel{grid-template-columns:36px minmax(0,1fr) 36px}.creation-menu .creation-style-carousel button{min-height:35px}.creation-carousel-choice{font-size:16px}}

@@ -1,4 +1,7 @@
 export const PLAYER_RENDER_SIZE = 43;
+export const creatureRenderSize=kind=>kind==='elephant'?82:kind==='baby_spider'?27:
+  ['golem','crocodile','lion','tiger','white_lion','rhino','dragon','zebra','carnivorous_flower'].includes(kind)?61:
+  ['bat','wasp','bee','tsetse'].includes(kind)?34:47;
 export const LOBBY_WORLD_SCALE = 2;
 export const LOBBY_PLAYER_SIZE = PLAYER_RENDER_SIZE * LOBBY_WORLD_SCALE;
 

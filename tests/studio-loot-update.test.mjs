@@ -11,9 +11,10 @@ test('First and fourth-space rolls do not manufacture loot',()=>{
  g.hitTable(p);g.resolveRoll();assert.equal(g.loot.length,0);
  p.progress=2;g.roll=null;g.turnOrder=[];g.hitTable(p);g.resolveRoll();assert.equal(p.progress,4);assert.equal(g.loot.length,0);
 });
-test('Victory chest preserves its level-scaled reward set',()=>{
+test('Victory chest preserves its earned reward set',()=>{
  const g=new Game(),p=g.addPlayer('keyboard');g.start();
  g.loot=Array.from({length:60},(_,i)=>({type:i%2?'potion':'sword',qty:i+1,x:50,y:50}));
+ g.expeditionTrials.entries=Array.from({length:4},()=>({role:'elite',complete:true}));
  g.completeVictory();
  assert.equal(g.victoryRewards.length,5);
  assert.equal(g.loot.length,0);

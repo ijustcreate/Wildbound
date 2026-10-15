@@ -41,7 +41,10 @@ test('Shared fixtures retain real interaction anchors, including the shifted-rig
   const lobby=new LobbyState(),p={id:1};lobby.sync([p]);const member=lobby.members.get(p.id);member.spawned=true;
   for(const id of Object.keys(drawers)){
     const o=LOBBY_OBJECTS.find(q=>q.id===id),fixture=[...LOBBY_FIXTURES,...LOBBY_FURNITURE].find(q=>q.id===id);
-    assert.ok(o.x>=fixture.x&&o.x<=fixture.x+fixture.w&&o.y>=fixture.y&&o.y<=fixture.y+fixture.h);
+    assert.ok(o.x>=fixture.x&&o.x<=fixture.x+fixture.w);
+    // Collision follows the floor-level base, rather than the artwork's tall
+    // back panel. Keep that base inside the visible contact/shadow region.
+    assert.ok(fixture.y>=o.y-8&&fixture.y+fixture.h<=o.y+30);
     Object.assign(member,{x:o.x,y:o.y});assert.equal(lobby.nearest(p),o);
     const art=LOBBY_PROP_ART_BOUNDS[id];
     if(id!=='difficulty'){assert.equal(art.x,fixture.x-o.x);assert.equal(art.w,fixture.w);}

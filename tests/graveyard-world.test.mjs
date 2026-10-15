@@ -95,7 +95,7 @@ test('each broken stone has exactly one independent strict 20 percent roll',()=>
   assert.equal(GRAVE_BREAK_SPAWN_CHANCE,.2);
   let calls=0;
   // A uniform discrete sweep gives 200 / 1000 hits, with the .2 boundary excluded.
-  let spawns=0,skeletons=0,zombies=0;
+  let spawns=0,skeletons=0,zombies=0,ghosts=0;
   for(let n=0;n<1000;n++) {
     const g=setup(75,()=>{calls++;return n/1000;}),s=stoneOf(g),p=attacker(s);
     assert.equal(harvestGravestone(g,p,48,78),true);
@@ -103,15 +103,16 @@ test('each broken stone has exactly one independent strict 20 percent roll',()=>
     assert.equal(g.graveyard.breakCount,1);assert.equal(s.breakRoll,n/1000);
     spawns+=g.enemies.length;
     skeletons+=g.enemies.filter(e=>e.kind==='skeleton').length;zombies+=g.enemies.filter(e=>e.kind==='zombie').length;
+    ghosts+=g.enemies.filter(e=>e.kind==='ghost').length;
   }
-  assert.equal(calls,1000);assert.equal(spawns,200);assert.equal(skeletons,100);assert.equal(zombies,100);
+  assert.equal(calls,1000);assert.equal(spawns,200);assert.equal(skeletons,67);assert.equal(zombies,67);assert.equal(ghosts,66);
   const rolls=[.01,.9,.02,.95,.18],g=setup(0,()=>rolls.shift());
   for(let n=0;n<5;n++){const s=stoneOf(g);assert.equal(harvestGravestone(g,attacker(s),48,78),true);}
   assert.equal(g.enemies.length,3,'no global quota or shared per-frame roll');assert.equal(rolls.length,0);
 });
 
 test('breaking detaches collision, preserves plot/rubble and anchors undead to that grave',()=>{
-  const g=setup(75,()=>.15),s=stoneOf(g),plot=g.graveyard.plots.find(p=>p.id===s.plotId);
+  const g=setup(75,()=>.1),s=stoneOf(g),plot=g.graveyard.plots.find(p=>p.id===s.plotId);
   assert.equal(harvestGravestone(g,attacker(s),100,78),true);
   assert.ok(s.depleted);assert.ok(plot.broken);assert.equal(graveyardBlocked(g,s.x,s.rootY,8),false);
   const e=g.enemies[0];assert.equal(e.kind,'zombie');assert.equal(e.state,'emerging');assert.ok(e.zombieVariant);

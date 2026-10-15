@@ -162,6 +162,8 @@ app.whenReady().then(async () => {
   ipcMain.handle("room-join", (_e, address, name) => room.join(address, name));
   ipcMain.on("room-send", (_e, data) => room.send(data));
   ipcMain.handle("room-stop", () => room.stop());
+  require('./realm-desktop.cjs').installRealmDesktop({ipcMain,app,
+    emit:data=>{if(!window.isDestroyed())window.webContents.send('realm-event',data);}});
   app.on("before-quit", () => {
     releaseControllerClaims();
     room.stop();

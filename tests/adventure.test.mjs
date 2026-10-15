@@ -234,6 +234,7 @@ test("Victory chest is shared and awarded once", () => {
   g.completeVictory();
   assert.equal(g.phase, "won");
   assert.ok(g.victoryRewards.length);
+  assert.equal(p.ui, null, "victory leaves the reward chest closed until a player opens it");
   const n = g.victoryRewards.length;
   assert.ok(n > 0);
 });

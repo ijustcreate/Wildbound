@@ -1,4 +1,5 @@
 import {creatures} from './definitions.mjs';
+import {nearbyGhost} from './ghost-fear.mjs';
 import {ITEMS,stat,itemKind} from './items.mjs';
 import {clearShot} from './navigation.mjs';
 import {BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
@@ -60,7 +61,7 @@ export function tickWildFauna(g,e,dt,targets=[]){
  if(trap&&trap.variant!=='slow'){trap.life=0;e.state=trap.variant==='interrupt'?'recover':'snared';e.timer=2;e.attack=0;e.pendingSting=false;g.onSound('trap',e);return true;}
  if(e.state==='recover'){e.timer-=dt;if(e.timer<=0)e.state='graze';return true;}
  if(PEACEFUL_FAUNA_KINDS.includes(e.kind)){
-  const armed=g.players.filter(p=>p.hp>0&&!p.room&&holdsThreateningWeapon(p)&&distance(e,p)<240).sort((a,b)=>distance(e,a)-distance(e,b))[0];
+  const armed=nearbyGhost(g,e,200)||g.players.filter(p=>p.hp>0&&!p.room&&holdsThreateningWeapon(p)&&distance(e,p)<240).sort((a,b)=>distance(e,a)-distance(e,b))[0];
   if(armed||injured){e.fleeTime=3;e.fleeFromX=armed?.x??e.x-e.faceX*30;e.fleeFromY=armed?.y??e.y-e.faceY*30;}
   e.fleeTime=Math.max(0,(e.fleeTime||0)-dt);
   if(e.fleeTime>0){const dx=e.x-e.fleeFromX,dy=e.y-e.fleeFromY,d=Math.hypot(dx,dy)||1;e.state='flee';move(g,e,{x:e.x+dx/d*80,y:e.y+dy/d*80},dt,e.speed);return true;}

@@ -4,7 +4,7 @@ export const LOBBY_PROP_ART_BOUNDS = Object.freeze({
   environment: Object.freeze({ x: -47, y: -35, w: 94, h: 65 }),
   'dice-count': Object.freeze({ x: -43, y: -34, w: 86, h: 64 }),
   'character-station': Object.freeze({ x: -42, y: -38, w: 84, h: 68 }),
-  difficulty: Object.freeze({ x: -28, y: -147, w: 56, h: 177 }),
+  difficulty: Object.freeze({ x: -28, y: -129, w: 56, h: 144 }),
 });
 
 const P = Object.freeze({
@@ -242,8 +242,9 @@ const DIFFICULTY = Object.freeze({
 export function drawLobbyDifficultyTotem(c, o, value = 'adventure') {
   const mode = Object.hasOwn(DIFFICULTY, value) ? DIFFICULTY[value] : DIFFICULTY.adventure;
   at(c, o, () => {
-    shadow(c, 56);
-    // The badge keeps the original overhead clearance, on a braced brass post.
+    rect(c, '#17221e65', -22, 8, 44, 7);
+    // Lower the marker on a shorter post; keep the timber grounded.
+    c.save();c.translate(0,18);
     rect(c, P.woodDark, -3, -98, 7, 38); rect(c, P.brass, -2, -98, 2, 34);
     rect(c, P.ink, -24, -147, 48, 47); rect(c, P.ink, -28, -143, 56, 39);
     rect(c, P.brassDark, -25, -143, 50, 39); rect(c, P.brassLight, -22, -145, 44, 2);
@@ -252,6 +253,7 @@ export function drawLobbyDifficultyTotem(c, o, value = 'adventure') {
     rect(c, mode.color, -18, -135, 36, 24);
     pixels(c, mode.glyph, -11, -133, mode.dark, 2); pixels(c, mode.glyph, -11, -135, mode.light, 2);
     for (const x of [-18, 15]) nail(c, x, -142);
+    c.restore();
     // Stone footing and an angular carved timber face, all within the old 42px fixture.
     rect(c, P.ink, -21, 2, 42, 9); rect(c, P.stoneDark, -20, 3, 40, 7);
     rect(c, P.stone, -19, 1, 37, 5); rect(c, P.stoneLight, -19, 1, 35, 1);
@@ -283,4 +285,16 @@ export function drawLobbyDifficultyTotem(c, o, value = 'adventure') {
     rect(c, P.brassDark, -18, -2, 36, 3); rect(c, P.brassLight, -17, -2, 33, 1);
     pixels(c, ['##..', '.###', '..#.', '.##.'], -20, -3, P.greenShade);
   });
+}
+
+export function drawLobbyTargetLever(c,o,moving){
+ at(c,o,()=>{
+  rect(c,'#17221e65',-20,8,44,7);
+  rect(c,P.ink,-18,-4,36,15);rect(c,P.stoneDark,-17,-3,34,12);rect(c,P.stone,-17,-4,34,5);rect(c,P.stoneLight,-15,-4,30,2);
+  rect(c,P.woodDark,-13,-14,26,14);rect(c,P.wood,-12,-14,24,7);rect(c,P.brass,-9,-14,18,2);
+  rect(c,P.ink,-5,-13,10,10);rect(c,P.brassDark,-4,-12,8,8);rect(c,P.brassLight,-3,-12,6,2);
+  const sign=moving?1:-1;
+  for(let i=0;i<20;i++){const x=Math.round(i*sign*.5),y=-10-i;rect(c,P.ink,x-2,y,5,2);rect(c,P.paperShade,x-1,y,2,2);}
+  rect(c,P.ink,sign*10-7,-35,14,9);rect(c,moving?P.greenLight:'#b65c46',sign*10-6,-34,12,6);rect(c,moving?'#b2d6a0':'#e4a476',sign*10-5,-34,10,2);
+ });
 }

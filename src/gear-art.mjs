@@ -84,7 +84,7 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     // The foot joint is the ankle. Keep the sole one pixel below it and put
     // the toe on the visible side for profile views.
     const toe=profile?(direction===2?-2:2):side==='L'?-1:1;
-    const height=def.style==='tall'?7:5;
+    const height=def.style==='tall'||def.style==='safari'?7:5;
     r(-3,-height,6,height+2,p.ink);r(-2,-height+1,4,height-1,p.dark);
     r(-3+toe,-1,6,4,p.ink);r(-2+toe,-1,4,3,p.base);
     r(-1,-height+1,3,height-1,p.base);r(-1,-height+1,3,1,p.light);
@@ -96,6 +96,13 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     if(def.style==='flame') {r(1,-3,1,3,'#f2b66c');r(0,-2,1,2,p.shine);}
     if(def.style==='moon') r(0,-3,1,2,p.shine);
   } else if(kind==='shoulder_armor') {
+    if(id==='alan_leaf_mantle'){
+      for(const [x,len] of [[-4,7],[-1,10],[2,8]]){
+        r(x,-3,5,2,'#1f3928');r(x+1,-2,4,3,x===-1?'#729853':'#3f713e');
+        for(let y=1;y<len;y++){const inset=Math.floor((y-1)/4);r(x+inset,y,Math.max(1,4-inset),1,'#254e30');r(x+inset+1,y,Math.max(1,2-inset),1,y%3?'#477b41':'#83a35c');}
+      }
+      return;
+    }
     if(def.bansheeGear){bansheeShoulder(c,anchor,direction,side,p);return;}
     const w=profile?4:5;
     r(-2,-2,w,1,p.ink);r(-3,-1,w+2,3,p.ink);r(-2,2,w,1,p.ink);
@@ -147,6 +154,16 @@ export function paintGearIcon(c,id) {
   if(def.bansheeGear&&bansheeGearIcon(c,kind,p))return true;
   if(!['hat','armor','pants','gloves','boots','shoulder_armor','cape','shield','wand'].includes(kind))return false;
   if(kind==='hat') {
+    if(style==='turtle'){
+      for(const [y,half] of [[8,2],[9,4],[10,5],[11,6],[12,7],[13,7]]){
+        r(12-half-1,y,half*2+3,1,'#192c21');
+        r(12-half,y,half*2+1,1,y<10?'#52794a':'#3c633d');
+      }
+      r(5,14,15,1,'#213b28');
+      r(12,8,1,6,'#6b8d55');r(12,7,1,1,'#79945c');
+      r(11,14,3,1,'#52794a');
+      return true;
+    }
     if(style==='halo') {
       r(5,6,14,2,'#a27b35');r(3,8,3,6,'#a27b35');r(18,8,3,6,'#a27b35');r(5,14,14,2,'#a27b35');
       r(6,5,12,2,p.base);r(4,7,3,6,p.base);r(17,7,3,6,p.base);r(6,13,12,2,p.base);
@@ -161,7 +178,7 @@ export function paintGearIcon(c,id) {
       r(5,13,14,2,p.leather);
       if(!style||style==='cap'||style==='safari') {
         r(2,15,20,3,p.base);r(3,15,18,1,p.light);
-        if(style==='safari') {r(11,4,2,9,p.light);r(10,13,4,2,p.trim);}
+        if(style==='safari') {r(10,2,4,2,p.ink);r(11,0,2,3,p.base);r(11,0,1,2,p.light);r(11,4,2,9,p.light);r(10,13,4,2,p.trim);}
       } else {
         r(5,14,3,6,p.base);r(16,14,3,6,p.dark);
         if(style==='hood') {r(6,19,12,2,p.base);r(7,7,10,6,p.dark);}
@@ -199,7 +216,7 @@ export function paintGearIcon(c,id) {
     }
   } else if(kind==='boots') {
     for(const x of [2,13]) {
-      const top=style==='tall'?3:6;
+      const top=style==='tall'||style==='safari'?3:6;
       r(x+1,top,6,14-top,p.dark);r(x+2,top+1,3,13-top,p.base);
       r(x+1,14,8,7,p.base);r(x+6,15,3,5,p.dark);r(x,20,10,2,p.leather);
       r(x+1,top,6,1,p.light);r(x+2,16,4,1,p.light);
@@ -210,6 +227,10 @@ export function paintGearIcon(c,id) {
       if(style==='moon') {r(x+2,7,3,4,p.light);r(x+3,7,2,3,p.base);}
     }
   } else if(kind==='shoulder_armor') {
+    if(style==='wilderness'){
+      for(const x of [2,13])for(const [offset,len] of [[0,8],[3,11],[6,7]]){r(x+offset,5,3,len,'#28432c');r(x+offset+1,6,2,len-2,offset===3?'#5e8a43':'#3d6a39');r(x+offset+1,7,1,3,'#91ac65');}
+      return true;
+    }
     for(const x of [2,13]) {
       r(x+2,5,5,2,p.light);r(x+1,7,7,6,p.base);r(x+1,13,8,5,p.dark);
       r(x+2,7,2,6,p.light);r(x+2,16,6,1,p.trim);
@@ -233,6 +254,7 @@ export function paintGearIcon(c,id) {
     r(8,4,8,4,p.base);r(6,8,12,7,p.base);r(4,15,16,6,p.base);
     r(7,8,2,12,p.light);r(14,8,2,12,p.dark);r(5,20,14,1,p.trim);
     r(8,4,8,1,p.trim);r(11,4,2,2,p.shine);
+    if(style==='safari'){r(10,9,4,9,def.lining||'#792d32');r(10,9,1,8,p.light);r(13,9,1,8,p.dark);}
     if(style==='leaf') {r(10,11,3,1,p.light);r(11,10,1,4,p.light);}
     if(style==='night') {r(11,10,3,5,p.light);r(12,9,3,4,p.base);}
     if(style==='gold') {r(10,11,4,4,p.trim);r(11,12,2,2,p.shine);}

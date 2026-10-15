@@ -13,12 +13,13 @@
   display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;min-width:0;
 }
 .npc-dialogue-cast {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;flex:none;}
-.npc-dialogue-person {margin:0;min-width:0;overflow:hidden;background:#cdbb8e;border:1px solid #9c8054;border-radius:4px;}
+.npc-dialogue-person {margin:0;min-width:0;overflow:hidden;background:#cdbb8e;border:1px solid #9c8054;border-radius:4px;box-shadow:inset 0 0 0 2px #f5e7b52a,0 4px 10px #20180d26;}
 .npc-dialogue-person canvas {
   display:block;width:100%;height:auto;max-height:132px;object-fit:contain;
   background:radial-gradient(ellipse at 50% 65%,#c1c394,#7c8b65);image-rendering:pixelated;
 }
-.npc-dialogue-npc canvas {background:radial-gradient(ellipse at 50% 65%,#dcc69b,#9a8762);}
+.npc-dialogue-npc canvas {background:radial-gradient(ellipse at 50% 65%,#dcc69b,#9a8762);image-rendering:pixelated;image-rendering:crisp-edges;}
+.npc-dialogue-player canvas {image-rendering:pixelated;image-rendering:crisp-edges;}
 .npc-dialogue-person figcaption {display:flex;flex-direction:column;gap:2px;padding:5px 8px;overflow-wrap:anywhere;}
 .npc-dialogue-person strong {font:700 14px/1.2 Georgia,serif;color:#263d2d;}
 .npc-dialogue-person small {font:11px/1.25 system-ui;color:#55482e;}
@@ -29,7 +30,7 @@
 .hero-panel.npc-dialogue-session p {min-height:0;}
 .hero-panel.npc-dialogue-session .npc-dialogue-text {font:15px/1.45 Georgia,serif;white-space:pre-wrap;margin:0 0 12px;overflow-wrap:anywhere;}
 .npc-dialogue-quest {padding:8px 10px;margin:0 0 12px;background:#f4e8c070;border:1px solid #a28a57;border-left:4px solid #94783c;border-radius:3px;}
-.npc-dialogue-quest.ready {border-left-color:#377346;}
+.npc-dialogue-quest.ready {border-left-color:#377346;background:linear-gradient(105deg,#e8f0c77a,#f4e8c070 55%,#e8d28e55);box-shadow:inset 0 0 0 1px #6ca05c55;}
 .npc-dialogue-quest p {font:12px/1.4 system-ui;margin:4px 0;white-space:pre-wrap;}
 .npc-dialogue-quest small {display:block;font:11px/1.4 system-ui;color:#554326;}
 .npc-dialogue-quest progress {display:block;width:100%;height:9px;margin:4px 0;accent-color:#407846;}

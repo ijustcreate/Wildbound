@@ -6,6 +6,8 @@ import {startJump,tickJump} from '../src/jumping.mjs';
 import {clearShot,advanceShot} from '../src/navigation.mjs';
 import {applyChangedHouse} from '../src/apply-house.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
+import {breakWindow} from '../src/expansion.mjs';
+import {CUES} from '../src/sound-bank.mjs';
 const setup=()=>{const g=new Game();g.environment='house';g.addPlayer('keyboard');g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');return g;};
 test('Low furniture is tagged, tall furniture stays solid, window migration is idempotent',()=>{
  const h=defaultHouse();assert.ok(h.walls.some(w=>w.kind==='window'));
@@ -30,6 +32,11 @@ test('First shot breaks glass; subsequent shots and elevated jumps pass but walk
  assert.equal(advanceShot(g,shot(),.05,2),true);
  assert.equal(g.blocked(408,250,8,false,false,false,0,30),false);
  assert.equal(g.blocked(408,250,8,false,false,false,0,0),true);
+});
+test('A one-hit pane plays the dedicated glass shatter recording',()=>{
+ const g=setup(),sounds=[];g.house={walls:[{kind:'window',x:400,y:200,w:16,h:120}],doors:[],furniture:[],pools:[]};g.onSound=cue=>sounds.push(cue);
+ assert.equal(breakWindow(g,408,250,2),true);assert.deepEqual(sounds,['glassBreak']);
+ assert.ok(CUES.glassBreak.files.every(file=>file.includes('impactGlass_heavy')));
 });
 test('Broken panes survive session restore and do not count as house architecture edits',()=>{
  const g=setup();g.house.walls.find(w=>w.kind==='window').broken=true;

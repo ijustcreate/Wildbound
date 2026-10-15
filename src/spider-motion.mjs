@@ -1,12 +1,13 @@
 import {poseAt,projectPoint,facingIndex} from './player-motion.mjs';
 import {pixelLine,pixelVolume} from './pixel-shapes.mjs';
 import {paintLayers} from './render-order.mjs';
+import {applyWowCreatureMotion,upgradeWowCreatureMotion} from './wow-creature-transfer.mjs';
 
 const sides=['L','R'],TAU=Math.PI*2;
 const key=(m,frame,changes={})=>({frame,joints:Object.fromEntries(Object.keys(m.joints).map(n=>[n,changes[n]||[0,0,0]]))});
 const clip=(m,fps,length,loop,poses)=>({fps,length,loop,keys:poses.map(([frame,p])=>key(m,frame,p))});
 const body=z=>Object.fromEntries(['pelvis','chest','head','jawL','jawR'].map(n=>[n,[0,0,z]]));
-export function defaultSpiderMotion(kind='spider') {
+function nativeSpiderMotion(kind='spider') {
  const furry=kind==='tarantula';
  const m={version:1,artGeneration:2,type:kind,name:furry?'Sandy tarantula / eight articulated legs':'Black spider / eight articulated legs',
   palette:furry?{body:'#bf8655',shade:'#805135',light:'#efbd81',face:'#bc804a',eye:'#fff2c3',outline:'#352620',band:'#e6ad72',fur:'#f5c797',fang:'#ecd9ac'}:
@@ -47,14 +48,24 @@ export function defaultSpiderMotion(kind='spider') {
  m.clips.death=clip(m,12,10,false,[[0,{}],[3,body(-2)],[6,dead],[9,dead]]);
  return m;
 }
+export function defaultSpiderMotion(kind='spider') {
+ const m=nativeSpiderMotion(kind);
+ if(kind==='spider'){
+  m.artGeneration=3;
+  m.name='Black spider / transferred eight-leg motion';
+  applyWowCreatureMotion(m,'spider');
+ }
+ return m;
+}
 export function upgradeSpiderMotion(saved,legacy) {
- const m=structuredClone(saved);if(m.artGeneration===2)return m;
+ const m=structuredClone(saved);if(m.artGeneration===3||saved.type==='tarantula'&&m.artGeneration===2)return m;
+ if(m.artGeneration===2)return upgradeWowCreatureMotion(m,nativeSpiderMotion('spider'),defaultSpiderMotion('spider'));
  const fresh=defaultSpiderMotion(saved.type);
  for(const field of ['palette','shape','joints','visibility','clips']){
   m[field]={...fresh[field],...m[field]};
   for(const [name,value] of Object.entries(fresh[field]))if(JSON.stringify(saved[field]?.[name])===JSON.stringify(legacy[field]?.[name]))m[field][name]=structuredClone(value);
  }
- if(m.name===legacy.name)m.name=fresh.name;m.artGeneration=2;return m;
+ if(m.name===legacy.name)m.name=fresh.name;m.artGeneration=fresh.artGeneration;m.motionSource=fresh.motionSource;return m;
 }
 export function spiderAction(a) {
  if(a.animationAction)return a.animationAction;

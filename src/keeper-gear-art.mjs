@@ -5,6 +5,8 @@ import {gearPixels} from './gear-art.mjs';
 const TEAL='#087b79', LIGHT='#39b6ad', DARK='#163f43', WOOD='#493e49';
 const LEATHER='#392d31', RED='#9f4439', GOLD='#e8ab43', PAPER='#dddac0', INK='#aa443b';
 export const KEEPER_GEAR=['keeper_crown','keeper_robes','keeper_sash','keeper_staff','keeper_blade','keeper_band'];
+// Two antlers attached at the left/right temples; their tines share those stems.
+export const KEEPER_ANTLER_SIDES=Object.freeze([-1,1]);
 
 function stroke(r,x0,y0,x1,y1,color,width=1) {
   const steps=Math.max(Math.abs(x1-x0),Math.abs(y1-y0),1);
@@ -16,13 +18,25 @@ function tag(r,x,y,h=6) {
 }
 function crown(r,profile=false,rear=false) {
   const branch=(a,b,c,d)=>stroke(r,a,b,c,d,WOOD,2);
-  branch(-6,-5,5,-6);branch(-4,-5,-5,-14);branch(-5,-12,-9,-16);
-  branch(-8,-15,-9,-19);branch(-5,-14,-4,-20);
-  branch(0,-6,1,-15);branch(1,-13,5,-18);branch(4,-17,7,-18);
-  branch(4,-16,3,-20);branch(5,-6,8,-12);branch(8,-11,9,-15);
-  branch(7,-10,10,-10);
-  stroke(r,-4,-10,-4,-6,'#8d7c84');stroke(r,1,-14,4,-17,'#8d7c84');
-  for(const [x,y,color] of [[-8,-13,TEAL],[3,-13,'#86cfda'],[8,-8,GOLD]]) {
+  // Open brow circlet: the actor's own face and expression remain visible.
+  stroke(r,-5,-5,5,-5,LEATHER,2);
+  stroke(r,-4,-5,4,-5,TEAL);
+  for(const side of KEEPER_ANTLER_SIDES){
+    // Compact curved branches match the user's orange silhouette sketch.
+    // An inward tine breaks up each stem without adding a third antler.
+    branch(side*4,-6,side*5,-7);
+    branch(side*5,-7,side*6,-9);
+    branch(side*6,-9,side*7,-11);
+    branch(side*7,-11,side*7,-12);
+    stroke(r,side*7,-12,side*6,-13,WOOD);
+    stroke(r,side*6,-13,side*5,-13,WOOD);
+    stroke(r,side*5,-8,side*3,-10,WOOD);
+    stroke(r,side*3,-10,side*3,-12,WOOD);
+    stroke(r,side*3,-12,side*5,-11,WOOD);
+    stroke(r,side*5,-7,side*5,-9,'#8d7c84');
+    stroke(r,side*6,-10,side*6,-12,'#8d7c84');
+  }
+  for(const [x,y,color] of [[-8,-11,TEAL],[8,-11,GOLD]]) {
     if(profile&&x<0)continue;
     stroke(r,x,y,x,y+3,LEATHER);r(x-1,y+3,3,3,LEATHER);r(x,y+4,1,1,color);
   }
@@ -57,13 +71,15 @@ export function paintKeeperItem(c,id) {
     r(11,2,3,19,LEATHER);r(11,10,3,11,'#a5e4ed');r(11,10,1,10,'#edfcf8');r(13,11,1,10,'#61b2c2');
     stroke(r,6,8,18,8,WOOD,2);r(11,2,3,3,GOLD);r(12,3,1,1,'#40cbe6');r(12,6,1,3,RED);
   } else if(id==='keeper_band') {
-    for(let y=5;y<20;y++){
-      const edge=Math.max(0,Math.round(Math.abs(y-12)*.6));
-      r(3+edge,y,18-edge*2,1,WOOD);
-      if(y>8&&y<16)r(7,y,10,1,DARK);
+    // A visible chain and hanging gemstone pendant, not a finger-sized band.
+    stroke(r,4,2,8,9,LEATHER,2);stroke(r,19,2,15,9,LEATHER,2);
+    stroke(r,5,2,9,9,GOLD);stroke(r,18,2,14,9,GOLD);
+    r(10,8,4,3,WOOD);r(11,8,2,2,GOLD);
+    for(let y=11;y<22;y++){
+      const edge=Math.abs(y-16);r(7+Math.floor(edge*.6),y,10-Math.floor(edge*.6)*2,1,WOOD);
+      if(y>12&&y<20)r(9,y,6,1,'#40cbe6');
     }
-    r(11,7,5,10,'#65d5e6');r(12,8,3,7,'#b5f5fa');r(13,9,1,3,'#efffff');
-    for(const [x,y]of [[6,8],[5,12],[7,17],[18,10],[17,16]])r(x,y,1,1,LIGHT);
+    r(10,13,3,5,'#b5f5fa');r(10,13,1,2,'#efffff');r(12,18,2,2,'#2296ae');
   }
   return true;
 }
@@ -72,16 +88,6 @@ export function keeperHeadgear(c,id,anchor,d) {
   if(id!=='keeper_crown')return false;
   const r=gearPixels(c,anchor),profile=d===2||d===6;
   crown(profile?(x,y,w,h,color)=>r(Math.round(x*.55),y,w,h,color):r,profile,d>=3&&d<=5);
-  if(d<3||d>5){
-    // A fitted mask overlays the normal animated head, never replaces its rig.
-    const front=profile?(d===2?2:-4):-4,width=profile?3:9;
-    r(front,-3,width,6,'#a6a294');r(front+1,-4,Math.max(1,width-2),1,'#c9c8b8');
-    r(front+1,3,Math.max(1,width-2),2,'#a6a294');
-    r(front,-2,Math.max(1,width-1),2,'#c9c8b8');
-    if(profile){r(front+(d===2?1:0),0,2,2,'#29272b');r(front+(d===2?2:0),0,1,1,GOLD);}
-    else {r(-3,0,2,2,'#29272b');r(2,0,2,2,'#29272b');r(3,0,1,1,GOLD);r(0,1,1,2,'#817d73');}
-    r(profile?front+1:-1,3,profile?1:3,1,'#51474a');
-  }
   return true;
 }
 
@@ -143,7 +149,10 @@ export function keeperBlade(c,id,hand,tip) {
 export function keeperBand(c,id,anchor,d) {
   if(id!=='keeper_band')return false;
   const r=gearPixels(c,anchor),rear=d>=3&&d<=5;
-  r(-3,0,7,1,LEATHER);
-  if(!rear){r(-1,1,1,4,WOOD);r(-2,4,5,4,WOOD);r(-1,5,3,2,'#40cbe6');r(0,5,1,1,'#efffff');}
+  if(rear){r(-3,0,7,1,LEATHER);return true;}
+  const profile=d===2||d===6,center=profile?(d===2?-1:1):0;
+  stroke(r,profile?center-1:-3,0,center,4,GOLD);
+  if(!profile)stroke(r,3,0,center,4,GOLD);
+  r(center-1,4,3,1,WOOD);r(center-2,5,5,4,WOOD);r(center-1,6,3,2,'#40cbe6');r(center-1,6,1,1,'#efffff');r(center,9,1,1,WOOD);
   return true;
 }

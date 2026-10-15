@@ -1,3 +1,4 @@
+import {defeatTrialMember} from './expedition-trials.mjs';
 import { clearShot, navigateEnemy } from './navigation.mjs';
 import {isCharmed} from './succubus-charm.mjs';
 import * as items from './items.mjs';
@@ -68,6 +69,7 @@ function damage(g,p,source,amount) {
 }
 function release(e) { const n=brain(e);delete n.captiveId;n.phase='recover';n.timer=1.2;n.cooldown=2; }
 function equipHunter(e) {
+  e.sprite='safari_hunter';
   if(brain(e).equipped)return;
   e.equipment={...(items.SAFARI_HUNTER_GEAR||items.SAFARI_HUNTER_SET),...e.equipment,hand1:'rifle',hand2:'occupied'};
   brain(e).equipped=true;
@@ -117,7 +119,7 @@ function completeHunter(g,e,status) {
   const result={enemyId:e.id,status,elapsed:n.objective.elapsed};state(g).objectives.push(result);
   state(g).shots=state(g).shots.filter(s=>s.ownerId!==e.id);
   state(g).traps=state(g).traps.filter(t=>t.ownerId!==e.id);
-  if(status==='survived')e.escaped=true;
+  if(status==='survived'){e.escaped=true;defeatTrialMember(g,e);}
   g.onHunterObjective?.({...result});
 }
 function hunter(g,e,p,dt) {
@@ -125,6 +127,7 @@ function hunter(g,e,p,dt) {
   const n=brain(e);n.objective??={elapsed:0,status:'active'};
   if(n.objective.status!=='active')return;
   if(e.hp<=0){completeHunter(g,e,'killed');return;}
+  n.retreatCooldown=Math.max(0,(n.retreatCooldown||0)-dt);
   n.trapTimer=(n.trapTimer??4)-dt;
   if(n.trapTimer<=0){
     if(!g.projectileBlocked(e.x,e.y,8))state(g).traps.push({x:e.x,y:e.y,room:e.room||null,ownerId:e.id,life:18,arm:1,damage:8});
@@ -135,12 +138,21 @@ function hunter(g,e,p,dt) {
     if(n.timer<=0){if(valid(e,p))shoot(g,e,n.aim,'rifle',items.ITEMS.rifle.shot.speed,items.ITEMS.rifle.shot.range);n.phase=n.fire>0?'fire':'recover';n.timer=items.ITEMS.rifle.shot.cooldown;}
     return;
   }
+  if(n.phase==='dash'){
+    if(n.timer>0&&n.retreat){let remaining=300*Math.min(dt,n.timer);while(remaining>0){const step=Math.min(5,remaining),moved=g.moveActor(e,n.retreat.x*step,n.retreat.y*step);remaining-=step;if(moved<step*.3){n.timer=0;break;}e.moving=true;}e.state='dash';return;}
+    if(valid(e,p))shoot(g,e,p,'rifle',items.ITEMS.rifle.shot.speed,items.ITEMS.rifle.shot.range);
+    n.phase=n.fire>0?'fire':'recover';n.timer=items.ITEMS.rifle.shot.cooldown;e.state='recover';return;
+  }
   if(n.phase==='fire'){if(n.fire>0)return;n.phase='recover';}
   if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';}
   if(!valid(e,p))return;
-  if(distance(e,p)<180&&enabled(e,'hunt')){face(e,p);g.moveActor(e,-e.faceX*(e.speed||68)*dt,-e.faceY*(e.speed||68)*dt);}
-  else if(distance(e,p)>400||!visible(g,e,p))move(g,e,p,dt);
-  if(n.phase==='idle'&&distance(e,p)<=items.ITEMS.rifle.shot.range&&visible(g,e,p))windup(e,p,1.15,'aim');
+  const d=distance(e,p)||1;
+  if(n.phase==='idle'&&d<145&&n.retreatCooldown<=0&&enabled(e,'hunt')){
+    face(e,p);n.retreat={x:-e.faceX,y:-e.faceY};n.phase='dash';n.timer=.35;n.retreatCooldown=8;e.state='dash';return;
+  }
+  if(d<180&&enabled(e,'hunt')){face(e,p);g.moveActor(e,-e.faceX*(e.speed||68)*dt,-e.faceY*(e.speed||68)*dt);}
+  else if(d>400||!visible(g,e,p))move(g,e,p,dt);
+  if(n.phase==='idle'&&d<=items.ITEMS.rifle.shot.range&&visible(g,e,p))windup(e,p,1.15,'aim');
 }
 
 function stepNightEnemy(g,e,target,dt) {

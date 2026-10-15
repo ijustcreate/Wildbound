@@ -1,4 +1,13 @@
+import {shoreGoblinMotion,validateShoreGoblinMotion,replaceShoreGoblinMotion} from './shore-goblin-motion.mjs';
+import {villagerMotion,defaultVillagerMotion,validateVillagerMotion,replaceVillagerMotion} from './villager-motion.mjs';
+import {reaperMotion,validateReaperMotion,replaceReaperMotion} from './reaper-motion.mjs';
+import {safariHunterMotion,validateSafariHunterMotion,replaceSafariHunterMotion} from './safari-hunter-motion.mjs';
+import {alanMotion,validateAlanMotion,replaceAlanMotion} from './alan-motion.mjs';
+import {oathlessCaptainMotion,validateOathlessCaptainMotion,replaceOathlessCaptainMotion} from './oathless-captain-motion.mjs';
+import {dreadmaneLionMotion,validateDreadmaneLionMotion,replaceDreadmaneLionMotion} from './dreadmane-lion-motion.mjs';
+import {slimeMotion,validateSlimeMotion,replaceSlimeMotion} from './slime-motion.mjs';
 import {wolfMotion, validateWolfMotion, replaceWolfMotion} from './wolf-motion.mjs';
+import {murkWolfMotion, validateMurkWolfMotion, replaceMurkWolfMotion} from './murk-wolf-motion.mjs';
 import {npcQuestConfig, validateNpcQuestConfig, replaceNpcQuestConfig} from './npc-quest-data.mjs';
 import {warlockMotion,validateWarlockMotion,replaceWarlockMotion} from './warlock-motion.mjs';
 import {bansheeMotion,validateBansheeMotion,replaceBansheeMotion} from './banshee-motion.mjs';
@@ -7,6 +16,8 @@ import {SUCCUBUS_DROPS} from './items.mjs';
 import {succubusMotion,validateSuccubusMotion,replaceSuccubusMotion} from './succubus-motion.mjs';
 import {impMotion,validateImpMotion,replaceImpMotion} from './imp-motion.mjs';
 import {zombieMotion,validateZombieMotion,replaceZombieMotion} from './zombie-motion.mjs';
+import {ghostMotion,validateGhostMotion,replaceGhostMotion} from './ghost-motion.mjs';
+import {GHOST_DROPS} from './items.mjs';
 import {WILD_FAUNA_DEFAULTS,DEER_KINDS,PEACEFUL_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import { NIGHT_KINDS, nightMotions, validateNightMotion, replaceNightMotion } from './night-rigs.mjs';
 import {
@@ -287,14 +298,35 @@ for(const [kind,base] of [['tiger','lion'],['gorilla','golem'],['white_lion','li
   creatures[kind]=creatureDefaults(base);creatures[kind].name=kind;creatures[kind].aiKind=base;
 }
 for(const kind of ['lion','wolf','bat','panther','tiger'])creatures[kind].tamable=true;
+creatures.grim_reaper={...creatureDefaults('skeleton'),name:'Grim Reaper',aiKind:'grim_reaper'};
+Object.assign(creatures.grim_reaper.stats,{hp:220,speed:54,damage:22,attackRange:88,detection:600,drainRange:240});
+Object.assign(creatures.grim_reaper.behaviors,{jump:false,melee:true,hunt:true,drain:true});
+creatures.grim_reaper.lootDrops=['reaper_scythe','reaper_hood','reaper_chest','reaper_gloves','reaper_skirt','deaths_shroud'].map(item=>({item,qty:1,chance:100,manualPickup:true,source:'Grim Reaper gear'}));
+creatures.oathless_captain={...creatureDefaults('skeleton'),name:'Oathless Captain',aiKind:'oathless_captain'};
+creatures.alan={...creatureDefaults('skeleton'),name:'Alan',aiKind:'alan',faction:'ally'};
+Object.assign(creatures.alan.stats,{hp:180,speed:86,damage:18,attackRange:62});
+Object.assign(creatures.alan.behaviors,{jump:false,melee:true,hunt:true});
+Object.assign(creatures.oathless_captain.stats,{hp:190,speed:68,damage:17,attackRange:72,detection:600,recovery:.8,dashCooldown:6,dashSpeed:240,bashCooldown:6});
+Object.assign(creatures.oathless_captain.behaviors,{jump:true,melee:true,dash:true,hunt:true});
+creatures.shore_goblin={...creatureDefaults('skeleton'),name:'Shore goblin',aiKind:'shore_goblin',startArea:'sand'};
+Object.assign(creatures.shore_goblin.stats,{hp:72,speed:65,damage:11,attackRange:52,detection:600});
+Object.assign(creatures.shore_goblin.behaviors,{requiredStartArea:true,jump:false,melee:true,hunt:true});
+creatures.dreadmane_lion={...creatureDefaults('lion'),name:'Dreadmane Lion',aiKind:'dreadmane_lion'};
+Object.assign(creatures.dreadmane_lion.stats,{hp:220,speed:76,damage:18,attackRange:72,detection:600,recovery:1,dashCooldown:5,dashSpeed:265,roarRange:125,roarCooldown:8});
+Object.assign(creatures.dreadmane_lion.behaviors,{jump:false,melee:true,dash:true,hunt:true});
+creatures.slime={...creatureDefaults('slime'),name:'Location slime',aiKind:'slime'};
+Object.assign(creatures.slime.stats,{hp:46,speed:43,damage:8,attackRange:54,detection:420,windup:.72,recovery:1.05});
+Object.assign(creatures.slime.behaviors,{jump:false,melee:true,dash:false,hunt:true});
+// Available in the workshop; no encounter or normal wolf is replaced.
+creatures.murk_wolf={...creatureDefaults('wolf'),name:'Murk Wolf',aiKind:'wolf',testOnly:true};
 for(const kind of ['raven','crow']){creatures[kind].rig=creatureDefaults('bat').rig;Object.assign(creatures[kind].stats,{hp:45,speed:90,damage:9});creatures[kind].tamable=true;}
 Object.assign(creatures.spider.stats,{hp:70,speed:68,damage:11});
 Object.assign(creatures.tarantula.stats,{hp:110,speed:48,damage:16});
 Object.assign(creatures.anaconda.stats,{hp:380,speed:46,damage:26,attackRange:145,windup:.9,recovery:1.1,dashCooldown:2.5,dashSpeed:240,dashDistance:116,detection:750});
 Object.assign(creatures.anaconda.rig,{tailThickness:12,tailLength:390,tailSegments:40,tailTip:2});
 creatures.banshee_queen=creatureDefaults('banshee_queen');
-Object.assign(creatures.banshee_queen.stats,{hp:340,speed:44,damage:24,windup:.8,rangedRange:420,rangedCooldown:2.4});
-Object.assign(creatures.banshee_queen.behaviors,{ranged:true,melee:false,loot:true});
+Object.assign(creatures.banshee_queen.stats,{hp:340,speed:44,damage:24,windup:.8,rangedRange:420,rangedCooldown:2.4,dashCooldown:8,frostCooldown:12});
+Object.assign(creatures.banshee_queen.behaviors,{ranged:true,melee:false,loot:true,dash:true,frostShot:true});
 creatures.banshee_queen.lootDrops=BANSHEE_SET.map(item=>({item,qty:1,chance:100}));
 creatures.succubus=creatureDefaults('succubus');
 Object.assign(creatures.succubus.stats,{hp:180,speed:56,damage:18,detection:520,attackRange:112,windup:.75,recovery:1.6});
@@ -304,6 +336,10 @@ creatures.imp=creatureDefaults('imp');
 Object.assign(creatures.imp.stats,{hp:60,speed:70,damage:14,detection:500,windup:.9,rangedRange:330,rangedCooldown:3});
 Object.assign(creatures.imp.behaviors,{ranged:true,melee:false,loot:true,dash:false,jump:false});
 creatures.zombie=creatureDefaults('zombie');
+creatures.ghost={...creatureDefaults('zombie'),name:'Restless ghost',aiKind:'ghost'};
+Object.assign(creatures.ghost.stats,{hp:76,speed:54,damage:12,detection:380,attackRange:56,windup:.6,recovery:1.2});
+Object.assign(creatures.ghost.behaviors,{ranged:false,melee:true,loot:true,dash:false,jump:false,hunt:true});
+creatures.ghost.lootDrops=GHOST_DROPS.map(item=>({item,qty:1,chance:12,manualPickup:true,source:'Spectral ghost gear'}));
 Object.assign(creatures.zombie.stats,{hp:80,speed:32,damage:14,detection:360,attackRange:54,windup:.65,recovery:1.25});
 Object.assign(creatures.zombie.behaviors,{ranged:false,melee:true,loot:true,dash:false,jump:false});
 for(const [kind,settings]of Object.entries(WILD_FAUNA_DEFAULTS)){
@@ -608,10 +644,19 @@ export function loadDefinitions(events, items) {
   }
 }
 export function applyDefinitions(d, events, items, { spriteOverrides = true } = {}) {
+  // Older authored villager rigs predate this built-in resting clip. Add only
+  // the missing default in memory; keep every authored pose and stored file.
+  if (d.villager && !d.villager.clips?.sit) {
+    const villager = structuredClone(d.villager);
+    villager.clips ||= {};
+    villager.clips.sit = structuredClone(defaultVillagerMotion().clips.sit);
+    d = { ...d, villager };
+  }
   if (Object.hasOwn(d, 'npcQuests') && !validateNpcQuestConfig(d.npcQuests))
     throw Error('Invalid NPC quest configuration');
   if(d.imp&&!validateImpMotion(d.imp))throw Error('Invalid imp animation');
   if(d.zombie&&!validateZombieMotion(d.zombie))throw Error('Invalid zombie animation');
+  if(d.ghost&&!validateGhostMotion(d.ghost))throw Error('Invalid ghost animation');
   if(d.succubus&&!validateSuccubusMotion(d.succubus))throw Error('Invalid succubus animation');
   if(d.banshee&&!validateBansheeMotion(d.banshee))throw Error('Invalid Banshee Queen animation');
   if(d.warlock&&!validateWarlockMotion(d.warlock))throw Error('Invalid warlock animation');
@@ -629,6 +674,15 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if (d.player && !validatePlayerMotion(d.player))
     throw Error("Invalid player animation");
   if (d.wolf && !validateWolfMotion(d.wolf)) throw Error("Invalid wolf animation");
+  if(d.grim_reaper&&!validateReaperMotion(d.grim_reaper))throw Error('Invalid Reaper rig');
+  if(d.safari_hunter&&!validateSafariHunterMotion(d.safari_hunter))throw Error('Invalid Safari Hunter rig');
+  if(d.alan&&!validateAlanMotion(d.alan))throw Error('Invalid Alan Captain rig');
+  if (d.villager && !validateVillagerMotion(d.villager)) throw Error('Invalid villager animation');
+  if (d.oathless_captain && !validateOathlessCaptainMotion(d.oathless_captain)) throw Error('Invalid Oathless Captain animation');
+  if (d.shore_goblin && !validateShoreGoblinMotion(d.shore_goblin)) throw Error('Invalid shore goblin animation');
+  if (d.dreadmane_lion && !validateDreadmaneLionMotion(d.dreadmane_lion)) throw Error('Invalid Dreadmane Lion animation');
+  if (d.slime && !validateSlimeMotion(d.slime)) throw Error('Invalid slime animation');
+  if (d.murk_wolf && !validateMurkWolfMotion(d.murk_wolf)) throw Error('Invalid Murk Wolf animation');
   if (d.lion && !validateLionMotion(d.lion))
     throw Error("Invalid lion animation");
   if (d.tiger && !validateLionMotion(d.tiger))
@@ -663,12 +717,22 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if(d.succubus)replaceSuccubusMotion(d.succubus);
   if(d.imp)replaceImpMotion(d.imp);
   if(d.zombie)replaceZombieMotion(d.zombie);
+  if(d.ghost)replaceGhostMotion(d.ghost);
   if (d.alligator) replaceAlligatorMotion(d.alligator);
   for (const [kind, m] of Object.entries(d.skeletonMotions || {}))
     replaceSkeletonMotion(kind, m);
   if (d.lion) replaceLionMotion(d.lion);
   if (d.tiger) replaceTigerMotion(d.tiger);
   if (d.wolf) replaceWolfMotion(d.wolf);
+  if (d.murk_wolf) replaceMurkWolfMotion(d.murk_wolf);
+  if (d.villager) replaceVillagerMotion(d.villager);
+  if (d.oathless_captain) replaceOathlessCaptainMotion(d.oathless_captain);
+  if(d.grim_reaper)replaceReaperMotion(d.grim_reaper);
+  if(d.safari_hunter)replaceSafariHunterMotion(d.safari_hunter);
+  if(d.alan)replaceAlanMotion(d.alan);
+  if (d.shore_goblin) replaceShoreGoblinMotion(d.shore_goblin);
+  if (d.dreadmane_lion) replaceDreadmaneLionMotion(d.dreadmane_lion);
+  if (d.slime) replaceSlimeMotion(d.slime);
   if (d.bat) replaceBatMotion(d.bat);
   if (d.rhino) replaceRhinoMotion(d.rhino);
   for (const [kind, model] of Object.entries(d.creatureMotions || {}))
@@ -678,6 +742,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   const savedSpriteModels = {
     imp:impMotion,
     zombie:zombieMotion,
+    ghost:ghostMotion,
     succubus:succubusMotion,
     banshee_queen:bansheeMotion,
     necromancer:warlockMotion,
@@ -686,6 +751,15 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     lion: lionMotion,
     tiger: tigerMotion,
     wolf: wolfMotion,
+    murk_wolf: murkWolfMotion,
+    oathless_captain: oathlessCaptainMotion,
+    villager: villagerMotion,
+    grim_reaper: reaperMotion,
+    safari_hunter: safariHunterMotion,
+    alan: alanMotion,
+    shore_goblin: shoreGoblinMotion,
+    dreadmane_lion: dreadmaneLionMotion,
+    slime: slimeMotion,
     bat: batMotion,
     tsetse: batMotion,
     rhino: rhinoMotion,
@@ -724,10 +798,17 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
           "thunderstorm",
           "merchant",
           "white_lion",
+          "dreadmane_lion",
+          "oathless_captain",
+          "villager",
+          "grim_reaper",
           "snow_leopard",
           "dragon",
   "fire_elemental",
   "water_elemental",
+        'breather',
+        'shore_goblin',
+        'slime',
         ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||e.environment==='graveyard')&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
@@ -757,11 +838,21 @@ export function definitionPack(events, items) {
     succubus:succubusMotion,
     imp:impMotion,
     zombie:zombieMotion,
+    ghost:ghostMotion,
     alligator: alligatorMotion,
     skeletonMotions,
     lion: lionMotion,
     tiger: tigerMotion,
     wolf: wolfMotion,
+    murk_wolf: murkWolfMotion,
+    oathless_captain: oathlessCaptainMotion,
+    villager: villagerMotion,
+    grim_reaper: reaperMotion,
+    safari_hunter: safariHunterMotion,
+    alan: alanMotion,
+    shore_goblin: shoreGoblinMotion,
+    dreadmane_lion: dreadmaneLionMotion,
+    slime: slimeMotion,
     bat: batMotion,
     rhino: rhinoMotion,
     creatureMotions,

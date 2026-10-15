@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildHeroGeneration } from '../src/hero-generation.mjs';
-import { defaultPlayerMotion, validatePlayerMotion, playerPose, playerAction, playerFrame, poseAt } from '../src/player-motion.mjs';
+import { defaultPlayerMotion, validatePlayerMotion, playerPose, playerAction, playerFrame, poseAt, upgradePlayerMotion } from '../src/player-motion.mjs';
 
 const source=defaultPlayerMotion(), model=buildHeroGeneration(source);
 const distance=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
@@ -15,8 +15,9 @@ test('Hero generation preserves editor extensions and clip durations without mut
   assert.deepEqual(result.wearableOverrides,custom.wearableOverrides);
   assert.deepEqual(result.animationLayers,custom.animationLayers);
   assert.ok(validatePlayerMotion(result));
-  assert.equal(Object.keys(result.clips).length,36);
-  for(const [name,clip] of Object.entries(result.clips).filter(([name])=>name!=='sleep'))
+  assert.deepEqual(Object.keys(result.clips).sort(),[...new Set([...Object.keys(source.clips),'wing_hover'])].sort());
+  assert.ok(result.clips.wing_hover.loop&&result.clips.wing_hover.fps>0&&result.clips.wing_hover.length>0);
+  for(const [name,clip] of Object.entries(result.clips).filter(([name])=>name!=='sleep'&&source.clips[name]))
     assert.equal(clip.length/clip.fps,source.clips[name].length/source.clips[name].fps,name);
 });
 
@@ -59,9 +60,56 @@ test('Rifle grip separates the support hand from the trigger hand without stretc
   }
 });
 
-test('Shipping authored player uses the new generation and every supported action',()=>{
-  const shipping=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
+test('Shipping authored player upgrades to every supported action without replacing authored clips',()=>{
+  const authored=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
+  const shipping=upgradePlayerMotion(authored);
+  for(const [name,clip]of Object.entries(authored.clips))assert.deepEqual(shipping.clips[name],clip,name);
   assert.equal(shipping.artGeneration,3);
   assert.ok(validatePlayerMotion(shipping));
   assert.deepEqual(Object.keys(shipping.clips).sort(),Object.keys(model.clips).sort());
+});
+
+test('Posture upgrade changes only untouched locomotion and preserves custom keys and rig edits',()=>{
+  const old=buildHeroGeneration(source,{legacyPosture:true}),before=structuredClone(old);
+  const next=upgradePlayerMotion(old);
+  assert.deepEqual(old,before);
+  assert.equal(next.postureRevision,1);
+  assert.deepEqual(next.joints,old.joints);
+  assert.deepEqual(next.ik,old.ik);
+  for(const name of Object.keys(old.clips)){
+    if(['idle','walk','run'].includes(name))assert.notDeepEqual(next.clips[name].keys,old.clips[name].keys);
+    else assert.deepEqual(next.clips[name],old.clips[name]);
+  }
+  assert.deepEqual(upgradePlayerMotion(next),next);
+  const edited=structuredClone(old);edited.clips.idle.keys[0].joints.kneeL[0]+=.1;
+  edited.clips.walk.fps=5;edited.wearables={'hair:crop':{0:{custom:true}}};
+  const result=upgradePlayerMotion(edited);
+  assert.deepEqual(result.clips.idle,edited.clips.idle);
+  assert.equal(result.clips.walk.fps,5);
+  assert.deepEqual(result.wearables,edited.wearables);
+  edited.joints.shoulderL.position[0]-=.25;
+  assert.deepEqual(upgradePlayerMotion(edited).clips,edited.clips);
+  const customIK=structuredClone(old);customIK.ik.handL.enabled=false;
+  assert.deepEqual(upgradePlayerMotion(customIK).clips,customIK.clips);
+});
+
+test('Idle rests over planted feet with relaxed elbows and running arms stay in their swing planes',()=>{
+  for(let frame=0;frame<8;frame+=.5){
+    const idle=playerPose({animationAction:'idle',playerFrame:frame},0,model);
+    for(const side of ['L','R']){
+      const hip=idle['hip'+side],knee=idle['knee'+side],foot=idle['foot'+side];
+      assert.ok(Math.abs(hip[1]-foot[1])<.15);
+      assert.ok(Math.abs(foot[2]-1)<1e-5);
+      assert.ok(Math.abs(knee[1])<1.2,'Standing knee should not crouch forward');
+      const shoulder=idle['shoulder'+side],elbow=idle['elbow'+side],hand=idle['hand'+side];
+      assert.ok(distance(shoulder,hand)<distance(shoulder,elbow)+distance(elbow,hand)-.2,'Elbow must not lock');
+    }
+    const run=playerPose({animationAction:'run',playerFrame:frame},0,model);
+    const shoulderAxis=run.shoulderR.map((v,i)=>v-run.shoulderL[i]),width=Math.hypot(...shoulderAxis);
+    for(const side of ['L','R']){
+      const root=run['shoulder'+side],elbow=run['elbow'+side];
+      const sideways=elbow.reduce((sum,v,i)=>sum+(v-root[i])*shoulderAxis[i]/width,0);
+      assert.ok(Math.abs(sideways)<.2,'Running elbow should not jut sideways');
+    }
+  }
 });

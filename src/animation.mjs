@@ -131,6 +131,7 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
+        actor.equipment?.head !== 'jack_o_lantern' &&
         playerAction(actor) === "idle" && !playerLayers(actor,time).length
       ) {
         if (this.playerRevision !== playerMotionRevision) {
@@ -275,12 +276,14 @@ export class Animator {
         return;
       }
       const subject=rigSubject(nameKey),humanoid=!!(subject.data?.joints?.handL&&subject.data?.joints?.footL&&!subject.data.skeleton&&!subject.data.robot);
-      const surface=humanoid?this.humanoidSurface:this.rigSurface;
+      // Native articulated pixel parts use a bounded surface at detail resolution.
+      const detailed=humanoid||['murk_wolf','dreadmane_lion','slime'].includes(nameKey);
+      const surface=detailed?this.humanoidSurface:this.rigSurface;
       const c = surface.getContext("2d");
       c.clearRect(0, 0, surface.width, surface.height);
       c.save();
-      if(humanoid)c.scale(4,4);
-      c.translate(humanoid?64:128,humanoid?64:128);
+      if(detailed)c.scale(4,4);
+      c.translate(detailed?64:128,detailed?64:128);
       const cfg = creatures[nameKey];
       const motionDuration =
         actor.state === "windup"
@@ -299,15 +302,15 @@ export class Animator {
               : 0.65;
       // Night behavior owns state timing. Avoid replacing its duration with the
       // legacy charge/recovery heuristic; explicit stateAge also remains usable.
-      rigSubject(nameKey).draw(c, NIGHT_KINDS.includes(nameKey) ? actor : { ...actor, motionDuration }, time);
+      rigSubject(nameKey).draw(c, (NIGHT_KINDS.includes(nameKey)||nameKey==='dreadmane_lion') ? actor : { ...actor, motionDuration }, time);
       c.restore();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
         surface,
-        Math.round(actor.x - size * (humanoid?4:8) / 3),
-        Math.round(actor.y - size * (humanoid?4:8) / 3),
-        size * (humanoid?8:16) / 3,
-        size * (humanoid?8:16) / 3,
+        Math.round(actor.x - size * (detailed?4:8) / 3),
+        Math.round(actor.y - size * (detailed?4:8) / 3),
+        size * (detailed?8:16) / 3,
+        size * (detailed?8:16) / 3,
       );
       return;
     }

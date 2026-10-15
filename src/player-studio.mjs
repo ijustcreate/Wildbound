@@ -1,3 +1,4 @@
+import {VILLAGERS} from './villager-data.mjs';
 import {drawItem} from './item-art.mjs';
 import { ikChain, solveTwoBone } from './ik.mjs';
 import {refreshLayerEditor} from './animation-layer-ui.mjs';
@@ -146,6 +147,7 @@ export class RigStudio {
     this.$ = $;
     const picker = document.createElement("select");
     picker.className = "ps-subject";
+    if(this.subject==='villager'){const label=document.createElement('label'),variant=document.createElement('select');label.textContent='Villager ';variant.className='ps-villager-variant';for(const v of VILLAGERS)variant.add(new Option(v.name,v.id));variant.value=this.villagerVariant||'april';variant.onchange=()=>{this.villagerVariant=variant.value;this.refresh();};label.append(variant);root.querySelector('.ps-toolbar').append(label);}
     picker.setAttribute("aria-label", "Rig subject");
     for (const [key, subject] of Object.entries(SUBJECTS))
       picker.append(new Option(subject.name, key));
@@ -652,6 +654,7 @@ export class RigStudio {
   actor() {
     const [faceX, faceY] = directionVector(this.direction);
     return {
+      villagerId: this.subject==='villager'?(this.villagerVariant||'april'):undefined,
       sprite: this.definition.sprite,
       kind: this.definition.sprite,
       faceX,
@@ -1146,12 +1149,15 @@ export class RigStudio {
       this.surface = document.createElement("canvas");
       this.surface.width = this.surface.height = 96;
     }
+    const partDensity=['murk_wolf','dreadmane_lion','oathless_captain'].includes(this.subject)?2:1;
+    if(this.surface.width!==96*partDensity)this.surface.width=this.surface.height=96*partDensity;
     const sc = this.surface.getContext("2d"),
       pose = this.pose(),
       actor = this.actor();
     const paint = (p, alpha = 1) => {
-      sc.clearRect(0, 0, 96, 96);
+      sc.clearRect(0, 0, this.surface.width, this.surface.height);
       sc.save();
+      sc.scale(partDensity,partDensity);
       sc.translate(48, 64);
       captureLayers(this.model);
       try { this.definition.draw(sc, actor, this.frame/(this.model.clips[this.clip].fps||12), this.model, p); }

@@ -71,6 +71,7 @@ test("Golem slam knocks back and stuns with a decreasing duration", () => {
   const e = g.enemies[0];
   e.x = p.x - 50;
   e.y = p.y;
+  e.spawnReadyAt=0; // Exercise an attack after its arrival grace.
   e.state = "windup";
   e.timer = 0.01;
   e.dx = 1;

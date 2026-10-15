@@ -1,8 +1,11 @@
+import {paintReaperItem} from './reaper-art.mjs';
+import {paintGhostItem} from './ghost-art.mjs';
 import { ITEMS, itemKind } from "./items.mjs";
 import { mixGearColor, paintGearIcon } from './gear-art.mjs';
 import {paintSuccubusItem} from './succubus-attachments.mjs';
 import {detailRaster,materialIndex,humanoidArtStatus} from './humanoid-hd.mjs';
 import {paintKeeperItem} from './keeper-gear-art.mjs';
+import {paintPumpkinItem} from './pumpkin-art.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -27,6 +30,22 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if(type==='alan_medallion'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(5,3,2,8,'#815a38');r(17,3,2,8,'#815a38');r(7,11,10,9,'#6b482b');r(8,12,8,7,'#c79a50');r(10,13,4,5,'#edc977');r(11,14,2,3,'#607452');return;}
+  if(type==='alan_jungle_knife'){
+    const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
+    r(7,16,4,6,'#2f3325');r(8,17,2,4,'#795634');
+    for(const y of [17,19,21])r(8,y,2,1,'#6f994b');
+    r(5,15,8,2,'#293a2a');r(6,15,6,1,'#a37b44');
+    r(9,11,3,5,'#344639');r(10,8,3,7,'#9aa99a');r(11,5,3,8,'#dbe0bd');
+    r(13,3,3,8,'#e8e9c9');r(15,2,4,3,'#a8baa3');r(18,1,3,2,'#e8e9c9');
+    r(11,8,1,3,'#709451');r(13,5,1,3,'#709451');return;
+  }
+  if(type==='trial_letter'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(5,2,14,20,'#493f31');r(6,3,12,18,'#eddbad');r(9,6,6,1,'#786a53');r(8,9,8,1,'#786a53');r(8,12,7,1,'#786a53');r(10,16,4,3,'#a55742');return;}
+  if(type==='mosquito_charm'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(10,2,4,3,'#d7a963');r(9,5,6,2,'#473a28');r(6,7,4,5,'#b8ce86');r(14,7,4,5,'#b8ce86');r(11,7,2,12,'#8b6336');r(10,9,4,3,'#e4bf75');r(7,13,3,1,'#473a28');r(14,13,3,1,'#473a28');r(12,18,1,4,'#e4bf75');return;}
+  if(type==='dark_essence'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(8,5,8,14,'#372241');r(5,10,14,7,'#372241');r(9,6,6,13,'#795195');r(7,11,10,5,'#a269cb');r(10,8,3,5,'#d2adeb');r(11,2,2,3,'#a269cb');return;}
+  if(paintReaperItem(c,type))return;
+  if(paintGhostItem(c,type))return;
+  if(paintPumpkinItem(c,type))return;
   if(paintKeeperItem(c,type))return;
   if(paintSuccubusItem(c,type))return;
   if(type==='unknown_mushroom'){c.fillStyle='#30253e';c.fillRect(7,13,11,9);c.fillRect(2,7,20,9);c.fillRect(6,3,12,7);c.fillStyle='#d9c5a0';c.fillRect(9,14,7,6);c.fillStyle='#9653bc';c.fillRect(3,8,18,6);c.fillRect(7,4,10,6);c.fillStyle='#e5c9ff';c.fillRect(7,6,3,3);c.fillRect(15,9,3,3);c.fillRect(3,10,2,2);return;}

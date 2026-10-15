@@ -1,0 +1,12 @@
+.realm-panel{padding:20px;max-width:1100px;margin:auto;color:#e7ecd4}
+.realm-panel h2,.realm-panel h3{color:#f1d698}.realm-panel p{line-height:1.5}
+.realm-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0}
+.realm-fields label{display:flex;flex-direction:column;gap:7px;font-size:13px}
+.realm-fields input,.realm-fields select{width:100%;min-width:0;box-sizing:border-box;padding:10px;background:#10251e;color:#f5edd3;border:1px solid #63715b;border-radius:6px}
+.realm-actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.realm-actions button,.realm-landmarks button{padding:10px 14px}
+.realm-status{padding:12px;border:1px solid #69775a;border-radius:7px;overflow-wrap:anywhere}
+.realm-creator{margin-top:24px;border-top:1px solid #69775a;padding-top:10px}
+.realm-toolbar{position:absolute;bottom:78px;left:14px;right:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:30;padding:9px 12px;background:#0d261eef;border:1px solid #819266;border-radius:8px;font-size:12px;color:#efe3bb}
+.realm-toolbar[hidden]{display:none}.realm-toolbar span{flex:1}.realm-toolbar button{padding:6px 12px}
+.designer-dialog:has(.realm-panel){max-height:90vh;overflow:auto}.realm-panel details{padding:12px;background:#132e24;border-radius:6px}
+body[data-realm] #board-button,body[data-realm] #board-panel,body[data-realm] .roster-info>span:first-child{display:none!important}

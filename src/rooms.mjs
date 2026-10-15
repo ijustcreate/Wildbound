@@ -12,6 +12,7 @@ export function snapshot(g) {
     "explored",
     "forestLandscape",
     "boundlessLoadedChunks",
+    "realmViewerId",
   ]);
   return {
     ...Object.fromEntries(
@@ -53,6 +54,8 @@ export function cleanInput(input) {
         "use",
         "store",
         "offhand",
+        "sockets",
+        "controlCycle",
         "salvage",
         "drop",
         "dropOne",
@@ -74,6 +77,7 @@ export class Rooms {
     window.desktop?.onRoom((data) => onEvent(data));
   }
   send(data) {
+    if(this.realm){this.realm.send(data);return;}
     window.desktop?.sendRoom(data);
   }
   async host() {
@@ -91,6 +95,7 @@ export class Rooms {
     }
   }
   tick(g, dt, inputs) {
+    if(this.realm){this.realm.input(inputs);return {};}
     if (this.role === "host") {
       this.age += dt;
       if (this.age > 0.1) {

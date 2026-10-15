@@ -1,4 +1,7 @@
 import {seatOpeningParty} from './src/opening-board.mjs';
+import {RealmClient} from './src/realm-client.mjs';
+let realmClient;
+import {renderVictoryReport,scrollVictoryReport} from './src/victory-ui.mjs';
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
 import {hudIcon} from './src/hud-icons.mjs';
 import {tickMeltingIce} from './src/ice-crafting.mjs';
@@ -10,12 +13,14 @@ import { GameAudio } from './src/audio.mjs';
 import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
 import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES } from "./src/controls.mjs";
+import { controllerGlyph } from './src/controller-glyphs.mjs';
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
 import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels} from './src/creation-preview.mjs';
 import { dialogNeighbour,focusDialogControl } from './src/dialog-navigation.mjs';
 import { createLobbySettingsControllerRouter } from './src/lobby-settings-controller.mjs';
 import { FieldKit } from "./src/field-kit.mjs";
 import { FrameMetrics, FixedClock } from "./src/performance.mjs";
+import { createPerformanceOverlay } from './src/performance-overlay.mjs';
 import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
 import { drawPlayer } from "./src/player-motion.mjs";
 import { generateWorld } from "./src/world.mjs";
@@ -110,13 +115,13 @@ function pressPauseCheat(device='keyboard'){
   if(pauseCheat.press(pauseCheatActive())){
     const owner=game.players.find(p=>p.device===device);
     if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
-    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
     gameDebug.open($('pause-dialog'));
   }
 }
 function feedDebugCode(token,device='keyboard'){
   if(trackDebugCode(token)){
-    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
     pause(undefined,device);
     gameDebug.open($('pause-dialog'));
   }
@@ -196,12 +201,15 @@ window.addEventListener('wildbound-house-applied',e=>{
 });
 function wireGame() {
   game.onSound = sound;
+  game.onVictoryBoard = () => openNextGamePrompt();
   game.mapping = mapping;
   game.pvp=localStorage.getItem("wildbound-pvp")==="on";
   game.controlLabels = controlLabels(mapping);
   game.spriteLibrary = assets.library;
-  game.environment = game.houseWorldsEnabled?'house':$("environment").value;
-  if(game.phase==='lobby')game.mapMode = $("map-mode").value || game.mapMode || 'bounded';
+  if(game.phase==='lobby'){
+    game.environment = game.houseWorldsEnabled?'house':$("environment").value;
+    game.mapMode = game.houseWorldsEnabled?'bounded':$("map-mode").value || game.mapMode || 'bounded';
+  }
   game.sharedStash = structuredClone(profiles.data.sharedStash || []);
   game.eventDuration = Number(
     localStorage.getItem("wildbound-event-duration") || 5,
@@ -248,6 +256,7 @@ async function persistSession() {
 wireGame();
 const metrics = new FrameMetrics(),
   fixedClock = new FixedClock();
+const performanceOverlay = createPerformanceOverlay(metrics);
 let fieldWasPaused = false;
 const fieldKit = new FieldKit({
   game: () => game,
@@ -287,6 +296,7 @@ function show(next) {
   if (next === "workshop") workshop?.render();
 }
 function newLobby({ keepParty = false } = {}) {
+  if(realmClient?.active){realmClient.leave();return;}
   const returning = keepParty ? game.players.map(p=>({
     device:p.device,
     name:p.name,
@@ -298,6 +308,7 @@ function newLobby({ keepParty = false } = {}) {
   boardPinned = false;
   boardDismissedRoll = null;
   game = new Game();
+  game.houseWorldsEnabled=localStorage.getItem('wildbound-mode')!=='off';
   playableLobby?.reset();
   wireGame();
   for(const saved of returning){
@@ -571,8 +582,8 @@ function startGame() {
     return;
   }
   game.spriteLibrary = assets.library;
-  game.environment = $("environment").value;
-  game.mapMode = $("map-mode").value || 'bounded';
+  game.environment = game.houseWorldsEnabled?'house':$("environment").value;
+  game.mapMode = game.houseWorldsEnabled?'bounded':$("map-mode").value || 'bounded';
   if(game.openingBoard)seatOpeningParty(game.players);
   if (!game.start()) return;
   game.difficulty = $("difficulty").value;
@@ -666,7 +677,13 @@ function renderRoster() {
       mana.append(label, track);
     }
     const portrait=document.createElement('canvas');portrait.width=96;portrait.height=112;portrait.className='roster-portrait';portrait.setAttribute('aria-label',p.name+' portrait');
-    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,180);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,faceX:0,faceY:1,animationAction:'idle'},game.time);
+    const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,180);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,
+      // The roster is a stable character plaque. Do not inherit live facing,
+      // stride, attack, or jump state while the player moves in the world.
+      faceX:0,faceY:1,animationAction:'idle',moving:false,step:undefined,
+      playerFrame:undefined,poseTime:undefined,animationProgress:undefined,
+      attack:0,spin:0,charge:0,hit:0,jumpHeight:0,groundHeight:0,
+    },game.time);
     const minions=document.createElement('div');minions.className='roster-minions';
     for(const minion of (game.ghosts||[]).filter(a=>a.owner===p.id&&a.hp>0&&!a.pet).slice(0,3)){
       const dot=document.createElement('span');dot.className='minion-dot';dot.style.setProperty('--cooldown',Math.max(0,1-minion.cooldown)*360+'deg');dot.title=minion.cooldown>0?'Ghost attack ready in '+minion.cooldown.toFixed(1)+'s':'Ghost attack ready';dot.setAttribute('aria-label',dot.title);minions.append(dot);
@@ -697,14 +714,16 @@ function updateHud() {
   game.controlLabels = controlLabels(mapping);
   const p = game.current;
   $("round-label").textContent = "ROUND " + String(game.round).padStart(2, "0");
-  $("turn-label").textContent = p
+  $("turn-label").textContent = game.realm?'Explore the persistent forest':p
     ? p.name + "'s turn"
+    : game.players.length&&game.players.every(p=>p.progress>=FINISH)
+    ? "The center awaits your call"
     : "First hits set turn order";
   $("turn-dot").style.background = p?.color || "#d5ad64";
   $("turn-dot").style.color = p?.color || "#d5ad64";
   $("turn-caption").textContent =
     game.phase === "won"
-      ? "INTERACT: VICTORY CHEST · STRIKE: NEW JUNGLE"
+      ? "INTERACT: VICTORY CHEST · STRIKE BOARD: PLAY AGAIN?"
       : game.players.some((p) => p.progress >= FINISH)
         ? "FINISHER: HOLD INTERACT AT TABLE TO CALL WILDBOUND"
         : game.roll
@@ -714,10 +733,26 @@ function updateHud() {
             : "HIT THE TABLE TO ROLL";
   $("threat-label").textContent =
     game.enemies.length + " CREATURE" + (game.enemies.length === 1 ? "" : "S");
-  $("game-toast").textContent = game.log[0] || "";
-  $("game-toast").classList.toggle('hidden',!!(game.event&&game.eventTime>0&&!profiles.error&&(game.log[0]||'').startsWith(game.event.name)));
-  if (profiles.error)
-    $("game-toast").textContent = "SAVE FAILED: " + profiles.error;
+  const toast=$("game-toast");
+  if(game.phase==='play'&&game.openingBoard&&!profiles.error){
+    const attackDirection={0:'up',1:'right',2:'left',3:'down'}[mapping.attack]||'left';
+    const controller=game.players.find(p=>p.device?.startsWith('pad:'));
+    const family=controller?.controllerFamily||'xbox',signature=family+':'+attackDirection;
+    if(toast.dataset.openingPrompt!==signature){
+      const label=document.createElement('span');label.textContent='Press';
+      const glyph=controllerGlyph(document.createElement('canvas'),family,'face',attackDirection);
+      const action=document.createElement('span');action.textContent='to roll';
+      const keyboard=document.createElement('small');keyboard.textContent='F / click';keyboard.setAttribute('aria-label','Keyboard: F or click');
+      toast.replaceChildren(label,glyph,action,keyboard);toast.dataset.openingPrompt=signature;
+    }
+    toast.classList.add('opening-board-prompt');
+    toast.classList.remove('hidden');
+  }else{
+    toast.classList.remove('opening-board-prompt');toast.dataset.openingPrompt='';
+    toast.textContent=game.log[0]||'';
+    toast.classList.toggle('hidden',!!(game.event&&game.eventTime>0&&!profiles.error&&(game.log[0]||'').startsWith(game.event.name)));
+    if(profiles.error)toast.textContent='SAVE FAILED: '+profiles.error;
+  }
   $("event-card").classList.toggle(
     "hidden",
     !!game.roll || !!game.eventOnBoard || !game.event || game.eventTime <= 0,
@@ -752,7 +787,9 @@ function updateHud() {
   if (game.roll && game.roll.elapsed >= 1.6)
     $("dice-result").textContent =
       game.roll.dice.join(" + ") + " = " + game.roll.total;
-  $("game-hint").textContent = game.openingBoard
+  $("game-hint").textContent = game.realm
+    ? controlHelp(mapping)+' · Meet the Keeper east of camp · Return Home keeps your forest progress'
+    : game.openingBoard
     ? "The board is waking. Hit it to roll; movement unlocks when the first event appears."
     : game.locked
       ? controlHelp(mapping) + " · Field Kit: " + game.controlLabels.field
@@ -768,35 +805,21 @@ function disconnected() {
 }
 function showVictoryResults() {
   const dialog = $("victory-results");
-  const summary = $("victory-summary");
-  summary.textContent = `${game.cleared} creatures cleared · Round ${game.round} · ${game.players.length} explorer${game.players.length === 1 ? "" : "s"} returned`;
-  const report = $("victory-report");
-  report.replaceChildren();
-  const heading = document.createElement("h3");
-  heading.textContent = "EXPEDITION REPORT";
-  report.append(heading);
-  const table = document.createElement("table");
-  table.innerHTML = "<thead><tr><th>Explorer</th><th>Loot</th><th>Damage</th><th>Rescues</th><th>Objectives</th></tr></thead>";
-  const body = document.createElement("tbody");
-  for (const player of game.debrief || []) {
-    const row = document.createElement("tr");
-    for (const value of [player.name, player.lootRecovered || 0, player.damageTaken || 0, player.rescues || 0, player.objectives || 0]) {
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.append(cell);
-    }
-    body.append(row);
-  }
-  table.append(body);
-  report.append(table);
+  renderVictoryReport(dialog,game);
   if (!dialog.open) dialog.showModal();
+  $("victory-continue").focus({preventScroll:true});
 }
 $("victory-results").addEventListener("cancel", (event) => event.preventDefault());
-$("victory-chest-button").onclick = () => {
-  $("victory-results").close();
-  const p = game.players[0];
-  if (p) game.openInventory(p, "victory");
-};
+$("victory-results").addEventListener("keydown", (event) => {
+  if(['ArrowUp','ArrowDown','PageUp','PageDown'].includes(event.key)){
+    event.preventDefault();scrollVictoryReport($("victory-results"),['ArrowUp','PageUp'].includes(event.key)?-1:1);return;
+  }
+  if (["Enter", " ", "Escape"].includes(event.key)) {
+    event.preventDefault();
+    $("victory-results").close();
+  }
+});
+$("victory-continue").addEventListener("click", () => $("victory-results").close());
 function restartSameLevel() {
   const level = { seed: game.seed, environment: game.environment, mapMode:game.mapMode||'bounded', difficulty: game.difficulty, diceCount: game.diceCount };
   const party = game.players.map((p) => ({
@@ -804,6 +827,7 @@ function restartSameLevel() {
     controllerFamily: p.controllerFamily, controllerName: p.controllerName,
   }));
   $("victory-results").close();
+  $("next-game-dialog").close();
   heroRoot.replaceChildren();
   heroUI.panels.clear();
   game = new Game();
@@ -827,9 +851,15 @@ function restartSameLevel() {
   $("dice-count").value = String(level.diceCount);
   startGame();
 }
-$("victory-restart-button").onclick = restartSameLevel;
-$("victory-lobby-button").onclick = () => {
-  $("victory-results").close();
+function openNextGamePrompt() {
+  const dialog = $("next-game-dialog");
+  if (!dialog.open) dialog.showModal();
+  dialog.querySelector("#next-game-no").focus();
+}
+$("next-game-yes").onclick = restartSameLevel;
+$("next-game-no").onclick = () => $("next-game-dialog").close();
+$("next-game-lobby").onclick = () => {
+  $("next-game-dialog").close();
   newLobby({ keepParty: true });
 };
 heroRoot.addEventListener('victory-action', (event) => {
@@ -837,6 +867,7 @@ heroRoot.addEventListener('victory-action', (event) => {
   else if(event.detail==='lobby') newLobby({keepParty:true});
 });
 function pause(reason,device) {
+  if (game.phase === "won") return;
   refreshPauseOptions();
   if (screen !== "play") return;
   const owner=game.players.find(p=>p.device===(device||'keyboard'))||game.current||game.players[0];
@@ -944,7 +975,7 @@ for(const sign of ['down','up']){
  $('pause-sfx-'+sign).onclick=()=>{audio.set('sfx',audio.settings.sfx+(sign==='up'?.1:-.1));$('sfx-volume').value=audio.settings.sfx;refreshPauseOptions();};
 }
 $('pause-settings').onclick=()=>$('settings-button').click();
-$('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give});gameDebug.open($('pause-dialog'));};
+$('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});gameDebug.open($('pause-dialog'));};
 $("board-button").onclick = () => (boardPinned = !boardPinned);
 $("close-board").onclick = () => {
   if(game.roll)return;
@@ -967,6 +998,7 @@ $("restart-button").onclick = () => {
   newLobby({keepParty:["won","lost"].includes(game.phase)});
 };
 $("quit-button").onclick = () => {
+  if(realmClient?.active){$('pause-dialog').close();realmClient.leave();return;}
   profiles.capture(game);
   persistSession();
   $("pause-dialog").close();
@@ -1108,6 +1140,7 @@ window.addEventListener("keydown", (e) => {
   }
   if (
     screen === "play" &&
+    !playableLobby?.isPlayingTelevision(device) &&
     (e.code === "AltLeft" || e.code === "AltRight") &&
     !e.repeat &&
     !document.querySelector("dialog[open]")
@@ -1238,6 +1271,12 @@ function dialogController(pad, previous) {
   if (!dialog) return;
   if(dialog.dataset.ownerDevice && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
   dialog.updateControllerFamily?.(controllerFamily(pad));
+  if(dialog.id==='victory-results'){
+    if((pad.buttons[0]?.pressed&&!previous[0])||(pad.buttons[1]?.pressed&&!previous[1]))dialog.close();
+    else if(pad.buttons[12]?.pressed&&!previous[12])scrollVictoryReport(dialog,-1);
+    else if(pad.buttons[13]?.pressed&&!previous[13])scrollVictoryReport(dialog,1);
+    return;
+  }
   if(dialog.id==='character-name-dialog'&&((pad.buttons[4]?.pressed&&!previous[4])||(pad.buttons[5]?.pressed&&!previous[5]))){dialog.rotatePreview(pad.buttons[4]?.pressed?-1:1);return;}
   const controls = Array.from(
     (dialog.querySelector('.game-debug-console')||dialog).querySelectorAll(
@@ -1461,7 +1500,7 @@ function inputFrame() {
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:!!pad.buttons[0]?.pressed,summon:!!pad.buttons[5]?.pressed,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:pressed('interact'),summon:false,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
       inputs[device].tvDown=!!pad.buttons[13]?.pressed;
       inputs[device].tvUp=!!pad.buttons[12]?.pressed;
       inputs[device].portal=pressed('portal');
@@ -1485,6 +1524,7 @@ function inputFrame() {
     const lootTogglePressed = pad.buttons[14]?.pressed && !previous[14];
     if (
       screen === "play" &&
+      !playableLobby?.isPlayingTelevision(device) &&
       controllerPlayer &&
       !controllerPlayer.ui &&
       !modal &&
@@ -1508,8 +1548,9 @@ function inputFrame() {
       jump: pressed("jump"),
       dodge: pressed("dodge") || pad.buttons[7]?.pressed,
       trap: pressed("trap"),
-      interact: pressed("interact") || (!!controllerPlayer?.room && !!pad.buttons[0]?.pressed),
-      summon: !!pad.buttons[5]?.pressed,
+      interact: pressed("interact"),
+      controlCycle: !!pad.buttons[5]?.pressed && !previous[5],
+      summon: false,
       potion: pressed("potion") && !pad.buttons[5]?.pressed,
       block: pressed("block"),
       inventory: pressed("inventory"),
@@ -1519,7 +1560,7 @@ function inputFrame() {
       prev: lootTogglePressed&&!controllerPlayer?.ui ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
       up: !!pad.buttons[12]?.pressed || dead(pad.axes[1]) < -0.5,
       down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
-      panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
+      panel: !!pad.buttons[4]?.pressed,
       use: !!pad.buttons[0]?.pressed,
       store: !!pad.buttons[2]?.pressed && !pad.buttons[6]?.pressed,
       dropOne: !!pad.buttons[2]?.pressed && !!pad.buttons[6]?.pressed,
@@ -1621,9 +1662,10 @@ window.addEventListener('error',e=>{diagnosticErrors.push(String(e.message).slic
 window.addEventListener('unhandledrejection',e=>{diagnosticErrors.push(String(e.reason?.message||e.reason).slice(0,500));if(diagnosticErrors.length>8)diagnosticErrors.shift();});
 const menuHeldInputs = new Map();
 function frame(now) {
+  const cpuStart = metrics.enabled ? performance.now() : 0;
   const elapsed = Math.max(0, (now - last) / 1000);
   const dt = Math.min(elapsed, 0.05);
-  metrics.record("frame", elapsed * 1000);
+  if(document.visibilityState!=='hidden') metrics.record("frame", elapsed * 1000);
   last = now;
   if (ready) {
     designer?.animate(dt);
@@ -1732,8 +1774,11 @@ function frame(now) {
   if(!audio.unlocked&&Array.from(navigator.getGamepads?.()||[]).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
   $('pvp-safe-indicator').hidden=screen!=='play'||game.pvp;
   routeMusic(elapsed); audio.update(game,screen==="play"&&!paused);
+  if(metrics.enabled&&cpuStart)metrics.record('cpu',performance.now()-cpuStart);
+  performanceOverlay.tick(now,{game,screen,paused,canvas:renderer?.canvas,memory:performance.memory,errors:diagnosticErrors});
   requestAnimationFrame(frame);
 }
+document.addEventListener('visibilitychange',()=>{last=performance.now();metrics.reset();});
 requestAnimationFrame(frame);
 try {
   await assets.load();
@@ -1744,6 +1789,30 @@ try {
     for (const e of game.enemies) game.configureCreature(e);
     game.persist();
   });
+  realmClient=new RealmClient({rooms,getGame:()=>game,setGame:value=>{game=value;},
+    getPaused:()=>paused,pause,
+    enterPlay:g=>{
+      document.body.dataset.realm='forest';
+      if($('pause-dialog').open)$('pause-dialog').close();
+      g.spriteLibrary=assets.library;g.mapping=mapping;g.controlLabels=controlLabels(mapping);
+      renderer=new Renderer($('game-canvas'),assets);renderer.showLootDetails=lootDetailsVisible;
+      paused=false;boardPinned=false;show('play');renderRoster();
+    },
+    returnToGame:(saved,wasPaused)=>{
+      delete document.body.dataset.realm;
+      game=saved;paused=wasPaused;
+      if(game.phase==='lobby'){show('lobby');renderLobby();}
+      else {renderer=new Renderer($('game-canvas'),assets);show('play');renderRoster();}
+    }});
+  designer.realmClient=realmClient;
+  if(window.desktop?.testMode)window.realmTest={client:realmClient,getGame:()=>game,getProfiles:()=>profiles.data,getDesigner:()=>designer};
+  realmClient.openServers=()=>{designer.tab='Servers';designer.open();};
+  for(const parent of [$('party-menu'),$('local-button').parentElement]){
+    const b=document.createElement('button');b.type='button';b.className='text-button';
+    b.textContent='Persistent Worlds';b.dataset.persistentWorlds='true';b.onclick=realmClient.openServers;parent.append(b);
+  }
+  const forestPause=document.createElement('button');forestPause.type='button';forestPause.textContent='Persistent Worlds / Servers';
+  forestPause.onclick=realmClient.openServers;$('pause-dev').after(forestPause);
   window.addEventListener('rig-sprite-edit', ({detail})=>{
     const priorScreen=screen, priorPaused=paused;
     const original={sprite:workshop.sprite,name:workshop.name,history:workshop.history,future:workshop.future};
@@ -1771,6 +1840,7 @@ try {
   $('party-menu').prepend(resume);resume.textContent='Continue';
   resume.onclick = async () => {
     try {
+      if(realmClient?.active)await realmClient.leave();
       const saved = window.desktop
         ? await window.desktop.loadSession()
         : JSON.parse(localStorage.getItem("wildbound-session") || "null");

@@ -1,4 +1,5 @@
 import {ITEMS,itemKind} from './items.mjs';
+import {friendlyIceTarget} from './frost-prison.mjs';
 import {clearShot} from './navigation.mjs';
 export const CHARM_SECONDS=5,CHARM_GRACE=2,CHARM_KISS_LIMIT=16;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -42,7 +43,7 @@ export function charmCanTarget(g,source,target){
 }
 export function playerCombatTargets(g,source){
  const owner=source?.owner??source?.id;
- return [...(g.enemies||[]),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&(g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
+ return [...(g.enemies||[]),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&(friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
 }
 export const charmShot=p=>({charmShot:isCharmed(p)});
 export function tickCharmedPlayer(g,p,dt){

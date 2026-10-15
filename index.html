@@ -20,7 +20,12 @@
     <link rel="stylesheet" href="src/inventory-workbench.css" />
     <link rel="stylesheet" href="src/character-creator.css" />
     <link rel="stylesheet" href="src/ui-polish.css" />
+    <link rel="stylesheet" href="src/merchant-ui.css" />
+    <link rel="stylesheet" href="src/victory-ui.css" />
+    <link rel="stylesheet" href="src/board-ui.css" />
+    <link rel="stylesheet" href="src/vending-ui.css" />
     <link rel="stylesheet" href="src/npc-dialogue.css" />
+    <link rel="stylesheet" href="src/realm.css" />
   </head>
   <body>
     <div id="loading">
@@ -133,16 +138,11 @@
       <div id="roster"></div>
       <div id="game-toast" aria-live="polite"></div>
       <div id="board-panel" class="hidden">
-        <div>
-          <span>THE LIVING BOARD</span
-          ><button id="close-board" aria-label="Close board view">×</button>
-        </div>
-        <div class="turn-pill">
+        <div class="board-status">
           <span id="turn-dot"></span>
-          <div>
-            <small id="turn-caption">HIT THE TABLE TO ROLL</small
-            ><strong id="turn-label">Scout's turn</strong>
-          </div>
+          <strong id="turn-label">Scout's turn</strong>
+          <small id="turn-caption">HIT THE TABLE TO ROLL</small>
+          <button id="close-board" aria-label="Close board view">×</button>
         </div>
         <canvas id="board-closeup" width="560" height="380"></canvas>
         <p id="board-caption">
@@ -398,16 +398,28 @@
       </button>
     </dialog>
     <div id="pvp-safe-indicator" role="status" aria-label="PvP off: players cannot damage each other" hidden>♜ PvP OFF</div>
-    <dialog id="victory-results" aria-labelledby="victory-title">
+    <dialog id="victory-results" aria-labelledby="victory-title" tabindex="-1">
+      <div class="victory-heading">
       <div class="victory-kicker">EXPEDITION COMPLETE</div>
       <div class="victory-stamp" aria-hidden="true">WILDBOUND!</div>
       <h2 id="victory-title">The jungle remembers your names.</h2>
-      <p id="victory-summary"></p>
+      </div>
+      <div class="victory-content">
+      <div id="victory-summary"></div>
       <div id="victory-report" class="victory-report"></div>
+      </div>
+      <div class="victory-footer">
+      <p id="victory-return-hint"><strong>Your victory chest is waiting.</strong>Return to the board and interact with the chest to claim your rewards.</p>
+      <button id="victory-continue">Return to board</button>
+      </div>
+    </dialog>
+    <dialog id="next-game-dialog" aria-labelledby="next-game-title">
+      <div class="eyebrow">THE BOARD IS READY</div>
+      <h2 id="next-game-title">Do you want to play another game of Wildbound?</h2>
       <div class="victory-actions">
-        <button id="victory-chest-button" class="primary">OPEN VICTORY CHEST</button>
-        <button id="victory-restart-button" class="small-button">RESTART THIS LEVEL</button>
-        <button id="victory-lobby-button" class="text-button">RETURN TO LOBBY</button>
+        <button id="next-game-yes" class="primary">YES · PLAY AGAIN</button>
+        <button id="next-game-no" class="small-button">NO · STAY HERE</button>
+        <button id="next-game-lobby" class="text-button">RETURN TO LOBBY</button>
       </div>
     </dialog>
     <dialog id="settings-dialog">

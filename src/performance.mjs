@@ -28,6 +28,15 @@ export class FrameMetrics {
       })
       .join(" · ");
   }
+  stats(name) {
+    const list = this.samples[name] || [];
+    if (!list.length) return null;
+    const sorted = [...list].sort((a,b)=>a-b);
+    return {count:list.length,mean:list.reduce((a,b)=>a+b,0)/list.length,
+      p95:sorted[Math.ceil(sorted.length*.95)-1],max:sorted.at(-1),
+      over33:list.filter(ms=>ms>33.34).length};
+  }
+  reset() { this.samples = {}; }
 }
 export class FixedClock {
   constructor(step = 1 / 60) {

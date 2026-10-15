@@ -3,6 +3,7 @@ import { ITEMS, SLOTS, give, take, equip, itemStats } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { drawPlayer, directionVector } from "./player-motion.mjs";
 import {skillAvailable,trainSkill} from './field-skills.mjs';
+import {trainingPoints} from './training-points.mjs';
 import {hasSetSkill} from './items.mjs';
 import {tamePet} from './hunter-pets.mjs';
 import {openPetCare} from './hunter-pet-ui.mjs';
@@ -82,7 +83,7 @@ export class FieldKit {
   }
   open(player) {
     if (this.dialog.open || document.querySelector("dialog[open]")) return;
-    this.player = player || this.game().players[0];
+    this.player = player || this.game().players.find(p=>this.game().realm&&p.id===this.game().realmViewerId) || this.game().players[0];
     if (!this.player) return;
     this.dialog.dataset.ownerDevice=this.player.device;
     initializeField(this.player);
@@ -219,7 +220,7 @@ export class FieldKit {
       this.body.append(node("h3", "The board offers a path"));
       for (const [id, title] of [
         ["supplies", "Restock · a tonic"],
-        ["treasure", "Challenge · another encounter + Amber charm"],
+        ["treasure", "Challenge · clear a trial for an Amber charm"],
         ["curse", "Bargain · 20 gold, +15% damage taken"],
       ])
         this.action(title, () => choosePath(g, p, id));
@@ -543,13 +544,13 @@ export class FieldKit {
     const ranger=node('article',null,'field-card');ranger.append(node('h3','Ranger · Tame companion'),node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.'));
     const tame=this.action('Tame nearby animal',()=>{tamePet(g,p);return 'Use R / RB while near a wild animal.';},ranger);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
     if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},ranger);this.body.append(ranger);
-    this.body.append(node("p", `Spend XP on permanent field skills. XP: ${p.xp || 0} · Next level: ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} to go.`, "field-card"));
+    this.body.append(node("p", `Training Points: ${trainingPoints(p)} · Earn one per level. XP: ${p.xp || 0} · Level ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} XP to go.`, "field-card"));
     for (const s of SKILLS) {
       const rank = f.skills?.[s.id] || 0;
       const card = node("article", null, "field-card");
       card.append(node("h3", `${s.name} · ${rank}/${s.max}`), node("p", s.detail));
       const unlocked=skillAvailable(p,s.id);
-      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : `Train · ${s.cost} XP`, () => trainSkill(p,s.id), card);
+      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : 'Train · 1 Training Point', () => trainSkill(p,s.id), card);
       button.disabled = !unlocked || rank >= s.max;
       this.body.append(card);
     }
@@ -845,8 +846,12 @@ export class FieldKit {
     if (!this.lastStatus || time - this.lastStatus > 0.12) {
       this.lastStatus = time;
       this.status.textContent = [
-        g.current
+        g.realm
+          ? 'Persistent Forest · explore freely'
+          : g.current
           ? `${g.current.name} · roll next`
+          : g.players.length&&g.players.every(p=>p.progress>=48)
+            ? 'Center reached · hold Interact beside the board to call WILDBOUND'
           : g.openingBoard
             ? "Strike the board to begin"
             : "First hits set turn order",

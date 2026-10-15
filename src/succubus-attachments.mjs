@@ -1,7 +1,7 @@
 // Optional native-pixel attachments. Default humanoids gain no extra bones.
 export const SUCCUBUS_JOINTS=Object.freeze({
- wingRootL:{parent:'chest',position:[-4,-3,24]},wingMidL:{parent:'wingRootL',position:[-12,-4,31]},wingTipL:{parent:'wingMidL',position:[-23,-3,24]},
- wingRootR:{parent:'chest',position:[4,-3,24]},wingMidR:{parent:'wingRootR',position:[12,-4,31]},wingTipR:{parent:'wingMidR',position:[23,-3,24]},
+ wingRootL:{parent:'chest',position:[-4,-3,24]},wingMidL:{parent:'wingRootL',position:[-12,-6,31]},wingTipL:{parent:'wingMidL',position:[-23,-8,24]},
+ wingRootR:{parent:'chest',position:[4,-3,24]},wingMidR:{parent:'wingRootR',position:[12,-6,31]},wingTipR:{parent:'wingMidR',position:[23,-8,24]},
  tailBase:{parent:'pelvis',position:[0,-4,15]},tailMid:{parent:'tailBase',position:[6,-9,8]},tailTip:{parent:'tailMid',position:[12,-5,5]},
 });
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
@@ -19,16 +19,33 @@ export function attachmentPose(positions,actor,time,model){
   const parent=name.startsWith('wing')?'chest':'pelvis',anchor=positions[parent],rest=model?.joints[parent]?.position||(parent==='chest'?[0,0,23]:[0,0,15]);
   if(out[name]){out[name]=out[name].map((v,i)=>v+anchor[i]-rest[i]);continue;}
   out[name]=j.position.map((v,i)=>v+anchor[i]-rest[i]);
+  // The shared defaults include the player's profile sweep. Authored wing
+  // joints above retain their own geometry and animation keys.
   if(name.startsWith('wingMid'))out[name][2]+=flap*(flying?5:1);
   if(name.startsWith('wingTip')){out[name][0]*=flying?1:.66;out[name][2]+=flap*(flying?8:2)-4;}
   if(name.startsWith('tail'))out[name][0]+=Math.sin(phase*.6)*(name==='tailTip'?3:1);
  }
  return out;
 }
-export function drawHumanoidWing(c,p,side,palette={}){
+export function drawHumanoidWing(c,p,side,palette={},shape='scalloped'){
  const root=p['wingRoot'+side],mid=p['wingMid'+side],tip=p['wingTip'+side],sign=side==='L'?-1:1;
- const low={x:root.x+(tip.x-root.x)*.3+sign*2,y:root.y+12},notch={x:root.x+(tip.x-root.x)*.68,y:tip.y+7};
  const ink=palette.ink||'#281e34',base=palette.base||'#564065',dark=palette.dark||'#35273f',light=palette.light||'#8e738e',bone=palette.bone||'#c3beb3';
+ if(shape==='upright'){
+  // Keep the tall bat-wing shoulder and pale outer bones from the original.
+  // The lower membrane returns to the root without the hanging waist lobes.
+  // Every point stays in the existing joint plane for turns and wing flaps.
+  const point=(m,t)=>({x:root.x+(mid.x-root.x)*m+(tip.x-root.x)*t,y:root.y+(mid.y-root.y)*m+(tip.y-root.y)*t});
+  const peak=point(1.38,-.1),bend=point(.82,.12),elbow=point(.35,.85),outer=point(-.12,1.18);
+  const lower=point(-.38,.27),inset=point(-.2,.72),upper=point(.62,-.02);
+  const outline=[root,upper,peak,bend,elbow,outer,inset,lower];
+  for(let i=1;i<outline.length-1;i++)triangle(c,root,outline[i],outline[i+1],i<4?base:dark);
+  for(let i=0;i<outline.length;i++)line(c,outline[i],outline[(i+1)%outline.length],ink,2);
+  for(const end of [bend,elbow,outer])line(c,root,end,ink);
+  line(c,root,upper,light);line(c,upper,peak,light);
+  line(c,peak,bend,bone,2);line(c,bend,elbow,bone);line(c,elbow,outer,bone);
+  return;
+ }
+ const low={x:root.x+(tip.x-root.x)*.3+sign*2,y:root.y+12},notch={x:root.x+(tip.x-root.x)*.68,y:tip.y+7};
  triangle(c,root,mid,tip,ink);triangle(c,root,tip,low,ink);
  const inner={x:mid.x+(root.x-mid.x)*.18,y:mid.y+2};
  triangle(c,root,inner,tip,base);triangle(c,root,tip,notch,base);triangle(c,root,notch,low,dark);
@@ -45,16 +62,15 @@ export function drawHumanoidTail(c,p){
  triangle(c,{x:d.x-2,y:d.y-2},{x:d.x+1,y:d.y-2},{x:d.x,y:d.y+2},'#bd7787');
 }
 export function drawSuccubusHorns(c,h,d,palette={}){
- const ink=palette.ink||'#2d1e28',base=palette.base||'#7c3b50',light=palette.light||'#b55c6d',trim=palette.trim||'#c0a06d';
+ const ink=palette.ink||'#2d1e28',base=palette.base||'#7c3b50',light=palette.light||'#b55c6d';
  const profile=d===2||d===6,sign=d===2?-1:1;
- const horns=profile?[[sign*2,sign]]:[[-4,-1],[4,1]];
- for(const [x,s]of horns){for(let n=0;n<7;n++){const bend=n<4?n*.65:2-(n-4)*.6;rect(c,h.x+x+s*bend-1,h.y-5-n,3,2,ink);rect(c,h.x+x+s*bend,h.y-5-n,1,1,n<3?base:light);}rect(c,h.x+x-1,h.y-4,3,1,trim);}
- rect(c,h.x-4,h.y-4,9,1,'#352735');rect(c,h.x-3,h.y-4,7,1,'#8e6c4e');
+ const horns=profile?[[sign*4,sign]]:[[-6,-1],[6,1]];
+ for(const [x,s]of horns)for(let n=0;n<7;n++){const bend=n<4?n*.65:2-(n-4)*.6;rect(c,h.x+x+s*bend-1,h.y-5-n,3,2,ink);rect(c,h.x+x+s*bend,h.y-5-n,1,1,n<3?base:light);}
 }
 export function paintSuccubusItem(c,id){
- if(id==='succubus_horns'){drawSuccubusHorns(c,{x:12,y:15},0);rect(c,8,15,9,3,'#312332');rect(c,9,15,7,1,'#c0a06d');rect(c,11,15,2,2,'#e5bf7c');return true;}
+ if(id==='succubus_horns'){drawSuccubusHorns(c,{x:12,y:15},0);return true;}
  if(id==='succubus_wings'){
-  for(const [side,sign]of [['L',-1],['R',1]])drawHumanoidWing(c,{['wingRoot'+side]:{x:12,y:10},['wingMid'+side]:{x:12+sign*4,y:4},['wingTip'+side]:{x:12+sign*9,y:10}},side);
+  for(const [side,sign]of [['L',-1],['R',1]])drawHumanoidWing(c,{['wingRoot'+side]:{x:12,y:12},['wingMid'+side]:{x:12+sign*6,y:5},['wingTip'+side]:{x:12+sign*8,y:15}},side,{},'upright');
   rect(c,11,10,3,6,'#b29363');rect(c,12,11,1,3,'#eed9a2');return true;
  }
  if(id==='succubus_whip'){

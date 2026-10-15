@@ -162,7 +162,8 @@ test('Actual enter/explore/chest/exit preserves the original expedition and new 
     const explored = d.well.explored.length;
     for (const r of d.well.rooms) walkTunnel(g, p, {x: (r.x + Math.floor(r.w / 2)) * 16 + 8, y: (r.y + Math.floor(r.h / 2)) * 16 + 8});
     assert.ok(d.well.explored.length > explored + 150);
-    const camera = wellRoomCamera(p, d.well); assert.ok(camera.x > 0 && camera.y > 0);
+    const camera = wellRoomCamera(p, d.well); assert.ok(Number.isFinite(camera.x)&&Number.isFinite(camera.y));
+    assert.ok(camera.x>=0&&camera.x<=d.well.width*16&&camera.y>=0&&camera.y<=d.well.height*16,'camera remains clamped inside the room, including a zero edge offset');
     press(g, p, {interact: true}); assert.ok(d.well.chest.opened);
     assert.equal(p.inventory.some(i => i?.type === 'magic_essence'), false, 'opening never transfers items');
     takeChest(g, p); assert.equal(d.well.chest.items.some(Boolean), false);

@@ -1,7 +1,9 @@
+import {openVillagerDialogue,villagerDialogueView,villagerDialogueAction} from './villagers.mjs';
 import {getNpcQuestConfig} from './npc-quest-data.mjs';
 import {ITEMS} from './items.mjs';
 import {merchantSites} from './traveling-merchant.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
+import {alanActor} from './alan-ally.mjs';
 
 const clone=x=>structuredClone(x),distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const key=p=>p.profileId||String(p.id);
@@ -42,7 +44,7 @@ export function spawnQuestNpc(g){
   if(!existing&&(g.questNpcs||[]).length>=4)return false;
   const sites=merchantSites(g),position=sites[Math.floor(Math.max(0,Math.min(.999,g.random?.()??.5))*sites.length)];
   if(!position&&!existing){g.message?.('The wayfarer could not find a safe campsite.');return false;}
-  const npc=existing||{id:g.nextId++,npcId:config.id,...position,campX:position.x,campY:position.y,hp:1,maxHp:1,faction:'ally',invincible:true,unattackable:true,
+  const npc=existing||{id:g.nextId++,npcId:config.id,sprite:'player',...position,campX:position.x,campY:position.y,hp:1,maxHp:1,faction:'ally',invincible:true,unattackable:true,
     faceX:0,faceY:1,moving:false,step:0,equipment:clone(config.equipment),appearance:clone(config.appearance||DEFAULT_APPEARANCE),name:config.name,title:config.title};
   npc.encounter=`${scene(g)}:${g.nextId++}`;
   if(!existing)(g.questNpcs||=[]).push(npc);
@@ -50,7 +52,13 @@ export function spawnQuestNpc(g){
   g.reveal={x:npc.x,y:npc.y,life:4};g.message?.(`${config.name} has made camp. Approach and interact to talk.`);g.persist?.();return npc;
 }
 export function openNpcDialogue(g,p){
+  if(openVillagerDialogue(g,p))return true;
   if(p.ui||p.room||p.hp<=0||g.phase!=='play')return false;
+  const alan=alanActor(g);
+  if(alan&&distance(alan,p)<=68){
+    p.ui={shop:'npc-dialogue',ownerDevice:p.device,npcId:'alan',node:'story',index:0};
+    p.consumeInput=true;p.charge=0;p.interactUsed=true;p.menuRepeat=0;g.onSound?.('ui',p);return true;
+  }
   const npc=(g.questNpcs||[]).filter(n=>distance(n,p)<=68).sort((a,b)=>distance(a,p)-distance(b,p))[0];if(!npc)return false;
   const config=getNpcQuestConfig();meet(p,npc);establishObjective(g,p,npc);
   p.ui={shop:'npc-dialogue',ownerDevice:p.device,npcId:npc.npcId,node:config.dialogue.start,index:0};
@@ -60,6 +68,17 @@ const carried=(p,item)=>(p.inventory||[]).reduce((n,s)=>n+(s?.type===item?s.qty|
 function progress(p,a){return a.contract.objective.type==='collect'?Math.min(a.contract.objective.count,carried(p,a.contract.objective.item)):a.progress||0;}
 function choicesForNode(config,node){const def=config.dialogue.nodes[node];return (def?.choices||[]).map(c=>({label:c.label,action:'node:'+c.next}));}
 export function npcDialogueView(g,p){
+  if(p.ui?.villagerId)return villagerDialogueView(g,p);
+  if(p.ui?.npcId==='alan'){
+    const alan=alanActor(g),following=alan?.allyMode==='follow',you=following&&alan.allyOwner===p.id;
+    return {npc:alan?{...alan,name:'Alan',title:'The Wilderness Man',sprite:'alan'}:null,title:'Alan · The Wilderness Man',
+      text:p.ui.node==='story'?"I've been trapped in Wildbound for years. The forest changes its paths, but I learned to listen. I can keep the monsters off this board—or walk beside you.":
+        you?'I have your trail. Lead on; I will keep the creatures back.':following?'I am following another adventurer. I can take your trail instead.':'I will circle the board and keep the monsters away.',
+      choices:[{label:'Follow me, Alan.',action:'alan:follow',detail:'Alan follows this player and fights nearby monsters.'},
+        {label:'Keep patrolling and protect the board.',action:'alan:patrol',detail:'Alan guards the board and hunts nearby monsters.'},
+        {label:'Tell me how you survived.',action:'alan:story'},
+        {label:'Stay safe out there.',action:'close'}],stage:1,totalStages:1,notice:p.ui.notice||'',quest:null};
+  }
   const config=getNpcQuestConfig(),u=p.ui||{},npc=(g.questNpcs||[]).find(n=>n.npcId===u.npcId);
   const s=npcQuestState(p,config.id),stage=currentStage(p,config),a=s.active;
   const view={npc:{...npc,name:config.name,title:config.title,equipment:config.equipment,appearance:config.appearance},title:config.title,text:'',choices:[],
@@ -67,24 +86,39 @@ export function npcDialogueView(g,p){
   if(a){const value=progress(p,a);view.quest={title:a.contract.title,description:a.contract.description,progress:value,target:a.contract.objective.count,ready:value>=a.contract.objective.count,reward:a.reward};}
   if(u.node==='quests'){
     if(a){view.text=view.quest.ready?(a.contract.completion||'You kept your word. Let me give you something for the road.'):`${a.contract.description} Return when the work is done.`;
-      view.choices=view.quest.ready?[{label:`Collect ${ITEMS[a.reward]?.name||a.reward}`,action:'claim'}]:[{label:'Show me the route again.',action:'route'}];
+      view.choices=view.quest.ready?[{label:`Turn in quest · receive ${ITEMS[a.reward]?.name||a.reward}`,action:'claim',detail:'Claim your completed Keeper quest and receive the reward.'}]:[{label:'Show me the route again.',action:'route'}];
       view.choices.push({label:'Tell me about your expedition.',action:'node:'+ (config.dialogue.nodes.story?'story':config.dialogue.start)},{label:'I’ll return soon.',action:'close'});
     }else if(!stage){view.text='Every piece of this kit has a story. Now it has yours. You have earned the full Keeper set—and a friend on every road.';view.choices=[{label:'Until our next adventure.',action:'close'}];}
     else if(s.lastRewardEncounter===s.encounters){view.text='One promise at a time. Keep that piece safe. When our paths cross again, I’ll have another task for you.';view.choices=[{label:'Tell me more about yourself.',action:'node:'+(config.dialogue.nodes.story?'story':config.dialogue.start)},{label:`Safe travels, ${config.name}.`,action:'close'}];}
     else {view.title=stage.title;view.text='There is more than one way to help. Which road suits you?';view.choices=stage.branches.map((b,n)=>({label:b.label,detail:b.description,action:'offer:'+n}));view.choices.push({label:'Perhaps another time.',action:'close'});}
   }else if(u.node==='offer'&&stage&&!a){const b=stage.branches[u.offerBranch];
     if(b){view.title=b.title;view.text=b.description;view.quest={title:b.title,description:b.description,progress:0,target:b.objective.count,ready:false,reward:stage.reward};view.choices=[{label:'I accept. You have my word.',action:'accept'},{label:'Tell me about the other path.',action:'node:quests'},{label:'I’m not ready yet.',action:'close'}];}
-  }else {const node=config.dialogue.nodes[u.node]?u.node:config.dialogue.start,def=config.dialogue.nodes[node];view.text=def?.text||config.greeting;view.choices=choicesForNode(config,node);}
+  }else {const node=config.dialogue.nodes[u.node]?u.node:config.dialogue.start,def=config.dialogue.nodes[node];view.text=def?.text||config.greeting;view.choices=choicesForNode(config,node);
+    if(view.quest?.ready&&!view.choices.some(c=>c.action==='claim'))view.choices.unshift({label:`Turn in completed quest · receive ${ITEMS[a.reward]?.name||a.reward}`,action:'claim',detail:'Claim your completed Keeper quest and receive the reward.'});
+  }
   if(!view.choices.length)view.choices=[{label:'Goodbye.',action:'close'}];
   return view;
 }
-function validTalk(g,p){const u=p.ui,npc=(g.questNpcs||[]).find(n=>n.npcId===u?.npcId);return u?.shop==='npc-dialogue'&&u.ownerDevice===p.device&&g.players.filter(q=>q.device===p.device).length===1&&npc&&!p.room&&p.hp>0&&distance(npc,p)<=110;}
+function validTalk(g,p){const u=p.ui,npc=u?.npcId==='alan'?alanActor(g):(g.questNpcs||[]).find(n=>n.npcId===u?.npcId);return u?.shop==='npc-dialogue'&&u.ownerDevice===p.device&&g.players.filter(q=>q.device===p.device).length===1&&npc&&!p.room&&p.hp>0&&distance(npc,p)<=110;}
 export function npcDialogueAction(g,p,action){
+  if(villagerDialogueAction(g,p,action))return true;
   const u=p.ui;if(u?.shop!=='npc-dialogue')return false;
   if(!validTalk(g,p)||action==='close'){p.ui=null;p.consumeInput=true;return true;}
+  if(u.npcId==='alan'){
+    const view=npcDialogueView(g,p),alan=alanActor(g);
+    if(['next','prev','down','up'].includes(action)){u.index=(Math.max(0,u.index||0)+(['next','down'].includes(action)?1:-1)+view.choices.length)%view.choices.length;return true;}
+    if(action==='use')action=view.choices[u.index||0]?.action;
+    if(action?.startsWith('choice:'))action=view.choices[Number(action.slice(7))]?.action;
+    if(action==='alan:follow'){alan.allyMode='follow';alan.allyOwner=p.id;u.node='status';u.notice=`Alan is following ${p.name}.`;g.message?.(u.notice);g.persist?.();}
+    else if(action==='alan:patrol'){alan.allyMode='patrol';alan.allyOwner=null;u.node='status';u.notice='Alan is patrolling the board.';g.message?.(u.notice);g.persist?.();}
+    else if(action==='alan:story'){u.node='story';u.notice='';}
+    else if(action==='close'){p.ui=null;p.consumeInput=true;}
+    u.index=0;return true;
+  }
   const config=getNpcQuestConfig(),s=npcQuestState(p,config.id),view=npcDialogueView(g,p),npc=(g.questNpcs||[]).find(n=>n.npcId===u.npcId);
   if(['next','prev','down','up'].includes(action)){u.index=(Math.max(0,u.index||0)+(['next','down'].includes(action)?1:-1)+view.choices.length)%view.choices.length;return true;}
   if(action==='use')action=view.choices[u.index||0]?.action;
+  if(action==='turnIn')action='claim';
   if(action?.startsWith('choice:'))action=view.choices[Number(action.slice(7))]?.action;
   if(!view.choices.some(c=>c.action===action&&!c.disabled))return true;
   if(action==='close'){p.ui=null;p.consumeInput=true;return true;}
@@ -119,7 +153,7 @@ export function recordNpcQuestKill(g,e){
 export function tickNpcQuests(g,dt){
   if(g.phase!=='play')return;
   for(const npc of g.questNpcs||[]){npc.moving=false;const talk=g.players.find(p=>p.ui?.shop==='npc-dialogue'&&p.ui.npcId===npc.npcId);if(talk){const d=distance(talk,npc)||1;npc.faceX=(talk.x-npc.x)/d;npc.faceY=(talk.y-npc.y)/d;}}
-  for(const p of g.players){if(p.ui?.shop==='npc-dialogue'&&!validTalk(g,p))p.ui=null;
+  for(const p of g.players){if(p.ui?.shop==='npc-dialogue'&&!p.ui.villagerId&&!validTalk(g,p))p.ui=null;
     for(const s of Object.values(p.npcQuests||{})){const a=s.active;if(!a||p.hp<=0||p.room)continue;
       if(a.contract.objective.type==='visit'&&a.world===scene(g)&&a.target&&distance(p,a.target)<36&&a.progress<a.contract.objective.count){a.progress=a.contract.objective.count;g.message?.(`${p.name}: route surveyed. Return to the wayfarer.`);g.persist?.();}
     }
@@ -128,7 +162,7 @@ export function tickNpcQuests(g,dt){
   if(g.questSpawnTimer<=0){g.questSpawnTimer=1;for(const npc of g.questNpcs||[])for(const p of g.players)if(p.npcQuests?.[npc.npcId]?.active)establishObjective(g,p,npc);}
 }
 export function drawQuestNpc(c,g,npc,animator){
-  const config=getNpcQuestConfig();animator.draw(c,{...npc,equipment:config.equipment,appearance:config.appearance},g.time,48);
+  const config=getNpcQuestConfig();animator.draw(c,{...npc,sprite:'player',equipment:config.equipment,appearance:config.appearance},g.time,48);
   c.save();c.textAlign='center';c.font='bold 10px sans-serif';c.fillStyle='#b6e8d6';c.fillText(config.name,npc.x,npc.y-94);
   c.font='9px sans-serif';c.fillStyle='#efd5a1';c.fillText('Interact · Talk',npc.x,npc.y+18);c.fillStyle='#ead090';c.fillRect(npc.x-1,npc.y-110,3,7);c.fillRect(npc.x-1,npc.y-100,3,2);c.restore();
 }

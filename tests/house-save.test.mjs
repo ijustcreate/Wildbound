@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';
 import {defaultHouse,saveHouseVersion,preserveHouseDraft,flushHouseStorage,loadHouseStorage,activeHouse,houseDraft,HOUSE_KEY,HOUSE_STATE_KEY} from '../src/house-design.mjs';
 import {applyActiveHouse,applyChangedHouse} from '../src/apply-house.mjs';
+import {readFileSync} from 'node:fs';
 
 test('House library and unfinished draft recover from desktop storage after browser storage changes',async()=>{
  const oldStorage=globalThis.localStorage,oldDesktop=globalThis.desktop,data=new Map();let disk;
@@ -10,6 +11,21 @@ test('House library and unfinished draft recover from desktop storage after brow
  globalThis.desktop={saveHouseDesigns:async s=>{disk=structuredClone(s);},loadHouseDesigns:async()=>disk};
  try{const house=defaultHouse();house.name='My saved house';const id=saveHouseVersion(house);house.furniture[0].x+=16;preserveHouseDraft(house,id);await flushHouseStorage();data.clear();await loadHouseStorage();assert.equal(activeHouse().name,'My saved house');assert.equal(houseDraft().house.furniture[0].x,house.furniture[0].x);assert.ok(data.has(HOUSE_KEY)&&data.has(HOUSE_STATE_KEY));}
  finally{globalThis.localStorage=oldStorage;globalThis.desktop=oldDesktop;}
+});
+
+test('Unedited original default upgrades without erasing its saved draft',async()=>{
+ const oldStorage=globalThis.localStorage,oldDesktop=globalThis.desktop,data=new Map();
+ const old=JSON.parse(readFileSync(new URL('./fixtures/legacy-default-house.json',import.meta.url)));
+ const draft=structuredClone(old);draft.walls[23].h-=48;
+ let disk={version:1,updatedAt:1,library:{active:'default',designs:[{id:'default',house:old}]},draft:{id:'default',house:draft}};
+ globalThis.localStorage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)};
+ globalThis.desktop={saveHouseDesigns:async s=>{disk=structuredClone(s);},loadHouseDesigns:async()=>disk};
+ try{await loadHouseStorage();assert.equal(activeHouse().floorplanVersion,2);assert.equal(activeHouse().rooms.length,6);
+  assert.equal(houseDraft().house.walls[23].h,draft.walls[23].h);
+  assert.equal(disk.library.designs.find(d=>d.id==='original-house-floorplan').house.walls[23].h,old.walls[23].h);
+  assert.equal(disk.library.designs.find(d=>d.id==='default').house.floorplanVersion,2);
+  const count=disk.library.designs.length;await loadHouseStorage();assert.equal(disk.library.designs.length,count);
+ }finally{globalThis.localStorage=oldStorage;globalThis.desktop=oldDesktop;}
 });
 
 test('Live house application relocates blocked actors while preserving progress and inventory',()=>{

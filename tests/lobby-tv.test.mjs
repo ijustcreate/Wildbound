@@ -20,7 +20,7 @@ test('A at the TV takes input from practice and walking away releases it',()=>{
   const lobby=Object.create(PlayableLobby.prototype),state=new LobbyState(),television=new LobbyTelevision();
   state.sync(game.players);Object.assign(state.members.get(player.id),{spawned:true,panel:null,x:785,y:165});
   let practiceInput;
-  Object.assign(lobby,{getGame:()=>game,state,television,practice:{stepPractice(_dt,_players,members,inputs){practiceInput=inputs['pad:0'];members.get(player.id).x+=(practiceInput.walkX||practiceInput.x||0)*120;}},sync(){},draw(){},area:{querySelector:()=>({textContent:''})}});
+  Object.assign(lobby,{getGame:()=>game,state,television,practice:{players:[],stepPractice(_dt,_players,members,inputs){practiceInput=inputs['pad:0'];members.get(player.id).x+=(practiceInput.walkX||practiceInput.x||0)*120;}},sync(){},draw(){},area:{querySelector:()=>({textContent:''})}});
   lobby.update(.05,{'pad:0':{tvA:true,attack:true}});
   assert.equal(television.players.has(player.id),true);
   assert.deepEqual(practiceInput,{x:0,y:0});

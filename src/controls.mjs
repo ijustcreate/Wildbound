@@ -16,7 +16,8 @@ export const PAD_NAMES = [
   "D-left",
   "D-right",
 ];
-export const DEFAULT_MAPPING = {attack:0,jump:1,dodge:7,loot:2,trap:10,interact:3,pause:9,board:4,potion:5,block:6,inventory:8,portal:12,bait:13,field:11};
+export const DEFAULT_MAPPING = {attack:2,jump:0,dodge:7,loot:1,trap:10,interact:3,pause:9,board:4,potion:5,block:6,inventory:8,portal:12,bait:13,field:11};
+const LEGACY_MAPPING = {...DEFAULT_MAPPING,attack:0,jump:1,loot:2};
 export function controllerFamily(pad) {
   const id = String(pad?.id || '').toLowerCase();
   const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id);
@@ -45,6 +46,9 @@ export function labelsForController(mapping, padOrFamily) {
   return Object.fromEntries(Object.entries(mapping).map(([action, index]) => [action, names[index] || `Button ${index}`]));
 }
 export function normalizeMapping(saved = {}) {
+  // Existing installs saved every default binding. Move that untouched layout
+  // forward, while preserving any layout the player customized.
+  if(Object.keys(saved).length&&Object.entries(saved).every(([action,value])=>LEGACY_MAPPING[action]===value))saved={};
   const result = {}, used = new Set();
   for (const [action, fallback] of Object.entries(DEFAULT_MAPPING)) {
     const value = saved[action];
@@ -68,7 +72,7 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
       `Controller ${row.pad.index+1} · ${CONTROLLER_NAMES[controllerFamily(row.pad)]} · ${row.pad.id} · ${row.pad.mapping==='standard'?'standard layout':'device-specific button layout'}`:
       row.device.startsWith('pad:')?'Controller disconnected':row.device;card.append(desc);
     const list=document.createElement('dl');
-    const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'RB · set skill: Tame / Raise Skeleton',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
+      const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'R · set skill: Tame / Raise Skeleton','Follower control':'RB · cycle followers',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
     for(const [action,key] of Object.entries(bindings)){const term=document.createElement('dt'),value=document.createElement('dd');term.textContent=action;value.textContent=key;list.append(term,value);}
     card.append(list);root.append(card);
     const family=row.device==='keyboard'?'keyboard':row.pad?controllerFamily(row.pad):'xbox';

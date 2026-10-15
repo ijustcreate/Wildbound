@@ -118,7 +118,7 @@ test('burrow rig phases, interrupt recovery and peaceful stampede ownership',()=
   for(const kind of ['elephant','zebra','pelican']){const s=setup(kind);s.e.state='stampede';tick(s.g,s.e);assert.equal(s.e.state,'stampede');}
 });
 test('hunter backs away and deploys visible traps with an arming delay',()=>{
-  const {g,e,p}=setup();const old=e.x;tick(g,e,.1);assert.ok(e.x<old);tick(g,e,4.1);
+  const {g,e,p}=setup();const old=e.x;tick(g,e,.1);assert.equal(e.night.phase,'dash');assert.equal(e.x,old);tick(g,e,.1);assert.ok(e.x<old);tick(g,e,4.1);
   const trap=g.nightEnemies.traps[0];assert.ok(trap.arm>0);p.x=trap.x;p.y=trap.y;
   g.nightEnemies.shots=[];
   tickNightEnemies(g,.5);assert.equal(p.hp,100);tickNightEnemies(g,.6);assert.ok(p.hp<100);assert.equal(p.stun,.8);

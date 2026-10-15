@@ -8,7 +8,7 @@ import {saveSession,restoreSession} from '../src/session.mjs';
 import {createPauseCheatTracker} from '../src/debug-code.mjs';
 
 test('each guild skill needs its scroll before training and discovery survives a save',()=>{
-  const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();p.xp=1000;
+  const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();p.xp=1000;p.level=12;
   for(const s of SKILLS){
     assert.equal(ITEMS[skillScrollId(s.id)].skillScroll,s.id);
     assert.equal(skillAvailable(p,s.id),false);
@@ -19,7 +19,7 @@ test('each guild skill needs its scroll before training and discovery survives a
     const loot=g.loot.at(-1);Object.assign(loot,{x:p.x,y:p.y});
     assert.equal(g.collect(p,loot),true);assert.equal(p.inventory.length,24);
     assert.equal(g.collect(p,loot),false);assert.equal(skillAvailable(p,s.id),true);
-    trainSkill(p,s.id);assert.equal(p.field.skills[s.id],1);assert.equal(p.xp,xp-s.cost);
+    trainSkill(p,s.id);assert.equal(p.field.skills[s.id],1);assert.equal(p.xp,xp);
   }
   const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
   for(const s of SKILLS)assert.equal(skillAvailable(restored.players[0],s.id),true);
@@ -35,7 +35,7 @@ test('bosses drop a scroll; ordinary enemies do not, and missing skills are favo
   }
 });
 test('previously trained skills remain available in legacy profiles',()=>{
-  const p={field:{skills:{long_jump:1}},xp:100};initializeField(p);
+  const p={level:3,field:{skills:{long_jump:1}},xp:100};initializeField(p);
   trainSkill(p,'long_jump');assert.equal(p.field.skills.long_jump,2);
   assert.equal(skillAvailable(p,'second_wind'),false);
 });

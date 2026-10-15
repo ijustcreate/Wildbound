@@ -1,4 +1,5 @@
 import { creatureCue } from './sound-bank.mjs';
+import {clearShot} from './navigation.mjs';
 
 const MAX_ENERGY = 100;
 const COST = { swipe: 18, bite: 25, swoop: 48 };
@@ -29,7 +30,7 @@ function clearAction(e) {
 }
 
 function strike(game, e, target, kind) {
-  if (!target || target.hp <= 0) return;
+  if (!target || target.hp <= 0 || !clearShot(game,e,target)) return;
   const range = kind === 'swoop' ? 39 : kind === 'bite' ? 32 : 53;
   const d = distance(e, target);
   if (d > range) return;

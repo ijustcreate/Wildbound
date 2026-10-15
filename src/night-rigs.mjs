@@ -4,6 +4,8 @@ import { ITEMS, itemKind, SAFARI_HUNTER_SET } from './items.mjs';
 import { directionalHelmet, wearableDetails } from './wearable-art.mjs';
 import { drawItem } from './item-art.mjs';
 import {flowerDefaults,upgradeFlowerMotion,drawCarnivorous} from './carnivorous-art.mjs';
+import {applyWowCreatureMotion,upgradeWowCreatureMotion} from './wow-creature-transfer.mjs';
+import {drawElephantPixels} from './elephant-pixels.mjs';
 
 export const HUNTER_EQUIPMENT = Object.freeze({ ...SAFARI_HUNTER_SET, hand1: 'rifle', hand2: null });
 
@@ -66,8 +68,10 @@ function skeleton(kind) {
   }
   if (kind === 'elephant') {
     for (const v of Object.values(q)) { v[1] *= 1.35; v[2] *= 1.15; if (v[3] > 2) v[3] *= 1.25; }
-    Object.assign(q, { trunkBase: ['head', 0, 29, 22], trunkMid: ['trunkBase', 0, 35, 11], trunkTip: ['trunkMid', 0, 40, 5],
-      tuskL: ['head', -6, 34, 18], tuskR: ['head', 6, 34, 18] });
+    q.earL=['head',-15,13,26];q.earR=['head',15,13,26];
+    q.eyeL=['head',-6,24,31];q.eyeR=['head',6,24,31];
+    Object.assign(q, { trunkBase: ['head', 0, 29, 22], trunkMid: ['trunkBase', 0, 34, 15], trunkTip: ['trunkMid', 0, 39, 9],
+      tuskL: ['head', -7, 35, 21], tuskR: ['head', 7, 35, 21] });
   }
   if (kind === 'zebra') { q.head[3] += 7; q.neck[3] += 4; q.earL[3] += 8; q.earR[3] += 8; q.jaw[3] += 7; q.eyeL[3] += 7; q.eyeR[3] += 7; }
   if (kind === 'carrion_pack') { q.chest[3] += 3; q.head[3] -= 4; q.jaw[3] -= 4; q.tailTip = ['tailMid', 1, -28, 7]; }
@@ -154,7 +158,7 @@ export function legacyNightMotion(kind) {
   if (!NIGHT_KINDS.includes(kind)) throw Error('Unknown night rig: ' + kind);
   const spec = skeleton(kind), [body, shade, light, face, detail] = colors[kind];
   const clips = [...new Set(['idle', 'walk', 'run', 'attack', 'hit', 'hurt', 'death', ...actions[kind]])];
-  return {
+  const rig={
     version: 1, type: kind, name: nightRigLabels[kind],
     joints: Object.fromEntries(Object.entries(spec).map(([n, [parent, ...position]]) => [n, { parent, position }])),
     palette: { body, shade, light, face, detail, outline: '#202b30', eye: kind === 'night_stalker' ? '#bbffca' : '#f1d889' },
@@ -163,8 +167,13 @@ export function legacyNightMotion(kind) {
     clips: Object.fromEntries(clips.map(action => [action, { fps: action === 'stalk' ? 7 : 12, length: 8,
       loop: ['idle', 'walk', 'run', 'sway', 'mouth', 'stalk', 'crouch', 'underground', 'wrap', 'feed', 'aim', 'charge', 'fly', 'flap'].includes(action), keys: keys(kind, action, spec) }])),
   };
+  if(kind==='elephant'){
+    rig.visibility.eyeL=[true,false,false,false,false,false,true,true];
+    rig.visibility.eyeR=[true,true,true,false,false,false,false,false];
+  }
+  return rig;
 }
-export function defaultNightMotion(kind){const model=legacyNightMotion(kind);return kind==='carnivorous_flower'?flowerDefaults(model):model;}
+export function defaultNightMotion(kind){const model=legacyNightMotion(kind);return kind==='carnivorous_flower'?flowerDefaults(model):kind==='elephant'?applyWowCreatureMotion(model,'elephant'):model;}
 export const nightMotions = Object.fromEntries(NIGHT_KINDS.map(k => [k, defaultNightMotion(k)]));
 export const nightMotionRevisions = Object.fromEntries(NIGHT_KINDS.map(k => [k, 0]));
 export function validateNightMotion(kind, model) {
@@ -175,7 +184,7 @@ export function validateNightMotion(kind, model) {
 }
 export function replaceNightMotion(kind, model) {
   if (!validateNightMotion(kind, model)) throw Error('Invalid ' + kind + ' animation. Nothing imported.');
-  const copy = kind==='carnivorous_flower'?upgradeFlowerMotion(model,legacyNightMotion(kind)):structuredClone(model), target = nightMotions[kind];
+  const copy = kind==='carnivorous_flower'?upgradeFlowerMotion(model,legacyNightMotion(kind)):kind==='elephant'?upgradeWowCreatureMotion(model,legacyNightMotion(kind),defaultNightMotion(kind)):structuredClone(model), target = nightMotions[kind];
   for (const key of Object.keys(target)) delete target[key];
   Object.assign(target, copy); nightMotionRevisions[kind]++;
 }
@@ -241,6 +250,7 @@ export function drawNightRig(c, actor, time, model = nightMotions[actor.sprite] 
   const kind = model.type, d = facingIndex(actor.faceX, actor.faceY), pal = model.palette, s = model.shape;
   const pose = suppliedPose || poseAt(model, nightAction(kind, actor, model), nightFrame(kind, actor, time, model));
   if(kind==='carnivorous_flower')return drawCarnivorous(c,actor,model,pose,d);
+  if(kind==='elephant')return drawElephantPixels(c,model,pose,d);
   const p = Object.fromEntries(Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]));
   const queue = [], visible = n => model.visibility?.[n]?.[d] !== false;
   // Preview defaults use real equippable IDs. An explicit equipment object is

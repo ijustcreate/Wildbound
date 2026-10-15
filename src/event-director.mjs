@@ -1,8 +1,8 @@
+import {encounterRole,pacingWeight} from './expedition-trials.mjs';
 export const EVENT_HISTORY_LIMIT=24;
 export const EVENT_COVERAGE_LIMIT=256;
-const bosses=new Set(['anaconda','banshee_queen','succubus','gorilla','dragon','skeleton_boss','necromancer','hunter','krampus']);
 const weather=new Set(['monsoon','sandstorm','thunderstorm','blizzard']);
-export const eventBoss=event=>bosses.has(event.kind);
+export const eventBoss=event=>encounterRole(event)==='boss';
 function state(g){
  const old=g.eventDirector;
  if(!old||old.version!==2){
@@ -32,7 +32,7 @@ export function eventUnitStats(event,group,kind,definitions){
 }
 export function rememberEvent(g,event,index){
  const s=state(g);s.draws++;
- s.recent.push({index,name:event.name,kind:event.kind,type:event.type||'enemy'});
+ s.recent.push({index,name:event.name,kind:event.kind,type:event.type||'enemy',role:encounterRole(event)});
  if(s.recent.length>EVENT_HISTORY_LIMIT)s.recent.shift();
  // Move the entry to the end so exceptionally large edited rosters evict the
  // least recently used key. Normal rosters keep coverage for the whole run.
@@ -52,13 +52,16 @@ export function selectEvent(g,events,available){
   if(event.type==='merchant'&&g.merchant)return [];
   if(weather.has(event.type)&&g.weather?.life>0)return [];
   if(event.type==='volcano'&&(g.volcanoes||[]).some(v=>v.life>0))return [];
-  if(eventBoss(event)&&(s.draws<3||s.draws-s.lastBossAt<3||alive.length))return [];
   const combat=!event.type||event.type==='enemy';
-  if(combat&&alive.length>=12)return [];
+  if(combat&&alive.length>=36)return [];
   let weight=Math.max(0,event.weight??10);
-  if(eventBoss(event))weight=Math.min(weight,4);
+  const zone=g.generatedEnvironment||g.environment;
+  weight*=(event.zoneWeights?.[zone]??1)*pacingWeight(g,event);
+  // The Reaper roams every zone, but the cemetery favors its harvest.
+  if(event.kind==='grim_reaper'&&(g.generatedEnvironment||g.environment)==='graveyard')weight*=4;
+  if(eventBoss(event)){weight=Math.min(weight,8);if(s.draws-s.lastBossAt<2)weight*=.6;}
   if(s.draws<2&&combat&&(event.count||1)*(event.hp||60)>260)weight*=.25;
-  if(combat&&alive.length)weight*=Math.max(.12,1-alive.length/12);
+  if(combat&&alive.length)weight*=Math.max(.35,1-alive.length/36);
   if(alive.some(e=>e.kind===event.kind))weight*=.12;
   if(s.recent.slice(-7).some(e=>e.name===event.name))weight*=.35;
   if(last?.kind===event.kind)weight*=.15;

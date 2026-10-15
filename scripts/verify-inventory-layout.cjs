@@ -5,6 +5,7 @@ app.disableHardwareAcceleration();
 app.setPath('userData', path.join(root, 'test-output', 'inventory-layout-profile'));
 app.whenReady().then(async () => {
   const win = new BrowserWindow({show:false,width:1920,height:1080,webPreferences:{offscreen:true}});
+  win.webContents.setAudioMuted(true);
   try {
     await win.loadFile(path.join(root,'index.html'), {query:{tools:'1'}});
     await win.webContents.executeJavaScript('window.wildboundBoot.ready');
@@ -29,8 +30,13 @@ app.whenReady().then(async () => {
             const bounds=overlay.getBoundingClientRect(),panels=[...overlay.children],rects=panels.map(p=>p.getBoundingClientRect());
             return panels.every(p=>p.scrollWidth<=p.clientWidth+1)&&rects.every((a,i)=>a.left>=bounds.left&&a.right<=bounds.right+1&&a.top>=bounds.top&&a.bottom<=bounds.bottom+1&&rects.every((b,j)=>i===j||a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top));
           };
-          let valid=true;
-          for(let i=0;i<g.players.length;i++){g.openInventory(g.players[i],i%2?'shared':undefined);ui.draw(g,{});valid&&=validate();}
+          let valid=true,firstBox=null;
+          for(let i=0;i<g.players.length;i++){
+            g.openInventory(g.players[i],i%2?'shared':undefined);ui.draw(g,{});valid&&=validate();
+            const box=ui.panels.get(g.players[0].id).getBoundingClientRect();
+            if(i===0)firstBox=box;
+            if(i===1)valid&&=box.left===firstBox.left&&box.top===firstBox.top&&box.height===firstBox.height;
+          }
           const full=valid;
           // Resize without changing any inventory state, exercising cached DOM.
           overlay.style.right='120px';ui.draw(g,{});valid&&=validate();overlay.style.right='0px';ui.draw(g,{});
@@ -38,10 +44,10 @@ app.whenReady().then(async () => {
         })()`);
         results.push(result);
         if(!result.valid) throw Error(JSON.stringify(result));
-        if(count===2) { await new Promise(r=>setTimeout(r,150)); fs.writeFileSync(path.join(root,'test-output',`inventory-${width}-${scale}.png`),(await win.webContents.capturePage()).toPNG()); }
+        if(count===2 && process.argv.includes('--screenshots')) { await new Promise(r=>setTimeout(r,150)); fs.writeFileSync(path.join(root,'test-output',`inventory-${width}-${scale}.png`),(await win.webContents.capturePage()).toPNG()); }
       }
     }
     fs.writeFileSync(path.join(root,'test-output','inventory-layout-results.json'),JSON.stringify(results,null,2));
     console.log(JSON.stringify({checks:results.length,failed:0}));app.exit(0);
-  } catch(e) {console.error(e);app.exit(1);}
+  } catch(e) {console.error(e.stack||e);app.exit(1);}
 });

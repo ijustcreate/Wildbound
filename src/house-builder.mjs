@@ -3,17 +3,17 @@ import {drawFurniture} from './house-render.mjs';
 const node=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
 const groups=['floors','paths','pools','walls','doors','furniture','trees'];
 export class HouseBuilder {
- constructor(){const lib=houseLibrary();this.id=lib.active;this.house=structuredClone((lib.designs.find(d=>d.id===lib.active)||lib.designs[0]).house);this.undo=[];this.redo=[];this.tool='select';this.view={zoom:1,x:800,y:800};const draft=houseDraft();if(draft?.house&&groups.every(k=>Array.isArray(draft.house[k]))){this.id=draft.id;this.house=upgradeHouseFeatures(structuredClone(draft.house));}}
+ constructor(){const lib=houseLibrary();this.id=lib.active;this.house=structuredClone((lib.designs.find(d=>d.id===lib.active)||lib.designs[0]).house);this.undo=[];this.redo=[];this.tool='select';this.view={zoom:1,x:800,y:800};const draft=houseDraft();if(draft?.house&&groups.every(k=>Array.isArray(draft.house[k]))){this.id=draft.id;this.house=upgradeHouseFeatures(structuredClone(draft.house));this.legacyDraft=!!(lib.designs.find(d=>d.id===draft.id)?.house.floorplanVersion===2&&!draft.house.floorplanVersion);}}
  snapshot(){this.undo.push(JSON.stringify(this.house));if(this.undo.length>60)this.undo.shift();this.redo=[];}
  message(text){this.status.textContent=text;}
  mount(root){this.root=root;root.className='house-builder';root.replaceChildren();
  const toolbar=node('div');toolbar.className='house-toolbar';root.append(toolbar);
  const button=(text,fn)=>{const b=node('button',text);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){this.message('Not applied: '+e.message);}finally{b.disabled=false;}};toolbar.append(b);return b;};
- const versions=node('select');versions.setAttribute('aria-label','Saved house version');for(const d of houseLibrary().designs){const o=node('option',d.house.name);o.value=d.id;o.selected=d.id===this.id;versions.append(o);}versions.onchange=()=>{this.snapshot();this.id=versions.value;this.house=structuredClone(houseLibrary().designs.find(d=>d.id===this.id).house);this.selected=null;this.mount(root);};toolbar.append(versions);
+ const versions=node('select');versions.setAttribute('aria-label','Saved house version');for(const d of houseLibrary().designs){const o=node('option',d.house.name);o.value=d.id;o.selected=d.id===this.id;versions.append(o);}versions.onchange=()=>{this.snapshot();this.id=versions.value;this.house=structuredClone(houseLibrary().designs.find(d=>d.id===this.id).house);this.legacyDraft=false;this.selected=null;this.mount(root);};toolbar.append(versions);
  this.name=node('input');this.name.value=this.house.name;this.name.maxLength=60;this.name.setAttribute('aria-label','House design name');this.name.onchange=()=>{this.snapshot();this.house.name=this.name.value;this.draw();};toolbar.append(this.name);
  const commit=async(asNew=false)=>{
   this.house.name=this.name.value;this.id=saveHouseVersion(this.house,asNew?null:this.id);
-  preserveHouseDraft(this.house,this.id);await flushHouseStorage();
+  this.legacyDraft=false;preserveHouseDraft(this.house,this.id);await flushHouseStorage();
   const detail={message:'Saved and active for House expeditions.'};window.dispatchEvent(new CustomEvent('wildbound-house-applied',{detail}));
   this.mount(root);this.message(detail.message);
  };
@@ -21,6 +21,12 @@ export class HouseBuilder {
  button('Save as new',()=>commit(true));
  button('Use this version',()=>commit());
  this.saveState=node('strong');this.saveState.className='house-save-state';this.saveState.setAttribute('role','status');toolbar.append(this.saveState);
+ if(this.legacyDraft)button('Show current layout',async()=>{
+  const old=structuredClone(this.house);old.name='Unfinished original-house draft';saveHouseVersion(old,null,false);
+  const lib=houseLibrary();this.id=lib.active;this.house=structuredClone(lib.designs.find(d=>d.id===lib.active).house);
+  this.legacyDraft=false;this.selected=null;this.mount(root);await flushHouseStorage();
+  this.message('Current layout shown. Your older unfinished draft is saved as a separate version.');
+ });
  button('Undo',()=>{if(!this.undo.length)return;this.redo.push(JSON.stringify(this.house));this.house=JSON.parse(this.undo.pop());this.selected=null;this.mount(root);});
  button('Redo',()=>{if(!this.redo.length)return;this.undo.push(JSON.stringify(this.house));this.house=JSON.parse(this.redo.pop());this.selected=null;this.mount(root);});
  button('New from template',()=>{this.snapshot();this.id=null;this.house=defaultHouse();this.house.name='New house';this.selected=null;this.mount(root);});
@@ -37,7 +43,7 @@ export class HouseBuilder {
  side.append(node('p','Drag to place rooms, walls, fences, water and furniture. Doors cut an opening in a wall. Select and drag objects to move them. Drag the gold corner handles to resize. Rotate and duplicate in the inspector.'));
  this.inspector=node('div');side.append(this.inspector);const add=node('button','Add object (edit position below)');add.onclick=()=>this.place({x:1152,y:1152},{x:1216,y:1216});side.append(add);
  side.append(node('p','Gold area: keep clear for the board and party. The blue pool is deep water. Monkeys and skeletons can open doors; animals cannot. Dragons cannot fit through normal doors.'));
- this.status=node('p','Drafts recover automatically. Save & use applies the visible layout to your current House expedition and future House maps.');this.status.role='status';root.append(this.status);
+ this.status=node('p',this.legacyDraft?'Showing an older unfinished draft. The active house uses the newer layout. Show current layout to keep this draft as a separate version.':'Drafts recover automatically. Save & use applies the visible layout to your current House expedition and future House maps.');this.status.role='status';root.append(this.status);
  this.canvas.tabIndex=0;
  const point=e=>{const r=this.canvas.getBoundingClientRect(),scale=.5*this.view.zoom,sx=(e.clientX-r.left)/r.width*this.canvas.width,sy=(e.clientY-r.top)/r.height*this.canvas.height;return {x:(sx-this.canvas.width/2)/scale+this.view.x,y:(sy-this.canvas.height/2)/scale+this.view.y};};
  this.canvas.onwheel=e=>{e.preventDefault();this.zoomAt(e.clientX,e.clientY,e.deltaY<0?.1:-.1);};
@@ -92,6 +98,6 @@ export class HouseBuilder {
 }
  draw(){
  preserveHouseDraft(this.house,this.id);
- if(this.saveState){const lib=houseLibrary(),saved=lib.designs.find(d=>d.id===this.id),dirty=!saved||JSON.stringify(saved.house)!==JSON.stringify(this.house);this.saveState.textContent=dirty?'Draft saved · not applied':lib.active===this.id?'Active layout: '+this.house.name:'Saved · not active';this.saveState.style.color=dirty?'#f3cb79':'#a8d6bb';}
+ if(this.saveState){const lib=houseLibrary(),saved=lib.designs.find(d=>d.id===this.id),dirty=!saved||JSON.stringify(saved.house)!==JSON.stringify(this.house);this.saveState.textContent=this.legacyDraft?'Older draft · active layout differs':dirty?'Draft saved · not applied':lib.active===this.id?'Active layout: '+this.house.name:'Saved · not active';this.saveState.style.color=dirty?'#f3cb79':'#a8d6bb';}
  const c=this.canvas.getContext('2d'),scale=.5*this.view.zoom;c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,this.canvas.width,this.canvas.height);c.setTransform(scale,0,0,scale,this.canvas.width/2-this.view.x*scale,this.canvas.height/2-this.view.y*scale);c.fillStyle='#173c2c';c.fillRect(-this.canvas.width/scale,-this.canvas.height/scale,this.canvas.width*2/scale,this.canvas.height*2/scale);for(const [key,color] of [['floors','#aa8960'],['paths','#928769'],['pools','#256379'],['walls','#bdc7be'],['doors','#b7834d']])for(const r of this.house[key]){c.fillStyle=r.kind==='window'?'#80c4d2':r.kind==='fence'?'#987448':color;c.fillRect(r.x,r.y,r.w,r.h);}for(const f of this.house.furniture)drawFurniture(c,f);for(const t of this.house.trees){c.fillStyle='#61954e';c.beginPath();c.arc(t.x,t.y,t.size*.4,0,7);c.fill();}c.strokeStyle='#ffffff0d';c.lineWidth=1;for(let n=0;n<=1600;n+=32){c.beginPath();c.moveTo(n,0);c.lineTo(n,1600);c.moveTo(0,n);c.lineTo(1600,n);c.stroke();}c.fillStyle='#d8bd4830';c.fillRect(700,700,200,178);c.fillStyle='#f3dfa0';c.font='18px sans-serif';c.textAlign='center';c.fillText('BOARD & PARTY',800,792);if(this.selected){const r=this.bounds();c.strokeStyle='#ffe28c';c.lineWidth=4;c.strokeRect(r.x,r.y,r.w,r.h);const size=8/scale;c.fillStyle='#ffe28c';for(const [x,y] of [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]]){c.fillRect(x-size/2,y-size/2,size,size);c.strokeStyle='#173c2c';c.lineWidth=2;c.strokeRect(x-size/2,y-size/2,size,size);}}}
 }

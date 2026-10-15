@@ -1,7 +1,23 @@
 import {raisedSurfaceBlocked,VICTORY_CHEST} from './terrain-support.mjs';
 export {VICTORY_CHEST} from './terrain-support.mjs';
 import {ITEMS,rollGear} from './items.mjs';
-export function victoryRewards(players,random=Math.random){
+export function victoryRewards(players,random=Math.random,earned=null){
+ if(earned){
+  const score=Math.max(0,earned.score||0),party=players.slice(0,6);
+  if(score<2)return [{type:'trial_letter',qty:1},{type:'arrow',qty:4},{type:'fruit',qty:2}];
+  const count=Math.min(3+party.length*2,Math.max(party.length,Math.floor(score/2)+party.length));
+  const seen=new Set(),rewards=[];
+  for(let i=0;i<count;i++){
+   const tier=score>=16&&i===0?'legendary':score>=6&&i<party.length?'rare':'common';
+   const hero=party[i%Math.max(1,party.length)],weapon=ITEMS[hero?.equipment?.hand1]?.base;
+   let pool=Object.keys(ITEMS).filter(id=>{const d=ITEMS[id];return d.slot&&!d.supplyOnly&&!d.npcOnly&&!d.bossOnly&&!d.questReward&&d.rarity===tier&&!seen.has(id);});
+   if(i<party.length){const relevant=pool.filter(id=>ITEMS[id].base===weapon||ITEMS[id].slot==='chest');if(relevant.length)pool=relevant;}
+   const type=pool.length?pool[Math.min(pool.length-1,Math.floor(random()*pool.length))]:rollGear(random,tier)||'potion';
+   seen.add(type);rewards.push({type,qty:1});
+  }
+  if(earned.skipped>earned.cleared)rewards.push({type:'trial_letter',qty:1});
+  return rewards;
+ }
  const party=players.slice(0,6),level=party.reduce((sum,p)=>sum+Math.max(1,p.level||1),0)/Math.max(1,party.length),count=3+party.length*2;
  const tiers=level>=10?['rare','rare','legendary']:level>=5?['common','unique','rare']:['rare'];
  while(tiers.length<count)tiers.push(level>=10?'rare':'common');

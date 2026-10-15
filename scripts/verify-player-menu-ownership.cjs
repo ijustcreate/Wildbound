@@ -1,0 +1,50 @@
+const {app, BrowserWindow} = require('electron');
+const path = require('node:path');
+const fs = require('node:fs');
+const root = path.resolve(__dirname, '..');
+app.disableHardwareAcceleration();
+app.setPath('userData', path.join(root, 'test-output', 'player-menu-ownership-profile'));
+app.whenReady().then(async () => {
+  const win = new BrowserWindow({show: false, width: 1440, height: 940, webPreferences: {offscreen: true}});
+  win.webContents.setAudioMuted(true);
+  try {
+    await win.loadFile(path.join(root, 'index.html'));
+    await win.webContents.executeJavaScript('window.wildboundBoot.ready');
+    const result = await win.webContents.executeJavaScript(`(async () => {
+      const {Game}=await import('./src/core.mjs');
+      const {freshCharacter}=await import('./src/items.mjs');
+      const {PlayableLobby,LobbyState}=await import('./src/playable-lobby.mjs');
+      const game=new Game(()=>.5),first=game.addPlayer('pad:0'),second=game.addPlayer('pad:1');
+      const host=document.createElement('div');host.style.cssText='position:fixed;inset:80px 60px;z-index:99999';
+      const panels=document.createElement('div');panels.className='lobby-panels';host.append(panels);document.body.append(host);
+      const profiles={data:{heroes:[freshCharacter('qa-one','QA One'),freshCharacter('qa-two','QA Two')]},assign(){}};
+      const lobby=Object.create(PlayableLobby.prototype);
+      Object.assign(lobby,{getGame:()=>game,state:new LobbyState(),nodes:new Map(),panels,root:document.querySelector('#lobby'),profiles,mapArt:new Image(),beachArt:new Image(),cemeteryArt:new Image()});
+      lobby.state.sync(game.players);
+      lobby.renderPanel(first);lobby.renderPanel(second);
+      const box=p=>{const r=lobby.nodes.get(p.id).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}};
+      const before=[box(first),box(second)],order=[...panels.children].map(n=>n.dataset.ownerDevice);
+      const pad=(index,button)=>({index,axes:[0,0],buttons:Array.from({length:16},(_,i)=>({pressed:i===button}))});
+      lobby.controller(pad(0,15),Array(16).fill(false));
+      const after=[box(first),box(second)],now=[...panels.children].map(n=>n.dataset.ownerDevice);
+      if(JSON.stringify(before)!==JSON.stringify(after)||JSON.stringify(order)!==JSON.stringify(now))throw Error('Character panels moved during player one selection');
+      const firstFocus=lobby.state.members.get(first.id).focus;
+      lobby.controller(pad(1,13),Array(16).fill(false));
+      if(lobby.state.members.get(first.id).focus!==firstFocus||lobby.state.members.get(second.id).focus!==1)throw Error('Controller focus crossed players');
+      const selectionSecond=box(second);
+      lobby.state.members.get(first.id).panel='environment';lobby.renderPanel(first);
+      const buttons=[...lobby.nodes.get(first.id).querySelectorAll('button')];
+      const maps=[...lobby.nodes.get(first.id).querySelectorAll('.map-choices .map-choice')];
+      lobby.state.members.get(first.id).focus=buttons.indexOf(maps[0]);lobby.highlight(first);
+      lobby.navigate(first,{x:1},first.device);
+      if(buttons[lobby.state.members.get(first.id).focus]!==maps[1])throw Error('Map right did not move to adjacent card');
+      lobby.navigate(first,{x:-1},first.device);
+      lobby.navigate(first,{y:1},first.device);
+      if(buttons[lobby.state.members.get(first.id).focus]!==maps[2])throw Error('Map down did not stay in column');
+      if(JSON.stringify(box(second))!==JSON.stringify(selectionSecond))throw Error('Other player panel moved when map opened');
+      return {characterPanelsStable:true,controllerFocusIsolated:true,mapGridDirectional:true};
+    })()`);
+    fs.writeFileSync(path.join(root,'test-output','player-menu-ownership.png'),(await win.webContents.capturePage()).toPNG());
+    console.log(JSON.stringify(result)); app.exit(0);
+  } catch (error) {console.error(error); app.exit(1);}
+});

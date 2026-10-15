@@ -9,3 +9,11 @@ export function drawSwimmer(c,a,time,draw){
 export function drawBreath(c,a){
  if(!(a.breathVisible>0))return;c.save();c.globalAlpha*=a.breathVisible;c.fillStyle='#102b35';c.fillRect(a.x-17,a.y+10,34,6);c.fillStyle=a.breath<5?'#fa8976':'#a3efff';c.fillRect(a.x-16,a.y+11,32*Math.max(0,Math.min(1,a.breath/BREATH_SECONDS)),4);c.font='5px monospace';c.textAlign='center';c.fillStyle='#e0ffff';c.fillText('AIR',a.x,a.y+23);c.restore();
 }
+export function drawWaterline(c,a,time,draw,{bob=1,shift=0,radius=17}={}){
+ const wave=Math.sin(time*2.7+(a.id||0))*.75*bob;
+ c.save();c.beginPath();c.rect(a.x-radius*4,a.y-radius*4,radius*8,radius*4+1);c.clip();
+ c.translate(0,wave);draw({...a,y:a.y+shift});c.restore();
+ c.save();c.strokeStyle='#b5f4e9b8';c.lineWidth=1;
+ for(const side of [-1,1]){c.beginPath();c.ellipse(a.x+side*(radius*.65),a.y+1,radius*.65+Math.sin(time*3+side)*1.5,2.5,0,side<0?0:Math.PI,side<0?Math.PI:Math.PI*2);c.stroke();}
+ c.restore();
+}

@@ -16,7 +16,7 @@ function rotate(v,pitch=0,twist=0,roll=0){
 }
 
 // Offline pose authoring: every generated joint remains an ordinary editable key.
-export function buildHeroGeneration(source){
+export function buildHeroGeneration(source,{legacyPosture=false}={}){
   const model=structuredClone(source);
   model.artGeneration=3;model.name='Wildbound hero / sculpted generation 3';
   for(const [name,position] of Object.entries(rest))model.joints[name].position=[...position];
@@ -33,7 +33,7 @@ export function buildHeroGeneration(source){
     }
     // Facial handles inherit the head transform, not an independent face pose.
     for(const name of faceNames)p[name]=add(p.head,rotate(sub(rest[name],rest.head),o.pitch||0,o.twist||0,o.roll||0));
-    return applyIK(model,p);
+    return applyIK(legacyPosture?{...model,artGeneration:2}:model,p);
   }
   function ground(sleep=false){
     const p=pose(),points={pelvis:[0,0,4],chest:[8,0,4],head:[16,0,4],
@@ -68,20 +68,31 @@ export function buildHeroGeneration(source){
       return {frame:f,joints:Object.fromEntries(Object.keys(rest).map(n=>[n,sub(p[n],rest[n])]))};
     })};
   }
-  cycle('idle',a=>pose({roll:Math.sin(a)*.025,shift:[.25,0,-.35+.4*Math.sin(a)],joints:{handL:[-6,1,11.5],handR:[6,2,12]}}));
+  cycle('idle',a=>legacyPosture
+    ?pose({roll:Math.sin(a)*.025,shift:[.25,0,-.35+.4*Math.sin(a)],joints:{handL:[-6,1,11.5],handR:[6,2,12]}})
+    :pose({roll:Math.sin(a)*.008,shift:[0,0,.03+.025*Math.sin(a)],joints:{
+      handL:[-6.2,.4,12.5],handR:[6.2,.65,12.6],elbowL:[-6.2,-2,18],elbowR:[6.2,-2,18],
+      footL:[-3,0,1],footR:[3,0,1],kneeL:[-3,.6,7],kneeR:[3,.6,7]
+    }}));
   for(const name of ['walk','run'])cycle(name,a=>{
-    const run=name==='run',joints={},stride=run?6.5:4;
+    const run=name==='run',joints={},stride=legacyPosture?(run?6.5:4):(run?6:3.6);
     for(const [side,phase] of [['L',a],['R',a+Math.PI]]){
       const s=Math.sin(phase),lift=Math.max(0,Math.cos(phase));
-      joints['foot'+side]=[side==='L'?-3:3,s*stride,1+lift*(run?5:2)];
+      joints['foot'+side]=[side==='L'?-3:3,s*stride,1+lift*(legacyPosture?(run?5:2):(run?3.5:1.5))];
       joints['knee'+side]=[side==='L'?-3.5:3.5,s*2+2,8+lift*2];
-      joints['hand'+side]=[side==='L'?-6:6,-s*(run?5:3),run?17+Math.max(0,-s)*2:12];
-      joints['elbow'+side]=[side==='L'?-7:7,-s*3-2,18];
+      joints['hand'+side]=[side==='L'?-6:6,-s*(run?5:3),run?17+Math.max(0,-s)*2:legacyPosture?12:12.7];
+      joints['elbow'+side]=[side==='L'?(legacyPosture?-7:-6):(legacyPosture?7:6),-s*3-2,18];
     }
-    return pose({joints,pitch:run?.15:.025,twist:Math.sin(a)*(run?.12:.07),shift:[Math.cos(a)*.35,0,-1+Math.cos(a*2)*(run?.9:.35)]});
+    return legacyPosture
+      ?pose({joints,pitch:run?.15:.025,twist:Math.sin(a)*(run?.12:.07),shift:[Math.cos(a)*.35,0,-1+Math.cos(a*2)*(run?.9:.35)]})
+      :pose({joints,pitch:run?.1:.012,twist:Math.sin(a)*(run?.08:.04),shift:[Math.cos(a)*.15,0,-.5+Math.cos(a*2)*(run?.45:.2)]});
   });
   const crouch=pose({shift:[0,0,-5],pitch:.2,joints:{handL:[-6,-2,14],handR:[6,-2,14],kneeL:[-4,4,8],kneeR:[4,4,8]}});
   const air=pose({pitch:.12,twist:.08,joints:{handL:[-8,1,23],handR:[8,-1,20],kneeL:[-3,6,11],kneeR:[3,-2,10],footL:[-3,4,9],footR:[3,-4,7]}});
+  cycle('wing_hover',a=>pose({pitch:.04,shift:[0,0,Math.sin(a)*.2],joints:{
+    handL:[-6.5,.4,13],handR:[6.5,.4,13],kneeL:[-3,3,8],kneeR:[3,3,8],
+    footL:[-3,-1.5,2.8+Math.sin(a)*.25],footR:[3,-1.5,2.8-Math.sin(a)*.25]
+  }}));
   const fall=pose({pitch:-.08,joints:{handL:[-9,1,20],handR:[9,1,19],footL:[-3,3,3],footR:[3,-1,2]}});
   clip('jump_takeoff',[[0,standing],[.35,crouch],[.65,pose({pitch:.16,joints:{handL:[-6,-3,12],handR:[6,-3,12]}})],[1,air]]);
   clip('jump_air',[[0,air],[.5,pose({pitch:.04,joints:{handL:[-8,2,23],handR:[8,0,21],footL:[-3,3,8],footR:[3,-3,7]}})],[1,air]],{loop:true});
@@ -137,6 +148,27 @@ export function buildHeroGeneration(source){
     const p=pose({pitch:.5,shift:[0,0,-4],joints:{handL:[-6-4*Math.sin(a),7+4*Math.cos(a),23],handR:[6+4*Math.sin(a),7+4*Math.cos(a),23],footL:[-3,-3,4+Math.sin(a+Math.PI)*2],footR:[3,-3,4+Math.sin(a)*2]}});
     return p;
   });
+  if(!legacyPosture)model.postureRevision=1;
+  return model;
+}
+
+const canonical=value=>JSON.stringify(value,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+let postureDefaults;
+// Only migrate untouched shipping keys. Edited poses, rest joints, IK and all
+// other actions remain authored data in the same animation system.
+export function upgradeHeroPosture(model,defaults){
+  if(model.artGeneration!==3||model.postureRevision===1)return model;
+  if(Object.entries(rest).some(([name,p])=>canonical(model.joints[name]?.position)!==canonical(p)))return model;
+  postureDefaults??={old:buildHeroGeneration(defaults,{legacyPosture:true}),next:buildHeroGeneration(defaults)};
+  if(canonical(model.ik)!==canonical(postureDefaults.old.ik))return model;
+  let upgraded=false;
+  for(const name of ['idle','walk','run']){
+    const current=model.clips[name],old=postureDefaults.old.clips[name];
+    if(current&&canonical(current.keys)===canonical(old.keys)&&current.length===old.length){
+      current.keys=structuredClone(postureDefaults.next.clips[name].keys);upgraded=true;
+    }
+  }
+  if(upgraded)model.postureRevision=1;
   return model;
 }
 
