@@ -489,7 +489,7 @@ const liveWorldStatus=$('live-world-status');
 const liveWorldPlayStatus=$('live-world-play-status');
 const liveConnectionKey='wildbound-live-connection-v1';
 let checkedInLiveConnection=null;
-const checkedInLiveConnectionReady=fetch('./server-connection.json',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(value=>{if(value?.address&&value?.joinKey)checkedInLiveConnection=value;}).catch(()=>null);
+fetch('./server-connection.json',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(value=>{if(value?.address&&value?.joinKey)checkedInLiveConnection=value;}).catch(()=>{});
 function readLiveConnection(){try{const value=JSON.parse(localStorage.getItem(liveConnectionKey)||'null');return value&&typeof value==='object'?value:null;}catch{return null;}}
 function saveLiveConnection(){
   if(!$('server-remember').checked){localStorage.removeItem(liveConnectionKey);return;}
@@ -1895,13 +1895,6 @@ try {
     action:(action,arg)=>{const owner=game.players.find(p=>p.id===rooms.playerId);return game.serverAction(owner,action,arg);},
   };
   newLobby();
-  // Packaged live-world builds carry the host connection in
-  // server-connection.json. When that preset opts into autoConnect, join it
-  // after the lobby is initialized so the launcher opens straight into the
-  // persistent world instead of silently leaving the player in local co-op.
-  checkedInLiveConnectionReady.then(()=>{
-    if(checkedInLiveConnection?.autoConnect&&!rooms.persistent)openLiveWorld();
-  });
   $("loading").classList.add("done");
 } catch (e) {
   $("loading").querySelector("p").textContent =
