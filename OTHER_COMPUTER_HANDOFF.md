@@ -1,5 +1,7 @@
 # Read this before integrating the server computer's work
 
+For the current laptop playtest, start with [LAPTOP_PLAYTEST_HANDOFF.md](LAPTOP_PLAYTEST_HANDOFF.md). It supersedes earlier instructions to populate the connection preset: the host has now configured it with explicit user approval to publish the player key for this playtest. Administration and saves remain private.
+
 ## Purpose and source mismatch
 
 The user requested this branch, `codex/server-host-handoff-2026-10-14`, to transfer all work performed on the host PC. It starts from GitHub `main` commit `6d471420435ea91daccbc4947c17a6a049b8fc90`.

@@ -74,3 +74,13 @@ Run the packaged executable with `--boot-smoke-test --mute-audio` to verify its 
 The older broad `--smoke-test` harness also exercises editor workflows. Its initial run had legacy UI assumptions and failures; read its exact report instead of treating its exit alone as proof. Current multiplayer/package acceptance uses the focused two-client and packaged boot reports, with the full Node suite separately required.
 
 Source pushes, client ZIP distribution, public hosting and GitHub releases are separate operations. This work does not publish the browser viewer or upload a release automatically.
+
+## Host dashboard and support reports
+
+Open `Server Control.cmd` or the Desktop **Wildbound Server Control** shortcut. The dashboard shows current player names/locations, observed connection duration, roster count, uptime, saves, simulation tick and local/public health. It polls every five seconds; very short connections may not be observed. Recent activity is per dashboard session. Opening the monitor again focuses its existing window, instead of creating another tray icon. Closing hides it; **Quit status monitor** quits only the monitor, not the authority.
+
+The monitor keeps bounded, rotated diagnostic history in ignored `server-data/diagnostics/`. Health/count samples are retained at most every 30 seconds unless health or connected player IDs change. This monitoring runs only while the dashboard is open, including in the tray. It is not complete server telemetry or a world backup.
+
+Use **Export support report** and attach the resulting JSON when reporting a problem to Codex. It includes source/build identity, runtime versions, recent health/count observations, server-reported errors and dashboard failures. It excludes join/admin secrets, player names, connection addresses and world/save contents. Connection names shown in the dashboard's activity list are not written to this history. Diagnostics are local and are not automatically uploaded. No gameplay input, inventories, profiles, authored assets or machine usernames are intentionally collected.
+
+Verification: `node --test tests/server-diagnostics.test.mjs` and muted Electron `node scripts/run-electron-check.cjs server-control-main.cjs --smoke-test`. The UI check covers simulated player rows, untrusted name text, small viewport overflow and offline controls. A live repeated-launch check verifies a single dashboard; it does not restart the game authority.

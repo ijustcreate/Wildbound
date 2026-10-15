@@ -1,6 +1,6 @@
 {
-  "address": "",
-  "joinKey": "",
+  "address": "wss://hitachi-serial-preference-expertise.trycloudflare.com/game",
+  "joinKey": "c733cebe2b0de3bc81da41c05e13491b05a7c3e53a4796eb67b4f06f987aaeb5",
   "explorerName": "Explorer",
   "autoConnect": true
 }
