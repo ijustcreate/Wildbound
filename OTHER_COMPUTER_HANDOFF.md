@@ -30,6 +30,8 @@ Private `server-data/` configuration, tokens, live worlds, logs, Electron profil
 
 After starting the persistent server and confirming its public tunnel/address, update `server-connection.json` with the live values and commit/push it to this same branch. The desktop client reads that file: the user can click **LIVE WORLD** in the header and connect without copying an address or join key. If the quick-tunnel hostname changes after a server restart, update this file again and push the new value.
 
+For the receiving Codex's exact command-by-command procedure, follow [SERVER_CODEX_NEXT_STEPS.md](SERVER_CODEX_NEXT_STEPS.md). Do not reset or replace `server-data/` while pulling this branch.
+
 ## Safe integration on the other computer
 
 1. Read `AGENTS.md`, `docs/DEVELOPMENT_HANDOFF.md`, this file and `docs/PERSISTENT_SERVER.md`. Identify the actual root, branch, remote, dirty work and build identity. Back up local saves and unfinished authored work.
