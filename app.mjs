@@ -403,6 +403,7 @@ function onRoomEvent(data) {
     }
     if (data.type === "state") {
       if (data.persistent && (data.version !== 1 || !data.state?.players?.some(p=>p.id===rooms.playerId))) return;
+      const wasLiveForest=game.forestJourney?.active==='forest';
       const oldSeed = game.seed;
       Object.assign(game, data.state);
       restoreForestLandscape(game,data.state.forestLandscapeVersion??0);
@@ -412,6 +413,11 @@ function onRoomEvent(data) {
       game.explored = new Set(data.state.explored);
       game.spriteLibrary = assets.library;
       game.remoteAuthoritative = !!data.persistent;
+      if(data.persistent&&game.forestJourney?.active==='forest'&&!wasLiveForest){
+        serverConnection.hidden=false;
+        serverConnectionText.textContent='LIVE SERVER · HEARTWOOD FOREST';
+        game.message('LIVE SERVER · HEARTWOOD FOREST · You are exploring the persistent shared world.');
+      }
       if (data.persistent) {
         const owner=game.players.find(p=>p.id===rooms.playerId);
         if(owner){owner.device=rooms.localDevice;if(owner.ui)owner.ui.ownerDevice=rooms.localDevice;}

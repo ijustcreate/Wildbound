@@ -108,7 +108,7 @@ export function travelThroughForestPortal(g, door) {
     }
     journey.active = 'forest';
     g.forestJourney = journey;
-    g.message('The board settles in Heartwood Clearing. The green portal behind it stays open to your game.');
+    g.message('LIVE SERVER · HEARTWOOD FOREST ENTERED. This is the persistent shared world; the green return portal stays open behind the party.');
   } else {
     if (journey.active !== 'forest' || !journey.home) return false;
     journey.forest = capture(g);

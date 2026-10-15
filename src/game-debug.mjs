@@ -1,5 +1,5 @@
 import {ITEMS,give as giveItem} from './items.mjs';
-import {FOREST_PORTAL_EVENT,openForestPortal} from './forest-portal-event.mjs';
+import {FOREST_PORTAL_EVENT} from './forest-portal-event.mjs';
 
 export function spawnDebugItem(game,ownerId,type,amount,destination='inventory') {
  const p=game.players.find(p=>String(p.id)===String(ownerId));
@@ -33,10 +33,10 @@ export function createGameDebug({getGame,events,items}) {
    const eventLabel=el('label','Event'),event=el('select');event.dataset.debug='event';
    events.forEach((e,i)=>{const o=el('option',`${i}: ${e.name||e.kind||e.type}`);o.value=i;event.append(o);});eventLabel.append(event);root.append(eventLabel);
    const tools=el('div',null,'debug-tools'),spawn=el('button','Spawn selected event');spawn.onclick=()=>{getGame().spawnEvent(Number(event.value));say({ok:true,message:'Spawned '+(events[event.value]?.name||'event')});};tools.append(spawn);
-   const forest=el('button',FOREST_PORTAL_EVENT.name+' (dev only)');forest.dataset.debugEvent='forest-portal';forest.onclick=()=>{
+   const forest=el('button','OPEN LIVE SERVER PORTAL');forest.dataset.debugEvent='forest-portal';forest.title='Request the Heartwood portal on the connected persistent server.';forest.onclick=()=>{
      const g=getGame();
-     if(g.remoteAuthoritative){g.openForestPassage(g.players.find(p=>p.id===ownerId));say({ok:true,message:'Heartwood Passage requested from the server.'});}
-     else say(openForestPortal(g,ownerId));
+     if(g.remoteAuthoritative){g.openForestPassage(g.players.find(p=>p.id===ownerId));say({ok:true,message:'Live server portal requested. Walk into the green portal when it appears.'});}
+     else say({ok:false,message:'Connect to LIVE WORLD first. This button only opens a portal on the live server.'});
    };tools.append(forest);
    const inv=el('label'),check=el('input');check.type='checkbox';check.onchange=()=>{for(const p of getGame().players)p.invincible=check.checked;say({ok:true,message:check.checked?'Party invincibility enabled':'Party invincibility disabled'});};inv.append(check,' Party invincible');tools.append(inv);root.append(tools);
    const itemLabel=el('label','Item'),item=el('select');item.dataset.debug='item';
