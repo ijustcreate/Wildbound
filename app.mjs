@@ -322,6 +322,7 @@ function onRoomEvent(data) {
     rooms.connection=data.state;
     serverConnection.hidden=false;
     serverConnectionText.textContent=data.state==='connected'?'Shared forest · connected':data.message||('Shared forest · '+data.state);
+    syncLiveWorldButton();
     $('server-status').textContent=data.message||data.state;
     return;
   }
@@ -479,11 +480,24 @@ function readServerIdentities() {
 const serverIdentityKey=(address,name)=>new URL(address).href+'|'+name.trim();
 const serverDialog=document.createElement('dialog');
 serverDialog.id='server-dialog';
-serverDialog.innerHTML='<h2>Shared forest</h2><p>Enter a persistent world with explorers on other computers. Your server explorer and inventory stay with that world. Your local expedition stays saved on this PC.</p><label>Explorer name <input id="server-name" maxlength="16" value="Explorer"></label><label>Server address <input id="server-address" placeholder="ws://192.168.1.10:4183/game" value="ws://127.0.0.1:4183/game" spellcheck="false"></label><label>Join key <input id="server-key" type="password" autocomplete="off" spellcheck="false"></label><p id="server-status" role="status" aria-live="polite"></p><button id="server-join">Enter forest</button><button id="server-close">Close</button>';
+serverDialog.innerHTML='<h2>Live world</h2><p>Optional persistent multiplayer. Your local adventure remains available when you stay offline.</p><label>Explorer name <input id="server-name" maxlength="16" value="Explorer"></label><label>Server address <input id="server-address" placeholder="wss://.../game" value="ws://127.0.0.1:4183/game" spellcheck="false"></label><label>Join key <input id="server-key" type="password" autocomplete="off" spellcheck="false"></label><label class="server-remember"><input id="server-remember" type="checkbox" checked> Remember this connection on this computer</label><p id="server-status" role="status" aria-live="polite"></p><button id="server-join">Connect to live world</button><button id="server-close">Stay offline</button>';
 document.body.append(serverDialog);
 const serverButton=document.createElement('button');
 serverButton.textContent='SHARED FOREST';serverButton.className='text-button';roomButton.after(serverButton);
-serverButton.onclick=()=>serverDialog.showModal();
+const liveWorldButton=$('live-world-button');
+const liveWorldStatus=$('live-world-status');
+const liveConnectionKey='wildbound-live-connection-v1';
+function readLiveConnection(){try{const value=JSON.parse(localStorage.getItem(liveConnectionKey)||'null');return value&&typeof value==='object'?value:null;}catch{return null;}}
+function saveLiveConnection(){
+  if(!$('server-remember').checked){localStorage.removeItem(liveConnectionKey);return;}
+  localStorage.setItem(liveConnectionKey,JSON.stringify({address:$('server-address').value.trim(),name:$('server-name').value.trim(),key:$('server-key').value.trim()}));
+}
+function fillLiveConnection(){const saved=readLiveConnection();if(!saved)return;$('server-address').value=saved.address||$('server-address').value;$('server-name').value=saved.name||$('server-name').value;$('server-key').value=saved.key||'';}
+function syncLiveWorldButton(){const connected=rooms.persistent&&rooms.connection==='connected';liveWorldStatus.textContent=connected?'CONNECTED':'OFFLINE';liveWorldButton.classList.toggle('connected',connected);}
+function openLiveWorld(){fillLiveConnection();serverDialog.showModal();}
+serverButton.onclick=openLiveWorld;
+liveWorldButton.onclick=openLiveWorld;
+syncLiveWorldButton();
 $('server-close').onclick=()=>serverDialog.close();
 const serverConnection=document.createElement('aside');
 serverConnection.id='server-connection';serverConnection.hidden=true;
@@ -497,14 +511,16 @@ $('server-join').onclick=async()=>{
   try {
     if(!ready)throw Error('The game is still loading. Try again in a moment.');
     if(!window.desktop?.connectServer)throw Error('Shared forest requires the desktop game.');
-    const address=$('server-address').value.trim(),name=$('server-name').value.trim();
+    const address=$('server-address').value.trim(),name=$('server-name').value.trim(),key=$('server-key').value.trim();
+    if(!address||!name||!key)throw Error('Enter the server address, join key, and explorer name.');
+    saveLiveConnection();
     const identities=readServerIdentities(),identity=identities[serverIdentityKey(address,name)];
     const candidates=Object.entries(identities).filter(([key])=>key.endsWith('|'+name)).map(([,value])=>value);
     await persistSession();
     if(game.saveError)throw Error('Save your local expedition before joining: '+game.saveError);
-    await rooms.joinServer(address,name,$('server-key').value.trim(),identity?.resumeToken,candidates);
+    await rooms.joinServer(address,name,key,identity?.resumeToken,candidates);
     serverDialog.close();$('server-key').value='';
-  }catch(error){$('server-status').textContent=error.message;serverConnection.hidden=true;}
+  }catch(error){$('server-status').textContent=error.message;serverConnection.hidden=true;syncLiveWorldButton();}
   finally{$('server-join').disabled=false;}
 };
 $("room-join").onclick = async () => {

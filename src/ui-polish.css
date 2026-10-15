@@ -113,3 +113,9 @@
 #server-dialog {width:min(500px,calc(100vw - 48px));}
 #server-dialog label {display:block;margin:12px 0;}
 #server-dialog input {display:block;box-sizing:border-box;width:100%;margin-top:5px;}
+#server-dialog .server-remember {display:flex;align-items:center;gap:8px;font-size:12px;}
+#server-dialog .server-remember input {width:auto;margin:0;}
+#live-world-button {display:inline-flex;align-items:center;gap:6px;border:1px solid #72bba0;background:#102b26;color:#dcece2;border-radius:4px;padding:6px 9px;font:600 11px system-ui;letter-spacing:.04em;}
+#live-world-button small {color:#e6c876;font-size:9px;}
+#live-world-button.connected {border-color:#e6c876;background:#1d4937;}
+@media (max-width:760px) {#live-world-button {padding:5px 6px;font-size:10px;}#live-world-button small {display:none;}}
