@@ -1,7 +1,8 @@
 const http = require("node:http"),
   fs = require("node:fs"),
   path = require("node:path");
-const root = path.resolve(__dirname, "..");
+const root = path.resolve(process.env.WILDBOUND_SERVE_ROOT || path.join(__dirname, ".."));
+const port = Number(process.env.WILDBOUND_SERVE_PORT || 4173);
 http
   .createServer((req, res) => {
     const file = path.resolve(
@@ -34,6 +35,6 @@ http
       res.end(data);
     });
   })
-  .listen(4173, "127.0.0.1", () =>
-    console.log("Wildbound preview: http://127.0.0.1:4173"),
+  .listen(port, "127.0.0.1", () =>
+    console.log(`Wildbound preview: http://127.0.0.1:${port}`),
   );
