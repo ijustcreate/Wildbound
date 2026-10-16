@@ -140,6 +140,24 @@ export function buildHeroGeneration(source){
   return model;
 }
 
+const canonical=value=>JSON.stringify(value,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+let postureDefaults;
+export function upgradeHeroPosture(model,defaults){
+  if(model.artGeneration!==3||model.postureRevision===1)return model;
+  if(Object.entries(rest).some(([name,p])=>canonical(model.joints[name]?.position)!==canonical(p)))return model;
+  postureDefaults??={old:buildHeroGeneration(defaults,{legacyPosture:true}),next:buildHeroGeneration(defaults)};
+  if(canonical(model.ik)!==canonical(postureDefaults.old.ik))return model;
+  let upgraded=false;
+  for(const name of ['idle','walk','run']){
+    const current=model.clips[name],old=postureDefaults.old.clips[name];
+    if(current&&canonical(current.keys)===canonical(old.keys)&&current.length===old.length){
+      current.keys=structuredClone(postureDefaults.next.clips[name].keys);upgraded=true;
+    }
+  }
+  if(upgraded)model.postureRevision=1;
+  return model;
+}
+
 export function fitHeroGrip(pose,actor,model,action){
   if(model.artGeneration!==3||!['draw','ranged'].includes(action)||actor.equipment?.hand1!=='rifle')return pose;
   const shoulder=pose.shoulderR,axis=sub(pose.shoulderR,pose.shoulderL),length=Math.hypot(axis[0],axis[1])||1;

@@ -338,3 +338,32 @@ export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId){
   c.fillStyle=dark;c.fillRect(hand.x+.3,hand.y-.2,.3,1.1);c.fillRect(hand.x-.3,hand.y+.3,.3,.8);
   return true;
 }
+
+export function detailedNeck(c,p,skin){
+  if(!c.__humanoidDetail||!humanoidArtAvailable(c))return false;
+  const dx=p.chest.x-p.head.x,dy=p.chest.y-p.head.y,len=Math.hypot(dx,dy)||1;
+  const top={x:p.head.x+dx/len*3.2,y:p.head.y+dy/len*3.2};
+  const bottom={x:p.chest.x-dx/len*.25,y:p.chest.y-dy/len*.25};
+  return detailedChain(c,[top,bottom],[2.8,3.5],skin,12);
+}
+
+export function detailedPelvis(c,p,d,color,back){
+  if(!c.__humanoidDetail||!humanoidArtAvailable(c))return false;
+  const dx=p.pelvis.x-p.chest.x,dy=p.pelvis.y-p.chest.y,len=Math.hypot(dx,dy)||1;
+  const down={x:dx/len,y:dy/len},right={x:down.y,y:-down.x};
+  const local=q=>({x:(q.x-p.pelvis.x)*right.x+(q.y-p.pelvis.y)*right.y,y:(q.x-p.pelvis.x)*down.x+(q.y-p.pelvis.y)*down.y});
+  const hips=[local(p.hipL),local(p.hipR)],side=d===2||d===6;
+  const waist=side?3.3:3.8,left=Math.min(...hips.map(q=>q.x))-2.25,rightEdge=Math.max(...hips.map(q=>q.x))+2.25;
+  const bottom=Math.max(1.5,Math.min(3.25,Math.max(...hips.map(q=>q.y))+1.5));
+  const base=rgb(color),shade=n=>'#'+base.map(v=>clamp(v+n).toString(16).padStart(2,'0')).join('');
+  c.save();c.translate(p.pelvis.x,p.pelvis.y);c.rotate(-Math.atan2(dx,dy));
+  for(let y=-.6;y<bottom;y+=.25){
+    const t=(y+.6)/(bottom+.6),a=-waist+(left+waist)*Math.sin(t*Math.PI/2),b=waist+(rightEdge-waist)*Math.sin(t*Math.PI/2);
+    for(let x=a;x<b;x+=.25){
+      const edge=x<a+.35||x>b-.4;
+      c.fillStyle=edge?'#302b2b':shade(x<-.6?10:x>1?-18:-2);
+      c.fillRect(Math.round(x*4)/4,y,.25,.25);
+    }
+  }
+  c.restore();return true;
+}

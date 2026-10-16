@@ -19,7 +19,15 @@ function ready() {
     const req = http.get(url, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', () => resolve(res.statusCode === 200 && body.includes('Wildbound')));
+      res.on('end', () => {
+        if (res.statusCode !== 200 || !body.includes('Wildbound')) return resolve(false);
+        const moduleReq = http.get(`${url}app.mjs`, moduleRes => {
+          moduleRes.resume();
+          moduleRes.on('end', () => resolve(moduleRes.statusCode === 200));
+        });
+        moduleReq.on('error', () => resolve(false));
+        moduleReq.setTimeout(1000, () => moduleReq.destroy());
+      });
     });
     req.on('error', () => resolve(false));
     req.setTimeout(1000, () => req.destroy());
