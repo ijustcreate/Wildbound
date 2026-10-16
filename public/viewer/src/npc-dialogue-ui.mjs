@@ -9,6 +9,38 @@ const el = (tag, text = '', cls = '') => {
   return node;
 };
 
+function dialogueVoice(npc) {
+  // Voice identity is stable per NPC. Future NPCs can opt into these same
+  // parameters without needing a new audio asset.
+  const seed = String(npc?.npcId || npc?.name || 'npc').split('').reduce((n,c)=>n+c.charCodeAt(0),0);
+  return {pitch:.82+(seed%7)*.035, gap:58, gain:.032};
+}
+
+function animateDialogueText(target, text, npc) {
+  target.replaceChildren();
+  target.setAttribute('aria-label', text);
+  const words = text.match(/\S+\s*/g) || [];
+  const spans = words.map((word,index)=>{
+    const span=el('span',word,'npc-dialogue-word');span.dataset.index=String(index);target.append(span);return span;
+  });
+  let index=0, charCount=0, timer=0;
+  const tick=()=>{
+    if(!target.isConnected)return;
+    spans.forEach((span,i)=>span.classList.toggle('speaking',i===index));
+    const word=spans[index]?.textContent||'';
+    const match=word.match(/[aeiouy]+/i);
+    if(match){
+      const vowel=match[0][0].toLowerCase();
+      globalThis.dispatchEvent?.(new CustomEvent('wildbound:npc-voice',{detail:{vowel,actor:npc,voice:dialogueVoice(npc)}}));
+    }
+    charCount++;
+    const punctuation=word.match(/[,.!?…]+\s*$/)?.[0]||'';
+    timer=window.setTimeout(()=>{index++;if(index<spans.length)tick();else spans.forEach(s=>s.classList.remove('speaking'));},Math.max(38,42+(punctuation.includes(',')?95:0)+(punctuation.match(/[.!?…]/)?.[0]?150:0)));
+  };
+  if(spans.length)tick();
+  target._dialogueTimer=timer;
+}
+
 function rewardText(value) {
   if (value == null) return '';
   if (typeof value !== 'object') return ITEMS[value]?.name || String(value).replaceAll('_', ' ');
@@ -57,7 +89,10 @@ export function npcDialoguePanel(panel, g, p, button) {
   heading.append(el('h2', view?.title || 'A friendly conversation'));
   if (view?.totalStages > 1) heading.append(el('small',
     `${view.stage} / ${view.totalStages}`, 'npc-dialogue-stage'));
-  body.append(heading, el('p', view?.text || 'Our friend has stepped away. You can close this conversation.', 'npc-dialogue-text'));
+  const dialogueText=view?.text || 'Our friend has stepped away. You can close this conversation.';
+  const dialogueTextNode=el('p','', 'npc-dialogue-text');
+  body.append(heading,dialogueTextNode);
+  animateDialogueText(dialogueTextNode,dialogueText,npc);
   if (view?.quest) {
     const quest = view.quest, card = el('section', '', 'npc-dialogue-quest');
     card.setAttribute('aria-label', 'Quest');

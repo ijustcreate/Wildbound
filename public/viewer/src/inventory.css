@@ -196,6 +196,45 @@
 .hero-panel.inventory-redesign .item-grid:not(.paper-doll) button.selected{background:#36513b;border-color:#ebc875;outline:2px solid #ebc875;outline-offset:-2px;}
 .inventory-quantity{position:absolute;right:2px;bottom:1px;font:9px/1 system-ui;color:#fff4cf;text-shadow:0 1px 2px #000,1px 0 2px #000;pointer-events:none;}
 @container(max-height:540px){.hero-panel.inventory-redesign .storage-layout:not(.has-chest){grid-template-rows:minmax(0,.55fr) minmax(0,1.45fr);}.hero-panel.inventory-redesign .inventory-actions button{font-size:9px;padding:2px 3px;}.hero-panel.inventory-redesign .storage-sheet>header{padding:3px 6px;}}
+
+/* Victory rewards are a destination, not a generic chest. Keep the reward
+   choice compact and intentional so the end-of-level screen has no dead air. */
+.hero-panel.victory-loot-session.loot-popup {
+  display:flex !important; flex-direction:column; gap:8px; box-sizing:border-box;
+  padding:14px !important; background:linear-gradient(145deg,#122b24,#0b1b17) !important;
+  border:2px solid #d3b467 !important; border-radius:7px; color:#f5e8c4;
+}
+.victory-loot-session.loot-popup > header { flex:0 0 auto; margin:0; padding:0 32px 7px 2px; border-bottom:1px solid #806c43; color:#f5dfa5; font:bold 18px/1.1 Georgia,serif; }
+.victory-spoils-intro { position:relative; flex:0 0 auto; min-height:62px; padding:9px 58px 8px 11px; background:linear-gradient(100deg,#224b3b,#18372e); border:1px solid #638264; border-radius:5px; }
+.victory-spoils-eyebrow { color:#d5b86c; font:700 9px/1.1 system-ui,sans-serif; letter-spacing:.16em; }
+.victory-spoils-intro h2 { margin:3px 0 2px; color:#fff0bd; font:bold 21px/1.05 Georgia,serif; }
+.victory-spoils-intro p { margin:0; color:#c9dbc8; font:11px/1.3 system-ui,sans-serif; }
+.victory-spoils-count { position:absolute; top:50%; right:12px; transform:translateY(-50%); color:#f6d77e; font:bold 20px/1 system-ui,sans-serif; }
+.victory-spoils-surface { flex:1 1 auto; min-height:0; display:block; overflow:auto; }
+.victory-spoils-surface .storage-container { display:flex; flex-direction:column; min-height:0; height:100%; padding:8px; background:#0e211b; border:1px solid #526f58; border-radius:5px; }
+.victory-spoils-surface .storage-container > .storage-container-heading { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; min-height:31px; margin:0 0 7px; padding:5px 8px; background:#1d4334; border:1px solid #7e8e5d; color:#f7e7b2; font:bold 13px Georgia,serif; text-align:left; }
+.victory-spoils-surface .storage-capacity { color:#e9cf80; font:700 11px system-ui,sans-serif; }
+.victory-spoils-surface .storage-slots { flex:1 1 auto; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-rows:minmax(48px,1fr); gap:5px; min-height:0; }
+.victory-spoils-surface .storage-slots button { position:relative; min-width:0; min-height:0; display:grid; place-items:center; padding:3px; background:linear-gradient(145deg,#1b3b30,#11271f); border:1px solid #607b60; border-radius:3px; color:#eef0d7; }
+.victory-spoils-surface .storage-slots button.empty-slot { background:#142b23; border-color:#304d3e; opacity:.72; }
+.victory-spoils-surface .storage-slots button.selected,
+.victory-spoils-surface .storage-slots button:focus-visible { outline:2px solid #f2cd70; outline-offset:1px; border-color:#f2cd70; background:#315844; }
+.victory-spoils-surface .storage-slots button:hover { background:#2b5844; border-color:#c9ad68; }
+.victory-spoils-surface .storage-slots .item-icon { width:38px; height:38px; image-rendering:pixelated; }
+.victory-loot-session.loot-popup .storage-popup-actions { flex:0 0 auto; display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:0; padding:0; }
+.victory-loot-session.loot-popup .storage-popup-actions button { min-height:38px; padding:6px 8px; border:1px solid #78936b; border-radius:4px; background:#1f4938; color:#f7e8bd; font:700 11px system-ui,sans-serif; }
+.victory-loot-session.loot-popup .storage-popup-actions button[data-action="lootAll"] { background:#b8873f; border-color:#f0d17a; color:#1c291e; }
+.victory-loot-session.loot-popup .storage-popup-actions button:disabled { opacity:.45; }
+.victory-loot-session.loot-popup .loot-notice { flex:0 0 auto; min-height:16px; margin:0; color:#f0d98e; font:11px/1.3 system-ui,sans-serif; }
+.victory-loot-session.loot-popup > .storage-help { flex:0 0 auto; margin:0; color:#a9c2ad; font:10px/1.2 system-ui,sans-serif; }
+.victory-loot-session.loot-popup .victory-loot-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:2px 0 0; }
+.victory-loot-session.loot-popup .victory-loot-actions button { min-height:30px; padding:5px 7px; border:1px solid #506f5a; border-radius:3px; background:transparent; color:#bdd0b9; font:10px system-ui,sans-serif; }
+.victory-loot-session.loot-popup .victory-loot-actions button:hover { border-color:#d4b86d; color:#fff0bb; background:#18372b; }
+@media(max-width:520px){
+ .victory-spoils-surface .storage-slots { grid-template-columns:repeat(4,minmax(0,1fr)); }
+ .victory-spoils-surface .storage-slots .item-icon { width:32px; height:32px; }
+ .victory-spoils-intro h2 { font-size:18px; }
+}
 .item-tooltip::before{content:'';position:absolute;left:var(--tether-x,8px);top:-8px;width:1px;height:8px;background:#ddc477;}.item-tooltip.tooltip-above::before{top:auto;bottom:-8px;}.hero-panel.inventory-redesign .carried-source{opacity:.45;outline:1px dashed #f4cc73;}.hero-panel.inventory-redesign button.carry-target{outline:2px solid #89e4ce;background:#355849;}
 
 .merchant-workshop{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px;overflow:hidden;font:13px system-ui}.merchant-workshop h2,.merchant-workshop p{margin:0}.merchant-workshop>div:not(.merchant-grid){display:flex;gap:6px;align-items:center;flex:none}.merchant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;flex:1;min-height:0}.merchant-grid button{min-width:0;min-height:0;white-space:normal;border:1px solid #8e9c73;background:#19352c;color:#f0dfb7;padding:8px;font:12px system-ui}.merchant-grid button.selected{outline:2px solid #e5c478}.merchant-pages{justify-content:space-between}.merchant-notice{min-height:32px;color:#d3c499}

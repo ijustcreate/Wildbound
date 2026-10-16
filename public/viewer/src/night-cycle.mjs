@@ -26,7 +26,10 @@ export function carriedLight(p) {
     .filter(Boolean).sort((a, b) => b.radius - a.radius)[0] || null;
 }
 export function sightRadius(g, p, base = 280) {
-  const ambient = base * (0.30 + daylight(g) * 0.70);
+  const day = daylight(g);
+  // Preserve full daytime sight while making natural night vision 200% larger
+  // than the previous night radius, with a smooth dusk/dawn transition.
+  const ambient = base * (0.30 + day * 0.70) * (1 + (1 - day) * 2);
   return Math.max(ambient, carriedLight(p)?.radius || 0) * (g.weather?.type === 'monsoon' ? 0.8 : 1);
 }
 export function lightSources(g) {

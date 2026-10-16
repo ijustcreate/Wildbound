@@ -19,7 +19,7 @@ function gridFor(g,e){
 }
 export function findPath(g,e,target){
  const {grid}=gridFor(g,e),cell=a=>Math.max(0,Math.min(49,Math.floor(a.y/32)))*50+Math.max(0,Math.min(49,Math.floor(a.x/32))),start=cell(e),goal=cell(target);
- const heuristic=id=>Math.abs(id%50-goal%50)+Math.abs(Math.floor(id/50)-Math.floor(goal/50));
+ const heuristic=id=>{const dx=Math.abs(id%50-goal%50),dy=Math.abs(Math.floor(id/50)-Math.floor(goal/50));return Math.max(dx,dy)+(.41421356)*Math.min(dx,dy);};
  const costs=new Float32Array(2500).fill(Infinity),parents=new Int32Array(2500).fill(-1),closed=new Uint8Array(2500),open=[start];costs[start]=0;
  let found=-1;
  for(let iter=0;open.length&&iter<2500;iter++){
@@ -27,7 +27,13 @@ export function findPath(g,e,target){
   const id=open.splice(best,1)[0];if(closed[id])continue;closed[id]=1;
   if(id===goal){found=id;break;}
   const x=id%50,y=Math.floor(id/50);
-  for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||ny<0||nx>=50||ny>=50)continue;const next=ny*50+nx;if(!grid[next]||closed[next])continue;const cost=costs[id]+1;if(cost<costs[next]){costs[next]=cost;parents[next]=id;open.push(next);}}
+  for(const [dx,dy,step] of [[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,1.41421356],[1,-1,1.41421356],[-1,1,1.41421356],[1,1,1.41421356]]){
+   const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=50||ny>=50)continue;
+   const next=ny*50+nx;if(!grid[next]||closed[next])continue;
+   // Do not squeeze diagonally through the corner of two blocked cells.
+   if(dx&&dy&&(!grid[y*50+x+dx]||!grid[(y+dy)*50+x]))continue;
+   const cost=costs[id]+step;if(cost<costs[next]){costs[next]=cost;parents[next]=id;open.push(next);}
+  }
  }
  if(found<0)return [];
  const path=[];while(found!==start&&found>=0){path.push({x:(found%50)*32+16,y:Math.floor(found/50)*32+16});found=parents[found];}return path.reverse();
@@ -38,7 +44,8 @@ export function navigateEnemy(g,e,target,dt){
  const trap=g.traps?.find(t=>t.life>0&&t.variant!=='slow'&&Math.hypot(t.x-e.x,t.y-e.y)<30);if(trap){trap.life=0;e.state='snared';e.timer=2;return false;}
  const {signature}=gridFor(g,e),goal=Math.floor(target.x/32)+':'+Math.floor(target.y/32);
  let route=routes.get(e);if(!route||route.goal!==goal||route.signature!==signature||(g.time||0)>route.expires){route={goal,signature,expires:(g.time||0)+.9,path:findPath(g,e,target)};routes.set(e,route);}
- while(route.path.length&&Math.hypot(e.x-route.path[0].x,e.y-route.path[0].y)<8)route.path.shift();
+ const waypointReach=Math.max(8,actorRadius(e)+4);
+ while(route.path.length&&Math.hypot(e.x-route.path[0].x,e.y-route.path[0].y)<waypointReach)route.path.shift();
  let next=route.path[0];
  if(!next&&g.house&&!usesDoors(e)&&Math.hypot(target.x-e.x,target.y-e.y)>70){
    const floors=g.house.floors||[{x:480,y:480,w:640,h:640}],left=Math.min(...floors.map(f=>f.x))-64,right=Math.max(...floors.map(f=>f.x+f.w))+64,top=Math.min(...floors.map(f=>f.y))-64,bottom=Math.max(...floors.map(f=>f.y+f.h))+64;
@@ -48,7 +55,7 @@ export function navigateEnemy(g,e,target,dt){
      for(let i=0;i<points.length;i++){const point=points[index%points.length];if(Math.hypot(e.x-point.x,e.y-point.y)>38){path=findPath(g,e,point);if(path.length)break;}index++;}
      e.patrolIndex=index%points.length;e.housePatrol={signature,expires:(g.time||0)+3,path};
    }
-   while(e.housePatrol.path.length&&Math.hypot(e.x-e.housePatrol.path[0].x,e.y-e.housePatrol.path[0].y)<8)e.housePatrol.path.shift();
+   while(e.housePatrol.path.length&&Math.hypot(e.x-e.housePatrol.path[0].x,e.y-e.housePatrol.path[0].y)<waypointReach)e.housePatrol.path.shift();
    next=e.housePatrol.path[0];if(!next)e.patrolIndex=(e.patrolIndex+1)%points.length;
  }
  if(!next){e.moving=false;return false;}
@@ -65,6 +72,11 @@ export function navigateEnemy(g,e,target,dt){
      if(close&&(onOpening||(next[axis]-center)*(e[axis]-center)<=0)){startJump(e);break;}
    }
  }
- if(usesDoors(e))for(const d of g.house?.doors||[])if(!d.open&&Math.hypot(e.x-d.x-d.w/2,e.y+collisionOffset(g,e)-d.y-d.h/2)<56&&Math.hypot(next.x-d.x-d.w/2,next.y+collisionOffset(g,e)-d.y-d.h/2)<68)d.open=true;
- const d=Math.hypot(next.x-e.x,next.y-e.y)||1;e.faceX=(next.x-e.x)/d;e.faceY=(next.y-e.y)/d;e.state='hunt';const step=Math.min(d,e.speed*dt);return g.moveActor(e,e.faceX*step,e.faceY*step,flies(e))>0;
+ if(usesDoors(e))for(const door of g.house?.doors||[])if(!door.open&&Math.hypot(e.x-door.x-door.w/2,e.y+collisionOffset(g,e)-door.y-door.h/2)<72&&Math.hypot(next.x-door.x-door.w/2,next.y+collisionOffset(g,e)-door.y-door.h/2)<92)door.open=true;
+ const d=Math.hypot(next.x-e.x,next.y-e.y)||1;e.faceX=(next.x-e.x)/d;e.faceY=(next.y-e.y)/d;e.state='hunt';const step=Math.min(d,e.speed*dt),beforeX=e.x,beforeY=e.y,moved=g.moveActor(e,e.faceX*step,e.faceY*step,flies(e));
+ // Re-route quickly when a follower is pressed into a corner or a door jamb.
+ // This is deliberately time-based so a blocked frame cannot cause route thrash.
+ if(moved<Math.min(.5,step*.2)&&step>0){e.navStuck=(e.navStuck||0)+dt;if(e.navStuck>.32){route.expires=0;e.navStuck=0;}}
+ else e.navStuck=0;
+ e.navLastX=beforeX;e.navLastY=beforeY;return moved>0;
 }

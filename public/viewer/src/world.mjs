@@ -180,12 +180,12 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   if(prop.kind==='forest_ruin')return Math.hypot(x-Math.max(prop.x-prop.width/2,Math.min(x,prop.x+prop.width/2)),y-Math.max(prop.y-prop.depth,Math.min(y,prop.y)))<radius;
   if(prop.procedural&&!prop.falling&&!prop.depleted){
     const sizes={tree:[12,8,.35],snow_tree:[8,6,.35],rock:[Math.max(10,25-(prop.chipped||0)*3)/2,8,.19],ice_rock:[25,10,.19],ice_spire:[25,10,.19],frozen_log:[28,7,.19],winter_cache:[20,12,.19]};
-    const shape=sizes[prop.kind];if(shape){const scale=prop.size/64,baseY=prop.y+prop.size*shape[2],halfW=shape[0]*scale,depth=shape[1]*scale;const nx=Math.max(prop.x-halfW,Math.min(x,prop.x+halfW)),ny=Math.max(baseY-depth,Math.min(y,baseY));return Math.hypot(x-nx,y-ny)<radius;}
+    const shape=sizes[prop.kind];if(shape){const scale=prop.size/64,baseY=prop.rootY??prop.y+prop.size*shape[2],halfW=shape[0]*scale,depth=shape[1]*scale;const nx=Math.max(prop.x-halfW,Math.min(x,prop.x+halfW)),ny=Math.max(baseY-depth,Math.min(y,baseY));return Math.hypot(x-nx,y-ny)<radius;}
   }
   if (prop.falling || prop.depleted) return false;
   if (!sprite?.footprint) {
     if (!prop.procedural || !["tree", "rock", "cactus", "palm"].includes(prop.kind)) return false;
-    const by = prop.y + prop.size * (prop.kind === "tree" ? 0.35 : 0.19);
+    const by = prop.rootY ?? prop.y + prop.size * (prop.kind === "tree" ? 0.35 : 0.19);
     return (
       Math.hypot(
         (x - prop.x) / (prop.kind === "tree" ? 0.12 : 0.3),

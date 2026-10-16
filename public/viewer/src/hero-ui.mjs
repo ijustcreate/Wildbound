@@ -372,8 +372,16 @@ export class HeroUI {
     const door=game.portals.find(d=>d.id===p.room),owner=game.players.find(q=>q.id===door?.owner);
     const title=reusable?(u.storage==='starter'?'Starter chest':u.storage==='shared'?'Shared stash':chestName(owner||p,u.storage)):u.storage==='old-well'?(wellForPlayer(game,p)?.mausoleum?'Crypt lantern chest':'Buried well treasure'):u.storage==='temple'?'Ritual chest':'Victory spoils';
     panel.querySelector('header').textContent=p.name+' · '+title;
+    if(['victory','tv-victory'].includes(u.storage)){
+      const remaining=storage.filter(Boolean).length,total=storage.length;
+      const intro=el('section',null,'victory-spoils-intro');
+      intro.append(el('div','LEVEL COMPLETE','victory-spoils-eyebrow'),el('h2',u.storage==='tv-victory'?'Shared party treasure':'Victory spoils'));
+      intro.append(el('p',remaining?`Choose your rewards before you leave. ${remaining} item${remaining===1?'':'s'} remain.`:'All rewards collected. You are ready to continue.'));
+      const count=el('strong',`${remaining} / ${total||24}`,'victory-spoils-count');count.setAttribute('aria-label',`${remaining} rewards remaining`);intro.append(count);
+      panel.append(intro);
+    }
     const switchTo=(mode,index)=>{game.inventoryAction(p,'panel:'+mode);if(index!==undefined)game.inventoryAction(p,'select:'+index);};
-    const surface=el('div',null,'storage-containers');
+    const surface=el('div',null,`storage-containers${['victory','tv-victory'].includes(u.storage)?' victory-spoils-surface':''}`);
     for(const mode of reusable?['chest','pack']:['chest']){
       const list=mode==='pack'?p.inventory:storage,deposit=mode==='pack',active=u.panel===mode;
       const section=el('section',null,'storage-container storage-sheet');section.classList.toggle('active',active);section.dataset.container=mode;

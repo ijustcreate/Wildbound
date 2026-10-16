@@ -3,7 +3,9 @@ import { applyIK } from './ik.mjs';
 const faceNames=['eyeL','eyeR','earL','earR','nose','mouth'];
 const rest={pelvis:[0,0,14],chest:[0,0,24],head:[0,0,31],
   eyeL:[-2,3,32.5],eyeR:[2,3,32.5],earL:[-4,0,31],earR:[4,0,31],nose:[0,4,31],mouth:[0,3,29.5],
-  shoulderL:[-6,-1.5,24],shoulderR:[6,-1.5,24],elbowL:[-7,-1,17],elbowR:[7,-1,17],handL:[-7,0,12],handR:[7,0,12],
+  // Raise the relaxed shoulder line with the complete arm chain. Keeping the
+  // old segment lengths prevents wrists and equipped grips from stretching.
+  shoulderL:[-6,-1.5,26],shoulderR:[6,-1.5,26],elbowL:[-7,-1,19],elbowR:[7,-1,19],handL:[-7,0,14],handR:[7,0,14],
   hipL:[-3,0,13],hipR:[3,0,13],kneeL:[-3,1,7],kneeR:[3,1,7],footL:[-3,1,1],footR:[3,1,1]};
 const add=(a,b)=>a.map((v,i)=>v+b[i]);
 const sub=(a,b)=>a.map((v,i)=>v-b[i]);

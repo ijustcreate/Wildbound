@@ -1,6 +1,6 @@
 export const SKILLS = [
   { id: 'second_wind', name: 'Second Wind', cost: 20, max: 1, detail: 'Once per expedition, recover from a knockdown at 35 HP.' },
-  { id: 'long_jump', name: 'Trail Legs', cost: 15, max: 2, detail: 'Jump farther and higher. Each rank adds 15% reach.' },
+  { id: 'long_jump', name: 'Trail Legs', cost: 15, max: 2, detail: 'Jump farther and higher. Each rank adds 10% reach.' },
   { id: 'quick_revive', name: 'Quick Rescue', cost: 25, max: 1, detail: 'Hold Interact near a downed friend for an instant revive.' },
   { id: 'pack_mule', name: 'Pack Mule', cost: 20, max: 1, detail: 'Carry four additional backpack stacks.' },
   { id: 'scavenger', name: 'Scavenger', cost: 15, max: 1, detail: 'Enemy material drops are more likely to appear.' },

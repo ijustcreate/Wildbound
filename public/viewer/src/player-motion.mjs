@@ -36,12 +36,12 @@ export const JOINTS = {
   earR: ["head", 4, 0, 30],
   nose: ["head", 0, 4, 30],
   mouth: ["head", 0, 3, 28.5],
-  shoulderL: ["chest", -4, 0, 23],
-  elbowL: ["shoulderL", -5, 0, 18],
-  handL: ["elbowL", -5, 1, 14],
-  shoulderR: ["chest", 4, 0, 23],
-  elbowR: ["shoulderR", 5, 0, 18],
-  handR: ["elbowR", 5, 1, 14],
+  shoulderL: ["chest", -4, 0, 25],
+  elbowL: ["shoulderL", -5, 0, 20],
+  handL: ["elbowL", -5, 1, 16],
+  shoulderR: ["chest", 4, 0, 25],
+  elbowR: ["shoulderR", 5, 0, 20],
+  handR: ["elbowR", 5, 1, 16],
   hipL: ["pelvis", -2.5, 0, 14],
   kneeL: ["hipL", -2.5, 0, 8],
   footL: ["kneeL", -2.5, 1, 1],
@@ -1014,7 +1014,31 @@ export function drawPlayer(
             drawItem(c, weaponId, hand.x, hand.y + (weapon === "lantern" ? 5 : -7), 15);
             if(weapon === "torch")drawTorchFlame(c,hand.x,hand.y-11,time,d*.17+(side==="L"?2:0));
           }
-          if(weapon==='critter_net')drawItem(c,weaponId,hand.x,hand.y-8,24);
+          if (weapon === 'critter_net') {
+            // The net sprite's grip is at its lower-left handle pixel, not
+            // at the 24px canvas center. Anchor that point to the hand so the
+            // hoop hangs out from the character instead of covering the torso.
+            const action = equipmentPose.action;
+            const swing = ['slash', 'swipe_one', 'swipe_two', 'swipe_big', 'sword_combo'].includes(action);
+            let swingAngle = 0;
+            if (swing) {
+              const frame = equipmentPose.frame / (model.clips[action]?.length - 1 || 1);
+              const phase = action === 'sword_combo'
+                ? (frame <= .5 ? frame * 2 : (frame - .5) * 2)
+                : frame;
+              swingAngle = (phase < .25
+                ? -.7
+                : phase < .65
+                  ? -.7 + (phase - .25) / .4 * 2.5
+                  : 1.8 - (phase - .65) / .35 * 1.6) * (side === 'R' ? 1 : -1);
+            }
+            c.save();
+            c.translate(hand.x, hand.y);
+            c.rotate(swingAngle);
+            // Rotate around the grip point so the handle stays in the hand.
+            drawItem(c, weaponId, 7, -11, 24);
+            c.restore();
+          }
           if(weapon==='boomerang')drawItem(c,weaponId,hand.x,hand.y+3,19);
           if (weapon === "rifle") {
             const length = Math.hypot(actor.faceX, actor.faceY) || 1;
@@ -1037,9 +1061,14 @@ export function drawPlayer(
             } else {
             const attack =
               actor.attack > 0 || actor.animationAction === "slash";
+            const relaxedSwordCarry = weapon === "sword" && ['idle','walk','run'].includes(equipmentPose.action);
             let tip = {
-              x: hand.x + (attack ? -Math.sin(d*Math.PI/4)*12 : -Math.sin(d*Math.PI/4)*5+Math.cos(d*Math.PI/4)*(side==='R'?3:-3)),
-              y: hand.y - (weapon === "sword" ? 14 : 8) + (attack ? Math.cos(d*Math.PI/4)*5 : 0),
+              // Keep the carried blade lowered and canted away from the torso.
+              // Attack vectors below still replace this completely during swings.
+              x: hand.x + (attack ? -Math.sin(d*Math.PI/4)*12 : relaxedSwordCarry
+                ? -Math.sin(d*Math.PI/4)*12 + Math.cos(d*Math.PI/4)*(side==='R'?9:-9)
+                : -Math.sin(d*Math.PI/4)*5+Math.cos(d*Math.PI/4)*(side==='R'?3:-3)),
+              y: hand.y - (relaxedSwordCarry ? 8 : weapon === "sword" ? 14 : 8) + (attack ? Math.cos(d*Math.PI/4)*5 : 0),
             };
             if(sculpted){
               const action=equipmentPose.action,swing=['slash','swipe_one','swipe_two','swipe_big','sword_combo'].includes(action);

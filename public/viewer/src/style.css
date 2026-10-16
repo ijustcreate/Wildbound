@@ -1436,7 +1436,9 @@ dialog h2 {
 .npc-dialogue-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .npc-dialogue-heading h2 { margin: 0; color: #1e493e; font-size: clamp(17px, 2.5vw, 25px); line-height: 1.05; }
 .npc-dialogue-stage { color: #755d37; font-size: 10px; white-space: nowrap; }
-.npc-dialogue-text { min-height: 0 !important; margin: 0; color: #332f24; font-size: clamp(12px, 1.8vw, 16px); line-height: 1.35; overflow-wrap: anywhere; }
+.npc-dialogue-text { min-height: 0 !important; margin: 0; color: #332f24; font-size: clamp(12px, 1.8vw, 16px); line-height: 1.5; overflow-wrap: anywhere; }
+.npc-dialogue-word { padding: 1px 1px 2px; border-radius: 3px; transition: background-color .12s ease, color .12s ease; }
+.npc-dialogue-word.speaking { background: #f0c957; color: #18392f; box-shadow: 0 0 0 2px #f0c957; }
 .npc-dialogue-quest { margin: 0; padding: 7px 9px; background: #d9c48d; border: 2px solid #80633d; color: #3d3929; }
 .npc-dialogue-quest p { min-height: 0 !important; margin: 3px 0; font-size: 11px; }
 .npc-dialogue-quest progress { width: 100%; accent-color: #3e9271; }

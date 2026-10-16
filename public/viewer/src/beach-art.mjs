@@ -8,6 +8,7 @@ export const BEACH_GROUND_CACHE_LIMIT=40;
 const caches=new WeakMap();
 export const beachCacheSize=g=>caches.get(g)?.chunks.size||0;
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
+const pierTile=(g,x,y)=>g.generatedEnvironment==='beach'&&x>=BEACH_PIER.x&&x<BEACH_PIER.x+BEACH_PIER.w&&y>=BEACH_PIER.y&&y<BEACH_PIER.y+BEACH_PIER.h;
 // Static terrain is cached in viewport-sized chunks; animation is a separate
 // bounded pass, never saved particle actors or a full-world image allocation.
 export function drawBeachGround(c,g,{sx,sy,ex,ey}){
@@ -44,7 +45,7 @@ export function drawBeachGround(c,g,{sx,sy,ex,ey}){
  // Continuous coherent wave crests, with pixel steps instead of tile borders.
  for(let row=0;row<4;row++)for(let x=Math.max(0,sx*32);x<Math.min(1600,ex*32);x+=4){
   const y=beachShore(x,g.seed)-42-row*70+Math.sin(x*.022+t*.9+row)*5+Math.sin(t*.6+row)*8;
-  if(y<sy*32||y>ey*32||waterAt(g,x,y)==='wood'||g.bloom<3&&Math.hypot(x-800,y-800)>g.bloom*430)continue;
+  if(y<sy*32||y>ey*32||pierTile(g,x,y)||g.bloom<3&&Math.hypot(x-800,y-800)>g.bloom*430)continue;
   rect(c,x,y,4,row===0?3:1,row===0?'#f8f5d9cc':'#a5e8de66');
  }
  const p=BEACH_PIER;
@@ -53,6 +54,18 @@ export function drawBeachGround(c,g,{sx,sy,ex,ey}){
   for(const x of [p.x-5,p.x+p.w+1])for(let y=p.y+16;y<p.y+p.h-16;y+=48){rect(c,x,y-12,5,15,'#5d4937');rect(c,x-1,y-14,7,3,'#d9b77d');}
   rect(c,p.x-4,p.y-8,p.w+8,3,'#dfc194');
  }
+}
+export function drawBeachPierAboveSwimmers(c,g){
+ if(g.generatedEnvironment!=='beach'||g.phase==='won')return;
+ const p=BEACH_PIER;
+ const hidden=g.players.some(a=>!a.room&&a.underBridge&&a.x>=p.x-12&&a.x<p.x+p.w+12&&a.y>=p.y-12&&a.y<p.y+p.h+12);
+ if(!hidden)return;
+ c.save();c.globalAlpha=.28;
+ for(let y=p.y;y<p.y+p.h;y+=32)for(let x=p.x;x<p.x+p.w;x+=32){
+  c.fillStyle=Math.floor(y/32)%2?'#997450':'#a5815a';c.fillRect(x,y,32,32);
+  c.strokeStyle='#73573f';c.lineWidth=1;c.beginPath();c.moveTo(x+2,y+16);c.lineTo(x+30,y+16);c.stroke();
+ }
+ c.restore();
 }
 export function drawBeachProp(c,p,time,g){
  return drawNativeBeachProp(c,p,time);

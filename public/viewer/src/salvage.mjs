@@ -1,5 +1,5 @@
 import {ITEMS,clearSlot,refreshVitals,give} from './items.mjs';
-import {critterContainer} from './critter-containers.mjs';
+import {CRITTER_CONTAINERS,critterContainer} from './critter-containers.mjs';
 export const SALVAGE_SECONDS=1.25;
 export function salvageYield(type,metadata={}){
  if(type?.startsWith('caught_')&&ITEMS[type])return [{type:'dark_essence',qty:1},{type:critterContainer(type,metadata),qty:1}];
@@ -32,6 +32,10 @@ export function tickSalvage(g,p,held,dt){
  hold.elapsed+=Math.max(0,Math.min(.1,dt));
  if(hold.elapsed+1e-8<SALVAGE_SECONDS)return;
  const drops=[...salvageYield(item.type,item),...(item.sockets||[]).map(type=>({type,qty:1}))];
+ const returnedContainer=item.type?.startsWith('caught_')
+  ?drops.find(drop=>CRITTER_CONTAINERS.includes(drop.type))
+  :null;
+ const groundDrops=returnedContainer?drops.filter(drop=>drop!==returnedContainer):drops;
  // The lobby has a separate practice simulation; world drops there would be
  // invisible and discarded on starting an expedition. Deliver atomically to
  // the real backpack, including returned socketed trinkets.
@@ -46,16 +50,30 @@ export function tickSalvage(g,p,held,dt){
    g.uiRevision=(g.uiRevision||0)+1;return;
   }
  }
- if(--item.qty===0)clearSlot(p.inventory,hold.index);
+ if(returnedContainer){
+  const restored=structuredClone(p.inventory);
+  if(--restored[hold.index].qty===0)clearSlot(restored,hold.index);
+  else delete restored[hold.index].sockets;
+  if(!give(restored,returnedContainer.type,returnedContainer.qty)){
+   p.salvageHold={latched:true};p.ui.salvagePointer=false;
+   p.ui.notice='Free backpack space for the empty cage or bottle. Nothing was consumed.';
+   g.uiRevision=(g.uiRevision||0)+1;return;
+  }
+  p.inventory=restored;
+ }else if(--item.qty===0)clearSlot(p.inventory,hold.index);
  else delete item.sockets;
  p.salvageHold={latched:true};p.ui.salvagePointer=false;p.salvageFinish=.3;
  if(lobbyPack)p.inventory=lobbyPack;
- else for(const [n,drop] of drops.entries()){
-  const a=n*Math.PI*2/drops.length;
+ else for(const [n,drop] of groundDrops.entries()){
+  const a=n*Math.PI*2/groundDrops.length;
   g.dropLoot(p.x+Math.cos(a)*18,p.y+Math.sin(a)*12,drop.type,drop.qty,'Salvaged by '+p.name,true);
   const loot=g.loot.at(-1);if(loot)loot.salvageBorn=g.time;
  }
- refreshVitals(p);p.ui.notice=lobbyPack?'Salvaged. Materials and socketed trinkets added to your backpack. Release to salvage again.':'Salvaged. Materials and socketed trinkets are at your feet. Release to salvage again.';
+ refreshVitals(p);p.ui.notice=lobbyPack
+  ?'Salvaged. Materials and socketed trinkets added to your backpack. Release to salvage again.'
+  :returnedContainer
+   ?'Salvaged. The empty cage or bottle was added to your backpack; materials are at your feet. Release to salvage again.'
+   :'Salvaged. Materials and socketed trinkets are at your feet. Release to salvage again.';
  g.uiRevision=(g.uiRevision||0)+1;g.persist();
 }
 export function salvageProgress(p){return p.salvageHold?.latched?0:Math.min(1,(p.salvageHold?.elapsed||0)/SALVAGE_SECONDS);}

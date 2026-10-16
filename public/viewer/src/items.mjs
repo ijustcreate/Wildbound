@@ -1021,7 +1021,7 @@ for (const [id, item] of Object.entries(ITEMS)) {
 export const itemKind = (id) => ITEMS[id]?.base || id;
 // Preserve non-stackable gear, socketed items and container instances.
 for(const [id,item]of Object.entries(ITEMS)){
- if(item.stack>1||id.startsWith('caught_'))item.stack=999;
+ if(item.stack>1)item.stack=999;
  if(id.startsWith('caught_'))item.description=(item.description||'A captured critter.')+' Use: release as a follower for this level. Recapture before quitting or it is lost. Salvage: consumes the creature, returns its jar/cage and produces Dark Essence.';
 }
 export function itemStats(id) {

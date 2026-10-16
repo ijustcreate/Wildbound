@@ -1,11 +1,12 @@
 import {roomBlocked,ROOM_STATIONS} from './shops.mjs';
 import {tickRobotRepair,storageOwner,robotOnline,nearStorageRobot,openRobotIntroduction} from './storage-repair.mjs';
+const ROOM_JUMP_APEX_HANG=.075;
 
 // Room-local height avoids ticking expedition physics twice, and also works
 // in the lobby where the expedition clock is stopped. Floor coordinates stay
 // unchanged for shadows, furniture collisions, depth sorting and stations.
 export function resetStorageJump(p){
-  p.roomJumpHeight=0;p.roomJumpVelocity=0;p.roomJumpAge=0;p.roomLandTime=0;p.roomJumpHeld=false;
+ p.roomJumpHeight=0;p.roomJumpVelocity=0;p.roomJumpAge=0;p.roomJumpHang=0;p.roomLandTime=0;p.roomJumpHeld=false;delete p.roomJumpX;delete p.roomJumpY;
 }
 export function storageVisualActor(p){
   return {...p,x:p.roomX,y:p.roomY,moving:!!p.roomMoving,step:p.roomStep||0,
@@ -16,14 +17,18 @@ function tickStorageJump(game,p,input,dt){
   p.roomLandTime=Math.max(0,(p.roomLandTime||0)-dt);
   if(p.hp<=0){resetStorageJump(p);return;}
   if(input.jump&&!p.roomJumpHeld&&!(p.roomJumpHeight>0)&&!(p.stun>0)&&!(p.rooted>0)&&p.state!=='snared'){
-    p.roomJumpHeight=.01;p.roomJumpVelocity=125*(1+(p.field?.skills?.long_jump||0)*.15);p.roomJumpAge=0;p.roomLandTime=0;
+  p.roomJumpHeight=.01;p.roomJumpVelocity=125*(1+(p.field?.skills?.long_jump||0)*.10);p.roomJumpAge=0;p.roomJumpHang=0;p.roomLandTime=0;
+  const moveLength=Math.hypot(input.x||0,input.y||0);p.roomJumpX=moveLength>1?(input.x||0)/moveLength:input.x||0;p.roomJumpY=moveLength>1?(input.y||0)/moveLength:input.y||0;
     game.onSound?.('jump',p);
   }
   p.roomJumpHeld=!!input.jump;
   if(p.roomJumpHeight>0){
+    if((p.roomJumpHang||0)>0){p.roomJumpHang=Math.max(0,p.roomJumpHang-dt);p.roomJumpVelocity=0;return;}
+    const rising=p.roomJumpVelocity>0;
     p.roomJumpAge=(p.roomJumpAge||0)+dt;p.roomJumpVelocity-=360*dt;
     p.roomJumpHeight=Math.max(0,p.roomJumpHeight+p.roomJumpVelocity*dt);
-    if(!p.roomJumpHeight){p.roomJumpVelocity=0;p.roomLandTime=.22;}
+    if(rising&&p.roomJumpVelocity<=0){p.roomJumpHang=ROOM_JUMP_APEX_HANG;p.roomJumpVelocity=0;return;}
+    if(!p.roomJumpHeight){p.roomJumpVelocity=0;p.roomLandTime=.22;delete p.roomJumpX;delete p.roomJumpY;}
   }
 }
 
@@ -32,8 +37,9 @@ export function tickStorageRoom(game,p,input,dt,interact=false){
   if(input.attack&&!p.previousInput?.attack){p.attack=.3;game.onSound?.('swing',p);}
   tickStorageJump(game,p,input,dt);
   const beforeX=p.roomX,beforeY=p.roomY;
-  const nx=Math.max(25,Math.min(295,p.roomX+(input.x||0)*90*dt));
-  const ny=Math.max(45,Math.min(218,p.roomY+(input.y||0)*90*dt));
+  const moveX=p.roomJumpHeight>0?(p.roomJumpX||0):(input.x||0),moveY=p.roomJumpHeight>0?(p.roomJumpY||0):(input.y||0);
+  const nx=Math.max(25,Math.min(295,p.roomX+moveX*90*dt));
+  const ny=Math.max(45,Math.min(218,p.roomY+moveY*90*dt));
   if(!roomBlocked(nx,p.roomY))p.roomX=nx;
   if(!roomBlocked(p.roomX,ny))p.roomY=ny;
   const dx=p.roomX-beforeX,dy=p.roomY-beforeY,distance=Math.hypot(dx,dy);

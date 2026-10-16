@@ -93,6 +93,32 @@ export const COLORS = [
   "#b6d77c",
 ];
 
+function fleeMotion(g,e,p,dt){
+  const dx=e.x-p.x,dy=e.y-p.y,d=Math.hypot(dx,dy)||1,away={x:dx/d,y:dy/d};
+  const previous={x:e.fleeVX||away.x,y:e.fleeVY||away.y},previousLength=Math.hypot(previous.x,previous.y)||1;
+  previous.x/=previousLength;previous.y/=previousLength;
+  const candidates=[away,
+    {x:away.x*.72-away.y*.69,y:away.y*.72+away.x*.69},
+    {x:away.x*.72+away.y*.69,y:away.y*.72-away.x*.69},
+    {x:-away.y,y:away.x},{x:away.y,y:-away.x}];
+  const radius=actorRadius(e),offset=collisionOffset(g,e),probe=Math.max(18,radius*2.5);
+  let best=null,bestScore=-Infinity;
+  for(const v of candidates){
+    const n=Math.hypot(v.x,v.y)||1,dir={x:v.x/n,y:v.y/n};
+    const blocked=g.blocked(e.x+dir.x*probe,e.y+dir.y*probe,radius,false,false,false,offset);
+    if(blocked)continue;
+    const score=dir.x*away.x+dir.y*away.y+(.9*(dir.x*previous.x+dir.y*previous.y))+(e.fleeTurnSign||1)*(.08*(dir.x*(-away.y)+dir.y*away.x));
+    if(score>bestScore){bestScore=score;best=dir;}
+  }
+  if(!best){e.fleeTurnSign=-(e.fleeTurnSign||1);best={x:-away.y*(e.fleeTurnSign||1),y:away.x*(e.fleeTurnSign||1)};}
+  const blend=1-Math.exp(-dt*6);e.fleeVX=(e.fleeVX||best.x)+(best.x-(e.fleeVX||best.x))*blend;e.fleeVY=(e.fleeVY||best.y)+(best.y-(e.fleeVY||best.y))*blend;
+  const len=Math.hypot(e.fleeVX,e.fleeVY)||1;e.fleeVX/=len;e.fleeVY/=len;e.faceX=e.fleeVX;e.faceY=e.fleeVY;
+  const moved=g.moveActor(e,e.fleeVX*e.speed*dt,e.fleeVY*e.speed*dt);e.moving=moved>.01;
+  if(moved<.01)e.fleeBlocked=(e.fleeBlocked||0)+dt;else e.fleeBlocked=0;
+  if(e.fleeBlocked>.28){e.fleeTurnSign=-(e.fleeTurnSign||1);e.fleeVX=0;e.fleeVY=0;e.fleeBlocked=0;}
+  return moved;
+}
+
 function tickControlledUnit(g, owner, actor, input, dt) {
   actor.controlPreviousInput ||= {};
   if (actor.hp <= 0 || actor.room || actor.ui || actor.stun > 0 || g.openingBoard) {
@@ -104,7 +130,8 @@ function tickControlledUnit(g, owner, actor, input, dt) {
   if(actor.bowAiming){actor.blocking=false;actor.dashTime=0;actor.slideX=actor.slideY=0;}
   const len=Math.hypot(input.x||0,input.y||0);let mx=input.x||0,my=input.y||0;
   actor.walking=len>0&&len<.6;if(len>1){mx/=len;my/=len;}
-  if(input.jump&&!actor.controlPreviousInput.jump&&!actor.wingHover)startJump(actor);
+  if(input.jump&&!actor.controlPreviousInput.jump&&!actor.wingHover)startJump(actor,mx,my);
+  if(actor.jumpHeight>0&&Number.isFinite(actor.jumpMoveX)){mx=actor.jumpMoveX;my=actor.jumpMoveY;}
   actor.jumpHeld=!!input.jump;
   if(input.attack&&!actor.bowAiming)actor.charge=Math.min(1.2,(actor.charge||0)+dt*(1+(itemKind(actor.equipment?.hand1)==='bow'?stat(actor,'bowDrawSpeed'):0)));
   if(!input.attack&&actor.controlPreviousInput.attack&&actor.charge&&!actor.swimming){g.attack(actor,actor.charge);actor.charge=0;}
@@ -781,6 +808,17 @@ export class Game {
   start() {
     if (!this.players.length) return false;
     this.eventTestBoard=null;
+    // A newly created local world must not inherit a downed hero from the
+    // lobby/session that was used to create it. Downed heroes cannot move,
+    // and the opening board has no active helper yet to revive them.
+    for (const player of this.players) {
+      if (player.hp <= 0) {
+        player.hp = player.maxHp;
+        player.revive = 0;
+        player.getUpTime = 0;
+        player.invuln = 0;
+      }
+    }
     // Restock only when a fresh expedition starts, not on reopening a shop or
     // restoring a snapshot. Already paid orders remain redeemable.
     for(const player of this.players)player.vendingStock=vendingStock();
@@ -888,6 +926,16 @@ export class Game {
       return this.hitTable(p);
     }
     if (!["play", "won"].includes(this.phase) || p.hp <= 0 || p.room || p.ui) return false;
+    const hasCritterNet = [p.equipment?.hand1, p.equipment?.hand2].includes("critter_net");
+    if (hasCritterNet && p.attack <= 0) {
+      // Utility gear normally exits before the melee animation is scheduled.
+      // Give the net the same readable sword-like wind-up/sweep even when the
+      // attack successfully catches a nearby critter.
+      p.attackClip = "swipe_big";
+      p.attackArc = 110;
+      p.attackReach = 1;
+      p.attackDuration = p.attack = 0.5;
+    }
     if(!isCharmed(p)&&(catchGraveyardCritter(this,p)||catchCritter(this,p)))return true;
     if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
     if(throwBoomerang(this,p))return true;
@@ -1368,6 +1416,12 @@ export class Game {
     }
     if (!["play", "won"].includes(this.phase)) return;
     dt = Math.min(dt, 0.05);
+    // The board sequence may consume the rest of this update while the
+    // opening board is waiting for its first hit. Advance the world reveal
+    // before that early return, otherwise a newly loaded world stays mostly
+    // covered by the unrevealed gray tile mask indefinitely.
+    if (this.phase === "play")
+      this.bloom = Math.min(3, (this.bloom || 0) + dt);
     this.rollCooldown=Math.max(0,(this.rollCooldown||0)-dt);
     if(tickBoardSequence(this,dt,inputs))return;
     tickCharmStatuses(this,dt);
@@ -1392,7 +1446,6 @@ export class Game {
     updateBoundlessWorld(this,dt);
     seedWildFauna(this);
     if (this.phase === "sealing") return;
-    this.bloom = Math.min(3, (this.bloom || 0) + dt);
     this.time += dt;
     this.tableShake = Math.max(0, this.tableShake - dt);
     this.eventTime = Math.max(0, this.eventTime - dt);
@@ -1468,9 +1521,10 @@ export class Game {
         my /= len;
       }
       if(this.openingBoard)faceOpeningBoard(p);else updateAimFacing(p, input);
-      if(!this.openingBoard&&input.jump&&!p.jumpHeld&&!p.wingHover)startJump(p);
+      if(!this.openingBoard&&input.jump&&!p.jumpHeld&&!p.wingHover)startJump(p,mx,my);
       p.jumpHeld=!!input.jump;
       if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
+      if(p.jumpHeight>0&&Number.isFinite(p.jumpMoveX)){mx=p.jumpMoveX;my=p.jumpMoveY;}
       if (!this.openingBoard && !p.bowAiming && input.dodge && !p.dashHeld && p.dodge === 0) {
         p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
@@ -1931,12 +1985,7 @@ export class Game {
       }
       if (e.state === "flee") {
         e.timer -= dt;
-        const d = distance(e, p) || 1;
-        this.moveActor(
-          e,
-          ((e.x - p.x) / d) * e.speed * dt,
-          ((e.y - p.y) / d) * e.speed * dt,
-        );
+        fleeMotion(this,e,p,dt);
         if (e.timer <= 0) e.state = "hunt";
         continue;
       }

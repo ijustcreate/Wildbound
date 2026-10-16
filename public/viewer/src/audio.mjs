@@ -27,13 +27,43 @@ export class GameAudio {
  constructor(){
   this.settings={master:.8,sfx:.8,ui:.65,ambience:.45,night:false};
   try{const saved=JSON.parse(localStorage.getItem('wildbound-mixer')||'{}');for(const k of Object.keys(this.settings))if(k in saved)this.settings[k]=k==='night'?!!saved[k]:clamp(saved[k]);}catch{}
-  this.cache=new Map();this.last=new Map();this.variants=new Map();this.actorLast=new WeakMap();this.voices=new Set();this.voiceInfo=new WeakMap();this.pending=new Set();this.previous=new WeakMap();this.playerState=new WeakMap();this.listeners=[];this.enabled=true;this.unlocked=false;this.epoch=0;
+  this.cache=new Map();this.last=new Map();this.variants=new Map();this.actorLast=new WeakMap();this.voices=new Set();this.voiceInfo=new WeakMap();this.pending=new Set();this.previous=new WeakMap();this.playerState=new WeakMap();this.listeners=[];this.enabled=true;this.unlocked=false;this.epoch=0;this.dialogueVoiceListener=this.onDialogueVoice.bind(this);
+  globalThis.addEventListener?.('wildbound:npc-voice',this.dialogueVoiceListener);
  }
  unlock(){
   if(!this.ctx){this.ctx=new AudioContext();this.master=this.ctx.createGain();this.compressor=this.ctx.createDynamicsCompressor();this.master.connect(this.compressor);this.compressor.connect(this.ctx.destination);this.buses={};for(const b of ['sfx','ui','ambience']){this.buses[b]=this.ctx.createGain();this.buses[b].connect(this.master);}this.apply();}
   this.unlocked=true;this.ctx.resume().catch(()=>{});
  }
  cancelPending(){this.epoch++;this.pending.clear();}
+ // Dialogue voices are intentionally synthesized from vowels. This keeps NPC
+ // lines tiny, deterministic, and editable without recording or downloading
+ // a separate audio file for every line.
+ onDialogueVoice({detail}){
+  if(!detail?.vowel)return;
+  this.playMumble(detail.vowel,detail.actor,detail.voice||{});
+ }
+ playMumble(vowel,actor={},voice={}){
+  if(!this.enabled||!this.unlocked||!this.settings.master||!this.ctx)return;
+  const now=performance.now();
+  const key=`dialogue:${actor.id||actor.npcId||'npc'}`;
+  const last=this.last.get(key)||-10000;
+  if(now-last<Math.max(34,voice.gap||58))return;
+  this.last.set(key,now);
+  const base={a:220,e:255,i:285,o:190,u:205}[vowel]||225;
+  const pitch=(voice.pitch||1)*(base+(Math.random()-.5)*10);
+  const length=Math.min(.12,Math.max(.055,(voice.duration||.09)));
+  const t=this.ctx.currentTime,osc=this.ctx.createOscillator(),air=this.ctx.createBufferSource(),gain=this.ctx.createGain(),filter=this.ctx.createBiquadFilter();
+  // A soft buzz through two vowel-shaped resonances reads as a character's
+  // voice without pretending to be recorded speech.
+  osc.type='sawtooth';osc.frequency.setValueAtTime(pitch,t);osc.detune.setValueAtTime((Math.random()-.5)*12,t);
+  filter.type='bandpass';filter.frequency.value=base*2.1;filter.Q.value=3.2;
+  const buffer=this.ctx.createBuffer(1,Math.ceil(this.ctx.sampleRate*length),this.ctx.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.16;
+  air.buffer=buffer;air.loop=false;
+  gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime((voice.gain||.035),t+.018);gain.gain.exponentialRampToValueAtTime(.001,t+length);
+  osc.connect(filter);air.connect(filter);filter.connect(gain);gain.connect(this.buses.ui);osc.start(t);air.start(t);osc.stop(t+length);air.stop(t+length);
+  osc.onended=()=>{try{osc.disconnect();air.disconnect();filter.disconnect();gain.disconnect();}catch{}};
+ }
  apply(){
   if(!this.ctx)return;
   const t=this.ctx.currentTime;this.master.gain.setTargetAtTime(this.enabled?clamp(this.settings.master):0,t,.03);

@@ -6,7 +6,7 @@ import {drawMerchant} from './traveling-merchant.mjs';
 import {drawQuestNpc,drawNpcQuestMarkers} from './npc-quests.mjs';
 import {drawBiomeTile,drawBiomeAccents,drawBiomeAir} from './biome-art.mjs';
 import {drawDesertChunk} from './desert-art.mjs';
-import {drawBeachGround,drawBeachGulls} from './beach-art.mjs';
+import {drawBeachGround,drawBeachGulls,drawBeachPierAboveSwimmers} from './beach-art.mjs';
 import {drawWildFaunaTells} from './wild-fauna.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {clipRiverTile,drawDepthCorners} from './river-edges.mjs';
@@ -791,6 +791,7 @@ export class Renderer {
     drawImpBombs(ctx,game);
     // Draw burn sparks after actors so the fire visibly clings to the target.
     drawBridges(ctx,game,true);
+    drawBeachPierAboveSwimmers(ctx,game);
     drawLivingEcosystem(ctx, game, 'air');
     drawGraveyardEcology(ctx,game,'air');
     drawNightEnemyEffects(ctx, game);
