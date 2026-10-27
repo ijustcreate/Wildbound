@@ -7,7 +7,16 @@ app.whenReady().then(async()=>{
  const js=s=>w.webContents.executeJavaScript(s),assert=(value,label)=>{if(!value)throw Error(label);checks.push(label);};
  const frame=()=>js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))))');
  const capture=async name=>{await frame();fs.writeFileSync(path.join(out,name+'.png'),(await w.webContents.capturePage()).toPNG());};
- async function resize(width,height,zoom=1){w.webContents.setZoomFactor(zoom);w.setContentSize(width,height);await frame();await js('c.playableLobby.positionPanels();void 0');}
+ async function resize(width,height,zoom=1){
+  w.webContents.setZoomFactor(zoom);w.setContentSize(width,height);
+  let settled=false;
+  for(let i=0;i<120;i++){
+   await frame();
+   if(await js(`Math.abs(innerWidth-${width/zoom})<2&&Math.abs(innerHeight-${height/zoom})<2`)){settled=true;break;}
+  }
+  if(!settled)throw Error('Native resize did not reach the requested viewport');
+  await js('c.playableLobby.positionPanels();void 0');await frame();
+ }
  try{
   await w.loadURL('about:blank');w.webContents.debugger.attach('1.3');await w.webContents.debugger.sendCommand('Debugger.enable');
   await w.webContents.debugger.sendCommand('Debugger.setBreakpointByUrl',{urlRegex:'src/debug-tools\\.mjs$',lineNumber:3,condition:'(window.scalingCtx=ctx,false)'});
