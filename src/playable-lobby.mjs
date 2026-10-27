@@ -185,14 +185,26 @@ export class PlayableLobby {
     const bounds=this.panels.getBoundingClientRect();
     if(!bounds.width||!bounds.height)return;
     const canvasBounds=this.canvas.getBoundingClientRect(),view=lobbyCamera(canvasBounds.width,canvasBounds.height);
-    const key=[bounds.width,bounds.height,canvasBounds.left-bounds.left,canvasBounds.top-bounds.top,canvasBounds.width,canvasBounds.height,players.length,...open.map(p=>`${p.id}:${this.state.members.get(p.id)?.panel}`)].join('|');
+    const viewportKey=[bounds.width,bounds.height,canvasBounds.left-bounds.left,canvasBounds.top-bounds.top,canvasBounds.width,canvasBounds.height].join('|');
+    const resized=viewportKey!==this.panelViewportKey;
+    const key=[viewportKey,players.length,...open.map(p=>`${p.id}:${this.state.members.get(p.id)?.panel}`)].join('|');
     if(key===this.panelLayoutKey)return;
+    this.panelViewportKey=viewportKey;
     const layout=planPlayerPanels(players,open,bounds.width,bounds.height,{
       width:p=>this.state.members.get(p.id)?.panel==='environment'?520:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?340:this.state.members.get(p.id)?.panel==='create'?540:280,
       height:p=>this.state.members.get(p.id)?.panel==='environment'?680:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
     });
     for(const p of open){
       const box=layout.get(p.id),panel=this.nodes.get(p.id);
+      const chooser=['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel);
+      // Compact the card in small windows without letting its text become tiny.
+      const scale=chooser?Math.max(.8,Math.min(1,bounds.width/960,bounds.height/640,box.width/340,box.height/520)):1;
+      if(chooser){
+        const width=Math.min(box.width,340*scale),height=Math.min(box.height,520*scale);
+        if(box.side==='right')box.x+=box.width-width;
+        if([2,3].includes(players.indexOf(p)%4))box.y+=box.height-height;
+        box.width=width;box.height=height;
+      }
       if(players.length===1&&open.length===1&&['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)){
         box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;
       }
@@ -203,8 +215,11 @@ export class PlayableLobby {
         Object.assign(box,anchoredPopupBox(bounds.width,bounds.height,box.width,box.height,x,y));
       }
       panel.style.position='absolute';panel.style.boxSizing='border-box';
-      panel.style.left=box.x+'px';panel.style.top=box.y+'px';
-      panel.style.width=box.width+'px';panel.style.height=box.height+'px';panel.style.maxHeight=box.height+'px';
+      // A viewport resize must be immediate; party joins may still animate docks.
+      if(resized)panel.style.transition='none';else panel.style.removeProperty('transition');
+      panel.style.zoom=String(scale);
+      panel.style.left=box.x/scale+'px';panel.style.top=box.y/scale+'px';
+      panel.style.width=box.width/scale+'px';panel.style.height=box.height/scale+'px';panel.style.maxHeight=box.height/scale+'px';
     }
     this.panelLayoutKey=key;
   }
@@ -454,9 +469,10 @@ export class PlayableLobby {
     const scroller=selected?.closest('.map-choices')||panel;
     if(selected&&scroller.scrollHeight>scroller.clientHeight){
       const box=scroller.getBoundingClientRect(),choice=selected.getBoundingClientRect();
-      const top=box.top+scroller.clientTop+4,bottom=box.top+scroller.clientTop+scroller.clientHeight-4;
-      if(choice.bottom>bottom)scroller.scrollTop+=choice.bottom-bottom;
-      else if(choice.top<top)scroller.scrollTop-=top-choice.top;
+      const scale=scroller.offsetHeight?box.height/scroller.offsetHeight:1;
+      const top=box.top+(scroller.clientTop+4)*scale,bottom=box.top+(scroller.clientTop+scroller.clientHeight-4)*scale;
+      if(choice.bottom>bottom)scroller.scrollTop+=(choice.bottom-bottom)/scale;
+      else if(choice.top<top)scroller.scrollTop-=(top-choice.top)/scale;
     }
   }
   navigate(p,{x=0,y=0,accept=false,back=false,adjust=false,rotate=0},device=p.device){

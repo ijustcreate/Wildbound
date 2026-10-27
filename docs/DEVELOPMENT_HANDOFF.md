@@ -1,3 +1,5 @@
+# Scaling repair 1.2.57: [stable resizing and title fit](history/2026-10-27-scaling-1.2.57.md). Latest source fixes panel resize lag, compact layout/focus scrolling, and title-image fit. Earlier notes below are historical.
+
 # Title-screen update 1.2.56: [entry flow, Studio toolbar and verification](history/2026-10-27-title-screen-1.2.56.md). The current source includes the title scene and direct input-to-explorer selection. Final package identities are recorded in the generated local publication receipt and build manifest. Earlier build notes below are historical.
 
 # Web publication: [current and preserved web editions](history/2026-10-26-web-editions.md). Current web version 1.2.55; original and 1.0.74 preserved separately. Desktop package remains the October 22 build below.

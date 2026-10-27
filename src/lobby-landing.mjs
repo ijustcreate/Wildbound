@@ -11,11 +11,15 @@ export class LobbyLanding {
     this.node = document.createElement('section');
     this.node.className = 'lobby-landing';
     this.node.setAttribute('aria-label', 'Welcome to Wildbound');
-    this.node.innerHTML = `<img src="assets/wildbound-landing-v1.png" alt="Wildbound: two explorers around an open magical board, with a lion and skeleton warriors in the jungle."><button class="landing-join" type="button"><span>Press anything to join</span><small>Keyboard · Mouse · Controller</small></button>`;
+    this.node.innerHTML = `<div class="landing-scene"><img src="assets/wildbound-landing-v1.png" alt="Wildbound: two explorers around an open magical board, with a lion and skeleton warriors in the jungle."><button class="landing-join" type="button"><span>Press anything to join</span><small>Keyboard · Mouse · Controller</small></button></div>`;
     area.append(this.node);
+    this.lastResize=-Infinity;
+    window.addEventListener('resize',()=>{this.lastResize=performance.now();});
     const pointer = event => {
       if (!this.active || !this.node.contains(event.target)) return;
       if (event.type === 'pointermove' && !event.movementX && !event.movementY) return;
+      // Dragging the native window border may move content beneath the cursor.
+      if (event.type === 'pointermove' && performance.now()-this.lastResize<200) return;
       if (!this.activate('keyboard')) return;
       this.swallowClickUntil = event.type === 'pointerdown' ? performance.now() + 1000 : 0;
       event.preventDefault();event.stopImmediatePropagation();

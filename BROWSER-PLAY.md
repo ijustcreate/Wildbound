@@ -3,7 +3,7 @@
 - [Choose a version](https://ijustcreate.github.io/Wildbound/)
 - [Latest build](https://ijustcreate.github.io/Wildbound/latest/)
 - [Preserved original](https://ijustcreate.github.io/Wildbound/original/)
-- [Permanent 1.2.56 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.56/)
+- [Permanent 1.2.57 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.57/)
 - [Earlier 1.0.74 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.0.74/)
 
 The original is the exact root game from gh-pages commit 68c739c03499648f686f44ceb73508f62fb0808e, copied into original/ without modifying its game files. The root now provides a version chooser. Existing root asset URLs remain available for historical bookmarks.
