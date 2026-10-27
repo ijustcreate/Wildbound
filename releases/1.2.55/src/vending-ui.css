@@ -1,0 +1,18 @@
+#hero-overlays:has(.vending-refresh) {top:16px!important;bottom:16px!important;z-index:60;}
+body:has(.vending-refresh) #game-toast {display:none;}
+.hero-panel.vending-refresh {gap:8px;}
+.hero-panel.vending-refresh .vending-catalog {grid-template-columns:minmax(0,130px) minmax(0,1fr);gap:8px;overflow:auto;}
+.hero-panel.vending-refresh .vending-slots {grid-template-rows:repeat(4,minmax(76px,1fr));gap:5px;}
+.hero-panel.vending-refresh .vending-slots button {display:grid;grid-template-columns:24px minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;justify-items:start;gap:3px 5px;padding:5px;}
+.hero-panel.vending-refresh .vending-slots .item-icon {grid-column:1;grid-row:1/4;width:24px;height:24px;max-height:24px;flex:none;align-self:center;}
+.hero-panel.vending-refresh .vending-slots :is(.vending-item-name,.vending-price,.vending-stock) {grid-column:2;text-align:left;}
+.hero-panel.vending-refresh .vending-item-name {font-size:11px;overflow-wrap:anywhere;}
+.hero-panel.vending-refresh .vending-stock {font-size:10px;}
+.hero-panel.vending-refresh .vending-tray {min-height:48px;padding:6px;flex-wrap:wrap;}
+.hero-panel.vending-refresh .vending-tray button {min-height:34px;}
+.hero-panel.vending-refresh .vending-tray button.selected {outline:2px solid #7c551e;outline-offset:2px;background:#ffe49a!important;color:#25392b!important;box-shadow:0 0 0 4px #ffe49a;}
+.hero-panel.vending-refresh .vending-tray .item-icon {width:24px;height:24px;}
+.hero-panel.vending-refresh .storage-notice {min-height:18px;max-height:36px;}
+@container(max-width:480px) {
+ .hero-panel.vending-refresh .vending-catalog {grid-template-columns:minmax(0,1fr);}
+}

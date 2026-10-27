@@ -1,0 +1,45 @@
+/* A persistent cursor is required for gamepad focus, not just :focus-visible. */
+#controller-keyboard .controller-keyboard-grid button.keyboard-selected,
+#controller-keyboard .controller-keyboard-grid button:focus{
+ background:#f9d96c!important;color:#152b25!important;border:3px solid #fff4c8!important;
+ outline:3px solid #d19736!important;outline-offset:1px;box-shadow:inset 0 0 0 2px #775528,0 3px 0 #090e0c!important;
+ font-weight:900;position:relative;z-index:1;text-shadow:none!important;transition:none!important;
+}
+#controller-keyboard .controller-keyboard-grid button.keyboard-selected::after{content:'';position:absolute;left:calc(50% - 3px);bottom:1px;border-left:3px solid transparent;border-right:3px solid transparent;border-bottom:4px solid #243b30}
+#controller-keyboard .keyboard-help{font:12px/1.5 system-ui;color:#414c35;margin:8px 0 14px}
+.creation-detail-popup{justify-content:flex-start;padding:12px;gap:7px}
+.creation-detail-popup h3{margin:0;font-size:21px;flex:0 0 auto}
+.creation-menu .creation-detail-frame{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:155px;max-height:155px;flex:0 0 155px;padding:4px;box-sizing:border-box;border:2px solid #9d8050;border-radius:5px;background:linear-gradient(145deg,#304d3b,#142820 72%);box-shadow:inset 0 0 0 1px #e3c77d55,0 3px 9px #0006}
+.creation-menu .creation-detail-frame::before{content:'';position:absolute;inset:3px;border:1px solid #c7aa6866;border-radius:2px;pointer-events:none}
+.creation-menu .creation-detail-preview{display:block;width:100%;height:100%;max-height:none;min-height:0;flex:1 1 auto;object-fit:contain;background:#102922;border:0;image-rendering:pixelated}
+.creation-preview-views{display:flex;gap:7px;justify-content:center;flex:0 0 auto}
+.creation-preview-views button{flex:1;min-height:27px!important;font:12px system-ui!important;padding:4px 8px!important}
+.creation-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:auto;min-height:46px;flex:1 1 auto;padding:3px}
+.creation-menu .creation-option-grid button{min-width:0;overflow-wrap:anywhere;min-height:32px;text-align:left;font-size:12px;padding:5px 7px}
+.creation-menu .creation-option-grid button[aria-pressed=true]{border-color:#e5ce84;background:#345a46;color:#fff1bc}
+.creation-menu .creation-popup .lobby-focus,.creation-menu button:focus{outline:3px solid #f4d676;outline-offset:1px;background:#3c674e;color:#fff8d9;box-shadow:inset 4px 0 #f4d676}
+.creation-detail-popup>small{flex:0 0 auto;line-height:1.4}
+#character-name-dialog .creation-preview{display:block;width:240px;height:180px;max-width:100%;margin:auto;image-rendering:pixelated;background:#102922;border:1px solid #52715c}
+#character-name-dialog .creator-selected{outline:3px solid #e4bd55;outline-offset:2px;box-shadow:inset 0 0 0 1px #ffe8a3}
+#character-name-dialog .creation-preview-views{max-width:240px;margin:7px auto}
+@media(max-height:600px){.creation-menu .creation-detail-frame{height:108px;max-height:108px;flex-basis:108px}.creation-detail-popup{padding:9px;gap:5px}.creation-detail-popup h3{font-size:18px}}
+@media(max-height:450px){.creation-menu .creation-detail-frame{height:80px;max-height:80px;flex-basis:80px}.creation-detail-popup>small{font-size:9px}.creation-menu .creation-option-grid button{min-height:27px}}
+@media(max-width:650px){.creation-option-grid{grid-template-columns:minmax(0,1fr)}}
+.creation-menu .creation-preview-row{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(170px,1fr);align-items:stretch;gap:10px;min-height:0;flex:1 1 auto}
+.creation-menu .creation-preview-stage{position:relative;display:grid;place-items:center;min-width:0;min-height:0;padding:5px;box-sizing:border-box;border:2px solid #9d8050;border-radius:7px;background:linear-gradient(145deg,#294737,#102820 72%);box-shadow:inset 0 0 0 1px #e3c77d55,0 5px 14px #0007;overflow:hidden}
+.creation-menu .creation-preview-stage::before{content:'';position:absolute;inset:4px;border:1px solid #c7aa6866;border-radius:3px;pointer-events:none}
+.creation-menu .creation-preview-stage>canvas{width:100%;height:100%;max-height:min(46vh,380px);object-fit:contain;image-rendering:pixelated;min-width:0;background:#102922}
+.creation-menu .creation-preview-row .creation-colors{align-self:center;display:grid;grid-template-columns:1fr;grid-template-rows:repeat(5,minmax(0,1fr));gap:5px;min-height:0;height:min(100%,260px);padding:0}
+.creation-menu .creation-colors button:last-child{grid-column:auto}
+.creation-menu .creation-square{width:34px;min-width:34px;height:34px;min-height:34px;padding:0;font-size:23px;flex:none}
+.creation-menu .creation-rotate{position:absolute;left:7px;top:7px;z-index:1;background:#102820dd;border-color:#d1bd7d;color:#fff0c4;font-size:21px}
+.creation-carousel-popup{gap:9px;padding:16px}
+.creation-menu .creation-carousel-popup .creation-detail-frame{height:auto;max-height:none;min-height:160px;flex:1 1 auto}
+.creation-style-carousel{display:grid;grid-template-columns:43px minmax(0,1fr) 43px;align-items:center;gap:9px;flex:0 0 auto}
+.creation-menu .creation-style-carousel button{min-width:0;min-height:44px;font:28px/1 Georgia,serif;padding:0;border-radius:8px}
+.creation-carousel-choice{min-width:0;text-align:center;color:#f5e8c9;font:20px/1.2 Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.creation-carousel-count{text-align:center;color:#a8c3ac!important;font:11px/1 system-ui!important;letter-spacing:1px}
+.creation-carousel-popup .creation-preview-views{margin:0 10px}
+.creation-carousel-popup .creation-carousel-done{flex:0 0 auto;border-radius:7px}
+.creation-carousel-popup>small[data-creation-help]{text-align:center}
+@media(max-height:630px){.creation-carousel-popup{padding:10px;gap:5px}.creation-style-carousel{grid-template-columns:36px minmax(0,1fr) 36px}.creation-menu .creation-style-carousel button{min-height:35px}.creation-carousel-choice{font-size:16px}}

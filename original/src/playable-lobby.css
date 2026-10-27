@@ -1,0 +1,47 @@
+body[data-screen="lobby"]{overflow:hidden}
+#lobby.playable-lobby{padding:0 24px 12px;background:#252c30;height:100dvh;min-height:0}
+#lobby.playable-lobby .party-banner{height:64px;background:none;border-bottom:1px solid #475052;margin:0}
+#lobby.playable-lobby .party-banner::after{display:none}
+#lobby.playable-lobby .party-banner>img{display:none}
+#lobby.playable-lobby .party-topbar{position:static;height:100%;align-items:center;padding:0}
+#lobby.playable-lobby .party-heading{margin:12px 0;align-items:center}
+#lobby.playable-lobby .party-heading h1{font:22px system-ui;margin:0}
+#lobby.playable-lobby #party-status{font:13px system-ui}
+#lobby.playable-lobby #player-slots,#lobby.playable-lobby .party-options{display:none!important}
+#lobby.playable-lobby .party-help{margin:10px 0;font:13px system-ui;color:#d3dbdb}
+.lobby-world{position:relative;width:min(1200px,calc((100dvh - 170px) * 1024 / 620),100%);margin:auto}
+.lobby-world>canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.lobby-panels{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;pointer-events:none;overflow:auto}
+.lobby-player-panel{pointer-events:auto;width:240px;max-height:96%;overflow:auto;background:linear-gradient(145deg,#173b31f7,#102b27f7);border:3px solid #9b7a43;border-radius:4px;padding:14px;box-shadow:inset 0 0 0 3px #3c2d1d,inset 0 0 0 5px #d0ad63,0 12px 30px #0008;display:flex;flex-direction:column;gap:7px;color:#f3e7c8;font:14px system-ui}
+.lobby-player-panel::before{content:'WILDBOUND  ·  EXPEDITION';display:block;margin:-2px 0 8px;padding-bottom:7px;border-bottom:1px solid #b7924e;color:#d5b66b;text-align:center;font:10px/1 Georgia,serif;letter-spacing:2px}
+.lobby-player-panel h2{font:21px/1.05 Georgia,serif;margin:2px 0 7px;color:#f5e8c9}.lobby-player-panel small{font:10px system-ui;letter-spacing:1px;color:#70d5b3}
+.lobby-player-panel button,.lobby-player-panel input{min-height:34px;width:100%;font:15px Georgia,serif;margin:0;padding:6px 10px}
+.lobby-player-panel button{border:1px solid #b69454;background:linear-gradient(#f0e5c7,#d5c28f);color:#263c34;box-shadow:inset 0 0 0 1px #fff1c9,0 2px 0 #392d1c}
+.lobby-player-panel button:hover,.lobby-player-panel .lobby-focus{background:linear-gradient(#fff3cf,#dfc98e);outline:2px solid #71d9bc;outline-offset:2px}
+.lobby-player-panel input{background:#f2ead5;color:#263c34;border:1px solid #b69454;box-shadow:inset 0 0 0 1px #fff1c9}
+.lobby-custom-look{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:7px 0;border-top:1px solid #405054;border-bottom:1px solid #405054}
+.lobby-custom-look button{min-height:30px;padding:5px 6px;font-size:12px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lobby-custom-look .lobby-color-option::first-letter{color:var(--player-color)}
+.lobby-color-picker{display:flex;flex-direction:column;gap:7px;padding:10px;background:linear-gradient(145deg,#243238,#1b292d);border:1px solid #5b746f;border-radius:8px;box-shadow:inset 0 0 0 1px #0b1718}
+.lobby-color-picker strong{font-size:12px;color:#f3e7c8}.lobby-color-picker small{color:#b9c8c4;line-height:1.25}
+.lobby-color-swatches{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.lobby-recent-swatches{grid-template-columns:repeat(4,minmax(0,1fr));min-height:27px}
+.lobby-color-swatches small{grid-column:1/-1}.lobby-color-swatches .lobby-swatch{width:auto!important;min-width:0!important;min-height:27px!important;height:27px!important;padding:0!important;border:2px solid #d7e1d8!important;border-radius:5px;color:transparent!important;box-shadow:inset 0 0 0 1px #20322d,0 1px 0 #0c1716}
+.lobby-swatch:focus,.lobby-swatch:hover{outline:2px solid #fff;outline-offset:1px;transform:translateY(-1px)}
+.lobby-color-picker input[type=color]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.lobby-open-picker{min-height:34px!important;text-align:left!important;font-size:13px!important;padding-left:10px!important}.lobby-color-done{min-height:30px!important}
+.lobby-player-panel canvas{width:100%;max-height:130px;object-fit:contain;image-rendering:pixelated}
+.lobby-player-panel .lobby-focus{outline:2px solid var(--player-color);outline-offset:1px}
+.lobby-player-panel p{margin:4px 0;font:13px/1.4 system-ui}.lobby-error{color:#ffb5a9}
+.lobby-player-panel.board-menu{width:300px;padding:18px 17px 16px;background:linear-gradient(145deg,#173b31f7,#102b27f7);border:3px solid #9b7a43;border-radius:4px;box-shadow:inset 0 0 0 3px #3c2d1d,inset 0 0 0 5px #d0ad63,0 12px 30px #0008;color:#f3e7c8}
+.lobby-player-panel.board-menu::before{content:'WILDBOUND  ·  BOARD SETUP';display:block;margin:-5px 0 13px;padding-bottom:9px;border-bottom:1px solid #b7924e;color:#d5b66b;text-align:center;font:12px/1 Georgia,serif;letter-spacing:3px}
+.lobby-player-panel.board-menu h2{margin:0 0 12px;color:#f5e8c9;text-align:center;font:24px/1.05 Georgia,serif;letter-spacing:.3px}
+.board-menu-summary{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 0 15px;padding:9px 5px;border-top:1px solid #66502e;border-bottom:1px solid #66502e}
+.board-setting{padding:5px 8px;background:#e7d8ae;color:#3b3425;border:1px solid #b39458;box-shadow:inset 0 0 0 1px #f4e7c2;font:12px/1.1 Georgia,serif;text-align:center}
+.lobby-player-panel.board-menu button{min-height:42px;font:16px Georgia,serif}
+.lobby-player-panel .difficulty-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 9px;min-height:54px}
+.lobby-player-panel .difficulty-choice-icon{width:40px!important;height:40px!important;flex:0 0 40px;image-rendering:auto}
+.lobby-player-panel .map-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:7px 9px;min-height:54px}
+.lobby-player-panel .map-choice-icon{width:40px!important;height:40px!important;flex:0 0 40px;image-rendering:auto}
+.difficulty-choice-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.difficulty-choice-copy strong{font-size:14px}.difficulty-choice-copy small{font-size:11px;line-height:1.2;color:#52635e}
+.lobby-countdown{position:absolute;top:15px;left:0;right:0;text-align:center;color:#fff4c4;font:24px system-ui;pointer-events:none;text-shadow:0 2px 6px #000}

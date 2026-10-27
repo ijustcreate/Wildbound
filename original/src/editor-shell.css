@@ -1,0 +1,35 @@
+/* One stable shell for every game-editing job. */
+.designer-dialog,.designer-dialog.player-designer{box-sizing:border-box;width:min(1380px,96vw);height:94vh;max-height:94vh;padding:0;overflow:hidden;background:#111e24;color:#dbe5dc;border:1px solid #496459;border-radius:10px;box-shadow:0 24px 80px #0009;font:13px/1.45 system-ui,sans-serif;color-scheme:dark;}
+.designer-dialog[open]{display:flex;flex-direction:column;}
+.designer-dialog>header{flex:none;margin:0;padding:14px 20px;border-bottom:1px solid #31473e;background:#16272b;gap:12px;}
+.designer-dialog>header h2,.designer-dialog.player-designer>header h2{margin:0;font:600 18px/1.4 system-ui,sans-serif;letter-spacing:.2px;color:#edf1de;}
+.designer-dialog>nav{flex:none;margin:0;padding:8px 16px;gap:6px;border-bottom:1px solid #31473e;background:#122126;}
+.designer-dialog>nav button{border-color:transparent;background:transparent;color:#a9bfb5;border-radius:5px;}
+.designer-dialog>nav button[aria-selected=true]{background:#284e41;color:#fff0bc;border-color:#789b80;box-shadow:inset 0 -2px #d2b679;}
+.designer-dialog .studio-body{flex:1;min-height:0;overflow:auto;padding:16px;scrollbar-color:#597969 #15252a;}
+.designer-dialog button,.designer-dialog input,.designer-dialog select,.designer-dialog textarea{box-sizing:border-box;font:12px/1.4 system-ui,sans-serif;border-radius:4px;border:1px solid #476356;}
+.designer-dialog button{min-height:32px;padding:6px 11px;background:#244b3e;color:#edf1de;}
+.designer-dialog button:hover{background:#345e4e;}.designer-dialog button:disabled{opacity:.45;cursor:default;}
+.designer-dialog input:not([type=checkbox]):not([type=range]):not([type=color]),.designer-dialog select,.designer-dialog textarea{min-height:32px;background:#14272c;color:#e5eddf;padding:5px 8px;}
+.designer-dialog input[type=checkbox]{accent-color:#70d5b3;min-height:0;width:17px;height:17px;}
+.designer-dialog :is(button,input,select,textarea):focus-visible{outline:2px solid #e1c37e;outline-offset:2px;}
+.designer-dialog h3{font:600 14px/1.4 system-ui,sans-serif;color:#a9cabb;margin:14px 0 10px;}
+.designer-dialog h4{font:600 13px/1.4 system-ui,sans-serif;color:#dce6d7;}
+.designer-dialog label{font:12px/1.4 system-ui,sans-serif;color:#aebfb6;}
+.designer-dialog p{font-family:system-ui,sans-serif;color:#aebfb6;}
+.designer-dialog .studio-controls,.designer-dialog .house-toolbar{padding:10px;background:#182c2e;border:1px solid #314b40;border-radius:6px;margin:0 0 14px;gap:8px;}
+.designer-dialog .studio-fields{padding:16px;background:#18292e;border:1px solid #314b40;border-radius:6px;align-content:start;gap:14px;}
+.designer-dialog .studio-layout{grid-template-columns:250px minmax(0,1fr);gap:16px;}
+.designer-dialog .studio-layout>section:first-child{padding:12px;background:#18292e;border:1px solid #314b40;border-radius:6px;}
+.designer-dialog .studio-layout>section:first-child canvas{max-width:100%;height:auto;}
+.designer-dialog .studio-layout label select{width:100%;}
+.designer-dialog footer{margin:14px 0 0;padding:12px;background:#182c2e;border:1px solid #314b40;border-radius:6px;}
+.designer-dialog .house-workspace{grid-template-columns:minmax(200px,1fr) 250px;gap:16px;}
+.designer-dialog .house-workspace aside{background:#18292e;border:1px solid #314b40;border-radius:6px;padding:12px;max-height:65vh;}
+.designer-dialog .house-workspace canvas{border:1px solid #314b40;border-radius:6px;}
+.designer-dialog .house-workspace aside button{margin:3px 3px 3px 0;}
+.designer-dialog .house-workspace label input{max-width:140px;}
+.designer-dialog .ps-stage{background:#1b2b35;}
+@media(max-width:1000px){.designer-dialog .studio-layout{grid-template-columns:210px minmax(0,1fr);}.designer-dialog .studio-fields{grid-template-columns:repeat(2,minmax(100px,1fr));}}
+@media(max-width:700px){.designer-dialog .studio-layout,.designer-dialog .house-workspace{grid-template-columns:1fr;}.designer-dialog>header{padding:10px;}.designer-dialog>nav{padding:6px;gap:3px;}.designer-dialog>nav button{font-size:11px;padding:5px 7px;}}
+.designer-dialog>nav{height:auto;min-height:48px;}.designer-dialog .studio-body{width:100%;}
