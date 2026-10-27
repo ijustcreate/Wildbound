@@ -67,4 +67,4 @@ node scripts/build-web.cjs --versioned
 
 The web builder writes a snapshot under dist/web-<version>/; generated packages, dependencies and personal profiles are excluded from source control. GitHub Pages is published separately from the gh-pages branch. Keep original/ and existing releases/ folders intact when publishing. [Publishing details](BROWSER-PLAY.md).
 
-The repository also retains the separate character animation viewer project on main, including its Site source and stored-feedback integration. It is independent of the playable GitHub Pages game and personal game saves. Do not replace its hosting project or feedback database when updating the game.
+The repository also retains the [separate character animation viewer project](docs/CHARACTER_VIEWER.md) on main, including its Site source and stored-feedback integration. It is independent of the playable GitHub Pages game and personal game saves. Do not replace its hosting project or feedback database when updating the game.

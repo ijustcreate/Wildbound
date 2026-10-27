@@ -20,7 +20,7 @@ Remote main at inspection: c306d7696cef44478f23db1d0c7478ac7623ed47. It contains
 
 ## Verification
 
-All 1,512 existing Node tests passed (test-output/web-publish-tests.log). The new storage regression adds one passing test covering original-save protection, reload, scoped enumeration and scoped clearing. Build syntax check passed 406 runtime files. Diff whitespace check passes.
+All 1,512 existing Node tests passed (test-output/web-publish-tests.log). The new storage regression adds one passing test covering original-save protection, reload, scoped enumeration and scoped clearing. Build syntax check passed 406 runtime files. Publication files pass whitespace checks; pre-existing trailing blank lines in six unrelated files are retained.
 
 Muted HTTP-served Electron verification: chooser links, latest redirect, full asset initialization, Workshop, Worlds, actual Game update/Renderer draw, current-save reload, original-save preservation and boot of both original and 1.0.74. Report: test-output/web-pages/report.json, zero renderer errors. 428 original runtime files and the application match the pre-existing root byte for byte. No physical-controller, mobile, multiplayer or sustained FPS claim.
 
