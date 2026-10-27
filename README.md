@@ -2,14 +2,17 @@
 
 A work-in-progress pixel adventure with shared-screen local co-op, living worlds and a built-in creation workshop. Gather explorers in a playable lobby, venture into unpredictable encounters, collect equipment and shape the game's characters and places.
 
+The 1.2.56 title screen welcomes new parties with pixel artwork of two explorers opening the Wildbound board. Press a key, move/click the mouse, scroll, or use a controller button, trigger or stick to open **Choose your explorer**. The room fills the screen below one **Studio** button. Studio opens the creation tools without joining a player.
+
 ## Play in your browser
 
 | Edition | Play |
 | --- | --- |
 | Version chooser | [Choose an adventure](https://ijustcreate.github.io/Wildbound/) |
-| Latest web build · 1.2.55 | [Play latest](https://ijustcreate.github.io/Wildbound/latest/) |
+| Latest web build · 1.2.56 | [Play latest](https://ijustcreate.github.io/Wildbound/latest/) |
 | Original web build · preserved project beginnings | [Play original](https://ijustcreate.github.io/Wildbound/original/) |
-| Permanent current snapshot | [Play 1.2.55](https://ijustcreate.github.io/Wildbound/releases/1.2.55/) |
+| Permanent current snapshot | [Play 1.2.56](https://ijustcreate.github.io/Wildbound/releases/1.2.56/) |
+| Previous modern snapshot | [Play 1.2.55](https://ijustcreate.github.io/Wildbound/releases/1.2.55/) |
 | Earlier archived update | [Play 1.0.74](https://ijustcreate.github.io/Wildbound/releases/1.0.74/) |
 
 The original is retained as a historical snapshot. Future updates can change the latest link without replacing the original or earlier release folders. Use a desktop browser with a keyboard or compatible gamepad; controller support depends on the browser and device. Touch/mobile play is not verified.

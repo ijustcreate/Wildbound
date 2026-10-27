@@ -90,6 +90,8 @@ const $ = (id) => document.getElementById(id);
 const assets = new Assets();
 const lobbyAnimator = new Animator(assets);
 let playableLobby;
+let lobbyLanding;
+import {LobbyLanding, landingPadActive} from './src/lobby-landing.mjs';
 let gameDebug;
 
 let game = new Game(),
@@ -309,7 +311,7 @@ const worldsUI=mountWorldsUI({getGame:()=>game,
 });
 $('worlds-button').onclick=()=>worldsUI.open();
 $('world-status-button').onclick=()=>worldsUI.open();
-for(const [id,parent,label]of [['party-worlds','party-menu','Worlds'],['pause-worlds','pause-dialog','WORLDS · SAVE & EXPLORE'],['home-worlds',null,'EXPLORE LOCAL WORLDS']]){
+for(const [id,parent,label]of [['pause-worlds','pause-dialog','WORLDS · SAVE & EXPLORE'],['home-worlds',null,'EXPLORE LOCAL WORLDS']]){
   const button=document.createElement('button');button.id=id;button.textContent=label;button.className=parent==='pause-dialog'?'small-button full':'text-button';
   button.onclick=()=>worldsUI.open();
   if(parent)$(parent).append(button);else $('local-button').after(button);
@@ -385,6 +387,7 @@ function newLobby({ keepParty = false } = {}) {
   show("lobby");
   if(returning.length)playableLobby?.keepSelectedPlayers(game.players);
   renderLobby();
+  lobbyLanding?.sync();
 }
 function onRoomEvent(data) {
   if (rooms.role === "host") {
@@ -999,7 +1002,6 @@ function resume() {
 }
 $("local-button").onclick = newLobby;
 $("begin-button").onclick = startGame;
-$('party-settings').onclick=()=>$('settings-button').click();
 for(const button of document.querySelectorAll('[data-option-target]')){
   const select=$(button.dataset.optionTarget);
   const label={'map-mode':'Mode',environment:'Map','dice-count':'Dice',difficulty:'Difficulty'}[button.dataset.optionTarget];
@@ -1219,6 +1221,7 @@ const campSettings=mountCampSettings($('settings-dialog'),{mapping,defaults:DEFA
   onMapping:()=>{localStorage.setItem('wildbound-mapping',JSON.stringify(mapping));for(const input of document.querySelectorAll('[data-mapping]'))input.value=mapping[input.dataset.mapping];renderPlayerMappings($('player-mappings'),game,mapping);},
   promptsChanged:()=>renderPlayerMappings($('player-mappings'),game,mapping)});
 window.addEventListener("keydown", (e) => {
+  if(lobbyLanding?.handleKey(e))return;
   if(e.code==='KeyY' && pauseCheatActive()){
     e.preventDefault();
     if(!e.repeat)pressPauseCheat();
@@ -1502,17 +1505,26 @@ function inputFrame() {
       playerForPad.controllerFamily = controllerFamily(pad);
       playerForPad.controllerName = CONTROLLER_NAMES[playerForPad.controllerFamily];
     }
-    const active = rising || pad.axes.slice(0, 2).some((v) => Math.abs(v) > 0.35);
+    const active = rising || (lobbyLanding?.active ? landingPadActive(pad) : pad.axes.slice(0, 2).some((v) => Math.abs(v) > 0.35));
     const claimKey = controllerClaimKey(pad), ownedKey = controllerClaims.get(pad.index);
     controllerLastSeen.set(claimKey, now);
     if (ownedKey === claimKey) {
       seenControllerClaims.add(claimKey);
     } else if (claimSupported) {
       if (active && document.hasFocus()) requestControllerClaim(pad, claimKey,
-        rising && screen==='lobby' && !modal && !pad.buttons[9]?.pressed,
-        !!pad.buttons[9]?.pressed && !previous[9] && ['home','lobby'].includes(screen) && !modal);
+        screen==='lobby' && !modal && (lobbyLanding?.active ? active : rising && !pad.buttons[9]?.pressed),
+        !lobbyLanding?.active && !!pad.buttons[9]?.pressed && !previous[9] && ['home','lobby'].includes(screen) && !modal);
       previousPads.set(pad.index, pad.buttons.map((b) => b.pressed));
       continue;
+    }
+    if(lobbyLanding?.waitingForRelease(pad)){
+      inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;
+    }
+    if(lobbyLanding?.active && !modal && (active || pendingControllerJoins.has(claimKey))){
+      if(lobbyLanding.activate(device,pad)){
+        pendingControllerJoins.delete(claimKey);pendingControllerSettings.delete(claimKey);
+        inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;
+      }
     }
     const settingsAction = controllerSettingsRouter.route({
       pad, previous, screen, dialog: openDialog, pendingOpen: pendingControllerSettings.has(claimKey),
@@ -1768,6 +1780,7 @@ function frame(now) {
   if(document.visibilityState!=='hidden') metrics.record("frame", elapsed * 1000);
   last = now;
   if (ready) {
+    lobbyLanding?.sync();
     designer?.animate(dt);
     const wasBlocked = paused || !!document.querySelector('dialog[open]');
     const inputs = inputFrame();
@@ -1902,7 +1915,8 @@ try {
   const studioButton = document.createElement("button");
   studioButton.textContent = "ANIMATION & GAME STUDIO";
   studioButton.className = "text-button";
-  $('party-menu').append(studioButton);studioButton.textContent='Rig studio';
+  studioButton.id='lobby-studio';
+  $('party-menu').append(studioButton);studioButton.textContent='Studio';
   studioButton.onclick = () => {
     if (screen === "play") paused = true;
     designer.tab = "Players";
@@ -1911,37 +1925,16 @@ try {
   designer.dialog.addEventListener("close", () => {
     if (screen === "play" && !$("pause-dialog").open && !$("defeat-dialog").open) paused = false;
   });
-  const resume = document.createElement("button");
-  resume.textContent = "CONTINUE EXPEDITION";
-  resume.className = "text-button";
-  $('party-menu').prepend(resume);resume.textContent='Continue';
-  resume.onclick = async () => {
-    try {
-      const saved = window.desktop
-        ? await window.desktop.loadSession()
-        : JSON.parse(localStorage.getItem("wildbound-session") || "null");
-      if (!saved) throw Error("No saved expedition yet. Start a party first.");
-      if(saved.state?.players?.some(p=>profiles.data.deletedIds?.includes(p.profileId))){newLobby();$('party-status').textContent='A saved explorer was deleted. Gather a new party.';return;}
-      rooms.role = null;
-      window.desktop?.stopRoom();
-      game = restoreSession(saved);
-      const stash = game.sharedStash;
-      wireGame();
-      game.sharedStash = stash;
-      applyChangedHouse(game);
-      renderer = new Renderer($("game-canvas"), assets);
-      renderer.showLootDetails = lootDetailsVisible;
-      show("play");
-      paused = false;
-      if (disconnected().length)
-        pause("Reconnect saved controllers, or reassign keyboard.");
-    } catch (e) {
-      roomDialog.showModal();
-      $("room-status").textContent = e.message;
-    }
-  };
   playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
   playableLobby.showLootDetails=()=>lootDetailsVisible;
+  lobbyLanding = new LobbyLanding({area:playableLobby.area,
+    available:()=>screen==='lobby'&&game.players.length===0,
+    join:(device,pad)=>{
+      const player=game.addPlayer(device);if(!player)return null;
+      if(pad){player.controllerFamily=controllerFamily(pad);player.controllerName=CONTROLLER_NAMES[player.controllerFamily];}
+      renderLobby();playableLobby.sync();sound('heal');return player;
+    },
+  });
   ready = true;
   if(window.desktop?.testMode)window.wildboundWorldsTest={
     inspect:()=>({ready,screen,world:game.localWorld?.id,errors:[...diagnosticErrors]}),

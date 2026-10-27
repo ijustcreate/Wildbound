@@ -1,6 +1,7 @@
 const {app,BrowserWindow}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),pages=path.join(root,'dist/pages-publish'),out=path.join(root,'test-output/web-pages');
+const version=require('../package.json').version;
 fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
 const server=http.createServer((req,res)=>{
  const relative=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
@@ -12,12 +13,11 @@ const server=http.createServer((req,res)=>{
 app.whenReady().then(async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base=`http://127.0.0.1:${server.address().port}`,checks=[],errors=[];
- const w=new BrowserWindow({show:false,width:1280,height:850,webPreferences:{backgroundThrottling:false}});w.webContents.setAudioMuted(true);
- w.showInactive();
+ const w=new BrowserWindow({show:false,width:1280,height:850,webPreferences:{backgroundThrottling:false,offscreen:true}});w.webContents.setAudioMuted(true);
  w.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});
- const assert=(v,m)=>{if(!v)throw Error(m);checks.push(m);};
+ const assert=(v,m)=>{if(!v)throw Error(m);checks.push(m);if(!m.startsWith('Preserved '))console.log(m);};
  const ready=async()=>{
-  await w.webContents.executeJavaScript('window.wildboundBoot.ready');
+  await w.webContents.executeJavaScript(`Promise.race([window.wildboundBoot.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('Module boot timed out')),30000))])`);
   for(let i=0;i<600;i++){if(await w.webContents.executeJavaScript(`document.getElementById('loading')?.classList.contains('done')`)){await new Promise(r=>setTimeout(r,700));return;}await new Promise(r=>setTimeout(r,50));}
   throw Error('Game assets did not finish initializing');
  };
@@ -26,9 +26,9 @@ app.whenReady().then(async()=>{
   assert(await w.webContents.executeJavaScript(`document.querySelector('a[href="latest/"]')&&document.querySelector('a[href="original/"]')`),'Chooser has both play links');
   await w.webContents.executeJavaScript(`localStorage.setItem('wildbound-publish-probe','original sentinel')`);
   await w.loadURL(base+'/latest/');
-  for(let i=0;i<200;i++){if(await w.webContents.executeJavaScript(`location.pathname==='/releases/1.2.55/'&&!!window.wildboundBoot`))break;await new Promise(r=>setTimeout(r,50));}
+  for(let i=0;i<200;i++){if(await w.webContents.executeJavaScript(`location.pathname==='/releases/${version}/'&&!!window.wildboundBoot`))break;await new Promise(r=>setTimeout(r,50));}
   await ready();
-  assert(await w.webContents.executeJavaScript(`!window.wildboundBoot.error&&location.pathname==='/releases/1.2.55/'`),'Latest resolves to ready 1.2.55');
+  assert(await w.webContents.executeJavaScript(`!window.wildboundBoot.error&&location.pathname==='/releases/${version}/'`),'Latest resolves to ready '+version);
   assert(await w.webContents.executeJavaScript(`localStorage.getItem('wildbound-publish-probe')===null`),'Current cannot read original save keys');
   await w.webContents.executeJavaScript(`localStorage.setItem('wildbound-publish-probe','current sentinel');document.getElementById('nav-workshop').click()`);
   await w.webContents.executeJavaScript('new Promise(r=>setTimeout(r,500))');
@@ -43,7 +43,7 @@ app.whenReady().then(async()=>{
    const c=document.createElement('canvas');c.width=960;c.height=640;c.style.cssText='position:fixed;inset:0;z-index:99999;width:100vw;height:100vh';document.body.append(c);const r=new Renderer(c,a);for(let i=0;i<8;i++){g.update(1/60,{keyboard:{x:1,y:0}});r.draw(g,0);}return g.players.length===1&&c.width>0;
   })()`);
   assert(render,'Real web gameplay updates and renders');await new Promise(r=>setTimeout(r,250));fs.writeFileSync(path.join(out,'game.png'),(await w.webContents.capturePage()).toPNG());
-  await w.loadURL(base+'/releases/1.2.55/');await ready();
+  await w.loadURL(base+'/releases/'+version+'/');await ready();
   assert(await w.webContents.executeJavaScript(`localStorage.getItem('wildbound-publish-probe')==='current sentinel'`),'Current save survives reload');
   await w.loadURL(base+'/original/');await ready();
   assert(await w.webContents.executeJavaScript(`!window.wildboundBoot.error&&localStorage.getItem('wildbound-publish-probe')==='original sentinel'`),'Original boots and retains historical save');
@@ -55,5 +55,5 @@ app.whenReady().then(async()=>{
   for(const folder of ['src','assets','authored'])compare(folder);
   assert(digest(path.join(pages,'app.mjs'))===digest(path.join(pages,'original/app.mjs')),'Original application is unchanged');
   const report={checks:checks.filter(c=>!c.startsWith('Preserved ')),preservedFiles:preserved,errors};fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));app.exit(errors.length?1:0);
- }catch(e){console.error(e);console.error(JSON.stringify({checks,errors}));app.exit(1);}
+ }catch(e){console.error(e);console.error(JSON.stringify({checks,errors}));console.error(await w.webContents.executeJavaScript(`JSON.stringify({url:location.href,boot:window.wildboundBoot,visibility:document.visibilityState,loading:document.getElementById('loading')?.innerText})`));app.exit(1);}
 });

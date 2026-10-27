@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="src/npc-dialogue-frame.css" />
     <link rel="stylesheet" href="src/worlds.css" />
     <link rel="stylesheet" href="src/play-hud.css" />
+    <link rel="stylesheet" href="src/lobby-entry.css" />
   </head>
   <body>
     <div id="loading">
@@ -99,7 +100,7 @@
       </footer>
     </main>
     <main id="lobby" class="screen couch-lobby">
-      <div class="party-banner"><img src="./assets/wildbound-header-v2.png" alt="Wildbound — jungle adventure"><div class="party-topbar"><span>LOCAL CO-OP · 1–6 PLAYERS</span><nav id="party-menu"><button id="party-settings">Settings</button></nav></div></div>
+      <div class="party-banner"><div class="party-topbar"><nav id="party-menu" aria-label="Creation tools"></nav></div></div>
       <div class="party-heading"><h1>Gather your party</h1><p id="party-status" aria-live="polite">Press A to join · Enter for keyboard</p></div>
       <div id="player-slots"></div>
       <div class="party-options">

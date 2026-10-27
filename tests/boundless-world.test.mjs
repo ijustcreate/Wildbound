@@ -45,9 +45,14 @@ test('cemetery paths reach open gates and burial ground features work outside th
  assert.equal(new Set(g.graveyard.plots.map(p=>p.id)).size,g.graveyard.plots.length);
 });
 test('active and unloaded region edits survive JSON saves, without reviving harvested props',()=>{
- const g=game('forest'),p=g.players[0];p.x=2400;p.y=800;tick(g);const tree=g.scenery.find(s=>s.boundlessRegion==='1,0'&&s.kind==='tree');assert.ok(tree);tree.fallen=true;tree.depleted=true;
- let r=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));tick(r);assert.equal(r.scenery.find(s=>s.id===tree.id).fallen,true);
- r.players[0].x=10400;tick(r);r=restoreSession(JSON.parse(JSON.stringify(saveSession(r))));r.players[0].x=2400;tick(r);assert.equal(r.scenery.find(s=>s.id===tree.id).depleted,true);
+ // Forest generation yields against a time budget; ten ticks may not finish
+ // the target region when the complete test suite is running concurrently.
+ const loaded=(world,key)=>world.boundlessLoadedChunks?.some(chunk=>chunk.key===key);
+ const settle=(world,key)=>{for(let n=0;n<500&&!loaded(world,key);n++)tick(world,1);assert.ok(loaded(world,key),'region '+key+' finished loading');};
+ const g=game('forest'),p=g.players[0];p.x=2400;p.y=800;settle(g,'1,0');const tree=g.scenery.find(s=>s.boundlessRegion==='1,0'&&s.kind==='tree');assert.ok(tree);tree.fallen=true;tree.depleted=true;
+ let r=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));settle(r,'1,0');assert.equal(r.scenery.find(s=>s.id===tree.id).fallen,true);
+ r.players[0].x=10400;settle(r,'6,0');assert.equal(loaded(r,'1,0'),false);
+ r=restoreSession(JSON.parse(JSON.stringify(saveSession(r))));r.players[0].x=2400;settle(r,'1,0');assert.equal(r.scenery.find(s=>s.id===tree.id).depleted,true);
 });
 test('travel keeps geometry caches and live regions bounded; ambient rustling does not bloat saves',()=>{
  const g=game('forest'),p=g.players[0];p.x=2400;tick(g);for(const s of g.scenery.filter(s=>s.boundlessRegion))s.rustle=.5;p.x=10400;tick(g);assert.equal(Object.keys(g.boundlessChunkEdits).length,0);
