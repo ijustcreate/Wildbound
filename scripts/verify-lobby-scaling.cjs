@@ -12,7 +12,8 @@ app.whenReady().then(async()=>{
   let settled=false;
   for(let i=0;i<120;i++){
    await frame();
-   if(await js(`Math.abs(innerWidth-${width/zoom})<2&&Math.abs(innerHeight-${height/zoom})<2`)){settled=true;break;}
+   // Win32 content bounds can round by several CSS pixels at 125% OS scaling.
+   if(await js(`Math.abs(innerWidth-${width/zoom})<8&&Math.abs(innerHeight-${height/zoom})<8`)){settled=true;break;}
   }
   if(!settled)throw Error('Native resize did not reach the requested viewport');
   await js('c.playableLobby.positionPanels();void 0');await frame();
