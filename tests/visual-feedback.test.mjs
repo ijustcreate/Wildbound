@@ -11,7 +11,7 @@ test('Opening attack works on press with an empty bow and keeps all six heroes f
  const p=g.players[0];p.equipment.hand1='bow';p.inventory=[];g.update(.016,{[p.device]:{attack:true,x:-1,y:1}});
  assert.equal(g.roll.playerId,p.id);assert.equal(g.arrows.length,0);
 });
-test('Bow keeps nonzero curve width in all eight directions',()=>{for(let d=0;d<8;d++){const b=bowRigGeometry({x:0,y:0},d);assert.ok(Math.abs(b.top.x)>=2.5);assert.equal(b.bottom.y-b.top.y,20);}});
+test('Bow keeps its full span perpendicular to aim in all eight directions',()=>{for(let d=0;d<8;d++){const b=bowRigGeometry({x:0,y:0},d),dx=b.bottom.x-b.top.x,dy=b.bottom.y-b.top.y;assert.ok(Math.abs(Math.hypot(dx,dy)-20)<1e-8);assert.ok(Math.abs(dx*-Math.sin(d*Math.PI/4)+dy*Math.cos(d*Math.PI/4))<1e-8);}});
 test('Carried bow stays diagonal and visible side-on with its grip at the hand',()=>{
  for(let d=0;d<8;d++){
   const hand={x:3,y:-12},b=bowRigGeometry(hand,d,10,true);

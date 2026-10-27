@@ -1,0 +1,33 @@
+{
+  "kind": "UI behavior comparison; existing character artwork preserved",
+  "before": {
+    "build": "1.2.76",
+    "app": "dist/1.2.76-2026-10-27T05-29-58-387Z/Wildbound-win32-x64/resources/app"
+  },
+  "after": {
+    "version": "1.2.77",
+    "status": "packaged desktop verified",
+    "sourceHashes": {
+      "src/creation-menu.mjs": "5bc80cd9df44d4b96f63942a95743c190725a8266b7019f99a2f3f75694a2166",
+      "src/creation-preview.mjs": "421a461f82733ef771e55a5efb2b05d55332eafb600508e36eec0db9a93c153a",
+      "src/character-creator.css": "ba79a126cb52f90af630f24478caa8d2f1d1bd4746cfaa636b0b66d67fe09125"
+    },
+    "app": "dist/1.2.77-2026-10-27T07-21-54-981Z/Wildbound-win32-x64/resources/app",
+    "builtAtUTC": "2026-10-27T07:22:07.411Z"
+  },
+  "presentation": "Actual Electron panel captures, matching viewport, default look and names, time-zero preview; palette focus and close-up framing intentionally differ.",
+  "checks": {
+    "inline": 101,
+    "colorsAndMultiplayer": 258,
+    "creatorFlow": "Xbox/Switch and owner-only keyboard flow plus 1280x850,780x600,600x430 responsive controls",
+    "rendererErrors": [],
+    "physicalControllersTested": false
+  },
+  "images": [
+    "color-before.png",
+    "color-after.png",
+    "hair-before.png",
+    "hair-after.png",
+    "face-after.png"
+  ]
+}

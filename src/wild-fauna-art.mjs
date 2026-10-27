@@ -2,12 +2,12 @@ import {projectPoint,facingIndex} from './player-motion.mjs';
 import {pixelVolume,pixelLine,pixelPolygon} from './pixel-shapes.mjs';
 import {DEER_KINDS} from './wild-fauna-data.mjs';
 import {drawPig} from './pig-art.mjs';
-const deerPal={body:'#b88352',shade:'#78503c',light:'#dfb37a',outline:'#48382f'},fur={body:'#e5eef0',shade:'#a3b8c7',light:'#fff9e9',outline:'#5d7589'},shell={body:'#b0783d',shade:'#674932',light:'#e6bc70',outline:'#46352b'};
+const deerPal={body:'#b88352',shade:'#78503c',light:'#dfb37a',outline:'#48382f'},shadowPal={body:'#d7e3ec',shade:'#8296ad',light:'#fff4da',outline:'#41435c'},fur={body:'#e5eef0',shade:'#a3b8c7',light:'#fff9e9',outline:'#5d7589'},shell={body:'#b0783d',shade:'#674932',light:'#e6bc70',outline:'#46352b'};
 // Articulated anatomical pixel volumes: legs/tail/head move independently,
 // eight true facings, with a stable foot origin. No rotating overhead sprite.
 export function drawWildFauna(c,e,time,size=47){
  if(e.kind==='pig'||e.kind==='pig_spotted')return drawPig(c,e,time,size);
- const deer=DEER_KINDS.includes(e.kind),scorpion=e.kind==='scorpion',pal=scorpion?shell:deer?deerPal:fur,d=facingIndex(e.faceX,e.faceY),frozen=e.frozen>0||e.state==='snared',moving=e.moving&&!frozen;
+ const deer=DEER_KINDS.includes(e.kind),shadowStag=e.kind==='shadow_stag',scorpion=e.kind==='scorpion',pal=scorpion?shell:shadowStag?shadowPal:deer?deerPal:fur,d=facingIndex(e.faceX,e.faceY),frozen=e.frozen>0||e.state==='snared',moving=e.moving&&!frozen;
  const t=frozen?0:(e.step||time*3),stride=moving?Math.sin(t*1.3)*4:0,bob=frozen?0:moving?Math.abs(Math.sin(t*1.3))*1.5:Math.sin(time*1.6)*.35,parts=[];
  c.save();c.translate(Math.round(e.x),Math.round(e.y));const s=size/47*(e.kind==='baby_deer'?.64:scorpion?.82:deer?1.18:1);c.scale(s,s);c.imageSmoothingEnabled=false;
  const vol=(center,rx,ry,rz,p=pal)=>{parts.push({depth:projectPoint(center,d).depth,paint:()=>pixelVolume(c,center,rx,ry,rz,d,p)});};
@@ -31,7 +31,15 @@ export function drawWildFauna(c,e,time,size=47){
   vol([0,fox?22:19,head-2],fox?3.8:3,5,3,{...pal,body:fox?'#f8f6e7':'#dfc39a'});vol([0,fox?26:23,head-1],2,1.5,1.5,{...pal,body:'#2a353c',light:'#4a5155'});
   for(const side of [-1,1]){poly([[side*3,12,head+3],[side*(fox?6:10),fox?12:8,head+12],[side*8,15,head+4]],pal.body);poly([[side*4,12,head+5],[side*(fox?5:8),10,head+10],[side*6,14,head+5]],fox?'#c99599':'#65463e');vol([side*4.7,17,head+1],1,1.2,1.2,{...pal,body:'#182a31',light:'#182a31'});}
   if(e.kind==='baby_deer')for(const side of [-1,1])for(let i=0;i<4;i++)vol([side*5.8,-8+i*5,body+5],1,1,1,{...pal,body:'#ffefcc',light:'#fff6df'});
-  if(e.kind==='stag')for(const side of [-1,1]){line([side*3,11,head+5],[side*8,9,head+17],'#684d3a',3);line([side*8,9,head+17],[side*13,5,head+25],'#e1c69b',2);line([side*7,9,head+14],[side*15,11,head+20],'#bca27a',2);line([side*9,8,head+19],[side*7,15,head+25],'#efdab2',2);}
+  if(e.kind==='stag'||shadowStag)for(const side of [-1,1]){
+   const horn=shadowStag?'#e7d6ad':'#684d3a',lit=shadowStag?'#fff4d5':'#e1c69b',shade=shadowStag?'#b7a9bc':'#bca27a';
+   line([side*3,11,head+5],[side*7,9,head+15],horn,3);line([side*7,9,head+15],[side*11,6,head+24],lit,2);
+   line([side*6,10,head+13],[side*4,15,head+20],shade,2);line([side*8,9,head+17],[side*14,10,head+20],lit,2);line([side*9,8,head+18],[side*8,4,head+23],lit,2);
+  }
+  if(shadowStag){
+   // A narrow moon-shaped brow mark is the only bright accent on the face.
+   vol([0,18,head+3],2.2,1,1.2,{...pal,body:'#e6d5aa',light:'#fff9e9'});
+  }
  }
  parts.sort((a,b)=>a.depth-b.depth);for(const p of parts)p.paint();c.restore();
 }

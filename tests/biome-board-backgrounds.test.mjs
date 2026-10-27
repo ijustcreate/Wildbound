@@ -17,7 +17,7 @@ function render(environment){
  return {images,geometry};
 }
 test('Board art uses separate framed biome textures, never the scenic Beach backdrop',()=>{
- assert.ok(Object.isFrozen(BOARD_ART_ASSETS));assert.equal(loaded.length,7);
+ assert.ok(Object.isFrozen(BOARD_ART_ASSETS));assert.equal(loaded.length,9);
  for(const [environment,path]of Object.entries(BOARD_ART_ASSETS)){
   assert.equal(boardArtBiome({generatedEnvironment:environment,environment:'forest'}),environment);
   assert.equal(render(environment).images[0].src,new URL(path,new URL('../src/board-art.mjs',import.meta.url)).href);
@@ -27,9 +27,9 @@ test('Board art uses separate framed biome textures, never the scenic Beach back
  assert.equal(boardArtBiome({generatedEnvironment:'ice'}),'forest');
  assert.equal(boardArtBiome({environment:'random'}),'forest');
 });
-test('Beach, Temple and House use exactly the existing board magic and path geometry',()=>{
+test('Caverns, Shadow, Beach, Temple and House use the same board route geometry',()=>{
  const original=render('forest');
- for(const environment of ['desert','beach','temple','house','graveyard']){
+ for(const environment of ['desert','beach','temple','house','graveyard','caverns','shadow']){
   const changed=render(environment);assert.deepEqual(changed.geometry,original.geometry,environment);
   assert.deepEqual(changed.images[0].args,[-140,-96,280,192]);
  }
@@ -41,7 +41,7 @@ test('An unavailable biome texture falls back to the original board without a se
  try{assert.deepEqual(render('beach'),render('forest'));}finally{image.complete=true;}
 });
 test('Board images keep every calibrated pawn center on its visible stone surface',()=>{
- for(const environment of ['forest','desert','beach','temple','house','graveyard']){
+ for(const environment of ['forest','desert','beach','temple','house','graveyard','caverns','shadow']){
   const png=PNG.sync.read(readFileSync(new URL(BOARD_ART_ASSETS[environment],new URL('../src/board-art.mjs',import.meta.url))));
   assert.ok(Math.abs(png.width/png.height-1516/1038)<.02,environment+' framing');
   // Last entry stone is drawn natively; all 47 baked tile centers must be on stone.

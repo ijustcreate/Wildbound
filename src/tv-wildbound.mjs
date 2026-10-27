@@ -5,7 +5,7 @@ import {drawForestTree,drawBush} from './forest.mjs';
 import {drawBoard} from './board.mjs';
 import {drawDie} from './render.mjs';
 import {drawItem} from './item-art.mjs';
-import {give} from './items.mjs';
+import {ITEMS,give,itemKind,take} from './items.mjs';
 import {drawQuestionBlock,blockBreakParticles,tickBlockParticles,drawBlockParticles} from './tv-block-art.mjs';
 import {victoryRewards,drawVictoryChest} from './victory-chest.mjs';
 export const TV_WILDBOUND_WIDTH=4800;
@@ -14,12 +14,22 @@ const VIEW_W=960,VIEW_H=540,FLOOR=437;
 export const TV_BOARD_X=TV_WILDBOUND_WIDTH/2;
 const BOARDS=[TV_BOARD_X];
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const ENEMY_LAYOUT=[
-  ['goomba',520],['skeleton',760],['bat',975],['lion',1130],
-  ['goomba',1430],['archer',1730],['tiger',1900],['bat',2170],
-  ['skeleton_unarmed',2600],['lion',2780],['goomba',3040],['bat',3290],
-  ['archer',3520],['tiger',3830],['skeleton',4120],['goomba',4380],
-];
+export const TV_WILDBOUND_SCENE_WIDTH=600;
+export const TV_WILDBOUND_SCENE_TEMPLATES=Object.freeze([
+  {name:'Fernwood Trail',tint:'#75bd83',blocks:[[150,330],[370,285]],bushes:[[95,58],[520,76]],enemies:[['goomba',260],['skeleton',485]]},
+  {name:'Mossy Causeway',tint:'#8eb28e',blocks:[[105,300],[300,350],[485,275]],bushes:[[210,68],[555,58]],enemies:[['lion',200],['bat',455]]},
+  {name:'Canopy Steps',tint:'#7eabb4',blocks:[[180,345],[225,300],[400,320]],bushes:[[75,65],[510,84]],enemies:[['archer',165],['goomba',430]]},
+  {name:'Old Rootway',tint:'#b09b72',blocks:[[130,275],[340,330],[435,275]],bushes:[[155,74],[555,64]],enemies:[['tiger',205],['skeleton_unarmed',475]]},
+  {name:'Board Clearing',tint:'#c2b878',blocks:[[115,335],[325,285],[500,335]],bushes:[[70,55],[480,70]],enemies:[['bat',155],['goomba',470]]},
+  {name:'Mooncap Hollow',tint:'#b6a0c2',blocks:[[165,300],[365,350],[430,300]],bushes:[[105,64],[540,72]],enemies:[['archer',190],['tiger',455]]},
+  {name:'Willow Fen',tint:'#70aaa0',blocks:[[95,340],[255,285],[465,330]],bushes:[[185,80],[555,62]],enemies:[['lion',245],['skeleton',495]]},
+  {name:'Sunlit Gate',tint:'#d3b37b',blocks:[[140,290],[300,340],[470,285]],bushes:[[85,72],[390,58]],enemies:[['goomba',225],['bat',390],['archer',510]]},
+].map(scene=>Object.freeze({...scene,blocks:Object.freeze(scene.blocks.map(Object.freeze)),bushes:Object.freeze(scene.bushes.map(Object.freeze)),enemies:Object.freeze(scene.enemies.map(Object.freeze))})));
+function buildScenes(seed){
+  const order=TV_WILDBOUND_SCENE_TEMPLATES.slice();let state=(seed>>>0)||1;
+  for(let i=order.length-1;i>0;i--){state=(Math.imul(state,1664525)+1013904223)>>>0;const j=state%(i+1);[order[i],order[j]]=[order[j],order[i]];}
+  return order.map((template,index)=>({...template,start:index*TV_WILDBOUND_SCENE_WIDTH,index}));
+}
 const stats=kind=>kind==='goomba'?{w:28,h:25,speed:38,hp:1}:kind==='bat'?{w:48,h:36,speed:78,hp:1}:['lion','tiger'].includes(kind)?{w:68,h:42,speed:85,hp:2}:{w:37,h:52,speed:52,hp:2};
 
 export class TvWildbound {
@@ -28,20 +38,22 @@ export class TvWildbound {
     this.owners=new Map(party.map(p=>[p.id,p]));this.loot=[];this.spawnTimer=8;this.rollView=null;
     this.victoryRewards=[];this.victoryChestOpened=false;this.victoryChestArt=null;this.requestLobbyReturn=false;
     this.message='A vast woodland. Hit the central board to roll; explore either direction.';
-    this.players=new Map(party.map((hero,i)=>[hero.id,{id:hero.id,hero:{...hero,appearance:{...DEFAULT_APPEARANCE,...hero.appearance}},x:TV_BOARD_X-100+i*45,y:FLOOR,vx:0,vy:0,face:1,grounded:true,jumpHeld:false,attackHeld:false,attackTime:0,invulnerable:2,hp:3,step:0,checkpoint:TV_BOARD_X-100}]));
+    this.scenes=buildScenes(this.seed);
+    this.players=new Map(party.map((hero,i)=>[hero.id,{id:hero.id,hero:{...hero,appearance:{...DEFAULT_APPEARANCE,...hero.appearance}},x:TV_BOARD_X-100+i*45,y:FLOOR,vx:0,vy:0,face:1,grounded:true,jumpHeld:false,attackHeld:false,dashHeld:false,dashTime:0,dashCooldown:0,dashDirection:1,attackTime:0,invulnerable:2,hp:3,step:0,checkpoint:TV_BOARD_X-100}]));
     this.camera=TV_BOARD_X-VIEW_W/2;
-    this.enemies=ENEMY_LAYOUT.filter(([kind])=>kind!=='goomba').map(([kind,x],i)=>({kind,home:x,x,y:kind==='bat'?FLOOR-115:FLOOR,face:i%2?-1:1,phase:i*1.7,alive:true,hit:0,cooldown:i*.15,...stats(kind)}));
-    for(let i=0;i<8;i++)this.spawnGoomba();
-    this.blocks=Array.from({length:20},(_,i)=>({x:180+i*225,y:330,used:false,bump:0}));
+    this.enemies=this.scenes.flatMap(scene=>scene.enemies.map(([kind,offset],i)=>{const x=scene.start+offset;return {kind,home:x,x,y:kind==='bat'?FLOOR-115:FLOOR,face:(scene.index+i)%2?-1:1,phase:scene.index*1.7+i*.9,alive:true,hit:0,cooldown:(scene.index+i)*.08,...stats(kind)};}));
+    for(let i=0;i<4;i++)this.spawnGoomba();
+    this.blocks=this.scenes.flatMap(scene=>scene.blocks.map(([offset,y])=>({x:scene.start+offset,y,used:false,bump:0,scene:scene.index})));
   }
   random(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed/4294967296;}
   spawnGoomba(){if(this.enemies.filter(e=>e.alive&&e.kind==='goomba').length>=12)return;let x=80+this.random()*(TV_WILDBOUND_WIDTH-160);if([...this.players.values()].some(p=>Math.abs(p.x-x)<140))return;this.enemies.push({kind:'goomba',home:x,x,y:FLOOR,face:this.random()<.5?-1:1,phase:this.random()*10,alive:true,hit:0,cooldown:0,...stats('goomba')});}
+  sceneAt(x){return this.scenes[Math.max(0,Math.min(this.scenes.length-1,Math.floor(x/TV_WILDBOUND_SCENE_WIDTH)))];}
   get ready(){return this.intro>=2.8;}
-  finish(){
+  finish(caller=null){
     if(this.won)return;
     this.won=true;
     this.victoryRewards=victoryRewards([...this.owners.values()],()=>this.random());
-    this.message='Victory treasure awaits! Interact to open the chest before returning to the lobby.';
+    this.message=caller?`${caller.hero.name||'Explorer'} calls WILDBOUND! Victory treasure awaits at the chest.`:'Victory treasure awaits! Interact to open the chest before returning to the lobby.';
     const extra=(this.viewportWidth-VIEW_W)/2;
     this.camera=TV_WILDBOUND_WIDTH-VIEW_W-extra;
   }
@@ -50,7 +62,7 @@ export class TvWildbound {
     this.lastRoll=1+this.seed%6;this.progress=Math.min(TV_WILDBOUND_GOAL,this.progress+this.lastRoll);
     this.rollFlash=1.5;this.boardCooldown=.75;
     this.rollView={elapsed:0,dice:[this.lastRoll],total:this.lastRoll,startProgress:this.progress-this.lastRoll,tossSeed:this.random(),playerId};
-    this.message=this.progress===TV_WILDBOUND_GOAL?'The final space glows. Reach the far gate!':`The board rolls ${this.lastRoll}. Space ${this.progress} of ${TV_WILDBOUND_GOAL}.`;
+    this.message=this.progress===TV_WILDBOUND_GOAL?'The final space glows. Interact at the center board to call WILDBOUND, or continue to the far gate.':`The board rolls ${this.lastRoll}. Space ${this.progress} of ${TV_WILDBOUND_GOAL}.`;
   }
   hurt(p){
     if(p.invulnerable>0)return;
@@ -62,12 +74,37 @@ export class TvWildbound {
     this.loot.push({...structuredClone(metadata),type,qty,x:p.x+p.face*40,y:p.y-20,vy:-100,age:0,manualPickup:true});
     this.message='Item dropped in the TV world. Interact nearby to pick it up.';
   }
+  attack(p){
+    const owner=this.owners.get(p.id),equipment=owner?.equipment||p.hero.equipment||{};
+    const slot=['hand1','hand2'].find(s=>equipment[s]&&(itemKind(equipment[s])==='bow'||ITEMS[equipment[s]]?.magic));
+    const weaponId=slot&&equipment[slot],weapon=ITEMS[weaponId],kind=weaponId?itemKind(weaponId):null;
+    if(kind==='bow'){
+      if(!owner?.inventory||!take(owner.inventory,'arrow',1)){this.message='Out of arrows. Collect arrows or switch weapons.';return false;}
+      this.projectiles.push({friendly:true,kind:'arrow',owner:p.id,x:p.x+p.face*20,y:p.y-31,vx:p.face*460,vy:0,life:1.8,damage:Math.max(1,Math.ceil((weapon?.damage||18)/25)),color:weapon?.artColor||weapon?.color||'#e7d6a0'});
+      this.message='Arrow loosed!';return true;
+    }
+    if(weapon?.magic){
+      const cost=weapon.manaCost||0,maxMana=owner?.maxMana||100;
+      owner.mana??=maxMana;
+      if(owner.mana<cost){this.message='Not enough mana to cast.';return false;}
+      owner.mana-=cost;
+      if(weapon.healing){owner.hp=Math.min(owner.maxHp||100,(owner.hp||0)+(weapon.healingAmount||18));this.message='A restorative spell mends the explorer.';return true;}
+      this.projectiles.push({friendly:true,kind:'magic',owner:p.id,x:p.x+p.face*20,y:p.y-27,vx:p.face*330,vy:0,life:2.2,damage:Math.max(1,Math.ceil((weapon.damage||18)/25)),color:weapon.artColor||weapon.color||'#9bcfff',spellType:weapon.spellType});
+      this.message='A spell streaks through the woodland.';return true;
+    }
+    let hit=false;
+    for(const e of this.enemies)if(e.alive&&Math.abs(e.x-p.x)<e.w/2+30&&Math.abs((e.y-e.h/2)-(p.y-28))<e.h/2+30&&Math.sign(e.x-p.x)===p.face){
+      e.hp--;e.hit=.25;hit=true;if(e.hp<=0)e.alive=false;
+    }
+    if(hit)this.message='Strike landed!';
+    return hit;
+  }
   step(dt,commands={}){
     dt=clamp(dt,0,.05);this.time+=dt;
     if(!this.ready){this.intro=Math.min(2.8,this.intro+dt);return;}
     if(this.won)return;
     if(this.rollView){
-      for(const p of this.players.values()){p.attackHeld=!!commands[p.id]?.attack;p.jumpHeld=!!commands[p.id]?.jump;p.attackTime=0;}
+      for(const p of this.players.values()){p.attackHeld=!!commands[p.id]?.attack;p.jumpHeld=!!commands[p.id]?.jump;p.dashHeld=!!commands[p.id]?.dash;p.lootHeld=!!commands[p.id]?.loot;p.attackTime=0;}
       this.rollView.elapsed+=dt;if(this.rollView.elapsed>=3.5)this.rollView=null;return;
     }
     tickBlockParticles(this.blockParticles,dt);
@@ -76,21 +113,28 @@ export class TvWildbound {
     for(const p of this.players.values()){
       const input=commands[p.id]||{};
       p.menuPaused=!!input.paused||!!this.owners.get(p.id)?.ui;
-      if(p.menuPaused){p.vx=0;p.attackTime=0;p.attackHeld=!!input.attack;p.jumpHeld=!!input.jump;continue;}
+      if(p.menuPaused){p.vx=0;p.attackTime=0;p.attackHeld=!!input.attack;p.jumpHeld=!!input.jump;p.dashHeld=!!input.dash;p.lootHeld=!!input.loot;continue;}
+      const callWildbound=!!input.loot&&!p.lootHeld;p.lootHeld=!!input.loot;
+      if(callWildbound&&this.progress>=TV_WILDBOUND_GOAL&&p.grounded&&Math.abs(p.x-TV_BOARD_X)<100){this.finish(p);break;}
+      const owner=this.owners.get(p.id);
+      if(owner){const maxMana=owner.maxMana||100;owner.mana=Math.min(maxMana,(owner.mana??maxMana)+dt*8);}
       const direction=(input.right?1:0)-(input.left?1:0);
-      p.vx=direction*(input.run?220:170);
       if(direction)p.face=direction;
+      p.dashCooldown=Math.max(0,p.dashCooldown-dt);
+      if(input.dash&&!p.dashHeld&&p.dashCooldown<=0){p.dashTime=.18;p.dashCooldown=.72;p.dashDirection=direction||p.face;}
+      p.vx=p.dashTime>0?p.dashDirection*430:direction*(input.run?220:170);
+      p.dashTime=Math.max(0,p.dashTime-dt);p.dashHeld=!!input.dash;
       if(input.jump&&!p.jumpHeld&&p.grounded){p.vy=-520;p.grounded=false;}
       p.jumpHeld=!!input.jump;
       if(input.attack&&!p.attackHeld){
         p.attackTime=.28;
         const board=BOARDS.find(x=>Math.abs(p.x-x)<72&&p.grounded&&(Math.abs(p.x-x)<12||Math.sign(x-p.x)===p.face));
         if(board!==undefined&&!this.boardCooldown){this.roll(p.id);p.checkpoint=board;}
-        else for(const e of this.enemies)if(e.alive&&Math.abs(e.x-p.x)<85&&Math.abs(e.y-p.y)<80&&Math.sign(e.x-p.x)===p.face){e.hp--;e.hit=.25;if(e.hp<=0)e.alive=false;}
+        else this.attack(p);
       }
       p.attackHeld=!!input.attack;p.attackTime=Math.max(0,p.attackTime-dt);p.invulnerable=Math.max(0,p.invulnerable-dt);
       const before=p.x;p.x=clamp(p.x+p.vx*dt,18,TV_WILDBOUND_WIDTH-20);p.step+=Math.abs(p.x-before)*.14;
-      const beforeY=p.y,oldHead=p.y-58;p.vy=Math.min(800,p.vy+1250*dt);p.y+=p.vy*dt;p.grounded=false;
+      const beforeY=p.y,oldHead=p.y-58;p.previousY=beforeY;p.vy=Math.min(800,p.vy+1250*dt);p.y+=p.vy*dt;p.grounded=false;
       for(const block of this.blocks)if(Math.abs(p.x-block.x)<29){
         if(p.vy<0&&oldHead>=block.y+32&&p.y-58<=block.y+32){
           p.y=block.y+32+58;block.bump=.25;p.vy=80;
@@ -120,14 +164,19 @@ export class TvWildbound {
           this.projectiles.push({x:e.x+e.face*16,y:e.y-27,vx:e.face*240,life:2});
         }
       }
-      for(const p of this.players.values())if(!p.menuPaused&&Math.abs(p.x-e.x)<(e.w+28)/2&&Math.abs(p.y-e.y)<e.h/2+23){
-        if(e.kind==='goomba'&&p.vy>50&&p.y<e.y-9){e.alive=false;p.vy=-320;p.grounded=false;this.message='Goomba stomp!';}
-        else this.hurt(p);
+      for(const p of this.players.values())if(!p.menuPaused){
+        const horizontallyOver=(p.x+10>e.x-e.w/2&&p.x-10<e.x+e.w/2),enemyTop=e.y-e.h;
+        const stomping=horizontallyOver&&p.vy>0&&p.previousY<=enemyTop+8&&p.y>=enemyTop-2;
+        if(stomping){
+          e.hp=0;e.alive=false;p.y=enemyTop;p.vy=-330;p.grounded=false;this.message=`${p.hero.name||'Explorer'} stomped the ${e.kind.replaceAll('_',' ')}!`;break;
+        }else if(horizontallyOver&&Math.abs(p.y-e.y)<e.h/2+23)this.hurt(p);
       }
     }
     for(const shot of this.projectiles){
-      shot.x+=shot.vx*dt;shot.life-=dt;
-      for(const p of this.players.values())if(!p.menuPaused&&shot.life>0&&Math.abs(p.x-shot.x)<17&&Math.abs(p.y-24-shot.y)<25){this.hurt(p);shot.life=0;}
+      shot.x+=shot.vx*dt;shot.y+=(shot.vy||0)*dt;shot.life-=dt;
+      if(shot.friendly){
+        for(const e of this.enemies)if(e.alive&&shot.life>0&&Math.abs(e.x-shot.x)<e.w/2+8&&shot.y>=e.y-e.h-7&&shot.y<=e.y+5){e.hp-=shot.damage||1;e.hit=.25;if(e.hp<=0)e.alive=false;shot.life=0;break;}
+      }else for(const p of this.players.values())if(!p.menuPaused&&shot.life>0&&Math.abs(p.x-shot.x)<17&&Math.abs(p.y-24-shot.y)<25){this.hurt(p);shot.life=0;}
     }
     const viewExtra=(this.viewportWidth-VIEW_W)/2;
     this.projectiles=this.projectiles.filter(shot=>shot.life>0&&shot.x>this.camera-viewExtra-100&&shot.x<this.camera+VIEW_W+viewExtra+100);
@@ -158,7 +207,10 @@ export class TvWildbound {
       if(e.kind==='goomba')this.drawGoomba(c,e);
       else animator.draw(c,{kind:e.kind,sprite:e.kind,x:e.x,y:e.y,faceX:e.face,faceY:0,moving:true,step:this.time*e.speed*.14,hit:e.hit,aggro:true,attack:0},this.time,e.kind==='bat'?58:['lion','tiger'].includes(e.kind)?75:62);
     }
-    for(const shot of this.projectiles){c.fillStyle='#e9d6a0';c.fillRect(shot.x-7,shot.y-2,14,3);c.fillStyle='#6f4933';c.fillRect(shot.x+(shot.vx>0?7:-9),shot.y-4,3,7);}
+    for(const shot of this.projectiles){
+      if(shot.kind==='magic'){c.save();c.shadowColor=shot.color;c.shadowBlur=12;c.fillStyle=shot.color;c.beginPath();c.arc(shot.x,shot.y,7,0,Math.PI*2);c.fill();c.restore();}
+      else{c.save();c.translate(shot.x,shot.y);c.rotate(shot.vx<0?Math.PI:0);c.fillStyle=shot.color||'#e9d6a0';c.fillRect(-10,-1,19,3);c.beginPath();c.moveTo(10,-4);c.lineTo(16,0);c.lineTo(10,4);c.fill();c.fillStyle='#6f4933';c.fillRect(-10,-3,3,7);c.restore();}
+    }
     for(const p of this.players.values()){
       c.save();c.globalAlpha=(p.invulnerable>0&&Math.floor(this.time*12)%2)?0.55:1;
       const owner=this.owners.get(p.id);
@@ -175,7 +227,7 @@ export class TvWildbound {
       c.save();c.translate(TV_WILDBOUND_WIDTH-205,FLOOR-15);c.scale(1.6,1.6);c.translate(-800,-919);drawVictoryChest(c,chest);c.restore();
     }
     c.restore();
-    c.fillStyle='#102c2ce8';c.fillRect(viewLeft,0,viewWidth,56);c.fillStyle='#f5e8c0';c.textAlign='left';c.font='bold 24px Georgia';c.fillText('WILDBOUND · TV WORLD',viewLeft+22,34);c.font='bold 17px system-ui';c.fillText(`BOARD ${this.progress}/${TV_WILDBOUND_GOAL}`,viewLeft+viewWidth-180,34);
+    c.fillStyle='#102c2ce8';c.fillRect(viewLeft,0,viewWidth,56);c.fillStyle='#f5e8c0';c.textAlign='left';c.font='bold 24px Georgia';c.fillText('WILDBOUND · TV WORLD',viewLeft+22,34);c.textAlign='center';c.fillStyle='#d3c694';c.font='10px system-ui';c.fillText(this.sceneAt(this.camera+VIEW_W/2).name.toUpperCase(),viewLeft+VIEW_W/2,49);c.textAlign='left';c.fillStyle='#f5e8c0';c.font='bold 17px system-ui';c.fillText(`BOARD ${this.progress}/${TV_WILDBOUND_GOAL}`,viewLeft+viewWidth-180,34);
     c.fillStyle='#102c2ce8';c.fillRect(viewLeft,510,viewWidth,30);c.fillStyle='#e5d5a9';c.font='15px system-ui';c.fillText(this.message,viewLeft+20,530);
     if(this.rollFlash>0){c.fillStyle='#f4dc96';c.textAlign='center';c.font='bold 55px Georgia';c.fillText(`+${this.lastRoll}`,VIEW_W/2,153);}
     if(!this.ready)this.drawIntro(c,viewLeft,viewWidth);
@@ -201,6 +253,11 @@ export class TvWildbound {
       if(layer<2){ctx.globalCompositeOperation='source-atop';ctx.fillStyle=layer===0?'#9db7aaa8':'#719b8688';ctx.fillRect(0,0,1200,440);}return canvas;
     });
     for(let layer=0;layer<3;layer++){const scroll=Math.floor(this.camera*[.12,.32,.65][layer]);for(let tile=Math.floor((left+scroll)/1200);tile<Math.ceil((left+width+scroll)/1200);tile++)c.drawImage(this.landscapeLayers[layer],tile*1200-scroll,0);}
+    for(const scene of this.scenes){
+      const x=left+scene.start-this.camera;if(x>left+width||x+TV_WILDBOUND_SCENE_WIDTH<left)continue;
+      c.save();c.globalAlpha=.1;c.fillStyle=scene.tint;c.fillRect(x,70,TV_WILDBOUND_SCENE_WIDTH,350);c.restore();
+      for(const [offset,size] of scene.bushes)drawBush(c,{x:x+offset,y:420,size},this.time);
+    }
   }
   drawIntro(c,left=0,width=VIEW_W){
     const t=this.intro,fade=t<.5?1:clamp((2.8-t)/1.2,0,1);
@@ -231,7 +288,7 @@ export class TvWildbound {
     c.fillStyle='#90643f';c.fillRect(x-88,352,176,28);c.fillStyle='#d3b06e';c.fillRect(x-83,347,166,24);
     c.strokeStyle='#54422f';c.lineWidth=3;c.strokeRect(x-83,347,166,24);
     c.save();c.translate(x,358);c.scale(.59,.12);drawBoard(c,{players:[...this.players.values()].map(p=>({...p.hero,boardProgress:this.progress}))},this.time);c.restore();
-    c.fillStyle='#fbecd0';c.font='bold 14px Georgia';c.textAlign='center';c.fillText('HIT TO ROLL',x,338);
+    c.fillStyle='#fbecd0';c.font='bold 13px Georgia';c.textAlign='center';c.fillText(this.progress>=TV_WILDBOUND_GOAL?'INTERACT: CALL WILDBOUND':'HIT TO ROLL',x,338);
     c.fillStyle='#354f43';c.fillRect(x-16,366,32,24);c.fillStyle='#eed9a6';c.fillText('✦',x,384);
   }
   drawGoomba(c,e){

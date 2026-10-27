@@ -137,3 +137,8 @@ body[data-screen="lobby"] #hero-overlays{position:fixed;inset:104px 24px 28px}
 .lobby-player-panel.board-ready-menu .board-ready-help{margin:0;text-align:center;color:#c6d2c5;font:11px/1.35 system-ui}
 .board-ready-help .controller-glyph{width:26px;height:26px;vertical-align:middle;image-rendering:auto}
 @media(max-width:520px){.board-ready-settings,.board-ready-roster{grid-template-columns:1fr}.lobby-player-panel.board-ready-menu .board-ready-actions{grid-template-columns:1fr}.board-ready-setting-copy>span{font-size:10px}}
+
+/* Selected explorers use the full room; keep join instructions for an empty party. */
+#lobby.playable-lobby.lobby-exploring .party-topbar>span{display:none}
+#lobby.playable-lobby.lobby-exploring .party-topbar{justify-content:flex-end}
+#lobby.playable-lobby.lobby-exploring{padding-bottom:0}

@@ -1,13 +1,13 @@
 import { ITEMS, give, sellValue, take } from "./items.mjs";
-export const ROOM_STATIONS = {
-  robot: { x: 65, y: 184, r: 12 },
-  vending: { x: 255, y: 158, halfW: 16, halfH: 10 },
-};
+import {activeLocationDesign,locationMarker,locationFloorBlocked} from './location-designs.mjs';
+export const ROOM_STATIONS={get robot(){return {...locationMarker('storage','robot',{x:65,y:184}),r:12};},get vending(){return {...locationMarker('storage','vending',{x:255,y:158}),halfW:16,halfH:10};}};
+export const storageChestPoints=()=>{const all=activeLocationDesign('storage')?.markers?.filter(m=>m.role==='storage_chest')||[];return [60,160,260].map((x,index)=>all.find(m=>m.index===index)||{x,y:94,index});};
 export function roomBlocked(x, y) {
+  if(locationFloorBlocked('storage',x,y))return true;
   return (
     Math.hypot(x - ROOM_STATIONS.robot.x, y - ROOM_STATIONS.robot.y) < 20 ||
-    (Math.abs(x - 255) < 24 && Math.abs(y - 156) < 17) ||
-    [60, 160, 260].some((cx) => Math.abs(x - cx) < 27 && y > 59 && y < 100)
+    (Math.abs(x - ROOM_STATIONS.vending.x) < 24 && Math.abs(y - (ROOM_STATIONS.vending.y-2)) < 17) ||
+    storageChestPoints().some(p=>Math.abs(x-p.x)<27&&y>p.y-35&&y<p.y+6)
   );
 }
 export function vendingStock() {

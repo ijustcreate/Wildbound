@@ -5,7 +5,58 @@ import {LobbyPractice,LOBBY_FIXTURES,lobbyDiceOffsets} from '../src/lobby-practi
 import {LOBBY_OBJECTS,LobbyState} from '../src/playable-lobby.mjs';
 import {playerAction} from '../src/player-motion.mjs';
 import {startJump,tickJump} from '../src/jumping.mjs';
+import {LOBBY_FLOOR,LOBBY_TV} from '../src/lobby-geometry.mjs';
+import {lobbyActorDepth,lobbyPropDepth} from '../src/lobby-scene.mjs';
+import {drawLobbyBackdrop} from '../src/lobby-backdrop.mjs';
 const setup=()=>{const game=new Game(),p=game.addPlayer('keyboard'),lobby=new LobbyState(),practice=new LobbyPractice();lobby.sync([p]);Object.assign(lobby.members.get(p.id),{spawned:true,panel:null});const tick=input=>practice.stepPractice(.05,[p],lobby.members,{keyboard:input});return {p,practice,lobby,tick};};
+
+test('lobby walking leaves fading floor footprints, not airborne steps',()=>{
+ const {practice,tick}=setup();tick({});
+ for(let i=0;i<8;i++)tick({x:1});
+ assert.ok(practice.footprints.length>0);
+ const a=practice.players[0];practice.footprints=[];delete a.trackImpulse;
+ a.jumpHeight=100;a.jumpVelocity=0;a.groundHeight=0;
+ tick({x:1});assert.equal(practice.footprints.length,0);
+ practice.footprints=[{x:300,y:300,time:practice.time-19}];
+ tick({});assert.equal(practice.footprints.length,0);
+});
+
+test('lobby feet can reach every visible floor edge without leaving the map',()=>{
+ const {practice,tick}=setup();tick({});const a=practice.players[0],r=8;
+ for(const [x,y,dx,dy,expectedX,expectedY]of [
+  [30,400,-60,0,LOBBY_FLOOR.left+r,400],
+  [1010,400,60,0,LOBBY_FLOOR.right-r,400],
+  [600,80,0,-60,600,LOBBY_FLOOR.top+r],
+  [600,606,0,60,600,LOBBY_FLOOR.bottom-r],
+ ]){
+  Object.assign(a,{x,y,jumpHeight:0,groundHeight:0});practice.moveActor(a,dx,dy);
+  assert.ok(Math.abs(a.x-expectedX)<3);assert.ok(Math.abs(a.y-expectedY)<3);
+  assert.equal(practice.blocked(expectedX,expectedY,r),false);
+ }
+});
+
+test('right and bottom gray trim is flush with floor edges, not inset across tiles',()=>{
+ const rects=[],c={fillStyle:'',fillRect(x,y,w,h){rects.push({color:this.fillStyle,x,y,w,h});}};
+ drawLobbyBackdrop(c,{warm:true,pack:false});
+ const trim=rects.filter(r=>r.color==='#343d40');
+ assert.ok(trim.some(r=>r.x+r.w===LOBBY_FLOOR.right&&r.w===7));
+ assert.ok(trim.some(r=>r.y+r.h===LOBBY_FLOOR.bottom&&r.h===12));
+ assert.equal(trim.some(r=>r.x===1010||r.y===590),false);
+});
+
+test('TV has a reachable matching top and stable airborne depth at its edges',()=>{
+ const {practice,tick}=setup();tick({});const a=practice.players[0],tv=practice.house.furniture.find(f=>f.id==='television'),o=LOBBY_OBJECTS.find(o=>o.id===tv.id);
+ assert.equal(tv.surfaceHeight,LOBBY_TV.height);
+ Object.assign(a,{x:785,y:210,jumpHeight:0,groundHeight:0});
+ assert.ok(startJump(a));a.jumpHeld=true;for(let i=0;i<20;i++)tickJump(a,.01,practice);
+ assert.ok(a.jumpHeight>tv.surfaceHeight,'ordinary held lobby jump clears the TV');
+ practice.moveActor(a,0,-29);assert.ok(Math.abs(a.y-181)<.001);
+ for(let i=0;i<120;i++)tickJump(a,.01,practice);
+ assert.equal(a.groundHeight,tv.surfaceHeight,'feet land on the cabinet instead of passing through');
+ for(const y of [tv.y-7,tv.y,tv.y+tv.h,tv.y+tv.h+7])assert.ok(lobbyActorDepth({...a,y},practice.house.furniture,LOBBY_OBJECTS)>lobbyPropDepth(o));
+ practice.moveActor(a,0,-30);for(let i=0;i<120;i++)tickJump(a,.01,practice);
+ assert.equal(a.groundHeight,0);assert.equal(a.jumpHeight,0);
+});
 test('Bow block input anchors movement, aims with either stick, and fires without moving',()=>{
  const {p,practice,lobby,tick}=setup();p.equipment.hand1='bow';p.inventory.push({type:'arrow',qty:10});tick({});const a=practice.players[0],x=a.x,y=a.y;
  Object.assign(a,{dashTime:.2,slideX:100,slideY:80});
@@ -39,6 +90,7 @@ test('Every lobby object has a solid visible footprint and remains reachable for
    practice.moveActor(actor,0,fromBelow?-25:25);
    assert.ok(fromBelow?actor.y>=solid.y+solid.h+8:actor.y<=solid.y-8,`${solid.id} stops an approaching player`);
    const state=lobby.members.get(p.id);Object.assign(state,{x:actor.x,y:actor.y});
+   if(solid.id==='television')Object.assign(state,{x:723,y:234});
    assert.equal(lobby.nearest(p)?.id,object.id,`${solid.id} remains usable from outside`);
  }
  for(const fixture of LOBBY_FIXTURES){

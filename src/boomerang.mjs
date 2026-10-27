@@ -1,3 +1,4 @@
+import {rangedLaunchOrigin,rangedRenderSize} from './ranged-launch.mjs';
 import {weaponHitContext} from './dark-essence.mjs';
 import {ITEMS,stat} from './items.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
@@ -9,8 +10,9 @@ export function throwBoomerang(g,p){
  if(!weapon?.boomerang)return false;
  const active=(g.boomerangs||=[]);
  if(active.some(b=>b.owner===p.id))return true;
+ const origin=rangedLaunchOrigin(p,g.time,'boomerang',{size:rangedRenderSize(g)});
  const length=Math.hypot(p.faceX||0,p.faceY||0)||1;
- active.push({...charmShot(p),...weaponHitContext(p),owner:p.id,type:id,x:p.x,y:p.y,vx:(p.faceX??0)/length*weapon.speed,vy:(p.faceY??1)/length*weapon.speed,age:0,travel:0,returning:false,hits:[],damage:weapon.damage+stat(p,'damageBonus')});
+ active.push({...charmShot(p),...weaponHitContext(p),owner:p.id,type:id,x:origin.x,y:origin.y,vx:(p.faceX??0)/length*weapon.speed,vy:(p.faceY??1)/length*weapon.speed,age:0,travel:0,returning:false,hits:[],damage:weapon.damage+stat(p,'damageBonus')});
  p.attack=p.attackDuration=.34;p.attackClip='ranged';g.onSound?.('attack',p);
  return true;
 }
@@ -23,7 +25,7 @@ export function tickBoomerangs(g,dt){
   const steps=Math.max(1,Math.ceil(weapon.speed*dt/6));
   for(let i=0;i<steps&&!b.remove;i++){
    const s=dt/steps;
-   if(b.returning){const dx=p.x-b.x,dy=p.y-b.y,d=Math.hypot(dx,dy);if(d<16){b.remove=true;break;}b.vx=dx/d*weapon.speed;b.vy=dy/d*weapon.speed;}
+   if(b.returning){const hand=rangedLaunchOrigin(p,g.time,'boomerang',{size:rangedRenderSize(g)}),dx=hand.x-b.x,dy=hand.y-b.y,d=Math.hypot(dx,dy);if(d<16){b.remove=true;break;}b.vx=dx/d*weapon.speed;b.vy=dy/d*weapon.speed;}
    const x=b.x+b.vx*s,y=b.y+b.vy*s;
    if(!b.returning&&g.projectileBlocked(x,y,1,true)){b.returning=true;continue;}
    b.x=x;b.y=y;b.travel+=weapon.speed*s;

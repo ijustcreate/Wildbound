@@ -18,7 +18,7 @@ test('Spectral outfit uses the editable humanoid joints and claws, with hidden l
  m.clips.walk.keys[2].joints.handL[0]-=2;assert.ok(validateGhostMotion(m));
  const a=ghostVisualActor({...ghost(),moving:true});assert.deepEqual(a.equipment,GHOST_EQUIPMENT);assert.equal(a.animationAction,'walk');assert.equal(a.appearance.hair,'none');
  for(const [slot,id]of Object.entries(GHOST_EQUIPMENT))assert.equal(ITEMS[id].slot,slot);
- assert.ok(ITEMS.ghost_mist.spectralLegs&&ITEMS.ghost_claws.spectralClaws&&ITEMS.ghost_hood.spectralEyes);
+ assert.ok(ITEMS.ghost_mist.spectralLegs&&ITEMS.ghost_claws.spectralClaws&&ITEMS.ghost_gloves.spectralHands&&ITEMS.ghost_hood.spectralEyes);
 });
 
 test('Ghost melee telegraphs, hits once, and allows dodging, walls and freeze interruption',()=>{

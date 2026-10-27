@@ -1,4 +1,10 @@
+import {drawTempleFixture} from './temple-fixtures.mjs';
+import {timeOfDay} from './night-cycle.mjs';
+import {drawRefinedFurniture,drawFurnitureContact} from './furniture-art.mjs';
+import {visibleSurfaceItems,drawSurfaceProp} from './house-surfaces.mjs';
 import {drawBiomeSprite} from './biome-sprites.mjs';
+export {drawCar as drawHouseCar,drawCarWheels as drawVehicleWheels,drawCarHood as drawVehicleHood} from './car-art.mjs';
+export function drawVehicleEffects(c,v){const e=v.effects;if(!e)return;c.save();for(const t of e.tracks||[]){c.save();c.globalAlpha*=Math.min(.44,Math.max(0,t.life)/6*.44);c.strokeStyle=c.fillStyle=t.skid?'#252922':'#3b392e';c.lineWidth=t.skid?4:3;c.lineCap='butt';if(Number.isFinite(t.x2)){c.beginPath();c.moveTo(t.x,t.y);c.lineTo(t.x2,t.y2);c.stroke();}else{c.translate(t.x,t.y);c.rotate(t.angle);c.fillRect(-2,-5,4,10);}c.restore();}for(const s of e.splashes||[]){c.globalAlpha=s.life/.6*.55;c.strokeStyle='#b7e7de';c.lineWidth=2;c.beginPath();c.arc(s.x,s.y,10+(1-s.life/.6)*18,0,Math.PI*2);c.stroke();}c.restore();}
 export function drawWindow(c,w){
  const {x,y,w:width,h}=w;c.fillStyle='#364951';c.fillRect(x,y,width,h);
  c.fillStyle='#6b5237';c.fillRect(x-1,y-1,width+2,h+2);c.fillStyle='#d1bb87';c.fillRect(x,y,width,h);
@@ -6,8 +12,11 @@ export function drawWindow(c,w){
  if(!w.broken){c.fillStyle='#518995';c.fillRect(x+3,y+3,width-6,h-6);c.fillStyle='#9cd0cc';c.fillRect(x+4,y+4,width-8,Math.max(2,(h-8)/2));c.strokeStyle='#dbf7ec';c.lineWidth=2;c.beginPath();c.moveTo(x+5,y+h-5);c.lineTo(x+width-5,y+5);c.stroke();c.fillStyle='#756042';if(width>h)c.fillRect(x+width/2-1,y+2,2,h-4);else c.fillRect(x+2,y+h/2-1,width-4,2);c.fillStyle='#ebd49b';c.fillRect(x+1,y+1,width-2,1);}
  else {c.fillStyle='#b3e0df';for(let i=0;i<4;i++){const px=x+4+(width-8)*i/4,py=y+4;c.beginPath();c.moveTo(px,py);c.lineTo(px+4,py);c.lineTo(px+2,py+5);c.fill();}}
 }
-export function drawFurniture(c,f){
+function paintFurniture(c,f){
+ if(drawRefinedFurniture(c,f))return;
  if(['lamp','ceiling_light'].includes(f.kind)){c.save();const x=f.x+f.w/2,y=f.y+f.h/2;c.fillStyle='#493d2e';c.fillRect(x-6,y+2,12,5);c.fillStyle='#ad8a50';c.fillRect(x-2,y-10,4,16);c.fillStyle='#d5c08c';c.fillRect(x-9,y-15,18,10);c.fillStyle='#eddbab';c.fillRect(x-7,y-14,14,2);c.restore();return;}
+ if(f.kind==='garage_button'){c.save();c.fillStyle='#263b38';c.fillRect(f.x,f.y,f.w,f.h);c.fillStyle='#d66a55';c.fillRect(f.x+4,f.y+4,f.w-8,f.h-8);c.fillStyle='#f3d889';c.fillRect(f.x+6,f.y+5,3,3);c.restore();return;}
+ if(f.kind==='chest'){c.save();c.fillStyle='#0005';c.fillRect(f.x+3,f.y+5,f.w,f.h);c.fillStyle='#895d38';c.fillRect(f.x,f.y,f.w,f.h);c.fillStyle='#bc8b53';c.fillRect(f.x+3,f.y+3,f.w-6,f.h*.42);c.fillStyle='#d6b36d';c.fillRect(f.x+f.w/2-3,f.y+f.h*.42,6,6);c.strokeStyle='#e2c47d';c.strokeRect(f.x+2,f.y+2,f.w-4,f.h-4);if(f.opened){c.fillStyle='#30251d';c.fillRect(f.x+3,f.y+4,f.w-6,f.h*.22);}c.restore();return;}
  const {x,y,w,h,kind}=f;if(['bookcase','sofa','desk'].includes(kind)&&drawBiomeSprite(c,kind,x+w/2,y+h,w,h+12))return;c.save();c.translate(x,y);
  c.fillStyle='#0005';if(kind!=='rug')c.fillRect(3,5,w,h);
  c.fillStyle=({sofa:'#49766d',bed:'#577b91',rug:'#934e43',plant:'#38764b',sink:'#aabec0',stove:'#41454d',mailbox:'#567e84'}[kind]||'#895f3c');c.fillRect(0,0,w,h);
@@ -31,4 +40,10 @@ export function drawFurniture(c,f){
  if(['sofa','bed'].includes(kind)){c.strokeStyle='#d5d9b755';c.lineWidth=1;c.strokeRect(8,8,w-16,h-16);for(let yy=18;yy<h-12;yy+=17){c.fillStyle='#183a4344';c.fillRect(w/2-1,yy,2,2);}}
  }
  c.restore();
+}
+
+export function drawFurniture(c,f,g={}){
+ if(drawTempleFixture(c,f,g))return;
+ drawFurnitureContact(c,f);paintFurniture(c,f);
+ for(const item of visibleSurfaceItems(g,f))drawSurfaceProp(c,item,f.x+f.w*(item.u??.5),f.y+f.h*(item.v??.5)-8);
 }

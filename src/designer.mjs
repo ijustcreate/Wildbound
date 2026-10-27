@@ -1,6 +1,8 @@
+import {ForestEditor} from './forest-editor.mjs';
 import {START_AREAS,START_AREA_LABELS,eventStartingAreas} from './starting-area.mjs';
 import {NpcQuestEditor} from './npc-quest-editor.mjs';
 import {MYSTERY_EVENTS} from './mysteries.mjs';
+import {RealmEditor} from './realm-editor.mjs';
 import {BoardEditor} from './board-editor.mjs';
 import {ComboEditor} from './combo-editor.mjs';
 import {forestSettings,saveForestSettings,TREE_TYPES,drawForestTree} from './forest.mjs';
@@ -20,6 +22,8 @@ import { Animator } from "./animation.mjs";
 import { RigStudio } from "./player-studio.mjs";
 import { saveProjectRigs } from './project-rigs.mjs';
 import { ItemStudioPreview } from './item-studio-preview.mjs';
+import {WorldEditor} from './world-editor.mjs';
+import {artPipelineSummary, PIXEL_ART_STANDARDS} from './art-pipeline.mjs';
 const element = (tag, text) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
@@ -237,7 +241,7 @@ export class Designer {
     const header=this.dialog.querySelector(':scope > header'),nav=this.dialog.querySelector(':scope > nav'),body=element('main');body.className='studio-body';body.id='studio-panel';body.setAttribute('role','tabpanel');body.setAttribute('aria-label',this.tab);
     for(const child of [...this.dialog.children])if(child!==header&&child!==nav)body.append(child);this.dialog.append(body);
     nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor jobs');
-    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Forest','Board'];
+    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Forest','Environments','Worlds','Board'];
     [...nav.children].forEach((b,i)=>{const active=labels[i]===this.tab;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(active));b.setAttribute('aria-controls','studio-panel');b.tabIndex=active?0:-1;b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?labels.length-1:(i+(e.key==='ArrowLeft'?-1:1)+labels.length)%labels.length;this.tab=labels[next];this.render();this.dialog.querySelector('[aria-selected="true"]')?.focus();};});
   }
   render() {
@@ -271,6 +275,8 @@ export class Designer {
       "Particles",
       "Combos",
       "Forest",
+      "Environments",
+      "Worlds",
       "Board",
     ])
       this.button(
@@ -291,16 +297,12 @@ export class Designer {
       this.playerStudio.mount(root);
       this.shell();return;
     }
+    if(this.tab==='Environments'){this.realmEditor ||= new RealmEditor(this.assets);const root=element('section');this.dialog.append(root);this.realmEditor.mount(root);this.shell();return;}
     if(this.tab==='Board'){this.boardEditor ||= new BoardEditor(this.events);const root=element('section');this.dialog.append(root);this.boardEditor.mount(root);this.shell();return;}
-    if(this.tab==='Forest'){
-      const root=element('section');root.style.padding='20px';root.append(element('h2','Procedural forest'));
-      root.append(element('p','Trees use seeded trunk, branch and foliage layers. Seasons and leaf habits apply live; save to retain them on this device.'));
-      this.field(root,'Season',forestSettings,'season',{options:['auto','summer','autumn','winter'],change:()=>{this.render();return true;}});
-      for(const type of TREE_TYPES)this.field(root,type+' leaf habit',forestSettings,type,{options:['deciduous','evergreen'],change:()=>{this.render();return true;}});
-      this.button(root,'Save forest settings',()=>{saveForestSettings();});
-      const canvas=element('canvas');canvas.width=900;canvas.height=300;canvas.style.width='100%';canvas.style.maxWidth='900px';const c=canvas.getContext('2d');c.fillStyle='#344c40';c.fillRect(0,0,900,300);
-      for(let i=0;i<9;i++)drawForestTree(c,{kind:'tree',treeType:TREE_TYPES[Math.floor(i/3)],x:50+i*100,y:190,size:110,procedural:true},0,{});
-      root.append(canvas);this.dialog.append(root);this.shell();return;
+    if(this.tab==='Forest'){this.forestEditor ||= new ForestEditor();const root=element('section');this.dialog.append(root);this.forestEditor.mount(root);this.shell();return;}
+    if(this.tab==='Worlds'){
+      this.worldEditor ||= new WorldEditor({openQuests:()=>{this.tab='NPC & quests';this.render();}});
+      const root=element('section');this.dialog.append(root);this.worldEditor.mount(root);this.shell();return;
     }
     if(this.tab==='Combos'){this.comboEditor ||= new ComboEditor();const root=element('section');this.dialog.append(root);this.comboEditor.mount(root);this.shell();return;}
     if(this.tab==='Particles'){this.particleEditor ||= new ParticleEditor();const root=element('section');this.dialog.append(root);this.particleEditor.mount(root);this.shell();return;}
@@ -697,6 +699,37 @@ export class Designer {
       this.dialog.append(fields);
     } else if (this.tab === "Items") {
       this.item ??= "sword";
+      const audit = artPipelineSummary(this.items);
+      const auditPanel = element('section');
+      auditPanel.className = 'editor-section art-pipeline-audit';
+      const auditHeading = element('div');
+      auditHeading.className = 'section-heading';
+      auditHeading.append(element('div', 'ART PIPELINE QA'), element('span', `Humanoid ${PIXEL_ART_STANDARDS.rig} · ${audit.total} wearable entries`));
+      auditPanel.append(auditHeading);
+      const auditStats = element('div');
+      auditStats.className = 'field-grid three-up';
+      for (const [label, value] of [['Ready', audit.ready], ['Needs review', audit.review], ['Blocked', audit.blocked]]) {
+        const stat = element('div');
+        stat.className = 'art-audit-stat';
+        stat.append(element('strong', String(value)), element('span', label));
+        auditStats.append(stat);
+      }
+      auditPanel.append(auditStats);
+      const auditHelp = element('p', `Every wearable is routed through the shared articulated renderer and reviewed across ${PIXEL_ART_STANDARDS.directions.length} directions and ${PIXEL_ART_STANDARDS.requiredClips.length} motion clips. This audit checks the contract; the live turnaround below is the visual review.`);
+      auditHelp.className = 'art-audit-help';
+      auditPanel.append(auditHelp);
+      const auditIssues = audit.issues.slice(0, 8);
+      if (auditIssues.length) {
+        const list = element('ul');
+        list.className = 'art-audit-issues';
+        for (const detail of auditIssues) {
+          const row = element('li', `${detail.name}: ${detail.message}`);
+          row.dataset.severity = detail.severity;
+          list.append(row);
+        }
+        auditPanel.append(list);
+      } else auditPanel.append(element('p', 'All wearable definitions meet the routing contract. Review silhouettes and fit in the eight-view turnaround before approving art.'));
+      this.dialog.append(auditPanel);
       this.field(controls, "Item", this, "item", {
         options: Object.keys(this.items),
         change: () => {
@@ -722,6 +755,7 @@ export class Designer {
           "head",
           "neck",
           "cape",
+          "back",
           "shoulders",
           "chest",
           "gloves",
@@ -792,12 +826,14 @@ export class Designer {
       event.spread ??= 0.45;
       event.intensity ??= 1;
       this.field(fields, "Event type", event, "type", {
-        options: ["encounter", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede", "villager_camp"],
+        options: ["encounter", "realm_expedition", "mystery", "monsoon", "blizzard", "sandstorm", "thunderstorm", "merchant", "volcano", "stampede", "villager_camp"],
         change:()=>{this.render();return true;},
       });
       for (const k of ["weight", "duration", "spread", "intensity"])
         this.field(fields, k, event, k, { min: 0, max: 1000 });
       for (const k of ["name", "verse", "tip"]) this.field(fields, k, event, k);
+      this.field(fields,'Location restriction',event,'environment',{options:['','forest','desert','ice','house','temple','beach','graveyard','swamp','caverns','shadow']});
+      if(event.type==='realm_expedition'){this.field(fields,'Time limit (seconds)',event,'deadline',{min:30,max:600});this.field(fields,'Reward item',event,'reward',{options:Object.keys(this.items)});}
       if(event.type==='mystery'){
         const m=event.mystery??=structuredClone(MYSTERY_EVENTS[0].mystery);
         const section=element('section');section.className='event-builder-section';section.append(element('h3','Two-stage mystery'),element('p','Stage 1 spawns a target at a safe point near these map coordinates. Stage 2 creates an investigation object near the game board. Rewards only unlock after investigation.'));

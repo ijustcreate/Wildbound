@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Game,EVENTS} from '../src/core.mjs';
 import {ITEMS} from '../src/items.mjs';
 import {getNpcQuestConfig,validateNpcQuestConfig,replaceNpcQuestConfig} from '../src/npc-quest-data.mjs';
-import {spawnQuestNpc,openNpcDialogue,npcDialogueAction,npcDialogueView,npcQuestState,recordNpcQuestKill,tickNpcQuests,preserveQuestGear} from '../src/npc-quests.mjs';
+import {spawnQuestNpc,openNpcDialogue,npcDialogueAction,npcDialogueView,npcQuestState,recordNpcQuestKill,tickNpcQuests,preserveQuestGear,ensureRescueExplorer,completeRescueExplorer} from '../src/npc-quests.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {travelHouseWorlds} from '../src/house-worlds.mjs';
 import {LOBBY_OBJECTS} from '../src/playable-lobby.mjs';
@@ -54,4 +54,12 @@ test('quest gear travels without losing displaced ordinary gear or reviving reli
  const source={inventory:[{type:'keeper_band',qty:1}],equipment:{head:'keeper_crown'},equipmentSockets:{head:['azure_bead']},chests:[],field:{overflow:[]}};
  const target={inventory:Array.from({length:24},()=>({type:'potion',qty:1})),equipment:{head:'hat'},equipmentSockets:{},chests:[[{type:'keeper_robes',qty:1}]],field:{overflow:[]}};
  preserveQuestGear(source,target);assert.equal(target.equipment.head,'keeper_crown');assert.deepEqual(target.equipmentSockets.head,['azure_bead']);assert.equal(target.chests[0][0],null);assert.deepEqual(target.field.overflow.map(i=>i.type),['keeper_band','hat']);assert.equal(target.inventory.length,24);
+});
+test('rescued explorer thanks the party, drops a reward for a full backpack, then flees and despawns off-screen',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard','Rescuer');g.start();g.openingBoard=false;p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));
+ const objective={id:'rescue-test',kind:'rescue',x:p.x+20,y:p.y};const waiting=ensureRescueExplorer(g,objective);assert.ok(waiting);assert.equal(openNpcDialogue(g,p),false,'a stranded explorer is not interactable before rescue');
+ const npc=completeRescueExplorer(g,objective);Object.assign(p,{x:npc.x+24,y:npc.y});assert.equal(openNpcDialogue(g,p),true);assert.match(npcDialogueView(g,p).text,/found me/);
+ npcDialogueAction(g,p,'rescue:claim');assert.ok(g.loot.some(item=>item.type==='potion'),'a full inventory drops the promised reward near the party');assert.equal(npc.rewardClaimed,true);
+ npcDialogueAction(g,p,'close');assert.equal(npc.fleeing,true);Object.assign(p,{x:npc.x+900,y:npc.y});for(let i=0;i<30&&!npc.fled;i++)tickNpcQuests(g,.1);
+ assert.equal(g.questNpcs.includes(npc),false,'the explorer leaves once safely beyond view');
 });

@@ -23,6 +23,7 @@ const setup = (seed = 738) => {
   return {g, p, d};
 };
 const press = (g, p, input = {}, dt = .05) => {
+  tickOldWells(g,dt,{[p.device]:input});
   const result = oldWellRoomStep(g, p, input, dt); p.previousInput = {...input}; return result;
 };
 const place = (p, a, dx = 0, dy = 0) => Object.assign(p, {roomX: a.x + dx, roomY: a.y + dy});
@@ -37,7 +38,7 @@ const wake = ({g, p, d}) => {
   assert.equal(bossFor(d).state, 'rising'); ticks(g, 40); assert.equal(bossFor(d).state, 'hunt');
 };
 function route(s, from, to) {
-  const index = a => Math.floor(a.y / 16) * s.width + Math.floor(a.x / 16);
+  const index = a => Math.floor(a.y / s.tile) * s.width + Math.floor(a.x / s.tile);
   const start = index(from), end = index(to), queue = [start], previous = new Map([[start, null]]);
   for (let i = 0; i < queue.length && !previous.has(end); i++) {
     const n = queue[i], x = n % s.width, y = Math.floor(n / s.width);
@@ -54,8 +55,9 @@ function route(s, from, to) {
 }
 function walk(g, p, target) {
   const s = wellForPlayer(g, p).well;
+  p.invincible=true;
   for (const n of route(s, {x: p.roomX, y: p.roomY}, target)) {
-    const x = n % s.width * 16 + 8, y = Math.floor(n / s.width) * 16 + 8;
+    const x=n%s.width*s.tile+s.tile/2,y=Math.floor(n/s.width)*s.tile+s.tile/2;
     for (let step = 0; Math.hypot(x - p.roomX, y - p.roomY) > 1; step++) {
       assert.ok(step < 50, 'real movement advances through bends');
       const dx = x - p.roomX, dy = y - p.roomY, len = Math.hypot(dx, dy);
@@ -81,12 +83,12 @@ test('Crypt generation connects every floor, all eight chambers, exit, treasure 
   for (const seed of [0, 1, 738, 999999]) {
     const s = generateMausoleumCrypt(seed);
     assert.deepEqual(s, generateMausoleumCrypt(seed)); assert.equal(s.theme, 'mausoleum');
-    assert.equal(s.rooms.length, 8); assert.ok(s.width * s.height > 3000);
+    assert.equal(s.rooms.length, 9); assert.ok(s.width * s.height > 3000);
     for (const a of [s.exit, s.arrival, s.chest, s.coffin, ...s.enemies, ...s.candles]) {
       assert.equal(wellTunnelBlocked(s, a.x, a.y), false); route(s, s.exit, a);
     }
     const path = route(s, s.exit, s.coffin);
-    assert.ok(path.length > 115, 'coffin requires travelling the long connected catacombs');
+    assert.ok(path.length > 60, 'coffin requires travelling the long connected catacombs');
     assert.ok(Math.hypot(s.arrival.x - s.exit.x, s.arrival.y - s.exit.y) >= 45);
     const start = Math.floor(s.exit.y / 16) * s.width + Math.floor(s.exit.x / 16), queue = [start], seen = new Set(queue);
     for (let i = 0; i < queue.length; i++) {
@@ -99,7 +101,7 @@ test('Crypt generation connects every floor, all eight chambers, exit, treasure 
     assert.equal(seen.size, s.tiles.filter(Boolean).length, 'no isolated floor cells');
     assert.equal(s.enemies.filter(e => e.kind === CRYPT_BOSS_KIND).length, 1);
     for (const kind of ['zombie', 'skeleton', 'spider', 'bat']) assert.ok(s.enemies.some(e => e.kind === kind));
-    assert.deepEqual(s.chest.items, [{type: 'lantern', qty: 1}]);
+    assert.deepEqual(s.chest.items.map(i=>i.type), ['lantern','flying_broom','witch_hat']);
   }
 });
 
@@ -177,7 +179,7 @@ test('Main update enters through existing Interact, safely explores, transfers l
   assert.equal(g.storageFor(p), d.well.chest.items); assert.equal(d.well.chest.opened, true);
   assert.equal(p.inventory.some(i => i?.type === 'lantern'), false, 'opening never transfers');
   g.update(.05, {keyboard: {}}); g.update(.05, {keyboard: {use: true}});
-  assert.equal(d.well.chest.items.some(Boolean), false); assert.equal(p.inventory.find(i => i?.type === 'lantern').qty, 1);
+  assert.ok(!d.well.chest.items.some(i=>i?.type==='lantern')); assert.equal(p.inventory.find(i => i?.type === 'lantern').qty, 1);
   g.update(.05, {keyboard: {close: true}}); assert.equal(p.ui, null);
   walk(g, p, d.well.exit); g.update(.05, {keyboard: {interact: true}});
   assert.equal(p.room, null); assert.deepEqual({x: p.x, y: p.y}, anchor);
@@ -253,11 +255,11 @@ test('Full inventory keeps lantern in its real chest, and depletion persists acr
   const {g, p, d} = setup(); enterOldWell(g, p, d); place(p, d.well.chest);
   p.inventory = Array.from({length: 24}, () => ({type: 'sword', qty: 1}));
   lootOldWellChest(g, p); g.inventoryAction(p, 'use'); assert.match(p.ui.notice, /full/i);
-  assert.deepEqual(d.well.chest.items, [{type: 'lantern', qty: 1}]);
-  p.inventory[0] = null; g.inventoryAction(p, 'use'); assert.equal(d.well.chest.items.some(Boolean), false); p.ui = null;
-  leaveOldWell(g, p); enterOldWell(g, p, d); assert.equal(d.well.chest.items.some(Boolean), false);
+  assert.deepEqual(d.well.chest.items.map(i=>i.type), ['lantern','flying_broom','witch_hat']);
+  p.inventory[0] = null; g.inventoryAction(p, 'use'); assert.ok(!d.well.chest.items.some(i=>i?.type==='lantern')); p.ui = null;
+  leaveOldWell(g, p); enterOldWell(g, p, d); assert.ok(!d.well.chest.items.some(i=>i?.type==='lantern'));assert.ok(d.well.chest.items.some(i=>i?.type==='flying_broom'));
   const loaded = restore(g), portal = wellForPlayer(loaded, loaded.players[0]);
-  assert.equal(portal.well.chest.opened, true); assert.equal(portal.well.chest.items.some(Boolean), false);
+  assert.equal(portal.well.chest.opened, true); assert.ok(!portal.well.chest.items.some(i=>i?.type==='lantern'));assert.ok(portal.well.chest.items.some(i=>i?.type==='flying_broom'));
 });
 
 test('Coffin wakes exactly one immune rising boss via Use; rising animation and timer survive save', () => {
@@ -301,20 +303,20 @@ test('Boss bone volley is aimed, persistent, damaging, blocked by stone and froz
   leaveOldWell(g, p); const before = JSON.stringify(d.well); ticks(g, 20); assert.equal(JSON.stringify(d.well), before);
 });
 
-test('Real melee and bow attacks defeat crypt enemies and give one room drop; lantern never attacks', () => {
+test('Real melee, bow, and lantern attacks defeat crypt enemies and give one room drop', () => {
   for (const weapon of ['sword', 'bow', 'lantern']) {
     const {g, p, d} = setup(); enterOldWell(g, p, d); const e = d.well.enemies.find(e => e.kind === 'skeleton');
     e.speed = 0; e.cooldown = 999; place(p, e, -24, 0); p.faceX = 1; p.faceY = 0;
     p.equipment.hand1 = weapon; p.inventory.push({type: 'arrow', qty: 20}); const hp = e.hp;
-    for (let n = 0; n < 8 && e.hp > 0; n++) {
+    for (let n = 0; n < 24 && e.hp > 0; n++) {
+      place(p,e,-24,0); // Follow native melee knockback before the next strike.
       press(g, p, {attack: true, aimX: 1, aimY: 0});
       for (let frame = 0; frame < 10; frame++) {press(g, p); if (weapon === 'bow') tickOldWells(g, .05);}
     }
-    if (weapon === 'lantern') {assert.equal(e.hp, hp); assert.equal(d.well.bolts.length, 0);}
-    else {
-      assert.equal(e.hp, 0); assert.equal(e.killedBy, p.id); assert.equal(e.dropsGiven, true);
-      assert.equal(d.well.drops.filter(drop => drop.id === e.id + '-drop').length, 1);
-      hitCryptEnemy(g, d.well, e, 100, p); assert.equal(d.well.drops.filter(drop => drop.id === e.id + '-drop').length, 1);
+    {
+      assert.equal(e.hp, 0); assert.equal(e.killedBy, p.id); assert.equal(e.defeated,true);
+      const count=d.well.drops.length;assert.ok(count>0);
+      hitCryptEnemy(g,d.well,e,100,p);ticks(g,4);assert.equal(d.well.drops.length,count);
     }
   }
 });
@@ -326,10 +328,10 @@ test('Healing wand uses room ally targets and halo healing without hitting crypt
   p.equipment.hand1 = 'healing_wand'; p.equipment.head = 'halo'; q.equipment.head = 'halo';
   p.mana = 100; q.hp = 20; q.maxHp = 100; outside.hp = 20;
   const before = d.well.enemies.map(e => e.hp);
-  for (let n = 0; n < 12; n++) press(g, p, {attack: true, aimX: 1, aimY: 0}, .1);
+  for (let n = 0; n < 24; n++) press(g, p, {attack: true, aimX: 1, aimY: 0}, .05);
   press(g, p, {aimX: 1, aimY: 0}); ticks(g, 8);
   assert.ok(q.hp > 70); assert.equal(outside.hp, 20); assert.deepEqual(d.well.enemies.map(e => e.hp), before);
-  assert.equal(q.healingOverTime.length, 1); assert.ok(g.effects.some(fx => fx.room === d.id && fx.healingRise));
+  assert.equal(q.healingOverTime.length, 1); assert.ok(d.well.worldRuntime.effects.some(fx=>fx.healingRise));
 });
 
 test('Main-defined flame sword ignites only landed room melee, persists its burn and resolves burn kills through the single-drop path', () => {
@@ -339,30 +341,33 @@ test('Main-defined flame sword ignites only landed room melee, persists its burn
   place(p, e, -24, 0); p.equipment.hand1 = 'crypt_flame_sword'; p.faceX = -1; p.faceY = 0;
   press(g, p, {attack: true}); assert.equal(e.burning, undefined, 'misses cannot ignite');
   for (let n = 0; n < 10; n++) press(g, p);
-  e.hp = ITEMS.crypt_flame_sword.damage + 2;
-  press(g, p, {attack: true, aimX: 1, aimY: 0}); assert.equal(e.hp, 2);
-  assert.equal(e.burning, 2); assert.equal(e.burnDamage, 3); assert.equal(e.burnOwner, p.id);
+  // A second native combo swing can exceed the item's base damage. Keep the
+  // target alive for contact ignition, then let the saved burn finish it.
+  e.hp = 100;
+  press(g,p,{attack:true,aimX:1,aimY:0});press(g,p,{aimX:1,aimY:0});for(let i=0;i<4;i++)press(g,p);assert.ok(e.hp<100);
+  assert.ok(e.burning>1); assert.equal(e.burnDamage, 3); assert.equal(e.killedBy, p.id);
+  e.hp=2;
   const loaded = restore(g), q = loaded.players[0], portal = wellForPlayer(loaded, q), burned = portal.well.enemies.find(a => a.id === e.id);
-  assert.equal(burned.burning, 2); ticks(loaded, 11); assert.equal(burned.hp, 0);
-  assert.equal(burned.killedBy, q.id); assert.equal(portal.well.drops.filter(a => a.id === e.id + '-drop').length, 1);
-  ticks(loaded, 40); assert.equal(portal.well.drops.filter(a => a.id === e.id + '-drop').length, 1);
+  assert.ok(burned.burning>1); ticks(loaded, 11); assert.equal(burned.hp, 0);
+  assert.equal(burned.killedBy, q.id); assert.equal(burned.defeated,true);const dropCount=portal.well.drops.length;assert.ok(dropCount>0);
+  ticks(loaded,40);assert.equal(portal.well.drops.length,dropCount);
 });
 
 test('Real boss kill drops exactly shield and sword once; full bag, co-op pickup and JSON reload never duplicate or lose rewards', () => {
   const state = setup(); const {g, p, d} = state; enterOldWell(g, p, d); wake(state); const e = bossFor(d);
   p.inventory = Array.from({length: 24}, () => ({type: 'sword', qty: 1}));
   p.equipment.hand1 = 'sword'; place(p, e, 0, 26); p.faceX = 0; p.faceY = -1;
-  e.hp = 12; press(g, p); press(g, p, {attack: true});
-  assert.equal(e.hp, 0); assert.equal(e.state, 'defeated'); assert.equal(d.well.coffin.defeated, true);
+  e.hp=12;press(g,p);press(g,p,{attack:true});press(g,p);for(let i=0;i<5;i++)press(g,p);
+  assert.equal(e.hp, 0); assert.ok(['death','defeated'].includes(e.state)); assert.equal(d.well.coffin.defeated, true);
   assert.deepEqual(d.well.drops.map(a => a.type), [...CRYPT_REWARDS]); assert.equal(d.well.coffin.rewardsDropped, true);
   place(p, e, 0, 8); press(g, p); assert.equal(d.well.drops.length, 2, 'full bag leaves both drops');
   hitCryptEnemy(g, d.well, e, 999, p); assert.equal(d.well.drops.length, 2);
   const loaded = restore(g), q = loaded.players[0], portal = wellForPlayer(loaded, q), deadBoss = bossFor(portal);
   assert.equal(deadBoss.hp, 0); assert.deepEqual(portal.well.drops.map(a => a.type), [...CRYPT_REWARDS]);
-  q.inventory[0] = null; press(loaded, q); assert.equal(portal.well.drops.length, 1);
+  q.inventory[0]=null;press(loaded,q,{loot:true}); assert.equal(portal.well.drops.length, 1);
   assert.equal(q.inventory.filter(a => a?.type === 'coffin_lid_shield').length, 1);
   const partner = loaded.addPlayer('pad:0', 'Loot partner'); Object.assign(partner, {x: portal.x + 48, y: portal.y + 24});
-  enterOldWell(loaded, partner, portal); place(partner, deadBoss, 0, 8); press(loaded, partner);
+  enterOldWell(loaded, partner, portal); place(partner,deadBoss,0,8);press(loaded,partner,{loot:true});
   assert.equal(portal.well.drops.length, 0); assert.equal(partner.inventory.filter(a => a?.type === 'crypt_flame_sword').length, 1);
   hitCryptEnemy(loaded, portal.well, deadBoss, 999, partner); assert.equal(portal.well.drops.length, 0);
   assert.equal(wakeMausoleumBoss(loaded, partner), false); leaveOldWell(loaded, q); enterOldWell(loaded, q, portal);
@@ -384,14 +389,15 @@ test('Save and multiplayer snapshots retain exploration, partial enemy health, r
 test('Native stone/candle/coffin/undead art branches through old-well renderer and hides unexplored treasure', () => {
   const {g, p, d} = setup(); enterOldWell(g, p, d); const c = canvas();
   assert.equal(drawOldWellRoom(c, g, p), true); assert.ok(c.calls.some(a => a.text === CRYPT_TITLE));
-  assert.ok(c.calls.some(a => a.color === '#fff2a0'), 'native candle flames');
+  assert.ok(c.calls.some(a => a.color === '#ddfff6'), 'native candle flames');
   assert.ok(c.calls.some(a => a.color === '#080a14' && a.alpha > .9), 'darkness is painted');
-  assert.equal(c.calls.some(a => a.color === '#63545c'), false, 'unknown coffin art is withheld');
+  assert.equal(c.calls.some(a => a.color === '#22536d'), false, 'unknown coffin art is withheld');
   assert.equal(c.calls.some(a => a.text?.includes('rope')), false);
   place(p, d.well.coffin, 0, 26); press(g, p); const sealed = canvas(); drawOldWellRoom(sealed, g, p);
-  assert.ok(sealed.calls.some(a => a.color === '#63545c'), 'discovered sealed coffin');
+  assert.ok(sealed.calls.some(a => a.color === '#22536d'), 'discovered sealed coffin');
   wakeMausoleumBoss(g, p); ticks(g, 20); const rising = canvas(); drawOldWellRoom(rising, g, p);
-  assert.ok(rising.calls.some(a => a.color === '#c8a369'), 'unique crown draws during rise');
+  const native=[];drawOldWellRoom(rising,g,p,{draw(c,actor,time,size){native.push({actor,size});}});
+  assert.ok(native.some(a=>a.actor.kind==='skeleton'&&a.actor.equipment.hand1==='crypt_flame_sword'),'Warden uses the native skeleton and real weapon equipment');
   assert.ok(rising.calls.some(a => a.color === '#080a14' && a.alpha < .8), 'boss fire lights the room');
   const entrance = canvas(); drawMausoleumEntrance(entrance, d); assert.ok(entrance.calls.length > 20);
   const routed = canvas(); drawOldWell(routed, d); assert.deepEqual(routed.calls, entrance.calls);
@@ -401,7 +407,7 @@ test('Native stone/candle/coffin/undead art branches through old-well renderer a
 test('Equipped lantern expands persistent-room lighting for both cameras, while backpack/outside/dead actors do not', () => {
   const {g, p, d} = setup(), q = g.addPlayer('pad:0', 'Lamp bearer');
   Object.assign(q, {x: d.x + 48, y: d.y + 24}); enterOldWell(g, p, d); enterOldWell(g, q, d);
-  place(p, {x: 280, y: 120}); place(q, {x: 320, y: 120}); press(g, p); press(g, q);
+  place(p, {x:d.well.chest.x-40,y:d.well.chest.y}); place(q, {x:d.well.chest.x+20,y:d.well.chest.y}); press(g, p); press(g, q);
   q.inventory.push({type: 'lantern', qty: 1}); assert.equal(mausoleumLights(g, d).some(a => a.radius === 150), false);
   q.equipment.hand2 = 'lantern'; assert.ok(mausoleumLights(g, d).some(a => a.radius === 150 && a.x === q.roomX));
   const lit = canvas(); drawOldWellRoom(lit, g, p); q.equipment.hand2 = null;

@@ -1,6 +1,7 @@
 // Self-contained generation: do not import world.mjs (which routes biomes here).
 // Coordinates are world pixels; rootY and graveyardFootprint are on the ground.
 export const GRAVEYARD_TILE = 32;
+const regionalCollisionCache=new WeakMap();
 export const GRAVEYARD_SCENERY_LIMIT = 320;
 export const GRAVE_BREAK_SPAWN_CHANCE = 0.20;
 export const GRAVE_EMERGENCE_SECONDS = 2.4;
@@ -43,7 +44,7 @@ export function graveyardTrailDistance(graveyard,x,y) {
 export function graveyardWorld(seed=0) {
   seed=Number.isFinite(seed)?seed:0;
   const terrain=Array(2500).fill('grass'),scenery=[];
-  const graveyard={version:1,featuresVersion:2,seed,bounds:{...GRAVEYARD_BOUNDS},safeArea:{...GRAVEYARD_SAFE_AREA},
+  const graveyard={version:1,featuresVersion:3,seed,bounds:{...GRAVEYARD_BOUNDS},safeArea:{...GRAVEYARD_SAFE_AREA},
     board:{x:800,y:800},gate:{...GRAVEYARD_GATE,open:true},plots:[],mausoleums:[],
     trail:[{x:800,y:880},{x:800,y:1264},{x:972,y:1344},{x:1024,y:1440},{x:904,y:1520},{x:904,y:1600}],
     trailWidth:96,breakEnemyKinds:[...GRAVE_BREAK_ENEMY_KINDS],breakCount:0};
@@ -79,9 +80,11 @@ export function graveyardWorld(seed=0) {
     {x:694,y:1230,w:8,h:46},{x:898,y:1230,w:8,h:46}]});
   const mausoleumSites=graveyardHash(seed,17,5)<.5?[[496,386],[1104,386]]:[[496,386],[800,386],[1104,386]];
   for(const [x,y] of mausoleumSites) {
+    // The facade/cornice overhangs its nominal 128px body by 6px on both
+    // sides. Keep the feet-plane solid footprint aligned to the visible stone.
     const p=prop('mausoleum',x,y,136,{width:128,depth:64,height:120,variant:graveyard.mausoleums.length,
-      graveyardFootprint:{x:x-64,y:y-64,w:128,h:64}});
-    graveyard.mausoleums.push({id:p.id,x,y,w:128,h:64});
+      graveyardFootprint:{x:x-70,y:y-64,w:140,h:64}});
+    graveyard.mausoleums.push({id:p.id,x,y,w:140,h:64});
   }
   for(const y of [448,568,688,936,1056])for(const x of [448,552,656,944,1048,1152]) {
     const n=graveyardHash(seed,x,y),plot={id:'grave-plot:'+graveyard.plots.length,x:x-22,y:y+2,w:44,h:68,
@@ -114,15 +117,27 @@ export function graveyardWorld(seed=0) {
 
 /** Input is the ground/feet plane, NOT the actor's drawing origin. */
 export function graveyardBlocked(g,x,y,radius=8,flying=false,elevation=0,actor=null) {
-  if(!active(g)||flying||g.phase==='won'||!Number.isFinite(x)||!Number.isFinite(y))return false;
+  if(flying||!Number.isFinite(x)||!Number.isFinite(y))return false;
+  const cemetery=active(g);
+    let candidates=g.scenery||[];
+    if(!cemetery){
+      let cached=regionalCollisionCache.get(candidates);
+      if(!cached||cached.length!==candidates.length){cached={length:candidates.length,props:candidates.filter(p=>p.graveyard&&p.boundlessRegion)};regionalCollisionCache.set(candidates,cached);}
+      candidates=cached.props;if(!candidates.length)return false;
+    }
   radius=Number.isFinite(radius)?Math.max(0,radius):8;
-  return (g.scenery || []).some(p=>{
-    if(!p.graveyard || p.depleted || p.falling) return false;
+    return candidates.some(p=>{
+    if(!p.graveyard||p.depleted||p.falling||!cemetery&&!p.boundlessRegion||g.phase==='won'&&p.kind!=='mausoleum')return false;
     if(actor?.wingHover&&elevation>=32&&['cemetery_fence','cemetery_gate'].includes(p.kind))return false;
     // Leave a clean approach to every mausoleum doorway. The structure still
     // blocks its walls, but the player can stand at the threshold and use the
     // interaction before or after the event opens the gate.
-    if(p.kind==='mausoleum' && p.doorOpen && Math.abs(x-(p.x||0))<=26 && y >= (p.rootY??p.y)-10) return false;
+    if(p.kind==='mausoleum'){
+        if(!Number.isFinite(p.x)||!Number.isFinite(p.rootY??p.y))return !!p.graveyardFootprint&&rectHit(p.graveyardFootprint,x,y,radius);
+      const base=p.rootY??p.y,width=(p.width||128)+12,depth=p.depth||64;
+        if(p.doorOpen&&Math.abs(x-p.x)+radius<20&&y-radius>=base-18)return false;
+      return rectHit({x:p.x-width/2,y:base-depth,w:width,h:depth+5},x,y,radius);
+    }
     return (p.graveyardFootprint && rectHit(p.graveyardFootprint,x,y,radius) ||
       (p.blockers || []).some(r=>rectHit(r,x,y,radius)));
   });
@@ -131,12 +146,21 @@ export function graveyardBlocked(g,x,y,radius=8,flying=false,elevation=0,actor=n
 // Add only the new props/apertures to older expeditions, preserving opened crypts,
 // broken graves, collected items, and all existing scenery IDs.
 export function upgradeCemeteryFeatures(g){
-  if(!active(g)||g.graveyard.featuresVersion>=2||g.phase==='won')return false;
+  if(!active(g)||(g.graveyard.featuresVersion||0)>=3||g.phase==='won')return false;
+  const previous=g.graveyard.featuresVersion||0;
   const fresh=graveyardWorld(g.graveyard.seed??g.seed);
-  g.scenery=(g.scenery||[]).filter(p=>p.kind!=='cemetery_fence'||!gateGap(p));
-  for(const p of fresh.scenery.filter(p=>p.small&&p.kind==='cemetery_gate'||p.kind==='pumpkin_crop'))
-    if(!g.scenery.some(old=>old.kind===p.kind&&old.x===p.x&&old.y===p.y))g.scenery.push({...p,id:'cemetery-extra:'+p.kind+':'+p.x+':'+p.y});
-  g.graveyard.featuresVersion=2;return true;
+  if(previous<2){
+    g.scenery=(g.scenery||[]).filter(p=>p.kind!=='cemetery_fence'||!gateGap(p));
+    for(const p of fresh.scenery.filter(p=>p.small&&p.kind==='cemetery_gate'||p.kind==='pumpkin_crop'))
+      if(!g.scenery.some(old=>old.kind===p.kind&&old.x===p.x&&old.y===p.y))g.scenery.push({...p,id:'cemetery-extra:'+p.kind+':'+p.x+':'+p.y});
+  }
+  for(const p of g.scenery||[])if(p.kind==='mausoleum'&&p.graveyard){
+    const depth=p.depth||64,width=p.width||128;
+    p.graveyardFootprint={x:p.x-(width+12)/2,y:(p.rootY??p.y)-depth,w:width+12,h:depth};
+    const record=(g.graveyard.mausoleums||[]).find(m=>m.id===p.id||m.x===p.x&&m.y===p.y);
+    if(record){record.w=width+12;record.h=depth;}
+  }
+  g.graveyard.featuresVersion=3;return true;
 }
 
 function emerge(g,stone,plot,roll,disturber) {

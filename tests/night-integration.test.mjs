@@ -8,10 +8,10 @@ import {lightTorchFire} from '../src/night-equipment.mjs';
 import {tickHazards} from '../src/hazards.mjs';
 
 function setup(){const g=new Game(()=>.3),p=g.addPlayer('keyboard');g.start();g.scenery=[];g.terrain.fill('grass');g.openingBoard=false;p.x=400;p.y=500;p.faceX=1;p.faceY=0;return {g,p};}
-test('A lantern cannot deal melee damage, while torch strikes ignite through the actual attack path',()=>{
+test('Lantern and torch strikes deal low melee damage and ignite through the actual attack path',()=>{
   const {g,p}=setup();
   const e={id:900,kind:'lion',x:430,y:500,hp:100,maxHp:100,state:'hunt',speed:0,damage:0};g.enemies=[e];
-  p.equipment.hand1='lantern';g.attack(p,1);assert.equal(e.hp,100);
+  p.equipment.hand1='lantern';g.attack(p,1);assert.ok(e.hp<100);assert.ok(e.burning>0);
   p.equipment.hand2='torch';g.attack(p);assert.ok(e.hp<100);assert.ok(e.burning>0);
 });
 test('Hunter save and reload preserves timer, kill reward is once, and equipment is obtainable',()=>{
@@ -40,7 +40,7 @@ test('Night supplies can be crafted and equipped with the existing inventory sys
   assert.equal(craft(p,'cartridge'),'Unknown recipe.');
   assert.ok(p.inventory.some(i=>i?.type==='torch'));
   assert.ok(!p.inventory.some(i=>i?.type==='lantern'||i?.type==='cartridge'));
-  assert.equal(ITEMS.lantern.damage,0);
+  assert.equal(ITEMS.lantern.damage,3);
 });
 test('Torch fire can be lit on dry ground but a lantern cannot light it',()=>{
   const {g,p}=setup();p.equipment.hand1='lantern';assert.equal(lightTorchFire(g,p),false);

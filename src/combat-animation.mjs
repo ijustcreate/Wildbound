@@ -18,7 +18,7 @@ function sample(stages,t){
 }
 
 // Offline authoring only. Runtime continues to sample ordinary editable keys.
-export function buildCombatPass(source){
+export function buildCombatPass(source,solveIK=applyIK){
   const m=structuredClone(source),rest=Object.fromEntries(Object.entries(m.joints).map(([n,j])=>[n,j.position]));
   m.combatRevision=4;m.name='Wildbound hero / generation 4 combat';
   function pose({root=[0,0,-1],yaw=0,pitch=0,roll=0,hands={},feet={},elbows={}}={}){
@@ -34,7 +34,7 @@ export function buildCombatPass(source){
       p['hand'+side]=add(hands[side]||[side==='L'?-5:5,5,23],root);
       if(elbows[side])p['elbow'+side]=add(elbows[side],root);
     }
-    return applyIK(m,p);
+    return solveIK(m,p);
   }
   const guard=pose({yaw:-.12,hands:{L:[-5,5,23],R:[5,4,23]}});
   function clip(name,stages){
@@ -42,7 +42,7 @@ export function buildCombatPass(source){
     const length=Math.max(old.length,Math.min(16,Math.floor(30*old.length/old.fps))),fps=old.fps*length/old.length;
     const keys=Array.from({length},(_,frame)=>{
       const p=Object.fromEntries(Object.keys(rest).map(n=>[n,sample(stages.map(([t,p])=>[t,p[n]]),frame/(length-1))]));
-      applyIK(m,p);
+      solveIK(m,p);
       return {frame,joints:Object.fromEntries(Object.keys(rest).map(n=>[n,sub(p[n],rest[n])]))};
     });
     m.clips[name]={...old,length,fps,loop:false,keys};

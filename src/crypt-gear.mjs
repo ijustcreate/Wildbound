@@ -1,3 +1,4 @@
+import {setTreeFallDirection} from './tree-fall.mjs';
 import { ITEMS, itemKind } from './items.mjs';
 import { ignite } from './hazards.mjs';
 import { propBase } from './environment.mjs';
@@ -58,7 +59,7 @@ export function igniteSwordTree(g, p, tree) {
   tree.cryptBurn = CRYPT_FLAME_LIMITS.treeSeconds;
   tree.cryptBurnRate = Math.min(CRYPT_FLAME_LIMITS.treeDamagePerSecond, Math.max(24, threshold / CRYPT_FLAME_LIMITS.treeSeconds));
   tree.cryptBurnSource = p.id;
-  tree.cryptFallDirection = p.faceX < 0 ? -1 : 1;
+  tree.cryptFallDirection = p.faceX < 0 ? -1 : 1;setTreeFallDirection(tree,p.faceX,p.faceY);
   tree.cryptParticleTimer ??= 0;
   return true;
 }

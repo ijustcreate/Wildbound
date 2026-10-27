@@ -1,4 +1,8 @@
+import {visualActorId} from './animation-id.mjs';
 import {drawGorilla} from './temple.mjs';
+import {CapeInertia} from './cape-inertia.mjs';
+import {LocomotionHistory} from './native-locomotion.mjs';
+import {characterLightingAt,shadeCharacterSurface} from './character-lighting.mjs';
 import {humanoidArtStatus} from './humanoid-hd.mjs';
 import {drawAnaconda} from './anaconda-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
@@ -29,6 +33,8 @@ import {
 import { rigSubject } from "./rig-subjects.mjs";
 import { animationFrame } from "./frame-workshop.mjs";
 import { spriteToRgba } from "./pixels.mjs";
+import {celShadingEnabled} from './cel-shading.mjs';
+import {cutoutSurface} from './cutout-art.mjs';
 import { creatures } from "./definitions.mjs";
 import { drawRig } from "./rig-render.mjs";
 import {
@@ -61,20 +67,47 @@ export class Animator {
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
+    if(typeof actor.id==='string')actor={...actor,id:visualActorId(actor.id)};
+    if((actor.sprite==='player'||actor.sprite?.startsWith('explorer')||!actor.kind)&&playerMotion.locomotionRevision>=1){
+      this.locomotionHistory??=new LocomotionHistory();
+      actor={...actor,...this.locomotionHistory.sample(actor,time,playerAction(actor),playerFrame(actor,time))};
+    }
+    if(actor.equipment?.cape||actor.field?.cosmetics?.cape){this.capeInertia??=new CapeInertia();actor={...actor,capeMotion:this.capeInertia.sample(actor,time)};}
+    const groundActor=actor;
     if(actor.kind==='imp'){size*=.7;if(actor.hp>0)actor={...actor,y:actor.y-(actor.impFlightHeight??20)};}
     if(actor.kind==='succubus'&&actor.hp>0&&actor.succubusFlightHeight>0)actor={...actor,y:actor.y-actor.succubusFlightHeight};
     if(actor.kind==='bat'&&actor.roostHeight>0)actor={...actor,y:actor.y-actor.roostHeight};
     if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
+    const character=rigSubject(actor.sprite||actor.kind)?.data?.joints?.handL;
+    const lighting=character&&this.lighting&&characterLightingAt(this.lighting,groundActor,{lift:groundActor.y-actor.y,bodyHeight:22*size/48});
+    const paint=()=>celShadingEnabled()&&character?this.drawCutoutCharacter(ctx,actor,time,size,lighting):this.drawActor(ctx,actor,time,size,lighting);
     if (this.metrics?.enabled)
       return this.metrics.measure("animation", () =>
-        this.drawActor(ctx, actor, time, size),
+        paint(),
       );
-    return this.drawActor(ctx, actor, time, size);
+    return paint();
   }
-  drawActor(ctx, actor, time, size = 48) {
+  drawCutoutCharacter(ctx,actor,time,size,lighting){
+    this.cutoutSource??=document.createElement('canvas');const source=this.cutoutSource;
+    if(source.width!==320){source.width=source.height=320;}
+    const c=source.getContext('2d');c.resetTransform();c.clearRect(0,0,320,320);c.globalAlpha=1;c.filter='none';c.globalCompositeOperation='source-over';c.imageSmoothingEnabled=false;
+    const scale=96/size;c.setTransform(scale,0,0,scale,160,160);
+    this.drawActor(c,{...actor,x:0,y:0},time,size,null);
+    const surface=cutoutSurface(source,{pixelScale:2,outputScale:4}),span=160*size/48;
+    ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(this.litFrame(surface,lighting,span),actor.x-span/2,actor.y-span/2,span,span);ctx.restore();
+  }
+  litFrame(surface,lighting,worldWidth){
+    if(!lighting?.lights.length)return surface;
+    this.litSurface??=document.createElement('canvas');
+    const target=this.litSurface;
+    if(target.width!==surface.width||target.height!==surface.height){target.width=surface.width;target.height=surface.height;}
+    const c=target.getContext('2d');c.clearRect(0,0,target.width,target.height);c.imageSmoothingEnabled=false;c.drawImage(surface,0,0);
+    shadeCharacterSurface(target,lighting,{pixelsPerWorld:surface.width/worldWidth});return target;
+  }
+  drawActor(ctx, actor, time, size = 48,lighting=null) {
     if(drawRaven(ctx,actor,time,size))return;
     if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
-    if(WILD_FAUNA_KINDS.includes(actor.kind)){drawWildFauna(ctx,actor,time,size);return;}
+    if(WILD_FAUNA_KINDS.includes(actor.kind)&&actor.kind!=="chicken"){drawWildFauna(ctx,actor,time,size);return;}
     if(actor.kind==='bee'){drawBee(ctx,actor,time,size);return;}
     if(actor.kind==='tsetse'){drawTsetse(ctx,actor,time,size);return;}
     if(actor.kind==='bee_hive'){drawBeeHive(ctx,actor,time,size);return;}
@@ -131,8 +164,8 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
-        actor.equipment?.head !== 'jack_o_lantern' &&
-        playerAction(actor) === "idle" && !playerLayers(actor,time).length
+        actor.equipment?.head !== 'jack_o_lantern' && actor.equipment?.head !== 'bone_carver_crown' && actor.equipment?.gloves !== 'bone_carver_claws' &&
+        playerAction(actor) === "idle" && !playerLayers(actor,time).length && !actor.locomotionTransition && !actor.locomotionTurning
       ) {
         if (this.playerRevision !== playerMotionRevision) {
           this.playerFrames.clear();
@@ -150,6 +183,7 @@ export class Animator {
           facingIndex(actor.faceX, actor.faceY),
           frame,
           actor.equipment,
+          Object.values(actor.equipment||{}).map(id=>ITEMS[id]?.artRevision||0),
           actor.appearance,
           actor.field?.cosmetics,
           (actor.inventory || [])
@@ -171,7 +205,7 @@ export class Animator {
         }
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(
-          surface,
+          this.litFrame(surface,lighting,size*2),
           Math.round(actor.x - size),
           Math.round(actor.y - size),
           size * 2,
@@ -306,7 +340,7 @@ export class Animator {
       c.restore();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
-        surface,
+        this.litFrame(surface,lighting,size*(detailed?8:16)/3),
         Math.round(actor.x - size * (detailed?4:8) / 3),
         Math.round(actor.y - size * (detailed?4:8) / 3),
         size * (detailed?8:16) / 3,

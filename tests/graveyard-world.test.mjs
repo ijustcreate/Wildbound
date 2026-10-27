@@ -10,6 +10,18 @@ const setup=(seed=75,random=()=>.5)=>({...graveyardWorld(seed),seed,generatedEnv
 const stoneOf=g=>g.scenery.find(p=>p.kind==='gravestone'&&!p.depleted);
 const attacker=s=>({id:1,x:s.x,y:s.rootY+24,hp:100,faceX:0,faceY:-1});
 
+test('Boundless mausoleums keep full closed collision across biome boundaries and a radius-safe open doorway',()=>{
+ const prop={kind:'mausoleum',graveyard:true,boundlessRegion:'cemetery:0',x:600,y:500,rootY:500,width:128,depth:64,doorOpen:false};
+ const g={phase:'play',generatedEnvironment:'forest',scenery:[prop]};
+ assert.equal(graveyardBlocked(g,600,490,8),true);
+ assert.equal(graveyardBlocked(g,660,480,8),true);
+ assert.equal(graveyardBlocked(g,600,505,8),true,'front plinth blocks feet');
+ prop.doorOpen=true;assert.equal(graveyardBlocked(g,600,510,8),false);
+ assert.equal(graveyardBlocked(g,618,500,8),true,'radius cannot clip doorway side');
+ assert.equal(graveyardBlocked(g,600,450,8),true,'open door does not erase back wall');
+ g.phase='won';assert.equal(graveyardBlocked(g,660,480,8),true);
+});
+
 test('cemetery generation is deterministic, varied, bounded and JSON serializable',()=>{
   assert.deepEqual(graveyardWorld(75),graveyardWorld(75));
   assert.notDeepEqual(graveyardWorld(75),graveyardWorld(76));

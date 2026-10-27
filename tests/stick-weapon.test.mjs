@@ -9,6 +9,12 @@ test('equipping a dragged stick stack takes exactly one and uses sword combat',(
  assert.ok(moveInventoryItem(p,null,{mode:'pack',index:0},{mode:'gear',slot:'hand1'}));
  assert.equal(p.inventory[0].qty,19);assert.equal(p.equipment.hand1,'stick');assert.equal(itemKind('stick'),'sword');
 });
+test('the inventory Equip action moves one stick to hand and keeps the remainder stacked',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');p.inventory=[{type:'stick',qty:7}];p.ui={panel:'pack',index:0};
+ g.inventoryAction(p,'equip');
+ assert.equal(p.equipment.hand1,'stick');assert.equal(p.inventory.length,1);
+ assert.deepEqual(p.inventory[0],{type:'stick',qty:6});
+});
 test('quick pickup leaves stackable sticks in the backpack instead of auto-equipping one',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('keyboard');p.inventory=[{type:'stick',qty:6}];
  g.dropLoot(p.x,p.y,'stick',3,'Tree',true);const loot=g.loot.at(-1);

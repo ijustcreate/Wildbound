@@ -33,12 +33,12 @@ export function drawBiomeTile(c,g,kind,x,y){
   }
   return false;
 }
-export function drawBiomeProp(c,p,time,g){
-  if(drawBeachProp(c,p,time,g))return true;
+export function drawBiomeProp(c,p,time,g,renderOptions={}){
+  if(drawBeachProp(c,p,time,g,renderOptions))return true;
   if(g.generatedEnvironment!=='desert'||!['rock','cactus','dune'].includes(p.kind)||p.depleted||p.falling)return false;
   if(drawBiomeSprite(c,p.kind==='rock'?'sandstone':p.kind,p.x,p.y+p.size*.19,p.size,p.kind==='cactus'?p.size*1.2:p.size))return true;
   c.save();c.translate(p.x,p.y+p.size*.19);c.scale(p.size/64,p.size/64);
-  c.fillStyle='#684d373a';c.beginPath();c.ellipse(5,4,30,8,0,0,Math.PI*2);c.fill();
+  if(!renderOptions.dynamicShadows){c.fillStyle='#684d373a';c.beginPath();c.ellipse(5,4,30,8,0,0,Math.PI*2);c.fill();}
   if(p.kind==='rock'){
     poly(c,[[-29,0],[-25,-25],[-15,-42],[15,-39],[28,-17],[26,0]],'#ac7950');
     poly(c,[[-25,-25],[-15,-42],[15,-39],[22,-29],[-3,-24]],'#e3b878');poly(c,[[-3,-24],[22,-29],[28,-17],[26,0],[1,-2]],'#855839');

@@ -17,8 +17,8 @@ export function skinPalette(base) {
 }
 
 // Two passes let hair cover the skull without burying the ear or profile nose.
-export function drawHumanHead(c, points, direction, skin, look, visible, foreground = false, outline = '#302b2b') {
-  if(drawDetailedHead(c,points,direction,skin,look,visible,foreground))return;
+export function drawHumanHead(c, points, direction, skin, look, visible, foreground = false, outline = '#302b2b', parts = 'all') {
+  if(drawDetailedHead(c,points,direction,skin,look,visible,foreground,parts))return;
   const h = points.head, p = skinPalette(skin);
   const r = (x, y, w, height, color) => {
     c.fillStyle = color;
@@ -29,15 +29,17 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
   const turn = direction === 0 || direction === 4 ? 0 : direction < 4 ? -1 : 1;
   if (!foreground) {
     r(-3,-6,7,1,p.ink); r(-4,-5,9,1,p.ink);r(-5,-4,11,6,p.ink);
-    r(-4,2,9,1,p.ink); r(-3,3,7,1,p.ink);r(profile?turn-1:back?-1:-2,4,profile||back?3:5,1,p.ink);
+    r(-4,2,9,1,p.shadow); r(-3,3,7,1,p.base);r(profile?turn-1:back?-1:-2,4,profile||back?3:5,1,p.base);
+    if(!back)r(profile?turn-1:-1,5,3,1,p.base);
     r(-4,-4,9,6,p.shadow); r(-3,-5,7,1,p.base);
     r(-3,-4,6,6,p.base); r(-2,2,5,2,p.shadow);
     r(-3,-3,3,3,p.light); r(-2,2,3,1,p.base);
     r(3,0,1,2,p.shadow);r(-2,3,4,1,p.base);
+    if(!back){r(profile?turn-1:-1,4,profile?2:3,1,p.base);r(profile?turn:0,5,1,1,p.base);}
     if (profile) r(turn < 0 ? 2 : -4,-2,2,5,p.shadow);
     return;
   }
-  for (const name of ['earL', 'earR']) {
+  if(parts!=='face')for (const name of ['earL', 'earR']) {
     if (!visible(name)) continue;
     const q = points[name];
     const side = name === 'earL' ? -1 : 1, angle = direction*Math.PI/4;
@@ -64,6 +66,7 @@ export function drawHumanHead(c, points, direction, skin, look, visible, foregro
       r(earX-1,dy-1,1,1,p.light); r(earX,dy,1,1,p.blush);
     }
   }
+  if(parts==='ears')return;
   if (back) return;
   for (const name of ['eyeL', 'eyeR']) {
     if (!visible(name)) continue;

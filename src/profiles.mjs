@@ -1,6 +1,8 @@
+import {broomProfileInventory} from './broom-mount.mjs';
 import {petRecord,restoreHunterPet} from './hunter-pets.mjs';
 import { freshCharacter, ITEMS, SLOTS, migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
+import {migrateSavedStarterChest} from './starter-chest.mjs';
 export const cleanCharacterName = (name) =>
   String(name || "")
     .normalize("NFKC")
@@ -74,6 +76,7 @@ export class Profiles {
     return h;
   }
   assign(p, h) {
+    migrateSavedStarterChest(h);
     p.ready = false;
     p.field = structuredClone(
       h.field || {
@@ -95,7 +98,8 @@ export class Profiles {
     p.equipment = { ...h.equipment };
     p.equipmentSockets=structuredClone(h.equipmentSockets||{});
     p.chests = structuredClone(h.chests);
-    p.starterChest = structuredClone(h.starterChest || null);
+    // Starter supplies belong to this selection/session, never a previous user.
+    p.starterChest = null;
     p.chestNames = structuredClone(
       h.chestNames || ["Chest 1", "Chest 2", "Chest 3"],
     );
@@ -111,6 +115,7 @@ export class Profiles {
     p.nextVendingId = h.nextVendingId || 0;
     migrateEquipment(p);
     refreshVitals(p);
+    p.hp = p.maxHp;
   }
   async remove(id) {
     if(!this.data.heroes.some(h=>h.id===id))throw Error('Character no longer exists.');
@@ -135,11 +140,13 @@ export class Profiles {
         npcQuests: structuredClone(p.npcQuests || {}),
         hunterPet:petRecord(p.hunterPet),
         appearance: structuredClone(p.appearance || null),
-        inventory: structuredClone(loadout.inventory||[]),
+        inventory: broomProfileInventory({...p,inventory:loadout.inventory||[]}),
         equipment: { ...(loadout.equipment||{}) },
         equipmentSockets:structuredClone(loadout.equipmentSockets||{}),
         chests: structuredClone(p.chests),
+        // Deposits are returned to this owner's overflow at next selection.
         starterChest: structuredClone(p.starterChest || null),
+        starterChestSupplyVersion: 2,
         chestNames: structuredClone(p.chestNames || []),
         level: p.level,
         xp: p.xp,

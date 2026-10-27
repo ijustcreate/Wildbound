@@ -1,5 +1,10 @@
+import {forestSettings,forestTreeType} from './forest-settings.mjs';
+import {connectForestBridgeBanks} from './forest-bridges.mjs';
 import {findPath} from './navigation.mjs';
 import OverlappingModel from './vendor/wfc/overlapping-model.mjs';
+import {createForestTallGrass} from './tall-grass.mjs';
+import {vegetationWind} from './vegetation-motion.mjs';
+import {createForestUnderstory} from './forest-props.mjs';
 
 export const forestHash = (x, y = 0) => {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -12,10 +17,7 @@ export function forestNoise(x, y, seed = 0) {
   return mix(mix(forestHash(ix + seed, iy), forestHash(ix + 1 + seed, iy), u),
     mix(forestHash(ix + seed, iy + 1), forestHash(ix + 1 + seed, iy + 1), u), v);
 }
-export function forestWind(x, y, time = 0) {
-  const front = time * 1.2 - x * .007 - y * .003;
-  return Math.sin(front) * (.55 + .45 * Math.sin(time * .37 + y * .002));
-}
+export const forestWind=vegetationWind;
 const wet = t => ['water', 'shallow', 'bridge', 'floodbridge'].includes(t);
 const tile = (terrain, x, y) => terrain[Math.floor(y / 32) * 50 + Math.floor(x / 32)];
 export function clearingDistance(x, y, seed) {
@@ -78,6 +80,34 @@ export function makePaving(seed) {
     }
   }
   return {resolved: false, cells: Array.from({length: 576}, (_, i) => Number(sample[Math.floor(i / 24) % 8][i % 8]))};
+}
+
+// Match the individual mosaic stones painted by forest-art.mjs. Shader grass
+// uses this footprint to preserve the authored ground details below it.
+const pavingFootprints = new WeakMap();
+export function forestPavingAt(plan, x, y) {
+  if (!plan?.paving?.cells) return false;
+  const margin = 4;
+  let grid = pavingFootprints.get(plan);
+  if (!grid) {
+    grid = new Map();
+    const sites = [{ x: 800, y: 816, rx: 137, ry: 99, seed: plan.seed },
+      ...(plan.landmarks || []).map(l => ({ x: l.x, y: l.y, rx: 138, ry: 108, seed: l.seed }))];
+    for (const site of sites) for (let iy = -12; iy < 12; iy++) for (let ix = -12; ix < 12; ix++) {
+      if ((ix * 12 / site.rx) ** 2 + (iy * 9 / site.ry) ** 2 > .8 + forestNoise(ix * .3, iy * .3, site.seed) * .4) continue;
+      if (!plan.paving.cells[(iy + 12) * 24 + ix + 12]) continue;
+      const px = site.x + ix * 12, py = site.y + iy * 9;
+      const box = [px - margin, py - margin, px + 11 + margin, py + 9 + margin];
+      for (let by = Math.floor(box[1] / 16); by <= Math.floor(box[3] / 16); by++)
+        for (let bx = Math.floor(box[0] / 16); bx <= Math.floor(box[2] / 16); bx++) {
+          const key = by * 128 + bx, bucket = grid.get(key) || [];
+          bucket.push(box); grid.set(key, bucket);
+        }
+    }
+    pavingFootprints.set(plan, grid);
+  }
+  const bucket = grid.get(Math.floor(y / 16) * 128 + Math.floor(x / 16)) || [];
+  return bucket.some(([left, top, right, bottom]) => x >= left && x < right && y >= top && y < bottom);
 }
 
 export function createForestLandscape(seed, terrain) {
@@ -149,32 +179,54 @@ export function createForestScenery(seed, terrain, plan) {
     if (plan.landmarks.some(l => Math.hypot(x - l.x, rootY - l.y) < 165)) continue;
     const density = forestNoise(x / 190, rootY / 190, seed);
     const chance = forestHash(cx + 9, cy + seed);
-    if (chance > .10 + density * .48) continue;
-    const tree = chance < .055 + density * .31;
-    const size = tree ? 88 + forestHash(cx + seed, cy + 4) * 57 : 25 + forestHash(cx, cy) * 23;
+    if (chance > (.10 + density * .48)*Math.max(forestSettings.treeDensity,forestSettings.bushDensity,forestSettings.rockDensity)) continue;
+    const tree = chance < (.055 + density * .31)*forestSettings.treeDensity;
+    const kind=tree?'tree':chance>.3?'rock':'bush';const densityScale=forestSettings[tree?'treeDensity':kind==='rock'?'rockDensity':'bushDensity'];if(forestHash(cx+731,cy+seed)>densityScale)continue;
+    const size = tree ? (88 + forestHash(cx + seed, cy + 4) * 57)*forestSettings.treeSize : 25 + forestHash(cx, cy) * 23;
     const grove = forestNoise(x / 280 + 12, rootY / 280, seed);
-    const treeType = grove < .32 ? 'birch' : grove > .72 ? 'pine' : 'oak';
-    scenery.push({id: `grove:${cx}:${cy}`, x, y: rootY - size * (tree ? .35 : .19), rootY,
-      kind: tree ? 'tree' : chance > .3 ? 'rock' : 'bush', size, treeType,
+    const treeType = forestTreeType(grove);if(tree&&!['oak','birch','pine','palm','bare','snow'].some(k=>forestSettings[k+'Weight']>0))continue;
+    scenery.push({id: `grove:${cx}:${cy}`, x, y: rootY - size * (tree&&treeType!=='palm' ? .35 : .19), rootY,
+      kind:tree?(treeType==='palm'?'palm':treeType==='snow'?'snow_tree':treeType==='bare'?'leafless_tree':'tree'):kind, size, treeType:treeType==='snow'?'pine':treeType==='bare'?'oak':treeType,
       ...(tree && grove > .54 && grove < .64 ? {autumnAccent: true} : {}), procedural: true});
   }
   for (let y = 32; y < 1570; y += 18) for (let x = 32; x < 1570; x += 18) {
     const px = x + forestHash(x, y + seed) * 15, py = y + forestHash(y, x + seed) * 15;
     if (tile(terrain, px, py) !== 'grass' || routeDistance(plan, px, py) < 28 || clearingDistance(px, py, seed) < .92) continue;
     const density = forestNoise(px / 100, py / 100, seed + 8);
-    if (forestHash(x + seed, y) > density * .8) continue;
+    if (forestHash(x + seed, y) > density * .8*forestSettings.groundCover) continue;
     if (scenery.some(p => p.kind === 'forest_ruin' && px > p.x - p.width / 2 - 4 && px < p.x + p.width / 2 + 4 && py > p.y - p.depth - 4 && py < p.y + 4)) continue;
     plan.cover.push({x: px, y: py, kind: density > .68 ? 'fern' : density < .4 ? 'flower' : 'grass', seed: forestHash(x, y) * 1000});
   }
+  scenery.push(...createForestTallGrass(seed,terrain,plan,scenery));
+  scenery.push(...createForestUnderstory(seed,0,0,(x,y)=>tile(terrain,x,y)==='grass'&&routeDistance(plan,x,y)>58&&clearingDistance(x,y,seed)>1.1&&!forestPavingAt(plan,x,y)&&!plan.landmarks.some(p=>Math.hypot(x-p.x,y-p.y)<100)));
   return scenery;
 }
 
 export function restoreForestLandscape(g, version = g.forestLandscapeVersion) {
-  if (version !== 1 || (g.generatedEnvironment || g.environment || 'forest') !== 'forest') {
+  if (![1,2,3].includes(version) || (g.generatedEnvironment || g.environment || 'forest') !== 'forest') {
     g.forestLandscape = null; g.forestLandscapeVersion = 0; return;
   }
-  if (g.forestLandscape?.seed === g.seed && g.forestLandscape?.routeField instanceof Float32Array) return;
-  const plan = createForestLandscape(g.seed, g.terrain);
-  createForestScenery(g.seed, g.terrain, plan);
+  connectForestBridgeBanks(g.terrain);
+  const plan = g.forestLandscape?.seed === g.seed && g.forestLandscape?.routeField instanceof Float32Array
+    ? g.forestLandscape : createForestLandscape(g.seed, g.terrain);
+  if(version<2){
+    // Upgrade existing expeditions from isolated tufts to overlapping patches.
+    // Carry the nearest old cut/burn state forward so migration cannot restore
+    // grass the player already cleared.
+    const old=g.scenery.filter(p=>p.kind==='tall_grass');
+    g.scenery=g.scenery.filter(p=>p.kind!=='tall_grass');
+    const patches=createForestTallGrass(g.seed,g.terrain,plan,g.scenery);
+    for(const patch of patches){
+      const nearest=old.filter(p=>Math.hypot(p.x-patch.x,(p.rootY??p.y+p.size*.4)-patch.rootY)<p.size*.7)
+        .sort((a,b)=>Math.hypot(a.x-patch.x,(a.rootY??a.y+a.size*.4)-patch.rootY)-Math.hypot(b.x-patch.x,(b.rootY??b.y+b.size*.4)-patch.rootY))[0];
+      if(nearest?.cut)for(const key of ['cut','charred','grassFire','grassSizzle','grassSpreadIn','grassSpreadDepth','grassSpreadDone'])if(nearest[key]!==undefined)patch[key]=nearest[key];
+    }
+    g.scenery.push(...patches);g.forestLandscapeVersion=2;
+  }
+  if(version<3){
+    const ids=new Set(g.scenery.map(p=>p.id));
+    const props=createForestUnderstory(g.seed,0,0,(x,y)=>tile(g.terrain,x,y)==='grass'&&routeDistance(plan,x,y)>58&&clearingDistance(x,y,g.seed)>1.1&&!forestPavingAt(plan,x,y)&&!plan.landmarks.some(p=>Math.hypot(x-p.x,y-p.y)<100));
+    g.scenery=[...g.scenery,...props.filter(p=>!ids.has(p.id))];g.forestLandscapeVersion=3;
+  }
   g.forestLandscape = plan;
 }

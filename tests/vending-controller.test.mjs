@@ -132,3 +132,11 @@ test('Vending control labels use live Xbox/Switch buttons, including collect and
     const keys=HeroUI.prototype.controllerText(null,{device:'keyboard'});assert.equal(keys.collect,'2');
   }finally{if(original)Object.defineProperty(globalThis,'navigator',original);else delete globalThis.navigator;}
 });
+
+test('Collect all is reachable below the tray and keeps uncollectable purchases safe',()=>{
+ const {g,p,press,ready}=setup();ready();ready(1);p.ui.index=9;
+ press({down:true});assert.equal(p.ui.vendingView,'tray');press({down:true});assert.equal(p.ui.vendingView,'collectAll');
+ const gold=p.coins;press({use:true});assert.equal(p.vendingOrders.length,0);assert.equal(count(p,'potion'),1);assert.equal(count(p,'stamina_potion'),1);assert.equal(p.coins,gold);
+ press({up:true});assert.equal(p.ui.vendingView,'catalog');
+ ready(1);p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));g.inventoryAction(p,'collectAll');assert.equal(p.vendingOrders.length,1);assert.match(p.ui.notice,/Backpack full/);
+});

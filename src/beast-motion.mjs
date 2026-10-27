@@ -65,7 +65,9 @@ export function defaultBeastMotion(kind) {
         v[1] *= 0.65;
         v[2] *= 0.65;
       }
-    return addPantherClips(m);
+    const panther=addPantherClips(m);
+    panther.clips.walk=structuredClone(panther.clips.prowl);
+    return panther;
   }
   if (kind === "boar") return applyWowCreatureMotion(nativeBoarMotion(), 'boar');
   return legacyInsectMotion(kind);

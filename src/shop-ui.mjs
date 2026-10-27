@@ -52,7 +52,7 @@ export function shopPanel(panel, game, p, button,tooltip) {
       pop.append(node('strong','Split stack'),amount,button('Confirm split','split-confirm',()=>game.inventoryAction(p,'use')),button('Cancel','split-cancel',()=>game.inventoryAction(p,'close')));panel.append(pop);}
   } else {
     panel.classList.add('vending-refresh');
-    panel.append(node("h3", "BETWEEN-MART · Expedition essentials"));
+    panel.querySelector('header').textContent='BETWEEN-MART';
     const catalog=node('div',null,'vending-catalog');
     const machine = node("div", null, "vending-machine"),
       canvas = node("canvas");
@@ -68,12 +68,14 @@ export function shopPanel(panel, game, p, button,tooltip) {
         () => game.purchaseVending(p, i),
       );
       b.append(icon(item.type),node('strong',ITEMS[item.type].name+(item.bundle>1?' ×'+item.bundle:''),'vending-item-name'),node('span',item.price+' gold','vending-price'),node('small',item.qty?'Stock: '+item.qty:'Sold out','vending-stock'));
-      b.classList.toggle("selected", u.vendingView !== 'tray' && u.index === i);
-      b.disabled = !item.qty||(p.coins||0)<item.price;
-      b.title = "Buy " + ITEMS[item.type].name;
+      b.classList.toggle("selected", (!u.vendingView||u.vendingView==='catalog') && u.index === i);
+      b.setAttribute('aria-disabled',String(!item.qty||(p.coins||0)<item.price));
+      b.setAttribute('aria-label',ITEMS[item.type].name+' · '+item.price+' gold · '+item.qty+' in stock');
+      b.dataset.mode='shop';b.dataset.tooltipExtra=(item.bundle||1)+' per purchase · '+item.price+' gold · '+item.qty+' in stock';
+      tooltip?.(b,{type:item.type,qty:item.bundle||1});
       slots.append(b);
     });
-    catalog.append(machine,slots);
+    machine.append(slots);catalog.append(machine);
     const tray = node("div", null, "vending-tray");
     const orders = (p.vendingOrders || []).filter(
       (o) => o.owner === (owner.profileId || owner.id),
@@ -82,7 +84,7 @@ export function shopPanel(panel, game, p, button,tooltip) {
       const b = button("Collect", "collect-" + order.id, () =>
         game.collectVending(p, order.id),
       );
-      b.prepend(icon(order.type));
+      b.prepend(icon(order.type));b.dataset.mode='shop';tooltip?.(b,{type:order.type,qty:order.qty});
       b.classList.toggle('selected',u.vendingView==='tray'&&u.vendingOrderId===order.id);
       b.setAttribute('aria-pressed',String(u.vendingView==='tray'&&u.vendingOrderId===order.id));
       b.setAttribute('aria-label','Collect '+ITEMS[order.type].name+(order.qty>1?' ×'+order.qty:''));
@@ -97,9 +99,13 @@ export function shopPanel(panel, game, p, button,tooltip) {
     falling.width = 360;
     falling.height = 520;
     machine.append(falling);
+    machine.append(tray);
+    const collectAll=button('Collect all','vending-collect-all',()=>game.inventoryAction(p,'collectAll'));
+    collectAll.className='vending-collect-all';collectAll.classList.toggle('selected',u.vendingView==='collectAll');
+    collectAll.setAttribute('aria-disabled',String(!orders.some(o=>o.ready)));
     panel.append(
       catalog,
-      tray,
+      collectAll,
       node(
         "p",
         (u.notice?.startsWith('Dispensing')&&orders.some(o=>o.ready)?'Ready to collect. Move down to the tray or use quick collect.':u.notice) ||

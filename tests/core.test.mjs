@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {REALMS,realmWorld} from '../src/realm-layout.mjs';
 import {
   Game,
   CENTER,
@@ -92,7 +93,8 @@ test("All events have working spawns, including mixed squads", () => {
   for (let i = 0; i < EVENTS.length; i++) {
     g.enemies = [];
     g.mystery=null;
-    g.generatedEnvironment=EVENTS[i].environment||'forest';
+    g.generatedEnvironment=EVENTS[i].environment||EVENTS[i].environments?.[0]||'forest';
+    if(REALMS.includes(g.generatedEnvironment))Object.assign(g,realmWorld(g.seed,g.generatedEnvironment,{authored:false}));
     // Shore encounters require real sand, not only a renamed forest map.
     if(EVENTS[i].requiredStartArea==='sand')g.terrain.fill('sand');
     g.spawnEvent(i);
@@ -102,7 +104,7 @@ test("All events have working spawns, including mixed squads", () => {
       if(EVENTS[i].mystery.goal==='recover')assert.ok(g.mystery.object);
       continue;
     }
-    assert.equal(g.enemies.length, EVENTS[i].count+(EVENTS[i].spiderNest?3:0)+(EVENTS[i].beeHive?1:0));
+    assert.equal(g.enemies.length, EVENTS[i].count+(EVENTS[i].spiderNest?3:0)+(EVENTS[i].beeHive?1:0),EVENTS[i].name);
     if(EVENTS[i].spiderNest)g.enemies=g.enemies.filter(e=>e.kind!=='spider_egg');
     if(EVENTS[i].beeHive){
       const hive=g.enemies.find(e=>e.kind==='bee_hive');

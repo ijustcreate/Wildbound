@@ -12,7 +12,7 @@ function render(players){
 test('Living heroes draw party-colored minimap dots at their world coordinates',()=>{
  const marks=render([{x:800,y:800,hp:10,color:'#123abc'},{x:0,y:1600,hp:20,color:'#ff8822'}]);
  const dots=marks.filter(m=>m.kind==='dot'&&m.color);
- assert.deepEqual(dots.map(m=>[m.x,m.y,m.color]),[[353.5,202.5,'#123abc'],[321,235,'#ff8822']]);
+ assert.deepEqual(dots.map(m=>[m.x,m.y,m.color]),[[353.5,179.5,'#123abc'],[321,212,'#ff8822']]);
  assert.ok(dots.every(m=>m.r>=2));
  assert.ok(marks.findIndex(m=>m.stroke==='#ff0000')<marks.findIndex(m=>m.color==='#123abc'));
  assert.equal(marks.at(-1).stroke,'#f0fff3');

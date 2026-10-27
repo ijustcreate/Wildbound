@@ -1,6 +1,8 @@
 // Generated artwork is shared by the world, creator, lobby and inventory.
 // Pose/appearance IDs and authored wearable overrides remain owned by the rig.
 import {ITEMS, itemKind} from './items.mjs';
+import {drawFacialHair} from './hair-design.mjs';
+import {drawNativeHead,nativeHeroArtStatus} from './hero-approved-art.mjs';
 
 export const HUMANOID_DETAIL_SCALE = 4;
 export const HAIR_ATLAS_ROWS = {
@@ -8,6 +10,19 @@ export const HAIR_ATLAS_ROWS = {
   b: ['sidepart','undercut','pixie','waves','afro','braids'],
   c: ['locs','topknot','twinbraids','sideponytail','shag','spikes'],
 };
+// Rounded crown and cheeks flow into a broad, softly squared jaw. In particular,
+// keep the last rows wide enough to read as a chin instead of a pointed V.
+const frontHeadContour=[
+  2.5,3.25,4,4.5,4.75,5,5.25,5.25,5.25,5.1,4.9,4.7,
+  4.45,4.15,3.85,3.5,3.3,3.15,3,2.9,2.8,2.7,2.6,
+];
+export function humanoidHeadHalfWidth(y,direction=0){
+  const d=((direction%8)+8)%8;
+  const width=frontHeadContour[Math.max(0,Math.min(frontHeadContour.length-1,Math.round((y+6)*2)))];
+  // Side views foreshorten the jaw slightly. Rear views keep the same solid
+  // lower cranium as the front instead of collapsing to a single bottom pixel.
+  return d===2||d===6?width*.88:width;
+}
 // Image generation does not guarantee evenly spaced rows. These measured bands
 // keep a long braid or tall mohawk out of its neighbour's source rectangle.
 const bands = {
@@ -22,7 +37,7 @@ const rgb = value => /^#[0-9a-f]{6}$/i.test(value || '') ? value.slice(1).match(
 const clamp = value => Math.max(0,Math.min(255,Math.round(value)));
 function canvas(width,height){const out=document.createElement('canvas');out.width=width;out.height=height;return out;}
 function keep(cache,key,value,limit){if(cache.size>=limit)cache.delete(cache.keys().next().value);cache.set(key,value);return value;}
-export function humanoidArtStatus(){return {ready:sheets.size===7,loaded:[...sheets.keys()],revision,tints:tinted.size,details:details.size};}
+export function humanoidArtStatus(){return {ready:sheets.size===7,loaded:[...sheets.keys()],revision:revision+nativeHeroArtStatus().revision*100,tints:tinted.size,details:details.size};}
 export function loadHumanoidArt(){
   if(loading)return loading;
   if(typeof Image==='undefined'||typeof document==='undefined')return Promise.resolve(false);
@@ -35,9 +50,10 @@ export function loadHumanoidArt(){
   return loading;
 }
 export function humanoidArtAvailable(c){return !!(c?.drawImage&&sheets.has('heads')&&sheets.has('materials'));}
-export function withDetailedHeadScale(c,h,enabled,paint){
-  if(!enabled||!humanoidArtAvailable(c)||c.__legacyHumanoid)return paint();
-  c.save();c.translate(h.x,h.y+3);c.scale(1.25,1.25);c.translate(-h.x,-h.y-3);
+export function withDetailedHeadScale(c,h,enabled,paint,baseScale=1){
+  if(!enabled||!c?.save||!c?.scale||c.__legacyHumanoid)return paint();
+  const scale=1.15*Math.max(.7,Math.min(1.6,Number(baseScale)||1));
+  c.save();c.translate(h.x,h.y+3);c.scale(scale,scale);c.translate(-h.x,-h.y-3);
   try{return paint();}finally{c.restore();}
 }
 
@@ -95,10 +111,10 @@ function eyeAsset(view,side,closed,eyeColor){
   // Readable whites, a colored iris and one highlight. Each mark is a deliberate
   // pixel; keep the expression simple instead of shrinking a detailed portrait.
   const pattern=closed?['.......','.......','.......','.DDDDD.','..DDD..','.......','.......']:view===2
-    ?['DDDD.','DGGG.','WGPD.','WGPD.','WGLG.','.LL..','.....']
+    ?['.DDD.','WWGD.','WHPD.','WGPD.','WWGD.','.WW..','.....']
     :view===1&&side==='L'
-      ?['DDDD','DGGG','WGPD','WGHD','WGLG','.LL.','....']
-      :['.DDDD.','GGPPG.','GGPGG.','WGGLG.','WWLL..','.WW...'];
+      ?['.DD.','WWGD','WHPD','WGPD','WWGD','.WW.','....']
+      :['..DD..','WWGGW.','WWHPW.','WWGPW.','WWWGW.','.WWW..'];
   const target=rgb(eyeColor||'#628373'),hex=values=>'#'+values.map(n=>clamp(n).toString(16).padStart(2,'0')).join('');
   const palette={D:'#292c2a',P:hex(target.map(n=>n*.45)),G:hex(target),L:hex(target.map(n=>n+35)),W:'#eee8d6',H:'#fff4d7'};
   const out=canvas(pattern[0].length,pattern.length),pen=out.getContext('2d');
@@ -107,18 +123,23 @@ function eyeAsset(view,side,closed,eyeColor){
   }
   return keep(tinted,key,out,192);
 }
-export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
+export function drawDetailedHead(c,points,d,skin,look,visible,foreground,parts='all'){
+  if(c.drawImage&&typeof document!=='undefined'&&!c.__legacyHumanoid){
+    drawNativeHead(c,points,d,skin,look,visible,foreground,parts);
+    if(foreground&&parts!=='ears')drawFacialHair(c,points.head,look,d);
+    return true;
+  }
   if(!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
   const h=points.head;
   if(!c.__faceRaster){
     const names=['head','eyeL','eyeR','earL','earR','nose','mouth'];
     const local=Object.fromEntries(names.map(name=>[name,{...points[name],x:12+Math.round((points[name].x-h.x)*4)/4,y:12+Math.round((points[name].y-h.y)*4)/4}]));
     const visibility=names.map(name=>visible(name));
-    const key=JSON.stringify(['face',d,skin,look?.face,look?.eyeColor,look?.hair,look?.hairColor,look?.eyesClosed,foreground,visibility,names.map(name=>[local[name].x,local[name].y])]);
+    const key=JSON.stringify(['face-v3',d,skin,look?.face,look?.eyeColor,look?.hair,look?.hairColor,look?.facialHair,look?.facialHairColor,look?.eyesClosed,foreground,parts,visibility,names.map(name=>[local[name].x,local[name].y])]);
     let entry=details.get(key);
     if(!entry){
       const out=canvas(96,96),pen=out.getContext('2d');pen.imageSmoothingEnabled=false;pen.__faceRaster=true;pen.scale(4,4);
-      drawDetailedHead(pen,local,d,skin,look,name=>visibility[names.indexOf(name)],foreground);
+      drawDetailedHead(pen,local,d,skin,look,name=>visibility[names.indexOf(name)],foreground,parts);
       entry=keep(details,key,{image:out},256);
     }
     c.save();c.imageSmoothingEnabled=false;c.drawImage(entry.image,h.x-12,h.y-12,24,24);c.restore();return true;
@@ -127,25 +148,33 @@ export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
   const skinRGB=rgb(skin),shade=(delta)=>'#'+skinRGB.map(n=>clamp(n+delta).toString(16).padStart(2,'0')).join('');
   const rect=(x,y,w,height,color)=>{c.fillStyle=color;c.fillRect(Math.round((h.x+x)*4)/4,Math.round((h.y+y)*4)/4,Math.max(.25,Math.round(w*4)/4),Math.max(.25,Math.round(height*4)/4));};
   if(!foreground){
-    for(let y=-6;y<=4;y+=.5){
-      const t=(y+1.2)/5.7,half=Math.sqrt(Math.max(0,1-t*t))*(profile?5:5.5);
+    // Deliberate cheek and jaw clusters instead of a smooth oval. Half-pixel
+    // features share the body's chunky grid while keeping facial expression.
+    for(let y=-6;y<=5;y+=.5){
+      const half=humanoidHeadHalfWidth(y,d);
+      if(half<=0)continue;
       const left=Math.ceil(-half*2)/2,right=Math.floor(half*2)/2;
       for(let x=left;x<=right;x+=.5){
-        const edge=x===left||x===right||y===4||y===-6;
-        rect(x,y,.5,.5,edge?'#302b2b':shade(x<-2?18:x<1?0:x<3?-16:-30));
+      const edge=x===left||x===right||y===-6;
+        // Keep the jaw contour dark at the sides only. A dark strip across
+        // the underside reads as stubble on every clean-shaven character.
+        rect(x,y,.5,.5,edge?'#49312e':(y>3?shade(0):shade(x<-2?12:x<1?0:x<3?-8:-12)));
       }
     }
     return true;
   }
   // Each visible facial component stays attached to its existing editable joint.
   // The generated portrait is a style reference, not a baked replacement face.
-  if(look?.face!=='elf')for(const [name,side]of [['earL',-1],['earR',1]])if(visible(name)){
+  if(parts!=='face'&&look?.face!=='elf')for(const [name,side]of [['earL',-1],['earR',1]])if(visible(name)){
     const q=points[name],angle=d*Math.PI/4;
     const dx=q.x-h.x-side*4*Math.cos(angle),dy=q.y-h.y-side*2*Math.sin(angle);
     const earX=[side*5.1,3.8,1.6,-4.4,-side*5.1,4.4,-1.6,-3.8][d]+dx;
     if(back&&['bob','long','waves','curls','locs','afro','shag'].includes(look?.hair))continue;
-    rect(earX-.65,dy-.5,1.6,2.4,'#302b2b');rect(earX-.3,dy-.2,.95,1.8,shade(5));rect(earX+.1,dy+.3,.5,.7,shade(-26));
+    // Tuck a compact ear into the temple: a single contour pixel, a warm
+    // inner plane and a small low shadow keep it attached rather than pegged on.
+    rect(earX-.5,dy-.4,1.4,2.1,'#302b2b');rect(earX-.25,dy-.15,.9,1.45,shade(5));rect(earX+.1,dy+.35,.45,.55,shade(-26));
   }
+  if(parts==='ears')return true;
   if(!back){
     for(const name of ['eyeL','eyeR'])if(visible(name)){
       const q=points[name],far=(d===1&&name==='eyeL')||(d===7&&name==='eyeR');
@@ -155,8 +184,9 @@ export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
     }
     if(visible('nose')){
       const q=points.nose,x=q.x-h.x,y=q.y-h.y+(profile?.7:.2);
-      rect(x-.25,y,.6,.8,shade(16));rect(x-.25,y+.7,.8,.4,shade(-25));
-      if(profile){rect(x+turn*.6,y+.25,.6,.6,skin);rect(x+turn*.6,y+.85,.5,.3,shade(-25));}
+      // A small warm plane, not an outlined peg projecting out of the cheek.
+      const nx=profile?Math.max(-4,Math.min(4,x)):x;
+      rect(nx-.25,y,.5,.75,shade(13));rect(nx-.25,y+.75,.75,.5,shade(-19));
     }
     if(visible('mouth')){
       const q=points.mouth,x=q.x-h.x,y=q.y-h.y+(profile?.9:.4);
@@ -173,41 +203,16 @@ export function drawDetailedHead(c,points,d,skin,look,visible,foreground){
     }
     rect(x-.15,y+.6,.3,.5,shade(-32));
   }
-  if(back)return true;
+  if(back||parts==='ears')return true;
   const face=look?.face,cheeks=profile?[turn*3]:[-3.4,2.5];
   if(face==='freckles')for(const x of cheeks)for(const [dx,dy]of [[0,0],[.8,.25],[.4,.8]])rect(x+dx,1+dy,.28,.28,shade(-55));
   if(face==='scar')for(let i=0;i<7;i++){rect((profile?turn*2.5:2.8)+i*.12,-.5+i*.45,.28,.52,shade(-30));rect((profile?turn*2.5:2.8)+i*.12+.27,-.5+i*.45,.16,.45,shade(23));}
   if(face==='warpaint')for(const x of cheeks){rect(x-.3,1.1,1.7,.42,'#3b617b');rect(x,1.9,1.3,.32,'#75939c');}
-  if(face==='alan'){
-    const base='#563923',dark='#33231b',light='#80563a',shift=profile?turn*.8:0;
-    for(let y=2.25;y<8;y+=.25){
-      const half=profile?Math.max(1.8,4.2-(y-2.25)*.3):Math.max(2.2,5.1-(y-2.25)*.43);
-      for(let x=-half;x<half;x+=.25){
-        if(y<3.7&&Math.abs(x)<1.1)continue;
-        const edge=Math.abs(x)>half-.5||y>7.4;
-        rect(x+shift,y,.25,.3,edge?dark:((Math.round(x*2)+Math.round(y*3))%5===0?light:base));
-      }
-    }
-    for(const side of [-1,1]){
-      rect(shift+side*3.2-(side<0?.8:0),.9,.85,3.1,dark);
-      rect(shift+side*3.1-(side<0?.8:0),1.4,.55,2.4,base);
-      rect(shift+side*2.3-(side<0?1.5:0),2.5,1.5,.7,base);
-    }
-    rect(shift-.65,3.7,1.4,.6,'#261b18');rect(shift-.3,4.3,.7,.35,'#b98059');
-  }
-  if(['beard','goatee','stubble'].includes(face)){
-    const hair=rgb(look.hairColor),color='#'+hair.map(n=>clamp(n*.75).toString(16).padStart(2,'0')).join('');
-    for(let y=2.8;y<5.1;y+=.25)for(let x=-3.5;x<3.5;x+=.25){
-      const width=3.4-(y-2.8)*1.0;
-      if(Math.abs(x)>width||(y<3.6&&Math.abs(x)<1.1)||(face==='goatee'&&Math.abs(x)>1.1))continue;
-      if(face==='stubble'&&((Math.round(x*4)+Math.round(y*4)*3)%5!==0))continue;
-      rect(x+(profile?turn:0),y,.25,.3,color);
-    }
-  }
+  drawFacialHair(c,h,look,d);
   return true;
 }
 
-const hairFit={crop:[13.7,12.5,-8],bob:[14,13.4,-8],long:[15.3,20,-8.6],ponytail:[14.4,18,-10.5],mohawk:[12.4,17.6,-12.6],curls:[15.3,16.6,-8.5],sidepart:[13.8,13.4,-8.8],undercut:[13.5,13.5,-9],pixie:[13.5,12.7,-8.3],waves:[15,16.9,-8.8],afro:[18,16,-10.3],braids:[14.7,23,-8.7],locs:[14.8,15.5,-8.6],topknot:[13.7,15.7,-11.5],twinbraids:[15,19,-8.7],sideponytail:[15.8,18.4,-9.5],shag:[15.2,14.5,-8.6],spikes:[16.5,16,-11.3]};
+const hairFit={crop:[13.2,11.8,-8.2],bob:[13.7,12.8,-8.1],long:[15.3,20,-8.6],ponytail:[14.4,18,-10.5],mohawk:[12.4,17.6,-12.6],curls:[15.3,16.6,-8.5],sidepart:[13.8,13.4,-8.8],undercut:[13.2,12.8,-8.9],pixie:[13.4,12.1,-8.2],waves:[15,16.9,-8.8],afro:[18,16,-10.3],braids:[14.7,23,-8.7],locs:[14.8,15.5,-8.6],topknot:[13.7,15.7,-11.5],twinbraids:[15,19,-8.7],sideponytail:[15.8,18.4,-9.5],shag:[14.6,13.8,-8.4],spikes:[16.5,16,-11.3]};
 export function drawDetailedHair(c,h,look,d,frame=0,action='idle'){
   if(!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
   const style=look?.hair;if(!style||style==='none')return true;
@@ -218,7 +223,11 @@ export function drawDetailedHair(c,h,look,d,frame=0,action='idle'){
   const image=chunkyRow>=0&&sheets.has('hair-chunky')
     ?colored('hair-chunky',chunkyRow*5+chunkyColumn,look.hairColor||'#593923')
     :colored(rear?'hair-rear':'hair-'+group,rear?Object.values(HAIR_ATLAS_ROWS).flat().indexOf(style):HAIR_ATLAS_ROWS[group].indexOf(style)*4+column,look.hairColor||'#593923');if(!image)return false;
-  const [width,height,top]=hairFit[style],moving=!['idle','sleep','death'].includes(action);
+  let [width,height,top]=hairFit[style];
+  // Short cuts should follow the skull in profile and rear views instead of
+  // reading as a square cap. Long styles keep their authored lock width.
+  if(['crop','bob','undercut','pixie','shag'].includes(style)&&(d===2||d===3||d===4||d===5||d===6))width*=d===2||d===6?.9:.94;
+  const moving=!['idle','sleep','death'].includes(action);
   const sway=moving&&['long','ponytail','braids','twinbraids','sideponytail','locs','waves'].includes(style)?Math.sin(frame*.7)*.55:0;
   c.save();c.translate(h.x,h.y+top);
   // Shear only the lower locks; the crown stays attached to the skull.
@@ -311,13 +320,18 @@ export function detailedTorso(c,p,d,color,skin,back){
       }
     }
     if(!back){
-      // Small V neckline, turned collar, subtle center stitching and pocket.
+      // Broad folded collar and cloth planes. Keep the shirt's own hue instead
+      // of putting the same pale trim and tiny gold buttons on every character.
       for(let y=-1.75;y<1.5;y+=.25){const half=Math.max(.2,1.6-(y+1.75)*.42);r(-half,y,half*2,.25,skin);}
-      for(const side of [-1,1])for(let n=0;n<8;n++)r(side*(1.75-n*.16)-.2,-1.5+n*.3,.65,.35,n<4?'#ddccaa':'#bca87e');
-      r(-.2,2,.35,Math.max(1,len-3),'#4e4438');
-      for(const y of [2.5,4.75,7])if(y<len-1){r(.2,y,.45,.45,'#c5a268');r(.2,y,.2,.2,'#f4df9f');}
-      r(-4.4,3,2.1,.35,'#b7a57c');r(-4.2,3.4,.25,2,'#514b38');r(-2.4,3.4,.25,2,'#514b38');r(-4.2,5.2,2,.25,'#514b38');
-    }else{r(-3,-.5,6,.3,'#4b4d3b');r(.8,1,.3,Math.max(1,len-2),'#555a44');}
+      const cloth=delta=>'#'+base.map((n,i)=>clamp(n+delta*(i===2?.7:1)).toString(16).padStart(2,'0')).join('');
+      for(const side of [-1,1])for(let n=0;n<5;n++)r(side*(1.75-n*.2)-.25,-1.5+n*.5,.85,.5,cloth(n<3?28:-22));
+      r(-.5,2,.5,Math.max(1,len-3),cloth(-28));
+      r(-width+1,2,1,Math.max(1,len*.45),cloth(16));
+      r(2,len-2,2,.5,cloth(-25));
+    }else{
+      const seam='#'+base.map(n=>clamp(n-23).toString(16).padStart(2,'0')).join('');
+      r(-3,-.5,6,.5,seam);r(1,len-3,2,.5,seam);
+    }
     // The pelvis owns the waistband. A second belt here produces a bulky double hem.
     entry=keep(details,key,{image:chunkyBody(out)},256);
   }
@@ -361,18 +375,18 @@ export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId,part='all')
   const length=Math.hypot(hand.x-elbow.x,hand.y-elbow.y)||1,ux=(hand.x-elbow.x)/length,uy=(hand.y-elbow.y)/length;
   const wrist={x:hand.x-ux*.85,y:hand.y-uy*.85};
   const segments=part==='upper'?[0]:part==='lower'?[1,2]:null;
-  if(!detailedChain(c,[shoulder,elbow,wrist,hand],[3.5,3.2,2.4,4],skin,12,'round',segments))return false;
+  if(!detailedChain(c,[shoulder,elbow,wrist,hand],[4,3.7,2.8,4.5],skin,12,'round',segments))return false;
   if(part!=='lower'){
     const sleeveLength=chestId==='reaper_chest'?1:.55;const sleeveEnd={x:shoulder.x+(elbow.x-shoulder.x)*sleeveLength,y:shoulder.y+(elbow.y-shoulder.y)*sleeveLength};
-    detailedChain(c,[shoulder,sleeveEnd],[4.4,3.9],shirt,materialIndex(chestId),'sleeve');
+    detailedChain(c,[shoulder,sleeveEnd],[4.8,4.2],shirt,materialIndex(chestId),'sleeve');
   }
   if(part==='upper')return true;
   const base=rgb(skin),dark='#'+base.map(n=>clamp(n-30).toString(16).padStart(2,'0')).join(''),light='#'+base.map(n=>clamp(n+24).toString(16).padStart(2,'0')).join('');
   // Broaden the palm around the existing hand joint. Weapon/wand attachments
   // still use the untouched joint, so their authored scale and pivots stay exact.
   c.save();c.translate(hand.x,hand.y);c.rotate(-Math.atan2(ux,uy));
-  c.fillStyle=dark;c.fillRect(-2,-1,4,4);c.fillRect(1.5,.25,1,1.5);
-  c.fillStyle=skin;c.fillRect(-1.5,-.75,3,3);c.fillRect(1.25,.5,.75,1);
+  c.fillStyle=dark;c.fillRect(-2.25,-1,4.5,4.5);c.fillRect(1.75,.25,1.25,1.5);
+  c.fillStyle=skin;c.fillRect(-1.75,-.75,3.5,3.25);c.fillRect(1.5,.5,1,1);
   c.fillStyle=light;c.fillRect(-1,-.5,1.5,1);c.restore();
   return true;
 }

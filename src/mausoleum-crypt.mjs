@@ -1,10 +1,17 @@
+import {drawItem} from './item-art.mjs';
+import {blueCryptLayout} from './mausoleum-layout.mjs';
+import {drawBlueCryptBase} from './mausoleum-art.mjs';
+import {drawDungeonDecor} from './dungeon-decor.mjs';
 import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {drawGhost} from './ghost-motion.mjs';
+import {applyDungeonDesign} from './location-designs.mjs';
 import {tickGhostTrail} from './ghost-ai.mjs';
 import {ITEMS, stat, itemKind} from './items.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {paintSwordImpact} from './sword-feel.mjs';
+import {drawFlyingArrow,drawArrowTrail} from './embedded-arrow.mjs';
 import {merchantSites} from './traveling-merchant.mjs';
 import {UNDERGROUND_VIEW} from './underground-view.mjs';
 import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
@@ -23,7 +30,7 @@ const hash = (seed, x, y) => {
 };
 
 /** JSON-only state: the old-well/session/inventory code owns d.well unchanged. */
-export function generateMausoleumCrypt(seed = 0) {
+export function generateMausoleumCrypt(seed = 0,{authored=true}={}) {
   const s = {version: 1, ghostRosterVersion:1, theme: 'mausoleum', seed, width: 72, height: 48, tile: TILE,
     tiles: Array(72 * 48).fill(0), explored: [], enemies: [], bolts: [], drops: [], hazards: [],
     rooms: [
@@ -79,7 +86,7 @@ export function generateMausoleumCrypt(seed = 0) {
     x: s.coffin.x, y: s.coffin.y, hp: 360, maxHp: 360, speed: 34, damage: 27,
     state: 'dormant', timer: 0, cooldown: 0, attack: 0, step: 0, moving: false,
     faceX: 0, faceY: 1, rise: 0, attackCount: 0, dropsGiven: false});
-  return s;
+  blueCryptLayout(s);return authored?applyDungeonDesign(s,'mausoleum'):s;
 }
 
 /** Surface records may live in scenery or graveyard.mausoleums / mausoleums.
@@ -451,8 +458,8 @@ function lightAt(s, x, y, lights) {
     let blocked = false;
     const steps = Math.max(1, Math.ceil(len / 8));
     for (let n = 1; n < steps; n++) {
-      const tx = Math.floor((a.x + (x - a.x) * n / steps) / TILE);
-      const ty = Math.floor((a.y + (y - a.y) * n / steps) / TILE);
+      const tx = Math.floor((a.x + (x - a.x) * n / steps) / (s.tile||TILE));
+      const ty = Math.floor((a.y + (y - a.y) * n / steps) / (s.tile||TILE));
       if (!s.tiles[ty * s.width + tx]) {blocked = true; break;}
     }
     if (!blocked) value = Math.max(value, (1 - len / a.radius) * a.intensity);
@@ -475,27 +482,29 @@ export function drawMausoleumEntrance(c, d, time = 0) {
 
 /** Called by drawOldWellRoom; camera/exploration remain old-well compatible. */
 export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDERGROUND_VIEW) {
-  const s = d.well, known = new Set(s.explored), lights = mausoleumLights(g, d), time = g.time || 0;
+  const s = d.well, TILE=s.tile||16, known = new Set(s.explored), lights = mausoleumLights(g, d), time = g.time || 0;
   const {width:w,height:h,top,bottom,zoom=1}=view,worldW=w/zoom,worldH=(h-top-bottom)/zoom;
   const minX = Math.max(0, Math.floor(camera.x / TILE)), maxX = Math.min(s.width - 1, Math.ceil((camera.x + worldW) / TILE));
   const minY = Math.max(0, Math.floor(camera.y / TILE)), maxY = Math.min(s.height - 1, Math.ceil((camera.y + worldH) / TILE));
   const knownPoint = a => known.has(Math.floor(a.y / TILE) * s.width + Math.floor(a.x / TILE));
   c.save(); c.imageSmoothingEnabled = false; rect(c, 0, 0, w, h, '#080a14');
   c.save(); c.beginPath(); c.rect(0, top, w, h-top-bottom); c.clip(); c.translate(0,top);c.scale(zoom,zoom);c.translate(-camera.x,-camera.y);
+  if(s.theme==='mausoleum'||s.visualTheme==='blue_crypt')drawBlueCryptBase(c,s,time,{minX,maxX,minY,maxY,known});else{
   for (let ty = minY; ty <= maxY; ty++) for (let tx = minX; tx <= maxX; tx++) {
     const index = ty * s.width + tx, x = tx * TILE, y = ty * TILE, h = hash(s.seed, tx, ty);
     if (!known.has(index)) continue;
     if (s.tiles[index]) {
-      rect(c, x, y, 16, 16, ['#484653', '#41414f', '#4e4c58'][h % 3]);
-      rect(c, x, y, 16, 1, '#676471'); rect(c, x, y, 1, 16, '#292b3b');
+      rect(c, x, y, TILE, TILE, ['#484653', '#41414f', '#4e4c58'][h % 3]);
+      rect(c, x, y, TILE, 1, '#676471'); rect(c, x, y, 1, TILE, '#292b3b');
       rect(c, x + 9, y + 6, 4, 1, '#393647');
-      if (!s.tiles[index - s.width]) {rect(c, x, y, 16, 4, '#777382'); rect(c, x + 1, y, 13, 1, '#a09ba6');}
+      if (!s.tiles[index - s.width]) {rect(c, x, y, TILE, 6, '#777382'); rect(c, x + 1, y, TILE-2, 1, '#a09ba6');}
     } else {
-      rect(c, x, y, 16, 16, '#202231'); rect(c, x + 1, y + 1, 14, 11, '#50505f');
-      rect(c, x + 2, y + 2, 11, 2, '#807b88'); rect(c, x + 1, y + 12, 14, 3, '#151826');
+      rect(c, x, y, TILE, TILE, '#202231'); rect(c, x + 1, y + 1, TILE-2, TILE-6, '#50505f');
+      rect(c, x + 2, y + 2, TILE-5, 2, '#807b88'); rect(c, x + 1, y + TILE-4, TILE-2, 3, '#151826');
     }
   }
-  for (const r of s.rooms) {
+  if(s.decorations)drawDungeonDecor(c,[...s.decorations,...s.candles.map(p=>({...p,role:'light'}))],g.time||0);
+  else for (const r of s.rooms) {
     const y = r.y * TILE + 8;
     for (let n = 1; n < r.w - 1; n += 3) {
       const x = (r.x + n) * TILE;
@@ -521,41 +530,35 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
   }
   if (knownPoint(s.coffin)) coffin(c, s.coffin);
   for (const drop of s.drops) if (knownPoint(drop)) rect(c, drop.x - 3, drop.y - 3, 6, 6, ITEMS[drop.type]?.color || '#eac093');
-  for (const e of s.enemies) if (e.hp > 0 && e.state !== 'dormant' && knownPoint(e)) {
-    if (e.state === 'windup' && e.kind === CRYPT_BOSS_KIND) {
-      c.save(); c.globalAlpha = .5;
-      if (e.attackKind === 'sweep') disc(c, e.x, e.y, 62, 40, '#9c403a');
-      else for (let n = 15; n < 130; n += 10) rect(c, e.x + e.aimX * n - 1, e.y + e.aimY * n - 1, 3, 3, '#e8b99b');
-      c.restore();
-    }
-    const standard = ['skeleton','zombie','ghost','bat','spider'].includes(e.kind);
-    if (standard && animator) {
-      animator.draw(c,{...e,sprite:e.kind},time,creatureRenderSize(e.kind));
-    } else if (e.kind===CRYPT_BOSS_KIND && animator) {
-      animator.draw(c,{...e,kind:'skeleton',sprite:'skeleton',equipment:{hand1:'sword'}},time,50);
-      drawCryptBossGear(c,e,time);
-    } else if(e.kind==='ghost'){c.save();c.translate(e.x,e.y);drawGhost(c,e,time);c.restore();}
-    else if (['skeleton', 'zombie', CRYPT_BOSS_KIND].includes(e.kind)) drawUndead(c, e, time);
-    else drawVermin(c, e, time);
   }
+  const ch=s.chest;
+  if(s.theme==='mausoleum')for(const drop of s.drops||[])if(knownPoint(drop)){if(c.drawImage)drawItem(c,drop.type,drop.x,drop.y,18);else rect(c,drop.x-3,drop.y-3,6,6,ITEMS[drop.type]?.color||'#eac093');}
+  const actors=[...s.enemies.filter(e=>(e.hp>0||e.defeated&&(e.deathTimer||0)<3.5)&&e.state!=='dormant'&&knownPoint(e)).map(e=>({...e,cryptEnemy:true})),...g.players.filter(q=>q.room===d.id).map(q=>({...q,x:q.roomX,y:q.roomY,kind:q.kind,sprite:'player'}))].sort((a,b)=>a.y-b.y);
+  for(const actor of actors){
+    c.save();c.globalAlpha=.4;disc(c,actor.x,actor.y+1,8,3,'#080a14');c.restore();
+    if(animator){const boss=actor.kind===CRYPT_BOSS_KIND;
+      if(actor.cryptPitFall){const t=Math.min(1,actor.cryptPitFall.time/.85),scale=1-t*.85;c.save();c.globalAlpha*=1-t;c.translate(actor.x,actor.y+t*t*42);c.scale(scale,scale);animator.draw(c,{...actor,x:0,y:0,jumpHeight:0,groundHeight:0,animationAction:'jump_fall'},time,PLAYER_RENDER_SIZE);c.restore();continue;}
+      animator.draw(c,{...actor,room:d.id,...(boss?{kind:'skeleton',sprite:'skeleton',equipment:{hand1:'crypt_flame_sword',hand2:'coffin_lid_shield'}}:{}),sprite:boss?'skeleton':actor.cryptEnemy?actor.kind:'player'},time,actor.cryptEnemy?creatureRenderSize(boss?'skeleton':actor.kind):PLAYER_RENDER_SIZE);
+    }
+  }
+  const runtime=s.worldRuntime||{};
+  for(const arrow of runtime.arrows||[]){drawArrowTrail(c,arrow,time);drawFlyingArrow(c,arrow,time);}
+  for(const spell of runtime.spells||[])drawMagicBolt(c,spell);
+  drawRoomSpellEffects(c,{effects:(runtime.effects||[]).filter(f=>!f.swordImpact).map(f=>({...f,room:d.id}))},d.id);
+  for(const fx of runtime.effects||[])if(fx.swordImpact)paintSwordImpact(c,fx);
   for (const b of s.bolts) {
     if (b.healing) drawMagicBolt(c, b);
     else rect(c, b.x - 2, b.y - 2, b.magic ? 4 : 5, 2, b.magic ? '#b9eadd' : '#e7c47d');
   }
   for (const h of s.hazards || []) {rect(c, h.x - 5, h.y - 1, 10, 2, '#d8ccb7'); rect(c, h.x - 5, h.y - 2, 2, 4, '#b7adab');}
   drawRoomVillagerFollowers(c,g,d.id,animator,48);
-  for (const q of g.players.filter(q => q.room === d.id)) {
-    if (animator) animator.draw(c, {...q, x: q.roomX, y: q.roomY, moving: q.roomMoving, step: q.roomStep}, time, PLAYER_RENDER_SIZE);
-    else {rect(c, q.roomX - 4, q.roomY - 14, 8, 12, q.color || '#87b8f2'); rect(c, q.roomX - 3, q.roomY - 19, 6, 6, '#e2bc88');}
-    if (q.attack > 0) rect(c, q.roomX + (q.faceX || 1) * 12, q.roomY - 8 + (q.faceY || 0) * 10, 8, 2, '#edd7b0');
-  }
   drawRoomSpellEffects(c, g, d.id);
   // Explored rooms remain remembered but dark. Unexplored decorations never leak.
-  for (let ty = minY; ty <= maxY; ty++) for (let tx = minX; tx <= maxX; tx++) {
+  if(!view.editor)for (let ty = minY; ty <= maxY; ty++) for (let tx = minX; tx <= maxX; tx++) {
     const x = tx * TILE, y = ty * TILE;
-    if (!known.has(ty * s.width + tx)) {rect(c, x, y, 16, 16, '#080a14'); continue;}
+    if (!known.has(ty * s.width + tx)) {rect(c, x, y, TILE, TILE, '#080a14'); continue;}
     for (let dy = 0; dy < TILE; dy += 8) for (let dx = 0; dx < TILE; dx += 8) {
-      c.globalAlpha = clamp(.94 - lightAt(s, x + dx + 4, y + dy + 4, lights) * .88, .06, .94);
+      c.globalAlpha = clamp(.74 - lightAt(s, x + dx + 4, y + dy + 4, lights) * .7, .04, .74);
       rect(c, x + dx, y + dy, 8, 8, '#080a14');
     }
     c.globalAlpha = 1;
@@ -573,7 +576,7 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
     rect(c, w/2-80, 18, 160, 4, '#352d3a'); rect(c, w/2-80, 18, Math.round(160 * boss.hp / boss.maxHp), 4, '#bc785e');
   }
   // Scaled minimap fits the longer crypt inside the existing 320px panel.
-  for (const index of s.explored) if (s.tiles[index]) rect(c, w-56 + Math.floor(index % s.width * .7), top+3 + Math.floor(Math.floor(index / s.width) * .7), 1, 1, '#797482');
+  for (const index of s.explored) if (s.tiles[index]===1) rect(c, w-56 + Math.floor(index % s.width * .7), top+3 + Math.floor(Math.floor(index / s.width) * .7), 1, 1, '#797482');
   rect(c, w-56 + Math.floor(p.roomX / TILE * .7), top+3 + Math.floor(p.roomY / TILE * .7), 2, 2, p.color || '#87b8f2');
   c.restore(); return true;
 }

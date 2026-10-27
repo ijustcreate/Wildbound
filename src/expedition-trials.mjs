@@ -3,7 +3,7 @@ export const TRIAL_LETTER = 'The dice may hurry, feet may flee;\nNo borrowed cou
 const bosses = new Set(['anaconda','banshee_queen','succubus','gorilla','dragon','skeleton_boss','necromancer','hunter','krampus','dreadmane_lion','grim_reaper']);
 export function encounterRole(e) {
   if (e.role) return e.role;
-  if (['friendly_npc','villager_camp','merchant','breather','raven_flock','murder_of_crows'].includes(e.type) || ['elephant','zebra','pelican'].includes(e.kind)) return 'peaceful';
+  if (['santa','friendly_npc','villager_camp','merchant','breather','raven_flock','murder_of_crows'].includes(e.type) || ['elephant','zebra','pelican'].includes(e.kind)) return 'peaceful';
   if (e.type && e.type !== 'enemy') return ['old_well','mausoleum','mystery'].includes(e.type) ? 'discovery' : 'hazard';
   if (bosses.has(e.kind)) return 'boss';
   return ['golem','oathless_captain','skeleton_wizard','tarantula'].includes(e.kind) ? 'elite' : 'ordinary';

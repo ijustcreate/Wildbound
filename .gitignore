@@ -8,3 +8,6 @@ server-config.local.json
 build/*.zip
 authored/*.tmp
 authored/*.bak
+
+# Local Pixel Agents identity and chat bindings (not game artwork).
+docs/art/artist-reference-kit/office-profile.json

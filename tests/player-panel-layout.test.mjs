@@ -1,6 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planPlayerPanels, openPlayArea} from '../src/player-panel-layout.mjs';
+import {planPlayerPanels, openPlayArea, centeredPopupBox,anchoredPopupBox} from '../src/player-panel-layout.mjs';
+
+test('totem popup stays next to its anchor and clamps inside resized viewports',()=>{
+ for(const [width,height]of [[360,480],[1000,700],[1920,1080]]){
+  const x=width*.9,y=height*.25,box=anchoredPopupBox(width,height,280,390,x,y);
+  assert.ok(box.x+box.width>=x-12,'popup reaches the totem, not the opposite rail');
+  assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=height);
+ }
+});
+
+test('storage dialogs are centered and remain inside small and large viewports',()=>{
+ for(const [width,height] of [[360,260],[1280,720],[1920,1080]]){
+  const box=centeredPopupBox(width,height,860,700,18);
+  assert.ok(box.width>0&&box.height>0);
+  assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=width&&box.y+box.height<=height);
+  assert.equal(box.x+box.width/2,width/2);
+  assert.equal(box.y+box.height/2,height/2);
+ }
+});
+
+test('room-only lobby storage panels are included in the layout plan',()=>{
+ const player={id:'host',room:'private-storage',ui:null};
+ const layout=planPlayerPanels([player],[player],1440,900);
+ assert.ok(layout.has(player.id));
+ const box=layout.get(player.id);
+ assert.ok(box.width>400);
+ assert.ok(box.height>400);
+});
 
 const players = Array.from({length: 4}, (_, id) => ({id, ui: {}}));
 test('multiplayer merchants use readable full-window columns without a wasted center gap',()=>{

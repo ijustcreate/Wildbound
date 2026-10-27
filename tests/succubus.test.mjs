@@ -76,6 +76,16 @@ test('Charmed projectile allegiance is snapshotted for arrows, magic and rifle, 
  q.hp=100;q.invuln=0;p.charmGrace=0;assert.ok(applyCharm(g,p,e));p.equipment={hand1:'wand'};p.mana=100;assert.ok(g.fireSpell(p,0));assert.equal(g.spells[0].charmShot,true);
  p.equipment={hand1:'rifle'};p.inventory=[{type:'cartridge',qty:2}];p.attack=0;g.attack(p,1);assert.equal(g.rifleShots[0].charmShot,true);
 });
+test('PvP-off arrows and spells pass through teammates; with PvP on they can hit them',()=>{
+ const {g,p,q}=field(true);g.projectileBlocked=()=>false;
+ const hitWith=(kind)=>{
+  q.invuln=0;
+  if(kind==='arrow')g.arrows.push({owner:p.id,x:q.x-1,y:q.y,z:8,vx:0,vy:0,vz:0,damage:12,life:1,stuck:false});
+  else g.spells.push({owner:p.id,x:q.x-3,y:q.y,vx:0,vy:0,damage:12,life:1,remaining:80,size:6});
+  g.tickAdventure(.01,{});
+ };
+ for(const kind of ['arrow','spell']){q.hp=100;g.pvp=false;hitWith(kind);assert.equal(q.hp,100,kind+' passes through ally when PvP is off');q.hp=100;g.pvp=true;hitWith(kind);assert.ok(q.hp<100,kind+' can hit with PvP enabled');}
+});
 test('Whip telegraph locks facing, does not damage early, hits once then recovers',()=>{
  const {g,p}=field(),e=demon(g,{x:380,succubusKissCooldown:99});ai(g,e,.05);assert.equal(e.succubusAttack,'whip');assert.equal(p.hp,100);ai(g,e,.5);assert.equal(p.hp,100);ai(g,e,.3);assert.ok(p.hp<100);const hp=p.hp;ai(g,e,.5);assert.equal(p.hp,hp);assert.ok(e.cooldown>0);
 });

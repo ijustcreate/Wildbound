@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("desktop", {
   restoreBackup: () => ipcRenderer.invoke("restore-backup"),
   loadHouseDesigns: () => ipcRenderer.invoke("house-designs-load"),
   saveHouseDesigns: (data) => ipcRenderer.invoke("house-designs-save", data),
+  loadLocationDesigns:()=>ipcRenderer.invoke('location-designs-load'),
+  saveLocationDesigns:data=>ipcRenderer.invoke('location-designs-save',data),
   loadProfiles: () => ipcRenderer.invoke("profiles-load"),
   loadSession: () => ipcRenderer.invoke("session-load"),
   saveSession: (data) => ipcRenderer.invoke("session-save", data),

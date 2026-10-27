@@ -5,7 +5,17 @@ import {initializeBoundlessWorld,boundlessBiomeAt,boundlessTerrainAt,createBound
 import {graveyardBlocked,harvestGravestone} from '../src/graveyard-world.mjs';
 import {drawGraveyardGround} from '../src/graveyard-art.mjs';
 const game=env=>{const g=new Game(()=>.5);g.environment=env;g.mapMode='boundless';g.addPlayer('keyboard','Explorer');g.start();g.openingBoard=false;g.persist=()=>{};g.onSound=()=>{};return g;};
-const tick=(g,n=10)=>{for(let i=0;i<n;i++)updateBoundlessWorld(g,.01);};
+const tick=(g,n=10)=>{
+ const needed=new Set();for(const p of g.players.filter(p=>p.hp>0&&!p.room)){
+  const cx=Math.floor(p.x/1600),cy=Math.floor(p.y/1600);
+  for(let y=cy-1;y<=cy+1;y++)for(let x=cx-1;x<=cx+1;x++)if(x||y)needed.add(x+','+y);
+ }
+ for(let i=0;i<240;i++){
+  updateBoundlessWorld(g,.01);const loaded=new Set((g.boundlessLoadedChunks||[]).map(r=>r.key));
+  if(i>=n-1&&loaded.size===needed.size&&[...needed].every(key=>loaded.has(key)))return;
+ }
+ assert.fail('Incremental streamed regions did not finish loading before the save/travel assertion');
+};
 const dry=t=>!['water','shallow','quicksand'].includes(t);
 test('every destination stays itself across distant/negative regions and discovery orders',()=>{
  for(const env of Object.keys(BOUNDLESS_MAP_RULES)){const g={generatedEnvironment:env,seed:821,mapMode:'boundless'},copy={...g};
@@ -52,6 +62,8 @@ test('active and unloaded region edits survive JSON saves, without reviving harv
 test('travel keeps geometry caches and live regions bounded; ambient rustling does not bloat saves',()=>{
  const g=game('forest'),p=g.players[0];p.x=2400;tick(g);for(const s of g.scenery.filter(s=>s.boundlessRegion))s.rustle=.5;p.x=10400;tick(g);assert.equal(Object.keys(g.boundlessChunkEdits).length,0);
  for(let n=0;n<80;n++){p.x=800+n*1600;p.y=-800;tick(g);assert.ok(g.boundlessLoadedChunks.length<=9);assert.ok(boundlessCacheSize(g)<=REGION_CACHE_LIMIT);}
+ for(const prop of g.scenery.filter(p=>p.boundlessRegion))assert.ok(g.boundlessLoadedChunks.some(r=>r.key===prop.boundlessRegion),'decorations unload with their owning region');
+ for(const prop of g.scenery.filter(p=>p.boundlessRegion))assert.ok(prop.id.startsWith('boundless:'+prop.boundlessRegion.replace(',',':')+':'));
  assert.equal(Object.keys(g.boundlessChunkEdits).length,0);
 });
 test('legacy streamed mixtures migrate once while home objects and edited beach tiles remain',()=>{
@@ -66,4 +78,19 @@ test('pathfinding routes around obstacles in negative coordinates instead of cla
  const {findPath}=await import('../src/navigation.mjs');const wall=(x,y)=>x>-3840&&x< -3800&&y>-3150&&y< -2900;
  const g={mapMode:'boundless',time:0,blocked:wall},e={kind:'skeleton',x:-4000,y:-3000},target={x:-3600,y:-3000};const path=findPath(g,e,target);
  assert.ok(path.length>14);assert.ok(path.every(p=>p.x<0&&p.y<0&&!wall(p.x,p.y)));assert.ok(Math.hypot(path.at(-1).x-target.x,path.at(-1).y-target.y)<32);
+});
+
+
+test('streamed forest bridges span both banks and river corners query signed world coordinates',async()=>{
+ const {naturalBoundlessTile,boundlessPavingAt}=await import('../src/boundless-generation.mjs'),{riverCorners}=await import('../src/river-edges.mjs'),{bridgeAt}=await import('../src/terrain-support.mjs'),{waterBodyAt,forestDecor}=await import('../src/forest.mjs');
+ const g={seed:17,mapMode:'boundless',generatedEnvironment:'forest',phase:'play',terrain:Array(2500).fill('grass'),scenery:[],players:[],boundlessLoadedChunks:[{key:'-1,2'}]};
+ for(const row of [-89,-9,55,71,103])for(const region of [-2,-1,0,1,2]){
+  let decks=0;for(let x=region*50;x<region*50+50;x++)if(naturalBoundlessTile(g,x,row)==='bridge')decks++;
+  assert.equal(decks,10,'two complete five-tile bank-to-bank crossings per river row');
+ }
+ const corners=riverCorners(()=> 'water',-52,104);assert.ok(corners.every(c=>c.a==='water'&&c.b==='water'&&c.diagonal==='water'));
+ const plan=boundlessRegionPlan(g,-1,2),i=plan.terrain.findIndex(t=>t==='bridge'),tx=-50+i%50,ty=100+Math.floor(i/50);assert.ok(bridgeAt(g,tx*32+16,ty*32+16));
+ const water=plan.terrain.findIndex(t=>t==='water'),wx=(-50+water%50)*32+16,wy=(100+Math.floor(water/50))*32+16;assert.equal(waterBodyAt(g,wx,wy),'natural');
+ assert.ok(forestDecor(g).banks.some(p=>p.x<0&&p.y>=3200),'loaded outer rivers retain native reeds and lilies');
+ assert.ok(Array.from({length:100},(_,i)=>boundlessPavingAt(g,80+i,90)!==boundlessPavingAt(g,104+i,114)).filter(Boolean).length>15,'paving does not repeat on the old 24-tile lattice');
 });

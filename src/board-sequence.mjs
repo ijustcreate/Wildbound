@@ -12,7 +12,7 @@ export function tickBoardSequence(g,dt,inputs={}){
  const confirm=!!input.use||!!input.attack;
  const dismiss=r.resolved&&confirm&&!r.confirmHeld;
  r.confirmHeld=confirm;
- for(const p of g.players){const input=inputs[p.device]||{};p.previousInput={...input};p.jumpHeld=!!input.jump;p.dashHeld=!!input.dodge;p.charge=0;}
+ for(const p of g.players){const input=inputs[p.device]||{};if(input.jump)p.boardJumpRelease=true;else delete p.boardJumpRelease;p.previousInput={...input};p.jumpHeld=!!input.jump;p.dashHeld=!!input.dodge;p.charge=0;}
  if(owner&&r.elapsed>=1.6&&!r.resolved)owner.boardProgress=Math.min(r.targetProgress,r.startProgress+(r.elapsed-1.6)/.16);
  if(r.elapsed>=r.landingAt&&!r.resolved){g.resolveRoll();if(!r.centerLanding)g.eventOnBoard=true;}
  if(dismiss||r.elapsed>=r.landingAt+eventDuration(g.eventDuration)){

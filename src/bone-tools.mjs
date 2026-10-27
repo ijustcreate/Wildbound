@@ -46,11 +46,12 @@ export class BoneTools {
     box.innerHTML=`<h3>BONE TRANSFORM</h3><label>Axes <select data-space><option value="world">World / view</option><option value="parent">Parent</option><option value="local">Local bone</option></select></label>
       <label><input type="checkbox" data-children checked> Move descendants</label>
       <div class="ps-transform-values"><label data-value-label>X<input data-value="0" type="number" step="0.1" value="0"></label><label data-value-label>Y<input data-value="1" type="number" step="0.1" value="0"></label></div>
-      <button type="button" data-apply>Apply transform</button><p>Relative to the current pose. Drag the colored handles, or enter values and apply. Animate writes keys; Setup changes rest joints.</p>
+      <button type="button" data-apply>Apply transform</button><p>Relative to the current pose. Drag the colored handles, or enter values and apply. Base rig edits are shared by all animation clips.</p>
       <details open><summary>Bone properties</summary><label>Length <input data-length type="number" min="0" max="100" step="0.1"></label>
       <label>Bone color <input data-bone-color type="color"></label><label>Handle size <input data-icon-size type="range" min="2" max="9" step="1"></label>
       <label>Handle icon <select data-icon><option value="circle">Circle</option><option value="diamond">Diamond</option><option value="cross">Cross</option></select></label>
       <label><input type="checkbox" data-selectable checked> Select on canvas</label><label><input type="checkbox" data-show-name> Show name</label>
+      <label data-head-scale-row>Head art size <input data-head-scale type="range" min="70" max="160" step="1" value="100"></label>
       <fieldset><legend>Inherit parent edits</legend>${['move','rotate','scale','shear','reflection'].map(k=>`<label><input type="checkbox" data-inherit="${k}" checked> ${k==='move'?'Translate':k}</label>`).join('')}</fieldset>
       <button type="button" data-reflect="0">Reflect X</button> <button type="button" data-reflect="1">Reflect Y</button></details>`;
     this.box=box;s.$('.ps-parent').after(box);
@@ -69,6 +70,10 @@ export class BoneTools {
     box.querySelector('[data-icon]').onchange=e=>property('icon',e.target.value);
     box.querySelector('[data-selectable]').onchange=e=>property('selectable',e.target.checked);
     box.querySelector('[data-show-name]').onchange=e=>property('showName',e.target.checked);
+    box.querySelector('[data-head-scale]').onchange=e=>{
+      const head=s.model.joints.head;if(!head)return;
+      s.remember();(head.editor||={}).baseScale=Number(e.target.value)/100;s.changed('Base head size updated · all animation clips use this rig proportion.');
+    };
     box.querySelectorAll('[data-inherit]').forEach(el=>el.onchange=()=>property('inherit'+el.dataset.inherit,el.checked));
     box.querySelectorAll('[data-reflect]').forEach(el=>el.onclick=()=>{s.remember();const values=[1,1];values[Number(el.dataset.reflect)]=-1;this.apply(s.pose(),'scale',values);s.changed();});
     box.querySelector('[data-length]').onchange=e=>{
@@ -81,13 +86,29 @@ export class BoneTools {
   }
   apply(pose,kind,values) {
     const s=this.s;s.playing=false;
-    for(const [name,value] of Object.entries(transformBones(s.model,pose,s.selected,s.direction,kind,values,this.space,this.children))) {
+    const transformed=transformBones(s.model,pose,s.selected,s.direction,kind,values,this.space,this.children);
+    // Scale/shear intentionally change segment lengths. Keep those authored
+    // transforms instead of letting IK silently snap the bones back on redraw.
+    if(s.mode!=='setup'&&['scale','shear'].includes(kind)){
+      const clip=s.model.clips[s.clip],disabled=new Set(clip.ikDisabled||[]);
+      for(const chain of Object.values(s.model.ik||{}))if([chain.root,chain.mid,chain.end].some(n=>Object.hasOwn(transformed,n)))disabled.add(chain.end);
+      clip.ikDisabled=[...disabled];
+    }
+    for(const [name,value] of Object.entries(transformed)) {
       if(s.mode==='setup')s.model.joints[name].position=value;
       else setJointKey(s.model,s.clip,s.frame,name,value);
     }
   }
   refresh() {
     const s=this.s,box=s.root,joint=s.model.joints[s.selected],editor=joint.editor||{},pose=s.pose();
+    const help=box.querySelector('.ps-bone-tools>p');
+    if(help)help.textContent=s.mode==='setup'
+      ? 'BASE RIG · Move or scale this joint and its descendants. These rest proportions are shared by every animation clip for this unit.'
+      : 'ANIMATE · Drag the handles or apply values to change this pose. Keyframes remain independent of the shared base rig.';
+    const headScale=box.querySelector('[data-head-scale]'),headScaleRow=box.querySelector('[data-head-scale-row]');
+    headScaleRow.hidden=!s.model.joints.head;
+    headScale.disabled=s.selected!=='head'||s.mode!=='setup';
+    if(document.activeElement!==headScale)headScale.value=Math.round((s.model.joints.head?.editor?.baseScale||1)*100);
     const length=joint.parent?Math.hypot(...pose[s.selected].map((v,i)=>v-pose[joint.parent][i])):0;
     const lengthInput=box.querySelector('[data-length]');lengthInput.disabled=!joint.parent;
     if(document.activeElement!==lengthInput)lengthInput.value=length.toFixed(2);

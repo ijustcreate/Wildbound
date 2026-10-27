@@ -11,7 +11,7 @@ export const GRAVEYARD_EVENTS = [
  {name:'A door beneath the ivy',type:'mausoleum',kind:'mausoleum',count:0,weight:10,graveyard:true,environment:'graveyard',verse:'The ivy parts. The hinges cry.\nBelow the stone, old secrets lie.',tip:'Investigate the opened mausoleum. Bring light; the crypt stairs return to the surface.'},
 ];
 export const GHOST_EVENT=Object.freeze({name:'Some things do not stay buried',kind:'ghost',count:3,hp:76,speed:54,damage:12,weight:7,graveyard:true,environment:'graveyard',graveRise:true,verse:'White hoods drift where headstones lean.\nTwo pale eyes haunt the space between.',tip:'The restless ghosts claw at close range. Dodge their reaching hands; small creatures flee their presence.'});
-export const cemeteryEvent = event => event?.kind==='grim_reaper'||event?.graveyard===true||event?.environment==='graveyard';
+export const cemeteryEvent = event => event?.kind==='grim_reaper'||event?.graveyard===true||event?.environment==='graveyard'||event?.environments?.includes('graveyard')===true;
 export function appendGraveyardEvents(events){
  for(const event of [...GRAVEYARD_EVENTS,GHOST_EVENT])if(!events.some(e=>e.name===event.name&&e.environment==='graveyard'))events.push(structuredClone(event));
 }

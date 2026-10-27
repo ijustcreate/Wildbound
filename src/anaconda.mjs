@@ -82,7 +82,7 @@ export function tickAnaconda(g,e,targets,dt,stats={},behaviors={}){
       else{
         const route=treeRoute(g,e,target,dt),sway=Math.sin(anacondaBody(e).distance/24+(e.id||0))*.48;
         const vx=route?.x??dx-dy*sway,vy=route?.y??dy+dx*sway;
-        const desired=Math.atan2(vy,vx),heading=e.anacondaHeading??Math.atan2(e.faceY||0,e.faceX||1);
+        const desired=Math.atan2(vy,vx),heading=e.anacondaHeading??Math.atan2(e.faceY??0,e.faceX??1);
         const delta=Math.atan2(Math.sin(desired-heading),Math.cos(desired-heading));
         e.anacondaHeading=heading+clamp(delta,-dt*3,dt*3);e.faceX=Math.cos(e.anacondaHeading);e.faceY=Math.sin(e.anacondaHeading);
         const step=(e.speed??46)*dt,travel=g.moveActor(e,e.faceX*step,e.faceY*step);

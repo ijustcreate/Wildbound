@@ -1,4 +1,4 @@
-import { ITEMS, give, clearSlot } from './items.mjs';
+import { ITEMS, give, canGive, clearSlot } from './items.mjs';
 
 export const INVENTORY_TABS = ['gear', 'crafting', 'relics', 'other'];
 export function inventoryCategory(type) {
@@ -43,4 +43,16 @@ export function takeFromBag(bag, index, destination) {
   if (!item || !give(destination, item.type, item.qty, 24, item)) return false;
   clearSlot(bag.contents, index);
   return true;
+}
+
+// Plan all destinations before committing: a full bag/backpack never loses loot.
+export function givePickup(p,item){
+ const quantity=item?.qty??1;if(!Number.isFinite(quantity)||quantity<=0)return false;
+ if(!ITEMS[item?.type]?.relic)return give(p.inventory,item.type,quantity,24,item);
+ let remaining=quantity;const plan=[];
+ for(const bag of p.inventory){if(bag?.type!=='relic_bag'||!remaining)continue;const contents=structuredClone(bag.contents||[]),slots=ITEMS[bag.type].bag.slots;let low=0,high=remaining;while(low<high){const middle=Math.ceil((low+high)/2);if(canGive(contents,item.type,middle,slots,item))low=middle;else high=middle-1;}if(low){give(contents,item.type,low,slots,item);plan.push({bag,contents});remaining-=low;}}
+ if(remaining&&!canGive(p.inventory,item.type,remaining,24,item))return false;
+ for(const {bag,contents}of plan)bag.contents=contents;
+ if(remaining)give(p.inventory,item.type,remaining,24,item);
+ return true;
 }

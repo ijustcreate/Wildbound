@@ -1,4 +1,4 @@
-import {initializeBoundlessWorld} from './boundless-world.mjs';
+import {initializeBoundlessWorld,checkpointBoundlessWorld} from './boundless-world.mjs';
 import {restoreFollowerControl} from './follower-control.mjs';
 import { migrateEquipment, migrateLegacySupplies } from "./items.mjs";
 import { Game } from "./core.mjs";
@@ -15,6 +15,7 @@ import {houseKeepsWorld} from './house-victory.mjs';
 import {upgradeCemeteryFeatures} from './graveyard-world.mjs';
 import {trialState} from './expedition-trials.mjs';
 export function saveSession(game) {
+  checkpointBoundlessWorld(game);
   return { version: 1, state: snapshot(game) };
 }
 export function restoreSession(saved) {
@@ -40,7 +41,6 @@ export function restoreSession(saved) {
   // True tiger actors and explicit authored sprite/rig overrides are untouched.
   for(const e of g.enemies||[])if(e.kind==='lion'&&e.skin==='tiger'&&!e.sprite&&!e.rigOverride)e.skin='lion';
   g.forestLandscape=null;
-  restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
   if(g.house&&!g.house.temple)upgradeHouseFeatures(g.house);
   if (!saved.state.turnOrder) {
     g.turnOrder = g.players.map((p) => p.id);
@@ -54,6 +54,7 @@ export function restoreSession(saved) {
     g.phase === "won"&&!houseKeepsWorld(g)
       ? []
       : saved.state.scenery || generateWorld(g.seed).scenery;
+  if(g.phase!=='won'||houseKeepsWorld(g))restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
   for (const p of g.players) {
     const data = structuredClone(p);
     initHero(p);
@@ -66,6 +67,7 @@ export function restoreSession(saved) {
     migrateEquipment(p);
     p.previousInput = {};
     p.charge = 0;
+    delete p.swordStrike;delete p.swordFacing;p.swordHitPause=0;p.attack=0;
     p.ui = null;
     cancelRobotRepair(p);
     p.dashHeld = false;

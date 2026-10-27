@@ -1,3 +1,5 @@
+import {realmContexts} from './realm-world.mjs';
+import {santaEncounterChance} from './christmas.mjs';
 import {encounterRole,pacingWeight} from './expedition-trials.mjs';
 export const EVENT_HISTORY_LIMIT=24;
 export const EVENT_COVERAGE_LIMIT=256;
@@ -44,10 +46,12 @@ export function rememberEvent(g,event,index){
 export function selectEvent(g,events,available){
  const s=state(g),alive=(g.enemies||[]).filter(e=>e.hp>0&&!e.wildlife&&!e.stampede&&e.faction!=='ally'&&e.faction!=='neutral');
  const last=s.recent.at(-1),recentNames=new Set(s.recent.slice(-6).map(e=>e.name));
- const eligible=events.flatMap((event,index)=>{
+ let eligible=events.flatMap((event,index)=>{
   if(!available(g,event)||!(event.weight??10)||event.weight<0)return [];
+  if(event.type==='santa'&&(g.questNpcs||[]).some(n=>n.santa))return [];
   if(event.type==='old_well'&&(g.portals||[]).some(d=>d.oldWell))return [];
   if(event.type==='mausoleum'&&(g.portals||[]).some(d=>d.mausoleum&&d.oldWell))return [];
+  if(event.type==='realm_expedition'&&realmContexts(g).some(ctx=>ctx.realmState?.event&&!ctx.realmState.event.done))return [];
   if(event.type==='mystery'&&g.mystery&&!g.mystery.done)return [];
   if(event.type==='merchant'&&g.merchant)return [];
   if(weather.has(event.type)&&g.weather?.life>0)return [];
@@ -72,6 +76,8 @@ export function selectEvent(g,events,available){
  // encounter its turn before recycling common cards. Weights still choose
  // the order, while boss/night/biome/active-hazard gates remain authoritative.
  // Temporarily blocked cards retain their counts and rejoin without a reset.
+ const santa=eligible.find(e=>e.event.type==='santa');
+ if(santa){if((g.random?.()??Math.random())<santaEncounterChance(g))return santa.index;eligible=eligible.filter(e=>e!==santa);}
  const leastSeen=Math.min(...eligible.map(e=>e.seen));
  let pool=eligible.filter(e=>e.seen===leastSeen&&!recentNames.has(e.event.name));
  if(!pool.length)pool=eligible.filter(e=>e.seen===leastSeen&&!s.recent.slice(-3).some(r=>r.name===e.event.name));

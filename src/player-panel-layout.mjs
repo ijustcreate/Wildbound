@@ -3,12 +3,34 @@
 const SIDE_ORDER = ['left', 'right', 'right', 'left'];
 const GAP = 8;
 
+// Prefer immediately beside the scene object; clamp over it on narrow screens.
+export function anchoredPopupBox(width,height,maxWidth,maxHeight,anchorX,anchorY,margin=8){
+ const box=centeredPopupBox(width,height,maxWidth,maxHeight,margin);
+ const clamp=(value,min,max)=>Math.max(min,Math.min(value,max));
+ const beside=anchorX-box.width-12;
+ box.x=clamp(beside>=margin?beside:anchorX-box.width/2,margin,Math.max(margin,width-box.width-margin));
+ box.y=clamp(anchorY-box.height*.25,margin,Math.max(margin,height-box.height-margin));
+ return box;
+}
+
+export function centeredPopupBox(width, height, maxWidth, maxHeight, margin = 16) {
+  const popupWidth = Math.max(1, Math.min(maxWidth, width - margin * 2));
+  const popupHeight = Math.max(1, Math.min(maxHeight, height - margin * 2));
+  return {
+    x: Math.max(0, (width - popupWidth) / 2),
+    y: Math.max(0, (height - popupHeight) / 2),
+    width: popupWidth,
+    height: popupHeight,
+  };
+}
+
 export function panelWidth(player) {
   if (player.room && !player.ui) return 800;
   if (player.ui?.socket) return 820;
   if (player.ui?.shop === 'npc-dialogue') return 520;
   if (player.ui?.shop === 'vending') return 560;
   if (player.ui?.shop === 'robot-intro') return 440;
+  if (player.ui?.storage === 'starter') return 540;
   if (player.ui?.loot) return ['victory', 'tv-victory'].includes(player.ui.storage) ? 440 : 620;
   if (player.ui?.shop === 'robot' || !player.ui?.shop) return 480;
   if (player.ui?.shop === 'merchant') return 560;

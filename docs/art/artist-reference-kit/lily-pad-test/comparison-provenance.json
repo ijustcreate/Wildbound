@@ -1,0 +1,222 @@
+{
+  "status": "reference comparison only; standalone draft unapproved",
+  "renderer": "Isolated hidden Electron; audio muted before page load; actual runtime modules imported without loading game bootstrap.",
+  "sourceRoot": "C:\\Users\\New User\\Desktop\\Wildbound Server Branch Build",
+  "inputSha256": {
+    "src/forest.mjs": "b8a604b72a274a6ff44472063ce774b6ba562f7c34e7dec5133ea7b335010c3a",
+    "src/realm-art.mjs": "a7ef5c1ca7ad9d885092a9df048d915c0e2e31078f0868f93d57d2b11329ab98",
+    "src/realm-layout.mjs": "a3d2af6903161cf10fb869556a09d33d7c1281fcada7cae3dabe8cc46d641783",
+    "docs/art/artist-reference-kit/lily-pad-test/lily-pad-32.png": "ff47575da7bad42fc0535c6cf8f905d4862e2735243ea6b1e1e9ac26733691ad"
+  },
+  "items": [
+    {
+      "id": "existing-forest-pad",
+      "title": "CURRENT EXISTING · FOREST",
+      "sub": "lily · no flower",
+      "fixture": {
+        "seed": 75,
+        "time": 0,
+        "selected": {
+          "kind": "lily",
+          "x": 117,
+          "y": 48,
+          "seed": 80175
+        },
+        "terrain": "50x50 natural water",
+        "scenery": [],
+        "filter": "identity equality to selected real bank object"
+      },
+      "stats": {
+        "canvas": [
+          32,
+          32
+        ],
+        "opaqueBounds": [
+          10,
+          12,
+          21,
+          21
+        ],
+        "visibleExtent": [
+          12,
+          10
+        ],
+        "nonzeroAlphaPixels": 95
+      }
+    },
+    {
+      "id": "existing-forest-flower",
+      "title": "CURRENT EXISTING · FOREST",
+      "sub": "lily · flowering seed",
+      "fixture": {
+        "seed": 75,
+        "time": 0,
+        "selected": {
+          "kind": "lily",
+          "x": 181,
+          "y": 48,
+          "seed": 79880
+        },
+        "terrain": "50x50 natural water",
+        "scenery": [],
+        "filter": "identity equality to selected real bank object"
+      },
+      "stats": {
+        "canvas": [
+          32,
+          32
+        ],
+        "opaqueBounds": [
+          10,
+          11,
+          21,
+          21
+        ],
+        "visibleExtent": [
+          12,
+          11
+        ],
+        "nonzeroAlphaPixels": 99
+      }
+    },
+    {
+      "id": "existing-swamp-bayou-lily",
+      "title": "CURRENT EXISTING · SWAMP",
+      "sub": "bayou_lily · flowering catalog asset",
+      "stats": {
+        "canvas": [
+          64,
+          64
+        ],
+        "opaqueBounds": [
+          8,
+          40,
+          53,
+          60
+        ],
+        "visibleExtent": [
+          46,
+          21
+        ],
+        "nonzeroAlphaPixels": 642
+      }
+    },
+    {
+      "id": "standalone-unapproved-draft",
+      "title": "UNAPPROVED STANDALONE DRAFT",
+      "sub": "unchanged 32×32 test · not integrated",
+      "stats": {
+        "canvas": [
+          32,
+          32
+        ],
+        "opaqueBounds": [
+          3,
+          8,
+          28,
+          24
+        ],
+        "visibleExtent": [
+          26,
+          17
+        ],
+        "nonzeroAlphaPixels": 319
+      }
+    }
+  ],
+  "swamp": {
+    "source": [
+      64,
+      64
+    ],
+    "catalogSize": 24,
+    "gameSizeStats": {
+      "canvas": [
+        24,
+        24
+      ],
+      "opaqueBounds": [
+        3,
+        15,
+        19,
+        22
+      ],
+      "visibleExtent": [
+        17,
+        8
+      ],
+      "nonzeroAlphaPixels": 89
+    }
+  },
+  "comparison": {
+    "file": "existing-vs-draft-comparison.png",
+    "dimensions": [
+      1664,
+      1010
+    ],
+    "nativeScale": 1,
+    "enlargement": 6,
+    "sampling": "nearest neighbor",
+    "background": "#777b77",
+    "cropped": false,
+    "shapeNormalization": false
+  },
+  "sourceIds": [
+    {
+      "path": "src/forest.mjs",
+      "export": "drawForestGround",
+      "kind": "lily",
+      "lines": "271-279"
+    },
+    {
+      "path": "src/realm-art.mjs",
+      "export": "drawRealmSprite",
+      "kind": "bayou_lily",
+      "lines": "55-56"
+    },
+    {
+      "path": "src/realm-layout.mjs",
+      "catalog": "REALM_ASSETS.swamp.bayou_lily",
+      "size": 24,
+      "line": 7
+    }
+  ],
+  "history": [
+    {
+      "path": "docs/history/2026-10-18-forest-rendering-and-bridges.md",
+      "line": 12,
+      "note": "Reports accepted pixel lily-pad replacement; not proof that current drawing exactly matches the approved revision."
+    },
+    {
+      "path": "docs/history/2026-10-22-swamp-night-fireflies-plants.md",
+      "note": "Broader review-only swamp plant study explicitly not production map generation; excluded from current runtime comparison."
+    }
+  ],
+  "limits": [
+    "No saved player world or custom sprite overrides were loaded.",
+    "Forest lily branch is unchanged from Oct 18 package 1.2.39; original review was recovered. Exact linkage to the precise screenshot viewed at the approval moment is not independently proven.",
+    "Latest 1.2.76 packaged forest, realm-art and realm-layout files match current source exactly."
+  ],
+  "inputHashesUnchanged": true,
+  "recoveredHistoricalEvidence": {
+    "originalReview": {
+      "path": "test-output/forest-landscape/vegetation-review.png",
+      "sha256": "2918fb36e3a13bef26720ce5ae42b13ba2285d67514f913f5d5588ca1a20e8b0",
+      "visuallyInspected": true,
+      "note": "Right-hand Lily pad panel shows native and enlarged flowering pad."
+    },
+    "historicalBranch": {
+      "path": "dist/1.2.39-2026-10-18T23-14-30-512Z/Wildbound-win32-x64/resources/app/src/forest.mjs",
+      "normalizedCharacters": 552,
+      "identicalIgnoringCRLF": true
+    },
+    "latestPackage": {
+      "path": "dist/1.2.76-2026-10-27T05-29-58-387Z/Wildbound-win32-x64/resources/app",
+      "exactFileMatches": {
+        "src/forest.mjs": true,
+        "src/realm-art.mjs": true,
+        "src/realm-layout.mjs": true
+      }
+    }
+  }
+}

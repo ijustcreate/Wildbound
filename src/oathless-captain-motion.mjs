@@ -10,6 +10,8 @@ import {
 import { drawOrientedPixelVolume as volume } from "./murk-wolf-pixels.mjs";
 import { pixelPolygon } from "./pixel-shapes.mjs";
 import { paintLayers } from "./render-order.mjs";
+import {drawNativeHair,drawFacialHair} from './hair-design.mjs';
+import {directionalHelmet} from './wearable-art.mjs';
 import { validateSprite } from "./pixels.mjs";
 import { jointAngle } from "./joint-angles.mjs";
 import { drawItem } from "./item-art.mjs";
@@ -107,7 +109,8 @@ export function drawOathlessCaptain(
 ) {
   const d = facingIndex(a.faceX, a.faceY),
     action = captainAction(a),
-    pose = suppliedPose || poseAt(m, action, captainFrame(a, t, m)),
+    frame = captainFrame(a,t,m),
+    pose = suppliedPose || poseAt(m, action, frame),
     p = Object.fromEntries(
       Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]),
     ),
@@ -348,19 +351,7 @@ export function drawOathlessCaptain(
     "Captain hair rear",
     ["hair"],
     () => {
-      for (const v of [
-        [0, -2.5, -1.8],
-        [-3.8, -1.4, -3.1],
-        [3.8, -1.4, -3.1],
-      ])
-        volume(
-          c,
-          local(pose.head, head, v),
-          head,
-          [v[0] ? 1.9 : 4.8, 2.7, v[0] ? 5.2 : 6.4],
-          d,
-          hair,
-        );
+      return drawNativeHair(c,p.head,{hair:'sidepart',hairColor:pal.hair,...a.appearance},d,frame,action,'rear');
     },
     projectPoint(local(pose.head, head, [0, -3, -1.8]), d).depth + 1.3,
   );
@@ -395,27 +386,7 @@ export function drawOathlessCaptain(
     ["hair"],
     () =>
       wear("hair:captain", p.hair, () => {
-        volume(
-          c,
-          local(pose.head, head, [0, -0.7, 4.6]),
-          head,
-          [5.7, 4.4, 2.5],
-          d,
-          hair,
-        );
-        for (const [x, z] of [
-          [-3.6, 3.2],
-          [-1.5, 4.2],
-          [3.8, 2.5],
-        ])
-          volume(
-            c,
-            local(pose.head, head, [x, 2.3, z]),
-            head,
-            [1.8, 1.9, 2],
-            d,
-            hair,
-          );
+        return drawNativeHair(c,p.head,{hair:'sidepart',hairColor:pal.hair,...a.appearance},d,frame,action,'front');
       }),
     p.head.depth + 5,
   );
@@ -459,6 +430,7 @@ export function drawOathlessCaptain(
     "Captain mouth",
     ["mouth"],
     () => {
+      drawFacialHair(c,p.head,{hairColor:pal.hair,...a.appearance},d);
       c.fillStyle = pal.skinShade;
       c.fillRect(Math.round(p.mouth.x) - 1, Math.round(p.mouth.y), 2, 1);
     },
@@ -504,7 +476,7 @@ export function drawOathlessCaptain(
               2,
               pal.leather,
             );
-          } else drawItem(c, gear.hand1, a.x, a.y, 15);
+          } else drawItem(c, gear.hand1, 0, 0, 15);
         }),
       Math.max(p.handR.depth, p.swordGrip.depth) + 0.3,
     );
@@ -568,9 +540,9 @@ export function drawOathlessCaptain(
       "Captain headgear",
       ["head"],
       () =>
-        wear(gear.head, p.head, () =>
-          drawItem(c, gear.head, p.head.x, p.head.y - 2, 13),
-        ),
+        wear(gear.head, p.head, () => {
+          if(!directionalHelmet(c,gear.head,p.head,d))drawItem(c, gear.head, p.head.x, p.head.y - 2, 13);
+        }),
       p.head.depth + 9,
     );
   paintLayers(q, m, d, c, p);

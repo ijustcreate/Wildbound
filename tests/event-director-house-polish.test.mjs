@@ -45,7 +45,7 @@ test('Every encounter uses its own author stats; squad, edited species and expli
  const definitions={lion:{edited:true,stats:{hp:155,speed:61,damage:19}}};assert.equal(eventUnitStats(pool[0],null,'lion',definitions).hp,155);assert.equal(eventUnitStats(pool[0],{manualOverride:true,hp:90},'lion',definitions).hp,90);
 });
 test('Default event roster has unique save keys, two-line flavor and actionable tips without generic placeholder copy',()=>{
- assert.equal(EVENTS.length,92);assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
+ assert.equal(EVENTS.length,106);assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
  for(const e of EVENTS){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
 });
 test('Native House architecture is read-only, balanced and honors saved open doors and floor bounds',()=>{
@@ -53,4 +53,10 @@ test('Native House architecture is read-only, balanced and honors saved open doo
  const c=new Proxy({save:()=>balance++,restore:()=>balance--},{get:(t,k)=>k in t?t[k]:(...args)=>calls.push([k,...args]),set:(t,k,v)=>{t[k]=v;return true;}});
  drawHouseFloor(c,h);for(const b of h.walls)if(b.kind!=='window')drawHouseWall(c,b);for(const d of h.doors){drawHouseDoor(c,d);drawHouseDoor(c,{...d,open:true});}
  assert.equal(balance,0);assert.deepEqual(h,saved);assert.ok(calls.filter(c=>c[0]==='fillRect').length>100);assert.ok(calls.some(c=>c[0]==='clip'));
+});
+test('Open doors rotate their complete authored leaf around its hinge',()=>{
+ for(const d of [{x:100,y:200,w:96,h:16},{x:300,y:400,w:16,h:96}]){
+  const calls=[],c=new Proxy({save(){},restore(){}},{get:(t,k)=>k in t?t[k]:(...args)=>calls.push([k,...args]),set:(t,k,v)=>(t[k]=v,true)});
+  drawHouseDoor(c,{...d,open:true});assert.ok(calls.some(([k,a])=>k==='rotate'&&a===Math.PI/2));assert.ok(calls.some(([k,x,y,w,h])=>k==='fillRect'&&x===0&&y===0&&w===d.w&&h===d.h));
+ }
 });

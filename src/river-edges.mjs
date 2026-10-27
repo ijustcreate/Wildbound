@@ -1,7 +1,7 @@
 import {waterAt} from './environment.mjs';
 const wet=k=>['water','shallow','bridge','floodbridge'].includes(k);
 export function riverCorners(terrain,tx,ty){
-  const at=(dx,dy)=>tx+dx<0||tx+dx>=50||ty+dy<0||ty+dy>=50?'grass':typeof terrain==='function'?terrain(tx+dx,ty+dy):terrain[(ty+dy)*50+tx+dx];
+  const at=(dx,dy)=>typeof terrain==='function'?terrain(tx+dx,ty+dy):tx+dx<0||tx+dx>=50||ty+dy<0||ty+dy>=50?'grass':terrain[(ty+dy)*50+tx+dx];
   return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([dx,dy])=>({dx,dy,a:at(dx,0),b:at(0,dy),diagonal:at(dx,dy)}));
 }
 export function bankCut(u,v,corner){

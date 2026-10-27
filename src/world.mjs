@@ -1,12 +1,15 @@
+import {connectForestBridgeBanks} from './forest-bridges.mjs';
+import {REALMS,realmWorld,realmFootprint} from './realm-world.mjs';
 import {templeLayout} from './temple.mjs';
 import {iceWorld} from './ice-world.mjs';
 import {beachWorld} from './beach-world.mjs';
 import {contains} from './house-design.mjs';
 import {makeHouse,insideHouse} from './expansion.mjs';
-import {BOARD_TABLE} from './board-table.mjs';
+import {BOARD_TABLE} from './board-table-geometry.mjs';
 import {createForestLandscape,createForestScenery} from './forest-landscape.mjs';
 import {palmBase} from './forest.mjs';
 import {graveyardWorld} from './graveyard-world.mjs';
+import {createHouseShortGrass} from './tall-grass.mjs';
 // Matches the visible board footprint (including the lower carved rim).
 export const TABLE = {
   // Keep the physical board aligned with the reduced board art in render.mjs.
@@ -58,18 +61,19 @@ export function createScenery(seed = 0, environment = "forest") {
     }
   return result;
 }
-export function generateWorld(seed, environment = "forest") {
-  return {forestLandscape:null,forestLandscapeVersion:0,graveyard:null,ravenFlocks:[],...generateWorldData(seed,environment)};
+export function generateWorld(seed, environment = "forest",options={}) {
+  return {realmState:null,forestLandscape:null,forestLandscapeVersion:0,graveyard:null,ravenFlocks:[],...generateWorldData(seed,environment,options)};
 }
-function generateWorldData(seed, environment) {
+function generateWorldData(seed, environment,{authored=true}={}) {
   const terrain = Array(2500).fill("grass");
+  if(REALMS.includes(environment))return realmWorld(seed,environment);
   if(environment==='ice')return iceWorld(seed);
   if(environment==='beach')return beachWorld(seed);
   if(environment==='graveyard')return graveyardWorld(seed);
   if(environment==='temple'){
-    const house=templeLayout();for(let y=0;y<50;y++)for(let x=0;x<50;x++)if(x*32>=480&&x*32<1120&&y*32>=450&&y*32<1120)terrain[y*50+x]='temple_stone';
-    const scenery=createScenery(seed).filter(p=>!(p.x>425&&p.x<1175&&p.y>395&&p.y<1175));
-    for(let y=96;y<1530;y+=96)for(let x=96;x<1530;x+=96){if(x>400&&x<1200&&y>370&&y<1190||Math.abs(x-800)<75)continue;scenery.push({id:'jungle:'+x+':'+y,x,y,kind:'tree',size:95+terrainHash(x+seed,y)*35,procedural:true});}
+    const house=templeLayout({authored});for(let y=0;y<50;y++)for(let x=0;x<50;x++)if(house.floors.some(r=>x*32>=r.x&&x*32<r.x+r.w&&y*32>=r.y&&y*32<r.y+r.h))terrain[y*50+x]='temple_stone';
+    const custom=Array.isArray(house.scenery),scenery=custom?[...structuredClone(house.scenery),...structuredClone(house.trees||[])]:createScenery(seed).filter(p=>!(p.x>425&&p.x<1175&&p.y>395&&p.y<1175));
+    if(!custom)for(let y=96;y<1530;y+=96)for(let x=96;x<1530;x+=96){if(x>400&&x<1200&&y>370&&y<1190||Math.abs(x-800)<75)continue;scenery.push({id:'jungle:'+x+':'+y,x,y,kind:'tree',size:95+terrainHash(x+seed,y)*35,procedural:true});}
     return {terrain,scenery,house,webs:[],templeChest:null,ghosts:[]};
   }
   if(environment==='house'){
@@ -81,6 +85,7 @@ function generateWorldData(seed, environment) {
       if(house.pools.some(r=>contains(r,px,py)))terrain[y*50+x]='water';
     }
     const scenery=createScenery(seed).filter(p=>!(p.x>288&&p.x<1312&&p.y>112&&p.y<1520));
+    scenery.push(...createHouseShortGrass(seed,terrain,house));
     scenery.push(...house.trees.map((t,i)=>({...t,id:'yard:'+i,kind:'tree',procedural:true})));
     return {terrain,house,webs:[],scenery};
   }
@@ -116,6 +121,7 @@ function generateWorldData(seed, environment) {
             banks[y * 50 + x + dx] = "shallow";
       }
   terrain.splice(0, terrain.length, ...banks);
+  if(environment==='forest')connectForestBridgeBanks(terrain);
   const scenery = createScenery(seed, environment).filter((p) => {
     const x = Math.floor(p.x / 32),
       y = Math.floor(p.y / 32);
@@ -126,7 +132,7 @@ function generateWorldData(seed, environment) {
   });
   if (environment === 'forest') {
     const forestLandscape = createForestLandscape(seed, terrain);
-    return {terrain, scenery: createForestScenery(seed, terrain, forestLandscape), forestLandscape, forestLandscapeVersion:1, house:null, webs:[]};
+    return {terrain, scenery: createForestScenery(seed, terrain, forestLandscape), forestLandscape, forestLandscapeVersion:3, house:null, webs:[]};
   }
   return { terrain, scenery, forestLandscape:null, house:null, webs:[] };
 }
@@ -156,6 +162,7 @@ export function ensureFootprint(sprite, name) {
   return sprite;
 }
 export function propDepth(prop, sprite) {
+  if(prop.realm)return prop.rootY??prop.y;
   if(prop.graveyard)return prop.rootY??prop.y;
   if(prop.coastal)return prop.rootY??prop.y;
   if(prop.kind==='forest_ruin')return prop.y;
@@ -169,6 +176,8 @@ export function propDepth(prop, sprite) {
   return prop.y - prop.size / 2 + ((bottom + 0.5) * prop.size) / sprite.height;
 }
 export function footprintHit(prop, sprite, x, y, radius = 8) {
+  if(prop.realm){const b=realmFootprint(prop);if(b)return Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y-Math.max(b.y,Math.min(y,b.y+b.h)))<radius;
+    if(prop.kind==='root_arch'&&!prop.depleted)return [-.35,.35].some(dx=>Math.hypot(x-(prop.x+dx*prop.size),y-prop.rootY)<radius+prop.size*.065);return false;}
   // Cemetery obstacles are tested once by graveyardBlocked, not by the generic
   // square sprite fallback (which would block paths and the mausoleum doorstep).
   if(prop.graveyard)return false;
@@ -179,7 +188,7 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   }
   if(prop.kind==='forest_ruin')return Math.hypot(x-Math.max(prop.x-prop.width/2,Math.min(x,prop.x+prop.width/2)),y-Math.max(prop.y-prop.depth,Math.min(y,prop.y)))<radius;
   if(prop.procedural&&!prop.falling&&!prop.depleted){
-    const sizes={tree:[12,8,.35],snow_tree:[8,6,.35],rock:[Math.max(10,25-(prop.chipped||0)*3)/2,8,.19],ice_rock:[25,10,.19],ice_spire:[25,10,.19],frozen_log:[28,7,.19],winter_cache:[20,12,.19]};
+    const sizes={tree:[12,8,.35],leafless_tree:[12,8,.35],snow_tree:[8,6,.35],rock:[Math.max(10,25-(prop.chipped||0)*3)/2,8,.19],ice_rock:[25,10,.19],ice_spire:[25,10,.19],frozen_log:[28,7,.19],winter_cache:[20,12,.19]};
     const shape=sizes[prop.kind];if(shape){const scale=prop.size/64,baseY=prop.y+prop.size*shape[2],halfW=shape[0]*scale,depth=shape[1]*scale;const nx=Math.max(prop.x-halfW,Math.min(x,prop.x+halfW)),ny=Math.max(baseY-depth,Math.min(y,baseY));return Math.hypot(x-nx,y-ny)<radius;}
   }
   if (prop.falling || prop.depleted) return false;
@@ -222,6 +231,7 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   return false;
 }
 export function isOccluded(prop, sprite, player) {
+  if(prop.realm)return !prop.fallen&&player.y+8<prop.rootY&&player.y>prop.rootY-prop.size*.92&&Math.abs(player.x-prop.x)<prop.size*.45;
   if(prop.graveyard&&prop.kind==='grave_forest_tree') {
     const base=prop.rootY??prop.y;
     return player.y+10<base&&player.y>base-prop.size*1.15&&Math.abs(player.x-prop.x)<prop.size*.5;

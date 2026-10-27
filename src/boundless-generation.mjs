@@ -1,11 +1,15 @@
 import {forestHash as hash,forestNoise as noise,makePaving} from './forest-landscape.mjs';
+import {REALMS,realmWorld} from './realm-layout.mjs';
 import {graveyardWorld} from './graveyard-world.mjs';
 
-export const REGION_SIZE=1600,REGION_TILES=50,BOUNDLESS_GENERATION_VERSION=2;
+export const REGION_SIZE=1600,REGION_TILES=50,BOUNDLESS_GENERATION_VERSION=6;
 export const REGION_CACHE_LIMIT=64;
 // Destination identity is fixed for the expedition. These are generation rules,
 // not a random biome bag. Coherent fields use absolute coordinates everywhere.
 export const BOUNDLESS_MAP_RULES=Object.freeze({
+ swamp:{ground:'marsh_grass',path:'mud',landmark:'bayou',description:'Old-growth islands and winding channels connected by muddy banks and boardwalks.'},
+ caverns:{ground:'cave_floor',path:'cave_floor',landmark:'grotto',description:'Organic chambers and mineral grottoes joined by continuous tunnels.'},
+ shadow:{ground:'shadow_soil',path:'shadow_soil',landmark:'veil',description:'Twisted clearings and root causeways crossing the dark void.'},
  forest:{ground:'grass',path:'path',landmark:'ruins',description:'River woodland, connected trails, clear crossings and scattered overgrown ruins.'},
  desert:{ground:'sand',path:'sand',landmark:'oasis',description:'Continuous dunes, clustered oases, off-route quicksand and caravan trails.'},
  ice:{ground:'snow',path:'snow',landmark:'glacier',description:'Snowfields, coherent frozen lakes, sheltered routes and glacial outcrops.'},
@@ -40,6 +44,12 @@ export function islandCoastDistance(x,y,seed=0){
 }
 export function naturalBoundlessTile(g,tx,ty){
  const biome=boundlessMap(g),seed=g.seed||0,x=tx*32+16,y=ty*32+16;
+ if(biome==='swamp'){
+  const channel=Math.abs(Math.sin(x/370+Math.sin(y/640+seed)*1.4));
+  return channel<.12?'water':noise(x/260,y/260,seed+83)>.56?'marsh_grass':'shallow';
+ }
+ if(biome==='caverns')return 'cave_void';
+ if(biome==='shadow')return 'shadow_void';
  if(biome==='beach'){
   const coast=islandCoastDistance(x,y,seed);
   return coast< -96?'water':coast<20?'shallow':coast>380&&Math.hypot(x-800,y-800)>660&&noise(x/540,y/540,seed)>.6?'grass':'sand';
@@ -50,7 +60,13 @@ export function naturalBoundlessTile(g,tx,ty){
  if(biome==='graveyard')return wet>.52?'mud':'grass';
  if(biome==='house')return 'grass';
  // Continue the original pair of forest rivers into negative and distant rows.
- for(const side of [0,1]){const center=(side?38:11)+Math.sin(ty*.19+seed*.013+side)*2,dx=Math.abs(mod(tx,50)-Math.round(center));if(dx<=1)return mod(ty-7,16)<3?'bridge':'water';if(dx<=2)return 'shallow';}
+ for(const side of [0,1]){
+  const region=Math.floor(tx/50),away=region?1:Math.max(0,Math.min(1,(Math.abs(ty-24.5)-24.5)/32));
+  const bend=(noise(ty/85,region*.47,seed+side*31)-.5)*8*away;
+  const center=region*50+(side?38:11)+Math.sin(ty*.19+seed*.013+side)*2+bend,dx=Math.abs(tx-Math.round(center)),crossing=mod(ty-7,16)<3;
+  // A deck spans both shallow banks and meets dry ground, not just the core.
+  if(dx<=2&&crossing)return 'bridge';if(dx<=1)return 'water';if(dx<=2)return 'shallow';
+ }
  return 'grass';
 }
 // Neighboring regions compute exactly the same shared edge portal, independent
@@ -67,7 +83,7 @@ function routesFor(g,cx,cy,hub,ports,featureOffset){
  for(const [edge,end]of Object.entries(ports)){
   const start=gates?.[edge]||hub;
   const exit=gates?{x:start.x+(edge==='west'?-96:edge==='east'?96:0),y:start.y+(edge==='north'?-96:edge==='south'?96:0)}:start;
-  const line=[start,exit,{x:exit.x+(end.x-exit.x)*.45,y:exit.y+(end.y-exit.y)*.55},end];
+  const line=biome==='swamp'?[start,...[.25,.5,.75].map(t=>{const dx=end.x-start.x,dy=end.y-start.y,l=Math.hypot(dx,dy),bend=Math.sin(t*Math.PI*2)*95;return {x:start.x+dx*t-dy/l*bend,y:start.y+dy*t+dx/l*bend};}),end]:[start,exit,{x:exit.x+(end.x-exit.x)*.45,y:exit.y+(end.y-exit.y)*.55},end];
   if(biome==='beach'&&line.some(p=>islandCoastDistance(p.x,p.y,g.seed)<80))continue;
   routes.push(line);
  }
@@ -79,16 +95,27 @@ function routesFor(g,cx,cy,hub,ports,featureOffset){
  return routes;
 }
 export function boundlessRegionPlan(g,cx,cy){
+ const cached=cacheFor(g).plans.get(regionKey(cx,cy));if(cached)return cached;
+ const task=boundlessRegionPlanTask(g,cx,cy);let step;do{step=task.next();}while(!step.done);return step.value;
+}
+// Terrain rows can be prefetched over several frames without exposing a partial plan.
+export function* boundlessRegionPlanTask(g,cx,cy){
  const c=cacheFor(g),key=regionKey(cx,cy);if(c.plans.has(key)){const p=c.plans.get(key);c.plans.delete(key);c.plans.set(key,p);return p;}
  const biome=boundlessMap(g),seed=regionSeed(g.seed||0,cx,cy),ox=cx*REGION_SIZE,oy=cy*REGION_SIZE,central=cx===0&&cy===0;
- const source=biome==='graveyard'&&!central?graveyardWorld(seed):null;
- const featureOffset=central?{x:0,y:0}:{x:Math.round((hash(seed,23)-.5)*(biome==='graveyard'?192:384)/32)*32,y:Math.round((hash(seed,29)-.5)*(biome==='graveyard'?128:320)/32)*32};
+ const source=!central?(REALMS.includes(biome)?realmWorld(seed,biome,{streamed:true,layout:g.boundlessRealmLayouts?.[biome]??null}):biome==='graveyard'?graveyardWorld(seed):null):null;
+ const featureOffset=central||REALMS.includes(biome)?{x:0,y:0}:{x:Math.round((hash(seed,23)-.5)*(biome==='graveyard'?192:384)/32)*32,y:Math.round((hash(seed,29)-.5)*(biome==='graveyard'?128:320)/32)*32};
  const hub={x:ox+800+featureOffset.x,y:oy+(biome==='graveyard'?848:800)+featureOffset.y},portals=regionPortals(g,cx,cy);
- const plan={key,cx,cy,biome,seed,hub,portals,featureOffset,routes:routesFor(g,cx,cy,hub,portals,featureOffset),terrain:[],routeField:[],cemetery:source?.graveyard||null,sourceProps:source?.scenery||null};
- for(let ly=0;ly<50;ly++)for(let lx=0;lx<50;lx++){
+ const plan={key,cx,cy,biome,seed,hub,portals,featureOffset,routes:routesFor(g,cx,cy,hub,portals,featureOffset),terrain:[],routeField:[],cemetery:source?.graveyard||null,sourceProps:source?.scenery||null,realmState:source?.realmState||null};
+ for(let cell=0;cell<2500;cell++){
+  if(cell%50===0)yield;
+  const ly=Math.floor(cell/50),lx=cell%50;
   const tx=cx*50+lx,ty=cy*50+ly,i=ly*50+lx,x=tx*32+16,y=ty*32+16;
   const sx=lx-featureOffset.x/32,sy=ly-featureOffset.y/32;
   let tile=central&&g.terrain?.[i]?g.terrain[i]:source&&sx>=0&&sx<50&&sy>=0&&sy<50?source.terrain[sy*50+sx]:naturalBoundlessTile(g,tx,ty);
+  if(REALMS.includes(biome)&&(!central||biome==='swamp'&&!g.boundlessRealmLayouts?.swamp?.tiles)){
+   const edge=Math.min(lx,ly,49-lx,49-ly)*32;
+   if(edge<100+(noise(x/180,y/180,g.seed)-.5)*70)tile=naturalBoundlessTile(g,tx,ty);
+  }
   // The old cemetery trail ended at its finite map border. Keep paths
   // inside the burial grounds, and let shared entrances own outer lanes.
   if(biome==='graveyard'&&tile==='path'){
@@ -97,14 +124,15 @@ export function boundlessRegionPlan(g,cx,cy){
   }
   // Continue existing finite-map edge tiles for two rows before blending
   // into the destination's coherent fields. Beach uses one global coastline.
-  if(!central&&biome!=='beach'&&biome!=='graveyard'&&g.terrain&&tx>=-2&&tx<52&&ty>=-2&&ty<52){
+  if(!central&&biome!=='beach'&&biome!=='graveyard'&&!REALMS.includes(biome)&&g.terrain&&tx>=-2&&tx<52&&ty>=-2&&ty<52){
    const nx=Math.max(0,Math.min(49,tx)),ny=Math.max(0,Math.min(49,ty));tile=g.terrain[ny*50+nx]||tile;
   }
   const route=regionRouteDistance(plan,x,y);plan.routeField.push(route);
   // Keep home rooms/pools and the original pier. Roads never fill ocean.
   const home=central&&biome==='house'&&['wood','water'].includes(tile),pier=central&&biome==='beach'&&['wood','bridge'].includes(tile);
-  if(route<52&&!home&&!pier){
+  if(route<52+(REALMS.includes(biome)?(noise(x/150,y/150,g.seed)-.5)*18:0)&&!home&&!pier){
    if(biome==='beach'){if(islandCoastDistance(x,y,g.seed)>40)tile='sand';}
+   else if(biome==='swamp'){if(tile==='water')tile='shallow';}
    else if(['water','shallow','bridge'].includes(tile))tile='bridge';
    else tile=BOUNDLESS_MAP_RULES[biome].path;
   }
@@ -115,7 +143,7 @@ export function boundlessRegionPlan(g,cx,cy){
  c.plans.set(key,plan);return plan;
 }
 export function boundlessGeneratedTile(g,tx,ty){const p=boundlessRegionPlan(g,Math.floor(tx/50),Math.floor(ty/50));return p.terrain[mod(ty,50)*50+mod(tx,50)];}
-export function boundlessPavingAt(g,tx,ty){const c=cacheFor(g);c.paving||=makePaving(g.seed||0);return c.paving.cells[mod(ty,24)*24+mod(tx,24)];}
+export function boundlessPavingAt(g,tx,ty){if(boundlessMap(g)==='forest'){const v=hash(tx+(g.seed||0)*.13,ty+71),cluster=noise(tx/5,ty/5,(g.seed||0)+819);return cluster<.42||v<.45?0:v>.87?2:1;}const c=cacheFor(g);c.paving||=makePaving(g.seed||0);return c.paving.cells[mod(ty,24)*24+mod(tx,24)];}
 export function translateRegionProps(plan){
  const ox=plan.cx*REGION_SIZE+plan.featureOffset.x,oy=plan.cy*REGION_SIZE+plan.featureOffset.y,prefix=`boundless:${plan.cx}:${plan.cy}:`,props=[];
  const translateRect=r=>({...r,x:r.x+ox,y:r.y+oy});
@@ -126,6 +154,7 @@ export function translateRegionProps(plan){
   if(p.blockers)p.blockers=p.blockers.map(translateRect);
   // Keep complete fences/gates, but clear route shoulders of tall obstacles.
   if(!['cemetery_fence','cemetery_gate'].includes(p.kind)&&regionRouteDistance(plan,p.x,p.rootY??p.y)<90)continue;
+  if(p.realm){const tx=Math.floor((p.x-plan.cx*1600)/32),ty=Math.floor(((p.rootY??p.y)-plan.cy*1600)/32),tile=plan.terrain[ty*50+tx];if(!tile||tile.endsWith('_void')||tile==='water'||tile==='bridge')continue;}
   props.push(p);
  }
  const stoneIds=new Set(props.filter(p=>p.kind==='gravestone').map(p=>p.id));

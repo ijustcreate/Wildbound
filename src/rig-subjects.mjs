@@ -1,3 +1,5 @@
+import {honeyCatMotion,defaultHoneyCat,replaceHoneyCat,drawHoneyCat} from './honey-cat.mjs';
+import {fireflyMotion,defaultFireflyMotion,replaceFireflyMotion,drawFireflyRig} from './firefly-motion.mjs';
 import {shoreGoblinMotion,defaultShoreGoblinMotion,replaceShoreGoblinMotion,drawShoreGoblin} from './shore-goblin-motion.mjs';
 import {reaperMotion,defaultReaperMotion,replaceReaperMotion,drawReaper} from './reaper-motion.mjs';
 import {dreadmaneLionMotion,defaultDreadmaneLionMotion,replaceDreadmaneLionMotion,drawDreadmaneLion} from './dreadmane-lion-motion.mjs';
@@ -33,6 +35,7 @@ import {
 import {
   playerMotion,
   defaultPlayerMotion,
+  defaultNativePlayerMotion,
   replacePlayerMotion,
   drawPlayer,
 } from "./player-motion.mjs";
@@ -69,6 +72,8 @@ import {alanMotion,defaultAlanMotion,replaceAlanMotion,drawAlan} from './alan-mo
 import {villagerMotion,defaultVillagerMotion,replaceVillagerMotion,drawVillager} from './villager-motion.mjs';
 import {slimeMotion,defaultSlimeMotion,replaceSlimeMotion,drawSlime} from './slime-motion.mjs';
 export const RIG_SUBJECTS = {
+ graveyard_cat:{name:'Cemetery cat / Honey rig',data:honeyCatMotion,defaults:defaultHoneyCat,replace:replaceHoneyCat,draw:drawHoneyCat,sprite:'graveyard_cat',selected:'head',palette:Object.keys(honeyCatMotion.palette),shapeKeys:Object.keys(honeyCatMotion.shape),tracks:['head','tailTip','frontPawL','rearPawR'],clip:'walk',scale:6},
+ marsh_firefly:{name:'Marsh fireflies / drifting lights',data:fireflyMotion,defaults:defaultFireflyMotion,replace:replaceFireflyMotion,draw:drawFireflyRig,sprite:'marsh_firefly',selected:'lightA',palette:Object.keys(fireflyMotion.palette),shapeKeys:Object.keys(fireflyMotion.shape),tracks:['lightA','lightB','lightC'],clip:'fly',scale:6},
   ghost:{name:'Ghost / spectral humanoid',data:ghostMotion,defaults:defaultGhostMotion,replace:replaceGhostMotion,draw:drawGhost,sprite:'ghost',selected:'head',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'claw',scale:5},
   shore_goblin:{name:'Shore goblin / Murloc motion',data:shoreGoblinMotion,defaults:defaultShoreGoblinMotion,replace:replaceShoreGoblinMotion,draw:drawShoreGoblin,sprite:'shore_goblin',selected:'head',palette:Object.keys(shoreGoblinMotion.palette),shapeKeys:Object.keys(shoreGoblinMotion.shape),tracks:['handR','handL','footR','footL','mouth'],clip:'run',scale:6},
   villager:{name:'Villager / April and friends',data:villagerMotion,defaults:defaultVillagerMotion,replace:replaceVillagerMotion,draw:drawVillager,sprite:'villager',selected:'head',palette:Object.keys(villagerMotion.palette),shapeKeys:Object.keys(villagerMotion.shape),tracks:['handR','handL','swordTip','footR','footL'],clip:'wave',scale:6},
@@ -86,7 +91,7 @@ export const RIG_SUBJECTS = {
   necromancer:{name:'Purple warlock / equipped humanoid',data:warlockMotion,defaults:defaultWarlockMotion,replace:replaceWarlockMotion,draw:drawWarlock,sprite:'necromancer',selected:'handR',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'cast',scale:5},
   ...Object.fromEntries(NIGHT_KINDS.map(kind => {
     const data = nightMotions[kind];
-    const selected = { carnivorous_flower: 'jawTop', night_stalker: 'frontPawR', burrower: 'head', mimic_vine: 'tendril6', poison_pod: 'sacR', carrion_pack: 'jaw', hunter: 'rifleMuzzle', elephant: 'trunkTip', zebra: 'frontPawR', pelican: 'wingTipR' }[kind];
+    const selected = { carnivorous_flower: 'jawTop', night_stalker: 'frontPawR', burrower: 'head', mimic_vine: 'tendril6', poison_pod: 'sacR', carrion_pack: 'jaw', hunter: 'rifleMuzzle', elephant: 'trunkTip', zebra: 'frontPawR', pelican: 'wingTipR',fox:'head',squashling:'head',chicken:'head',werewolf:'head',scorpion_boss:'tailTip' }[kind];
     return [kind, {
       name: nightRigLabels[kind], data, defaults: () => defaultNightMotion(kind),
       replace: model => replaceNightMotion(kind, model),
@@ -143,6 +148,8 @@ export const RIG_SUBJECTS = {
           skeleton_unarmed: "Skeleton / unarmed",
           skeleton_boss: "Skeleton / horned boss",
           frost_skeleton_mage: "Frost skeletal mage",
+          skeleton_wizard: "Skeletal wizard / caster",
+          krampus: "Krampus / horned winter demon",
         }[kind],
         data: skeletonMotions[kind],
         defaults: () => defaultSkeletonMotion(kind),
@@ -172,7 +179,7 @@ export const RIG_SUBJECTS = {
   player: {
     name: "Player / humanoid",
     data: playerMotion,
-    defaults: defaultPlayerMotion,
+    defaults: defaultNativePlayerMotion,
     replace: replacePlayerMotion,
     draw: drawPlayer,
     sprite: "explorer-teal",
@@ -289,5 +296,6 @@ RIG_SUBJECTS.boatless_captain={...RIG_SUBJECTS.player,name:"Boatless Captain / c
 RIG_SUBJECTS.coatless_captain={...RIG_SUBJECTS.boatless_captain,name:"Coatless Captain / controller humanoid",sprite:"coatless_captain"};
 RIG_SUBJECTS.april={...RIG_SUBJECTS.boatless_captain,name:"April / controller humanoid",sprite:"april"};
 RIG_SUBJECTS.captain={...RIG_SUBJECTS.boatless_captain,name:"Captain / controller humanoid",sprite:"captain"};
+RIG_SUBJECTS.lesser_beholder={...RIG_SUBJECTS.beholder,name:'Lesser beholder / shared beholder rig',sprite:'lesser_beholder'};
 export const rigSubject = (name) =>
   RIG_SUBJECTS[name?.startsWith("explorer") ? "player" : name==='baby_spider'?'spider':name==='tsetse'?'tsetse':name];

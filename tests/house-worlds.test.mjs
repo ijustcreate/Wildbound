@@ -30,12 +30,12 @@ test('Wildbound starts in the house and keeps campaign/player state across froze
  choose(g,'forest');travelHouseWorlds(g,5);assert.equal(g.scenery,forest);assert.equal(g.time,56);assert.equal(p.progress,25);
 });
 
-test('all six travel cards are distinct and a full bag visits every environment',()=>{
+test('all nine travel cards are distinct and a full bag visits every environment',()=>{
  const g=setup(),seen=[];
- for(let n=0;n<6;n++){assert.ok(travelHouseWorlds(g,5));seen.push(g.generatedEnvironment);assert.ok(travelHouseWorlds(g,8));}
+ for(let n=0;n<HOUSE_WORLD_DESTINATIONS.length;n++){assert.ok(travelHouseWorlds(g,5));seen.push(g.generatedEnvironment);assert.ok(travelHouseWorlds(g,8));}
  assert.deepEqual([...seen].sort(),[...HOUSE_WORLD_DESTINATIONS].sort());
  for(const key of HOUSE_WORLD_DESTINATIONS){assert.match(WORLD_TRAVEL_EVENTS[key].verse,/five or eight/);assert.match(WORLD_TRAVEL_EVENTS[key].tip,/whole party/);}
- assert.equal(new Set(Object.values(WORLD_TRAVEL_EVENTS).map(e=>e.name)).size,7);
+ assert.equal(new Set(Object.values(WORLD_TRAVEL_EVENTS).map(e=>e.name)).size,10);
 });
 
 test('Wildbound map travel carries every living owned follower with its player and back',()=>{

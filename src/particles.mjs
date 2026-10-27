@@ -6,9 +6,12 @@ export {loadParticleSprites,particleSpriteStatus} from './particle-sprites.mjs';
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
 export const DEFAULT_EFFECTS={
+  'cinder-trail':{name:'Cinder · ground fire trail',count:7,life:1.4,speedX:0,speedY:-14,spread:6,gravity:-3,size:2,orbit:2,shape:'square',blend:'lighter',start:'#ffe69b',end:'#e34d22'},
+  'portal-runes':{name:'Storage portal · flowing energy',description:'Short wisps curl around the aperture and fade into its dark center.',count:28,life:2.8,speedX:0,speedY:-5,spread:4,gravity:0,size:1,orbit:20,shape:'square',motion:'portal',blend:'lighter',start:'#b5f3dc',end:'#386a79',loop:true},
   ...CARTOON_EFFECTS,
   ...PIXEL_EFFECTS,
   'arrow-splash':{name:'Arrow water impact',count:7,life:.4,speedX:0,speedY:-22,spread:12,gravity:95,size:2,orbit:3,shape:'square',blend:'source-over',start:'#e3fffa',end:'#4da8c1'},
+  'rock-fragments':{name:'Rock projectile fragments',count:12,life:.42,speedX:0,speedY:-38,spread:32,gravity:110,size:3,orbit:3,shape:'square',blend:'source-over',start:'#b6b3a5',end:'#47544c'},
   'salvage-hands':{name:'Salvage hand sparks',count:6,life:.45,speedX:0,speedY:-5,spread:4,gravity:2,size:1,orbit:2,shape:'square',blend:'lighter',start:'#e7f8de',end:'#7dcdd8'},
   'salvage-burst':{name:'Salvage completion burst',count:12,life:.3,speedX:0,speedY:-9,spread:12,gravity:22,size:1,orbit:3,shape:'star',blend:'lighter',start:'#fff0be',end:'#cbb17e'},
   'purple-aura':{name:'Necromancer purple aura',count:28,life:1.2,speedX:0,speedY:-8,spread:38,gravity:-4,size:3,orbit:14,shape:'star',blend:'lighter',start:'#f2b4ff',end:'#6e2eaa'},
@@ -19,8 +22,9 @@ export const DEFAULT_EFFECTS={
   bubbles:{name:'Diving bubbles',count:7,life:.65,speedX:0,speedY:-12,spread:12,gravity:0,size:2,orbit:3,shape:'square',blend:'source-over',start:'#dbfff9',end:'#6ab8ce'},
   'swim-wake':{name:'Swimming wake',count:10,life:.65,speedX:0,speedY:2,spread:20,gravity:0,size:2,orbit:8,shape:'square',blend:'source-over',start:'#b5f4e9',end:'#3c91a7'},
   torch:{name:'Temple torch fire',count:44,life:1.1,speedX:0,speedY:-25,spread:7,gravity:-9,size:4,orbit:0,shape:'square',blend:'lighter',start:'#fff0a3',end:'#e74c21'},
-  'campfire-flame':{name:'Campfire flame',count:54,life:1.2,speedX:0,speedY:-28,spread:15,gravity:-10,size:5,orbit:2,shape:'square',blend:'lighter',start:'#fff1a2',end:'#e24a20',loop:true},
-  'campfire-smoke':{name:'Campfire smoke',count:18,life:3.2,speedX:2,speedY:-14,spread:12,gravity:-2,size:5,orbit:4,shape:'square',blend:'source-over',start:'#d4d0b7',end:'#58645c',loop:true},
+  'campfire-flame':{name:'Campfire flame',count:20,life:1.2,speedX:0,speedY:-28,spread:12,gravity:-10,size:5,orbit:2,shape:'square',blend:'lighter',start:'#fff1a2',end:'#e24a20',loop:true},
+  'campfire-smoke':{name:'Campfire smoke',count:7,life:3.2,speedX:2,speedY:-14,spread:9,gravity:-2,size:5,orbit:3,shape:'square',blend:'source-over',start:'#d4d0b7',end:'#58645c',loop:true},
+  'campfire-embers':{name:'Campfire embers',count:7,life:.8,speedX:0,speedY:-34,spread:20,gravity:-4,size:2,orbit:4,shape:'square',blend:'lighter',start:'#ffe58b',end:'#e34d20',loop:true},
   rain:{name:'Rain study (preview only)',count:160,life:.8,speedX:-28,speedY:230,spread:500,gravity:0,size:1,orbit:0,shape:'streak',blend:'source-over',start:'#abcbd8',end:'#608fa8'},
   knockout:{name:'Knocked-out stars',count:7,life:2,speedX:0,speedY:-12,spread:3,gravity:0,size:3,orbit:15,shape:'star',blend:'source-over',start:'#fff5ba',end:'#d6ad5b'},
 };
@@ -32,12 +36,25 @@ export function saveEffect(id,value){if(!/^[a-z0-9_-]{1,60}$/.test(id)||!validEf
 const noise=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
 const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 export function particleSamples(effect,time,seed=0){
+ if(effect.motion==='portal')return portalParticleSamples(effect,time,seed);
  const points=[];
  for(let i=0;i<effect.count;i++){
   const phase=time/effect.life+i/effect.count,cycle=Math.floor(phase),u=phase-cycle,t=u*effect.life,n=i+cycle*719+seed;
   const angle=time*2+i*6.283/effect.count;
   points.push({x:(noise(n)-.5)*effect.spread+effect.speedX*t+Math.cos(angle)*effect.orbit,y:effect.speedY*t+.5*effect.gravity*t*t+Math.sin(angle)*effect.orbit*.28,u,size:effect.size*(1-u*.7),alpha:Math.min(1,u*12)*(1-u)});
  }return points;
+}
+export function portalParticleSamples(effect,time,seed=0){
+ const t=Number.isFinite(time)?time:0;
+ return Array.from({length:effect.count},(_,i)=>{
+  const phase=t/effect.life+i/effect.count,u=phase-Math.floor(phase),n=i+seed;
+  const position=v=>{
+   const a=n*2.399963+v*2.4+t*.3,r=(1.2-v*.55)*(effect.orbit/20)+(noise(n)-.5)*effect.spread*.025;
+   return {x:Math.cos(a)*19*r+effect.speedX*v*.15,y:-29+Math.sin(a)*39*r+effect.speedY*v*.3};
+  };
+  const p=position(u),tail=position(Math.max(0,u-.026));
+  return {...p,tailX:tail.x,tailY:tail.y,u,size:effect.size,alpha:Math.sin(u*Math.PI)**1.5*.65};
+ });
 }
 const frames=new WeakMap(),palettes=new WeakMap();
 export function beginParticleFrame(c,{budget=768,maxEmitters=48,quality=1,reducedMotion=false}={}){
@@ -60,6 +77,17 @@ export function drawParticleEffect(c,id,x,y,time,seed=0){
  }
  let palette=palettes.get(effect);if(!palette||palette.start!==effect.start||palette.end!==effect.end){const a=rgb(effect.start),b=rgb(effect.end);palette={start:effect.start,end:effect.end,colors:Array.from({length:16},(_,n)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*n/15)).join(',')})`)};palettes.set(effect,palette);}
  const count=Math.min(effect.count,Math.floor(effect.count*(frame?.quality??1))||1);
+ if(effect.motion==='portal'){
+  const samples=portalParticleSamples({...effect,count},time,seed);
+  for(const p of samples){
+   if(!spend())break;
+   const s=Math.max(1,Math.round(p.size));
+   c.fillStyle=palette.colors[Math.min(15,Math.floor(p.u*16))];
+   c.globalAlpha=alpha*p.alpha*.25;c.fillRect(Math.round(p.tailX),Math.round(p.tailY),s,s);
+   c.globalAlpha=alpha*p.alpha;c.fillRect(Math.round(p.x),Math.round(p.y),s,s);
+  }
+  c.restore();return;
+ }
  for(let i=0;i<count;i++){
   if(!spend())break;
   const phase=time/effect.life+i/count,cycle=Math.floor(phase),u=phase-cycle,t=u*effect.life,n=i+cycle*719+seed,angle=time*2+i*6.283/count;

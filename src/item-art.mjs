@@ -1,4 +1,8 @@
+import {drawCarvedBoneIcon,drawCarverCrown} from './bone-carver-art.mjs';
+import {drawBroomIcon,drawBroom,drawWitchHat} from './broom-art.mjs';
+import {paintSkeletonItem} from './skeleton-item-art.mjs';
 import {paintReaperItem} from './reaper-art.mjs';
+import {paintChristmasItem} from './christmas-art.mjs';
 import {paintGhostItem} from './ghost-art.mjs';
 import { ITEMS, itemKind } from "./items.mjs";
 import { mixGearColor, paintGearIcon } from './gear-art.mjs';
@@ -30,6 +34,35 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  const custom=ITEMS[type]?.artPixels;if(Array.isArray(custom)&&custom.length===576){custom.forEach((color,i)=>{if(typeof color==='string'&&/^#[0-9a-f]{6}$/i.test(color)){c.fillStyle=color;c.fillRect(i%24,Math.floor(i/24),1,1);}});return;}
+  if(paintSkeletonItem(c,type))return;
+  if (type === 'skeleton_long_axe') {
+    c.fillStyle = '#342d2d'; c.fillRect(9, 1, 6, 13);
+    c.fillStyle = '#c5c5b8'; c.fillRect(10, 2, 4, 20); c.fillRect(9, 11, 6, 2);
+    c.fillStyle = '#777d7b'; c.fillRect(11, 4, 1, 14); c.fillRect(7, 3, 4, 2);
+    c.fillRect(4, 2, 4, 3); c.fillRect(2, 4, 4, 6); c.fillRect(4, 10, 4, 3);
+    c.fillStyle = '#e2dfca'; c.fillRect(4, 3, 2, 2); c.fillRect(3, 5, 2, 4); c.fillRect(5, 10, 2, 2);
+    c.fillStyle = '#59433a'; c.fillRect(10, 20, 4, 2); c.fillRect(9, 22, 6, 1);
+    return;
+  }
+  if(['cave_crystal_shard','veil_shard'].includes(type)){const veil=type==='veil_shard';c.fillStyle=veil?'#34273f':'#244b50';c.fillRect(7,5,10,15);c.fillRect(10,2,5,20);c.fillStyle=veil?'#9f78b8':'#73bdb9';c.fillRect(8,7,5,12);c.fillRect(11,3,3,16);c.fillStyle=veil?'#d4b5e2':'#caeade';c.fillRect(9,8,2,8);c.fillRect(12,4,1,5);if(veil){c.fillStyle='#211e34';c.fillRect(12,12,4,2);c.fillRect(10,14,3,2);}else{c.fillStyle='#4f949e';c.fillRect(3,13,4,8);c.fillStyle='#a6e5d9';c.fillRect(4,12,2,7);}return;}
+
+  if(type==='car_key'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(4,4,9,9,'#59452c');r(5,5,7,7,'#e6c66f');r(7,7,3,3,'#59452c');
+    r(11,10,3,10,'#e6c66f');r(12,16,5,2,'#e6c66f');r(12,20,5,2,'#e6c66f');r(5,5,5,1,'#ffedb2');return;
+  }
+  if(type==='car_engine_part'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(5,6,14,14,'#30383c');r(6,7,12,12,'#84939a');r(8,4,3,3,'#b9c4bf');r(14,3,3,4,'#b9c4bf');
+    r(8,10,8,6,'#485861');r(10,11,4,4,'#a9b8b9');r(6,8,1,10,'#d7dfd0');r(17,11,4,3,'#84939a');return;
+  }
+  if(type==='april_blade'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(11,2,3,12,'#413a47');r(11,3,2,10,'#eeecef');r(13,5,1,8,'#a2a3b8');
+    r(7,13,11,3,'#76512f');r(8,13,9,1,'#e7c66e');r(11,16,3,5,'#754936');
+    r(10,20,5,2,'#e7c66e');r(11,14,3,2,'#659d82');return;
+  }
   if(type==='alan_medallion'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(5,3,2,8,'#815a38');r(17,3,2,8,'#815a38');r(7,11,10,9,'#6b482b');r(8,12,8,7,'#c79a50');r(10,13,4,5,'#edc977');r(11,14,2,3,'#607452');return;}
   if(type==='alan_jungle_knife'){
     const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
@@ -43,6 +76,7 @@ export function paintItem(c, type) {
   if(type==='trial_letter'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(5,2,14,20,'#493f31');r(6,3,12,18,'#eddbad');r(9,6,6,1,'#786a53');r(8,9,8,1,'#786a53');r(8,12,7,1,'#786a53');r(10,16,4,3,'#a55742');return;}
   if(type==='mosquito_charm'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(10,2,4,3,'#d7a963');r(9,5,6,2,'#473a28');r(6,7,4,5,'#b8ce86');r(14,7,4,5,'#b8ce86');r(11,7,2,12,'#8b6336');r(10,9,4,3,'#e4bf75');r(7,13,3,1,'#473a28');r(14,13,3,1,'#473a28');r(12,18,1,4,'#e4bf75');return;}
   if(type==='dark_essence'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(8,5,8,14,'#372241');r(5,10,14,7,'#372241');r(9,6,6,13,'#795195');r(7,11,10,5,'#a269cb');r(10,8,3,5,'#d2adeb');r(11,2,2,3,'#a269cb');return;}
+  if(paintChristmasItem(c,type))return;
   if(paintReaperItem(c,type))return;
   if(paintGhostItem(c,type))return;
   if(paintPumpkinItem(c,type))return;
@@ -87,7 +121,12 @@ export function paintItem(c, type) {
     c.fillStyle=color;c.fillRect(x,y,1,1);
   }
 }
+function iconPart(c,paint,sx,sy,ox,oy){const pen={fillStyle:'',fillRect(x,y,w,h){const left=Math.max(0,Math.round(ox+x*sx)),top=Math.max(0,Math.round(oy+y*sy)),right=Math.min(24,Math.max(left+1,Math.round(ox+(x+w)*sx))),bottom=Math.min(24,Math.max(top+1,Math.round(oy+(y+h)*sy)));if(right>left&&bottom>top){c.fillStyle=this.fillStyle;c.fillRect(left,top,right-left,bottom-top);}}};paint(pen);}
 function paintItemBase(c, type) {
+  if(ITEMS[type]?.carvedAnimal){drawCarvedBoneIcon(c,ITEMS[type].carvedAnimal);return;}
+  if(type==='bone_carver_crown'){iconPart(c,p=>drawCarverCrown(p,{x:0,y:0},0),.8,.6,12,10);return;}
+  if(type==='flying_broom'||type==='mounted_broom'){iconPart(c,p=>drawBroom(p,{pelvis:{x:0,y:0}},6),.34,.9,14,10);if(type==='mounted_broom'){c.fillStyle='#6aa27f';c.fillRect(17,3,5,4);c.fillStyle='#dcebc9';c.fillRect(18,4,2,1);}return;}
+  if(type==='witch_hat'){iconPart(c,p=>drawWitchHat(p,{x:0,y:0},0),.8,.8,12,19);return;}
   if(type==='coffin_lid_shield') {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     // Narrow head, broad shoulders and a tapered foot: a coffin lid, not a kite.
@@ -773,10 +812,7 @@ export function drawItemPart(
 }
 export function lootSpot(game, x, y) {
   const clear = (xx, yy, space = true) =>
-    xx >= 24 &&
-    yy >= 24 &&
-    xx <= 1576 &&
-    yy <= 1576 &&
+    (game.mapMode==='boundless'||xx>=24&&yy>=24&&xx<=1576&&yy<=1576) &&
     !game.blocked(xx, yy, 12) &&
     (!space || game.loot.every((l) => Math.hypot(l.x - xx, l.y - yy) >= 20));
   if (clear(x, y)) return { x, y };
@@ -787,6 +823,7 @@ export function lootSpot(game, x, y) {
         yy = Math.round(y + Math.sin(a) * radius);
       if (clear(xx, yy)) return { x: xx, y: yy };
     }
+  if(game.mapMode==='boundless')return {x,y};
   return {
     x: Math.max(24, Math.min(1576, x)),
     y: Math.max(24, Math.min(1576, y)),

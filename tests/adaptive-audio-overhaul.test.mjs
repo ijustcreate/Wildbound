@@ -12,7 +12,7 @@ const world=()=>({phase:'play',seed:1,environment:'forest',time:1,players:[{id:1
 const enemy=extra=>({kind:'lion',hp:100,x:160,y:100,state:'hunt',moving:false,...extra});
 const ticks=(threat,g,n=10,options={})=>{let value;for(let i=0;i<n;i++)value=threat.update(g,.1,true,options);return value;};
 test('fixed level pairs reference existing assets and keep explicit/random options',()=>{
- assert.deepEqual(Object.keys(LEVEL_MUSIC_PAIRS),['forest','desert','ice','temple','house','tv','lobby','beach','graveyard']);
+ assert.deepEqual(Object.keys(LEVEL_MUSIC_PAIRS),['forest','desert','ice','temple','house','tv','lobby','beach','graveyard','swamp','caverns','shadow']);
  for(const level of Object.keys(LEVEL_MUSIC_PAIRS)){
   const a=levelMusicPair(level),b=levelMusicPair(level);
   assert.equal(a.calm.id,b.calm.id);assert.notEqual(a.calm.id,a.combat.id);assert.equal(a.approximate,true);

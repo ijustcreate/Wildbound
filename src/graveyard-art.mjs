@@ -1,4 +1,6 @@
+import {drawHoneyCat} from './honey-cat.mjs';
 import {boundlessTerrainAt} from './boundless-world.mjs';
+import {applyTreeFall} from './tree-fall.mjs';
 import {graveyardHash} from './graveyard-world.mjs';
 import {drawPumpkinCrop} from './pumpkin-art.mjs';
 
@@ -205,11 +207,17 @@ function tree(c,p,forest=false) {
   const branches=v===1?[[.48,-.49,.10,-.77,6],[.70,-.64,.42,-.73,3],[.31,-.52,.20,-.90,3]]:
     v===4?[[-.35,-.47,-.76,-.65,5],[.23,-.62,.62,-.77,4],[-.76,-.65,-.82,-.82,2],[.62,-.77,.76,-.93,2]]:
     [[-.44,-.47,-.72,-.70,5],[.39,-.51,.69,-.69,5],[-.72,-.70,-.84,-.88,3],[.69,-.69,.84,-.89,3]];
-  for(const [y,x1,y1,x2,w] of branches){
-    const originX=midX+(crownX-midX)*((-.45-y)/Math.max(.1,Math.abs(crownY-midY)));
-    line(c,originX,h*y,x1*h,y1*h,'#2b3530',w);
-    if(v===3){line(c,x1*h,y1*h,x2*h,(y1+.14)*h,'#465044',Math.max(1,w-2));}
-    else {line(c,x1*h,y1*h,x2*h,y1*h-.1*h,'#465044',Math.max(1,w-2));line(c,x2*h,y1*h-.1*h,x2*h*1.08,y1*h-.2*h,'#465044',2);}
+  // Each tuple is a branch segment (x1,y1,x2,y2), not a height plus
+  // three offsets. The old interpretation put every right branch below ground.
+  for(const [index,[x1,y1,x2,y2,w]] of branches.entries()){
+    const along=Math.max(0,Math.min(1,(-y1+midY)/Math.max(.1,midY-crownY))),originX=midX+(crownX-midX)*along;
+    if(Math.abs(x1)<.55||!branches.some((b,i)=>i<index&&b[2]===x1&&b[3]===y1)){
+      const bendX=(originX+x1*h)*.5;
+      line(c,originX,h*(y1+.13),bendX,h*(y1+.045),'#2b3530',w);
+      line(c,bendX,h*(y1+.045),x1*h,h*y1,'#2b3530',Math.max(1,w-1));
+    }
+    line(c,x1*h,y1*h,x2*h,y2*h,'#2b3530',Math.max(1,w-1));
+    line(c,x1*h,y1*h,x2*h,y2*h,'#465044',Math.max(1,w-3));
   }
   ivy(c,-6,-1,26,p.x);
   if(forest) {
@@ -255,7 +263,7 @@ function leaflessTree(c,p,forest=false) {
   const cutY=-12,progress=Math.max(0,Math.min(1,p.falling/1.1));
   const angle=(p.fallDirection || 1)*Math.PI/2*(.08*progress+.92*progress**2.2);
   const h=p.size || 120;
-  c.save();c.translate(0,cutY);c.rotate(angle);c.translate(0,-cutY);
+  c.save();c.translate(0,cutY);applyTreeFall(c,p,angle);c.translate(0,-cutY);
   c.globalAlpha*=Math.max(0,Math.min(1,(1.5-p.falling)/.25));
   c.beginPath();c.rect(-h,-h-16,h*2,h+16+cutY);c.clip();
   tree(c,p,forest);c.restore();
@@ -281,6 +289,7 @@ export function drawGraveyardProp(c,p,time=0,g) {
 
 export function drawGraveyardCritter(c,a,time=0) {
   if(!['grave_moth','crypt_beetle','graveyard_cat'].includes(a?.kind))return false;
+  if(a.kind==='graveyard_cat'){c.save();c.translate(Math.round(a.x),Math.round(a.y));drawHoneyCat(c,a,time);c.restore();return true;}
   c.save();c.translate(Math.round(a.x),Math.round(a.y));
   const phase=time+(a.phase || 0),stride=Math.sin(phase*12)>0?1:-1;
   if(a.kind==='grave_moth') {

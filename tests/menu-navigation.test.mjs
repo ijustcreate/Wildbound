@@ -23,3 +23,10 @@ test('disabled and hidden controls are skipped', () => {
   b.disabled=true;
   assert.equal(spatialMenuNeighbor([a,b,c],a,1,0),c);
 });
+
+test('creator grid moves between the nearest visible color and preview controls', () => {
+  const rotate=button(10,0),skin=button(110,0),hair=button(110,50),shirt=button(110,100),pants=button(110,150),shoes=button(110,200);
+  const cells=[rotate,skin,hair,shirt,pants,shoes];
+  assert.equal(spatialMenuNeighbor(cells,skin,0,1),hair);
+  assert.equal(spatialMenuNeighbor(cells,rotate,1,0),skin);
+});

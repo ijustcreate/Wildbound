@@ -1,0 +1,98 @@
+const {app,BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),base=process.env.WILDBOUND_VERIFY_APP||root,out=path.join(root,'test-output','lobby-join-controls');
+fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));app.disableHardwareAcceleration();
+app.whenReady().then(async()=>{
+ const win=new BrowserWindow({show:false,width:1280,height:850,useContentSize:true,webPreferences:{backgroundThrottling:false}});win.webContents.setAudioMuted(true);
+ const errors=[];win.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});
+ try{
+  await win.loadURL('about:blank');win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Debugger.enable');
+  await win.webContents.debugger.sendCommand('Debugger.setBreakpointByUrl',{urlRegex:'src/debug-tools\\.mjs$',lineNumber:3,condition:'(window.lobbyJoinContext=ctx,false)'});
+  await win.webContents.debugger.sendCommand('Page.enable');
+  await win.webContents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument',{source:"if(location.protocol==='file:')localStorage.setItem('wildbound-mapping',JSON.stringify({attack:2,jump:0,dodge:5,loot:1,trap:10,interact:3,pause:8,board:4,potion:7,block:6,inventory:9,portal:13,bait:12,field:11}));"});
+  await win.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});await win.webContents.executeJavaScript('window.wildboundBoot.ready');
+  const result=await win.webContents.executeJavaScript(`(async()=>{
+   const raf=requestAnimationFrame;window.requestAnimationFrame=()=>0;await new Promise(raf);
+   const ctx=window.lobbyJoinContext,g=ctx.game,l=ctx.playableLobby;g.players=[];l.reset();ctx.show('lobby');ctx.renderRoster();
+   const checks=[],assert=(v,m)=>{if(!v)throw Error(m);checks.push(m);};
+   const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller','Sony DualSense Wireless Controller'].map((id,index)=>({id,index,mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
+   Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();
+   const set=(pad,key,on)=>pads[pad].buttons[key]={pressed:on,value:on?1:0};
+   const tick=()=>{const blocked=ctx.paused||!!document.querySelector('dialog[open]');const inputs=ctx.inputFrame();l.update(.05,inputs,blocked||ctx.paused||!!document.querySelector('dialog[open]'));ctx.heroUI.draw(g,ctx.renderer);return inputs;};
+   const press=(pad,key)=>{set(pad,key,true);const input=tick();set(pad,key,false);tick();return input;};
+   for(let index=0;index<pads.length;index++){
+    const hero=ctx.profiles.create('Pad explorer '+index);
+    press(index,0);const p=g.players.find(p=>p.device==='pad:'+index);assert(!!p,'Controller joins '+pads[index].id);
+    const cards=[...document.querySelectorAll('#roster .roster-card')];const card=cards.find(c=>c.hero===p);
+    assert(!card&&cards.length===index,'No placeholder nameplate before choosing explorer '+index);
+    const member=l.state.members.get(p.id);member.choice=l.available(p).findIndex(h=>h.id===hero.id);l.renderPanel(p);
+    ctx.renderRoster();assert(![...document.querySelectorAll('#roster .roster-card')].some(c=>c.hero===p),'Previewing explorer does not create nameplate '+index);
+    press(index,13);press(index,0);tick();ctx.renderRoster();
+    assert(p.profileId===hero.id,'Actual Choose confirms explorer '+index);
+    const selected=[...document.querySelectorAll('#roster .roster-card')].find(c=>c.hero===p);
+    assert(selected&&selected.closest('.lobby-world')&&selected.getBoundingClientRect().width>0,'Visible nameplate after choosing explorer '+index);
+    Object.assign(member,{x:220+index*280,y:350,faceX:0,faceY:-1,inventoryRelease:false});
+    assert(document.querySelector('#roster').textContent.includes(p.name),'Nameplate follows selected explorer '+index);
+    const input=press(index,12);assert(input[p.device].portal,'Actual D-pad Up input opens storage '+index);
+    assert(g.portals.some(d=>d.owner===p.id),'Storage portal owned by correct player '+index);
+    press(index,12);assert(!g.portals.some(d=>d.owner===p.id),'Fresh D-pad Up closes storage '+index);
+    press(index,6);let actor=l.practice.players.find(a=>a.id===p.id);assert(!actor.dashTime,'Left trigger does not dash '+index);
+    pads[index].axes[0]=1;set(index,7,true);const right=tick();actor=l.practice.players.find(a=>a.id===p.id);
+    assert(right[p.device].dodge&&!right[p.device].potion&&actor.dashTime>0,'Right trigger dashes without consuming potion '+index);
+    set(index,7,false);pads[index].axes[0]=0;tick();
+    press(index,8);assert(p.ui?.ownerDevice===p.device,'Left menu opens owner inventory in lobby '+index);
+    assert(ctx.heroUI.panels.get(p.id)?.getBoundingClientRect().width>0,'Lobby inventory is visibly rendered '+index);
+    press(index,8);assert(!p.ui,'Fresh left menu closes lobby inventory '+index);
+    press(index,8);set(index,2,true);tick();press(index,8);
+    actor=l.practice.players.find(a=>a.id===p.id);actor.dodge=0;member.x=300;member.y=300+index*80;
+    const beforeFreshDash=[member.x,member.y];pads[index].axes[0]=1;set(index,7,true);tick();
+    assert(actor.dashTime>0&&member.x>beforeFreshDash[0]&&actor.attack===0,'Fresh RT after inventory works while menu attack stays held '+index);
+    set(index,7,false);set(index,2,false);pads[index].axes[0]=0;tick();
+    const gear=p.equipment.hand1;p.equipment.hand1='sword';tick();
+    pads[index].axes[0]=1;set(index,6,true);tick();actor=l.practice.players.find(a=>a.id===p.id);
+    const swordHold=[actor.x,actor.y];for(let n=0;n<8;n++)tick();
+    assert(actor.holdingPosition&&!actor.moving&&Math.hypot(actor.x-swordHold[0],actor.y-swordHold[1])<.01,'Left trigger anchors a sword hero '+index);
+    set(index,6,false);pads[index].axes[0]=0;tick();p.equipment.hand1='bow';tick();
+    pads[index].axes[0]=1;set(index,6,true);tick();actor=l.practice.players.find(a=>a.id===p.id);
+    const hold=[actor.x,actor.y];for(let n=0;n<8;n++)tick();
+    assert(actor.bowAiming&&!actor.moving&&Math.hypot(actor.x-hold[0],actor.y-hold[1])<.01,'Left trigger holds position and aims ranged weapon '+index);
+    set(index,6,false);pads[index].axes[0]=0;p.equipment.hand1=gear;tick();
+    press(index,9);assert(ctx.paused&&document.querySelector('#pause-dialog').open&&!document.querySelector('#settings-dialog').open,'Right menu opens lobby Pause '+index);
+    const frozen=[member.x,member.y];pads[index].axes[0]=1;set(index,7,true);for(let n=0;n<8;n++)tick();
+    assert(member.x===frozen[0]&&member.y===frozen[1],'Lobby Pause freezes movement and dash '+index);
+    set(index,7,false);pads[index].axes[0]=0;tick();press(index,9);
+    assert(!ctx.paused&&!document.querySelector('#pause-dialog').open,'Fresh right menu resumes lobby '+index);
+   }
+   ctx.renderRoster();assert(document.querySelectorAll('#roster .roster-card').length===pads.length,'All joined nameplates remain visible');
+   ctx.show('play');assert(document.querySelector('#roster').parentElement.id==='play','Nameplates transfer to expedition HUD');ctx.show('lobby');assert(document.querySelector('#roster').closest('.lobby-world'),'Nameplates return to lobby without duplication');
+   ctx.show('play');
+   for(let index=0;index<pads.length;index++){
+    set(index,7,true);let input=ctx.inputFrame();assert(input['pad:'+index].dodge&&!input['pad:'+index].controlCycle,'Right trigger is expedition dash without follower cycling '+index);set(index,7,false);ctx.inputFrame();
+    ctx.boardPinned=false;
+    set(index,6,true);input=ctx.inputFrame();assert(input['pad:'+index].block&&input['pad:'+index].holdPosition&&!input['pad:'+index].dodge&&!ctx.boardPinned,'Left trigger is expedition hold/aim without opening board '+index);
+    const hero=g.players.find(p=>p.device==='pad:'+index),oldGear=hero.equipment.hand1;
+    g.phase='play';g.openingBoard=false;g.blocked=()=>false;g.terrain.fill('grass');g.enemies=[];g.scenery=[];
+    Object.assign(hero,{x:500+index*100,y:500,hp:100,ui:null,room:null,stun:0,frozen:0,sleeping:0,swimming:false,jumpHeight:0,groundHeight:0,jumpVelocity:0});hero.equipment.hand1='wand';
+    pads[index].axes[0]=1;pads[index].axes[3]=-1;
+    for(let n=0;n<8;n++)g.update(.02,ctx.inputFrame());
+    assert(hero.bowAiming&&hero.holdingPosition&&hero.x===500+index*100&&hero.y===500&&hero.faceY<-.9&&!ctx.boardPinned,'LT anchors and aims wand in expedition '+index);
+    set(index,6,false);pads[index].axes[0]=0;pads[index].axes[3]=0;hero.equipment.hand1=oldGear;ctx.inputFrame();
+    set(index,14,true);ctx.inputFrame();assert(ctx.boardPinned,'D-pad Left opens game board '+index);
+    ctx.inputFrame();assert(ctx.boardPinned,'Held D-pad Left does not flicker board '+index);
+    set(index,14,false);ctx.inputFrame();set(index,14,true);ctx.inputFrame();assert(!ctx.boardPinned,'Fresh D-pad Left closes game board '+index);set(index,14,false);ctx.inputFrame();
+    set(index,15,true);ctx.inputFrame();assert(!ctx.boardPinned,'D-pad Right loot labels do not open game board '+index);set(index,15,false);ctx.inputFrame();
+    const wolf={id:901+index,kind:'wolf',allyOwner:hero.id,x:hero.x+30,y:hero.y,hp:20,maxHp:20,faction:'ally',speed:90,state:'follow',cooldown:0};g.enemies=[wolf];
+    set(index,5,true);input=ctx.inputFrame();assert(input['pad:'+index].controlCycle&&!input['pad:'+index].dodge,'RB controls creatures without dashing '+index);g.update(.02,input);assert(hero.controlledFollowerId===wolf.id,'RB actually takes control of owned creature '+index);set(index,5,false);ctx.inputFrame();
+    set(index,5,true);g.update(.02,ctx.inputFrame());assert(!hero.controlledFollowerId,'Fresh RB returns control to hero '+index);set(index,5,false);ctx.inputFrame();g.enemies=[];
+    set(index,12,true);input=ctx.inputFrame();assert(input['pad:'+index].portal,'D-pad Up opens expedition storage '+index);set(index,12,false);ctx.inputFrame();
+    set(index,8,true);input=ctx.inputFrame();assert(input['pad:'+index].inventory&&!document.querySelector('#pause-dialog').open,'Left menu is expedition inventory '+index);set(index,8,false);ctx.inputFrame();
+    press(index,9);assert(ctx.paused&&document.querySelector('#pause-dialog').open,'Right menu is expedition pause '+index);document.querySelector('#resume-button').click();tick();
+   }
+   ctx.show('lobby');
+   return {checks,physicalControllersTested:false};
+  })()`);
+  win.setContentSize(1281,850);await new Promise(r=>setTimeout(r,150));win.setContentSize(1280,850);
+  await win.webContents.executeJavaScript('window.lobbyJoinContext.renderRoster();window.lobbyJoinContext.playableLobby.draw();');
+  await new Promise(r=>setTimeout(r,200));fs.writeFileSync(path.join(out,'lobby-nameplates.png'),(await win.webContents.capturePage()).toPNG());
+  if(errors.length)throw Error(errors.join('\n'));fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({...result,rendererErrors:errors},null,2));console.log(JSON.stringify(result));app.exit(0);
+ }catch(e){console.error(e);app.exit(1);}
+});

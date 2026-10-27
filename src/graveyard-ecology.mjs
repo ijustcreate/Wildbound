@@ -1,3 +1,4 @@
+import {perchReleasedCritter} from './broom-pets.mjs';
 import {graveyardHash,graveyardBlocked,GRAVEYARD_SAFE_AREA} from './graveyard-world.mjs';
 import {fleeGhostCritter} from './ghost-fear.mjs';
 import {drawGraveyardCritter} from './graveyard-art.mjs';
@@ -107,7 +108,7 @@ function fleeGraveyardCat(g,a,dt) {
     }
     if(!best)break;
     if(Math.abs(best.x-a.x)>.001)a.faceX=Math.sign(best.x-a.x);
-    a.x=best.x;a.y=best.y;a.moving=true;
+    a.faceY=best.y-a.y;a.faceX=best.x-a.x;a.x=best.x;a.y=best.y;a.moving=true;
   }
   flee.remaining=Math.max(0,finite(flee.remaining)-dt);
   if(!flee.remaining){delete a.flee;a.homeX=a.x;a.homeY=a.y;a.idle='sit';a.moving=false;}
@@ -116,6 +117,7 @@ function fleeGraveyardCat(g,a,dt) {
 /** Adapter also works on live animals owned by initLivingEcosystem's runtime. */
 export function tickGraveyardCritter(g,a,dt,time=0,target=null) {
   if(!active(g)||g.phase!=='play'||g.paused||!known(a?.kind)||!Number.isFinite(dt)||dt<=0)return false;
+  if(perchReleasedCritter(g,a))return true;
   dt=Math.min(dt,1);time=finite(time);a.phase=finite(a.phase);a.moving=false;
   if(fleeGhostCritter(g,a,dt,(x,y)=>graveyardHabitat(g,a.kind,x,y)))return true;
   const cat=a.kind==='graveyard_cat';
@@ -143,7 +145,7 @@ export function tickGraveyardCritter(g,a,dt,time=0,target=null) {
     const mx=dx/d*step/steps,my=dy/d*step/steps;
     for(const [x,y] of [[a.x+mx,a.y+my],[a.x+mx,a.y],[a.x,a.y+my]]) {
       if(Math.hypot(x-a.x,y-a.y)<.001||!graveyardHabitat(g,a.kind,x,y))continue;
-      a.faceX=x-a.x || a.faceX;a.x=x;a.y=y;a.moving=true;break;
+      a.faceX=x-a.x || a.faceX;a.faceY=y-a.y;a.x=x;a.y=y;a.moving=true;break;
     }
   }
   return true;
@@ -161,7 +163,7 @@ export function tickSurfaceEcology(g,dt) {
 export function drawGraveyardEcology(ctx,g,layer='ground') {
   if(!active(g)||g.phase==='won'||!['ground','air'].includes(layer))return false;
   const s=g.graveyard.surfaceEcology;if(!s)return false;
-  for(const a of s.animals)if((a.kind==='grave_moth')===(layer==='air')) {
+  for(const a of s.animals)if(!a.broomPerched&&(a.kind==='grave_moth')===(layer==='air')) {
     if(Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(a.x-800,a.y-800)>g.bloom*430)continue;
     drawGraveyardCritter(ctx,a,s.time);
   }

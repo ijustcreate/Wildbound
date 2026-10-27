@@ -37,6 +37,14 @@ test('wand trigger aiming anchors movement and release fires along current input
     g.update(.02,{keyboard:{x:1}});assert.equal(p.bowAiming,false);assert.ok(p.x>500);
   }
 });
+test('boomerang uses hold-L stationary aiming and launches from the aimed facing on release',()=>{
+ const {g,p}=setup({hand1:'boomerang'}),x=p.x,y=p.y;
+ g.update(.05,{keyboard:{block:true,x:1,aimX:0,aimY:-1}});
+ assert.equal(p.bowAiming,true);assert.equal(p.moving,false);assert.equal(p.x,x);assert.equal(p.y,y);assert.equal(p.faceX,0);assert.equal(p.faceY,-1);
+ for(let i=0;i<6;i++)g.update(.05,{keyboard:{block:true,attack:true,aimX:0,aimY:-1}});
+ g.update(.02,{keyboard:{block:true,attack:false,aimX:0,aimY:-1}});
+ assert.equal(g.boomerangs.length,1);assert.ok(Math.abs(g.boomerangs[0].vx)<1e-8);assert.ok(g.boomerangs[0].vy<0);
+});
 test('network sanitization preserves mouse angle and analog deadzone',()=>{
   const v=cleanInput({aimX:300,aimY:-100});assert.ok(Math.abs(v.aimX/v.aimY+3)<1e-9);
   assert.deepEqual(cleanInput({aimX:0,aimY:-1}),{aimX:0,aimY:-1});

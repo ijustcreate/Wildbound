@@ -3,13 +3,14 @@ import {Game} from './core.mjs';
 import {structureBlocked} from './expansion.mjs';
 import {refreshVitals} from './items.mjs';
 import {restoreHunterPet,petRecord} from './hunter-pets.mjs';
+import {LOBBY_FLOOR,LOBBY_TV} from './lobby-geometry.mjs';
 
 export const LOBBY_FURNITURE=[
  // Match the visible lower-row tables; the old footprints were on the top wall.
  {id:'environment',kind:'table',x:578,y:551,w:94,h:12,surfaceHeight:39,lobbySurface:true,jumpable:true},
  {id:'dice-count',kind:'table',x:737,y:551,w:86,h:12,surfaceHeight:39,lobbySurface:true,jumpable:true},
  {id:'character-station',kind:'desk',x:593,y:175,w:84,h:11,surfaceHeight:50,lobbySurface:true,jumpable:true},
- {id:'television',kind:'table',x:709,y:172,w:152,h:12,surfaceHeight:78,lobbySurface:true,jumpable:true},
+ {id:'television',kind:'table',x:LOBBY_TV.x,y:LOBBY_TV.y,w:LOBBY_TV.w,h:LOBBY_TV.h,surfaceHeight:LOBBY_TV.height,lobbySurface:true,jumpable:true},
  {id:'starter-chest',kind:'table',x:894,y:551,w:112,h:12,surfaceHeight:44,lobbySurface:true,jumpable:true},
  {...LOBBY_BOARD},
 ];
@@ -27,9 +28,9 @@ export class LobbyPractice extends Game {
     for(const t of this.targets)Object.assign(t,{id:this.nextId++,kind:'practice_target',practiceTarget:true,hp:1e9,maxHp:1e9,combatText:[],state:'idle',speed:0,damage:0});
     this.enemies=this.targets;
   }
-  blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0,projectile=false,from=null){return x-radius<47||x+radius>978||y-radius<92||y+radius>568||structureBlocked(this,x,y,radius,false,offset,elevation,projectile,from);}
+  blocked(x,y,radius=8,_flying=false,_water=false,_doors=false,offset=0,elevation=0,projectile=false,from=null){return x-radius<LOBBY_FLOOR.left||x+radius>LOBBY_FLOOR.right||y-radius<LOBBY_FLOOR.top||y+radius>LOBBY_FLOOR.bottom||structureBlocked(this,x,y,radius,false,offset,elevation,projectile,from);}
   projectileBlocked(x,y,radius=1,impact=false){
-    if(x<48||x>978||y<92||y>568||structureBlocked(this,x,y,radius,false,0,0,true))return true;
+    if(x-radius<LOBBY_FLOOR.left||x+radius>LOBBY_FLOOR.right||y-radius<LOBBY_FLOOR.top||y+radius>LOBBY_FLOOR.bottom||structureBlocked(this,x,y,radius,false,0,0,true))return true;
     return false;
   }
   toggleTargets(){this.targetsMoving=!this.targetsMoving;return this.targetsMoving;}
@@ -57,9 +58,9 @@ export class LobbyPractice extends Game {
       a.equipment=structuredClone(p.equipment);a.inventory=structuredClone(p.inventory);
       (a.field||={}).quiver=p.field?.quiver;
       a.equipmentSockets=structuredClone(p.equipmentSockets||{});refreshVitals(a);
-      const active=!blocked&&!s.panel&&!p.ui&&!p.room&&!s.inventoryRelease&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
+      const active=!blocked&&!s.panel&&!p.ui&&!p.room&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
       commands[p.device]=active?{...inputs[p.device],inventory:false,portal:false}:{};
-      if(!active){a.charge=0;a.queuedAttack=null;a.previousInput={};a.dashTime=0;a.bowAiming=false;a.blocking=false;}
+      if(!active){delete a.swordStrike;delete a.swordFacing;a.swordHitPause=0;a.attack=0;a.charge=0;a.queuedAttack=null;a.previousInput={};a.dashTime=0;a.dashRecovery=0;a.slideX=a.slideY=0;a.bowAiming=false;a.holdingPosition=false;a.blocking=false;}
       a.consumeInput=false;
     }
     if(this.players.length&&!blocked){this.updateTargets(dt);super.update(dt,commands);}
@@ -67,7 +68,7 @@ export class LobbyPractice extends Game {
       const s=members.get(a.id);
       const player=players.find(p=>p.id===a.id);if(player&&(a.hunterPet||player.hunterPet))player.hunterPet=a.hunterPet;
       if(player&&a.brokenStickSlots?.length){for(const slot of a.brokenStickSlots)if(player.equipment[slot]==='stick'){player.equipment[slot]=null;if(player.equipmentSockets)delete player.equipmentSockets[slot];}a.brokenStickSlots=[];}
-      Object.assign(s,{x:a.x,y:a.y,step:a.step,faceX:a.faceX,faceY:a.faceY,moving:a.moving,attack:a.attack});
+      Object.assign(s,{x:a.x,y:a.y,step:a.step,faceX:a.faceX,faceY:a.faceY,moving:a.moving,attack:a.attack,jumpHeight:a.jumpHeight||0,groundHeight:a.groundHeight||0,wingHover:!!a.wingHover});
     }
     // Practice retains cooldowns but replenishes consumables from the selected hero.
     for(const a of this.players){const p=players.find(p=>p.id===a.id);a.inventory=structuredClone(p.inventory);}

@@ -2,10 +2,19 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { createHash, randomUUID } = require("node:crypto");
+// Electron can report a late failed request while the parent terminal or
+// launcher is already closing its stdio pipes. Keep that diagnostic from
+// becoming a second, uncaught main-process exception.
+for (const stream of [process.stdout, process.stderr]) {
+  stream?.on("error", (error) => {
+    if (error.code !== "EPIPE") throw error;
+  });
+}
 let window;
 const worldsSmoke=process.argv.includes('--worlds-smoke-test');
+const shadowPipelineSmoke=process.argv.includes('--shadow-pipeline-smoke-test');
 const bootSmoke = process.argv.includes('--boot-smoke-test')||worldsSmoke;
-const testMode = bootSmoke || process.argv.includes('--smoke-test');
+const testMode = bootSmoke || shadowPipelineSmoke || process.argv.includes('--smoke-test');
 const preview = process.argv.includes('--preview');
 if (preview) app.setPath('userData', path.join(app.getPath('appData'), 'Wildbound Night Hunt Preview'));
 let releaseControllerClaims = () => {};
@@ -180,6 +189,9 @@ app.whenReady().then(async () => {
   const houseDesignPath = path.join(app.getPath('userData'),'house-designs-v1.json');
   ipcMain.handle('house-designs-load',()=>store.read(houseDesignPath,'house'));
   ipcMain.handle('house-designs-save',(_e,data)=>store.write(houseDesignPath,data,'house'));
+  const locationDesignPath=path.join(app.getPath('userData'),'location-designs-v1.json');
+  ipcMain.handle('location-designs-load',()=>store.read(locationDesignPath,'locations'));
+  ipcMain.handle('location-designs-save',(_e,data)=>store.write(locationDesignPath,data,'locations'));
   const { RoomTransport } = require("./network.cjs");
   const room = new RoomTransport((data) => {
     if (!window.isDestroyed()) window.webContents.send("room-event", data);
@@ -204,7 +216,9 @@ app.whenReady().then(async () => {
     return true;
   });
   await window.loadFile("index.html");
-  if(worldsSmoke)
+  if(shadowPipelineSmoke)
+    await require('./scripts/shadow-pipeline-smoke.cjs')({window,testOutput,app});
+  else if(worldsSmoke)
     await require('./scripts/verify-worlds-desktop.cjs')({window,testOutput,app});
   else if (bootSmoke)
     await require('./scripts/boot-smoke.cjs')({window,testOutput,app});

@@ -1,3 +1,5 @@
+import {honeyCatMotion,validateHoneyCat,replaceHoneyCat} from './honey-cat.mjs';
+import {fireflyMotion,validateFireflyMotion,replaceFireflyMotion} from './firefly-motion.mjs';
 import {shoreGoblinMotion,validateShoreGoblinMotion,replaceShoreGoblinMotion} from './shore-goblin-motion.mjs';
 import {villagerMotion,defaultVillagerMotion,validateVillagerMotion,replaceVillagerMotion} from './villager-motion.mjs';
 import {reaperMotion,validateReaperMotion,replaceReaperMotion} from './reaper-motion.mjs';
@@ -169,6 +171,11 @@ const NIGHT_CREATURE_DEFAULTS = {
   elephant: { type: 'quadruped', hp: 260, speed: 44, damage: 24 },
   zebra: { type: 'quadruped', hp: 65, speed: 110, damage: 9 },
   pelican: { type: 'winged', hp: 55, speed: 85, damage: 10 },
+  scorpion_boss:{type:'quadruped',hp:420,speed:46,damage:24},
+  werewolf:{type:'humanoid',hp:115,speed:85,damage:17},
+  chicken:{type:'winged',hp:22,speed:88,damage:0},
+  squashling:{type:'humanoid',hp:72,speed:48,damage:13},
+  fox: {type:'quadruped',hp:48,speed:92,damage:9},
 };
 export function creatureDefaults(kind) {
   const night = NIGHT_CREATURE_DEFAULTS[kind];
@@ -193,7 +200,7 @@ export function creatureDefaults(kind) {
   }
   return {
     name: kind,
-    faction: kind.startsWith("explorer") ? "ally" : "enemy",
+    faction: kind.startsWith("explorer") ? "ally" : kind==="chicken"?"neutral":"enemy",
     aiKind: kind,
     startArea: kind === "crocodile" ? "deep_water" : "any",
     rig,
@@ -362,6 +369,8 @@ for(const [kind,settings]of Object.entries(WILD_FAUNA_DEFAULTS)){
  if(DEER_KINDS.includes(kind))cfg.lootDrops=[{item:'meat',qty:kind==='stag'?2:1,chance:kind==='baby_deer'?50:100}];
  if(kind==='pig'||kind==='pig_spotted')cfg.lootDrops=[{item:'meat',qty:1,chance:100}];
 }
+creatures.scorpion_boss.lootDrops=[{item:'ash_reliquary',qty:1,chance:100,manualPickup:true,source:'Matriarch antivenom relic'},{item:'meat',qty:3,chance:100}];
+creatures.chicken.lootDrops=[{item:'meat',qty:1,chance:100}];
 Object.assign(creatures.bee.stats,{hp:27,speed:90,damage:7});creatures.bee.behaviors.dash=false;
 Object.assign(creatures.bee_hive.stats,{hp:160,speed:0,damage:0});Object.assign(creatures.bee_hive.behaviors,{hunt:false,melee:false,dash:false,jump:false});
 for (const kind of ["skeleton_unarmed", "skeleton_boss"]) {
@@ -660,12 +669,13 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   // Migrate missing built-in clips in memory; never replace authored keys/art.
   d={...d};
   for(const key of ['player','imp','zombie','ghost','succubus','banshee','warlock'])if(d[key])d[key]=upgradePlayerMotion(d[key]);
-  // Older authored villager rigs predate this built-in resting clip. Add only
-  // the missing default in memory; keep every authored pose and stored file.
-  if (d.villager && !d.villager.clips?.sit) {
+  // Older authored villager rigs predate built-in resting/pickup clips. Add
+  // only missing defaults in memory; keep every authored pose and stored file.
+  if (d.villager && ['sit','pickup'].some(name=>!d.villager.clips?.[name])) {
     const villager = structuredClone(d.villager);
     villager.clips ||= {};
-    villager.clips.sit = structuredClone(defaultVillagerMotion().clips.sit);
+    const defaults=defaultVillagerMotion();
+    for(const name of ['sit','pickup'])if(!villager.clips[name])villager.clips[name]=structuredClone(defaults.clips[name]);
     d = { ...d, villager };
   }
   if (Object.hasOwn(d, 'npcQuests') && !validateNpcQuestConfig(d.npcQuests))
@@ -681,6 +691,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   for (const [k, m] of Object.entries(d.beastMotions || {}))
     if (!beastMotions[k] || !validateBeastMotion(k, m))
       throw Error("Invalid beast rig");
+  if(d.graveyard_cat&&!validateHoneyCat(d.graveyard_cat))throw Error('Invalid cemetery cat rig');
+  if(d.marsh_firefly&&!validateFireflyMotion(d.marsh_firefly))throw Error('Invalid firefly rig');
   if (d.version !== 1) throw Error("Unsupported design version");
   if (d.alligator && !validateAlligatorMotion(d.alligator))
     throw Error("Invalid alligator rig");
@@ -740,6 +752,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if (d.lion) replaceLionMotion(d.lion);
   if (d.tiger) replaceTigerMotion(d.tiger);
   if (d.wolf) replaceWolfMotion(d.wolf);
+  if(d.graveyard_cat)replaceHoneyCat(d.graveyard_cat);
+  if(d.marsh_firefly)replaceFireflyMotion(d.marsh_firefly);
   if (d.murk_wolf) replaceMurkWolfMotion(d.murk_wolf);
   if (d.villager) replaceVillagerMotion(d.villager);
   if (d.oathless_captain) replaceOathlessCaptainMotion(d.oathless_captain);
@@ -778,6 +792,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     slime: slimeMotion,
     bat: batMotion,
     tsetse: batMotion,
+    graveyard_cat:honeyCatMotion,
+    marsh_firefly:fireflyMotion,
     rhino: rhinoMotion,
     ...beastMotions,
     ...skeletonMotions,
@@ -825,8 +841,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
         'breather',
         'shore_goblin',
         'slime',
-        'beholder','lesser_beholder','burrower',
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||e.environment==='graveyard'||['beholder','lesser_beholder','burrower','slime'].includes(e.kind))&&!d.events.some(old=>old.name===e.name),
+        'beholder','lesser_beholder','burrower','santa','bone_carver',
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||['graveyard','swamp','caverns','shadow'].includes(e.environment)||['beholder','lesser_beholder','burrower','slime','fox','dragon','squashling','scorpion_boss','werewolf'].includes(e.kind))&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }
@@ -871,6 +887,8 @@ export function definitionPack(events, items) {
     dreadmane_lion: dreadmaneLionMotion,
     slime: slimeMotion,
     bat: batMotion,
+    graveyard_cat:honeyCatMotion,
+    marsh_firefly:fireflyMotion,
     rhino: rhinoMotion,
     creatureMotions,
     nightMotions,

@@ -1,3 +1,4 @@
+import {drawDesignedRoom} from './location-designs.mjs';
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 let backdrop=null;
 function paintBackdrop(c){
@@ -10,7 +11,8 @@ function paintBackdrop(c){
  rect(c,27,99,3,57,'#796846');rect(c,23,148,11,12,'#bbb29a');rect(c,31,153,16,17,'#5c756b');rect(c,32,149,14,2,'#a6aaa0');rect(c,32,149,2,9,'#a6aaa0');rect(c,44,149,2,9,'#a6aaa0');
  rect(c,116,161,10,15,'#363d35');rect(c,117,162,8,2,'#7b9180');rect(c,117,157,8,1,'#b0b09b');rect(c,117,157,1,8,'#b0b09b');rect(c,124,157,1,8,'#b0b09b');rect(c,122,143,2,21,'#8d7954');rect(c,119,145,8,3,'#b6ac8d');
 }
-export function drawStorageBackdrop(c){
+export function drawStorageBackdrop(c,design=undefined){
+ if(drawDesignedRoom(c,'storage',design))return;
  if(!backdrop&&globalThis.document){backdrop=document.createElement('canvas');backdrop.width=320;backdrop.height=240;paintBackdrop(backdrop.getContext('2d'));}
  if(backdrop)c.drawImage(backdrop,0,0);else paintBackdrop(c);
 }

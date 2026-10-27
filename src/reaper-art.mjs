@@ -50,11 +50,13 @@ export function reaperSkirt(c,p,d){
  }
  line(c,{x:a.x-4,y:a.y},{x:a.x+4,y:a.y},2,ink);rect(c,a.x-1,a.y-1,2,2,shade);
 }
-export function drawScythe(c,h,d,action,t,project,glow=false){
+export function drawScythe(c,h,d,action,t,project,glow=false,gripAxis=null){
  const active=action==='scythe_sweep'||action==='scythe_reap',reverse=action==='scythe_reap';
  const phase=t<.3?-.9:t<.65?-.9+(t-.3)/.35*2.2:1.3-(t-.65)/.35*1.3;
  const angle=active?phase*(reverse?-1:1):.12;
- const point=(x,z)=>{const v=project([x*Math.cos(angle)+z*Math.sin(angle),0,z*Math.cos(angle)-x*Math.sin(angle)],d);return {x:h.x+v.x,y:h.y+v.y};};
+ const length=gripAxis?Math.hypot(...gripAxis):0,axis=length>1e-5?gripAxis.map(v=>v/length):null;
+ const flat=axis?Math.hypot(axis[0],axis[1]):0,blade=flat>.05?[axis[1]/flat,-axis[0]/flat,0]:[1,0,0];
+ const point=(x,z)=>{const v=project(axis?axis.map((v,i)=>v*z+blade[i]*x):[x*Math.cos(angle)+z*Math.sin(angle),0,z*Math.cos(angle)-x*Math.sin(angle)],d);return {x:h.x+v.x,y:h.y+v.y};};
  line(c,point(0,-9),point(0,24),3,ink);line(c,point(0,-9),point(0,24),1,'#88633e');
  const arc=[[0,24],[-5,24],[-11,23],[-17,20],[-22,16],[-25,11]];
  for(let i=1;i<arc.length;i++){const a=point(...arc[i-1]),b=point(...arc[i]);if(glow)line(c,a,b,i<4?6:3,'#92efcf55');line(c,a,b,i<4?4:2,ink);line(c,a,b,i<4?3:1,glow?'#aff1d9':'#8d9a9e');line(c,{x:a.x,y:a.y+1},{x:b.x,y:b.y+1},.75,glow?'#f1ffe5':'#e1e4db');}

@@ -12,5 +12,5 @@ export const BOARD_TILE_PIXELS=Object.freeze([
  [722,200],[834,174],[954,170],[1071,183],[1176,217],[1253,285],
  [1243,365],[1152,402],[1050,371],[951,333],[865,362],[850,416],
 ].map(Object.freeze));
-export const BOARD_ENTRY_TILE_PIXELS=Object.freeze([[837,388],[881,405],[866,444],[822,426]].map(Object.freeze));
+export const BOARD_ENTRY_TILE_PIXELS=Object.freeze([[846,386],[879,406],[860,425],[829,403]].map(Object.freeze));
 export const boardImagePoint=([x,y])=>({x:x/BOARD_LAYOUT_WIDTH*280-140,y:y/BOARD_LAYOUT_HEIGHT*192-96});

@@ -36,10 +36,13 @@ test('world snapshots regenerate terrain and retain harvests, buildings, NPCs, e
 });
 test('streamed scenery changes and complete clearing persist after unload and reload',()=>{
  const g=fresh();g.players[0].x=3300;g.players[0].y=3300;updateBoundlessWorld(g,.05);
+ for(let n=0;n<120&&!g.boundlessLoadedChunks.length;n++)updateBoundlessWorld(g,.05);
  const chunk=g.boundlessLoadedChunks[0];assert.ok(chunk);const prefix='boundless:'+chunk.key.replace(',',':')+':';
  g.scenery=g.scenery.filter(p=>!p.id?.startsWith(prefix));checkpointBoundlessWorld(g);
  assert.ok(Object.values(g.boundlessChunkEdits[chunk.key].props).filter(p=>p===null).length>0);
  const saved=saveLocalWorld(g,1000),r=restoreLocalWorld(JSON.parse(JSON.stringify(saved)),1000);updateBoundlessWorld(r,.05);
+ for(let n=0;n<120&&!r.boundlessLoadedChunks.some(c=>c.key===chunk.key);n++)updateBoundlessWorld(r,.05);
+ assert.ok(r.boundlessLoadedChunks.some(c=>c.key===chunk.key),'the cleared region actually finished reloading');
  assert.equal(r.scenery.filter(p=>p.id?.startsWith(prefix)).length,0);
 });
 test('unchanged scenery is not serialized after ordinary runtime decoration',()=>{

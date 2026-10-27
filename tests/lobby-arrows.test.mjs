@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LobbyPractice,LOBBY_FIXTURES,LOBBY_FURNITURE} from '../src/lobby-practice.mjs';
+import {LOBBY_FLOOR} from '../src/lobby-geometry.mjs';
 
 const arrow=(x,y,vx=300,vy=0)=>({x,y,vx,vy,z:18,vz:0,angle:Math.atan2(vy,vx),damage:12,embedDepth:9,owner:999});
 const solids=[...LOBBY_FIXTURES,...LOBBY_FURNITURE];
 const impacts=['environment','dice-count','board','difficulty','starter-chest','character-station'].map(id=>{const f=solids.find(f=>f.id===id);return [id,f.x-24,f.y+f.h/2];});
-for(const [name,x,y] of [...impacts,['boundary',960,300]]){
+for(const [name,x,y] of [...impacts,['boundary',LOBBY_FLOOR.right-18,300]]){
   test(`Lobby arrows remain at the ${name} impact instead of disappearing or passing through`,()=>{
     const g=new LobbyPractice();g.arrows.push(arrow(x,y));
     for(let n=0;n<10;n++)g.tickAdventure(.02,{});

@@ -10,26 +10,33 @@ app.setPath('userData', fs.mkdtempSync(path.join(out, 'character-preview-')));
 app.disableHardwareAcceleration();
 app.whenReady().then(async () => {
   const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true } });
+  win.webContents.setAudioMuted(true);
   await win.loadFile(path.join(root, 'index.html'));
   await win.webContents.executeJavaScript('window.wildboundBoot.ready');
   const moduleURL = pathToFileURL(path.join(root, 'src/player-motion.mjs')).href;
   const rig = JSON.parse(fs.readFileSync(path.join(root, 'authored/rigs.json'), 'utf8')).player;
   const png = await win.webContents.executeJavaScript(`(async () => {
-    const {drawPlayer, directionVector} = await import(${JSON.stringify(moduleURL)});
-    const model = ${JSON.stringify(rig)};
+    const {drawPlayer, directionVector,upgradePlayerToNative} = await import(${JSON.stringify(moduleURL)});
+    const {drawVillager,villagerMotion} = await import('./src/villager-motion.mjs');
+    const {drawOathlessCaptain,oathlessCaptainMotion} = await import('./src/oathless-captain-motion.mjs');
+    const {loadHumanoidArt} = await import('./src/humanoid-hd.mjs');
+    await loadHumanoidArt();
+    const model = upgradePlayerToNative(${JSON.stringify(rig)});
     const canvas = document.createElement('canvas');
-    canvas.width = 1120; canvas.height = 900;
+    canvas.width = 1120; canvas.height = 1290;
     const c = canvas.getContext('2d'); c.imageSmoothingEnabled = false;
-    c.fillStyle = '#152b29'; c.fillRect(0,0,1120,900);
+    c.fillStyle = '#152b29'; c.fillRect(0,0,1120,1290);
     c.fillStyle = '#ead8a8'; c.font = 'bold 24px sans-serif';
     c.fillText('WILDBOUND / CHARACTER STUDY',28,38);
     c.font = '14px sans-serif';
     c.fillText('Shared runtime renderer · authored rig · eight directions · 4× native pixels',28,65);
     const rows = [
-      {label:'Explorer / idle', appearance:{skin:'#d9ab76',shirt:'#bb8c35',pants:'#655039',shoes:'#49372d',hair:'crop',hairColor:'#593923'}},
-      {label:'Explorer / run', animationAction:'run', appearance:{skin:'#d9ab76',shirt:'#bb8c35',pants:'#655039',shoes:'#49372d',hair:'crop',hairColor:'#593923'}},
+      {label:'Explorer / idle', appearance:{skin:'#d9ab76',shirt:'#3e756c',pants:'#38455e',shoes:'#49372d',hair:'crop',hairColor:'#613c32'}},
+      {label:'Explorer / run', animationAction:'run', appearance:{skin:'#d9ab76',shirt:'#3e756c',pants:'#38455e',shoes:'#49372d',hair:'crop',hairColor:'#613c32'}},
       {label:'Custom appearance', appearance:{skin:'#865437',shirt:'#39745b',pants:'#454d69',shoes:'#49372d',hair:'curls',hairColor:'#272c35'}},
       {label:'Equipment / idle', equipment:{hand1:'sword',hand2:'shield'}, appearance:{skin:'#f2d6b3',shirt:'#46799e',pants:'#49372d',shoes:'#272c35',hair:'ponytail',hairColor:'#a94955'}},
+      {label:'April / native villager rig', subject:'april', villagerId:'april'},
+      {label:'Oathless Captain / native rig', subject:'captain'},
     ];
     rows.forEach((row,i)=>{
       const y=104+i*195;
@@ -40,7 +47,10 @@ app.whenReady().then(async () => {
         c.save(); c.translate(x,y+160); c.scale(4,4);
         c.fillStyle='#101f20'; c.beginPath();c.ellipse(0,1,8,2,0,0,Math.PI*2);c.fill();
         const [faceX,faceY]=directionVector(d);
-        drawPlayer(c,{equipment:{},inventory:[],faceX,faceY,...row},0.16,model);
+        const actor={equipment:{},inventory:[],faceX,faceY,...row};
+        if(row.subject==='april')drawVillager(c,actor,.16,villagerMotion);
+        else if(row.subject==='captain')drawOathlessCaptain(c,actor,.16,oathlessCaptainMotion);
+        else drawPlayer(c,actor,0.16,model);
         c.restore();
       }
     });

@@ -1,4 +1,6 @@
 import {ITEMS,clearSlot,refreshVitals,give} from './items.mjs';
+import {dropTempleLoot} from './temple-loot.mjs';
+import {tickPresentUnwrap} from './christmas.mjs';
 import {critterContainer} from './critter-containers.mjs';
 export const SALVAGE_SECONDS=1.25;
 export function salvageYield(type,metadata={}){
@@ -13,7 +15,7 @@ export function salvageYield(type,metadata={}){
 }
 export function salvageReason(p){
  if(!p.ui||p.ui.panel!=='pack'||p.ui.shop||p.ui.socket)return 'Select gear in your backpack.';
- if(p.room)return 'Leave the storage room to salvage at your feet.';
+ if(p.room&&p.room!=='temple-upper')return 'Leave the storage room to salvage at your feet.';
  if(p.hp<=0||p.stun>0)return 'Cannot salvage while incapacitated.';
  const item=p.inventory[p.ui.index];
  if(!salvageYield(item?.type).length)return 'Only gear, relics and captured critters can be salvaged.';
@@ -23,6 +25,7 @@ export function salvageReason(p){
 // Requires a fresh hold for each item. Changing selection or performing another
 // inventory action cancels the hold instead of destroying the next selected item.
 export function tickSalvage(g,p,held,dt){
+ if(tickPresentUnwrap(g,p,held,dt))return;
  if(!held){delete p.salvageHold;return;}
  if(p.salvageHold?.latched)return;
  const reason=salvageReason(p),item=p.inventory[p.ui?.index];
@@ -53,8 +56,10 @@ export function tickSalvage(g,p,held,dt){
  if(lobbyPack)p.inventory=lobbyPack;
  else for(const [n,drop] of drops.entries()){
   const a=n*Math.PI*2/drops.length;
-  g.dropLoot(p.x+Math.cos(a)*18,p.y+Math.sin(a)*12,drop.type,drop.qty,'Salvaged by '+p.name,true);
-  const loot=g.loot.at(-1);if(loot)loot.salvageBorn=g.time;
+  let loot;
+  if(p.room==='temple-upper')loot=dropTempleLoot(g,p,drop.type,drop.qty);
+  else{g.dropLoot(p.x+Math.cos(a)*18,p.y+Math.sin(a)*12,drop.type,drop.qty,'Salvaged by '+p.name,true);loot=g.loot.at(-1);}
+  if(loot)loot.salvageBorn=g.time;
  }
  refreshVitals(p);p.ui.notice=lobbyPack?'Salvaged. Materials and socketed trinkets added to your backpack. Release to salvage again.':'Salvaged. Materials and socketed trinkets are at your feet. Release to salvage again.';
  g.uiRevision=(g.uiRevision||0)+1;g.persist();

@@ -66,7 +66,7 @@ export function nearbyScenery(list, x, y, radius = 0) {
       const key = `${Math.floor(p.x / 128)},${Math.floor(p.y / 128)}`;
       if (!index.cells.has(key)) index.cells.set(key, []);
       index.cells.get(key).push(p);
-      index.margin = Math.max(index.margin, p.size || 128);
+      index.margin = Math.max(index.margin, p.size || 128,p.width||0,p.depth||0);
     }
     indices.set(list, index);
   }

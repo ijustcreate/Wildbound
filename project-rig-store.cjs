@@ -1,5 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
+// 1.2.68's full articulated pack is 20.3 MB before user painting. Keep a bounded
+// 24 MB capacity so new donor clips do not make existing Studio saves fail.
+const MAX_RIG_BYTES = 24_000_000;
 
 function findProject(start) {
   for (let dir = path.resolve(start); ; dir = path.dirname(dir)) {
@@ -29,11 +32,15 @@ function createRigStore({ appPath, exePath, userData, packaged, testMode, isolat
       if (data?.version !== 1) return Promise.reject(Error('Invalid rig file version.'));
       // Dense motion keys otherwise spend most of the file limit on whitespace.
       // Keep small authored rigs readable; large native rigs also have dense keys.
-      const body = '{\n' + Object.entries(data).map(([key, value]) =>
+      let body = '{\n' + Object.entries(data).map(([key, value]) =>
         '  ' + JSON.stringify(key) + ': ' + JSON.stringify(value, null,
           value?.provenance || JSON.stringify(value).length > 250_000 ? 0 : 2).replace(/\n/g, '\n  ')
       ).join(',\n') + '\n}\n';
-      if (Buffer.byteLength(body) > 20_000_000) return Promise.reject(Error('Rig file exceeds 20 MB.'));
+      // A nearly full multi-rig pack can still exceed the limit through the
+      // remaining small pretty-printed entries. Remove whitespace before
+      // rejecting it; never remove authored keys.
+      if (Buffer.byteLength(body) > 20_000_000) body = JSON.stringify(data);
+      if (Buffer.byteLength(body) > MAX_RIG_BYTES) return Promise.reject(Error('Rig file exceeds 24 MB.'));
       const task = queue.catch(() => {}).then(async () => {
         await fs.promises.mkdir(path.dirname(file), { recursive: true });
         await fs.promises.writeFile(file + '.tmp', body);

@@ -3,6 +3,7 @@ import {bridgeAt} from './terrain-support.mjs';
 export const BREATH_SECONDS=20;
 export function inDeepWater(g,p){return !p.room&&(waterAt(g,p.x,p.y)==='water'||(bridgeAt(g,p.x,p.y)&&(p.underBridge||p.swimming)));}
 export function tickSwimming(g,p,input,dt){
+ if(p.vehicleId){p.swimming=false;p.diveDepth=0;return;}
  const onBridge=bridgeAt(g,p.x,p.y);
  p.underBridge=onBridge&&!!(p.underBridge||p.swimming)&&!(p.jumpHeight>0);
  if(onBridge&&!p.underBridge&&!(p.jumpHeight>0))p.groundHeight=10;

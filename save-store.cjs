@@ -23,6 +23,7 @@ function validate(data, kind) {
   )
     throw Error("Invalid expedition save");
   if(kind==="house"&&(!Array.isArray(data.library?.designs)||typeof data.library.active!=="string"))throw Error("Invalid house library");
+  if(kind==='locations'&&(!data.layouts||typeof data.layouts!=='object'||Object.keys(data.layouts).length>32))throw Error('Invalid location library');
   return data;
 }
 async function read(file, kind) {

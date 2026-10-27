@@ -1,4 +1,5 @@
 import {nearbyScenery} from './performance.mjs';
+import {setTreeFallDirection} from './tree-fall.mjs';
 import {propBase} from './environment.mjs';
 
 // Geometry remains authored as whole assets. Only damaged cells are serialized;
@@ -14,7 +15,8 @@ const at=(b,n)=>({x:b.x+(n%cols(b))*WALL_SECTION_SIZE,y:b.y+Math.floor(n/cols(b)
   w:Math.min(WALL_SECTION_SIZE,b.w-(n%cols(b))*WALL_SECTION_SIZE),h:Math.min(WALL_SECTION_SIZE,b.h-Math.floor(n/cols(b))*WALL_SECTION_SIZE)});
 const rectDistance=(r,x,y)=>Math.hypot(x-clamp(x,r.x,r.x+r.w),y-clamp(y,r.y,r.y+r.h));
 const material=(g,b)=>b.kind==='window'?'glass':b.kind==='fence'||b.destructionGroup==='doors'||b.destructionGroup==='furniture'?'wood':g.house?.temple?'stone':'plaster';
-const toughness=(g,b)=>({glass:24,wood:65,plaster:110,stone:180})[material(g,b)];
+const toughness=(g,b)=>({glass:1,wood:100,plaster:200,stone:200})[material(g,b)];
+const crackThreshold=(g,b)=>b.kind==='window'?Infinity:['fence','gate'].includes(b.kind)||['furniture','doors'].includes(b.destructionGroup)?40:60;
 function state(g){let s=visuals.get(g);if(!s||s.house!==g.house){s={house:g.house,particles:[],soundAt:-Infinity,shatterAt:-Infinity,saveAt:-Infinity};visuals.set(g,s);}return s;}
 function index(g){
   const h=g.house;if(!h)return null;
@@ -71,6 +73,7 @@ function damageCell(g,b,n,damage,dx=0,dy=0){
   if(broken){g.house.destructionRevision=(g.house.destructionRevision||0)+1;
     if(Object.values(b.sectionDamage).filter(s=>s.broken).length===cols(b)*rows(b))b.destroyed=true;
     if(b.kind==='window')b.broken=true;
+    if(b.kind==='mailbox'&&!b.santaLetterDropped){b.santaLetterDropped=true;g.dropLoot?.(b.x+b.w/2,b.y+b.h+10,'santa_letter',1,'Undelivered mailbox letter',true);}
   }
   burst(g,at(b,n),b,dx,dy,broken);return true;
 }
@@ -84,9 +87,26 @@ export function damageStructureMelee(g,p,damage,range,spin=false){
     const x=clamp(p.x,cell.rect.x,cell.rect.x+cell.rect.w),y=clamp(p.y,cell.rect.y,cell.rect.y+cell.rect.h),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
     if(!spin&&d>1&&(dx*(p.faceX||0)+dy*(p.faceY||0))/d<.35)continue;
     let clear=true;for(let n=1,steps=Math.ceil(d/5);n<steps;n++)if(g.projectileBlocked?.(p.x+dx*n/steps,p.y+dy*n/steps,.5)){clear=false;break;}
-    if(clear&&(!best||d<best.d))best={b,...cell,d};
+    if(clear&&(!best||d<best.d||Math.abs(d-best.d)<.01&&b.kind==='window'&&best.b.kind!=='window'))best={b,...cell,d};
   }
-  return !!best&&damageCell(g,best.b,best.n,damage,p.faceX||0,p.faceY||0);
+  return !!best&&damageCell(g,best.b,best.n,best.b.kind==='window'?toughness(g,best.b):20,p.faceX||0,p.faceY||0);
+}
+// A bumper damages only the exposed cells it actually spans. Kinetic damage
+// scales with speed; sample each lane once so wide cars open a usable gap.
+export function damageStructureVehicle(g,bumper,speed,halfWidth){
+ if(!g.house||speed<14)return false;
+ const damage=8+speed*.45+speed*speed*.006,hit=new Map(),side={x:-bumper.faceY,y:bumper.faceX};
+ for(let offset=-halfWidth;offset<=halfWidth;offset+=Math.max(8,halfWidth/3)){
+  const p={x:bumper.x+side.x*offset,y:bumper.y+side.y*offset};let best=null;
+  for(const b of query(g,p.x,p.y,18))for(const cell of cells(b,p.x,p.y,18)){
+   if(b.sectionDamage?.[cell.n]?.broken)continue;
+   const x=clamp(p.x,cell.rect.x,cell.rect.x+cell.rect.w),y=clamp(p.y,cell.rect.y,cell.rect.y+cell.rect.h),d=Math.hypot(x-p.x,y-p.y);
+   if(!best||d<best.d)best={b,...cell,d};
+  }
+  if(best){let cells=hit.get(best.b);if(!cells)hit.set(best.b,cells=new Set());cells.add(best.n);}
+ }
+ let changed=false;for(const [b,cells]of hit)for(const n of cells)changed=damageCell(g,b,n,damage,bumper.faceX,bumper.faceY)||changed;
+ return changed;
 }
 export function damageStructureProjectile(g,bolt){
   if(!(bolt.structureCharge>=.5)||bolt.healing||bolt.friendship)return false;
@@ -115,7 +135,7 @@ export function stampedeDestruction(g,e,from){
     for(const p of nearbyScenery(g.scenery||[],x,y,radius+40)){
       if(p.depleted||p.falling||!treeKinds.has(p.kind))continue;
       const base=propBase(p);if(Math.hypot(x-base.x,y-base.y)>radius+12)continue;
-      p.harvest=p.maxHarvest||Math.round(p.size*.85);p.falling=.001;p.fallDirection=dx<0?-1:1;p.logCount=Math.max(2,Math.round(p.size/32));p.hitAt=g.time;
+      p.harvest=p.maxHarvest||Math.round(p.size*.85);p.falling=.001;setTreeFallDirection(p,dx,dy);p.logCount=Math.max(2,Math.round(p.size/32));p.hitAt=g.time;
       burst(g,{x:base.x-8,y:base.y-6,w:16,h:12},{kind:'fence'},dx/(len||1),dy/(len||1),true);changed=true;
     }
   }
@@ -131,6 +151,7 @@ export function tickDestruction(g,dt){
 export function destructionStats(g){return {particles:visuals.get(g)?.particles.length||0,particleLimit:DESTRUCTION_PARTICLE_LIMIT,rasterBytes:rasterPixels*8,rasterByteLimit:RASTER_PIXEL_LIMIT*8};}
 function paintDamage(c,g,b,n,record){
   const r=at(b,n),m=material(g,b);
+  if(!record.broken&&record.damage<crackThreshold(g,b))return;
   if(record.broken){
     const palette=m==='stone'?['#7b8070','#a7aa8a']:m==='glass'?['#82b5b7','#b6ded6']:['#7d6040','#ba986a'];
     for(let i=0;i<7;i++){c.fillStyle=palette[i%2];c.fillRect(r.x+((n*17+i*11)%Math.max(1,r.w-4)),r.y+((n*13+i*7)%Math.max(1,r.h-3)),3+i%4,2+i%3);}
@@ -147,6 +168,12 @@ function paintDamage(c,g,b,n,record){
 // One raster per asset, patched only in cells that changed. No full-building
 // redraw, framebuffer reads, physics bodies, canvas filters or particle lights.
 export function drawBreakable(c,g,b,painter,style='default'){
+  // Rotate the intact cached leaf and its damage together. A cache allocated
+  // for the closed doorway otherwise clips the open leaf to the wall thickness.
+  if(style==='door:true'&&b.kind!=='garage'){
+    c.save();c.translate(b.x+b.h,b.y);c.rotate(Math.PI/2);c.translate(-b.x,-b.y);
+    drawBreakable(c,g,b,(pen,door)=>painter(pen,{...door,open:false}),'door:false');c.restore();return;
+  }
   // Huge editor rectangles use one clipped draw instead of allocating giant
   // surfaces. Normal assets share a globally bounded LRU of paired rasters.
   if(typeof document==='undefined'||(b.w+16)*(b.h+64)>512*1024){

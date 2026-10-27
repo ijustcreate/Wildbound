@@ -1,3 +1,5 @@
+import {drawCarverCrown} from './bone-carver-art.mjs';
+import {drawWitchHat} from './broom-art.mjs';
 import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
 import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
@@ -5,6 +7,8 @@ import {drawSuccubusHorns} from './succubus-attachments.mjs';
 import {drawGhostHood} from './ghost-art.mjs';
 import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
 import {drawAlanTurtleHelmet} from './alan-gear-art.mjs';
+import {drawSantaHat} from './christmas-art.mjs';
+import {drawResolvedHeadwear,headwearStyle} from './resolved-headwear.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
   if(detailedProcedural(c,p.chest,pen=>wearableDetails(pen,p,gear,look,d,time,cosmetics),materialIndex(gear.chest||gear.pants)))return;
@@ -75,16 +79,7 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
       if(style==='safari') {rect(k.x-2,k.y-3,4,2,material.dark);rect(k.x-2,k.y-3,4,1,material.light);}
       if(style==='wilderness'){rect(k.x-2,k.y-3,4,1,'#6e512d');rect(k.x-1,k.y-1,3,1,'#bb9357');}
     }
-  if(gear.shoulders==='alan_leaf_mantle'&&!back){
-    for(const [side,base]of [[-1,-6],[1,3]])for(const [n,len]of [[0,7],[1,10],[2,8]]){
-      const x=chest.x+base+n*2;
-      for(let y=0;y<len;y++){
-        const taper=Math.floor(y/4),left=side<0?x+taper:x;
-        rect(left,chest.y+y,Math.max(1,3-taper),1,'#24482d');
-        rect(left+1,chest.y+y,1,1,y%3===0?'#95af65':n===1?'#4a7c3f':'#356c38');
-      }
-    }
-  }
+  // Alan's mantle is painted once at the shoulder pivots by fittedGear.
   if (look?.face === "freckles" && !back) {
     rect(head.x - 3, head.y, 1, 1, "#985e42");
     rect(head.x + 2, head.y, 1, 1, "#985e42");
@@ -96,17 +91,44 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     rect(head.x - 1, head.y + 4, 3, 1, look.hairColor || "#593923");
   }
 }
-export function directionalHelmet(c, id, h, d, cosmetics = {}) {
+export function directionalHelmet(c, id, h, d, cosmetics = {}, time = 0) {
+  if(id==='bone_carver_crown')return drawCarverCrown(c,h,d,time);
+  if(id==='witch_hat')return drawWitchHat(c,h,d);
+  if(id==='santa_hat')return drawSantaHat(c,h,d);
   const def=ITEMS[id];
   if(!def) return false;
-  if(def.spectralHood)return drawGhostHood(c,h,d);
   if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics),materialIndex(id,'metal')))return true;
   const p=gearPalette(id,cosmetics.dye),r=gearPixels(c,h);
   const back=d>=3&&d<=5,side=d===2||d===6;
   const front=d===0?0:d<4?-3:3;
-  const style=def.style||'brim';
+  const style=headwearStyle(id,def);
+  if(drawResolvedHeadwear(c,h,d,style,p,id))return true;
   if(style==='succubus_horns'){drawSuccubusHorns(c,h,d,def.hornsPalette);return true;}
+  if(style==='santa'){
+    for(const [y,w] of [[-11,2],[-10,4],[-9,5],[-8,6],[-7,6],[-6,6],[-5,6]]){
+      r(-w,y,w*2+1,1,p.ink);r(-w+1,y,w*2-1,1,back?p.dark:p.base);
+      r(-w+1,y,Math.min(2,w),1,p.light);
+    }
+    r(-7,-4,15,3,'#ede5cd');r(-6,-2,13,1,'#c3c5b4');
+    const tassel=d<4?-4:4;r(tassel,-12,3,2,'#ede5cd');r(tassel+1,-12,1,1,'#fff1d4');return true;
+  }
   if(def.bansheeGear){bansheeHood(c,h,d,p);return true;}
+  if(style==='hood'&&!def.warlockGear){
+    // Rounded crown and a continuous cheek-to-collar rim, rather than a square
+    // helmet stamp. The rear is closed cloth; profile exposes only the near rim.
+    for(let y=-10;y<=5;y++){
+      const w=y<-8?3:y<-6?5:y<2?6:5;
+      if(back||y<-4){r(-w,y,w*2+1,1,p.ink);r(-w+1,y,w*2-1,1,p.base);r(-w+1,y,2,1,p.light);r(w-1,y,1,1,p.dark);}
+      else{
+        const near=side?(d===2?3:-5):-5;
+        r(near,y,3,1,p.ink);r(near+1,y,1,1,p.base);
+        if(!side){r(3,y,3,1,p.ink);r(4,y,1,1,p.light);}
+        // Leave the face's own pixels intact inside the hood opening.
+        if(y===5){r(-4,y,9,1,p.base);r(-3,y,3,1,p.light);}
+      }
+    }
+    return true;
+  }
   if(def.warlockGear){
     // Pointed cloth cowl, open face, layered hem; rear view has no floating eyes.
     r(-1,-11,3,1,p.ink);r(-3,-10,7,1,p.ink);r(-5,-9,11,2,p.ink);

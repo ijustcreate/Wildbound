@@ -16,7 +16,9 @@ export function drawBeachGround(c,g,{sx,sy,ex,ey}){
   const key=cx+':'+cy;let canvas=cache.chunks.get(key);
   if(!canvas){canvas=document.createElement('canvas');canvas.width=canvas.height=256;const cc=canvas.getContext('2d');
    for(let yy=0;yy<256;yy+=4)for(let xx=0;xx<256;xx+=4){
-    const x=cx*256+xx,y=cy*256+yy,kind=waterAt(g,x+2,y+2),n=(Math.sin(x*.006)+Math.cos(y*.009)+Math.sin((x+y)*.023)+3)/6;
+    const x=cx*256+xx,y=cy*256+yy,n=(Math.sin(x*.006)+Math.cos(y*.009)+Math.sin((x+y)*.023)+3)/6;
+    let kind=waterAt(g,x+2,y+2);
+    if(kind==='bridge'||kind==='floodbridge'){const shore=beachShore(x,g.seed);kind=y<shore-62?'water':y<shore+18?'shallow':'sand';}
     const near=y<beachShore(x,g.seed)+70;
     const colors=kind==='water'?['#17677e','#217a8d','#248b99','#309ead']:kind==='shallow'?['#59b9b2','#73c7bc','#8bd5c7','#a5dfcd']:['wood','bridge','floodbridge'].includes(kind)?['#85634c','#9b7858','#ab8963','#b9976d']:kind==='grass'?['#47694d','#527955','#658553','#78945b']:near?['#c9b88c','#d2c59b','#dfd3aa','#e8ddb5']:['#e2bd82','#e9c68e','#f0d29c','#f5dcad'];
     rect(cc,xx,yy,4,4,colors[Math.min(3,Math.floor(n*4))]);

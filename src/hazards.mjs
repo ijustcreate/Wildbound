@@ -8,6 +8,7 @@ import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
 import { creatures } from "./definitions.mjs";
 import {stampedeDestruction,tickDestruction} from './structure-destruction.mjs';
+import {igniteTallGrassAt} from './tall-grass.mjs';
 export const HAZARD_EVENTS = [
  {name:'A bargain with the bushes',type:'merchant',kind:'merchant',count:0,weight:5,verse:'A hat, a horse, a fire so bright.\nTrade well before they leave tonight.',tip:'Marlow Moss has set up camp away from the board. He stays until this map ends.'},
  {name:'The dunes take flight',type:'sandstorm',kind:'sandstorm',environment:'desert',count:0,weight:7,duration:45,intensity:1,verse:'The desert shakes its golden mane.\nHold fast until the dunes are tame.',tip:'Sand sweeps across the dunes. Stay together until the storm passes.'},
@@ -136,7 +137,7 @@ export function startHazard(g, event) {
         runDirection: dir,
         hp: event.hp || 130,
         maxHp: event.hp || 130,
-        speed: event.speed || 185,
+        speed: (event.squad || ['rhino'])[n % (event.squad?.length || 1)]==='elephant'?Math.min(96,event.speed||185):event.speed || 185,
         damage: event.damage || 20,
         state: "stampede",
         aggro: false,
@@ -158,15 +159,24 @@ export function tickHazards(g, dt) {
   tickMerchant(g,dt);
   tickSnow(g,dt);
   for (const b of g.fireballs || []) {
+    const fromX=b.x,fromY=b.y;
     if(!advanceShot(g,b,dt,3))continue;
+    if(!b.ice&&!b.water){const steps=Math.max(1,Math.ceil(Math.hypot(b.x-fromX,b.y-fromY)/8));for(let i=0;i<=steps;i++)igniteTallGrassAt(g,fromX+(b.x-fromX)*i/steps,fromY+(b.y-fromY)*i/steps);}
     b.life -= dt;
     b.trail -= dt;
     const cold=!!(b.ice||b.water);
     if (b.trail <= 0) {
-      if(!cold)firePatch(g, b.x, b.y, 2, b.burnDamage);
+      if(!cold&&!b.friendly)firePatch(g, b.x, b.y, 2, b.burnDamage);
       b.trail = 0.14;
       if(cold)g.effects.push({x:b.x,y:b.y,life:.35,radius:5,color:'#a7edff'});
       else g.fireParticles.push({ x: b.x, y: b.y, life: 0.5, smoke: false });
+    }
+    if(b.friendly){
+      const target=(g.enemies||[]).filter(e=>e.hp>0&&!e.defeated&&e.faction!=='ally'&&e.faction!=='neutral'&&
+        Math.hypot(e.x-b.x,e.y-b.y)<20&&clearShot(g,b,e)).sort((a,c)=>Math.hypot(a.x-b.x,a.y-b.y)-Math.hypot(c.x-b.x,c.y-b.y))[0];
+      if(target){const ice=!!(b.ice||b.water);damageEnemy(target,b.damage,ice?'ice':'fire',{g,p:g.players.find(p=>p.id===b.controllerOwner)});target.killedBy=b.controllerOwner;target.aggro=true;if(!ice)ignite(target,2,b.burnDamage||4);g.effects.push({x:b.x,y:b.y,life:.3,radius:14,color:ice?'#a7edff':'#ff8c36'});b.life=0;}
+      if(b.life>0&&g.projectileBlocked(b.x,b.y,5,true))b.life=0;
+      continue;
     }
     for (const p of g.players)
       if (
@@ -353,13 +363,14 @@ export function tickHazards(g, dt) {
   for (const e of g.enemies)
     if ((e.stampeding || e.kind === "rhino") && !e.aggro && e.hp > 0) {
       const from={x:e.x,y:e.y};
-      e.x += e.runDirection * e.speed * dt;
+      const crossingSpeed=e.kind==='elephant'?Math.min(96,e.speed):e.speed;
+      e.x += e.runDirection * crossingSpeed * dt;
       e.y =
         e.lane -
         (e.lane > 700 && e.lane < 850
           ? Math.max(0, Math.sin(((e.x - 500) / 600) * Math.PI)) * 145
           : 0);
-      e.step += e.speed * dt * 0.13;
+      e.step += crossingSpeed * dt * 0.13;
       e.moving = true;
       stampedeDestruction(g,e,from);
       for (const p of g.players)
@@ -387,11 +398,11 @@ export function drawWeather(ctx, g, w, h) {
 }
 export function drawHazards(ctx, g) {
   for (const f of g.firePatches || []) {
-    ctx.fillStyle = "#9c3b2670";
+    ctx.fillStyle = f.color ? f.color+"50" : "#9c3b2670";
     ctx.fillRect(f.x, f.y, 32, 32);
-    ctx.fillStyle = Math.sin(g.time * 12 + f.x) > 0 ? "#ff9b3c" : "#f05b2d";
+    ctx.fillStyle = f.color || (Math.sin(g.time * 12 + f.x) > 0 ? "#ff9b3c" : "#f05b2d");
     ctx.fillRect(f.x + 7 + Math.floor((g.time * 9 + f.y) % 9), f.y + 12, 10, 8);
-    ctx.fillStyle = "#ffd45d";
+    ctx.fillStyle = f.color ? "#e9c5ff" : "#ffd45d";
     ctx.fillRect(f.x + 12, f.y + 8, 5, 9);
   }
   for (const b of g.fireballs || []) {

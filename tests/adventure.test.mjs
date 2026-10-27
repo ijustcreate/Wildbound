@@ -86,6 +86,23 @@ test("Dash uses movement instead of mouse aim and has three second cooldown", ()
   for (let n = 0; n < 10; n++) g.update(0.05, { keyboard: { dodge: true } });
   assert.ok(p.dodge < 3 && p.dodge > 2);
 });
+test("Dash eases back to normal movement and emits short directional afterimages with a whoosh cue", () => {
+  const { g, p } = setup();
+  const sounds=[];g.onSound=(cue)=>sounds.push(cue);
+  g.update(.05,{keyboard:{x:1,dodge:true}});
+  assert.ok(sounds.includes('dashWhoosh'));
+  assert.ok(p.dashGhosts.length>0);
+  for(let n=0;n<6;n++)g.update(.05,{keyboard:{}});
+  assert.equal(p.dashTime,0);
+  assert.ok(p.dashRecovery>0,'dash enters a brief speed-easing tail');
+  const duringTail=p.x;
+  g.update(.05,{keyboard:{}});
+  const easedStep=p.x-duringTail;
+  assert.ok(easedStep>0&&easedStep<360*.05,'recovery keeps moving while shedding boost speed');
+  for(let n=0;n<5;n++)g.update(.05,{keyboard:{}});
+  assert.equal(p.dashRecovery,0);
+  assert.equal(p.dashGhosts.length,0,'the blurred trail fades quickly');
+});
 test("One die rolls only one value", () => {
   const { g, p } = setup();
   g.diceCount = 1;

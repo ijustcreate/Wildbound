@@ -1,6 +1,9 @@
+import {REALMS,readRealmLayouts,realmFootprint} from './realm-world.mjs';
 import { creatures } from './definitions.mjs';
 import {beachWorld} from './beach-world.mjs';
-import {BOUNDLESS_GENERATION_VERSION,boundlessMap,naturalBoundlessTile,boundlessGeneratedTile,boundlessRegionPlan,regionRouteDistance,translateRegionProps,clearBoundlessGeneration,regionSeed} from './boundless-generation.mjs';
+import {BOUNDLESS_GENERATION_VERSION,boundlessMap,naturalBoundlessTile,boundlessGeneratedTile,boundlessRegionPlan,boundlessRegionPlanTask,regionRouteDistance,translateRegionProps,clearBoundlessGeneration,regionSeed} from './boundless-generation.mjs';
+import {applyAuthoredScenes,authoredPropsInRegion} from './world-authoring-runtime.mjs';
+import {forestUnderstoryTask} from './forest-props.mjs';
 
 // Boundless worlds are streamed in fixed 50×50 tile regions. Only scenery
 // within one region of an active explorer is resident in the live simulation.
@@ -9,6 +12,7 @@ export const BOUNDLESS_CHUNK_SIZE = BOUNDLESS_CHUNK_TILES * 32;
 export const BOUNDLESS_SAFE_RADIUS = 620;
 export const BOUNDLESS_SCENERY_MARGIN = 1;
 const species = {
+ swamp:['crocodile'],caverns:['bat'],shadow:['murk_wolf'],
  forest:['panther','tiger','lion'],desert:['lion','scorpion'],
  ice:['snow_leopard','white_lion'],temple:['tiger','gorilla','monkey'],
  graveyard:['zombie','skeleton','spider','bat'],beach:['scorpion'],house:['panther','lion'],
@@ -24,6 +28,7 @@ export function boundlessTerrainAt(g,tx,ty){
 export function initializeBoundlessWorld(g,{fresh=false}={}){
  if(g.mapMode!=='boundless'||g.boundlessGenerationVersion===BOUNDLESS_GENERATION_VERSION&&!fresh)return false;
  if(!fresh)g.scenery=(g.scenery||[]).filter(p=>!p.id?.startsWith('boundless:'));
+ if(REALMS.includes(boundlessMap(g))&&(fresh||!g.boundlessRealmLayouts))g.boundlessRealmLayouts=structuredClone(readRealmLayouts());
  g.boundlessLoadedChunks=[];g.boundlessChunkEdits=fresh?{}:g.boundlessChunkEdits||{};
  for(const [key,old]of Object.entries(g.boundlessChunkChanges||{})){
   const edits=g.boundlessChunkEdits[key]||={props:{},plots:{}};
@@ -43,15 +48,27 @@ export function initializeBoundlessWorld(g,{fresh=false}={}){
  if(fresh){const plan=boundlessRegionPlan(g,0,0);g.scenery=g.scenery.filter(p=>{
   const y=p.rootY??p.y,kind=g.terrain[Math.floor(y/32)*50+Math.floor(p.x/32)];
   if(boundlessMap(g)==='beach'&&p.coastal&&!['beach_arch','beach_foundation'].includes(p.kind)&&['water','shallow'].includes(kind))return false;
+  if(p.realm&&realmFootprint(p)&&regionRouteDistance(plan,p.x,y)<90)return false;
   return !['tree','palm','rock','leafless_tree','grave_forest_tree','snow_tree'].includes(p.kind)||regionRouteDistance(plan,p.x,y)>90;
  });}
  g.boundlessSceneryRevision=(g.boundlessSceneryRevision||0)+1;return true;
 }
 export function createBoundlessChunk(g,cx,cy){
- const plan=boundlessRegionPlan(g,cx,cy),prefix=`boundless:${cx}:${cy}:`;
- if(plan.biome==='graveyard')return {...translateRegionProps(plan),plan};
+ const task=createBoundlessChunkTask(g,cx,cy);let step;do{step=task.next();}while(!step.done);return step.value;
+}
+export function* createBoundlessChunkTask(g,cx,cy){
+ const plan=yield* boundlessRegionPlanTask(g,cx,cy),prefix=`boundless:${cx}:${cy}:`;
+ if(plan.biome==='graveyard'||REALMS.includes(plan.biome)){
+  const generated=translateRegionProps(plan);
+  if(g.localWorld)generated.props.push(...authoredPropsInRegion(g.environment,cx,cy));
+  let realmState=null;
+  if(plan.realmState){realmState=structuredClone(plan.realmState);const ox=cx*1600,oy=cy*1600;Object.assign(realmState,{originX:ox,originY:oy,key:plan.key});realmState.chambers=realmState.chambers.map(p=>({...p,x:p.x+ox,y:p.y+oy}));if(realmState.animals)for(const a of realmState.animals){a.x+=ox;a.y+=oy;if(Number.isFinite(a.homeX))a.homeX+=ox;if(Number.isFinite(a.homeY))a.homeY+=oy;}}
+  return {...generated,realmState,plan};
+ }
  const props=[],biome=plan.biome,random=(x,y)=>regionSeed(plan.seed,x,y)/2147483647;
- for(let ly=1;ly<49;ly+=2)for(let lx=1;lx<49;lx+=2){
+ for(let cell=0;cell<576;cell++){
+  if(cell%24===0)yield;
+  const ly=1+Math.floor(cell/24)*2,lx=1+(cell%24)*2;
   const r=random(lx,ly);if(r<.68)continue;
   const x=cx*1600+lx*32+16+(random(lx+83,ly)-.5)*22,y=cy*1600+ly*32+16+(random(lx,ly+83)-.5)*22;
   const tile=plan.terrain[Math.floor((y-cy*1600)/32)*50+Math.floor((x-cx*1600)/32)];
@@ -66,16 +83,32 @@ export function createBoundlessChunk(g,cx,cy){
   if(kind==='palm')p.coconuts=1+Math.floor(random(lx+13,ly)*3);
   props.push(p);
  }
+ if(biome==='forest')for(let cell=0;cell<529;cell++){
+  if(cell%23===0)yield;
+  const ly=3+Math.floor(cell/23)*2,lx=3+(cell%23)*2;
+  const roll=random(lx+41,ly+13),x=cx*1600+lx*32+16+(random(lx+97,ly)-.5)*34,y=cy*1600+ly*32+16+(random(lx,ly+97)-.5)*34;
+  const tx=Math.floor((x-cx*1600)/32),ty=Math.floor((y-cy*1600)/32),ground=plan.terrain[ty*50+tx];
+  if(ground!=='grass'||regionRouteDistance(plan,x,y)<118||roll>.34+random(lx+9,ly+23)*.16)continue;
+  const size=72+random(ly+7,lx+29)*20;
+  props.push({id:prefix+'tallgrass:'+lx+':'+ly,kind:'tall_grass',x,y:y-size*.4,rootY:y,size,procedural:true,
+   grassPalette:random(lx+31,ly+11)>.77?'temple':'forest',grassShade:.8+random(ly+51,lx+17)*.3,
+   tuftSeed:Math.floor(random(lx,ly)*0x7fffffff),boundlessRegion:plan.key});
+ }
  if(['forest','temple'].includes(biome))for(const [i,dx]of [-210,210].entries()){
   const x=plan.hub.x+dx,y=plan.hub.y-180;
   if(regionRouteDistance(plan,x,y)>95&&!['water','shallow'].includes(boundlessTerrainAt(g,Math.floor(x/32),Math.floor(y/32))))props.push({id:prefix+'ruin:'+i,kind:'forest_ruin',x,y,width:70,depth:32,height:biome==='temple'?96:48,shape:biome==='temple'?'pillar':'terrace',size:96,seed:plan.seed+i,procedural:true,boundlessRegion:plan.key});
  }
+ if(biome==='forest')props.push(...(yield* forestUnderstoryTask(plan.seed,cx,cy,(x,y)=>{
+  const tx=Math.floor((x-cx*1600)/32),ty=Math.floor((y-cy*1600)/32);
+  return plan.terrain[ty*50+tx]==='grass'&&regionRouteDistance(plan,x,y)>85&&Math.hypot(x-plan.hub.x,y-plan.hub.y)>120;
+ })).map(p=>({...p,id:prefix+p.id,boundlessRegion:plan.key})));
+ if(g.localWorld)props.push(...authoredPropsInRegion(g.environment,cx,cy));
  return {props,plots:[],mausoleums:[],plan};
 }
-const persistentPropKeys=['hp','harvest','fallen','falling','fallDirection','depleted','chipped','chunks','coconuts','picked','opened','doorOpen','cryptPortalId','burning','burned'];
+const persistentPropKeys=['hp','harvest','fallen','falling','fallDirection','fallX','fallY','depleted','chipped','chunks','coconuts','picked','opened','doorOpen','cryptPortalId','burning','burned','cut','charred','grassFire','grassSizzle','grassBurnMarks','grassBurnRevision','grassSpreadIn','grassSpreadDepth','grassSpreadDone','hazardState','hazardTime'];
 const persistentState=p=>JSON.stringify(persistentPropKeys.map(k=>p?.[k]));
 function rememberChunk(g,entry){
- const live=new Map(g.scenery.map(p=>[p.id,p])),changes={props:{},plots:{}};
+ const live=new Map(g.scenery.map(p=>[p.id,p])),changes={props:{},plots:{},...(entry.realmState?{realmState:structuredClone(entry.realmState)}:{})};
  const prefix=`boundless:${entry.key.replace(',',':')}:`,ids=new Set(entry.base.props.map(p=>p.id));
  for(const p of g.scenery)if(p.id?.startsWith(prefix)&&!ids.has(p.id))changes.props[p.id]=structuredClone(p);
  for(const base of entry.base.props){const p=live.get(base.id);if(g.localWorld&&['tree','snow_tree','leafless_tree','bush','fern','flower'].includes(base.kind)&&(!p||p.fallen||p.depleted||p.harvested)){
@@ -83,7 +116,7 @@ function rememberChunk(g,entry){
  }}
  for(const base of entry.base.props){const current=live.get(base.id);if(!current)changes.props[base.id]=null;else if(persistentState(base)!==persistentState(current))changes.props[base.id]=structuredClone(current);}
  for(const base of entry.base.plots){const current=g.graveyard?.plots.find(p=>p.id===base.id);if(current&&JSON.stringify(base)!==JSON.stringify(current))changes.plots[base.id]=structuredClone(current);}
- if(Object.keys(changes.props).length||Object.keys(changes.plots).length)g.boundlessChunkEdits[entry.key]=changes;else delete g.boundlessChunkEdits[entry.key];
+ if(changes.realmState||Object.keys(changes.props).length||Object.keys(changes.plots).length)g.boundlessChunkEdits[entry.key]=changes;else delete g.boundlessChunkEdits[entry.key];
 }
 
 function spawnThreat(g, explorer) {
@@ -108,8 +141,10 @@ function spawnThreat(g, explorer) {
   return true;
 }
 
+const pendingChunks=new WeakMap();
 /** Keep outer scenery and encounters proportional to active play, not travel distance. */
 export function updateBoundlessWorld(g, dt) {
+ if(g.interiorWorld)return;
   if (g.mapMode !== 'boundless' || g.phase !== 'play' || g.openingBoard) return;
   initializeBoundlessWorld(g);
   const players = g.players.filter(p => p.hp > 0 && !p.room);
@@ -130,15 +165,25 @@ export function updateBoundlessWorld(g, dt) {
   for (const key of priority) {
     if (byKey.has(key)) continue;
     const [cx, cy] = key.split(',').map(Number);
-    const prefix=`boundless:${cx}:${cy}:`,generated=createBoundlessChunk(g,cx,cy),base={props:structuredClone(generated.props),plots:structuredClone(generated.plots)},edits=g.boundlessChunkEdits?.[key];
+    let generated;
+    if(boundlessMap(g)==='forest'){
+      let pending=pendingChunks.get(g);
+      if(!pending||pending.key!==key||pending.seed!==g.seed){pending={key,seed:g.seed,task:createBoundlessChunkTask(g,cx,cy)};pendingChunks.set(g,pending);}
+      const deadline=performance.now()+2;let step;
+      do{step=pending.task.next();}while(!step.done&&performance.now()<deadline);
+      if(!step.done)break;
+      generated=step.value;pendingChunks.delete(g);
+    }else generated=createBoundlessChunk(g,cx,cy);
+    const prefix=`boundless:${cx}:${cy}:`,base={props:structuredClone(generated.props),plots:structuredClone(generated.plots)},edits=g.boundlessChunkEdits?.[key];
     let props=generated.props.map(p=>edits?.props&&Object.hasOwn(edits.props,p.id)?edits.props[p.id]:p).filter(Boolean);
     const generatedIds=new Set(generated.props.map(p=>p.id));
     props.push(...Object.entries(edits?.props||{}).filter(([id,p])=>p&&!generatedIds.has(id)).map(([,p])=>structuredClone(p)));
     const existing=(g.scenery||[]).filter(prop=>prop.id?.startsWith(prefix));
     if(existing.length)props=existing;
     const plots=generated.plots.map(p=>g.graveyard?.plots.find(old=>old.id===p.id)||edits?.plots?.[p.id]||p);
-    const entry={key,scenery:props,base};
+    const entry={key,scenery:props,base,realmState:structuredClone(edits?.realmState||generated.realmState||null)};
     if(!existing.length)g.scenery.push(...props);
+    if(g.localWorld)applyAuthoredScenes(g,cx,cy,{includeProps:false,includeNpcs:true});
     if(g.graveyard){for(const p of plots)if(!g.graveyard.plots.some(old=>old.id===p.id))g.graveyard.plots.push(p);for(const p of generated.mausoleums)if(!g.graveyard.mausoleums.some(old=>old.id===p.id))g.graveyard.mausoleums.push(p);}
     loaded.push(entry);byKey.set(key,entry);changed=true;
     // Spread chunk creation across frames so entering Boundless never builds
@@ -167,6 +212,6 @@ export function updateBoundlessWorld(g, dt) {
 
 // Commit edits before saving too, including a fully cleared active chunk.
 export function checkpointBoundlessWorld(g) {
-  if(!g.persistentWorld)return;
+  if(g.mapMode!=='boundless')return;
   for(const entry of g.boundlessLoadedChunks||[])rememberChunk(g,entry);
 }

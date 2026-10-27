@@ -10,6 +10,9 @@ export const BUILTIN_PACKS = [
   {id:'cemetery',name:'Cemetery',environment:'graveyard',description:'Weathered graves, moths, beetles and restless dead.',prey:['bat'],predators:['skeleton'],food:.4,water:.4},
   {id:'beach',name:'Beach',environment:'beach',description:'Coastal wildlife, tidal weather and wandering merchants.',prey:['pig','pig_spotted'],predators:['scorpion'],food:.65,water:.9},
   {id:'jungle',name:'Jungle',environment:'temple',description:'A lush temple ecosystem with prowling tigers.',prey:['mother_deer','pig'],predators:['tiger'],food:.95,water:.85},
+  {"id":"swamp","name":"Bayou Marsh","environment":"swamp","description":"Old-growth islands, murky channels, nutria and nesting crocodiles.","prey":[],"predators":["crocodile"],"food":0.9,"water":1},
+  {"id":"caverns","name":"Hollowdeep Caverns","environment":"caverns","description":"Connected chambers, crystal seams, olms and underground pools.","prey":[],"predators":["bat"],"food":0.35,"water":0.6},
+  {"id":"shadow","name":"The Shadow Realm","environment":"shadow","description":"Twisted clearings, peaceful pale harts and stalking murk wolves.","prey":[],"predators":["murk_wolf"],"food":0.4,"water":0.3},
 ];
 export function hash(...values) {
   let n=2166136261;
@@ -21,7 +24,7 @@ const finite=(v,f)=>Number.isFinite(v)?v:f;
 export function validatePack(input) {
   const p=structuredClone(input);
   if(!p||!/^[-a-z0-9]{1,48}$/.test(p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.length>80)throw Error('Pack needs a safe id and a name (1–80 characters).');
-  if(!['forest','graveyard','beach','temple','desert','ice'].includes(p.environment))throw Error('Unknown native terrain generator.');
+  if(!['forest','graveyard','beach','temple','desert','ice','swamp','caverns','shadow'].includes(p.environment))throw Error('Unknown native terrain generator.');
   for(const k of ['prey','predators'])if(!Array.isArray(p[k])||p[k].length>16||p[k].some(s=>typeof s!=='string'||!/^\w{1,64}$/.test(s)))throw Error('Invalid species list.');
   for(const k of ['food','water'])if(!Number.isFinite(p[k])||p[k]<0||p[k]>1)throw Error('Food and water must be between zero and one.');
   if(p.events&&(!Array.isArray(p.events)||p.events.length>128||p.events.some(v=>!Number.isInteger(v)||v<0)))throw Error('Invalid event table.');

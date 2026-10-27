@@ -14,7 +14,7 @@ export async function loadHouseStorage(){
  houseLibrary();
  if(defaultHouseUpgradePending){try{await flushHouseStorage();defaultHouseUpgradePending=false;}catch(e){console.warn('House layout upgrade could not reach disk',e);}}
 }
-export function houseDraft(){try{return JSON.parse(globalThis.localStorage?.getItem(HOUSE_STATE_KEY)||'null')?.draft||null;}catch{return null;}}
+export function houseDraft(){try{const draft=JSON.parse(globalThis.localStorage?.getItem(HOUSE_STATE_KEY)||'null')?.draft||null;if(retiredHouseName(draft?.house?.name)||houseLibrary().retiredDesigns?.some(d=>d.id===draft?.id))return null;return draft;}catch{return null;}}
 export function preserveHouseDraft(h,id){
  const state={version:1,updatedAt:Date.now(),library:houseLibrary(),draft:{id,house:structuredClone(h)}};
  globalThis.localStorage?.setItem(HOUSE_STATE_KEY,JSON.stringify(state));
@@ -34,10 +34,16 @@ const legacyDefaultFingerprint=h=>{const json=JSON.stringify(h);let hash=2166136
 export const LOW_FURNITURE={bed:12,table:16,desk:16,sofa:10,chair:8,bench:8,counter:16};
 export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(f.lobbySurface?100:18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
 export function upgradeHouseFeatures(h){
- if(!h.lightingVersion){
-  h.lightingVersion=1;
+ if((h.lightingVersion||0)<2){
+  h.lightingVersion=2;
   if(!(h.furniture||[]).some(f=>['lamp','ceiling_light'].includes(f.kind)))for(const floor of h.floors||[]){
    for(const [dx,dy]of [[24,24],[floor.w-48,floor.h-48]]){const x=floor.x+dx,y=floor.y+dy;if(x<900&&x+24>700&&y<878&&y+24>700)continue;if((h.furniture||[]).some(f=>x<f.x+f.w&&x+24>f.x&&y<f.y+f.h&&y+24>f.y))continue;h.furniture.push({kind:'lamp',x,y,w:24,h:24,lightMode:'auto',lightRadius:180});}
+  }
+  // Keep every named room independently lit, including older saved houses
+  // that only received the original four corner lamps.
+  for(const room of h.rooms||[]){
+   const hasLamp=(h.furniture||[]).some(f=>['lamp','ceiling_light'].includes(f.kind)&&Math.hypot((f.x+12)-room.x,(f.y+12)-room.y)<70);
+   if(!hasLamp){const lampX=room.x===800?room.x-92:room.x-12;h.furniture.push({kind:'lamp',x:lampX,y:room.y-12,w:24,h:24,lightMode:'auto',lightRadius:180});}
   }
  }
  for(const p of h.pools||[])p.waterType='pool';
@@ -67,22 +73,30 @@ export function defaultHouse(){
  for(const y of [672,944]){horizontal(496,y,240,[624]);horizontal(864,y,240,[976]);}
  for(const y of [496,960]){wall(736,y,16,y===496?176:144);wall(848,y,16,y===496?176:144);}
  horizontal(320,144,960,[800],'fence');wall(320,160,16,320,'fence');wall(1264,160,16,320,'fence');wall(320,464,160,16,'fence');wall(1120,464,160,16,'fence');
+ // Garage wing and driveway, echoing the reference plan's lower-left service
+ // edge while keeping the board gallery and party approach unobstructed.
+ wall(320,1120,160,16);wall(320,1344,64,16);wall(512,1344,48,16);wall(320,1120,16,224);wall(544,1120,16,224);
+ doors.push({x:480,y:1120,w:64,h:16,open:false,kind:'door'},{x:384,y:1344,w:128,h:16,open:false,kind:'garage'});
  const furniture=[];const add=(kind,x,y,w,h)=>furniture.push({kind,x,y,w,h});
  add('counter',512,512,96,32);add('counter',656,512,64,32);add('sink',528,512,40,32);add('stove',656,512,48,32);add('table',544,576,80,48);add('chair',560,640,24,24);add('chair',600,560,24,24);
  add('bed',912,512,80,112);add('dresser',1032,512,48,32);add('plant',880,512,32,32);
  add('sofa',512,736,48,128);add('bookcase',1040,736,32,128);add('rug',920,832,128,80);add('table',944,848,64,48);add('plant',1056,880,32,32);
  add('desk',512,992,112,40);add('chair',544,1040,32,32);add('bookcase',688,992,24,96);add('rug',760,992,72,80);add('bookcase',1040,976,32,112);add('desk',896,992,80,40);add('chair',912,1048,24,24);
- add('mailbox',1136,1360,24,32);add('bench',528,288,112,32);add('plant',512,352,32,32);
- return upgradeHouseFeatures({version:1,floorplanVersion:2,name:'The Living House',walls,doors,floors:[{x:480,y:480,w:640,h:640}],pools:[{x:896,y:240,w:256,h:160}],paths:[{x:736,y:1120,w:128,h:352},{x:736,y:400,w:128,h:80},{x:576,y:432,w:576,h:48},{x:1120,y:552,w:128,h:96}],furniture,trees:[{x:400,y:256,size:92},{x:416,y:400,size:82},{x:1200,y:240,size:96},{x:1216,y:416,size:80},{x:400,y:1248,size:96},{x:512,y:1392,size:80},{x:1248,y:1232,size:92},{x:1216,y:1456,size:80}],rooms:[{name:'Kitchen & dining',x:624,y:648},{name:'Bedroom',x:976,y:648},{name:'Board & living room',x:800,y:904},{name:'Study',x:624,y:1080},{name:'Entrance gallery',x:800,y:1080},{name:'Library',x:976,y:1080}]});
+ add('mailbox',1136,1360,24,32);add('bench',528,288,112,32);add('plant',512,352,32,32);furniture.push({kind:'chest',x:1032,y:560,w:48,h:32,chestId:'house-car-key',opened:false,loot:[{type:'car_key',qty:1}]});furniture.push({kind:'chest',x:352,y:1184,w:48,h:32,chestId:'house-engine-part',opened:false,loot:[{type:'car_engine_part',qty:1}]});
+ furniture.push({kind:'garage_button',x:496,y:1140,w:16,h:16});
+ const house=upgradeHouseFeatures({version:1,floorplanVersion:3,name:'The Garden Villa',walls,doors,floors:[{x:480,y:480,w:640,h:640},{x:320,y:1120,w:240,h:240,material:'cement'}],pools:[{x:896,y:240,w:256,h:160}],paths:[{x:736,y:1120,w:128,h:352},{x:736,y:400,w:128,h:80},{x:576,y:432,w:576,h:48},{x:1120,y:552,w:128,h:96},{x:320,y:1184,w:160,h:64}],furniture,trees:[{x:400,y:256,size:92},{x:416,y:400,size:82},{x:1200,y:240,size:96},{x:1216,y:416,size:80},{x:400,y:1248,size:96},{x:512,y:1392,size:80},{x:1248,y:1232,size:92},{x:1216,y:1456,size:80}],vehicles:[{id:'villa-car',unitCategory:'vehicle',unitType:'car',kind:'car',x:400,y:1168,w:80,h:128,heading:0,occupiable:true,maxSpeed:280,acceleration:150,brakePower:270,reverseSpeed:105,steering:2.35,seats:{}}],rooms:[{name:'Kitchen & dining',x:624,y:648},{name:'Bedroom one',x:976,y:648},{name:'Bedroom two',x:976,y:800},{name:'Board & living room',x:800,y:904},{name:'Study',x:624,y:1080},{name:'Garage',x:400,y:1168}]});
+ return house;
 }
 export function validateHouse(h){
  if(h?.version!==1||typeof h.name!=='string'||!h.name.trim()||h.name.length>60)return false;
  const rect=r=>r&&['x','y','w','h'].every(k=>Number.isFinite(r[k]))&&r.x>=16&&r.y>=16&&r.w>=8&&r.h>=8&&r.x+r.w<=1584&&r.y+r.h<=1584;
  for(const key of ['walls','doors','floors','pools','paths','furniture'])if(!Array.isArray(h[key])||h[key].length>300||!h[key].every(rect))return false;
+ if(h.vehicles!==undefined&&(!Array.isArray(h.vehicles)||h.vehicles.length>16||!h.vehicles.every(v=>rect(v)&&typeof v.id==='string'&&v.id.length<60)))return false;
  if(!Array.isArray(h.trees)||h.trees.length>100||!h.trees.every(t=>Number.isFinite(t.x)&&Number.isFinite(t.y)&&t.x>=32&&t.x<=1568&&t.y>=32&&t.y<=1568&&Number.isFinite(t.size)&&t.size>=32&&t.size<=160))return false;
  if(!Array.isArray(h.rooms)||h.rooms.length>40||!h.rooms.every(r=>Number.isFinite(r.x)&&Number.isFinite(r.y)&&typeof r.name==='string'&&r.name.length<60))return false;
  return h.floors.some(r=>contains(r,800,800))&&!h.walls.concat(h.doors,h.pools,h.furniture.filter(f=>!['rug','plant'].includes(f.kind))).some(r=>r.x<900&&r.x+r.w>700&&r.y<878&&r.y+r.h>700);
 }
+const retiredHouseName=name=>['The Living House (original layout)','Unfinished original-house draft'].includes(name?.trim());
 export function houseLibrary(){
  try{const data=JSON.parse(globalThis.localStorage?.getItem(HOUSE_KEY)||'null');if(data?.designs?.length&&data.designs.every(d=>typeof d.id==='string'&&validateHouse(d.house))){
   const original=data.designs.find(d=>d.id==='default');
@@ -93,7 +107,24 @@ export function houseLibrary(){
    original.house=defaultHouse();defaultHouseUpgradePending=true;
    globalThis.localStorage.setItem(HOUSE_KEY,JSON.stringify(data));
   }
-  for(const d of data.designs)upgradeHouseFeatures(d.house);return data;
+  for(const d of data.designs)upgradeHouseFeatures(d.house);
+  const currentDefault=data.designs.find(d=>d.id==='default');
+  if(currentDefault&&Number(currentDefault.house.floorplanVersion||0)<3){
+   const archived=structuredClone(currentDefault);archived.id='original-house-garden-layout';archived.house.name='The Living House (previous layout)';
+   if(!data.designs.some(d=>d.id===archived.id))data.designs.push(archived);
+   currentDefault.house=defaultHouse();defaultHouseUpgradePending=true;
+   globalThis.localStorage.setItem(HOUSE_KEY,JSON.stringify(data));
+  }
+  const removed=data.designs.filter(d=>retiredHouseName(d.house.name)||/^original-house-floorplan(?:-\d+)?$/.test(d.id));
+  if(removed.length){
+   data.retiredDesigns||=[];
+   for(const design of removed)if(!data.retiredDesigns.some(d=>d.id===design.id))data.retiredDesigns.push(design);
+   data.designs=data.designs.filter(d=>!removed.includes(d));
+   if(!data.designs.length)data.designs.push({id:'default',house:defaultHouse()});
+   if(!data.designs.some(d=>d.id===data.active))data.active=data.designs.find(d=>d.id==='default')?.id||data.designs[0].id;
+   globalThis.localStorage?.setItem(HOUSE_KEY,JSON.stringify(data));defaultHouseUpgradePending=true;
+  }
+  return data;
  }}catch{}
  return {active:'default',designs:[{id:'default',house:defaultHouse()}]};
 }

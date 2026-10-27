@@ -1,0 +1,117 @@
+{
+  "reviewedAt": "2026-10-26",
+  "scope": "17 locally readable Wildbound user chats; 975 user-message records screened, positive candidates read in surrounding context. Not a claim to all cloud or other-computer chats.",
+  "method": "Read-only local Codex session records and native chat metadata. Only original user messages count as approval. Assistant descriptions and interpretations are not user approval.",
+  "evidence": [
+    {
+      "status": "approved visual direction",
+      "threadId": "01a1502d-dbbe-79c0-9294-080dea87e5ac",
+      "chatTitle": "Add swamp and cave environments",
+      "timestampUTC": "2026-10-18T19:58:20.078Z",
+      "userQuote": "yes thats much better. use this look for the swamp, but make it a maze of connected islands with lots of shallow murky water and winding deep channels. keep everything editable and working with collision and cutting.",
+      "reference": "swamp-clearing-approved-direction.png",
+      "sourceArtifact": "test-output/swamp-study/swamp-clearing-draft.png",
+      "interpretation": "Irregular banks, winding murky channels, distinct cypress/mangrove silhouettes, readable player scale. Approval of look; topology then requested as connected islands."
+    },
+    {
+      "status": "part-specific approval",
+      "threadId": "01a150eb-d6a4-7493-ad27-ff99826efff6",
+      "chatTitle": "Fix forest performance and visuals",
+      "timestampUTC": "2026-10-18T21:45:12.673Z",
+      "userQuote": "ferns looks  better lilly pad good. the grass is still not liek  being done as leik a shader..  i want liek way more grass that rund supper smooth. reatcts to the player and  and stuff. there should be the higher grass  that i can cut.. \n\nbut not using the sprites liek this.",
+      "reference": "forest-vegetation-original-review.png",
+      "sourceArtifact": "test-output/forest-landscape/vegetation-review.png",
+      "interpretation": "Fern improvement and lily pads praised; grass explicitly still failed. Do not extend this approval to grass. Original vegetation review recovered later: right panel shows the actual existing lily pad. The grass in the same board was explicitly not approved. Current runtime art remains in src/forest.mjs (lily) and src/realm-art.mjs (bayou_lily)."
+    },
+    {
+      "status": "approved old-rig draft; integration failed",
+      "threadId": "01a16515-8c52-7f42-a292-08ba291e0858",
+      "chatTitle": "Improve character face, hair, and id",
+      "timestampUTC": "2026-10-22T19:43:25.056Z",
+      "userQuote": "yes this looks better. finish all 42 improvements and make every hairstyle look good from all angles, then update the game.",
+      "reference": "face-hair-approved-old-rig-draft.png",
+      "sourceArtifact": "C:/Users/New User/Desktop/COdex SHell/wildbound-character-viewer/art/player/cute-study-2026-10-22/review.png",
+      "interpretation": "Readable simpler face and grouped hair approved in draft. Next feedback explicitly identifies old rig/build. Visual example only; never restore its old rig."
+    },
+    {
+      "status": "approval qualified by wrong rig",
+      "threadId": "01a16515-8c52-7f42-a292-08ba291e0858",
+      "chatTitle": "Improve character face, hair, and id",
+      "timestampUTC": "2026-10-22T20:30:05.779Z",
+      "userQuote": "hirs and face look better. but you did it in an old build on th eold rig were not using any more..",
+      "reference": null,
+      "sourceArtifact": null,
+      "interpretation": "Keep approval of face/hair separate from the failure to use the active native rig."
+    },
+    {
+      "status": "grass appearance praised; trees still failed",
+      "threadId": "01a16515-8c52-7f42-a292-08ba291e0858",
+      "chatTitle": "Improve character face, hair, and id",
+      "timestampUTC": "2026-10-23T18:57:40.133Z",
+      "userQuote": "now  the grass is looking great the tress feel really static. make the leaves have liek a static shader that add almost liek the same leik movement in the grass to the chunks of leaves  so that it looks liek leaves rustling in the wind",
+      "reference": null,
+      "sourceArtifact": null,
+      "interpretation": "Approval concerned grass only; subsequent request was leaf rustle. Screenshot is user-supplied runtime evidence, not proof that every forest element was approved."
+    },
+    {
+      "status": "user-selected concept component",
+      "threadId": "01a165a5-ebde-7e83-8544-d169ab454718",
+      "chatTitle": "Set up Wildbound editing workflow",
+      "timestampUTC": "2026-10-26T05:06:11.709Z",
+      "userQuote": "i liked this for the character view in character creation",
+      "reference": "creator-forest-preview-liked.png",
+      "sourceArtifact": "C:/Users/New User/AppData/Local/Temp/codex-clipboard-431f2cd8-66da-4d26-85e8-0a11e62db813.png",
+      "interpretation": "Forest-backed character view and framing selected. This does not approve the whole UI or a new humanoid body style."
+    },
+    {
+      "status": "partial improvement; defects remain",
+      "threadId": "01a165a5-ebde-7e83-8544-d169ab454718",
+      "chatTitle": "Set up Wildbound editing workflow",
+      "timestampUTC": "2026-10-26T19:28:38.624Z",
+      "userQuote": "the wheels render throught hte car. and  if i go inthe water the car should fall in and sink.  this should kick out the player. .. car should not also render behind grass or stree stumps  and ashouldnt get stuck on littel rocks \n\noverall much better than before",
+      "reference": null,
+      "sourceArtifact": null,
+      "interpretation": "Car was much better overall, but wheel sorting, water entry and minor obstacles were explicitly broken."
+    },
+    {
+      "status": "specific visual bug fix praised",
+      "threadId": "01a165a5-ebde-7e83-8544-d169ab454718",
+      "chatTitle": "Set up Wildbound editing workflow",
+      "timestampUTC": "2026-10-27T05:05:54.056Z",
+      "userQuote": "slimes look better",
+      "reference": null,
+      "sourceArtifact": null,
+      "interpretation": "Slime crest-height fix praised. This is not approval of every slime animation or a new universal art style."
+    }
+  ],
+  "rejections": [
+    {
+      "threadId": "01a165a5-ebde-7e83-8544-d169ab454718",
+      "userQuote": "still bad. just scrap all that",
+      "scope": "Later cute humanoid study; removed from game. Do not use its v1/v2/v3 comparisons as the artist style baseline."
+    },
+    {
+      "threadId": "01a165a5-ebde-7e83-8544-d169ab454718",
+      "dateLocal": "2026-10-26",
+      "userQuote": "theold ones are better as they are the correct pixel size/density to match the world they live in .the new one would look bad..",
+      "scope": "Standalone lily-pad test draft; user prefers existing forest and swamp lily pads because their effective pixel scale/density fits the world. Do not integrate or use the rejected draft as an approved style reference."
+    }
+  ],
+  "bestInputRecipe": {
+    "target": "Exact asset and active rig/item ID; use existing source if identifiable.",
+    "primaryReference": "One main visual reference; say which proportions, silhouette, palette or material to borrow.",
+    "secondaryReferences": "Optional donor for motion, separately labeled; a 3D donor is not automatically the pixel-art style.",
+    "markup": "Mark where pivots, limbs, shaft, hat or near/far layers belong in relevant views.",
+    "constraints": "Gameplay pixel scale, palette, all eight views, asymmetric details, saved custom layers to preserve.",
+    "success": "One assembled sample at native gameplay and inventory sizes, compared beside actual reference; short loop if motion matters."
+  },
+  "workflow": [
+    "Inspect active checkout, selected rig and saved overrides.",
+    "Write a short visual contract with specific large shape and value decisions.",
+    "Resolve each view silhouette, broad shadow/highlight masses, one or two identifying details, then overall outline.",
+    "Render real assembled sample before family rollout. Review silhouette, identity, color clusters, turning logic, animation fit separately.",
+    "After explicit style rejection, obtain approval for the revised sample before expanding its family. Routine authorized fixes continue.",
+    "Keep technical test results separate from aesthetic approval. Save source, selected refs, review image and exact feedback status."
+  ],
+  "correction": "The original lily-pad review image was recovered from test-output/forest-landscape/vegetation-review.png. Earlier reports calling the image unavailable were mistaken; do not repeat that claim or infer no prior asset existed."
+}

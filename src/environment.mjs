@@ -1,3 +1,13 @@
+import {vegetationBlocked} from './house-surfaces.mjs';
+import {setTreeFallDirection,treeFallVector,applyTreeFall} from './tree-fall.mjs';
+import {vegetationWindStrength} from './vegetation-motion.mjs';
+import {drawJungleFern} from './fern-art.mjs';
+import {drawForestAsset} from './forest-props.mjs';
+import {meadowAllowed} from './pixel-meadow.mjs';
+import {realmTree,realmHarvestable,realmAsset,tickRealmHazards,realmTerrainAt} from './realm-world.mjs';
+import {swampSurface} from './swamp-terrain.mjs';
+import {drawRealmProp} from './realm-art.mjs';
+import {tickRealmLife,tickRealmEvent} from './realm-life.mjs';
 import {drawBiomeProp} from './biome-art.mjs';
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
 import {drawForestTree,drawPalmTree,drawBush,treeBase,palmBase,tickForest} from './forest.mjs';
@@ -10,6 +20,8 @@ import {boundlessTerrainAt} from './boundless-world.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
 import {drawGraveyardProp} from './graveyard-art.mjs';
 import {tickFlamingTrees} from './crypt-gear.mjs';
+import {flies} from './navigation.mjs';
+import {drawGrassProp,tickTallGrass} from './tall-grass.mjs';
 export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
@@ -20,6 +32,7 @@ export function waterAt(g, x, y) {
     ty = Math.floor(y / 32);
   const outside=tx<0||ty<0||tx>=50||ty>=50;
   if(outside&&g.mapMode!=='boundless')return 'water';
+  if(g.generatedEnvironment==='swamp')return swampSurface((tx,ty)=>realmTerrainAt(g,tx,ty),x,y).kind;
   let base=outside?boundlessTerrainAt(g,tx,ty):g.terrain?.[ty*50+tx]||'grass';
   // Beach pier boards are bridge tiles: water routes remain traversable
   // underneath instead of becoming a solid dry collision strip.
@@ -40,7 +53,9 @@ export function waterAt(g, x, y) {
         ny = ty + dy;
       if ((nx < 0 || ny < 0 || nx >= 50 || ny >= 50)&&g.mapMode!=='boundless') continue;
       const neighbor=g.mapMode==='boundless'?boundlessTerrainAt(g,nx,ny):g.terrain?.[ny*50+nx];
-      if (["water", "shallow", "bridge"].includes(neighbor))
+      // A raised crossing is not a flood source. Flooding from bridge tiles
+      // erased both dry landings during rain, making the deck stop in water.
+      if (["water", "shallow"].includes(neighbor))
         return "shallow";
     }
   return base;
@@ -48,9 +63,9 @@ export function waterAt(g, x, y) {
 export const isShallow = (type) => type === "shallow" || type === "floodbridge" || type === 'mud';
 export const isQuicksand = (type) => type === "quicksand";
 export function harvest(g, p, damage, range, onHit) {
-  const candidates = g.scenery
+  const candidates = (g.scenery||[])
     .filter(
-      (s) => !s.falling && !s.depleted && ["tree", "leafless_tree", "grave_forest_tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind),
+      (s) => !s.falling && !s.depleted && (realmHarvestable(s)||["tree", "leafless_tree", "grave_forest_tree", "palm", "rock", "snow_tree", "ice_rock", "ice_spire", "frozen_log"].includes(s.kind)),
     )
     .map((s) => ({ s, b: propBase(s) }))
     .filter(({ b }) => {
@@ -73,7 +88,7 @@ export function harvest(g, p, damage, range, onHit) {
   const hit = candidates[0];
   if (!hit) return false;
   const { s, b } = hit;
-  p.gatherAction = ["tree", "leafless_tree", "grave_forest_tree", "palm", "snow_tree", "frozen_log"].includes(s.kind) ? "woodcut" : "mine";
+  p.gatherAction = realmTree(s)||realmAsset(s.kind)?.type==='log'||["tree", "leafless_tree", "grave_forest_tree", "palm", "snow_tree", "frozen_log"].includes(s.kind) ? "woodcut" : "mine";
   p.gatherTime = 0.55;
   emitNoise(g, p, 'break', 300);
   g.onSound(["rock","ice_rock","ice_spire"].includes(s.kind)?"mine":"harvest",p);
@@ -83,26 +98,28 @@ export function harvest(g, p, damage, range, onHit) {
     g.dropLoot(p.x + p.faceX * 12, p.y + p.faceY * 12, type, qty, "Harvested");
     g.loot.at(-1).manualPickup = true;
   };
-  if (["tree","leafless_tree","grave_forest_tree","palm","snow_tree","frozen_log"].includes(s.kind)) {
+  if (realmTree(s)||realmAsset(s.kind)?.type==='log'||["tree","leafless_tree","grave_forest_tree","palm","snow_tree","frozen_log"].includes(s.kind)) {
     drop("stick", 1);
     s.maxHarvest ||= Math.round(s.size * 0.85);
     if (s.harvest >= s.maxHarvest) {
       s.falling = 0.001;
-      s.fallDirection = p.faceX < 0 ? -1 : 1;
+      setTreeFallDirection(s,b.x-p.x,b.y-p.y);
       s.logCount = Math.max(2, Math.round(s.size / 32));
       if (s.kind === "palm") s.coconuts ??= Math.floor(terrainHash(s.x, s.y) * 4);
     }
   } else {
     s.maxHarvest = 36;
     s.chunks ??= Math.max(2, Math.round(s.size / 16));
+    s.maxChunks ??= s.chunks;
     if (s.harvest >= 36) {
-      s.harvest -= 36;
-      s.chunks--;
-      s.chipped = (s.chipped || 0) + 1;
-      drop(["ice_rock","ice_spire"].includes(s.kind)?"raw_ice":"stone", 1);
+      const pieces=Math.min(s.chunks,Math.floor(s.harvest/36));
+      s.harvest-=pieces*36;
+      s.chunks-=pieces;
+      s.chipped=(s.chipped||0)+pieces;
+      drop(s.kind==='shadow_obsidian'?'veil_shard':realmAsset(s.kind)?.type==='crystal'?'cave_crystal_shard':["ice_rock","ice_spire"].includes(s.kind)?"raw_ice":"stone",pieces);
       if (s.chunks <= 0) {
         s.depleted = true;
-        s.falling = 0.001;
+        s.harvest=0;
       }
     }
   }
@@ -117,6 +134,10 @@ export function harvest(g, p, damage, range, onHit) {
   return true;
 }
 export function tickEnvironment(g, dt) {
+  tickRealmHazards(g,dt);
+  tickRealmLife(g,dt);
+  tickRealmEvent(g,dt);
+  tickTallGrass(g,dt);
   tickFlamingTrees(g,dt);
   tickForest(g,dt);
   g.footprints ||= [];
@@ -132,8 +153,8 @@ export function tickEnvironment(g, dt) {
         s.depleted = true;
         const b = propBase(s);
         g.dropLoot(
-          b.x + s.fallDirection * s.size * 0.35,
-          b.y,
+          b.x + treeFallVector(s).x * s.size * 0.35,
+          b.y + treeFallVector(s).y * s.size * 0.35,
           "log",
           s.logCount || 2,
           "Felled tree",
@@ -146,7 +167,7 @@ export function tickEnvironment(g, dt) {
       }
     }
   for (const s of g.scenery) {
-    if (s.falling >= 1.5 && ["tree", "leafless_tree", "grave_forest_tree", "snow_tree", "palm"].includes(s.kind)) {
+    if (s.falling >= 1.5 && (realmTree(s)||["tree", "leafless_tree", "grave_forest_tree", "snow_tree", "palm"].includes(s.kind))) {
       // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
       s.fallen = true;
       s.falling = 0;
@@ -156,6 +177,7 @@ export function tickEnvironment(g, dt) {
   }
   if(g.scenery.some(s=>s.falling>=1.5))g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
   for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
+    if(flies(a)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if (
       a.room ||
       a.hp <= 0 ||
@@ -242,15 +264,27 @@ export function drawTracks(c, g) {
     }
   }
 }
-export function drawProp(c, p, time,game={}) {
+export function drawProp(c, p, time,game={},renderOptions={}) {
+  // Boundless entrances and player-built floors can replace terrain after the
+  // decoration was generated. Reuse the live grass mask instead of painting
+  // mushrooms/reeds over the newly carved paving.
+  if(p.kind==='forest_understory'&&(vegetationBlocked(game,p.x,p.rootY??p.y,8)||game.forestLandscape&&!meadowAllowed(game,p.x,p.rootY??p.y,8)))return true;
+  if((game.generatedEnvironment||game.environment)==='forest'&&!p.depleted&&!p.destroyed&&drawForestAsset(c,p,time,game))return true;
+  if(['short_grass','tall_grass','grass'].includes(p.kind)&&vegetationBlocked(game,p.x,p.rootY??p.y+p.size*.4,Math.max(6,(p.size||20)*.35)))return true;
+  if(drawRealmProp(c,p,time,game,renderOptions))return true;
+  if(renderOptions.shaderGrass&&p.kind==='tall_grass'&&!p.charred)return true;
+  if(drawGrassProp(c,p,time,game.generatedEnvironment||game.environment,game))return true;
   if(drawGraveyardProp(c,p,time,game))return true;
-  if(drawBiomeProp(c,p,time,game))return true;
+  if(drawBiomeProp(c,p,time,game,renderOptions))return true;
   if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
-  if(p.procedural&&['tree','snow_tree','palm'].includes(p.kind)){
+  if(p.procedural&&['tree','snow_tree','palm','leafless_tree'].includes(p.kind)){
     if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game);
     if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
   }
-  if(p.kind==='bush'){drawBush(c,p,time);return true;}
+  if(p.kind==='bush'){drawBush(c,p,time,{...renderOptions,windStrength:vegetationWindStrength(game)});return true;}
+  if(p.procedural&&p.kind==='fern'&&(game.generatedEnvironment||game.environment)==='forest'){
+    c.save();const base=propBase(p);c.translate(base.x,base.y);c.scale(p.size/48,p.size/48);drawJungleFern(c,{...p,x:0,y:0},time,vegetationWindStrength(game));c.restore();return true;
+  }
   if(drawIceProp(c,p,time))return true;
   if (!p.procedural) return false;
   const base = propBase(p),
@@ -260,10 +294,7 @@ export function drawProp(c, p, time,game={}) {
   c.translate(Math.round(base.x), Math.round(base.y));
   c.scale(scale, scale);
   if (p.fallen && ["tree", "snow_tree", "palm"].includes(p.kind)) {
-    c.fillStyle = "#15251d";
-    c.beginPath();
-    c.ellipse(0, 3, 15, 5, 0, 0, Math.PI * 2);
-    c.fill();
+    if(!renderOptions.dynamicShadows){c.fillStyle = "#15251d";c.beginPath();c.ellipse(0, 3, 15, 5, 0, 0, Math.PI * 2);c.fill();}
     c.fillStyle = p.kind === "palm" ? "#5a402b" : "#493d2c";
     c.fillRect(-7, -4, 14, 7);
     c.fillStyle = p.kind === "palm" ? "#a47644" : "#98704a";
@@ -272,9 +303,7 @@ export function drawProp(c, p, time,game={}) {
     return true;
   }
   if (p.falling) {
-    c.rotate(
-      ((p.fallDirection || 1) * Math.min(1, p.falling / 1.1) * Math.PI) / 2,
-    );
+    applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);
     c.globalAlpha *= Math.max(0, 1 - Math.max(0, p.falling - 1) * 2);
   }
   const r = (x, y, w, h, color) => {
@@ -324,8 +353,10 @@ export function drawProp(c, p, time,game={}) {
     r(-17, -9, 34, 7, "#d5ad71");
     r(-9, -14, 18, 6, "#e0bb7c");
   } else if (p.kind === "rock") {
-    const chip = p.chipped || 0,
-      w = Math.max(10, 25 - chip * 3);
+    const maxChunks=p.maxChunks??Math.max(2,Math.round(p.size/16)),
+      remaining=Math.max(.2,Math.min(1,((p.chunks??maxChunks)-(p.harvest||0)/36)/maxChunks)),
+      w=Math.max(6,25*remaining);
+    c.scale(remaining,remaining);
     r(-w / 2 - 3, -4, w + 6, 7, "#24372d");
     r(-w / 2, -18, w, 19, "#545f59");
     r(-w / 2 + 3, -24, w - 5, 21, "#899087");

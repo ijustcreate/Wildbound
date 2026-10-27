@@ -14,8 +14,9 @@ export function gearPalette(id, dye) {
   const base = dye || def.artColor || '#997d50';
   const key = `${id}:${base}`;
   if (ramps.has(key)) return ramps.get(key);
-  const result = { ink:'#302b2b', dark:mixGearColor(base,'#302b2b',.48), base,
-    light:mixGearColor(base,'#f7e7c0',.42), shine:'#f4e4bc', trim:'#b18a51', leather:'#624735' };
+  const metal=/plate|iron|steel|moon|sun|gauntlet|blade|sword|dagger|shield/.test(id+' '+(def.style||''));
+  const result = { ink:'#302b2b', dark:mixGearColor(base,'#392b34',metal?.4:.32), base,
+    light:mixGearColor(base,'#f7dfb7',metal?.38:.25), shine:'#f4e4bc', trim:'#b18a51', leather:'#624735' };
   if(def.bansheeGear)Object.assign(result,{ink:'#24232e',dark:mixGearColor(base,'#202532',.5),light:mixGearColor(base,'#b7d2de',.34),shine:'#d0e8ed',trim:'#90aab9',leather:'#473344'});
   if (ramps.size >= 512) ramps.clear();
   ramps.set(key, result);
@@ -71,11 +72,12 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     // The joint is the wrist: keep the silhouette compact so the glove does
     // not swallow the sleeve or read as a second arm.
     const thumb=side==='L'?-1:1;
-    r(-2,-2,5,6,p.ink);r(-1,-1,3,4,p.base);
-    r(-1,-2,3,1,p.light);r(-1,2,3,2,p.dark);
-    r(-2,3,5,2,p.leather);r(-1,3,3,1,p.trim);
-    r(thumb<0?-2:1,0,2,2,p.dark);r(thumb<0?-2:2,0,1,1,p.light);
-    r(-1,0,2,1,p.light);r(0,2,1,1,p.trim);
+    const half=profile?1:2;
+    r(-half,-2,half*2+1,6,p.ink);r(-half+1,-1,Math.max(1,half*2-1),4,rear?p.dark:p.base);
+    r(-half+1,-2,Math.max(1,half*2-1),1,p.light);r(-half+1,2,Math.max(1,half*2-1),2,p.dark);
+    r(-half,3,half*2+1,2,p.leather);r(-half+1,3,Math.max(1,half*2-1),1,p.trim);
+    if(!rear){r(thumb<0?-2:1,0,2,2,p.dark);r(thumb<0?-2:2,0,1,1,p.light);}
+    r(-1,0,profile?1:2,1,rear?p.dark:p.light);r(0,2,1,1,p.trim);
     if(def.style==='wraps') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.light);}
     if(def.style==='gauntlets'||def.style==='sun') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.shine);}
     if(def.style==='spiked'||id==='gloves') {r(-2,-4,1,2,p.shine);r(1,-4,1,2,p.light);}
@@ -97,16 +99,17 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     if(def.style==='moon') r(0,-3,1,2,p.shine);
   } else if(kind==='shoulder_armor') {
     if(id==='alan_leaf_mantle'){
-      for(const [x,len] of [[-4,7],[-1,10],[2,8]]){
-        r(x,-3,5,2,'#1f3928');r(x+1,-2,4,3,x===-1?'#729853':'#3f713e');
-        for(let y=1;y<len;y++){const inset=Math.floor((y-1)/4);r(x+inset,y,Math.max(1,4-inset),1,'#254e30');r(x+inset+1,y,Math.max(1,2-inset),1,y%3?'#477b41':'#83a35c');}
+      for(const [x,len] of [[-2,3],[0,5],[2,3]]){
+        r(x,-2,3,2,'#1f3928');r(x,-1,2,2,x===0?'#729853':'#3f713e');
+        for(let y=1;y<len;y++){const inset=Math.floor(y/3);r(x+inset,y,Math.max(1,3-inset),1,'#254e30');r(x+inset+1,y,1,1,y===1?'#83a35c':'#477b41');}
       }
       return;
     }
     if(def.bansheeGear){bansheeShoulder(c,anchor,direction,side,p);return;}
     const w=profile?4:5;
     r(-2,-2,w,1,p.ink);r(-3,-1,w+2,3,p.ink);r(-2,2,w,1,p.ink);
-    r(-2,-1,w,2,p.base);r(-2,-1,w-1,1,p.light);r(-1,1,w-1,1,p.dark);
+    r(-2,-1,w,2,rear?p.dark:p.base);r(-2,-1,w-1,1,p.light);r(-1,1,w-1,1,p.dark);
+    if(rear)r(0,-1,1,3,p.leather);
     r(-1,-1,1,1,p.shine);
     if(def.style==='leaf') {r(1,0,2,2,p.dark);r(1,0,1,1,p.light);}
     if(def.style==='moon'||def.style==='sun') r(0,0,1,2,p.shine);

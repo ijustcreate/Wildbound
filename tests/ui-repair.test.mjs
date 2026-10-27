@@ -39,7 +39,7 @@ test('vending resets on new expedition, not session resume, and preserves paid p
  g.start();assert.deepEqual(p.vendingStock,vendingStock());assert.equal(p.vendingOrders.length,1);assert.equal(p.coins,90);
 });
 const mockCanvas=()=>{
- const ops=[],c={globalAlpha:1,save(){ops.push(['save']);},restore(){ops.push(['restore']);},translate(...a){ops.push(['translate',...a]);},scale(){},transform(){},rotate(...a){ops.push(['rotate',...a]);},beginPath(){},rect(...a){ops.push(['clip-rect',...a]);},clip(){},fillRect(...a){ops.push(['pixel',this.fillStyle,...a]);}};
+ const ops=[],c={globalAlpha:1,save(){ops.push(['save']);},restore(){ops.push(['restore']);},translate(...a){ops.push(['translate',...a]);},scale(){},transform(){},rotate(...a){ops.push(['rotate',...a]);},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},rect(...a){ops.push(['clip-rect',...a]);},clip(){},fillRect(...a){ops.push(['pixel',this.fillStyle,...a]);}};
  return {c,ops};
 };
 test('all tree families split above stationary roots, with bounded falling pose and gradual acceleration',()=>{
@@ -69,4 +69,16 @@ test('whip has wind-up, extension, snap and recovery and reuses a fixed rope buf
  const load=sampleWhip('swipe_one',.2),snap=sampleWhip('swipe_one',.5),recovery=sampleWhip('swipe_one',1);
  assert.ok(snap.extension>load.extension+.9);assert.ok(snap.crack>.9);assert.equal(recovery.extension,0);
  assert.ok(Math.hypot(...snap.points.slice(-3))>Math.hypot(...load.points.slice(-3))*2);
+});
+
+
+test('pause full-width rows do not skip the nearer paired actions in either direction',()=>{
+ const resume=button(0,0,500),summary=button(0,75,500),settings=button(0,135,245),dev=button(254.99997,135,245),restart=button(0,220,245),quit=button(255,220,245),worlds=button(0,275,500);
+ const controls=[resume,summary,settings,dev,restart,quit,worlds];
+ assert.equal(dialogNeighbour(controls,resume,0,1),summary);
+ assert.equal(dialogNeighbour(controls,summary,0,1),settings);
+ assert.equal(dialogNeighbour(controls,settings,1,0),dev);
+ assert.equal(dialogNeighbour(controls,dev,0,1),quit);
+ assert.equal(dialogNeighbour(controls,quit,-1,0),restart);
+ assert.equal(dialogNeighbour(controls,worlds,0,-1),restart);
 });

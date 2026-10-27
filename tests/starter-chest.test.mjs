@@ -9,11 +9,11 @@ import {Profiles} from '../src/profiles.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 
 const setup=()=>{const g=new Game(()=>.5),p=g.addPlayer('pad:0'),q=g.addPlayer('pad:1');g.phase='lobby';p.inventory=[];q.inventory=[];return {g,p,q};};
-test('starter chest includes every starter gear choice plus eight starter arrows',()=>{
+test('starter chest includes every starter gear choice plus eight starter arrows and four health potions',()=>{
   const {g,p}=setup(),chest=starterChestFor(g,p);
   assert.deepEqual(new Set(STARTER_GEAR),new Set(Object.keys(ITEMS).filter(id=>id.startsWith('starter_')&&ITEMS[id].slot)));
   assert.equal(STARTER_GEAR.length,7);assert.ok(STARTER_GEAR.includes('starter_wand'));assert.ok(STARTER_GEAR.includes('starter_boomerang'));
-  assert.deepEqual(chest,STARTER_SUPPLIES);assert.equal(chest.find(i=>i.type==='arrow').qty,8);
+  assert.deepEqual(chest,STARTER_SUPPLIES);assert.equal(chest.find(i=>i.type==='arrow').qty,8);assert.equal(chest.find(i=>i.type==='potion').qty,4);
 });
 test('regular starter chest withdraws and deposits, retaining equipment sockets and bag contents',()=>{
   const {g,p}=setup();g.openInventory(p,'starter');assert.equal(p.ui.panel,'chest');assert.equal(p.ui.loot,true);
@@ -33,23 +33,29 @@ test('starter chest empty slots, four-column navigation, full packs and favorite
 });
 test('each player owns finite starter stock, with no free refill on close, reopen or session restore',()=>{
   const {g,p,q}=setup();g.openInventory(p,'starter');g.openInventory(q,'starter');g.inventoryAction(p,'lootAll');
-  assert.equal(p.starterChest.filter(Boolean).length,0);assert.equal(q.starterChest.filter(Boolean).length,8);assert.equal(count(p,'arrow'),8);
+  assert.equal(p.starterChest.filter(Boolean).length,0);assert.equal(q.starterChest.filter(Boolean).length,9);assert.equal(count(p,'arrow'),8);
   for(let i=0;i<4;i++){g.inventoryAction(p,'close');g.openInventory(p,'starter');assert.equal(g.storageFor(p).filter(Boolean).length,0);}
   const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),r=restored.players[0];restored.openInventory(r,'starter');assert.equal(restored.storageFor(r).filter(Boolean).length,0);
 });
 test('new levels refill starter supplies without erasing deposits, extra arrows or overflowing a full chest',()=>{
   const {g,p,q}=setup();g.openInventory(p,'starter');g.inventoryAction(p,'lootAll');p.ui=null;
   const deposited={type:'moon_blade',qty:1,sockets:['azure_bead']};p.starterChest=Array.from({length:24},()=>structuredClone(deposited));q.starterChest=[{type:'arrow',qty:999}];
-  g.start();assert.equal(p.starterChest.length,32);assert.deepEqual(p.starterChest.slice(0,24),Array.from({length:24},()=>deposited));
+  g.start();assert.equal(p.starterChest.length,33);assert.deepEqual(p.starterChest.slice(0,24),Array.from({length:24},()=>deposited));
   assert.equal(q.starterChest.find(i=>i.type==='arrow').qty,999);for(const type of STARTER_GEAR)assert.ok(p.starterChest.some(i=>i?.type===type));
   const before=JSON.stringify(p.starterChest);restockStarterChest(p);assert.equal(JSON.stringify(p.starterChest),before);
   g.openInventory(p,'starter');g.inventoryAction(p,'select:24');g.inventoryAction(p,'use');assert.equal(count(p,'starter_boomerang'),2);
 });
-test('character profiles persist deposited starter chest items without touching private storage',()=>{
-  const {g,p,q}=setup(),profiles=new Profiles();profiles.save=async()=>{};profiles.data.heroes=[freshCharacter('starter-test','Starter Tester')];profiles.assign(p,profiles.data.heroes[0]);
-  const privateBefore=structuredClone(p.chests);g.openInventory(p,'starter');p.inventory=[{type:'moon_blade',qty:1,sockets:['azure_bead']}];g.inventoryAction(p,'panel:pack');g.inventoryAction(p,'use');profiles.capture(g);
-  profiles.assign(q,profiles.data.heroes[0]);assert.deepEqual(q.starterChest,p.starterChest);assert.notEqual(q.starterChest,p.starterChest);assert.deepEqual(q.chests,privateBefore);
-  q.starterChest.find(i=>i?.type==='moon_blade').sockets.push('jade_bead');assert.deepEqual(p.starterChest.find(i=>i?.type==='moon_blade').sockets,['azure_bead']);
+test('profile selection returns legacy deposits to the owner and gives fresh isolated supplies',()=>{
+  const {g,p,q}=setup(),profiles=new Profiles();profiles.save=async()=>{};
+  const h=freshCharacter('starter-test','Starter Tester'),other=freshCharacter('other-test','Other Tester');profiles.data.heroes=[h,other];
+  profiles.assign(p,h);const privateBefore=structuredClone(p.chests);g.openInventory(p,'starter');
+  p.inventory=[{type:'moon_blade',qty:1,sockets:['azure_bead']}];g.inventoryAction(p,'panel:pack');g.inventoryAction(p,'use');profiles.capture(g);
+  profiles.assign(q,h);g.openInventory(q,'starter');
+  assert.deepEqual(q.starterChest,STARTER_SUPPLIES);assert.deepEqual(q.chests,privateBefore);
+  assert.deepEqual(q.field.overflow.find(i=>i.type==='moon_blade').sockets,['azure_bead']);
+  profiles.assign(p,other);g.openInventory(p,'starter');assert.deepEqual(p.starterChest,STARTER_SUPPLIES);
+  assert.ok(!p.field.overflow.some(i=>i.type==='moon_blade'));assert.notEqual(p.starterChest,q.starterChest);
+  profiles.assign(q,h);assert.equal(q.field.overflow.filter(i=>i.type==='moon_blade').length,1);
 });
 test('lobby starter interaction opens the real chest, cancels readiness and renders a lid rather than a sign',()=>{
   const {g,p}=setup(),lobby=Object.create(PlayableLobby.prototype);Object.assign(lobby,{getGame:()=>g,state:new LobbyState()});lobby.state.sync(g.players);const s=lobby.state.members.get(p.id);Object.assign(s,{spawned:true,panel:null});p.ready=true;
@@ -61,5 +67,5 @@ test('entering a new TV World level restocks starter selections without erasing 
   Object.assign(lobby,{getGame:()=>g,state:new LobbyState(),practice:new LobbyPractice(),television,sync(){},draw(){},root:{querySelector:()=>({textContent:''})},area:{querySelector:()=>({textContent:''})}});
   lobby.state.sync(g.players);for(const hero of g.players){Object.assign(lobby.state.members.get(hero.id),{spawned:true,panel:null,x:785,y:165});hero.starterChest=[];}
   p.starterChest.push({type:'moon_blade',qty:1,sockets:['azure_bead']});lobby.update(.05,{});
-  assert.ok(lobby.tvWildbound);assert.equal(p.starterChest.filter(Boolean).length,9);assert.equal(q.starterChest.filter(Boolean).length,8);assert.deepEqual(p.starterChest[0].sockets,['azure_bead']);
+  assert.ok(lobby.tvWildbound);assert.equal(p.starterChest.filter(Boolean).length,10);assert.equal(q.starterChest.filter(Boolean).length,9);assert.deepEqual(p.starterChest[0].sockets,['azure_bead']);
 });

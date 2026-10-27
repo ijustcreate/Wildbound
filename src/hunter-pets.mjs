@@ -140,8 +140,10 @@ export function tickHunterPets(g,dt,inputs={}){
 }
 export function tickRitualPets(g,dt){
  for(const p of g.players){
-  if(![p.equipment?.hand1,p.equipment?.hand2].includes('ritual_dagger')||p.hp<=0){delete p.ritualPet;continue;}
+  const equipment=p.controlMainLoadout?.equipment||p.equipment;
+  if(![equipment?.hand1,equipment?.hand2].includes('ritual_dagger')||p.hp<=0){delete p.ritualPet;continue;}
   const pet=p.ritualPet??=Object.assign(restoreHunterPet({kind:'tiger',name:'Ghost Tiger',collar:p.color}),{id:g.nextId++,owner:p.id,spiritGhost:true,ritualPet:true,x:p.x,y:p.y});
+  if(controlledUnit(g,p)===pet)continue;
   const finish=companionMovement(pet,dt);
   try{
   pet.attack=Math.max(0,(pet.attack||0)-dt);pet.cooldown=Math.max(0,(pet.cooldown||0)-dt);

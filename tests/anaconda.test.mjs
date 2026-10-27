@@ -87,7 +87,7 @@ test('body contact respects airborne height, and one update cannot deal one hit 
 
 test('melee hits a distant coil once, local visibility does not depend on the head, projectiles have a bounded body predicate',()=>{
   const g=field(),e=snake(g,{cooldown:999}),p=g.players[0],coil=anacondaBody(e).segments[27];
-  Object.assign(p,{x:coil.x,y:coil.y+30,faceX:0,faceY:-1});p.equipment.hand1='sword';const hp=e.hp;g.attack(p);
+  Object.assign(p,{x:coil.x,y:coil.y+30,faceX:0,faceY:-1});p.equipment.hand1='sword';const hp=e.hp;g.attack(p);e.frozen=1;for(let i=0;i<6;i++)g.update(.02,{});
   assert.ok(e.hp<hp);assert.ok(hp-e.hp<60);assert.ok(Math.hypot(p.x-e.x,p.y-e.y)>200);
   assert.ok(meleeCanHit(p,e,{range:76,arc:90},point=>Math.hypot(point.x-p.x,point.y-p.y)<90));
   assert.equal(meleeCanHit(p,e,{range:76,arc:90},()=>false),false);

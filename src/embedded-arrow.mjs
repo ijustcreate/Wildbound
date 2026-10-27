@@ -20,11 +20,28 @@ export function drawFlyingArrow(c,a={},time=0){
  const length=a.shaftLength||24;
  // A short tapered wake stays faint and follows the actual flight orientation.
  c.save();
- for(let i=0;i<5;i++){c.globalAlpha=.13*(1-i/5);c.fillStyle='#e9e1bd';c.fillRect(-length-4-i*5,-.5,5,1);}
+ if(!a.flightTrail?.length)for(let i=0;i<5;i++){c.globalAlpha=.28*(1-i/5);c.fillStyle='#e9e1bd';c.fillRect(-length-4-i*5,-.5,5,1);}
  c.restore();
  c.fillStyle='#ba9763';c.fillRect(-length,-.7,length-2,1.4);drawArrowFletching(c,-length+1);
  c.fillStyle='#c6d2c8';c.beginPath();c.moveTo(0,0);c.lineTo(-5,-2);c.lineTo(-4,0);c.lineTo(-5,2);c.closePath();c.fill();
  if(a.bansheeFrost){c.fillStyle='#80ddff';c.fillRect(-length,-1,length-3,2);c.fillStyle='#e8ffff';c.fillRect(-8,-1,8,2);for(let i=0;i<5;i++){const x=-5-i*7;c.fillStyle=i%2?'#9ce7ff':'#e0fbff';c.fillRect(x,Math.sin(time*18+i*2)*3,2,2);}}
+}
+// World-space history includes projectile height: curved shots leave curved
+// trails, not an arbitrary straight line glued behind the arrow graphic.
+export function recordArrowTrail(a,time){
+ if(a.stuck||a.rock||a.ice)return;
+ const history=a.flightTrail||=[];history.push({x:a.x,y:a.y-(a.z||0),time});
+ while(history.length>18||history.length&&time-history[0].time>.16)history.shift();
+}
+export function drawArrowTrail(c,a,time){
+ const history=a.flightTrail;if(!history?.length||a.rock||a.ice)return;
+ c.save();c.strokeStyle=a.bansheeFrost?'#b8eeff':'#eee1bd';c.lineCap='round';
+ for(let i=1;i<history.length;i++){
+  const from=history[i-1],to=history[i],fade=Math.max(0,1-(time-to.time)/.16);
+  if(!fade)continue;c.globalAlpha=.38*fade*fade;c.lineWidth=.6+fade;
+  c.beginPath();c.moveTo(from.x,from.y);c.lineTo(to.x,to.y);c.stroke();
+ }
+ c.restore();
 }
 export function drawEmbeddedArrow(c,a,time=0,showQuantity=false){
  c.save();
