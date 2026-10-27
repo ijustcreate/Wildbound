@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071818">
+  <title>Wildbound Character Viewer</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./feedback.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">✦</span><span>WILDBOUND <small>CHARACTER VIEWER · <span data-game-version>Game 1.0.83</span></small></span></div>
+      <a href="./atlas.html" style="color:#dfc078;text-decoration:none;border:1px solid #3d5b4f;border-radius:20px;padding:7px 12px;font-size:11px">Open field archive →</a>
+      <span id="roster-count" class="roster-count">Loading units…</span>
+    </header>
+    <section class="stage-layout" aria-label="Character preview">
+      <div class="stage-wrap">
+        <div class="preview-window">
+          <div class="stage-label"><span>RIG PREVIEW</span><span id="facing-label">FRONT</span></div>
+          <canvas id="stage" width="960" height="560" aria-label="Selected Wildbound character animation"></canvas>
+          <div id="mark-layer" class="mark-layer" aria-label="Drag to mark an area of the preview"><div id="mark-box" class="mark-box" hidden></div></div>
+          <div class="stage-tags" aria-label="Frame feedback tags">
+            <fieldset class="stage-tag-group good"><legend>Good</legend><div class="tag-row" id="good-tags">
+              <button type="button" data-tag="silhouette" aria-pressed="false">Silhouette</button>
+              <button type="button" data-tag="motion" aria-pressed="false">Motion</button>
+              <button type="button" data-tag="timing" aria-pressed="false">Timing</button>
+              <button type="button" data-tag="detail" aria-pressed="false">Detail</button>
+            </div></fieldset>
+            <fieldset class="stage-tag-group bad"><legend>Needs work</legend><div class="tag-row bad" id="bad-tags">
+              <button type="button" data-tag="pose" aria-label="Awkward pose" aria-pressed="false">Pose</button>
+              <button type="button" data-tag="clipping" aria-pressed="false">Clipping</button>
+              <button type="button" data-tag="jitter" aria-pressed="false">Jitter</button>
+              <button type="button" data-tag="readability" aria-label="Hard to read" aria-pressed="false">Readability</button>
+            </div></fieldset>
+          </div>
+          <div class="stage-bottom"><span id="frame-label">FRAME 01</span><span id="mark-hint">SELECT A UNIT BELOW</span></div>
+        </div>
+        <div class="stage-tools" aria-label="Preview controls">
+          <button id="loop-toggle" class="tool-button active" type="button" aria-pressed="true">↻ <span>Loop</span></button>
+          <button id="spin-toggle" class="tool-button" type="button" aria-pressed="false">◌ <span>Spin</span></button>
+          <button id="mark-button" class="tool-button" type="button" aria-pressed="false">▣ <span>Mark area</span></button>
+          <button id="clear-mark" class="tool-button subtle" type="button" hidden>Clear mark</button>
+        </div>
+        <div class="timeline" aria-label="Animation timeline">
+          <button id="frame-prev" type="button" aria-label="Previous frame">‹</button>
+          <input id="frame-slider" type="range" min="0" max="1" step="1" value="0" aria-label="Scrub animation frame">
+          <button id="frame-next" type="button" aria-label="Next frame">›</button>
+          <output id="frame-count">1 / 1</output>
+        </div>
+      </div>
+      <aside class="control-panel">
+        <p class="eyebrow">SELECTED UNIT <span id="position-label">01 / 01</span></p>
+        <h1 id="unit-name">Loading…</h1>
+        <p id="unit-kind" class="unit-kind"></p>
+        <label class="field" for="animation-select">Animation</label>
+        <select id="animation-select" aria-label="Animation"></select>
+        <button id="play-button" class="play-button" type="button" aria-pressed="true">Stop animation</button>
+        <p id="status" class="status" role="status"></p>
+      </aside>
+    </section>
+    <section class="roster-section" aria-label="Unit carousel">
+      <div class="roster-heading"><h2>Units</h2><div class="carousel-actions"><button id="previous" type="button" aria-label="Previous unit">‹</button><button id="next" type="button" aria-label="Next unit">›</button></div></div>
+      <div id="carousel" class="carousel" role="listbox" aria-label="Select a unit"></div>
+    </section>
+    <section class="feedback-section" aria-label="Animation feedback">
+      <div class="feedback-heading"><div><p class="eyebrow">FRAME NOTES</p><h2>Animation feedback</h2><p id="feedback-context">Select a unit and animation, then choose a frame.</p></div><span id="feedback-count" class="feedback-count">0 notes</span></div>
+      <div class="feedback-grid">
+        <form id="feedback-form" class="feedback-form">
+          <p class="feedback-tip">Tap tags beside the rig, add a comment, or mark an area on the preview. Feedback saves with this unit, animation, frame, and facing.</p>
+          <label for="feedback-comment">Comment</label>
+          <textarea id="feedback-comment" rows="4" maxlength="2000" placeholder="What should change at this frame?"></textarea>
+          <div class="form-bottom"><span id="region-summary">No area marked</span><button id="save-feedback" type="submit">Save feedback</button></div>
+          <p id="feedback-status" class="feedback-status" role="status"></p>
+        </form>
+        <div class="notes-panel"><h3>Saved notes</h3><div id="feedback-list" class="feedback-list"><p class="empty-notes">No notes for this animation yet.</p></div></div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./viewer.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+const http = require('node:http');
+const path = require('node:path');
+const {existsSync} = require('node:fs');
+const {spawn} = require('node:child_process');
+
+const root = path.resolve(__dirname, '..');
+const version = process.env.WILDBOUND_VERSION;
+if (!version) throw Error('WILDBOUND_VERSION is required.');
+const buildRoot = path.join(root, 'dist', `web-${version}`);
+const port = Number(process.env.WILDBOUND_PORT || 4174);
+const url = `http://127.0.0.1:${port}/`;
+if (!existsSync(path.join(buildRoot, 'index.html')) || !existsSync(path.join(buildRoot, 'app.mjs'))) {
+  throw Error(`Versioned web build not found: ${buildRoot}`);
+}
+function ready() {
+  return new Promise(resolve => {
+    const req = http.get(url, res => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode !== 200 || !body.includes('Wildbound')) return resolve(false);
+        const moduleReq = http.get(`${url}app.mjs`, moduleRes => {
+          moduleRes.resume();
+          moduleRes.on('end', () => resolve(moduleRes.statusCode === 200));
+        });
+        moduleReq.on('error', () => resolve(false));
+        moduleReq.setTimeout(1000, () => moduleReq.destroy());
+      });
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(1000, () => req.destroy());
+  });
+}
+function browserLaunch() {
+  if (process.platform === 'win32') {
+    const roots = [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA].filter(Boolean);
+    for (const relative of ['Google/Chrome/Application/chrome.exe', 'Microsoft/Edge/Application/msedge.exe']) {
+      const executable = roots.map(root => path.join(root, relative)).find(existsSync);
+      if (executable) return {command: executable, args: ['--app=' + url, '--start-fullscreen']};
+    }
+    throw Error('Fullscreen game mode needs Chrome or Edge installed.');
+  }
+  return {command: process.platform === 'darwin' ? 'open' : 'xdg-open', args: [url]};
+}
+(async () => {
+  if (!await ready()) {
+    const server = spawn(process.execPath, [path.join(__dirname, 'serve.cjs')], {
+      cwd: root,
+      env: {...process.env, WILDBOUND_SERVE_ROOT: buildRoot, WILDBOUND_SERVE_PORT: String(port)},
+      detached: true, stdio: 'ignore', windowsHide: true,
+    });
+    server.unref();
+  }
+  for (let i = 0; i < 30; i++) {
+    if (await ready()) {
+      const launch = browserLaunch();
+      if (process.argv.includes('--check')) { console.log(`Wildbound ${version} ready: ${url}`); console.log(JSON.stringify(launch)); return; }
+      const browser = spawn(launch.command, launch.args, {stdio: 'ignore', detached: true});
+      browser.on('error', error => console.error('Open ' + url + '. ' + error.message));
+      browser.unref();
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  throw Error(`Could not start Wildbound ${version} on port ${port}.`);
+})().catch(error => { console.error(error.message); process.exitCode = 1; });

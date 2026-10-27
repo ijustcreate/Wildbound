@@ -1,0 +1,248 @@
+[
+  {
+    "file": "blizzard.png",
+    "title": "Blizzard Pass",
+    "category": "areas",
+    "detail": "The mountain pass during the blizzard event."
+  },
+  {
+    "file": "character-creation.png",
+    "title": "Character creation",
+    "category": "menus",
+    "detail": "Choose and customize an explorer before entering the world."
+  },
+  {
+    "file": "character-lobby.png",
+    "title": "Character lobby",
+    "category": "menus",
+    "detail": "Explorer selection and the party lobby."
+  },
+  {
+    "file": "controller-setup.png",
+    "title": "Controller setup",
+    "category": "menus",
+    "detail": "Controller connection and player assignment."
+  },
+  {
+    "file": "desert-dunes.png",
+    "title": "Desert dunes",
+    "category": "areas",
+    "detail": "The sunlit desert region and its surrounding terrain."
+  },
+  {
+    "file": "equipped-gear.png",
+    "title": "Equipped gear",
+    "category": "shops",
+    "detail": "The equipment screen with worn items and gear slots."
+  },
+  {
+    "file": "event-settings.png",
+    "title": "Event settings",
+    "category": "menus",
+    "detail": "World event configuration menu."
+  },
+  {
+    "file": "expedition-board.png",
+    "title": "Expedition board",
+    "category": "areas",
+    "detail": "The central expedition board and surrounding hubs."
+  },
+  {
+    "file": "field-loot.png",
+    "title": "Field loot",
+    "category": "shops",
+    "detail": "Loot found during an expedition."
+  },
+  {
+    "file": "final-seal.png",
+    "title": "Final seal",
+    "category": "areas",
+    "detail": "The endgame seal encounter."
+  },
+  {
+    "file": "house-world.png",
+    "title": "House world",
+    "category": "areas",
+    "detail": "The player house in its explorable world setting."
+  },
+  {
+    "file": "ice-world.png",
+    "title": "Ice world",
+    "category": "areas",
+    "detail": "The frozen region and its ambient environment."
+  },
+  {
+    "file": "inventory.png",
+    "title": "Inventory",
+    "category": "shops",
+    "detail": "The explorer inventory and item management screen."
+  },
+  {
+    "file": "music-settings.png",
+    "title": "Music settings",
+    "category": "menus",
+    "detail": "Music and audio selection menu."
+  },
+  {
+    "file": "opening-board.png",
+    "title": "Opening board",
+    "category": "areas",
+    "detail": "The board view used to start an expedition."
+  },
+  {
+    "file": "rig-studio-dragon.png",
+    "title": "Dragon rig turnaround",
+    "category": "studio",
+    "detail": "Dragon rig selected in the rig studio."
+  },
+  {
+    "file": "rig-studio-player.png",
+    "title": "Player rig turnaround",
+    "category": "studio",
+    "detail": "Player rig selected in the rig studio."
+  },
+  {
+    "file": "rig-studio-warlock.png",
+    "title": "Warlock rig turnaround",
+    "category": "studio",
+    "detail": "Warlock rig selected in the rig studio."
+  },
+  {
+    "file": "robot-shop.png",
+    "title": "Robot shop",
+    "category": "shops",
+    "detail": "Robot shop, catalog and purchase interface."
+  },
+  {
+    "file": "settings-controls.png",
+    "title": "Settings · Controls",
+    "category": "menus",
+    "detail": "Controls settings and input bindings."
+  },
+  {
+    "file": "settings-display-audio.png",
+    "title": "Settings · Display & audio",
+    "category": "menus",
+    "detail": "Display and audio settings tabs."
+  },
+  {
+    "file": "settings-explorer.png",
+    "title": "Settings · Explorer",
+    "category": "menus",
+    "detail": "Explorer profile settings."
+  },
+  {
+    "file": "storage-chest.png",
+    "title": "Storage chest",
+    "category": "shops",
+    "detail": "A storage chest interaction and contents."
+  },
+  {
+    "file": "storage-room.png",
+    "title": "Storage room",
+    "category": "areas",
+    "detail": "The dedicated storage room in the house."
+  },
+  {
+    "file": "storm-clearing.png",
+    "title": "Storm clearing",
+    "category": "areas",
+    "detail": "The clearing during the storm event."
+  },
+  {
+    "file": "studio-board.png",
+    "title": "Studio · Board",
+    "category": "studio",
+    "detail": "Board editor and board composition tools."
+  },
+  {
+    "file": "studio-combos.png",
+    "title": "Studio · Combos",
+    "category": "studio",
+    "detail": "Combo editor with move sequence controls."
+  },
+  {
+    "file": "studio-creature.png",
+    "title": "Studio · Creatures",
+    "category": "studio",
+    "detail": "Creature rig and behavior editor."
+  },
+  {
+    "file": "studio-events.png",
+    "title": "Studio · Events",
+    "category": "studio",
+    "detail": "World event editor and event configuration."
+  },
+  {
+    "file": "studio-forest.png",
+    "title": "Studio · Forest",
+    "category": "studio",
+    "detail": "Forest layout editor and region tools."
+  },
+  {
+    "file": "studio-house-builder.png",
+    "title": "Studio · House builder",
+    "category": "studio",
+    "detail": "House builder and interior editing tools."
+  },
+  {
+    "file": "studio-items.png",
+    "title": "Studio · Items",
+    "category": "studio",
+    "detail": "Item editor and equipment catalog."
+  },
+  {
+    "file": "studio-particles.png",
+    "title": "Studio · Particles",
+    "category": "studio",
+    "detail": "Particle effect editor and live preview."
+  },
+  {
+    "file": "studio-rules.png",
+    "title": "Studio · Rules",
+    "category": "studio",
+    "detail": "Rules and progression editor."
+  },
+  {
+    "file": "temple-lower.png",
+    "title": "Temple · Lower floor",
+    "category": "areas",
+    "detail": "Lower floor of the temple region."
+  },
+  {
+    "file": "temple-treasure.png",
+    "title": "Temple · Treasure room",
+    "category": "areas",
+    "detail": "Temple treasure chamber."
+  },
+  {
+    "file": "temple-upper.png",
+    "title": "Temple · Upper floor",
+    "category": "areas",
+    "detail": "Upper floor of the temple region."
+  },
+  {
+    "file": "title-screen.png",
+    "title": "Gather around the board",
+    "category": "menus",
+    "detail": "The game opening screen and board entry point."
+  },
+  {
+    "file": "vending-shop.png",
+    "title": "Vending shop",
+    "category": "shops",
+    "detail": "Vending machine shop and its item choices."
+  },
+  {
+    "file": "victory.png",
+    "title": "Victory screen",
+    "category": "menus",
+    "detail": "Victory scene and end-of-expedition presentation."
+  },
+  {
+    "file": "world-regrowth.png",
+    "title": "World regrowth",
+    "category": "areas",
+    "detail": "The world restoring after the final encounter."
+  }
+]

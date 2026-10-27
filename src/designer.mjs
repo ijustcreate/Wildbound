@@ -304,6 +304,10 @@ export class Designer {
       this.worldEditor ||= new WorldEditor({openQuests:()=>{this.tab='NPC & quests';this.render();}});
       const root=element('section');this.dialog.append(root);this.worldEditor.mount(root);this.shell();return;
     }
+    if(this.tab==='Worlds'){
+      this.worldEditor ||= new WorldEditor({openQuests:()=>{this.tab='NPC & quests';this.render();}});
+      const root=element('section');this.dialog.append(root);this.worldEditor.mount(root);this.shell();return;
+    }
     if(this.tab==='Combos'){this.comboEditor ||= new ComboEditor();const root=element('section');this.dialog.append(root);this.comboEditor.mount(root);this.shell();return;}
     if(this.tab==='Particles'){this.particleEditor ||= new ParticleEditor();const root=element('section');this.dialog.append(root);this.particleEditor.mount(root);this.shell();return;}
     if(this.tab==='House Builder'){this.houseBuilder ||= new HouseBuilder();const root=element('section');this.dialog.append(root);this.houseBuilder.mount(root);this.shell();return;}
