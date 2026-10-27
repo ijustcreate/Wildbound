@@ -118,9 +118,10 @@ export function drawCanopyShadow(c, p, g) {
   c.restore();
 }
 
-export function drawLandscapeCover(c, g, visible) {
+export function drawLandscapeCover(c, g, visible,shaderGrass=false) {
   const plan = g.forestLandscape;
   for (const p of plan.cover) {
+    if(shaderGrass&&p.kind==='grass')continue;
     if (!visible(p) || (g.bloom < 3 && Math.hypot(p.x - 800, p.y - 800) > g.bloom * 430)) continue;
     if (p.kind === 'fern') {
         drawJungleFern(c,p,g.time);

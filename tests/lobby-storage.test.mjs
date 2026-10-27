@@ -4,6 +4,7 @@ import {Game} from '../src/core.mjs';
 import {PlayableLobby,LobbyState} from '../src/playable-lobby.mjs';
 import {LobbyPractice} from '../src/lobby-practice.mjs';
 import {count} from '../src/items.mjs';
+import {lobbyPadInput} from '../src/controls.mjs';
 
 function setup(){
   const game=new Game(),p=game.addPlayer('keyboard'),q=game.addPlayer('pad:0');
@@ -15,6 +16,16 @@ function setup(){
   const enter=()=>{tick({keyboard:{portal:true}});const door=game.portals.find(d=>d.owner===p.id);assert.ok(door?.lobby);tick();Object.assign(lobby.state.members.get(p.id),{x:door.x,y:door.y});tick();assert.equal(p.room,door.id);return door;};
   return {game,p,q,lobby,tick,enter};
 }
+
+test('lobby physical D-pad Up toggles storage and R dashes without left-shoulder or potion overlap',()=>{
+ const {game,q,lobby,tick}=setup(),pad={buttons:Array.from({length:17},()=>({pressed:false}))};
+ pad.buttons[12].pressed=true;tick({[q.device]:lobbyPadInput(pad)});assert.equal(game.portals.filter(d=>d.owner===q.id).length,1);
+ tick({[q.device]:lobbyPadInput(pad)});assert.equal(game.portals.length,1,'held Up opens only once');
+ pad.buttons[12].pressed=false;tick({[q.device]:lobbyPadInput(pad)});pad.buttons[12].pressed=true;tick({[q.device]:lobbyPadInput(pad)});assert.equal(game.portals.length,0,'fresh Up closes outside storage');
+ pad.buttons[12].pressed=false;pad.buttons[4].pressed=true;tick({[q.device]:lobbyPadInput(pad)});const a=lobby.practice.players.find(a=>a.id===q.id);assert.equal(a.dashTime||0,0);
+ pad.buttons[4].pressed=false;tick({[q.device]:lobbyPadInput(pad)});pad.buttons[5].pressed=true;
+ assert.equal(lobbyPadInput(pad).potion,false);tick({[q.device]:{...lobbyPadInput(pad),x:1}});assert.ok(a.dashTime>0);assert.ok(a.dodge>0);
+});
 test('Lobby portal opens on a fresh owner input, enters, and returns without moving expedition coordinates',()=>{
   const {game,p,q,lobby,tick,enter}=setup(),original=[p.x,p.y];
   let saved=0;game.persist=()=>{saved++;assert.deepEqual([p.x,p.y],original);};

@@ -43,6 +43,12 @@ test('webs slow heroes and other creatures but spiders are immune; spiders fight
  assert.ok(!webSlow(g,spider));assert.ok(webSlow(g,beetle));tickSpider(g,spider,.05);assert.equal(beetle.hp,40);tickSpider(g,beetle,.05);assert.equal(spider.hp,62);
  const wasp={...beetle,kind:'wasp',hp:50,cooldown:0};g.enemies=[spider,wasp];spider.cooldown=0;tickSpider(g,spider,.05);assert.equal(wasp.hp,40);
 });
+test('a player controlling a spider is not web-slowed as the hidden hero body',()=>{
+ const spider={id:2,kind:'spider',hp:70,allyOwner:1,faction:'ally'},owner={id:1,controlledFollowerId:2,x:1000,y:1000};
+ const g={players:[owner],enemies:[spider],webs:[{x:1000,y:1000,radius:150}]};
+ assert.equal(webSlow(g,owner),false);
+ owner.controlledFollowerId=null;assert.equal(webSlow(g,owner),true);
+});
 test('house doors, webs and unhatched egg timers persist in saved expeditions',()=>{
  const g=game('house');g.house.doors[0].open=true;g.spawnEvent(EVENTS.findIndex(e=>e.kind==='spider'));const egg=g.enemies.find(e=>e.kind==='spider_egg');tickSpider(g,egg,7);
  const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(restored.house.doors[0].open,true);assert.equal(restored.enemies.find(e=>e.id===egg.id).hatchIn,13);assert.equal(restored.webs.length,1);

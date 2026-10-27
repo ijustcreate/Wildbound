@@ -316,7 +316,7 @@ export function lionAction(actor) {
   if (actor.state === "charge") return "pounce";
   if (actor.state === "recover") return "recover";
   if (actor.attack > 0) return "bite";
-  return actor.moving ? "run" : "idle";
+  return actor.moving ? actor.walking ? "walk" : "run" : "idle";
 }
 export function lionFrame(actor, time, model = lionMotion) {
   const action = lionAction(actor),

@@ -1,6 +1,6 @@
 import { nearbyScenery } from "./performance.mjs";
 import {rainActive,sheltered} from './wet-weather.mjs';
-import { sightRadius } from './night-cycle.mjs';
+import { sightRadius,daylight } from './night-cycle.mjs';
 import {houseLightSources} from './house-lights.mjs';
 import { terrainHash } from "./world.mjs";
 import { rules } from "./definitions.mjs";
@@ -39,7 +39,7 @@ export function drawFog(ctx, g, camera, w, h) {
   c.fillStyle = "#070f16";
   c.fillRect(0, 0, w, h);
   c.globalCompositeOperation = "destination-out";
-  c.globalAlpha = 0.38;
+  c.globalAlpha = g.generatedEnvironment==='house' ? .58+.34*daylight(g) : .38;
   c.imageSmoothingEnabled = true;
   // Feather roughly half a tile in world space while retaining the explored grid.
   c.filter = `blur(${Math.max(.75,16*camera.zoom)}px)`;

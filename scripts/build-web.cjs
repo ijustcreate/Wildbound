@@ -9,8 +9,10 @@ if(fs.existsSync(output))throw Error('Web output already exists; preserve it and
 checkSyntax(root);
 fs.mkdirSync(output, {recursive: true});
 for (const file of ['index.html', 'app.mjs']) fs.copyFileSync(path.join(root, file), path.join(output, file));
+const webIndex = path.join(output, 'index.html');
+fs.writeFileSync(webIndex, fs.readFileSync(webIndex, 'utf8').replace('<head>', '<head>\n    <script src="src/web-storage.js"></script>'));
 if(versioned){const index=path.join(output,'index.html');fs.writeFileSync(index,fs.readFileSync(index,'utf8').replace('<title>Wildbound — The Living Board</title>','<title>Wildbound — The Living Board · v'+version+'</title>'));}
-for (const folder of ['src', 'assets']) fs.cpSync(path.join(root, folder), path.join(output, folder), {recursive: true});
+for (const folder of ['src', 'assets', 'worlds']) fs.cpSync(path.join(root, folder), path.join(output, folder), {recursive: true});
 fs.mkdirSync(path.join(output, 'authored'));
 if (fs.existsSync(path.join(root, 'authored', 'rigs.json'))) fs.copyFileSync(path.join(root, 'authored', 'rigs.json'), path.join(output, 'authored', 'rigs.json'));
 fs.writeFileSync(path.join(output, '.nojekyll'), '');

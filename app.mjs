@@ -1,6 +1,10 @@
 import {seatOpeningParty} from './src/opening-board.mjs';
+import {mountCampSettings,readCampInputSettings,shapeCampStick} from './src/settings-camp.mjs';
 import {renderVictoryReport,scrollVictoryReport} from './src/victory-ui.mjs';
+import {continueAfterDefeat} from './src/defeat-flow.mjs';
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
+import {worldGridSettings,setWorldGridSettings} from './src/world-grid.mjs';
+import {dynamicShadowsEnabled,setDynamicShadowsEnabled} from './src/shadow-settings.mjs';
 import {hudIcon} from './src/hud-icons.mjs';
 import {tickMeltingIce} from './src/ice-crafting.mjs';
 import {petCard} from './src/hunter-pet-ui.mjs';
@@ -10,7 +14,7 @@ import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
 import { GameAudio } from './src/audio.mjs';
 import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
-import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES } from "./src/controls.mjs";
+import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES, vehiclePadInput, lobbyPadInput } from "./src/controls.mjs";
 import { controllerGlyph } from './src/controller-glyphs.mjs';
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
 import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels} from './src/creation-preview.mjs';
@@ -342,6 +346,7 @@ function show(next) {
   if(next==='home'){newLobby();return;}
   screen = next;
   (next === 'lobby' ? $('lobby') : $('play')).append(heroRoot);
+  (next==='lobby'?(playableLobby?.area||$('lobby')):$('play')).append($('roster'));
   document.body.dataset.screen = next;
   keys.clear();
   mouse.down = false;
@@ -515,7 +520,7 @@ $("room-join").onclick = async () => {
     $("room-status").textContent = e.message;
   }
 };
-function renderLobby() { playableLobby?.sync(); }
+function renderLobby() { playableLobby?.sync();renderRoster(); }
 function nameNewCharacter(p, done = () => {}) {
   const wasPaused = paused;
   if (screen === "play") paused = true;
@@ -655,22 +660,25 @@ function startGame() {
   renderRoster();
 }
 function renderRoster() {
-  const elements = game.players.map((p, i) => {
+  const rosterPlayers = screen === 'lobby'
+    ? game.players.filter(p => p.profileId && playableLobby?.state.members.get(p.id)?.spawned)
+    : game.players;
+  const elements = rosterPlayers.map((p, i) => {
     const el = document.createElement("div");
-    el.className = "roster-card" + (p === game.current ? " current" : "");
+    const hasMana = Boolean(ITEMS[p.equipment?.hand1]?.magic);
+    el.className = "roster-card" + (p === game.current ? " current" : "") + (hasMana ? " has-mana" : "");
     el.style.setProperty("--player", p.color);
     const name = document.createElement("div");
     name.className = "roster-name";
     const b = document.createElement("b");
     b.textContent = p.name;
     const span = document.createElement("span");
-    span.textContent =
-      p.hp > 0
-        ? Math.ceil(p.hp) +
-          " HP" +
-          (p.stun > 0 ? " · STUN " + p.stun.toFixed(1) + "s" : "") +
-          (p.scaredTime > 0 ? " · SCARED " + Math.ceil(p.scaredTime) + "s" : "")
-        : "DOWN";
+    if(p.hp>0){
+      const value=document.createElement('strong');value.className='roster-hp-value';value.textContent=String(Math.ceil(p.hp));
+      span.append(value,document.createTextNode(' HP'));
+      if(p.stun>0)span.append(document.createTextNode(' · STUN '+p.stun.toFixed(1)+'s'));
+      if(p.scaredTime>0)span.append(document.createTextNode(' · SCARED '+Math.ceil(p.scaredTime)+'s'));
+    }else span.textContent='DOWN';
     name.append(b, span);
     const health = document.createElement("div");
     health.className = "health-track";
@@ -680,7 +688,7 @@ function renderRoster() {
     health.setAttribute("aria-valuemax", String(p.maxHp || 100));
     health.setAttribute("aria-valuenow", String(Math.max(0, Math.ceil(p.hp))));
     const fill = document.createElement("i");
-    fill.style.width = Math.max(0, Math.min(100, p.hp)) + "%";
+    fill.style.width = Math.max(0, Math.min(100, (p.hp / (p.maxHp || 100)) * 100)) + "%";
     health.append(fill);
     const info = document.createElement("div");
     info.className = "roster-info";
@@ -699,7 +707,6 @@ function renderRoster() {
       const icon = document.createElement("i");
       icon.className = "supply-icon";
       icon.setAttribute("aria-hidden", "true");
-      icon.append(hudIcon(kind));
       const amount = document.createElement("b");
       amount.textContent = value;
       item.append(icon, amount);
@@ -708,19 +715,20 @@ function renderRoster() {
     addSupply("traps", "Traps", p.traps, "✣");
     addSupply("potions", "Potions", count(p, "potion"), "⚗");
     addSupply("arrows", "Arrows", count(p, "arrow"), "➶");
+    const dashCooldown=screen==='lobby'?(playableLobby?.practice.players.find(a=>a.id===p.id)?.dodge||0):(p.dodge||0);
     const dash = document.createElement("span");
-    dash.className = "roster-dash" + (p.dodge > 0 ? "" : " ready");
-    dash.title=p.dodge>0?'Dash ready in '+p.dodge.toFixed(1)+'s':'Dash ready';
+    dash.className = "roster-dash" + (dashCooldown > 0 ? "" : " ready");
+    dash.title=dashCooldown>0?'Dash ready in '+dashCooldown.toFixed(1)+'s':'Dash ready';
     if(p.staminaBoost>0)dash.title+=' · Stamina '+Math.ceil(p.staminaBoost)+'s';
     dash.setAttribute('aria-label',dash.title);dash.setAttribute('role','img');
-    dash.append(hudIcon('dash'));
-    if(p.dodge>0){const timer=document.createElement('small');timer.textContent=p.dodge.toFixed(1);dash.append(timer);}
+    if(dashCooldown>0){const timer=document.createElement('small');timer.textContent=dashCooldown.toFixed(1);dash.append(timer);}
     supplies.append(dash);
     info.append(progress, supplies);
     const mana = document.createElement("div");
     mana.className = "mana-meter";
-    if (ITEMS[p.equipment?.hand1]?.magic) {
+    if (hasMana) {
       const label = document.createElement("small");
+      label.className='mana-value';
       label.textContent =
         Math.floor(p.mana ?? 100) + " / " + (p.maxMana || 100) + " MANA";
       const track = document.createElement("div");
@@ -731,15 +739,15 @@ function renderRoster() {
       track.setAttribute("aria-valuemax", String(p.maxMana || 100));
       track.setAttribute("aria-valuenow", String(Math.floor(p.mana ?? 100)));
       const bar = document.createElement("i");
-      bar.style.width = ((p.mana ?? 100) / (p.maxMana || 100)) * 100 + "%";
-      track.append(bar);
-      mana.append(label, track);
+      bar.style.width = Math.max(0,Math.min(100,((p.mana ?? 100) / (p.maxMana || 100))*100)) + "%";
+      track.append(bar,label);
+      mana.append(track);
     }
     const portrait=document.createElement('canvas');portrait.width=96;portrait.height=112;portrait.className='roster-portrait';portrait.setAttribute('aria-label',p.name+' portrait');
     const portraitContext=portrait.getContext('2d');portraitContext.imageSmoothingEnabled=false;portraitContext.translate(48,180);portraitContext.scale(5,5);drawPlayer(portraitContext,{...p,
       // The roster is a stable character plaque. Do not inherit live facing,
       // stride, attack, or jump state while the player moves in the world.
-      faceX:0,faceY:1,animationAction:'idle',moving:false,step:undefined,
+      faceX:0,faceY:1,bowVisualAngle:undefined,bowAimBlend:0,bowAiming:false,animationAction:'idle',moving:false,step:undefined,
       playerFrame:undefined,poseTime:undefined,animationProgress:undefined,
       attack:0,spin:0,charge:0,hit:0,jumpHeight:0,groundHeight:0,
     },game.time);
@@ -809,7 +817,8 @@ function updateHud() {
   }else{
     toast.classList.remove('opening-board-prompt');toast.dataset.openingPrompt='';
     toast.textContent=game.log[0]||'';
-    toast.classList.toggle('hidden',!!(game.event&&game.eventTime>0&&!profiles.error&&(game.log[0]||'').startsWith(game.event.name)));
+    const victoryLootOpen=game.players.some(p=>p.ui?.storage==='victory'||p.ui?.storage==='tv-victory');
+    toast.classList.toggle('hidden',victoryLootOpen||!!(game.event&&game.eventTime>0&&!profiles.error&&(game.log[0]||'').startsWith(game.event.name)));
     if(profiles.error)toast.textContent='SAVE FAILED: '+profiles.error;
   }
   $("event-card").classList.toggle(
@@ -887,6 +896,8 @@ function restartSameLevel() {
   }));
   $("victory-results").close();
   $("next-game-dialog").close();
+  if($('defeat-dialog').open)$('defeat-dialog').close();
+  if($('pause-dialog').open)$('pause-dialog').close();
   heroRoot.replaceChildren();
   heroUI.panels.clear();
   game = new Game();
@@ -925,8 +936,17 @@ heroRoot.addEventListener('victory-action', (event) => {
   if(event.detail==='restart') restartSameLevel();
   else if(event.detail==='lobby') newLobby({keepParty:true});
 });
+function showDefeatMenu(){
+  if(screen!=='play'||$('defeat-dialog').open)return;
+  paused=true;persistSession();if(rooms.role!=='client')profiles.capture(game);keys.clear();mouse.down=false;
+  $('pause-dialog').close();
+  const dialog=$('defeat-dialog');dialog.showModal();focusDialogControl(dialog,$('defeat-continue'));
+}
 function pause(reason,device) {
-  if (game.phase === "won") return;
+  // A completed expedition still leaves the player in the house/world so the
+  // normal pause menu must remain available for restart/lobby actions.
+  // Defeat has its own modal and should continue to block the pause dialog.
+  if (game.phase === 'lost') return;
   refreshPauseOptions();
   if (screen !== "play") return;
   const owner=game.players.find(p=>p.device===(device||'keyboard'))||game.current||game.players[0];
@@ -937,37 +957,30 @@ function pause(reason,device) {
   if (rooms.role !== "client") profiles.capture(game);
   keys.clear();
   mouse.down = false;
-  const ended = ["won", "lost"].includes(game.phase);
+  const ended = game.phase === "won";
   $('pause-dialog').dataset.ended=String(ended);
   $("pause-eyebrow").textContent =
     game.phase === "won"
       ? "THE JUNGLE REMEMBERS YOUR NAMES"
-      : game.phase === "lost"
-        ? "DEFEAT"
-        : "TAKE A BREATH";
+      : "TAKE A BREATH";
   $("pause-title").textContent =
     game.phase === "won"
       ? "You sealed the board."
-      : game.phase === "lost"
-        ? "The jungle won this time."
-        : "The jungle can wait.";
+      : "The jungle can wait.";
   $("pause-text").textContent =
     reason ||
     (game.phase === "won"
       ? game.cleared + " creatures cleared. Everyone made it home."
-      : game.phase === "lost"
-        ? "Stay close, dodge the warning marks, and use your traps."
-        : "Your expedition is paused.");
+      : "Your expedition is paused.");
   $("resume-button").classList.toggle("hidden", ended);
-  $("restart-button").textContent = ended ? "BACK TO LOBBY" : "NEW EXPEDITION";
+  $("restart-button").textContent = "NEW EXPEDITION";
   $("reassign-button").classList.toggle(
     "hidden",
     !disconnected().length || game.players.some((p) => p.device === "keyboard"),
   );
   if (!$("pause-dialog").open) {
     $("pause-dialog").showModal();
-    const initial =
-      game.phase === "play" ? $("resume-button") : $("restart-button");
+    const initial = $("resume-button");
     focusDialogControl($('pause-dialog'),initial);
     initial.scrollIntoView({block:'nearest'});
   }
@@ -1056,6 +1069,13 @@ $("restart-button").onclick = () => {
   $("pause-dialog").close();
   newLobby({keepParty:["won","lost"].includes(game.phase)});
 };
+$('defeat-dialog').addEventListener('cancel',e=>e.preventDefault());
+$('defeat-lobby').onclick=()=>{$('defeat-dialog').close();newLobby({keepParty:true});};
+$('defeat-restart').onclick=restartSameLevel;
+$('defeat-continue').onclick=()=>{
+  if(!continueAfterDefeat(game))return;
+  $('defeat-dialog').close();paused=false;keys.clear();
+};
 $("quit-button").onclick = () => {
   profiles.capture(game);
   persistSession();
@@ -1071,7 +1091,7 @@ $("reassign-button").onclick = () => {
   }
   pause("Keyboard assigned. Press Back to the Jungle to continue.");
 };
-const settingsTabNames = ['display', 'explorer', 'controls'];
+const settingsTabNames = ['display', 'sound', 'controls'];
 let settingsTab = 'display';
 function selectSettingsTab(name, focus = false) {
   musicPicker.close();
@@ -1108,7 +1128,7 @@ function openSettings(device = controllerDialogDevice || 'keyboard') {
     hero.appearance ||= structuredClone(DEFAULT_APPEARANCE);
     appearanceControls($("appearance-settings"), hero.appearance, () => game.persist(), { compact: true });
   }
-  document.querySelector('[data-settings-tab="display"]')?.focus();
+  document.querySelector('#settings-display button')?.focus();
 }
 function closeSettings() {
   musicPicker.close();
@@ -1140,6 +1160,13 @@ $("pvp-toggle").checked=game.pvp;
 $("pvp-toggle").onchange=e=>{game.pvp=e.target.checked;localStorage.setItem("wildbound-pvp",game.pvp?"on":"off");game.persist();};
 $("cel-shading-toggle").checked = celShadingEnabled();
 $("cel-shading-toggle").onchange = e => setCelShading(e.target.checked);
+const initialGrid=worldGridSettings();
+$('world-grid-toggle').checked=initialGrid.enabled;$('world-grid-style').value=initialGrid.style;$('world-grid-opacity').value=initialGrid.opacity;
+$('world-grid-toggle').onchange=e=>setWorldGridSettings({enabled:e.target.checked});
+$('world-grid-style').onchange=e=>setWorldGridSettings({style:e.target.value});
+$('world-grid-opacity').addEventListener('input',e=>setWorldGridSettings({opacity:Number(e.target.value)}));
+$("dynamic-shadows-toggle").checked=dynamicShadowsEnabled();
+$("dynamic-shadows-toggle").onchange=e=>{const enabled=setDynamicShadowsEnabled(e.target.checked);renderer?.setDynamicShadows(enabled);};
 $("sound-toggle").checked = soundEnabled;
 $("sound-toggle").onchange = (e) => {
   soundEnabled = e.target.checked; audio.enabled=soundEnabled; audio.apply();
@@ -1155,15 +1182,17 @@ const musicPicker=mountMusicPicker($('music-track'),MUSIC_TRACKS,{preview:previe
 $('settings-dialog').addEventListener('close',()=>musicPicker.close());
 $('settings-dialog').addEventListener('cancel',e=>{if(musicPicker.picker.open){e.preventDefault();musicPicker.close();musicPicker.picker.querySelector('summary').focus();}});
 window.addEventListener('blur',()=>musicPicker.close());
-$('music-status').textContent='Adaptive: a fixed calm track per level, fading into a contrasting combat companion. Custom and random choices are retained.';
+$('music-status').textContent='Menu: Curious Groove';
 $('music-volume').oninput=e=>{musicVolume=Number(e.target.value);localStorage.setItem('wildbound-music-volume',String(musicVolume));if(musicVolume>0)startMusic();};
 for(const key of ['master','sfx','ui','ambience']){const label=document.createElement('label');label.className='field-label';label.textContent=(key==='ambience'?'AMBIENT LEVEL ':key.toUpperCase()+' ')+'VOLUME';const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.01;input.id=key+'-volume';input.value=audio.settings[key];input.setAttribute('aria-label',label.textContent);input.oninput=()=>audio.set(key,input.value);label.append(input);$('audio-mixer').append(label);}
 $('audio-night').checked=audio.settings.night;$('audio-night').onchange=e=>audio.set('night',e.target.checked);
 $('audio-test').onclick=()=>{startMusic();audio.play('loot');};
-$("fullscreen-button").onclick = () => {
-  if (window.desktop) window.desktop.fullscreen();
-  else if (document.fullscreenElement) document.exitFullscreen();
-  else document.documentElement.requestFullscreen();
+$("fullscreen-button").onclick = async () => {
+  let enabled;
+  if (window.desktop) enabled=await window.desktop.fullscreen();
+  else if (document.fullscreenElement){await document.exitFullscreen();enabled=false;}
+  else {await document.documentElement.requestFullscreen();enabled=true;}
+  $('fullscreen-button').setAttribute('aria-checked',String(!!enabled));
 };
 for (const [action, value] of Object.entries(mapping)) {
   const label = document.createElement("label");
@@ -1186,6 +1215,9 @@ for (const [action, value] of Object.entries(mapping)) {
   label.append(input);
   $("mapping-fields").append(label);
 }
+const campSettings=mountCampSettings($('settings-dialog'),{mapping,defaults:DEFAULT_MAPPING,
+  onMapping:()=>{localStorage.setItem('wildbound-mapping',JSON.stringify(mapping));for(const input of document.querySelectorAll('[data-mapping]'))input.value=mapping[input.dataset.mapping];renderPlayerMappings($('player-mappings'),game,mapping);},
+  promptsChanged:()=>renderPlayerMappings($('player-mappings'),game,mapping)});
 window.addEventListener("keydown", (e) => {
   if(e.code==='KeyY' && pauseCheatActive()){
     e.preventDefault();
@@ -1342,7 +1374,7 @@ function dialogController(pad, previous) {
     ),
   ).filter((el) => {
     if (el.dataset.controllerSkip === "true") return false;
-    if(!el.getClientRects().length)return false;
+    if(!el.getClientRects().length||el.dataset.campArrow)return false;
     for(let node=el.parentElement;node&&node!==dialog;node=node.parentElement)
       if(node.tagName==='DETAILS'&&!node.open && !(el.tagName==='SUMMARY'&&el.parentElement===node))return false;
     return true;
@@ -1419,6 +1451,9 @@ function dialogController(pad, previous) {
       selected.options.length;
     selected.dispatchEvent(new Event("change", { bubbles: true }));
   }
+  if(dialog.id==='settings-dialog'&&(left||right)&&selected?.matches('input[type=range]'))campSettings.step(selected,right?1:-1);
+  if(dialog.id==='settings-dialog'&&(left||right)&&selected?.matches('input[type=checkbox]')){selected.checked=right;selected.dispatchEvent(new Event('change',{bubbles:true}));}
+  if(dialog.id==='settings-dialog'&&(left||right)&&selected?.matches('[role=switch]')&&selected.getAttribute('aria-checked')!==String(right))selected.click();
   if(dialog.id==='pause-dialog'&&selected&&!selected.classList.contains('menu-focus'))focusDialogControl(dialog,selected);
   if(dialog.id==='character-name-dialog')dialog.refreshPreviewFocus?.(selected);
   selected?.scrollIntoView({block:'nearest'});
@@ -1559,10 +1594,10 @@ function inputFrame() {
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
-      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:pressed('interact'),summon:false,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:pressed('interact'),summon:false,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
       inputs[device].tvDown=!!pad.buttons[13]?.pressed;
       inputs[device].tvUp=!!pad.buttons[12]?.pressed;
-      inputs[device].portal=pressed('portal');
+      Object.assign(inputs[device],joinedNow||modal?{dodge:false,portal:false,potion:false}:lobbyPadInput(pad));
       inputs[device].pick=!!pad.buttons[10]?.pressed;
       inputs[device].dropOne=!!pad.buttons[2]?.pressed&&!!pad.buttons[6]?.pressed;
       inputs[device].salvage=!!pad.buttons[7]?.pressed;
@@ -1597,11 +1632,17 @@ function inputFrame() {
       else if (!modal) pause(undefined,device);
     }
     const dead = (v) => (Math.abs(v || 0) < 0.18 ? 0 : v);
+    const campInput=readCampInputSettings();
+    const continuousAim=shapeCampStick(pad.axes[2]||0,pad.axes[3]||0,campInput);
+    if(campInput.vibration&&!modal&&pressed('attack')&&!previous[mapping.attack]){
+      try{pad.vibrationActuator?.playEffect('dual-rumble',{duration:65,strongMagnitude:.12,weakMagnitude:.2})?.catch(()=>{});}catch{}
+    }
     inputs["pad:" + pad.index] = {
+      ...(!joinedNow?vehiclePadInput(pad):{vehicleGas:0,vehicleBrake:0,vehicleReverse:false}),
       x: lootTogglePressed ? 0 : dead(pad.axes[0]),
       y: dead(pad.axes[1]),
-      aimX: dead(pad.axes[2]),
-      aimY: dead(pad.axes[3]),
+      aimX: continuousAim.x,
+      aimY: continuousAim.y,
       attack: pressed("attack"),
       loot: pressed("loot"),
       jump: pressed("jump"),
@@ -1619,7 +1660,7 @@ function inputFrame() {
       prev: lootTogglePressed&&!controllerPlayer?.ui ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
       up: !!pad.buttons[12]?.pressed || dead(pad.axes[1]) < -0.5,
       down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
-      panel: !!pad.buttons[4]?.pressed,
+      panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
       use: !!pad.buttons[0]?.pressed,
       store: !!pad.buttons[2]?.pressed && !pad.buttons[6]?.pressed,
       dropOne: !!pad.buttons[2]?.pressed && !!pad.buttons[6]?.pressed,
@@ -1755,6 +1796,7 @@ function frame(now) {
       const connected = new Set(Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>'pad:'+p.index));
       for(const p of game.players) {p.lobbyDisconnected=p.device.startsWith('pad:')&&!connected.has(p.device);if(p.lobbyDisconnected)p.ready=false;}
       playableLobby.update(dt,inputs,blocked);
+      hudAge+=dt;if(hudAge>.12){renderRoster();hudAge=0;}
       heroUI.draw(game,renderer);
     }
     if (screen === "home") drawMenu($("menu-art"), assets, now / 1000);
@@ -1826,7 +1868,7 @@ function frame(now) {
         boardPinned = false;
         showVictoryResults();
       }
-      if (game.phase === "lost" && !paused) pause();
+      if (game.phase === "lost" && !paused) showDefeatMenu();
     }
   }
   if (ready && screen === "lobby") {rooms.tick(game, dt, {});if(rooms.role!=='client')tickMeltingIce(game,dt,'lobby');}
@@ -1867,7 +1909,7 @@ try {
     designer.open();
   };
   designer.dialog.addEventListener("close", () => {
-    if (screen === "play" && !$("pause-dialog").open) paused = false;
+    if (screen === "play" && !$("pause-dialog").open && !$("defeat-dialog").open) paused = false;
   });
   const resume = document.createElement("button");
   resume.textContent = "CONTINUE EXPEDITION";
@@ -1907,6 +1949,7 @@ try {
     get game(){return game;},
     get studio(){return designer.playerStudio;},
     openStudio:()=>{designer.tab='Players';designer.open();},
+    openShadowEditor:()=>{designer.tab='Worlds';designer.open();},
   };
   newLobby();
   $("loading").classList.add("done");

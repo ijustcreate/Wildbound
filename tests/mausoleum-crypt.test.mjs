@@ -301,7 +301,7 @@ test('Boss bone volley is aimed, persistent, damaging, blocked by stone and froz
   leaveOldWell(g, p); const before = JSON.stringify(d.well); ticks(g, 20); assert.equal(JSON.stringify(d.well), before);
 });
 
-test('Real melee and bow attacks defeat crypt enemies and give one room drop; lantern never attacks', () => {
+test('Real melee, bow, and lantern attacks defeat crypt enemies and give one room drop', () => {
   for (const weapon of ['sword', 'bow', 'lantern']) {
     const {g, p, d} = setup(); enterOldWell(g, p, d); const e = d.well.enemies.find(e => e.kind === 'skeleton');
     e.speed = 0; e.cooldown = 999; place(p, e, -24, 0); p.faceX = 1; p.faceY = 0;
@@ -310,8 +310,7 @@ test('Real melee and bow attacks defeat crypt enemies and give one room drop; la
       press(g, p, {attack: true, aimX: 1, aimY: 0});
       for (let frame = 0; frame < 10; frame++) {press(g, p); if (weapon === 'bow') tickOldWells(g, .05);}
     }
-    if (weapon === 'lantern') {assert.equal(e.hp, hp); assert.equal(d.well.bolts.length, 0);}
-    else {
+    {
       assert.equal(e.hp, 0); assert.equal(e.killedBy, p.id); assert.equal(e.dropsGiven, true);
       assert.equal(d.well.drops.filter(drop => drop.id === e.id + '-drop').length, 1);
       hitCryptEnemy(g, d.well, e, 100, p); assert.equal(d.well.drops.filter(drop => drop.id === e.id + '-drop').length, 1);

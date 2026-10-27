@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LobbyTelevision} from '../src/lobby-tv.mjs';
 import {TV_CAVERN_SCENES,TV_SCENES_PER_LEVEL,TV_SECTION_TILES} from '../src/lobby-tv-levels.mjs';
-import {TvWildbound,TV_WILDBOUND_GOAL,TV_WILDBOUND_WIDTH,TV_BOARD_X} from '../src/tv-wildbound.mjs';
+import {TvWildbound,TV_WILDBOUND_GOAL,TV_WILDBOUND_WIDTH,TV_BOARD_X,TV_WILDBOUND_SCENE_TEMPLATES} from '../src/tv-wildbound.mjs';
 import {Game} from '../src/core.mjs';
 import {LobbyState,PlayableLobby} from '../src/playable-lobby.mjs';
 import {LobbyPractice} from '../src/lobby-practice.mjs';
@@ -128,6 +128,12 @@ test('2D movement scrolls, goombas stomp, and the exit requires board progress',
   assert.equal(mode.won,true);
 });
 
+test('final board progress can call WILDBOUND at the center without reaching the far gate',()=>{
+ const mode=new TvWildbound([{id:'one',name:'Scout'}],12),p=mode.players.get('one');mode.intro=2.8;mode.enemies=[];mode.progress=TV_WILDBOUND_GOAL;
+ Object.assign(p,{x:TV_BOARD_X,y:437,grounded:true});mode.step(.05,{one:{loot:true}});
+ assert.equal(mode.won,true);assert.match(mode.message,/Scout calls WILDBOUND/);assert.ok(p.x<TV_WILDBOUND_WIDTH-100,'the player remains at the center board');
+});
+
 test('side-view archer fires, cats chase, and bats swoop through the player lane',()=>{
   const mode=new TvWildbound([{id:'one',name:'Scout'}],5),p=mode.players.get('one');
   for(let i=0;i<57;i++)mode.step(.05);
@@ -142,6 +148,47 @@ test('side-view archer fires, cats chase, and bats swoop through the player lane
   assert.ok(Math.max(...heights)>390,'bat reaches the grounded player lane');
 });
 
+test('TV Wildbound builds a seed-shuffled course from reusable scene templates',()=>{
+ const a=new TvWildbound([],42),b=new TvWildbound([],42),other=new TvWildbound([],43);
+ assert.equal(a.scenes.length,TV_WILDBOUND_SCENE_TEMPLATES.length);
+ assert.deepEqual(a.scenes.map(s=>s.name),b.scenes.map(s=>s.name),'same seed repeats the scene order');
+ assert.notDeepEqual(a.scenes.map(s=>s.name),other.scenes.map(s=>s.name),'new seed changes the course');
+ assert.equal(new Set(a.scenes.map(s=>s.name)).size,a.scenes.length,'each course uses every template once');
+ assert.equal(a.blocks.length,a.scenes.reduce((n,s)=>n+s.blocks.length,0));
+ for(const block of a.blocks)assert.ok(block.x>=0&&block.x<TV_WILDBOUND_WIDTH&&block.y<437);
+ assert.ok(a.enemies.some(e=>e.kind==='archer')&&a.enemies.some(e=>e.kind==='tiger'));
+});
+
+test('TV Wildbound dodge triggers a directional burst with a cooldown',()=>{
+ const mode=new TvWildbound([{id:'one',name:'Scout'}],42),p=mode.players.get('one');mode.intro=2.8;mode.enemies=[];
+ Object.assign(p,{x:200,y:437,face:1});mode.step(.05,{one:{right:true,dash:true}});
+ assert.equal(p.dashDirection,1);assert.ok(p.x>220,'dash travels faster than a normal run');assert.ok(p.dashCooldown>.6);
+ const before=p.x;mode.step(.05,{one:{right:true,dash:true}});assert.ok(p.x>before,'held dash continues briefly');
+ p.dashTime=0;const cooldown=p.dashCooldown;mode.step(.05,{one:{right:true,dash:false}});mode.step(.05,{one:{right:true,dash:true}});
+ assert.ok(Math.abs(p.dashCooldown-(cooldown-.1))<1e-8);assert.equal(p.dashTime,0,'dash cannot retrigger during cooldown');
+});
+
+test('equipped bows spend arrows and wands spend mana to hit enemies at range',()=>{
+ const enemy=()=>({kind:'goomba',home:160,x:160,y:437,w:28,h:25,speed:38,hp:1,face:-1,phase:0,alive:true,hit:0,cooldown:0});
+ const archer={id:'archer',name:'Archer',inventory:[{type:'arrow',qty:2}],equipment:{hand1:'starter_bow'},mana:100,maxMana:100};
+ const bowMode=new TvWildbound([archer],7),bowPlayer=bowMode.players.get(archer.id);bowMode.intro=2.8;bowMode.camera=0;bowMode.enemies=[enemy()];Object.assign(bowPlayer,{x:80,y:437,face:1});
+ bowMode.step(.01,{archer:{attack:true}});assert.equal(count(archer,'arrow'),1);assert.equal(bowMode.projectiles[0].kind,'arrow');
+ for(let i=0;i<6&&bowMode.enemies[0].alive;i++)bowMode.step(.05,{archer:{attack:false}});
+ assert.equal(bowMode.enemies[0].alive,false,'arrow hits defeat a one-health enemy');
+
+ const mage={id:'mage',name:'Mage',inventory:[],equipment:{hand1:'starter_wand'},mana:100,maxMana:100};
+ const wandMode=new TvWildbound([mage],8),wandPlayer=wandMode.players.get(mage.id);wandMode.intro=2.8;wandMode.camera=0;wandMode.enemies=[enemy()];Object.assign(wandPlayer,{x:80,y:437,face:1});
+ wandMode.step(.01,{mage:{attack:true}});assert.equal(wandMode.projectiles[0].kind,'magic');assert.ok(mage.mana<100);
+ for(let i=0;i<8&&wandMode.enemies[0].alive;i++)wandMode.step(.05,{mage:{attack:false}});
+ assert.equal(wandMode.enemies[0].alive,false,'wand bolts hit at range');
+});
+
+test('jumping on an armored enemy head defeats it and bounces the explorer',()=>{
+ const mode=new TvWildbound([{id:'one',name:'Scout'}],13),p=mode.players.get('one');mode.intro=2.8;mode.enemies=[{kind:'skeleton',home:200,x:200,y:437,w:37,h:52,speed:0,hp:2,face:1,phase:0,alive:true,hit:0,cooldown:0}];
+ Object.assign(p,{x:200,y:437-52-7,vy:180,grounded:false,invulnerable:0});mode.step(.03,{});
+ assert.equal(mode.enemies[0].alive,false);assert.ok(p.vy<0,'successful stomp bounces the player');
+});
+
 test('lobby switches to the TV world without starting or mutating its regular game',()=>{
   const game=new Game(),hero=game.addPlayer('keyboard','Scout');
   const state=new LobbyState(),television=new LobbyTelevision(7);
@@ -151,6 +198,10 @@ test('lobby switches to the TV world without starting or mutating its regular ga
   Object.assign(lobby,{getGame:()=>game,state,television,practice:{stepPractice(){}},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});
   lobby.update(.016,{});
   assert.ok(lobby.tvWildbound instanceof TvWildbound);
+  const firstScenes=lobby.tvWildbound.scenes.map(scene=>scene.name);
+  lobby.tvWildbound=null;
+  lobby.update(.016,{});
+  assert.notDeepEqual(lobby.tvWildbound.scenes.map(scene=>scene.name),firstScenes,'a second visit should shuffle the scene order');
   assert.equal(game.phase,'lobby');assert.equal(game.players[0],hero);
   assert.equal(hero.progress,0);
 });

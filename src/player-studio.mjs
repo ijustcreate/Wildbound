@@ -139,7 +139,7 @@ export class RigStudio {
     root.classList.add("player-studio");
     root.classList.toggle("editing-player", this.subject === "player");
     root.innerHTML = `<div class="ps-heading"><div><span class="ps-eyebrow">CHARACTER ANIMATION</span><h2>One rig. Eight directions.</h2><p>The same player, poses and equipment anchors used in the game.</p></div><span class="ps-badge">PLAYER / 01</span></div>
-    <div class="ps-toolbar"><button data-do="setup">Setup joints</button><button data-do="animate">Animate</button><span class="ps-divider"></span><button data-do="move">Move</button><button data-do="rotate">Rotate</button><label><input type="checkbox" data-option="bones" checked> Bones</label><label><input type="checkbox" data-option="onion"> Onion skin</label><button data-do="undo">Undo</button><button data-do="redo">Redo</button></div>
+    <div class="ps-toolbar"><button data-do="setup" title="Edit this rig's shared base proportions; all animation clips inherit these changes">Base rig</button><button data-do="animate">Animate</button><span class="ps-divider"></span><button data-do="move">Move</button><button data-do="rotate">Rotate</button><label><input type="checkbox" data-option="bones" checked> Bones</label><label><input type="checkbox" data-option="onion"> Onion skin</label><button data-do="undo">Undo</button><button data-do="redo">Redo</button></div>
     <div class="ps-layout"><aside class="ps-hierarchy"><h3>JOINTS</h3><div class="ps-joints"></div><p>Drag a handle to move a joint and its children. Rotate turns the selected bone around its parent.</p><h3>APPEARANCE</h3><div class="ps-palette"></div></aside>
     <section class="ps-stage"><div class="ps-view-controls"><button data-do="zoom-out" aria-label="Zoom out">−</button><output class="ps-zoom" aria-label="Canvas zoom">100%</output><button data-do="zoom-in" aria-label="Zoom in">+</button><button data-do="pan">Pan</button><button data-do="reset-view">Reset view</button><span>Wheel: zoom · Middle-drag: pan</span></div><canvas class="ps-canvas" width="560" height="380" aria-label="Player rig canvas: drag joints to pose"></canvas><div class="ps-directions"></div><p class="ps-hint"></p></section>
     <aside class="ps-inspector"><h3 class="ps-selected"></h3><p class="ps-parent"></p><div class="ps-coordinates"></div><button data-do="key">Set joint key</button><h3>GAME PREVIEW</h3><canvas class="ps-preview" width="160" height="120"></canvas><div class="ps-wardrobe"></div><p>Ground anchor stays fixed. Preview uses the game's renderer.</p></aside></div>
@@ -490,7 +490,7 @@ export class RigStudio {
     position.innerHTML='<summary>Absolute joint position</summary>';
     coordinates.before(position);position.append(coordinates);
     const help=this.boneTools.box.querySelector('p');
-    help.textContent='Drag the handles or apply values to this pose.';
+    help.textContent='Base rig edits here are saved on this unit and inherited by every animation clip. Animate mode edits only the selected pose.';
     tabs.onkeydown=e=>{
       if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
       e.preventDefault();const buttons=[...tabs.children],index=buttons.indexOf(document.activeElement);
@@ -602,7 +602,8 @@ export class RigStudio {
     for(const part of sprites){
       const card=document.createElement('div'), canvas=document.createElement('canvas');canvas.width=part.sprite.width;canvas.height=part.sprite.height;canvas.className='bone-sprite-preview';
       const c=canvas.getContext('2d');part.sprite.pixels.forEach((n,i)=>{if(n){c.fillStyle=part.sprite.palette[n];c.fillRect(i%canvas.width,Math.floor(i/canvas.width),1,1);}});
-      const label=document.createElement('p');label.textContent=part.id+' · '+DIRECTIONS[this.direction];card.append(label,canvas);
+      const label=document.createElement('p');label.textContent=(part.id==='Head shape'?'Head shape · silhouette only':part.id)+' · '+DIRECTIONS[this.direction];card.append(label,canvas);
+      if(part.id==='Head shape'){const note=document.createElement('p');note.textContent='Edit the skull outline and shading here; face features and hair stay on their own layers.';card.append(note);}
       const edit=document.createElement('button');edit.textContent='Edit in sprite editor';edit.onclick=()=>{
         this.playing=false;const model=this.model,direction=this.direction,id=part.id;
         const current=boneSprites(model,direction,this.selected).find(p=>p.id===id)||part;
@@ -683,7 +684,7 @@ export class RigStudio {
     refreshLayerEditor(this);
     if (!this.root?.isConnected) return;
     this.root.dataset.mode=this.mode;
-    if(this.$('.ps-mode-label'))this.$('.ps-mode-label').textContent=this.mode==='setup'?'SETUP · Rest skeleton':'ANIMATE · '+this.clip;
+    if(this.$('.ps-mode-label'))this.$('.ps-mode-label').textContent=this.mode==='setup'?'BASE RIG · Shared proportions':'ANIMATE · '+this.clip;
     this.root.querySelectorAll('[data-animation]').forEach(b=>b.classList.toggle('active',b.dataset.animation===this.clip));
     const constraints=this.$('.ps-ik-list');if(constraints){constraints.replaceChildren();for(const chain of Object.values(this.model.ik||{})){
       const button=document.createElement('button');button.textContent='◇ '+chain.end+' ← '+chain.mid;button.classList.toggle('active',chain.end===this.selected);button.onclick=()=>{this.selected=chain.end;this.tool='ik';this.refresh();this.animate(0);};constraints.append(button);
@@ -750,9 +751,10 @@ export class RigStudio {
     $(".ps-scrub").max = c.length - 1;
     $(".ps-hint").textContent =
       this.mode === "setup"
-        ? "SETUP · move the rest skeleton; all clips share these proportions."
+        ? "BASE RIG · edit rest joints and proportions; every animation for this unit inherits the changes."
         : this.tool==='ik' ? 'IK · drag a cyan endpoint; knee/elbow bends and limb lengths stay fixed.' : "ANIMATE · drag to pose and key this frame. Changes are shared across all eight facings.";
     $('[data-do="play"]').textContent = this.playing ? "Pause" : "Play";
+    $('[data-do="setup"]').textContent = this.mode === 'setup' ? 'Base rig · active' : 'Base rig';
   }
   async command(action) {
     if(this.subject==='player'&&this.previewMotionLayer&&['key','paste','delete'].includes(action)){this.message('Turn off combined preview in Layers before editing pose keys.');return;}

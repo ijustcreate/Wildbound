@@ -7,6 +7,7 @@ import { propBase, waterAt } from './environment.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
 import { nearbyScenery } from './performance.mjs';
 import {fleeGhostCritter} from './ghost-fear.mjs';
+import {releaseMarshFirefly} from './swamp-fireflies.mjs';
 
 /** Parent integration (world coordinates, seconds):
  * initLivingEcosystem(game) after world creation/restore; updateLivingEcosystem(game, dt)
@@ -305,6 +306,7 @@ export function catchCritter(g,p){
  p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught '+a.kind+'! Packed in your '+(container==='empty_jar'?'bottle.':'travel cage.'));g.persist?.();return true;
 }
 export function releaseCritter(g,p,index){
+ if(p.inventory?.[index]?.type==='caught_marsh_firefly')return releaseMarshFirefly(g,p,index);
  const item=p.inventory[index];if(!item?.type?.startsWith('caught_')||p.room)return false;
  const kind=item.type.slice(7),container=critterContainer(item.type,item),copy=structuredClone(p.inventory),water=kind==='fish'?nearbyFishWater(g,p):null;
  if(kind==='fish'&&!water){p.ui.notice='Release your fish beside deep water. Nothing was consumed.';return true;}

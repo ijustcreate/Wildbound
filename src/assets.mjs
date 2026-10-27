@@ -1,8 +1,12 @@
+import {REALM_SPRITES} from './realm-art.mjs';
+import {FAUNA_SPRITES} from './realm-life.mjs';
 import { rigSubject } from "./rig-subjects.mjs";
 import { spriteToRgba, validateSprite } from "./pixels.mjs";
 import { ensureFootprint } from "./world.mjs";
 import { Animator } from "./animation.mjs";
 import {loadHumanoidArt} from './humanoid-hd.mjs';
+import {celShadingEnabled} from './cel-shading.mjs';
+import {cutoutSurface} from './cutout-art.mjs';
 export class Assets {
   constructor() {
     this.library = {};
@@ -21,6 +25,7 @@ export class Assets {
       this.library,
       await (await fetch("assets/animal-parts.json")).json(),
     );
+    Object.assign(this.library,structuredClone(REALM_SPRITES),structuredClone(FAUNA_SPRITES));
     try {
       const saved = JSON.parse(
         localStorage.getItem("wildbound-sprites") || "{}",
@@ -53,6 +58,7 @@ export class Assets {
         "Use a name with letters, numbers, spaces, or hyphens (60 characters max).",
       );
     s = ensureFootprint(structuredClone(s), name);
+    delete s.nativeSwampTree; // A painted override must never be replaced by procedural layers.
     const next = { ...this.overrides, [name]: structuredClone(s) };
     localStorage.setItem("wildbound-sprites", JSON.stringify(next));
     this.overrides = next;
@@ -65,6 +71,7 @@ export class Assets {
       if (!/^[a-zA-Z0-9 _-]{1,60}$/.test(name) || !validateSprite(s))
         throw new Error("Invalid sprite: " + name);
       entries[name] = ensureFootprint(structuredClone(s), name);
+      delete entries[name].nativeSwampTree;
       next[name] = entries[name];
     }
     localStorage.setItem("wildbound-sprites", JSON.stringify(next));
@@ -95,7 +102,8 @@ export class Assets {
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y));
     if (flip) ctx.scale(-1, 1);
-    ctx.drawImage(c, -size / 2, -size / 2, size, size);
+    ctx.imageSmoothingEnabled=celShadingEnabled();
+    ctx.drawImage(celShadingEnabled()?cutoutSurface(c):c, -size / 2, -size / 2, size, size);
     ctx.restore();
   }
 }

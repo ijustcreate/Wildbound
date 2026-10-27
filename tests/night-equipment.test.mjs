@@ -20,13 +20,15 @@ test("either-hand utilities, rifle displacement, safari gear and saves", () => {
     give(p.inventory, id); assert.ok(equip(p, p.inventory.findIndex(i => i?.type === id), slot));
   }
   assert.deepEqual(JSON.parse(JSON.stringify(p)).equipment, p.equipment);
-  assert.match(itemStats("lantern"), /Damage 0/);
+  assert.match(itemStats("lantern"), /Damage 3/);
 });
-test("lantern consumes utility attacks without damage and exposes either-hand lights", () => {
+test("a hand lantern is a weak burning weapon and exposes either-hand lights", () => {
   const p = actor(), g = game(p); p.equipment.hand2 = "lantern";
-  assert.equal(equipmentAttack(p).damage, 0); assert.equal(tryEquipmentAttack(g, p, 1), true);
-  assert.equal(p.attack, 0); assert.equal(g.rifleShots, undefined);
+  assert.equal(equipmentAttack(p).damage, 3); assert.equal(tryEquipmentAttack(g, p, 1), false);
   assert.equal(equipmentLights(p, { hand2: { x: 3, y: 4 } })[0].x, 3);
+  const enemy={hp:20};assert.equal(applyTorchHit(g,p,enemy),true);assert.equal(enemy.burning,2);
+  const tree={kind:'tree',x:100,y:100,size:64};g.scenery.push(tree);assert.equal(applyTorchHit(g,p,tree),true);assert.equal(tree.torchBurn,2);
+  p.equipment.hand1=null;p.equipment.hand2='critter_net';assert.equal(tryEquipmentAttack(g,p,1),true);
   p.equipment.hand1 = "sword"; assert.equal(tryEquipmentAttack(g, p, 1), false);
   p.hp = 0; assert.deepEqual(equipmentLights(p), []);
 });

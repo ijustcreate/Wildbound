@@ -1,5 +1,7 @@
+import {connectForestBridgeBanks} from './forest-bridges.mjs';
 import {findPath} from './navigation.mjs';
 import OverlappingModel from './vendor/wfc/overlapping-model.mjs';
+import {createForestTallGrass} from './tall-grass.mjs';
 
 export const forestHash = (x, y = 0) => {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -78,6 +80,34 @@ export function makePaving(seed) {
     }
   }
   return {resolved: false, cells: Array.from({length: 576}, (_, i) => Number(sample[Math.floor(i / 24) % 8][i % 8]))};
+}
+
+// Match the individual mosaic stones painted by forest-art.mjs. Shader grass
+// uses this footprint to preserve the authored ground details below it.
+const pavingFootprints = new WeakMap();
+export function forestPavingAt(plan, x, y) {
+  if (!plan?.paving?.cells) return false;
+  const margin = 4;
+  let grid = pavingFootprints.get(plan);
+  if (!grid) {
+    grid = new Map();
+    const sites = [{ x: 800, y: 816, rx: 137, ry: 99, seed: plan.seed },
+      ...(plan.landmarks || []).map(l => ({ x: l.x, y: l.y, rx: 138, ry: 108, seed: l.seed }))];
+    for (const site of sites) for (let iy = -12; iy < 12; iy++) for (let ix = -12; ix < 12; ix++) {
+      if ((ix * 12 / site.rx) ** 2 + (iy * 9 / site.ry) ** 2 > .8 + forestNoise(ix * .3, iy * .3, site.seed) * .4) continue;
+      if (!plan.paving.cells[(iy + 12) * 24 + ix + 12]) continue;
+      const px = site.x + ix * 12, py = site.y + iy * 9;
+      const box = [px - margin, py - margin, px + 11 + margin, py + 9 + margin];
+      for (let by = Math.floor(box[1] / 16); by <= Math.floor(box[3] / 16); by++)
+        for (let bx = Math.floor(box[0] / 16); bx <= Math.floor(box[2] / 16); bx++) {
+          const key = by * 128 + bx, bucket = grid.get(key) || [];
+          bucket.push(box); grid.set(key, bucket);
+        }
+    }
+    pavingFootprints.set(plan, grid);
+  }
+  const bucket = grid.get(Math.floor(y / 16) * 128 + Math.floor(x / 16)) || [];
+  return bucket.some(([left, top, right, bottom]) => x >= left && x < right && y >= top && y < bottom);
 }
 
 export function createForestLandscape(seed, terrain) {
@@ -166,15 +196,30 @@ export function createForestScenery(seed, terrain, plan) {
     if (scenery.some(p => p.kind === 'forest_ruin' && px > p.x - p.width / 2 - 4 && px < p.x + p.width / 2 + 4 && py > p.y - p.depth - 4 && py < p.y + 4)) continue;
     plan.cover.push({x: px, y: py, kind: density > .68 ? 'fern' : density < .4 ? 'flower' : 'grass', seed: forestHash(x, y) * 1000});
   }
+  scenery.push(...createForestTallGrass(seed,terrain,plan,scenery));
   return scenery;
 }
 
 export function restoreForestLandscape(g, version = g.forestLandscapeVersion) {
-  if (version !== 1 || (g.generatedEnvironment || g.environment || 'forest') !== 'forest') {
+  if (![1,2].includes(version) || (g.generatedEnvironment || g.environment || 'forest') !== 'forest') {
     g.forestLandscape = null; g.forestLandscapeVersion = 0; return;
   }
-  if (g.forestLandscape?.seed === g.seed && g.forestLandscape?.routeField instanceof Float32Array) return;
-  const plan = createForestLandscape(g.seed, g.terrain);
-  createForestScenery(g.seed, g.terrain, plan);
+  connectForestBridgeBanks(g.terrain);
+  const plan = g.forestLandscape?.seed === g.seed && g.forestLandscape?.routeField instanceof Float32Array
+    ? g.forestLandscape : createForestLandscape(g.seed, g.terrain);
+  if(version<2){
+    // Upgrade existing expeditions from isolated tufts to overlapping patches.
+    // Carry the nearest old cut/burn state forward so migration cannot restore
+    // grass the player already cleared.
+    const old=g.scenery.filter(p=>p.kind==='tall_grass');
+    g.scenery=g.scenery.filter(p=>p.kind!=='tall_grass');
+    const patches=createForestTallGrass(g.seed,g.terrain,plan,g.scenery);
+    for(const patch of patches){
+      const nearest=old.filter(p=>Math.hypot(p.x-patch.x,(p.rootY??p.y+p.size*.4)-patch.rootY)<p.size*.7)
+        .sort((a,b)=>Math.hypot(a.x-patch.x,(a.rootY??a.y+a.size*.4)-patch.rootY)-Math.hypot(b.x-patch.x,(b.rootY??b.y+b.size*.4)-patch.rootY))[0];
+      if(nearest?.cut)for(const key of ['cut','charred','grassFire','grassSizzle','grassSpreadIn','grassSpreadDepth','grassSpreadDone'])if(nearest[key]!==undefined)patch[key]=nearest[key];
+    }
+    g.scenery.push(...patches);g.forestLandscapeVersion=2;
+  }
   g.forestLandscape = plan;
 }

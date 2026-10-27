@@ -20,12 +20,11 @@ export function drawCreationPreview(c,appearance,{width=240,height=160,mode='ful
  const [faceX,faceY]=directionVector(direction),actor={appearance,equipment:{},faceX,faceY,animationAction:'idle',hp:100};
  const head=projectPoint(playerPose(actor,time,model).head,direction);
  const close=mode!=='full',span=mode==='face'?20:mode==='hair'?30:48;
- const scale=Math.max(1,Math.min(close?9:5,Math.floor((height-10)/span),Math.floor(width/(close?34:30))));
+ const scale=Math.max(1,Math.min(close?9:7,Math.floor((height-10)/span),Math.floor(width/(close?34:30))));
  const center=close?head.y+(mode==='hair'?-1:0):-22;
  c.clearRect(0,0,width,height);c.save();c.imageSmoothingEnabled=false;
  if(c.clip){c.beginPath();c.rect(0,0,width,height);c.clip();}
  c.fillStyle='#102922';c.fillRect(0,0,width,height);
- c.fillStyle='#203e32';for(let y=0;y<height;y+=12)c.fillRect(0,y,width,1);
  c.translate(Math.round(width/2),Math.round(height/2-center*scale));c.scale(scale,scale);
  drawPlayer(c,actor,time,model);c.restore();return {scale,mode,headY:height/2+(head.y-center)*scale};
 }

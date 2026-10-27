@@ -24,33 +24,26 @@ export function drawJungleFern(c,p,time=0){
   if(!sprite){
     if(typeof document==='undefined')return;
     sprite=document.createElement('canvas');sprite.width=sprite.height=FERN_SIZE;
-    const context=sprite.getContext('2d');context.translate(16,20);context.scale(.5,.5);
+    const context=sprite.getContext('2d');context.translate(16,24);
     paintFern(context,{x:0,y:0,seed:variant*137});sprites.set(variant,sprite);
   }
   const bend=(p.fernX||0)+Math.sin(time*1.7+(p.seed||0))*.4;
   c.save();c.imageSmoothingEnabled=false;
   c.translate(Math.round(p.x),Math.round(p.y));
   c.transform(1,0,-bend/20,1-(p.fernY||0)/40,0,0);
-  c.drawImage(sprite,-16,-20);c.restore();
+  c.drawImage(sprite,-16,-24);c.restore();
 }
-function paintFern(c,p,time=0){
-  const pixel=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
-  const seed=p.seed||0;
-  for(let i=0;i<7;i++){
-    const angle=i*Math.PI*2/7+hash(seed)*.7,length=17+hash(seed+i)*11;
-    const dx=Math.cos(angle)*length,dy=Math.sin(angle)*length*.48;
-    const sway=Math.sin(time*1.7+seed+i*.6)*1.2;
-    for(let n=1;n<=9;n++){
-      const t=n/9,x=p.x+dx*t+(sway+(p.fernX||0))*t*t;
-      const y=p.y+dy*t-10*Math.sin(t*Math.PI)+(p.fernY||0)*t*t;
-      const width=Math.sin(t*Math.PI)*5;
-      pixel(x,y,2,2,'#28513b');
-      for(const side of [-1,1]){
-        const nx=-Math.sin(angle)*side,ny=Math.cos(angle)*side*.55;
-        for(let k=1;k<=width;k+=1.5)pixel(x+nx*k-dx*.035,y+ny*k+1,3,2,side<0?'#548c47':'#387442');
-      }
-      pixel(x,y-1,1,1,i%2?'#9bbb63':'#77a657');
-    }
+function paintFern(c,p){
+ const pixel=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
+ const fronds=[[-13,8],[-10,13],[-4,19],[4,20],[10,14],[14,8]];
+ for(let i=0;i<fronds.length;i++){
+  const [dx,height]=fronds[i];
+  for(let n=1;n<=7;n++){
+   const t=n/7,x=dx*t,y=-height*Math.sin(t*2.1),leaf=n===7?1:n>4?2:3;
+   pixel(x,y,1,3,'#355d39');
+   pixel(x-leaf,y,leaf+1,2,i<3?'#547941':'#466d3b');
+   pixel(x+1,y-1,leaf,2,'#78954f');
   }
-  pixel(p.x-2,p.y-1,4,3,'#486b38');
+ }
+ pixel(-2,-1,4,2,'#466d3b');
 }

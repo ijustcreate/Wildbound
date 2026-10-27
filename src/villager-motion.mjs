@@ -9,9 +9,12 @@ import {
 } from "./player-motion.mjs";
 import { drawOrientedPixelVolume as volume } from "./murk-wolf-pixels.mjs";
 import { paintLayers } from "./render-order.mjs";
+import {drawNativeHair,drawFacialHair} from './hair-design.mjs';
 import { validateSprite } from "./pixels.mjs";
 import { jointAngle } from "./joint-angles.mjs";
 import { VILLAGERS, villagerById } from "./villager-data.mjs";
+import { ITEMS } from "./items.mjs";
+import { drawItem } from "./item-art.mjs";
 const add = (a, b) => a.map((v, i) => v + b[i]),
   sub = (a, b) => a.map((v, i) => v - b[i]),
   mul = (a, s) => a.map((v) => v * s),
@@ -195,11 +198,28 @@ export function defaultVillagerMotion() {
     }
     m.clips[name] = { fps: 18, length: 25, loop: false, keys };
   }
+  {
+    const keys=[];
+    for(let f=0;f<13;f++){
+      const p=poseAt(m,"idle",0),t=Math.sin(Math.PI*f/12);
+      for(const joint of ["pelvis","spine","chest","neck","head"])p[joint][2]-=t*2.2;
+      for(const side of ["L","R"]){p["hip"+side][2]-=t*.7;p["knee"+side][2]-=t*.9;}
+      arm(p,m,"R",add(p.handR,[0,t*2.2,-t*5]));
+      keys.push({frame:f,joints:delta(m,p)});
+    }
+    m.clips.pickup={fps:24,length:13,loop:false,keys};
+  }
   const seated=poseAt(m,"idle",0);
-  for(const joint of ["pelvis","spine","chest","neck","head","headUp","headFront","eyeL","eyeR","earL","earR","nose","mouth","hair","tabard","tabardEnd"] )seated[joint][2]-=2.2;
-  for(const side of ["L","R"]){seated["hip"+side][2]-=2.2;seated["knee"+side][1]+=1.5;seated["knee"+side][2]+=.8;seated["foot"+side][1]+=2.2;seated["toe"+side][1]+=2.2;seated["foot"+side][2]-=.2;seated["toe"+side][2]-=.2;}
-  arm(seated,m,"L",add(seated.kneeL,[0,.2,1]));arm(seated,m,"R",add(seated.kneeR,[0,.2,1]));
-  m.clips.sit={fps:1,length:2,loop:true,keys:[{frame:0,joints:delta(m,seated)}]};  m.clips.sword_ready = structuredClone(m.clips.guard);
+  // A real seated silhouette: drop the hips, bring the thighs forward, bend
+  // the shins down, and rest both hands on the knees instead of merely
+  // lowering the entire standing rig by a couple of pixels.
+  for(const joint of ["pelvis","spine","chest","neck","head","headUp","headFront","eyeL","eyeR","earL","earR","nose","mouth","hair","tabard","tabardEnd"] )seated[joint][2]-=6.5;
+  for(const side of ["L","R"]){seated["hip"+side][2]-=6.5;seated["knee"+side][1]+=5;seated["knee"+side][2]+=3.2;seated["foot"+side][1]+=6;seated["toe"+side][1]+=6;seated["foot"+side][2]-=.2;seated["toe"+side][2]-=.2;}
+  arm(seated,m,"L",add(seated.kneeL,[0,.25,1.5]));arm(seated,m,"R",add(seated.kneeR,[0,.25,1.5]));
+  const relaxed=structuredClone(seated);
+  for(const side of ["L","R"]){relaxed["hand"+side][1]+=.22;relaxed["elbow"+side][1]+=.12;}
+  relaxed.head[0]+=.28;relaxed.chest[2]+=.18;
+  m.clips.sit={fps:2,length:2,loop:true,keys:[{frame:0,joints:delta(m,seated)},{frame:1,joints:delta(m,relaxed)}]};  m.clips.sword_ready = structuredClone(m.clips.guard);
   m.clips.jump_slash = structuredClone(m.clips.slash);
   for (const k of m.clips.jump_slash.keys) {
     const lift =
@@ -234,7 +254,7 @@ export function replaceVillagerMotion(m) {
   Object.assign(villagerMotion, copy);
 }
 export const villagerAction = (a) =>
-  a.animationAction || (a.sitting ? "sit" : a.moving ? (a.walking ? "walk" : "run") : "idle");
+  (a.pickupTime>0?"pickup":a.animationAction) || (a.swimming ? (a.moving ? "swim" : "swim_idle") : a.sitting ? "sit" : a.moving ? (a.walking ? "walk" : "run") : "idle");
 export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
   const original = villagerById(a.villagerId || "april"),
     spec =
@@ -263,6 +283,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
       ? a.playerFrame
       : Number.isFinite(a.poseTime)
         ? a.poseTime * (clip.length - 1)
+        : action==='pickup' ? Math.max(0,1-a.pickupTime/.42)*(clip.length-1)
         : (a.gestureAge ?? a.villagerClock ?? t) * clip.fps,
     pose = suppliedPose || poseAt(m, action, frame),
     p = Object.fromEntries(
@@ -296,6 +317,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
       sub(pose.shoulderR, pose.shoulderL),
       sub(pose.chest, pose.pelvis),
     );
+  const hairLook={hair:spec.id==='april'?'long':({quiff:'sidepart',tuft:'spikes',sidebun:'topknot',beanie:'bob'}[spec.hair]||spec.hair||'crop'),hairColor:spec.hairColor,...a.appearance};
   const part = (bone, id, bones, paint, depth = p[bone].depth) => {
     if (m.visibility?.[bone]?.[d] !== false)
       q.push({
@@ -450,21 +472,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
     "Villager rear hair",
     ["hair"],
     () => {
-      if (spec.id === "april") {
-        // Shoulder-length auburn locks have an actual back and side volume.
-        hblock([0, -3.1, -1.8], [6.5, 2.8, 7.2], hair);
-        hblock([-6, -1.6, -3.2], [2.8, 2.8, 5.8], hair);
-        hblock([6.3, -1.8, -3.8], [3, 2.8, 6.2], hair);
-        hblock([7.5, -2.7, -6.3], [2.6, 2.4, 2.6], hair);
-      } else if (spec.hair === "long" || spec.hair === "beanie")
-        for (const x of [-4.2, 0, 4.2])
-          hblock(
-            [x, -2.2, -2],
-            [x ? 2 : 4.6, 2.4, spec.hair === "long" ? 6 : 4.2],
-            hair,
-          );
-      else hblock([0, -2.6, 0], [5.7, 2.2, 4.8], hair);
-      if (spec.hair === "sidebun") hblock([7, -2, 2.8], [3, 2.6, 3], hair);
+      return drawNativeHair(c,p.head,hairLook,d,frame,action,'rear',1.12);
     },
     projectPoint(local(pose.head, head, [0, -3, -2]), d).depth + 1,
   );
@@ -489,33 +497,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
     "Villager crown",
     ["hair"],
     () => {
-      if (spec.id === "april") {
-        hblock([0, -0.9, 5.1], [7.6, 4.9, 2.7], hair);
-        hblock([-4.8, 2.4, 4], [3, 1.9, 2.3], hair);
-        hblock([-0.9, 3.6, 5], [3.9, 1.8, 1.9], hair);
-        hblock([4.9, 3.1, 5.5], [3, 1.7, 1.5], hair);
-        hblock([-6.6, 0.4, -0.7], [1.5, 2.1, 3.8], hair);
-        return;
-      }
-      hblock(
-        [0, -0.6, 5],
-        [6.6, 4.7, 2],
-        spec.hair === "beanie" ? palette("#a63743") : hair,
-      );
-      for (const [x, z] of [
-        [-4, 3.4],
-        [-1.7, 4.4],
-        [2.7, 3.5],
-      ])
-        hblock([x, 2.7, z], [2.2, 1.6, 1.8], hair);
-      if (spec.hair === "quiff" || spec.hair === "tuft")
-        hblock(
-          [spec.hair === "quiff" ? 2 : 0, 0, 7.7],
-          [spec.hair === "quiff" ? 1.3 : 4.8, 2.8, 2.4],
-          hair,
-        );
-      if (spec.hair === "beanie")
-        hblock([0, 0, 8.5], [1.8, 1.8, 2], palette("#a63743"));
+      return drawNativeHair(c,p.head,hairLook,d,frame,action,'front',1.12);
     },
     p.head.depth + 5,
   );
@@ -536,8 +518,8 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
           c.fillRect(x - 2, y - 1, 4, 4);
           c.fillStyle = spec.eyes;
           c.fillRect(x, y - 1, 2, 4);
-          c.fillStyle = "#28618a";
-          c.fillRect(x + 1, y, 1, 3);
+          c.fillStyle = "#273b50";
+          c.fillRect(x + 1, y, 1, 2);
           c.fillStyle = "#fff5e5";
           c.fillRect(x, y - 1, 1, 1);
           c.fillStyle = "#db9276";
@@ -565,16 +547,9 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
     "Villager nose",
     ["nose"],
     () => {
-      if (spec.id === "april") {
-        const x = Math.round(p.mouth.x), y = Math.round(p.mouth.y) - 1;
-        c.fillStyle = "#9c5247";
-        c.fillRect(x - 1, y, 3, 2);
-        c.fillStyle = "#fff0dc";
-        c.fillRect(x - 1, y, 3, 1);
-        return;
-      }
+      c.fillStyle=skin.light;c.fillRect(Math.round(p.nose.x)-1,Math.round(p.nose.y)-1,1,2);
       c.fillStyle = skin.shade;
-      c.fillRect(Math.round(p.nose.x), Math.round(p.nose.y), 1, 2);
+      c.fillRect(Math.round(p.nose.x), Math.round(p.nose.y)+1,2,1);
     },
     p.head.depth + 8,
   );
@@ -585,19 +560,19 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
     () => {
       c.fillStyle = skin.shade;
       c.fillRect(Math.round(p.mouth.x) - 1, Math.round(p.mouth.y), 3, 1);
-      if (spec.beard) hblock([0, 3.5, -4.6], [3.8, 1.5, 1.7], hair);
+      drawFacialHair(c,p.head,{...hairLook,facialHair:a.appearance?.facialHair||(spec.beard?'shortbeard':'none')},d,1.12);
     },
     p.head.depth + 7,
   );
-  const sword = Object.hasOwn(a.equipment || {}, "hand1")
+  const hand1 = Object.hasOwn(a.equipment || {}, "hand1")
     ? a.equipment.hand1
     : spec.sword
       ? "sword"
       : null;
-  if (sword && !["wave", "cheer", "shrug", "talk"].includes(action))
+  if (hand1 && !["wave", "cheer", "shrug", "talk"].includes(action))
     part(
       "swordGrip",
-      "Villager sword",
+      "Villager weapon",
       ["swordGrip", "swordTip"],
       () => {
         const v = p.swordGrip,
@@ -605,7 +580,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
           n = Math.hypot(b.x - v.x, b.y - v.y) || 1,
           dx = (b.x - v.x) / n,
           dy = (b.y - v.y) / n,
-          fit = m.wearables?.sword?.[d];
+          fit = m.wearables?.[hand1]?.[d] || m.wearables?.sword?.[d];
         c.save();
         c.translate(v.x + (fit?.x || 0), v.y + (fit?.y || 0));
         c.rotate(((fit?.rotation || 0) * Math.PI) / 180);
@@ -617,7 +592,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
               c.fillRect((i % 16) - 8, Math.floor(i / 16) - 8, 1, 1);
             }
           });
-        } else {
+        } else if (ITEMS[hand1]?.base === "sword" || hand1 === "sword") {
           segment(
             { x: 0, y: 0 },
             { x: b.x - v.x, y: b.y - v.y },
@@ -632,7 +607,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
             "#cda45b",
           );
           ellipse(c, -dx * 1.8, -dy * 1.8, 1.4, 1.4, "#754936");
-        }
+        } else drawItem(c, hand1, v.x, v.y, 15);
         c.restore();
       },
       p.swordGrip.depth + 0.4,

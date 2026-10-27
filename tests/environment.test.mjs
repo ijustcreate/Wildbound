@@ -34,6 +34,17 @@ test("Monsoon expands water exactly one tile and submerges bridges without chang
   assert.equal(waterAt(g, 12 * 32 + 16, 10 * 32 + 16), "grass");
   assert.equal(waterAt(g, 10 * 32 + 16, 11 * 32 + 16), "bridge");
 });
+
+test('flying creatures do not leave ground tracks, including takeoff impulses',()=>{
+ const {g}=setup();g.footprints=[];g.time=2;
+ g.enemies=['bat','crow','raven','wasp','bee','dragon','fairy','dragonfly','butterfly'].map((kind,i)=>({
+  id:700+i,kind,hp:20,x:300+i*24,y:300,trackPosition:{x:300+i*24,y:300},
+  trackImpulse:{x:300+i*24,y:300,kind:'takeoff'},faceX:1,faceY:0,
+ }));
+ tickEnvironment(g,.016);
+ assert.equal(g.footprints.length,0);
+ assert.ok(g.enemies.every(e=>!e.trackImpulse));
+});
 test("Shallow water slows walking; players swim in deep water while flyers pass freely", () => {
   const { g, p } = setup();
   g.terrain[12 * 50 + 12] = "shallow";

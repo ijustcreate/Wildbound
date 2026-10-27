@@ -1,8 +1,8 @@
 import {generateWorld} from './world.mjs';
 import {collisionOffset,actorRadius} from './navigation.mjs';
 import {activeHouse} from './house-design.mjs';
-const authoredRect=({broken,sectionDamage,destructionRevision,destructionGroup,destroyed,...r})=>r;
-const layoutKey=h=>{if(!h)return JSON.stringify(h);const {destructionRevision,...design}=h;return JSON.stringify({...design,walls:h.walls.map(authoredRect),doors:h.doors.map(d=>({...authoredRect(d),open:false})),furniture:(h.furniture||[]).map(authoredRect)});};
+const authoredRect=({broken,sectionDamage,destructionRevision,destructionGroup,destroyed,opened,loot,chestId,speed,heading,seats,occupiedBy,occupants,hoodOpen,enginePartInstalled,engineOn,engineStart,engineSoundTimer,engineWarning,keyWarning,sink,damage,effects,...r})=>r;
+const layoutKey=h=>{if(!h)return JSON.stringify(h);const {destructionRevision,...design}=h;return JSON.stringify({...design,walls:h.walls.map(authoredRect),doors:h.doors.map(d=>({...authoredRect(d),open:false})),furniture:(h.furniture||[]).map(authoredRect),vehicles:(h.vehicles||[]).map(authoredRect)});};
 export function applyChangedHouse(game){
  if(game.generatedEnvironment!=='house'||layoutKey(game.house)===layoutKey(activeHouse()))return false;
  return applyActiveHouse(game);

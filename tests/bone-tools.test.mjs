@@ -43,3 +43,15 @@ test('Setup and animation transforms survive undo and JSON round trip without ch
     }).finally(()=>s.replace(original));
   } catch(e){s.replace(original);throw e;}
 });
+test('Base rig proportion edits flow through every animation clip for that unit',async()=>{
+  const s=new RigStudio(()=>{}),original=structuredClone(s.model);
+  try{
+    s.mode='setup';s.selected='head';s.direction=0;
+    const clips=Object.keys(s.model.clips),before=Object.fromEntries(clips.map(name=>[name,poseAt(s.model,name,Math.min(2,s.model.clips[name].length-1)).eyeL]));
+    const {BoneTools}=await import('../src/bone-tools.mjs');
+    new BoneTools(s).apply(s.pose(),'scale',[1.2,1.2]);
+    assert.ok(s.model.joints.head.position.some((v,i)=>v!==original.joints.head.position[i]));
+    for(const name of clips){const frame=Math.min(2,s.model.clips[name].length-1);assert.notDeepEqual(poseAt(s.model,name,frame).eyeL,before[name],`${name} inherits the shared rig adjustment`);}
+    assert.ok(validatePlayerMotion(JSON.parse(JSON.stringify(s.model))));
+  }finally{s.replace(original);}
+});

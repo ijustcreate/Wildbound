@@ -5,6 +5,8 @@ import {generateWorld} from './world.mjs';
 import {tickLocalWorld} from './world-runtime.mjs';
 import {checkpointBoundlessWorld,initializeBoundlessWorld} from './boundless-world.mjs';
 import {createWorldState,validateWorldState,catchUpWorld,validatePack,hash,recordWorldEvent} from './world-simulation.mjs';
+import {applyAuthoredScenes} from './world-authoring-runtime.mjs';
+import {readWorldDesign} from './world-authoring.mjs';
 const baselines=new WeakMap();
 const clone=v=>structuredClone(v);
 function worldBaseline(seed,environment){
@@ -15,18 +17,21 @@ export function seededRandom(seed){let a=seed>>>0;return()=>{a+=0x6d2b79f5;let t
 export function createLocalWorld({id,name,seed,pack,party,now=Date.now()}) {
   if(!party?.length)throw Error('Choose at least one explorer in the lobby before creating a world.');
   const s=createWorldState({id,name,seed,pack,now});
+  const authoredLevel=readWorldDesign().levels.find(level=>level.environment===s.pack.environment);
+  if(authoredLevel){s.pack.prey=clone(authoredLevel.prey);s.pack.predators=clone(authoredLevel.predators);s.pack.food=authoredLevel.food;s.pack.water=authoredLevel.water;}
   for(const kind of [...s.pack.prey,...s.pack.predators])if(!creatures[kind])throw Error('This content pack names an unknown creature: '+kind);
   const g=new Game(seededRandom(seed));
   g.seed=seed;g.environment=s.pack.environment;g.generatedEnvironment='';g.mapMode='boundless';
   for(const p of party){const player=g.addPlayer(p.device,p.name);Object.assign(player,clone(p));player.room=null;player.ui=null;player.x=800;player.y=920;}
   g.start();g.openingBoard=false;g.persistentWorld=true;g.localWorld=s;
+  applyAuthoredScenes(g,0,0);
   // Fresh identity: no old nested Heartwood journey or remote authority.
   g.portals=g.portals.filter(d=>!d.forestTravel);delete g.forestJourney;
   baselines.set(g,worldBaseline(seed,s.pack.environment));
   rememberPlants(g);
   g.message(name+' · local world · saved on this computer.');return g;
 }
-const plant=p=>['tree','snow_tree','leafless_tree','bush','fern','flower'].includes(p.kind);
+const plant=p=>['tree','snow_tree','leafless_tree','bush','fern','flower','tall_grass'].includes(p.kind);
 function rememberPlants(g){const originals=new Map((baselines.get(g)?.scenery||[]).map(p=>[p.id,p]));for(const p of g.scenery||[])if(plant(p)&&!p.localOriginal)p.localOriginal=clone(originals.get(p.id)||p);}
 function sceneryDelta(current,original){
   const baseline=new Map(original.map(p=>[p.id,p])),live=new Map(current.map(p=>[p.id,p]));
@@ -59,7 +64,7 @@ export function saveLocalWorld(g,now=Date.now()) {
   // Terrain and scenery are reconstructed from seed + deltas, never copied as
   // an untouched full world. Stateful actors, NPCs and board events are checkpoints.
   session.state=clone(session.state);
-  const delta=sceneryDelta((g.scenery||[]).filter(p=>!String(p.id).startsWith('boundless:')),baseline.scenery);
+  const delta=sceneryDelta((g.scenery||[]).filter(p=>!String(p.id).startsWith('boundless:')&&!String(p.id).startsWith('world-scene:')),baseline.scenery);
   const terrain=[];for(let i=0;i<(g.terrain||[]).length;i++)if(g.terrain[i]!==baseline.terrain[i])terrain.push([i,g.terrain[i]]);
   delete session.state.scenery;delete session.state.terrain;delete session.state.forestLandscape;
   delete session.state.boundlessLoadedChunks;delete session.state.forestJourney;
@@ -83,6 +88,7 @@ export function restoreLocalWorld(record,now=Date.now()) {
   baselines.set(g,worldBaseline(s.seed,s.pack.environment));
   const elapsed=catchUpWorld(g.localWorld,now);
   g.boundlessLoadedChunks=[];g.persistentWorld=true;g.remoteAuthoritative=false;
+  applyAuthoredScenes(g,0,0);
   g.portals=(g.portals||[]).filter(d=>!d.forestTravel);delete g.forestJourney;
   rememberPlants(g);
   tickLocalWorld(g,0);

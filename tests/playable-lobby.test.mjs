@@ -17,7 +17,7 @@ test('Lobby footsteps match gameplay distance and stop advancing against room bo
   assert.ok(Math.abs(s.step-88*.13)<1e-8);
   const model=defaultPlayerMotion();
   assert.ok(Math.abs(playerFrame({...s,animationAction:'run'},0,model)-model.clips.run.length)<1e-8);
-  s.x=970;const step=s.step;moveLobbyCharacter(s,{x:1,y:0},1);
+  s.x=1016;const step=s.step;moveLobbyCharacter(s,{x:1,y:0},1);
   assert.equal(s.step,step);assert.equal(s.moving,false);
 });
 

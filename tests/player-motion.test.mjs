@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   defaultPlayerMotion,
+  playerMotion,
+  playerPose,
   validatePlayerMotion,
   poseAt,
   facingIndex,
@@ -25,6 +27,13 @@ test("Player facing resolves all eight directions without rotating vertical anat
   }
   assert.ok(projectPoint(p.handR, 0).x > 0);
   assert.ok(projectPoint(p.handR, 4).x < 0);
+});
+test('vertical dashes keep the upper body aligned to its neutral centerline',()=>{
+ for(const faceY of [-1,1]){
+  const actor={dashTime:.14,dashAnimationDuration:.28,faceX:0,faceY};
+  const pose=playerPose(actor,0,playerMotion);
+  for(const name of ['chest','head','shoulderL','shoulderR'])assert.equal(pose[name][1],playerMotion.joints[name].position[1],name+' stays centered while dashing vertically');
+ }
 });
 test("Run loop alternates planted and lifted feet and wraps continuously", () => {
   const m = defaultPlayerMotion(),
@@ -70,7 +79,9 @@ test("Combat and movement use one deterministic clip selector", () => {
   );
   assert.equal(playerAction({ blocking: true }), "block");
   assert.equal(playerFrame({ animationAction: "run", playerFrame: 3 }, 100), 3);
-  assert.equal(playerFrame({ animationAction: "run", step: 0.13 * 88 }, 0), 8);
+  // Explicit legacy model retains its old phase clock; the live player now
+  // uses the Captain's twelve-frame run cycle.
+  assert.equal(playerFrame({ animationAction: "run", step: 0.13 * 88 }, 0, defaultPlayerMotion()), 8);
 });
 test("Player packages reject broken topology, nonfinite keys and duplicate frames", () => {
   const m = defaultPlayerMotion();

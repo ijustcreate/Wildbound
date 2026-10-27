@@ -8,12 +8,6 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Push-Location $root
 try {
   $version = [string](Get-Content -Raw 'package.json' | ConvertFrom-Json).version
-  $exe = Join-Path $root "dist\$version\Wildbound-win32-x64\Wildbound.exe"
-  $running = Get-CimInstance Win32_Process -Filter "name = 'Wildbound.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.ExecutablePath -eq $exe }
-  if ($running) {
-    throw "The target build is running: $exe. Close that game before rebuilding."
-  }
   if (-not (Test-Path -LiteralPath 'node_modules/@electron/packager' -PathType Container) -or
       -not (Test-Path -LiteralPath 'node_modules/electron/dist/electron.exe' -PathType Leaf)) {
     throw 'Desktop dependencies are missing. Install Node.js/npm and run npm ci, then rerun this script.'
@@ -25,7 +19,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Packaging failed. The desktop shortcut was not changed.' }
   & (Join-Path $PSScriptRoot 'create-desktop-shortcut.ps1') -DesktopPath $DesktopPath
   if (-not $?) { throw 'Desktop shortcut creation failed.' }
-  Write-Output "Ready: $exe"
+  Write-Output 'Ready: newest timestamped Electron build selected by the desktop shortcut.'
 } finally {
   Pop-Location
 }

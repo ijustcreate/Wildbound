@@ -1,5 +1,10 @@
 import { definitionPack, applyDefinitions } from './definitions.mjs';
 import { registerCryptGearArt } from './crypt-gear.mjs';
+import {completeHumanoidActions} from './native-humanoid-base.mjs';
+import {widenHumanoidStance} from './humanoid-chat-update.mjs';
+import {playerMotion,replacePlayerMotion,upgradePlayerToNative,defaultNativePlayerMotion} from './player-motion.mjs';
+import {oathlessCaptainMotion} from './oathless-captain-motion.mjs';
+import {villagerMotion} from './villager-motion.mjs';
 
 const RIG_KEYS = ['player', 'warlock', 'grim_reaper', 'safari_hunter', 'alan', 'banshee', 'succubus', 'imp', 'zombie', 'ghost', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'murk_wolf', 'dreadmane_lion', 'slime', 'shore_goblin', 'oathless_captain', 'villager', 'bat', 'rhino', 'creatureMotions', 'beastMotions', 'nightMotions'];
 export function rigPack(events, items) {
@@ -39,4 +44,8 @@ export async function loadProjectRigs(events, items) {
   // Older authored rigs predate this gear. Fill only absent views; never replace
   // fitted art the player authored for the new shield.
   registerCryptGearArt();
+  replacePlayerMotion(data?.player?upgradePlayerToNative(playerMotion):defaultNativePlayerMotion());
+  completeHumanoidActions(oathlessCaptainMotion,playerMotion);
+  completeHumanoidActions(villagerMotion,playerMotion);
+  for(const [key,model] of Object.entries(definitionPack(events,items)))if(RIG_KEYS.includes(key)&&model?.joints?.handL)widenHumanoidStance(model);
 }

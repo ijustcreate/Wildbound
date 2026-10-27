@@ -136,7 +136,7 @@ app.whenReady().then(async () => {
       release(); press(1, 9, 1, 5, 13);
       assert(dialog.open && q.ui === otherUI && selectedTab() === 'display', 'Second lobby owner cannot close or navigate first owner’s settings');
       press(0, 5);
-      assert(selectedTab() === 'explorer', 'Lobby opener can change the active settings tab');
+      assert(selectedTab() === 'sound', 'Lobby opener can change the active settings tab');
       set(1, 1); step();
       set(0, 9, 0, 13); step();
       for (let frame = 0; frame < 12; frame++) step();
@@ -219,6 +219,15 @@ app.whenReady().then(async () => {
       delete window.desktop; delete document.hasFocus;
       press(1, 9); verifyOpen(1, 'switch');
       press(1, 5); press(1, 5);
+      dialog.querySelector('[data-settings-tab="sound"]').click();
+      const volume=$('music-volume');volume.focus();const oldVolume=Number(volume.value);
+      press(1,15);assert(Number(volume.value)>oldVolume,'Controller Right raises the focused real volume slider');
+      press(1,14);assert(Math.abs(Number(volume.value)-oldVolume)<.001,'Controller Left lowers the focused real volume slider');
+      press(1,13);assert(document.activeElement===dialog.querySelector('.music-picker>summary'),'Controller Down skips slider arrow buttons and reaches the next setting');
+      dialog.querySelector('[data-settings-tab="controls"]').click();
+      const invert=$('invert-aim-y');invert.focus();press(1,15);
+      assert(invert.checked&&JSON.parse(localStorage.getItem('wildbound-camp-input')).invertY,'Controller Right enables and persists an input toggle');
+      press(1,14);assert(!invert.checked,'Controller Left disables the input toggle');
       return { checks, passed: checks.length, synthetic: true, physicalControllersTested: false };
     })()`);
     await run(`(()=>{
@@ -283,6 +292,20 @@ app.whenReady().then(async () => {
       layouts.push(layout);
       fs.mkdirSync(output, { recursive: true });
       fs.writeFileSync(path.join(output, `settings-${width}x${height}.png`), (await win.webContents.capturePage()).toPNG());
+    }
+    win.setContentSize(1280, 850);
+    for (const tab of ['display', 'sound', 'controls']) {
+      const panel = await run(`(()=>{
+        const dialog = document.getElementById('settings-dialog');
+        dialog.querySelector('[data-settings-tab="${tab}"]').click();
+        const visible = [...dialog.querySelectorAll('[data-settings-panel]')].filter(item => item.getClientRects().length);
+        if (visible.length !== 1 || visible[0].dataset.settingsPanel !== '${tab}') throw Error('Settings tab ${tab} does not show exactly its matching panel');
+        return visible[0].id;
+      })()`);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      fs.writeFileSync(path.join(output, `settings-${tab}.png`), (await win.webContents.capturePage()).toPNG());
+      result.checks.push(`Tab ${tab} shows only ${panel}`);
+      result.passed++;
     }
     if (errors.length) throw Error('Renderer errors: ' + errors.join('\n'));
     const report = { ...result, layouts, rendererErrors: errors };

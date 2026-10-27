@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {REALMS,realmWorld} from '../src/realm-layout.mjs';
 import {
   Game,
   CENTER,
@@ -93,6 +94,7 @@ test("All events have working spawns, including mixed squads", () => {
     g.enemies = [];
     g.mystery=null;
     g.generatedEnvironment=EVENTS[i].environment||'forest';
+    if(REALMS.includes(g.generatedEnvironment))Object.assign(g,realmWorld(g.seed,g.generatedEnvironment,{authored:false}));
     // Shore encounters require real sand, not only a renamed forest map.
     if(EVENTS[i].requiredStartArea==='sand')g.terrain.fill('sand');
     g.spawnEvent(i);

@@ -243,3 +243,12 @@
 .robot-repair-button { position: relative; overflow: hidden; }
 .robot-repair-progress { position: absolute; left: 6px; right: 6px; bottom: 4px; height: 3px; background: linear-gradient(to right, #f1d889 var(--repair-progress, 0%), #294a3b var(--repair-progress, 0%)); pointer-events: none; }
 .robot-repair-help { display: block; margin: 5px 0 8px; color: #5b5137; }
+
+/* Realm paintings used by the new destinations, shared by the portrait stage
+   and equipment sheet so both parts of inventory feel like one scene. */
+.hero-panel[data-environment="swamp"] :is(.inventory-character,.equipment-window) { background-image:url('../assets/inventory-environment-swamp-v1.png')!important; background-size:cover!important; background-position:center!important; }
+.hero-panel[data-environment="caverns"] :is(.inventory-character,.equipment-window) { background-image:url('../assets/inventory-environment-caverns-v1.png')!important; background-size:cover!important; background-position:center!important; }
+.hero-panel[data-environment="shadow"] :is(.inventory-character,.equipment-window) { background-image:url('../assets/inventory-environment-shadow-v1.png')!important; background-size:cover!important; background-position:center!important; }
+.hero-panel[data-environment="swamp"] .inventory-character,
+.hero-panel[data-environment="caverns"] .inventory-character,
+.hero-panel[data-environment="shadow"] .inventory-character { background-repeat:no-repeat!important; image-rendering:pixelated; }

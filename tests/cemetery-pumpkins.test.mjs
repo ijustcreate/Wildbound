@@ -24,6 +24,15 @@ test('closed mausoleum threshold is solid, only an opened door gains an approach
  assert.equal(graveyardBlocked(g,s.x,s.y-5,8),false);
  assert.equal(graveyardBlocked(g,s.x-55,s.y-5,8),true);assert.equal(graveyardBlocked(g,s.x,s.y-30,8),true);
 });
+test('mausoleum collision tracks the facade overhang while leaving its entrance stairs accessible',()=>{
+ const {g}=setup(),s=g.scenery.find(s=>s.kind==='mausoleum');
+ assert.deepEqual(s.graveyardFootprint,{x:s.x-70,y:s.y-64,w:140,h:64});
+ assert.equal(graveyardBlocked(g,s.x+69,s.y-32,0),true,'visible side cornice is solid');
+ assert.equal(graveyardBlocked(g,s.x+71,s.y-32,0),false,'collision ends at the artwork edge');
+ assert.equal(graveyardBlocked(g,s.x,s.y+8,0),false,'projecting entrance stairs remain walkable');
+ spawnMausoleumEvent(g);assert.equal(graveyardBlocked(g,s.x,s.y-5,0),false,'open doorway remains enterable');
+ assert.equal(graveyardBlocked(g,s.x+28,s.y-5,0),true,'doorway exemption leaves adjacent pillar solid');
+});
 test('both side gates and the rear gate have real walkable gaps with solid posts',()=>{
  for(const seed of [0,75,991]){
   const g={...graveyardWorld(seed),generatedEnvironment:'graveyard',phase:'play'};
@@ -80,6 +89,8 @@ test('old expedition upgrade preserves opened crypts and harvested crops through
  const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(restored.scenery.find(s=>s.id===c.id).picked,true);assert.equal(restored.scenery.find(x=>x.id===s.id).doorOpen,true);
  const old={...graveyardWorld(2),generatedEnvironment:'graveyard',phase:'play'};delete old.graveyard.featuresVersion;
  old.scenery=old.scenery.filter(s=>!s.small&&s.kind!=='pumpkin_crop');old.scenery.find(s=>s.kind==='mausoleum').doorOpen=true;
+ const oldMausoleum=old.scenery.find(s=>s.kind==='mausoleum');oldMausoleum.graveyardFootprint={x:oldMausoleum.x-64,y:oldMausoleum.y-64,w:128,h:64};
  assert.equal(upgradeCemeteryFeatures(old),true);assert.equal(old.scenery.filter(s=>s.small).length,3);assert.equal(old.scenery.filter(s=>s.kind==='pumpkin_crop').length,12);assert.ok(old.scenery.find(s=>s.kind==='mausoleum').doorOpen);
+ assert.deepEqual(oldMausoleum.graveyardFootprint,{x:oldMausoleum.x-70,y:oldMausoleum.y-64,w:140,h:64});
  assert.equal(upgradeCemeteryFeatures(old),false);
 });

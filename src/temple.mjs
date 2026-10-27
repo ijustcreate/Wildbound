@@ -8,6 +8,9 @@ import {hasSetSkill} from './items.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
 import {drawBreakable} from './structure-destruction.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
+import {drawUpperSanctum} from './temple-upper-art.mjs';
+import {drawStorageChest} from './storage-art.mjs';
+import {drawNightLight} from './night-cycle.mjs';
 export const TEMPLE_STAIRS={x:1040,y:590};
 export function templeLayout(){
  return {temple:true,floors:[{x:480,y:450,w:640,h:670}],paths:[],pools:[],trees:[],rooms:[{name:'THE JADE SANCTUM',x:800,y:510}],furniture:[],doors:[{x:752,y:1104,w:96,h:16,open:true}],walls:[{x:480,y:450,w:640,h:24},{x:480,y:450,w:24,h:670},{x:1096,y:450,w:24,h:670},{x:480,y:1104,w:272,h:16},{x:848,y:1104,w:272,h:16},...[[560,560],[984,560],[560,960],[984,960]].map(([x,y])=>({x,y,w:40,h:40}))]};
@@ -120,11 +123,11 @@ export function tickGorilla(g,e,dt,visiblePlayers=g.players){
  if(d<100&&e.cooldown<=0&&clearShot(g,e,p)){e.state='windup';e.timer=.85;e.moving=false;return true;}navigateEnemy(g,e,p,dt);return true;
 }
 export function drawGorilla(c,a,time){c.save();c.translate(a.x,a.y);const swing=a.moving?Math.sin(time*8)*5:0;c.fillStyle='#202b28';c.fillRect(-25,-50,50,42);c.fillRect(-38,-42+swing,17,44);c.fillRect(21,-42-swing,17,44);c.fillRect(-22,-10,17,23);c.fillRect(5,-10,17,23);c.fillStyle='#68716b';c.fillRect(-17,-39,34,28);c.fillStyle='#303c34';c.fillRect(-20,-65,40,30);c.fillStyle='#999681';c.fillRect(-14,-55,28,20);c.fillStyle='#161e19';c.fillRect(-10,-51,6,4);c.fillRect(4,-51,6,4);c.fillRect(-6,-41,12,4);c.fillStyle='#d6b651';c.fillRect(-22,-65,44,5);for(let x=-18;x<=18;x+=9)c.fillRect(x,-72,5,9);if(a.state==='windup'){c.strokeStyle='#f7b362';c.lineWidth=3;c.beginPath();c.arc(0,0,100,0,Math.PI*2);c.stroke();}c.restore();}
-export function drawTemple(c,g,animator){
+export function drawTemple(c,g,animator,{lightPaint=null}={}){
  if(g.generatedEnvironment==='temple'){
   c.save();
   // Stepped stone borders and geometric jade inlays frame the temple halls.
-  for(const wall of g.house.walls)drawBreakable(c,g,wall,(c,wall)=>{c.fillStyle='#697859';c.fillRect(wall.x,wall.y,wall.w,wall.h);c.strokeStyle='#bbc392';c.lineWidth=2;for(let x=wall.x;x<wall.x+wall.w;x+=24)for(let y=wall.y;y<wall.y+wall.h;y+=16)c.strokeRect(x,y,Math.min(24,wall.x+wall.w-x),Math.min(16,wall.y+wall.h-y));},'temple');
+  for(const wall of g.house.walls){const paint=ctx=>drawBreakable(ctx,g,wall,(c,wall)=>{c.fillStyle='#697859';c.fillRect(wall.x,wall.y,wall.w,wall.h);c.strokeStyle='#bbc392';c.lineWidth=2;for(let x=wall.x;x<wall.x+wall.w;x+=24)for(let y=wall.y;y<wall.y+wall.h;y+=16)c.strokeRect(x,y,Math.min(24,wall.x+wall.w-x),Math.min(16,wall.y+wall.h-y));},'temple');if(lightPaint)lightPaint(c,wall,paint);else paint(c);}
   for(const x of [518,1082])for(let y=490;y<1100;y+=48){c.strokeStyle='#c5ae62';c.lineWidth=2;c.strokeRect(x-7,y,14,14);c.fillStyle='#5f956d';c.fillRect(x-3,y+4,6,6);}
   for(const [x,y] of [[528,520],[1072,520],[528,1060],[1072,1060]]){c.fillStyle='#463a2b';c.fillRect(x-6,y-8,12,20);drawParticleEffect(c,'torch',x,y-10,g.time,x+y);}
   for(let x=490;x<1110;x+=28){c.strokeStyle='#315d3b';c.lineWidth=3;c.beginPath();c.moveTo(x,455);c.lineTo(x+7,485+(x%4)*8);c.stroke();c.fillStyle='#4d7b41';c.fillRect(x+2,471,11,5);}
@@ -134,8 +137,16 @@ export function drawTemple(c,g,animator){
  for(const [x,y] of [[536,640],[1064,640],[536,920],[1064,920]]){c.fillStyle='#455f44';c.fillRect(x-13,y-24,26,40);c.fillStyle='#d7b975';c.fillRect(x-8,y-19,5,6);c.fillRect(x+3,y-19,5,6);c.fillRect(x-6,y-5,12,4);}}
 }
 export function drawTempleRoom(c,g,p,animator){
- c.fillStyle='#102821';c.fillRect(0,0,320,240);c.fillStyle='#6d7861';c.fillRect(16,32,288,192);c.strokeStyle='#3c5143';for(let y=32;y<224;y+=24)for(let x=16;x<304;x+=32)c.strokeRect(x,y,Math.min(32,304-x),Math.min(24,224-y));
+ drawUpperSanctum(c,g);
  drawBansheeSteps(c,g,{room:p.room});drawDeathSteps(c,g,{room:p.room});
  drawRoomVillagerFollowers(c,g,p.room,animator,48);
- c.fillStyle='#d5ba6a';c.fillRect(142,66,36,23);c.fillStyle='#503e25';c.fillRect(144,74,32,5);c.fillStyle='#e8e6b5';c.font='11px sans-serif';c.textAlign='center';c.fillText('UPPER SANCTUM',160,20);if(Math.hypot(p.roomX-160,p.roomY-78)<68&&!p.ui){c.fillStyle='#ffe6a3';c.font='bold 11px sans-serif';c.fillText('E / Y · OPEN CHEST',160,57);}c.fillStyle='#203c32';c.fillRect(140,204,40,30);c.fillStyle='#f2d78e';c.fillText('↓ Return downstairs',160,236);for(const a of (g.ghosts||[]).filter(a=>a.room===p.room)){c.save();c.globalAlpha=.78;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...a,x:a.roomX,y:a.roomY},g.time,43);c.restore();}for(const q of g.players.filter(q=>q.room===p.room)){for(const companion of [q.hunterPet,q.ritualPet].filter(a=>a?.spiritGhost)){c.save();c.globalAlpha=.8;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...companion,x:companion.roomX??q.roomX+25,y:companion.roomY??q.roomY+15},g.time,43);c.restore();}animator.draw(c,{...q,x:q.roomX,y:q.roomY,moving:q.roomMoving,step:q.roomStep},g.time,48);if(q.scaredTime>0)drawFearFace(c,q.roomX,q.roomY-30);}}
+ drawStorageChest(c,160,86,0,!!g.players.find(q=>q.room===p.room&&q.ui?.storage==='temple'),Math.hypot(p.roomX-160,p.roomY-78)<68);
+ c.fillStyle='#e8e6b5';c.font='10px sans-serif';c.textAlign='center';c.fillText('THE JADE SANCTUM',160,18);
+ if(g.players.some(q=>q.room===p.room&&!q.ui&&Math.hypot(q.roomX-160,q.roomY-78)<68)){c.fillStyle='#ffe6a3';c.font='bold 8px sans-serif';c.fillText('INTERACT · RITUAL CHEST',160,50);}
+ c.fillStyle='#f2d78e';c.font='9px sans-serif';c.fillText('↓ Return downstairs',160,236);
+ const actors=[...(g.ghosts||[]).filter(a=>a.room===p.room).map(a=>({...a,x:a.roomX,y:a.roomY,spectral:true})),...g.players.filter(q=>q.room===p.room).map(q=>({...q,x:q.roomX,y:q.roomY,moving:q.roomMoving,step:q.roomStep}))];
+ for(const a of actors.sort((a,b)=>a.y-b.y)){c.save();if(a.spectral){c.globalAlpha=.78;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}animator.draw(c,a,g.time,a.spectral?36:40);c.restore();if(a.scaredTime>0)drawFearFace(c,a.x,a.y-30);}
+ for(const q of g.players.filter(q=>q.room===p.room))for(const companion of [q.hunterPet,q.ritualPet].filter(a=>a?.spiritGhost)){c.save();c.globalAlpha=.8;c.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';animator.draw(c,{...companion,room:p.room,x:companion.roomX??q.roomX+25,y:companion.roomY??q.roomY+15},g.time,36);c.restore();}
+ drawNightLight(c,g,{x:160,y:120,zoom:1},320,240,p.room);
+}
 export function drawFearFace(c,x,y){c.save();c.fillStyle='#f5d76c';c.strokeStyle='#52341f';c.lineWidth=1.5;c.beginPath();c.arc(x,y,7,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#34271e';c.fillRect(x-3,y-2,1.5,2);c.fillRect(x+2,y-2,1.5,2);c.beginPath();c.arc(x,y+3,1.5,0,Math.PI*2);c.fill();c.restore();}

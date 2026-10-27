@@ -91,7 +91,7 @@ export function applyTorchHit(g, p, target) {
 }
 
 export function lightTorchFire(g,p) {
-  if(g.phase!=='play'||p.hp<=0||p.room||p.ui||![p.equipment?.hand1,p.equipment?.hand2].some(id=>ITEMS[id]?.fire))return false;
+  if(g.phase!=='play'||p.hp<=0||p.room||p.ui||![p.equipment?.hand1,p.equipment?.hand2].includes('torch'))return false;
   const length=Math.hypot(p.faceX,p.faceY)||1;
   const x=p.x+p.faceX/length*56,y=p.y+p.faceY/length*56;
   if(g.projectileBlocked(x,y,3)||!clearShot(g,p,{x,y}))return false;

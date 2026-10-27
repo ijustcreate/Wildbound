@@ -3,9 +3,12 @@ import {seatOpeningParty} from './opening-board.mjs';
 import {restoreForestLandscape} from './forest-landscape.mjs';
 import {initLivingEcosystem,captureLivingAmbient} from './living-ecosystem.mjs';
 
-export const HOUSE_WORLD_DESTINATIONS=Object.freeze(['forest','ice','desert','temple','beach','graveyard']);
+export const HOUSE_WORLD_DESTINATIONS=Object.freeze(['forest','ice','desert','temple','beach','graveyard','swamp','caverns','shadow']);
 export const WORLD_TRAVEL_SECONDS=Object.freeze({depart:1.4,arrive:1});
 export const WORLD_TRAVEL_EVENTS=Object.freeze({
+ swamp:{name:'Where the lanterns drift',verse:'Old roots drink the river deep.\nBeyond the reeds the lanterns wait.\nRoll home again on five or eight.',tip:'The whole party travels to Bayou Marsh. Roll 5 or 8 to return home.'},
+ caverns:{name:'The voices under stone',verse:'The crystal hums; the shadows fall.\nA hidden river guards the gate.\nRoll home again on five or eight.',tip:'The whole party travels to Hollowdeep Caverns. Roll 5 or 8 to return home.'},
+ shadow:{name:'Beyond the last light',verse:'The pale hart walks where roots entwine.\nKeep close until the turning fate.\nRoll home again on five or eight.',tip:'The whole party travels to the Shadow Realm. Roll 5 or 8 to return home.'},
  forest:{name:'Where the green heart beats',verse:'Roots awake and branches sway.\nThe hungry green has found its way.\nBeneath these boughs you all must wait,\nUntil the dice read five or eight.',tip:'The whole party travels to the Forest. Roll 5 or 8 to return home.'},
  ice:{name:'The winter behind the glass',verse:'The window flowers white with frost.\nBeyond its silver edge, be lost.\nWithin the snow you all must wait,\nUntil the dice read five or eight.',tip:'The whole party travels to the Ice. Roll 5 or 8 to return home.'},
  desert:{name:'A thousand years of thirst',verse:'The hourglass breaks; the sands run free.\nNo roof, no shade, no end to see.\nBeneath this sun you all must wait,\nUntil the dice read five or eight.',tip:'The whole party travels to the Desert. Roll 5 or 8 to return home.'},
@@ -34,7 +37,7 @@ export function createHouseWorld(Game,{destination,seed,nextId}){
 }
 function destination(g){
  if(g.generatedEnvironment!=='house')return 'house';
- // Draw without replacement: see all six environments before repeating one.
+ // Draw without replacement: see all nine environments before repeating one.
  const mode=modeFor(g);if(!mode.bag?.length)mode.bag=[...HOUSE_WORLD_DESTINATIONS];
  return mode.bag.splice(Math.min(mode.bag.length-1,Math.max(0,Math.floor(g.random()*mode.bag.length))),1)[0];
 }

@@ -14,7 +14,8 @@ const at=(b,n)=>({x:b.x+(n%cols(b))*WALL_SECTION_SIZE,y:b.y+Math.floor(n/cols(b)
   w:Math.min(WALL_SECTION_SIZE,b.w-(n%cols(b))*WALL_SECTION_SIZE),h:Math.min(WALL_SECTION_SIZE,b.h-Math.floor(n/cols(b))*WALL_SECTION_SIZE)});
 const rectDistance=(r,x,y)=>Math.hypot(x-clamp(x,r.x,r.x+r.w),y-clamp(y,r.y,r.y+r.h));
 const material=(g,b)=>b.kind==='window'?'glass':b.kind==='fence'||b.destructionGroup==='doors'||b.destructionGroup==='furniture'?'wood':g.house?.temple?'stone':'plaster';
-const toughness=(g,b)=>({glass:24,wood:65,plaster:110,stone:180})[material(g,b)];
+const toughness=(g,b)=>({glass:1,wood:100,plaster:200,stone:200})[material(g,b)];
+const crackThreshold=(g,b)=>b.kind==='window'?Infinity:['fence','gate'].includes(b.kind)||['furniture','doors'].includes(b.destructionGroup)?40:60;
 function state(g){let s=visuals.get(g);if(!s||s.house!==g.house){s={house:g.house,particles:[],soundAt:-Infinity,shatterAt:-Infinity,saveAt:-Infinity};visuals.set(g,s);}return s;}
 function index(g){
   const h=g.house;if(!h)return null;
@@ -84,9 +85,9 @@ export function damageStructureMelee(g,p,damage,range,spin=false){
     const x=clamp(p.x,cell.rect.x,cell.rect.x+cell.rect.w),y=clamp(p.y,cell.rect.y,cell.rect.y+cell.rect.h),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
     if(!spin&&d>1&&(dx*(p.faceX||0)+dy*(p.faceY||0))/d<.35)continue;
     let clear=true;for(let n=1,steps=Math.ceil(d/5);n<steps;n++)if(g.projectileBlocked?.(p.x+dx*n/steps,p.y+dy*n/steps,.5)){clear=false;break;}
-    if(clear&&(!best||d<best.d))best={b,...cell,d};
+    if(clear&&(!best||d<best.d||Math.abs(d-best.d)<.01&&b.kind==='window'&&best.b.kind!=='window'))best={b,...cell,d};
   }
-  return !!best&&damageCell(g,best.b,best.n,damage,p.faceX||0,p.faceY||0);
+  return !!best&&damageCell(g,best.b,best.n,best.b.kind==='window'?toughness(g,best.b):20,p.faceX||0,p.faceY||0);
 }
 export function damageStructureProjectile(g,bolt){
   if(!(bolt.structureCharge>=.5)||bolt.healing||bolt.friendship)return false;
@@ -131,6 +132,7 @@ export function tickDestruction(g,dt){
 export function destructionStats(g){return {particles:visuals.get(g)?.particles.length||0,particleLimit:DESTRUCTION_PARTICLE_LIMIT,rasterBytes:rasterPixels*8,rasterByteLimit:RASTER_PIXEL_LIMIT*8};}
 function paintDamage(c,g,b,n,record){
   const r=at(b,n),m=material(g,b);
+  if(!record.broken&&record.damage<crackThreshold(g,b))return;
   if(record.broken){
     const palette=m==='stone'?['#7b8070','#a7aa8a']:m==='glass'?['#82b5b7','#b6ded6']:['#7d6040','#ba986a'];
     for(let i=0;i<7;i++){c.fillStyle=palette[i%2];c.fillRect(r.x+((n*17+i*11)%Math.max(1,r.w-4)),r.y+((n*13+i*7)%Math.max(1,r.h-3)),3+i%4,2+i%3);}

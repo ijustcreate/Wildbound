@@ -23,6 +23,94 @@
 }
 :is(#pause-dialog,#settings-dialog,#info-dialog,#field-kit-dialog,.game-debug-console) :is(h1,h2,h3,p,label,nav,section,fieldset) {min-width:0;overflow-wrap:break-word;}
 :is(#settings-dialog,.game-debug-console) :is(select,input) {box-sizing:border-box;max-width:100%;min-width:0;}
+#settings-dialog{width:min(1160px,calc(100vw - 28px));height:min(760px,calc(100dvh - 28px));max-height:calc(100dvh - 28px);overflow:hidden;padding:20px 24px 18px;gap:14px;border:7px solid #4b3423!important;outline:1px solid #bd8b46;outline-offset:-9px;background:linear-gradient(135deg,#604027 0%,#38281f 25%,#6c482d 50%,#38271d 76%,#563a26 100%)!important;color:#f7e8c4;box-shadow:inset 0 0 0 2px #d49b4b,0 18px 44px #000b}
+#settings-dialog h2::before{display:none!important}
+#settings-dialog .settings-heading{position:relative;display:flex;align-items:center;min-height:76px;padding:10px 18px 12px 92px;border:3px solid #281e18;border-radius:10px;background:linear-gradient(#624021a8,#422818c8),url('../assets/settings-wood.png') center/cover no-repeat,#59371f;box-shadow:inset 0 2px #d08a3b,inset 0 -5px #38251a,0 5px #241b16;color:#fff1d0}
+#settings-dialog .settings-mark{position:absolute;left:16px;top:4px;width:62px;height:62px;background-image:url('../assets/settings-icons.png');background-repeat:no-repeat;background-size:auto 144px;background-position:4% 50%;filter:drop-shadow(0 3px 2px #24170e)}
+body:has(#settings-dialog[open]) #settings-button{visibility:hidden}
+#settings-dialog .settings-heading .eyebrow{color:#eed19a;font-size:10px;letter-spacing:3px}
+#settings-dialog .settings-heading h2{font-size:clamp(25px,3.1vw,38px);line-height:1.05;margin:3px 0 0;color:#fff2d2;text-shadow:0 2px #3c2618}
+#settings-dialog .settings-hint{margin-left:auto;color:#f2d59c;font:11px system-ui,sans-serif;letter-spacing:1px;text-transform:uppercase}
+#settings-dialog .settings-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:0;border:0;flex:none}
+#settings-dialog .settings-tabs button{min-height:48px;padding:8px 6px;border:3px solid #211914!important;border-bottom-width:5px!important;border-radius:10px;background:linear-gradient(#412a1ddd,#211a16e8),url('../assets/settings-wood.png') center/cover no-repeat,#2c211a!important;color:#f3dfb4;font:750 12px/1.2 system-ui,sans-serif;letter-spacing:1.2px;text-shadow:0 2px #000;box-shadow:inset 0 1px #987044,0 2px #1c1612}
+#settings-dialog .settings-tabs button .settings-tab-icon{display:inline-block;vertical-align:middle;width:28px;height:28px;margin-right:5px;background-image:url('../assets/settings-icons.png');background-repeat:no-repeat;background-size:auto 60px}
+#settings-dialog .settings-tabs button .settings-icon-display{background-position:26.3% 50%}
+#settings-dialog .settings-tabs button .settings-icon-sound{background-position:50% 50%}
+#settings-dialog .settings-tabs button .settings-icon-controls{background-position:73.7% 50%}
+#settings-dialog .settings-tabs button .settings-icon-player{background-position:97.4% 50%}
+#settings-dialog .settings-tabs button[aria-selected=true]{background:linear-gradient(180deg,#fff0c5,#e7bd70)!important;color:#3b2719;border-color:#231810!important;box-shadow:inset 0 0 0 2px #d58927,0 0 0 2px #ffb12e,0 0 14px #ff9d00a8;text-shadow:none}
+#settings-dialog .settings-tabs button[aria-selected=true] .settings-tab-icon{filter:saturate(1.1)}
+#settings-dialog .settings-panels{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 14px;border:4px solid #261d17;border-radius:12px;background:linear-gradient(145deg,#27231d,#35291e 65%,#25251e);box-shadow:inset 0 0 0 1px #936337,inset 0 8px 18px #0005;scrollbar-color:#c48a41 #30251c}
+#settings-dialog .settings-panel{min-height:100%;color:#f7e8c4}
+#settings-dialog .settings-panel>.panel-title,#settings-dialog .settings-card>.panel-title{margin:0 0 12px;color:#fff0c9;font:750 18px/1.2 Georgia,serif;letter-spacing:1.5px;text-shadow:0 2px #100e0b!important;-webkit-text-stroke:0!important}
+#settings-dialog .settings-display-card,#settings-dialog .settings-audio-card{color:#f7e8c4!important;background:linear-gradient(145deg,#30291f,#403020)!important;border:2px solid #5c432a;border-radius:8px;box-shadow:inset 0 1px #78603b}
+#settings-dialog .settings-card :is(.panel-title,.subtle){color:#fff0c9!important;text-shadow:0 2px #100e0b!important;-webkit-text-stroke:0!important}
+#settings-dialog .settings-card .subtle{color:#e5d0aa!important;text-shadow:none!important}
+#settings-dialog #settings-display.settings-panel{display:flex;flex-direction:column;gap:12px;min-height:0}
+#settings-dialog .settings-display-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1 1 auto;min-height:0}
+#settings-dialog .settings-option-card{min-width:0;padding:16px 18px;border:2px solid #674c2c;border-radius:8px;background:linear-gradient(145deg,#392e22,#30261d);box-shadow:inset 0 1px #8f7046}
+#settings-dialog .settings-option-card h3{margin:0 0 14px;color:#f5dba4;font:750 13px/1.2 system-ui,sans-serif;letter-spacing:1.5px}
+#settings-dialog .settings-option-card .check-row{margin:6px 0}
+#settings-dialog .settings-option-card .subtle{margin:2px 0 12px}
+#settings-dialog .settings-option-card .field-label{margin-top:9px}
+#settings-dialog .settings-option-card :is(.check-row,.subtle,.field-label){color:#f2dfbd!important}
+#settings-dialog .settings-option-card .subtle{color:#e5d0aa!important}
+#settings-dialog .settings-card{padding:12px 14px;border:2px solid #5c432a;border-radius:8px;background:linear-gradient(145deg,#30291f,#403020);box-shadow:inset 0 1px #78603b}
+#settings-dialog .settings-card .field-label{font-size:12px;margin:12px 0 5px;line-height:1.2;color:#f4d99f;letter-spacing:1.2px}
+#settings-dialog .settings-card .subtle,#settings-dialog .subtle{font-size:12px;line-height:1.35;margin:4px 0 10px;color:#e5d0aa!important}
+#settings-dialog .check-row{font-size:14px;margin:6px 0;line-height:1.3;color:#f7e8c4}
+#settings-dialog select,#settings-dialog .music-picker>summary{min-height:40px;padding:7px 11px;font-size:14px;line-height:1.2;border:2px solid #987344;border-radius:5px;background:#f8e6bb;color:#3a2c1d}
+#settings-dialog input[type=range]{height:21px;margin:2px 0;accent-color:#147bc4}
+#settings-dialog button{min-height:38px;padding:7px 12px;font-size:13px}
+#settings-dialog .settings-panel>.full{margin-top:12px}
+#settings-dialog .settings-audio-card{max-width:900px;margin:0 auto;padding:10px 16px}
+#settings-dialog .settings-audio-card>.panel-title{margin-bottom:6px}
+#settings-dialog #settings-sound .field-label{margin:6px 0 3px}
+#settings-dialog #music-status{margin:1px 0 4px}
+#settings-dialog .settings-audio-card>.field-label,#settings-dialog .settings-audio-card>.check-row{max-width:none}
+#settings-dialog .settings-audio-card>input[type=range],#settings-dialog .settings-audio-card>select{max-width:none;width:100%}
+#settings-dialog .audio-mixer-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 26px;margin:8px 0}
+#settings-dialog #audio-mixer .field-label{margin:0 0 4px;color:#f4d99f}
+#settings-dialog #audio-mixer input[type=range]{width:100%}
+#settings-dialog #audio-test{min-width:180px;margin-top:8px}
+#settings-dialog #settings-controls #player-mappings{max-height:150px;overflow:auto}
+#settings-dialog #settings-controls #mapping-fields{overflow:auto;max-height:280px}
+#settings-dialog #settings-controls .controller-card{color:#f5e5c0;background:linear-gradient(145deg,#3b3023,#30261c);border:1px solid #8a6740}
+#settings-dialog #settings-controls .controller-card :is(p,dt,dd){color:#ead5ad}
+#settings-dialog #settings-controls #mapping-fields label{color:#f1dfbd!important}
+#settings-dialog #player-mappings :is(label,span,small,dt,dd,p){color:#ead5ad!important}
+#settings-dialog #settings-controls :is(.settings-panel-title,#mapping-fields label){color:#f5e5c0}
+#settings-dialog #settings-controls .subtle{color:#ddc89f}
+#settings-dialog #settings-explorer{min-height:100%}
+#settings-dialog #settings-explorer #appearance-settings{min-height:0}
+#settings-dialog #settings-explorer .check-row{padding:10px 12px;border:1px solid #755a38;border-radius:6px;background:#31271d}
+#settings-dialog #settings-explorer :is(label,.subtle,.appearance-help){color:#f1dfbd!important}
+#settings-dialog #settings-explorer .settings-panel-title,#settings-dialog #settings-controls .panel-title{color:#fff0c9!important;text-shadow:0 2px #100e0b}
+#settings-dialog #fullscreen-button,#settings-dialog #close-settings{min-height:48px;border:4px solid #153a2b!important;border-bottom-width:6px!important;border-radius:2px;background:linear-gradient(#4fa87c,#34875f)!important;color:#10291e;font-size:14px;letter-spacing:1.5px;text-shadow:none;box-shadow:inset 0 1px #8bd3a7,0 2px #211a15}
+#settings-dialog #close-settings{flex:none;margin-top:0}
+#settings-dialog .music-picker{margin:7px 0}
+#settings-dialog .music-picker-options{background:#f2dfb1;border-color:#987344}
+#settings-dialog .music-picker-options button{color:#30261a}
+#settings-dialog .music-picker-options button:hover,#settings-dialog .music-picker-options button:focus{background:#225a41;color:#fff1d4}
+@media(max-width:700px){
+  #settings-dialog{width:calc(100vw - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);padding:12px 12px 10px;gap:9px;border-width:5px!important}
+  #settings-dialog .settings-heading{min-height:56px;padding:7px 8px 7px 64px}
+  #settings-dialog .settings-mark{left:8px;top:1px;width:48px;height:48px;background-size:auto 114px;background-position:4% 50%}
+  #settings-dialog .settings-heading .eyebrow{font-size:8px;letter-spacing:2px}
+  #settings-dialog .settings-heading h2{font-size:24px}
+  #settings-dialog .settings-hint{font-size:8px;letter-spacing:.4px}
+  #settings-dialog .settings-tabs{gap:5px}
+  #settings-dialog .settings-tabs button{min-height:40px;padding:5px 2px;font-size:9px;letter-spacing:.3px}
+  #settings-dialog .settings-tabs button .settings-tab-icon{display:block;width:24px;height:24px;margin:0 auto 2px;background-size:auto 52px}
+  #settings-dialog .settings-panels{padding:8px}
+  #settings-dialog .settings-card{padding:9px}
+  #settings-dialog .settings-display-columns{grid-template-columns:1fr;gap:10px}
+  #settings-dialog .settings-option-card{padding:10px}
+  #settings-dialog .audio-mixer-grid{grid-template-columns:1fr;gap:8px}
+  #settings-dialog #close-settings,#settings-dialog #fullscreen-button{min-height:40px;font-size:11px}
+}
+.lobby-player-panel .lobby-level{display:inline-block;margin-left:8px;font:12px system-ui,sans-serif;letter-spacing:.06em;color:#405448}
+.lobby-player-panel.creation-menu{width:min(540px,calc(100vw - 20px))}
 .game-debug-console .debug-tools {align-items:end;gap:10px;}
 :is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) :is(.hero-panel-close,.close-icon,.dialog-close) {background-size:contain!important;aspect-ratio:1;flex:none;}
 .hero-panel canvas {image-rendering:pixelated;}
@@ -84,7 +172,8 @@
 .lobby-player-panel.map-menu h2 {font-size:20px;margin:0 0 2px;}
 .lobby-player-panel.map-menu>small {font-size:9px;}
 .lobby-player-panel.map-menu>.lobby-error:empty {display:none;}
-.map-choices {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;min-width:0;}
+.map-choices {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(48px,auto);align-content:start;gap:6px;min-width:0;min-height:0;overflow-y:auto;flex:1 1 auto;}
+.map-choices>.map-choice-all {grid-column:1 / -1;}
 .lobby-player-panel.map-menu>.wildbound-mode-choice{margin-bottom:7px;}
 .lobby-player-panel.map-menu>.map-menu-close{margin-top:8px;}
 .lobby-player-panel.map-menu .map-choice {min-width:0;min-height:48px;padding:5px 7px;gap:7px;font-family:system-ui;}
@@ -104,7 +193,7 @@
 @container (max-height:420px) {
  .lobby-player-panel.map-menu {padding:8px;gap:4px;}
  .lobby-player-panel.map-menu::before {display:none;}
- .lobby-player-panel.map-menu .map-choices {grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+ .lobby-player-panel.map-menu .map-choices {grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;}
  .lobby-player-panel.map-menu .map-choice {min-height:38px;padding:3px 5px;gap:4px;}
  .lobby-player-panel.map-menu .map-choice-icon {width:24px!important;height:24px!important;flex-basis:24px;}
  .lobby-player-panel.map-menu .map-choice small {display:none;}
@@ -142,16 +231,17 @@ html,body,body * {scrollbar-width:none!important;scrollbar-gutter:auto!important
 
 /* Chest menu: independently sized containers and a footer outside the grids.
    Dedicated rules prevent inherited equipment-sheet/button sizes from leaking. */
-.hero-panel.inventory-redesign.loot-popup.chest-redesign{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:42px minmax(0,1fr) auto!important;gap:10px!important;padding:12px!important;overflow:hidden!important;}
-.hero-panel.chest-redesign>header{grid-row:1;display:flex!important;flex-direction:column!important;justify-content:center;align-items:flex-start!important;gap:2px;min-width:0;min-height:0;height:42px!important;max-height:42px!important;margin:0!important;padding:0 36px 7px 0!important;border-bottom:1px solid #ac8b56;overflow:hidden;background:transparent!important;}
+.hero-panel.inventory-redesign.loot-popup.chest-redesign{display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:58px minmax(0,1fr) auto!important;gap:10px!important;padding:12px!important;overflow:hidden!important;}
+.hero-panel.chest-redesign>header{grid-row:1;display:flex!important;flex-direction:column!important;justify-content:center;align-items:flex-start!important;gap:2px;min-width:0;min-height:0;height:58px!important;max-height:58px!important;margin:0!important;padding:0 36px 5px 0!important;border-bottom:1px solid #ac8b56;overflow:hidden;background:transparent!important;}
 .hero-panel.chest-redesign .chest-menu-title{font:700 21px/23px Georgia,serif;color:#283e31;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .hero-panel.chest-redesign .chest-menu-owner{font:600 10px/13px system-ui;color:#6a5939;letter-spacing:1px;}
+.hero-panel.chest-redesign .storage-switch-hint{font:700 10px/12px system-ui;color:#355841;letter-spacing:.04em;white-space:nowrap;}
 .hero-panel.chest-redesign>.inventory-progress-row{display:none!important;}
 .hero-panel.chest-redesign>[data-action=close]{position:absolute!important;top:12px!important;right:12px!important;left:auto!important;width:28px!important;height:28px!important;min-height:28px!important;padding:0!important;z-index:3;}
 .hero-panel.chest-redesign>.storage-containers{grid-row:2;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(2,minmax(0,1fr))!important;gap:12px!important;min-height:0;min-width:0;height:100%;overflow:hidden;}
 .hero-panel.chest-redesign:not(.chest-transfer)>.storage-containers{grid-template-rows:minmax(0,1fr)!important;}
-.hero-panel.chest-redesign.chest-wide>.storage-containers{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:minmax(0,1fr)!important;}
-.hero-panel.chest-redesign .storage-container{display:flex!important;flex-direction:column!important;gap:5px!important;padding:6px!important;border:1px solid #9e8556!important;border-radius:3px;background:#c5b17d44!important;overflow:hidden!important;min-width:0;min-height:0;}
+.hero-panel.chest-redesign.chest-wide>.storage-containers{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(2,minmax(0,1fr))!important;}
+.hero-panel.chest-redesign .storage-container{display:flex!important;flex-direction:column!important;align-self:stretch!important;height:100%!important;box-sizing:border-box!important;gap:5px!important;padding:6px!important;border:1px solid #9e8556!important;border-radius:3px;background:#c5b17d44!important;overflow:hidden!important;min-width:0;min-height:0;}
 .hero-panel.chest-redesign .storage-container.active{background:#ead8a955!important;border-color:#596d43!important;}
 .hero-panel.chest-redesign button.storage-container-heading{position:static!important;flex:0 0 28px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;height:28px!important;min-height:28px!important;max-height:28px!important;padding:3px 5px!important;margin:0!important;border:0!important;border-radius:2px!important;background:#cdbb8e!important;color:#3f4c35!important;font:700 14px/20px system-ui!important;overflow:hidden!important;}
 .hero-panel.chest-redesign .storage-container.active button.storage-container-heading{background:#395942!important;color:#fff0ca!important;box-shadow:none!important;outline:0!important;}
@@ -165,19 +255,13 @@ html,body,body * {scrollbar-width:none!important;scrollbar-gutter:auto!important
 .hero-panel.chest-redesign .storage-pages{flex:0 0 23px!important;height:23px!important;min-height:23px!important;margin:0!important;}
 .hero-panel.chest-redesign .storage-pages button{height:22px!important;min-height:22px!important;max-height:22px!important;}
 .hero-panel.chest-redesign>.chest-menu-footer{grid-row:3;display:flex;flex-direction:column;gap:5px;min-height:0;min-width:0;margin:0;padding-top:7px;border-top:1px solid #ac8b56;}
+.hero-panel.chest-redesign .storage-detail{display:none!important;}
 .hero-panel.chest-redesign .storage-popup-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(80px,.55fr)!important;gap:8px!important;margin:0!important;}
 .hero-panel.chest-redesign .storage-popup-actions button{width:100%!important;height:34px!important;min-height:34px!important;max-height:34px!important;font:600 12px/16px system-ui!important;padding:4px!important;white-space:normal!important;}
 .hero-panel.chest-redesign .loot-notice{min-height:0!important;height:auto!important;max-height:30px!important;margin:0!important;padding:0!important;font:11px/14px system-ui!important;color:#4b3c26;overflow:hidden!important;}
-.hero-panel.chest-redesign .storage-selected-detail{display:flex;flex-direction:column;gap:2px;min-height:0;margin:0;padding:4px 6px;border-left:3px solid #6b8152;background:#d1c294;color:#302f24;font:11px/1.25 system-ui;}
-.hero-panel.chest-redesign .storage-selected-detail strong{font:700 12px/1.2 Georgia,serif;color:#263b30;}
-.hero-panel.chest-redesign .storage-selected-detail span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}
 .hero-panel.chest-redesign .storage-help{display:block!important;font:10px/13px system-ui!important;margin:0!important;padding:0!important;letter-spacing:0!important;}
-.hero-panel.chest-redesign.chest-tabs>.storage-containers{display:flex!important;flex-direction:column!important;gap:5px!important;}
-.hero-panel.chest-redesign.chest-tabs .storage-container.active{flex:1 1 0!important;}
-.hero-panel.chest-redesign.chest-tabs .storage-container:not(.active){flex:none!important;}
-.hero-panel.chest-redesign.chest-tabs .storage-container:not(.active) :is(.storage-slots,.storage-pages){display:none!important;}
-.hero-panel.chest-redesign.loot-tight{padding:8px!important;gap:5px!important;grid-template-rows:34px minmax(0,1fr) auto!important;}
-.hero-panel.chest-redesign.loot-tight>header{height:34px!important;max-height:34px!important;}
+.hero-panel.chest-redesign.loot-tight{padding:8px!important;gap:5px!important;grid-template-rows:50px minmax(0,1fr) auto!important;}
+.hero-panel.chest-redesign.loot-tight>header{height:50px!important;max-height:50px!important;}
 .hero-panel.chest-redesign.loot-tight .chest-menu-title{font-size:17px;line-height:18px;}
 .hero-panel.chest-redesign.loot-tight .storage-popup-actions button{height:28px!important;min-height:28px!important;max-height:28px!important;font-size:10px!important;}
 .hero-panel.chest-redesign.loot-tight .starter-stock-help{display:none!important;}
@@ -186,3 +270,89 @@ html,body,body * {scrollbar-width:none!important;scrollbar-gutter:auto!important
 .hero-panel.chest-redesign>header{box-sizing:border-box!important;padding-bottom:3px!important;}
 .hero-panel.chest-redesign>header>:is(strong,small){flex-shrink:0!important;margin:0!important;padding:0!important;}
 .hero-panel.chest-redesign.loot-tight .chest-menu-owner{font-size:9px;line-height:10px;}
+.hero-panel.chest-redesign.loot-tight .storage-switch-hint{font-size:9px;line-height:10px;}
+
+/* Storage dialogs use one predictable, viewport-fitted popup layout. */
+.hero-panel.inventory-redesign.loot-popup.chest-redesign {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:58px minmax(0,1fr) auto!important;
+  gap:10px!important;
+  box-sizing:border-box!important;
+  max-width:calc(100vw - 36px)!important;
+  max-height:calc(100dvh - 36px)!important;
+  padding:12px!important;
+  overflow:hidden!important;
+}
+.hero-panel.chest-redesign.chest-wide>.storage-containers {
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
+}
+.hero-panel.chest-redesign:not(.chest-wide)>.storage-containers {
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
+}
+.hero-panel.chest-redesign:not(.chest-transfer)>.storage-containers {
+  grid-template-rows:minmax(0,1fr)!important;
+}
+.hero-panel.chest-redesign.loot-tight {grid-template-rows:50px minmax(0,1fr) auto!important;}
+.hero-panel.chest-redesign.loot-tight>header {height:50px!important;max-height:50px!important;}
+.hero-panel.chest-redesign .storage-detail {display:none!important;}
+.hero-panel.victory-loot-session .storage-slots button {flex-direction:column!important;gap:1px!important;}
+.hero-panel.victory-loot-session .storage-slots canvas.item-icon {height:62%!important;max-height:62%!important;max-width:62%!important;}
+.hero-panel.victory-loot-session .victory-item-label {display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#f4e7c7;font:600 9px/11px system-ui;}
+.hero-panel.victory-loot-session .victory-item-detail {display:block!important;min-height:24px;margin:2px 0 0;padding:3px 6px;border:1px solid #b59a62;background:#e8d7a6;color:#4a3d29;font:11px/14px system-ui;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hero-panel.chest-redesign .storage-switch-hint {font:700 10px/12px system-ui;color:#355841;white-space:nowrap;}
+.hero-panel.private-storage-room {
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  box-sizing:border-box!important;
+  max-width:calc(100vw - 36px)!important;
+  max-height:calc(100dvh - 36px)!important;
+  padding:14px!important;
+  overflow:auto!important;
+  border:3px solid #947346!important;
+  border-radius:5px!important;
+  background:linear-gradient(145deg,#e8d9b2,#d3c08d)!important;
+  color:#302d22!important;
+  box-shadow:inset 0 0 0 1px #f9edc6,0 16px 50px #000b!important;
+}
+.hero-panel.private-storage-room>header {margin:0 38px 0 0!important;font:700 19px/1.2 Georgia,serif!important;}
+.hero-panel.private-storage-room>.inventory-progress-row {flex:none;margin:0 0 2px;}
+.hero-panel.private-storage-room>button[data-action="close"] {position:absolute!important;top:10px!important;right:10px!important;left:auto!important;z-index:2;width:32px!important;height:32px!important;min-height:32px!important;max-height:32px!important;margin:0!important;padding:0!important;flex:none!important;}
+.hero-panel.private-storage-room>canvas.room-view {display:block;flex:0 0 clamp(145px,27dvh,205px);min-height:0;max-height:none;width:100%;height:clamp(145px,27dvh,205px);aspect-ratio:auto;object-fit:contain;background:#171426;}
+.hero-panel.private-storage-room>p {flex:none;min-height:0;margin:0;font:12px/1.35 system-ui;color:#493c28;}
+.hero-panel.private-storage-room>button:not([data-action="close"]) {box-sizing:border-box;flex:0 0 34px;width:100%;height:34px;min-height:34px;max-height:34px;margin:0;padding:3px 8px;border:1px solid #9a7a48;border-radius:3px;background:#3f674a;color:#fff0cd;font:600 12px/1.2 system-ui;}
+@media(max-width:700px) {
+  .hero-panel.chest-redesign {padding:8px!important;gap:6px!important;}
+  .hero-panel.chest-redesign.chest-wide>.storage-containers {grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(2,minmax(0,1fr))!important;}
+  .hero-panel.private-storage-room {padding:9px!important;gap:6px!important;}
+  .hero-panel.private-storage-room>canvas.room-view {flex-basis:clamp(130px,25dvh,180px);height:clamp(130px,25dvh,180px);}
+  .hero-panel.private-storage-room>button:not([data-action="close"]) {flex-basis:32px;height:32px;min-height:32px;max-height:32px;}
+}
+
+/* Field Kit skill and recipe cards: warm, legible bento tiles on the parchment UI. */
+#field-kit-dialog .field-bento-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));align-items:start;gap:12px;width:100%;}
+#field-kit-dialog article.field-bento-card{display:block;min-width:0;padding:8px;border:1px solid #8d7952;border-radius:8px;background:linear-gradient(145deg,#f0e2b9,#d9c895);color:#263a2c;box-shadow:0 3px 10px #17251a30;transition:transform .14s ease,box-shadow .14s ease;}
+#field-kit-dialog article.field-bento-card.is-unavailable{opacity:.68;}
+#field-kit-dialog article.field-bento-card:hover,#field-kit-dialog article.field-bento-card.is-expanded{transform:translateY(-1px);box-shadow:0 5px 14px #17251a45;border-color:#4c8261;}
+#field-kit-dialog .field-card-select{display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:10px;width:100%;min-height:64px;padding:8px 10px;border:1px solid #876e43;border-radius:6px;background:#fff3d2;color:#24392c;text-align:left;}
+#field-kit-dialog .field-card-select:hover,#field-kit-dialog .field-card-select[aria-expanded="true"]{background:#f8e6b2;border-color:#ba8b3a;}
+#field-kit-dialog .field-card-select canvas,#field-kit-dialog .field-card-select .field-skill-icon{grid-row:1/3;width:38px;height:38px;display:grid;place-items:center;border-radius:7px;background:#315a43;color:#ffe6a4;font-size:25px;image-rendering:pixelated;}
+#field-kit-dialog .field-card-select span:not(.field-skill-icon){font-weight:750;line-height:1.2;}
+#field-kit-dialog .field-card-select small{font-size:11px;color:#53614a;}
+#field-kit-dialog .field-card-select small.is-ready{color:#176537;font-weight:800;}
+#field-kit-dialog .field-card-select small.is-missing{color:#a12822;font-weight:800;}
+#field-kit-dialog .field-expanded-detail{display:none;padding:10px 4px 2px;color:#263a2c;}
+#field-kit-dialog article.field-bento-card:hover .field-expanded-detail,#field-kit-dialog article.field-bento-card:focus-within .field-expanded-detail,#field-kit-dialog article.field-bento-card.is-expanded .field-expanded-detail,#field-kit-dialog article.field-bento-card.is-selected .field-expanded-detail{display:block;}
+#field-kit-dialog .field-expanded-copy,#field-kit-dialog .field-skill-instruction{margin:0 0 8px;color:#394331;font-size:13px;line-height:1.4;}
+#field-kit-dialog .field-requirements{display:flex;flex-wrap:wrap;gap:5px 12px;margin:6px 0 10px;padding:0;list-style:none;}
+#field-kit-dialog .field-requirements li{font-size:12px;font-weight:750;}
+#field-kit-dialog .ingredient-owned{color:#176537!important;}
+#field-kit-dialog .ingredient-missing{color:#a12822!important;}
+#field-kit-dialog button.field-craft-action{width:100%;}
+#field-kit-dialog button.field-craft-action:disabled{opacity:.48;filter:grayscale(.65);cursor:not-allowed;}
+#field-kit-dialog .field-training-summary{margin:0;padding:10px 12px;border:1px solid #9d8657;border-radius:7px;background:#fff0c8;color:#344331;font-weight:700;}
+#field-kit-dialog .field-recipe-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));}
+@media(max-width:560px){#field-kit-dialog .field-bento-grid{grid-template-columns:1fr;}}

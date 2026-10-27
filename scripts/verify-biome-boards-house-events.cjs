@@ -9,7 +9,7 @@ const report=await w.webContents.executeJavaScript(`(async()=>{
  const [{Game,EVENTS},{Assets},{Animator},{Renderer},{drawBoard,TRAIL,boardPoint},boardArt,houseArt,{rules},{selectEvent,rememberEvent,eventBoss},{eventAvailable},{saveSession,restoreSession}]=await Promise.all([import('./src/core.mjs'),import('./src/assets.mjs'),import('./src/animation.mjs'),import('./src/render.mjs'),import('./src/board.mjs'),import('./src/board-art.mjs'),import('./src/house-architecture-art.mjs'),import('./src/definitions.mjs'),import('./src/event-director.mjs'),import('./src/night-cycle.mjs'),import('./src/session.mjs')]);
  await Promise.all([...Object.values(boardArt.BOARD_ART_ASSETS),'../assets/board-pawns.png'].map(async path=>{const image=new Image();image.src=new URL(path,new URL('./src/board-art.mjs',location.href));await image.decode();}));await new Promise(resolve=>setTimeout(resolve,80));
  const make=(width,height)=>{const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;return [canvas,c];};
- for(const env of ['forest','desert','beach','temple','house']){
+ for(const env of ['forest','desert','beach','temple','house','shadow']){
   const [canvas,c]=make(1000,720);c.fillStyle='#172721';c.fillRect(0,0,1000,720);c.translate(500,360);c.scale(3.4,3.4);
   const drawImage=c.drawImage.bind(c),sources=[];c.drawImage=(image,...args)=>{if(image.src)sources.push(image.src);drawImage(image,...args);};
   const b={generatedEnvironment:env,players:[],roll:null,event:null};drawBoard(c,b,0);assert(sources.some(src=>src.endsWith(boardArt.BOARD_ART_ASSETS[env].split('/').at(-1))),env+' uses its actual framed board texture');

@@ -41,6 +41,13 @@ test("Chest transfers move stacks both ways through A/Enter and shoulder/Tab act
   assert.equal(p.ui.panel, "pack");
   assert.equal(p.ui.index, 0);
 });
+test('Stacked chest navigation crosses directly between backpack and chest grids',()=>{
+  const {g,p}=setup();p.ui.loot=true;p.ui.panel='pack';p.ui.storageColumns=6;p.ui.index=23;
+  g.inventoryAction(p,'down');assert.equal(p.ui.panel,'chest');assert.equal(p.ui.index,5);
+  g.inventoryAction(p,'up');assert.equal(p.ui.panel,'pack');assert.equal(p.ui.index,23);
+  p.ui.panel='chest';p.ui.index=0;g.inventoryAction(p,'up');assert.equal(p.ui.panel,'pack');assert.equal(p.ui.index,18);
+  g.inventoryAction(p,'down');assert.equal(p.ui.panel,'chest');assert.equal(p.ui.index,0);
+});
 test("X/R transfers in either direction and closing chest keeps inventory and room open", () => {
   const { g, p } = setup();
   const room = p.room;

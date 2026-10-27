@@ -79,6 +79,9 @@
 .designer-dialog .item-studio-preview { display:grid;grid-template-columns:minmax(300px,1fr) minmax(340px,1.3fr);gap:16px;margin-bottom:16px; }
 .designer-dialog .item-studio-preview > section { padding:14px;border:1px solid #395a50;border-radius:6px;background:#182c2e;min-width:0; }
 .designer-dialog .item-character > canvas { width:100%;max-width:420px;display:block;margin:auto;image-rendering:pixelated; }
+.designer-dialog .item-character .item-turnaround { max-width:640px;width:100%;height:auto;margin-top:8px;border:1px solid #315148; }
+.designer-dialog .item-character > h3 { margin-top:16px; }
+.designer-dialog .item-character > p { color:#8eaaa2;font-size:11px;line-height:1.45; }
 .designer-dialog .item-directions,.designer-dialog .item-playback { display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:8px 0; }
 .designer-dialog .item-directions .active { background:#49785f;border-color:#efca79; }
 .designer-dialog .item-artwork canvas { image-rendering:pixelated;background:repeating-conic-gradient(#26353a 0% 25%,#344449 0% 50%) 0 0/16px 16px; }

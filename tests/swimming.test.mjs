@@ -6,6 +6,7 @@ import {Game} from '../src/core.mjs';
 import {readFileSync} from 'node:fs';
 import {upgradePlayerMotion,defaultPlayerMotion} from '../src/player-motion.mjs';
 import {enemyCanSeeTarget} from '../src/enemy-sight.mjs';
+import {villagerAction} from '../src/villager-motion.mjs';
 test('Shipping swim animation upgrades without overwriting edited strokes',()=>{
  const model=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
  assert.deepEqual(upgradePlayerMotion(model).clips.swim,model.artGeneration===3?model.clips.swim:defaultPlayerMotion().clips.swim);
@@ -28,6 +29,13 @@ test('Snakes can enter deep water and see surface swimmers but lose submerged pl
  const p=g.players[0];Object.assign(p,{x:350,y:350,hp:100,swimming:true,diveDepth:0});
  assert.equal(enemyCanSeeTarget(snake,p),true);p.diveDepth=.5;assert.equal(enemyCanSeeTarget(snake,p),false);
  const anaconda={kind:'anaconda',x:275,y:380,speed:70};g.moveActor(anaconda,60,0);assert.ok(anaconda.x>300);
+});
+test('April can enter deep water and uses the oathless humanoid swim clips',()=>{
+ const g=new Game();g.environment='house';g.addPlayer('keyboard');g.start();g.scenery=[];g.terrain.fill('grass');
+ g.house={pools:[{x:300,y:300,w:200,h:200}],walls:[],doors:[],furniture:[]};
+ const april={kind:'villager',villagerId:'april',x:275,y:350,faceX:1,faceY:0};
+ g.moveActor(april,60,0);assert.ok(april.x>300,'April is not blocked at the pool edge');assert.equal(april.swimming,true);
+ assert.equal(villagerAction({...april,moving:true}),'swim');assert.equal(villagerAction({...april,moving:false}),'swim_idle');
 });
 test('A swimming snake can bite at the surface and drops its attack when the player dives',()=>{
  const g=new Game(()=>.5);g.environment='house';const p=g.addPlayer('keyboard');g.start();

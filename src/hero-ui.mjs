@@ -1,6 +1,7 @@
 import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {drawDeathSteps} from './death-steps.mjs';
 import {drawTempleRoom} from './temple.mjs';
+import {isSharedWorldRoom} from './room-windows.mjs';
 import {drawWetDrips} from './wet-weather.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
 import {merchantPanel} from './merchant-ui.mjs';
@@ -13,7 +14,7 @@ import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
 import {inventoryToolbar} from './inventory-toolbar.mjs';
 import {guardInventoryKeys} from './inventory-input.mjs';
-import {planPlayerPanels,openPlayArea} from './player-panel-layout.mjs';
+import {planPlayerPanels,openPlayArea,centeredPopupBox} from './player-panel-layout.mjs';
 import {Animator} from './animation.mjs';
 import {drawOldWellRoom,wellForPlayer,WELL_TITLE} from './old-well.mjs';
 import {fitUndergroundCanvas} from './underground-view.mjs';
@@ -149,14 +150,18 @@ export class HeroUI {
     // Rooms are rendered by the main game canvas now. HeroUI only owns actual
     // inventory/shop panels, so underground spaces no longer become a small
     // secondary map card.
-    const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && p.ui);
+    // Room-only overlays (notably the lobby's private storage portal) must
+    // participate in layout just like inventory dialogs. Otherwise they are
+    // created but never receive `place()`, leaving the panel at its tiny CSS
+    // fallback dock on the left edge.
+    const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && (p.ui || p.room&&!isSharedWorldRoom(game,p)));
     const bounds = this.root.getBoundingClientRect();
     const layout = planPlayerPanels(game.players, open, bounds.width, bounds.height);
     const layoutKey = [bounds.width, bounds.height, ...open.map((p) => p.id)].join('|');
     let layoutChanged = layoutKey !== this.layoutKey;
     for (const p of game.players) {
       if (onlyId !== null && p.id !== onlyId) continue;
-      if (!p.ui && !p.room) continue;
+      if (!p.ui && (!p.room||isSharedWorldRoom(game,p))) continue;
       wanted.add(p.id);
       if(p.ui)p.ui.ownerDevice??=p.device;
       let panel = this.panels.get(p.id);
@@ -171,6 +176,7 @@ export class HeroUI {
         ? document.activeElement.dataset.action
         : null;
       const portal = game.portals.find((door) => door.id === p.room);
+      panel.classList.toggle('private-storage-room',!!(p.room&&!p.ui&&portal&&!portal.oldWell&&!portal.temple));
       const owner = game.players.find((q) => q.id === portal?.owner);
       const controlled=controlledUnit(game,p);
       if(p.ui&&game.storageFor(p)&&!p.ui.loot){p.ui.loot=true;p.ui.panel='chest';p.ui.index=Math.max(0,game.storageFor(p).findIndex(Boolean));}
@@ -400,7 +406,12 @@ export class HeroUI {
     panel.classList.add('loot-popup');panel.classList.toggle('chest-transfer',reusable);
     const door=game.portals.find(d=>d.id===p.room),owner=game.players.find(q=>q.id===door?.owner);
     const title=reusable?(u.storage==='starter'?'Starter chest':u.storage==='shared'?'Shared stash':chestName(owner||p,u.storage)):u.storage==='old-well'?(wellForPlayer(game,p)?.mausoleum?'Crypt lantern chest':'Buried well treasure'):u.storage==='temple'?'Ritual chest':'Victory spoils';
-    const header=panel.querySelector('header');header.replaceChildren(el('strong',title,'chest-menu-title'),el('small',p.name+' · LV '+p.level,'chest-menu-owner'));
+    const controls=this.controllerText(game,p);
+    const header=panel.querySelector('header');header.replaceChildren(
+      el('strong',title,'chest-menu-title'),
+      el('small',p.name+' · LV '+p.level,'chest-menu-owner'),
+      ...(reusable?[el('small','Both inventories · move between grids with ↑ / ↓','storage-switch-hint')]:[]),
+    );
     const switchTo=(mode,index)=>{game.inventoryAction(p,'panel:'+mode);if(index!==undefined)game.inventoryAction(p,'select:'+index);};
     const surface=el('div',null,'storage-containers');
     for(const mode of reusable?['pack','chest']:['chest']){
@@ -419,6 +430,7 @@ export class HeroUI {
         if(item){
           const icon=el('canvas');icon.width=icon.height=48;icon.className='item-icon';drawItem(icon.getContext('2d'),item.type,24,24,48);b.append(icon);
           if(item.qty>1)b.append(el('span',String(item.qty),'inventory-quantity'));
+          if(u.storage==='victory')b.append(el('span',`${def?.name||item.type}${item.qty>1?' ×'+item.qty:''}`,'victory-item-label'));
           if(def)this.itemTooltip(panel,b,game,p,item);else b.title=item.type;
           b.ondblclick=()=>{switchTo(mode,index);game.inventoryAction(p,'use');};
           if(!canAccess(game,p,!deposit)||(deposit&&protectedItem(p,item.type)))b.classList.add('locked-item');
@@ -426,6 +438,10 @@ export class HeroUI {
         grid.append(b);
       }
       section.append(grid);
+      if(u.storage==='victory'){
+        const selectedItem=list[u.index],selectedDef=ITEMS[selectedItem?.type];
+        section.append(el('p',selectedItem&&selectedDef?`${selectedDef.name}${selectedItem.qty>1?' ×'+selectedItem.qty:''} · ${selectedDef.description||'Reward item'}`:'Select a reward to see its details.','victory-item-detail'));
+      }
       if(list.length>24){
         const pages=Math.ceil(list.length/24),nav=el('nav',null,'storage-pages');
         const previous=button('‹','storage-page-'+mode+'-prev',()=>switchTo(mode,Math.max(0,page-1)*24));previous.disabled=page===0;
@@ -436,15 +452,14 @@ export class HeroUI {
     }
     panel.append(surface);
     const deposit=u.panel==='pack',list=deposit?p.inventory:storage,item=list[u.index],allowed=canAccess(game,p,!deposit)&&!(deposit&&protectedItem(p,item?.type));
-    const controls=this.controllerText(game,p),actions=el('nav',null,'storage-popup-actions');
+    const actions=el('nav',null,'storage-popup-actions');
     const primary=button(controls.accept+' · '+(deposit?'Deposit selected →':reusable?'← Withdraw selected':'Take selected'),'storage-transfer',()=>game.inventoryAction(p,'use'));
     primary.disabled=!item||!allowed;actions.append(primary);
     const all=button(deposit?'Deposit all':reusable?'Withdraw all':'Loot all','lootAll',()=>game.inventoryAction(p,'lootAll'));all.disabled=!list.some(Boolean)||!canAccess(game,p,!deposit);actions.append(all);
-    const notice=el('p',u.notice||(!storage.some(Boolean)?reusable?'Chest empty. Select an item in your backpack to deposit.':'No loot remaining.':item?(ITEMS[item.type]?.name||item.type)+' × '+item.qty+' · '+(deposit?'Backpack → Chest':'Chest → Backpack'):'Select an item to transfer.'),'loot-notice');
+    const notice=u.notice?el('p',u.notice,'loot-notice'):null;
     const footer=el('footer',null,'chest-menu-footer');footer.append(actions);
-    if(item){const def=ITEMS[item.type],detail=el('p',null,'storage-selected-detail');detail.append(el('strong',def?.name||item.type));if(def?.description)detail.append(el('span',def.description));footer.append(detail);}
-    footer.append(notice);
-    footer.append(el('small',reusable?`${controls.select}: select · ${controls.tabs}: switch · ${controls.accept}: transfer · ${controls.close}: close`:`${controls.select}: select · ${controls.accept}: take · ${controls.close}: close`,'storage-help'));
+    if(notice)footer.append(notice);
+    footer.append(el('small',reusable?`${controls.select}: select · ${controls.accept}: transfer · ${controls.close}: close`:`${controls.select}: select · ${controls.accept}: take · ${controls.close}: close`,'storage-help'));
     if(u.storage==='starter')footer.append(el('small','Restocked each new level · deposited items are kept.','storage-help starter-stock-help'));
     panel.append(footer);
     if(u.storage==='victory'&&game.expeditionDebrief){const d=game.expeditionDebrief;footer.append(el('p',`${d.cleared} trials cleared · ${d.skipped} unresolved · ${d.score} reward marks`,'expedition-debrief'));}
@@ -897,8 +912,16 @@ export class HeroUI {
     c.restore();
   }
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), layout = planPlayerPanels(game.players, game.players.filter(q => q.ui || q.room), bounds.width, bounds.height)) {
-    const box = layout.get(p.id);
+    let box = layout.get(p.id);
     if (!box) return;
+    // Storage is a focused task, not a side rail. Give chest transfers and the
+    // private storeroom map a stable centered dialog footprint, even in lobby.
+    if(layout.size===1&&panel.classList.contains('victory-loot-session'))
+      box={...centeredPopupBox(bounds.width,bounds.height,440,520,18),side:'center'};
+    else if(layout.size===1&&panel.classList.contains('chest-redesign'))
+      box={...centeredPopupBox(bounds.width,bounds.height,860,700,18),side:'center'};
+    else if(layout.size===1&&panel.classList.contains('private-storage-room'))
+      box={...centeredPopupBox(bounds.width,bounds.height,760,700,18),side:'center'};
     const {x, y, width, height, side} = box;
     panel.dataset.anchor = side;
     panel.classList.toggle('party-panel', layout.size > 1);
@@ -909,10 +932,10 @@ export class HeroUI {
     panel.classList.toggle('loot-tight', height <= 360);
     panel.classList.toggle('npc-dialogue-compact', height < 420);
     panel.classList.toggle('compact-robot-shop', p.ui?.shop === 'robot' && height < 760);
-    const chestWide=width>=610||(height<=460&&width>=460),chestTabs=height<300||(!chestWide&&height<520);
-    panel.classList.toggle('chest-wide',chestWide);panel.classList.toggle('chest-tabs',chestTabs);
+    const chestWide=width>=610||(height<=460&&width>=460);
+    panel.classList.toggle('chest-wide',chestWide);panel.classList.remove('chest-tabs');
     if(panel.classList.contains('chest-redesign')){
-      const columns=chestWide&&!chestTabs?4:6;
+      const columns=width>=420?6:4;
       p.ui.storageColumns=columns;panel.style.setProperty('--chest-columns',columns);panel.style.setProperty('--chest-rows',24/columns);
     }
     panel.style.boxSizing = 'border-box';

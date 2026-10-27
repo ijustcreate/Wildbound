@@ -2,9 +2,12 @@ import { VILLAGERS, VILLAGER_EVENT, villagerById } from "./villager-data.mjs";
 import { villagerMotion } from "./villager-motion.mjs";
 import { merchantSites } from "./traveling-merchant.mjs";
 import { damageEnemy } from "./enemy-damage.mjs";
-import { clearShot } from "./navigation.mjs";
+import { clearShot, findPath } from "./navigation.mjs";
 import { creatures } from "./definitions.mjs";
 import { snowAt } from "./ice-world.mjs";
+import { waterAt } from "./environment.mjs";
+import { drawCampfire } from "./campfire-art.mjs";
+import { drawWaterline } from "./swim-render.mjs";
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
   ownerKey = (p) => String(p.profileId || p.id);
 export { VILLAGER_EVENT };
@@ -49,7 +52,9 @@ function actor(g, spec, position, campId) {
     faceY: 1,
     moving: false,
     walking: true,
-    equipment: { hand1: spec.sword ? "sword" : null, hand2: null },
+    inventory: [],
+    equipmentSockets: {},
+    equipment: { hand1: spec.id === "april" ? "april_blade" : spec.sword ? "sword" : null, hand2: null },
     villagerClock: 0,
   };
 }
@@ -58,21 +63,45 @@ export function spawnVillagerCamp(g) {
   const sites = merchantSites(g), specs = VILLAGERS.filter((v) => v.id !== "april");
   for(let i=specs.length-1;i>0;i--){const j=Math.floor((g.random?.()??Math.random())*(i+1));[specs[i],specs[j]]=[specs[j],specs[i]];}
   const selected=specs.slice(0,3);let positions=[];
-  for(const anchor of sites){const group=[];for(const site of sites.filter(q=>distance(q,anchor)<=76)){
-    if(group.every(q=>distance(q,site)>=42)&&!g.blocked(site.x,site.y,12,false,false,false,0))group.push(site);
-    if(group.length===3)break;
-  }if(group.length===3){positions=group;break;}}
+  // Find a nearby trio in spatial buckets instead of rescanning every site
+  // for each possible anchor when the event first spawns.
+  const buckets=new Map();for(const site of sites){const key=`${Math.floor(site.x/64)}:${Math.floor(site.y/64)}`;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(site);}
+  for(const anchor of sites){const bx=Math.floor(anchor.x/64),by=Math.floor(anchor.y/64),near=[];
+    for(let oy=-2;oy<=2;oy++)for(let ox=-2;ox<=2;ox++)for(const site of buckets.get(`${bx+ox}:${by+oy}`)||[])if(distance(site,anchor)<=76)near.push(site);
+    const group=[];for(const site of near)if(group.every(q=>distance(q,site)>=42)){group.push(site);if(group.length===3)break;}
+    if(group.length===3){positions=group;break;}}
   if(positions.length<3){g.message?.("The campers could not find a safe place for their fire.");return false;}
   const campId=`village:${g.nextId++}`,fire={x:positions.reduce((n,p)=>n+p.x,0)/3,y:positions.reduce((n,p)=>n+p.y,0)/3};
   g.villageCampState={campId,fire,camperIds:selected.map(v=>v.id),talked:[],aprilIncoming:false,aprilRecruited:false};
   g.villagers=selected.map((spec,i)=>actor(g,spec,positions[i],campId));
   g.reveal={...fire,life:5};g.message?.("Three campers have gathered around a fire. Listen to each of their stories.");g.persist?.();return g.villagers;
 }
+/** Spawn the author-placed village residents at fixed scene-relative positions. */
+export function spawnAuthoredVillagers(g, scene, anchor) {
+  const specs=scene.npcs.filter(n=>n.id!=='rowan').map(n=>({placement:n,spec:villagerById(n.id)})).filter(n=>n.spec);
+  if(!specs.length)return [];
+  const sceneKey=`${scene.levelId||'forest'}:${scene.id}`;
+  if((g.villagers||[]).some(v=>v.authoredSceneId===sceneKey))return g.villagers.filter(v=>v.authoredSceneId===sceneKey);
+  const campId=`world-village:${sceneKey}`,fire={x:anchor.x,y:anchor.y};
+  g.villageCampState={campId,fire,camperIds:specs.map(({spec})=>spec.id),talked:[],aprilIncoming:false,aprilRecruited:true,authoredSceneId:sceneKey};
+  const actors=specs.map(({placement,spec})=>Object.assign(actor(g,spec,{x:anchor.x+placement.x,y:anchor.y+placement.y},campId),{authoredSceneId:sceneKey}));
+  g.villagers||=[];g.villagers.push(...actors);return actors;
+}
 function bringAprilToCamp(g){
   const camp=g.villageCampState;if(!camp||camp.aprilIncoming||camp.aprilRecruited||camp.camperIds.some(id=>!camp.talked.includes(id)))return false;
   camp.aprilIncoming=true;camp.aprilSpawned=true;
-  const side=(g.random?.()??Math.random())<.5?-1:1,target={x:camp.fire.x+side*34,y:camp.fire.y-12},spawn={x:camp.fire.x+side*260,y:camp.fire.y+24};
-  const april=actor(g,villagerById("april"),spawn,camp.campId);Object.assign(april,{incoming:true,targetX:target.x,targetY:target.y,invincible:false,unattackable:false,hp:80,maxHp:80});
+  const campers=(g.villagers||[]).filter(v=>v.campId===camp.campId&&v.villagerId!=='april'),sites=merchantSites(g),
+    targets=sites.filter(p=>distance(p,camp.fire)>=24&&distance(p,camp.fire)<=78&&campers.every(v=>distance(p,v)>=30)).sort((a,b)=>distance(a,camp.fire)-distance(b,camp.fire));
+  let route=null,spawn=null,target=null;
+  // Spawn and destination are both walkable points in the board-connected
+  // map. Confirm a route up front so April cannot appear behind a wall.
+  const starts=sites.filter(p=>distance(p,camp.fire)>110&&distance(p,camp.fire)<230).sort((a,b)=>distance(b,camp.fire)-distance(a,camp.fire));
+  for(const goal of targets){
+    for(const start of starts){const probe=actor(g,villagerById("april"),start,camp.campId),path=findPath(g,probe,goal);if(path.length){spawn=start;target=goal;route=path;break;}}
+    if(route)break;
+  }
+  if(!route){camp.aprilIncoming=false;camp.aprilSpawned=false;return false;}
+  const april=actor(g,villagerById("april"),spawn,camp.campId);Object.assign(april,{incoming:true,targetX:target.x,targetY:target.y,incomingPath:route,invincible:false,unattackable:false,hp:80,maxHp:80,speed:165});
   g.villagers.push(april);g.message?.("April is hurrying back to the fire!");g.persist?.();return true;
 }function visit(p, campId) {
   if (p.villageVisit?.campId !== campId)
@@ -185,7 +214,7 @@ function recruit(g,p,v){
     u.node = "story";
     const s = visit(p, v.campId),camp=g.villageCampState;
     if (!s.heard.includes(spec.id)) s.heard.push(spec.id);
-    if(camp?.campId===v.campId&&spec.id!=="april"&&!camp.talked.includes(spec.id)){camp.talked.push(spec.id);v.sitting=true;}
+    if(camp?.campId===v.campId&&spec.id!=="april"&&!camp.talked.includes(spec.id)){camp.talked.push(spec.id);v.sitting=true;const dx=camp.fire.x-v.x,dy=camp.fire.y-v.y,n=Math.hypot(dx,dy)||1;v.faceX=dx/n;v.faceY=dy/n;}
     gesture(v, "talk");bringAprilToCamp(g);
     const joined = recruit(g, p, v);
     u.notice = joined
@@ -228,9 +257,9 @@ export function tickVillagers(g, dt) {
   if (g.phase !== "play") return;
   for (const v of g.villagers || []) {
     animate(v, dt);
-    if(v.incoming){const d=distance(v,{x:v.targetX,y:v.targetY}),step=Math.min(d,165*dt*(1-snowAt(g,v.x,v.y)*.45));v.moving=d>28;v.walking=false;if(d>28){const dx=(v.targetX-v.x)/d,dy=(v.targetY-v.y)/d,x=v.x+dx*step,y=v.y+dy*step;if(!g.blocked(x,y,10,false,false,false,0)){v.x=x;v.y=y;}else if(!g.blocked(x,v.y,10,false,false,false,0))v.x=x;else if(!g.blocked(v.x,y,10,false,false,false,0))v.y=y;v.faceX=dx;v.faceY=dy;}if(d<=30){v.incoming=false;v.moving=false;gesture(v,"cheer");g.message?.("April has made it back to the fire. She wants to meet you.");}continue;}
+    if(v.incoming){const path=v.incomingPath||[];while(path.length&&distance(v,path[0])<7)path.shift();const next=path[0]||{x:v.targetX,y:v.targetY},d=distance(v,next),step=Math.min(d,(v.speed||165)*dt*(1-snowAt(g,v.x,v.y)*.45));v.moving=d>1;v.walking=true;if(d>1){const dx=(next.x-v.x)/d,dy=(next.y-v.y)/d,x=v.x+dx*step,y=v.y+dy*step;if(!g.blocked(x,y,10,false,true,false,0)){v.x=x;v.y=y;}else if(!g.blocked(x,v.y,10,false,true,false,0))v.x=x;else if(!g.blocked(v.x,y,10,false,true,false,0))v.y=y;else path.shift();v.faceX=dx;v.faceY=dy;}if(!path.length&&distance(v,{x:v.targetX,y:v.targetY})<=30){v.incoming=false;v.moving=false;gesture(v,"cheer");g.message?.("April has made it back to the fire. She wants to meet you.");}continue;}
     const p = g.players.find((p) => p.ui?.villagerActorId === v.id);
-    if (p) {
+    if (p && !v.sitting) {
       const n = distance(p, v) || 1;
       v.faceX = (p.x - v.x) / n;
       v.faceY = (p.y - v.y) / n;
@@ -322,14 +351,14 @@ export function tickVillagers(g, dt) {
         const d = Math.min(left, 4),
           x = a.x + dx * d,
           y = a.y + dy * d;
-        if (!g.blocked(x, y, 10, false, false, false, 0)) {
+        if (!g.blocked(x, y, 10, false, a.villagerId==='april', false, 0)) {
           a.x = x;
           a.y = y;
           a.moving = true;
-        } else if (!g.blocked(x, a.y, 10, false, false, false, 0)) {
+        } else if (!g.blocked(x, a.y, 10, false, a.villagerId==='april', false, 0)) {
           a.x = x;
           a.moving = true;
-        } else if (!g.blocked(a.x, y, 10, false, false, false, 0)) {
+        } else if (!g.blocked(a.x, y, 10, false, a.villagerId==='april', false, 0)) {
           a.y = y;
           a.moving = true;
         } else break;
@@ -339,6 +368,7 @@ export function tickVillagers(g, dt) {
       a.walking = speed <= 112;
       a.step = (a.step || 0) + Math.hypot(a.x - startX, a.y - startY) * .13;
     }
+    a.swimming=a.villagerId==='april'&&waterAt(g,a.x,a.y)==='water';
     if (target && distance(a, target) < 59 && a.attackCooldown <= 0 &&
         clearShot(g, a, target)) {
       const reach = distance(a, target) || 1;
@@ -362,16 +392,13 @@ export function tickVillagers(g, dt) {
   }
 }
 export function drawVillagerCampfire(c,g,fire){
-  if(!fire)return;const pulse=.5+Math.sin((g.time||0)*7)*.08;
-  c.save();c.fillStyle="#13221dcc";c.beginPath();c.ellipse(fire.x,fire.y+7,28,10,0,0,Math.PI*2);c.fill();
-  c.fillStyle="#62513b";for(let i=0;i<8;i++){const a=i*Math.PI/4;c.beginPath();c.arc(fire.x+Math.cos(a)*22,fire.y+Math.sin(a)*7,4,0,Math.PI*2);c.fill();}
-  c.lineCap="round";c.lineWidth=5;c.strokeStyle="#65412b";c.beginPath();c.moveTo(fire.x-12,fire.y+3);c.lineTo(fire.x+12,fire.y-1);c.moveTo(fire.x-10,fire.y-1);c.lineTo(fire.x+10,fire.y+4);c.stroke();
-  c.fillStyle="#d86b32";c.beginPath();c.moveTo(fire.x,fire.y-22*pulse);c.lineTo(fire.x-8,fire.y+2);c.lineTo(fire.x+7,fire.y+2);c.closePath();c.fill();
-  c.fillStyle="#ffd36c";c.beginPath();c.moveTo(fire.x,fire.y-16*pulse);c.lineTo(fire.x-4,fire.y+1);c.lineTo(fire.x+4,fire.y+1);c.closePath();c.fill();
-  c.restore();
+  if(fire)drawCampfire(c,fire.x,fire.y,g.time||0,g.villageCampState?.campId?.length||0);
 }
 export function drawVillagerNpc(c, g, v, animator) {
-  animator.draw(c, v, g.time, 48);
+  const draw = actor => animator.draw(c, actor, g.time, 48);
+  if(v.villagerId==='april'&&v.swimming&&waterAt(g,v.x,v.y)==='water')
+    drawWaterline(c,v,g.time,draw,{shift:-12,radius:18});
+  else draw(v);
   c.save();
   c.textAlign = "center";
   c.font = "bold 6px sans-serif";

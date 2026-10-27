@@ -1,4 +1,4 @@
-import {initializeBoundlessWorld} from './boundless-world.mjs';
+import {initializeBoundlessWorld,checkpointBoundlessWorld} from './boundless-world.mjs';
 import {restoreFollowerControl} from './follower-control.mjs';
 import { migrateEquipment, migrateLegacySupplies } from "./items.mjs";
 import { Game } from "./core.mjs";
@@ -15,6 +15,7 @@ import {houseKeepsWorld} from './house-victory.mjs';
 import {upgradeCemeteryFeatures} from './graveyard-world.mjs';
 import {trialState} from './expedition-trials.mjs';
 export function saveSession(game) {
+  checkpointBoundlessWorld(game);
   return { version: 1, state: snapshot(game) };
 }
 export function restoreSession(saved) {

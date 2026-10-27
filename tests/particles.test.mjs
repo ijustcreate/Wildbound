@@ -7,6 +7,13 @@ test('particle presets remain bounded, repeatable and finite after long sessions
   for(const t of [0,.3,100000]){const p=particleSamples(effect,t,19);assert.equal(p.length,effect.count);assert.deepEqual(p,particleSamples(effect,t,19));assert.ok(p.every(v=>Object.values(v).every(Number.isFinite)&&v.alpha>=0&&v.alpha<=1));}
  }
 });
+test('campfires provide pixel-smoke and ember particle presets',()=>{
+ for(const id of ['campfire-smoke','campfire-embers']){
+  const effect=DEFAULT_EFFECTS[id];assert.ok(effect);assert.equal(effect.loop,true);assert.equal(effect.shape,'square');assert.ok(particleSamples(effect,2,4).some(p=>p.alpha>0));
+ }
+ assert.ok(DEFAULT_EFFECTS['campfire-flame'].count<=20,'event fire keeps its animated particle work bounded');
+ assert.ok(DEFAULT_EFFECTS['campfire-smoke'].count+DEFAULT_EFFECTS['campfire-embers'].count<=14);
+});
 test('invalid imported effects cannot replace gameplay effects',()=>{
  const before=structuredClone(effects.torch);
  for(const patch of [{count:100000},{life:0},{size:NaN},{start:'red'},{shape:'script'},{name:''}]){

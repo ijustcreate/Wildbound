@@ -71,7 +71,8 @@ test('armor cannot erase dangerous hits, gentle damage and adventure tuning rema
 });
 test('all encounter cards have distinct composed PCM assets, bounded levels and usable metadata',()=>{
  const hashes=new Set();for(const event of EVENTS){const cue=encounterCue(event);assert.equal(typeof cue,'object',event.name);const wav=fs.readFileSync(cue.files[0]);assert.equal(wav.toString('ascii',0,4),'RIFF');assert.equal(wav.readUInt32LE(24),22050);let peak=0;for(let i=44;i<wav.length;i+=2)peak=Math.max(peak,Math.abs(wav.readInt16LE(i)));assert.ok(peak>1000&&peak<=24000);hashes.add(crypto.createHash('sha256').update(wav).digest('hex'));}
- assert.equal(hashes.size,EVENTS.length);assert.equal(Object.keys(ENCOUNTER_CUES).length,EVENTS.length+10);
+ assert.equal(hashes.size,EVENTS.length);assert.equal(Object.keys(ENCOUNTER_CUES).length,EVENTS.length+13);
+ for(const destination of ['swamp','caverns','shadow'])assert.equal(typeof encounterCue('Travel · '+destination),'object',destination+' travel cue');
  const rich=victoryRewards([{equipment:{hand1:'bow'}}],()=>.3,{score:20,cleared:10,skipped:0});assert.ok(rich.some(i=>ITEMS[i.type].rarity==='legendary'));assert.equal(new Set(rich.map(i=>i.type)).size,rich.length);
 });
 

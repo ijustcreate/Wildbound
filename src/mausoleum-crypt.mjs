@@ -530,9 +530,9 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
     }
     const standard = ['skeleton','zombie','ghost','bat','spider'].includes(e.kind);
     if (standard && animator) {
-      animator.draw(c,{...e,sprite:e.kind},time,creatureRenderSize(e.kind));
+      animator.draw(c,{...e,room:d.id,sprite:e.kind},time,creatureRenderSize(e.kind));
     } else if (e.kind===CRYPT_BOSS_KIND && animator) {
-      animator.draw(c,{...e,kind:'skeleton',sprite:'skeleton',equipment:{hand1:'sword'}},time,50);
+      animator.draw(c,{...e,room:d.id,kind:'skeleton',sprite:'skeleton',equipment:{hand1:'sword'}},time,50);
       drawCryptBossGear(c,e,time);
     } else if(e.kind==='ghost'){c.save();c.translate(e.x,e.y);drawGhost(c,e,time);c.restore();}
     else if (['skeleton', 'zombie', CRYPT_BOSS_KIND].includes(e.kind)) drawUndead(c, e, time);

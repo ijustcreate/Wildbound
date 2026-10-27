@@ -1,13 +1,18 @@
 import {drawDeathSteps} from './death-steps.mjs';
+import {drawTracks} from './environment.mjs';
+import {drawRealmSprite,REALM_COLORS} from './realm-art.mjs';
 import { buildCreationMenu } from './creation-menu.mjs';
 import {drawLobbyBackdrop} from './lobby-backdrop.mjs';
+import {drawLobbyCeilingWash,drawLobbyCastShadow} from './lobby-lighting.mjs';
+import {LOBBY_FLOOR} from './lobby-geometry.mjs';
 import { Animator } from './animation.mjs';
+import {characterLightingFrame} from './character-lighting.mjs';
 import {resizeGameSurface,LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 import {drawLobbyBoard} from './lobby-board.mjs';
 import {drawLobbyMapTable,drawLobbyDifficultyTotem,drawLobbyDiceTray,drawLobbyExplorerStation,drawLobbyTargetLever} from './lobby-prop-art.mjs';
 import {applyCelShading} from './cel-shading.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
-import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle,drawArrowTrail} from './embedded-arrow.mjs';
 import {drawBoomerang} from './boomerang.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {playerInput} from './inventory-input.mjs';
@@ -23,12 +28,12 @@ import { controllerGlyph } from './controller-glyphs.mjs';
 import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision,drawLobbyControllers} from './lobby-tv.mjs';
-import {lobbyObjectNearby,lobbyLabelY,lobbyPropDepth,targetReportAlpha,drawSeatedLobbyPlayer} from './lobby-scene.mjs';
+import {lobbyObjectNearby,lobbyLabelY,lobbyPropDepth,lobbyActorDepth,targetReportAlpha,drawSeatedLobbyPlayer,canUseLobbyTV} from './lobby-scene.mjs';
 import {TvWildbound} from './tv-wildbound.mjs';
 import {tickSalvage} from './salvage.mjs';
 import {tickLobbyStorage} from './lobby-storage.mjs';
 import {spatialMenuNeighbor} from './menu-navigation.mjs';
-import {planPlayerPanels} from './player-panel-layout.mjs';
+import {planPlayerPanels,anchoredPopupBox} from './player-panel-layout.mjs';
 import {drawPortal} from './portal-art.mjs';
 import {drawStarterChest,restockStarterChests} from './starter-chest.mjs';
 import {freshCharacter} from './items.mjs';
@@ -58,6 +63,9 @@ const DIFFICULTY_DETAILS={
   wild:'Enemies deal full damage.',
 };
 const MAP_DETAILS={
+  swamp:'Old-growth bayou islands, winding rivers, boardwalks, and fireflies.',
+  caverns:'Connected limestone chambers, glowing crystals, underground pools, and falling stone.',
+  shadow:'Twisted woodland, pale wildlife, luminous wards, and murk wolves.',
   random:'A changing expedition every time.',
   forest:'Lush trails, rivers, and wild creatures.',
   desert:'Dry dunes, mesas, and scarce water.',
@@ -74,7 +82,7 @@ const MAP_MODE_DETAILS={
 export function moveLobbyCharacter(s,input,dt){
   const x=Number.isFinite(input.x)?input.x:0,y=Number.isFinite(input.y)?input.y:0;
   const length=Math.hypot(x,y),scale=180*dt/Math.max(1,length),beforeX=s.x,beforeY=s.y;
-  s.x=Math.max(55,Math.min(970,s.x+x*scale));s.y=Math.max(100,Math.min(560,s.y+y*scale));
+  s.x=Math.max(LOBBY_FLOOR.left+8,Math.min(LOBBY_FLOOR.right-8,s.x+x*scale));s.y=Math.max(LOBBY_FLOOR.top+8,Math.min(LOBBY_FLOOR.bottom-8,s.y+y*scale));
   const moved=Math.hypot(s.x-beforeX,s.y-beforeY);
   s.moving=moved>.001;
   if(length>.1){s.faceX=x;s.faceY=y;}
@@ -97,7 +105,7 @@ export class LobbyState {
     if(changed)this.invalidate(players);
   }
   invalidate(players){for(const p of players)p.ready=false;this.countdown=null;}
-  nearest(p){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
+  nearest(p,controllers){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>o.id==='television'?canUseLobbyTV(s,s,controllers):Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
   tick(dt,players){
     const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.room&&!p.lobbyDisconnected);
     if(!ready){this.countdown=null;return false;}
@@ -118,19 +126,20 @@ export class PlayableLobby {
     this.mapArt=new Image();this.mapArt.src=new URL('../assets/map-icons.png',import.meta.url).href;
     this.beachArt=new Image();this.beachArt.src=new URL('../assets/beach-background-v1.png',import.meta.url).href;
     this.cemeteryArt=new Image();this.cemeteryArt.src=new URL('../assets/map-cemetery-v1.png',import.meta.url).href;
+    this.realmMapArt=Object.fromEntries(['swamp','caverns','shadow'].map(env=>{const image=new Image();image.src=new URL(`../assets/inventory-environment-${env}-v1.png`,import.meta.url).href;return [env,image];}));
     root.classList.add('playable-lobby');
     const area=document.createElement('div');area.className='lobby-world';
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
     root.querySelector('.party-heading h1').textContent='Gather around the board';
-    this.defaultHelp='Enter / A: join · WASD / left stick: move · E / Y (X on Switch): interact · F / X (Y on Switch): attack · J / A (B on Switch): jump · TV: D-pad / arrows move; A (Z key) jumps twice; X runs (X key); down enters pipes; walk away to leave';
+    this.defaultHelp='Enter / A: join · WASD / left stick: move · E / Y (X on Switch): interact · F / X (Y on Switch): attack · J / A (B on Switch): jump · R / RB: dash · D-pad Up / P: storage portal · ZR / RT / H: potion · TV: D-pad / arrows move; A (Z key) jumps twice; X runs (X key); down enters pipes; walk away to leave';
     root.querySelector('.party-help').textContent=this.defaultHelp;
     this.canvas.onclick=e=>{
       const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return;
       const r=this.canvas.getBoundingClientRect(),view=this.view||{x:512,y:310,zoom:r.width/1024};
       const x=view.x+(e.clientX-r.left-r.width/2)/view.zoom,y=view.y+(e.clientY-r.top-r.height/2)/view.zoom;
       const o=LOBBY_OBJECTS.find(o=>Math.hypot(o.x-x,o.y-y)<65);
-      if(o&&this.state.nearest(p)===o)this.open(p,o.id);
+      if(o&&this.state.nearest(p,this.television?.controllers)===o)this.open(p,o.id);
     };
     for(const id of ['map-mode','environment','difficulty','dice-count'])document.getElementById(id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
@@ -175,16 +184,23 @@ export class PlayableLobby {
     const players=this.getGame().players,open=players.filter(p=>this.nodes.has(p.id));
     const bounds=this.panels.getBoundingClientRect();
     if(!bounds.width||!bounds.height)return;
-    const key=[bounds.width,bounds.height,players.length,...open.map(p=>`${p.id}:${this.state.members.get(p.id)?.panel}`)].join('|');
+    const canvasBounds=this.canvas.getBoundingClientRect(),view=lobbyCamera(canvasBounds.width,canvasBounds.height);
+    const key=[bounds.width,bounds.height,canvasBounds.left-bounds.left,canvasBounds.top-bounds.top,canvasBounds.width,canvasBounds.height,players.length,...open.map(p=>`${p.id}:${this.state.members.get(p.id)?.panel}`)].join('|');
     if(key===this.panelLayoutKey)return;
     const layout=planPlayerPanels(players,open,bounds.width,bounds.height,{
-      width:p=>this.state.members.get(p.id)?.panel==='environment'?520:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete','create'].includes(this.state.members.get(p.id)?.panel)?340:280,
-      height:p=>this.state.members.get(p.id)?.panel==='environment'?560:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
+      width:p=>this.state.members.get(p.id)?.panel==='environment'?520:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?340:this.state.members.get(p.id)?.panel==='create'?540:280,
+      height:p=>this.state.members.get(p.id)?.panel==='environment'?680:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
     });
     for(const p of open){
       const box=layout.get(p.id),panel=this.nodes.get(p.id);
       if(players.length===1&&open.length===1&&['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)){
         box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;
+      }
+      if(this.state.members.get(p.id)?.panel==='difficulty'){
+        const totem=LOBBY_OBJECTS.find(o=>o.id==='difficulty');
+        const x=canvasBounds.left-bounds.left+canvasBounds.width/2+(totem.x-view.x)*view.zoom;
+        const y=canvasBounds.top-bounds.top+canvasBounds.height/2+(totem.y-view.y)*view.zoom;
+        Object.assign(box,anchoredPopupBox(bounds.width,bounds.height,box.width,box.height,x,y));
       }
       panel.style.position='absolute';panel.style.boxSizing='border-box';
       panel.style.left=box.x+'px';panel.style.top=box.y+'px';
@@ -196,7 +212,11 @@ export class PlayableLobby {
     const s=this.state.members.get(p.id);if(!s?.spawned||p.ui)return;
     if(panel==='board'){this.openBoardReadyMenu(p);return;}
     if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}
-    if(panel==='television'){if(this.television.join(p.id)){const s=this.state.members.get(p.id),slot=this.television.players.get(p.id).slot;Object.assign(s,{x:785+(slot?62:-62),y:234,faceX:0,faceY:-1});const actor=this.practice.players.find(a=>a.id===p.id);if(actor)Object.assign(actor,{x:s.x,y:s.y,faceX:0,faceY:-1,jumpHeight:0,groundHeight:0,jumpVelocity:0,wingHover:false,dashTime:0,slideX:0,slideY:0,attack:0,charge:0,queuedAttack:null,bowAiming:false,blocking:false});this.sound?.('ui');}return;}
+    if(panel==='television'){
+      if(!canUseLobbyTV(s,this.practice.players.find(a=>a.id===p.id)||s,this.television.controllers))return;
+      const requestedSlot=s.x<785?0:1;
+      if(this.television.join(p.id,requestedSlot)){const slot=this.television.players.get(p.id).slot;Object.assign(s,{x:785+(slot?62:-62),y:234,faceX:0,faceY:-1});const actor=this.practice.players.find(a=>a.id===p.id);if(actor)Object.assign(actor,{x:s.x,y:s.y,faceX:0,faceY:-1,jumpHeight:0,groundHeight:0,jumpVelocity:0,wingHover:false,dashTime:0,slideX:0,slideY:0,attack:0,charge:0,queuedAttack:null,bowAiming:false,blocking:false});this.sound?.('ui');}return;
+    }
     if(panel==='character-station'){this.openCharacterStation(p);return;}
     if(panel==='starter-chest'){
       this.getGame().openInventory(p,'starter');
@@ -210,7 +230,7 @@ export class PlayableLobby {
     s.panel='choose';s.focus=0;s.choice=index>=0?index:0;s.characterHold=0;
     p.ready=false;this.state.countdown=null;this.renderPanel(p);this.sound?.('ui');
   }
-  close(p){const s=this.state.members.get(p.id);s.panel=null;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);this.panelLayoutKey=null;this.positionPanels();}
+  close(p){const s=this.state.members.get(p.id);s.panel=null;s.panelInputRelease=true;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);this.panelLayoutKey=null;this.positionPanels();}
   isPlayingTelevision(device){const player=this.getGame().players.find(p=>p.device===device);return !!player&&!!this.television?.players.has(player.id);}
   openBoardReadyMenu(player){
     if(player)player.ready=false;
@@ -252,7 +272,7 @@ export class PlayableLobby {
     addSetting('difficulty','DIFFICULTY',difficultySelect?.selectedOptions?.[0]?.text||'Adventure',DIFFICULTY_DETAILS[difficulty]||DIFFICULTY_DETAILS.adventure,c=>this.drawDifficulty(c,difficulty,0,0,56));
     const wildbound=!!game.houseWorldsEnabled,level=wildbound?'Wildbound worlds':levelSelect?.selectedOptions?.[0]?.text||'Forest';
     const levelKey=wildbound?'house':levelSelect?.value||'forest';
-    addSetting('level','LEVEL',level,wildbound?'Travel from home to six worlds.':MAP_DETAILS[levelKey]||'Explore this destination.',c=>this.drawMapIcon(c,levelKey,0,0,56));
+    addSetting('level','LEVEL',level,wildbound?'Travel from home to nine worlds.':MAP_DETAILS[levelKey]||'Explore this destination.',c=>this.drawMapIcon(c,levelKey,0,0,56));
     const badges=document.createElement('div');badges.className='board-ready-badges';
     for(const [label,value,cls] of [
       ['MAP MODE',modeSelect?.value==='boundless'?'Boundless':'Bounded','map-mode'],
@@ -327,8 +347,9 @@ export class PlayableLobby {
       const h=heroes[s.choice];
       const stage=document.createElement('div');stage.className='lobby-character-stage';
       const preview=document.createElement('canvas');preview.width=260;preview.height=208;stage.append(preview);panel.append(stage);
-      if(h){const c=preview.getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#101b19a8';c.beginPath();c.ellipse(130,179,43,10,0,0,Math.PI*2);c.fill();c.save();c.translate(130,174);c.scale(3.5,3.5);drawPlayer(c,{...h,faceX:0,faceY:1,animationAction:'idle',playerFrame:0},0);c.restore();}
-      button(h?'‹  '+h.name+'  ›':'No saved explorers',()=>{s.choice++;this.renderPanel(p);}).dataset.cycle='character';
+      if(h){panel._idlePreview={canvas:preview,hero:h};this.paintIdlePreview(panel,this.practice.time);}
+      const choice=button(h?'‹  '+h.name+'  ›':'No saved explorers',()=>{s.choice++;this.renderPanel(p);});choice.dataset.cycle='character';
+      if(h){const level=document.createElement('span');level.className='lobby-level';level.textContent='LEVEL '+(h.level||1);choice.append(level);}
       if(h)button('Choose',()=>{
         if(!this.available(p).some(q=>q.id===h.id)){this.renderPanel(p);return;}
         this.profiles.assign(p,h);s.spawned=true;this.state.invalidate(this.getGame().players);this.close(p);this.refreshChoosers();
@@ -336,6 +357,7 @@ export class PlayableLobby {
       const remove=button('Delete',()=>{s.panel='confirm-delete';s.deleteHeroId=h?.id;s.focus=0;this.renderPanel(p);});remove.disabled=!h;
       button('+ New character',()=>{s.panel='create';s.focus=0;this.renderPanel(p);}).classList.add('choice-new');
       button('Close',()=>this.close(p)).classList.add('choice-close');
+      button('Drop from game',()=>{const g=this.getGame();g.players=g.players.filter(q=>q.id!==p.id);this.state.members.delete(p.id);panel.remove();this.nodes.delete(p.id);this.state.invalidate(g.players);this.refreshChoosers();});
     }else if(s.panel==='confirm-delete'){
       const hero=this.profiles.data.heroes.find(h=>h.id===s.deleteHeroId);
       if(!hero||!this.available(p).some(h=>h.id===hero.id)){s.panel='choose';s.focus=0;this.renderPanel(p);return;}
@@ -361,7 +383,7 @@ export class PlayableLobby {
     }else if(s.panel==='board'){
       heading.textContent='Ready to begin?';
       const info=document.createElement('div');info.className='board-menu-summary';
-    for(const id of ['map-mode','environment','difficulty','dice-count']){const e=document.getElementById(id),setting=document.createElement('span');setting.className='board-setting';setting.textContent=id==='environment'&&this.getGame().houseWorldsEnabled?'Wildbound · Home and six worlds':e.selectedOptions[0].text;info.append(setting);}
+    for(const id of ['map-mode','environment','difficulty','dice-count']){const e=document.getElementById(id),setting=document.createElement('span');setting.className='board-setting';setting.textContent=id==='environment'&&this.getGame().houseWorldsEnabled?'Wildbound · Home and nine worlds':e.selectedOptions[0].text;info.append(setting);}
       panel.append(info);
       button(p.ready?'Cancel readiness':'Ready',()=>{p.ready=!p.ready;this.close(p);});
       button('Not yet',()=>this.close(p));
@@ -371,7 +393,7 @@ export class PlayableLobby {
       let mapChoices;
       if(s.panel==='environment'){
         const mode=document.getElementById('map-mode');
-        const wild=!!this.getGame().houseWorldsEnabled,wildChoice=button('',()=>{this.setWildboundMode(true);this.close(p);this.refreshMapMenus();});
+        const wild=!!this.getGame().houseWorldsEnabled,wildChoice=button('',()=>{this.setWildboundMode(true);this.refreshMapMenus();});
         wildChoice.classList.add('map-choice','wildbound-mode-choice');wildChoice.setAttribute('aria-pressed',String(wild));
         wildChoice.setAttribute('aria-label','Wildbound mode. Start at home and travel between worlds on a five or eight.');
         const wildIcon=document.createElement('canvas');wildIcon.width=wildIcon.height=40;wildIcon.className='map-choice-icon';this.drawMapIcon(wildIcon.getContext('2d'),'house',0,0,40);
@@ -392,7 +414,8 @@ export class PlayableLobby {
       }
       for(const option of select.options){const b=button('',()=>{
         if(s.panel==='environment')this.setWildboundMode(false);
-        select.value=option.value;select.dispatchEvent(new Event('change'));this.close(p);if(select.id==='environment')this.refreshMapMenus();
+        select.value=option.value;select.dispatchEvent(new Event('change'));
+        if(select.id==='environment')this.refreshMapMenus();else this.close(p);
       });if(s.panel==='difficulty'){
         b.classList.add('difficulty-choice');
         b.setAttribute('aria-label',`${option.text}. ${DIFFICULTY_DETAILS[option.value]}`);
@@ -403,8 +426,10 @@ export class PlayableLobby {
         copy.append(name,detail);b.append(icon,copy);
       }else if(s.panel==='environment'){
         b.classList.add('map-choice');
+        b.classList.toggle('map-choice-all',option.value==='random');
         b.setAttribute('aria-pressed',String(!this.getGame().houseWorldsEnabled&&select.value===option.value));
-        b.title=MAP_DETAILS[option.value];mapChoices.append(b);
+        b.title=MAP_DETAILS[option.value];
+        if(option.value==='random')panel.insertBefore(b,mapChoices);else mapChoices.append(b);
         b.setAttribute('aria-label',`${option.text}. ${MAP_DETAILS[option.value]}`);
         const icon=document.createElement('canvas');icon.width=40;icon.height=40;icon.className='map-choice-icon';this.drawMapIcon(icon.getContext('2d'),option.value,0,0,40);
         const copy=document.createElement('span');copy.className='difficulty-choice-copy';
@@ -426,11 +451,12 @@ export class PlayableLobby {
     // Reveal the owner's current choice without scrolling or moving another
     // player's panel. Native scrollbar chrome is hidden throughout the UI.
     const selected=buttons[s.focus];
-    if(selected&&panel.scrollHeight>panel.clientHeight){
-      const box=panel.getBoundingClientRect(),choice=selected.getBoundingClientRect();
-      const top=box.top+panel.clientTop+4,bottom=box.top+panel.clientTop+panel.clientHeight-4;
-      if(choice.bottom>bottom)panel.scrollTop+=choice.bottom-bottom;
-      else if(choice.top<top)panel.scrollTop-=top-choice.top;
+    const scroller=selected?.closest('.map-choices')||panel;
+    if(selected&&scroller.scrollHeight>scroller.clientHeight){
+      const box=scroller.getBoundingClientRect(),choice=selected.getBoundingClientRect();
+      const top=box.top+scroller.clientTop+4,bottom=box.top+scroller.clientTop+scroller.clientHeight-4;
+      if(choice.bottom>bottom)scroller.scrollTop+=choice.bottom-bottom;
+      else if(choice.top<top)scroller.scrollTop-=top-choice.top;
     }
   }
   navigate(p,{x=0,y=0,accept=false,back=false,adjust=false,rotate=0},device=p.device){
@@ -521,7 +547,7 @@ export class PlayableLobby {
         if(!hero.ui&&!['inventory','use','close','interact','lobbyInteract','attack','tvA','tvX','block','salvage'].some(key=>input[key]))s.inventoryRelease=false;
         // TV jump and attack are distinct. The normal game's bottom-face attack
         // binding must not leak into the TV's bottom-face jump binding.
-        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,attack:!!input.tvX||(hero.device==='keyboard'&&!!input.attack),run:!!input.block,loot:!!input.interact,paused:blocked||!!hero.ui||!!s.inventoryRelease||!!hero.lobbyDisconnected};
+        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,dash:!!input.dodge,attack:!!input.tvX||(hero.device==='keyboard'&&!!input.attack),run:!!input.block,loot:!!input.interact,paused:blocked||!!hero.ui||!!s.inventoryRelease||!!hero.lobbyDisconnected};
         if(!blocked&&!hero.lobbyDisconnected&&this.tvWildbound.won&&!hero.ui&&!s.inventoryRelease&&(edge('lobbyInteract')||edge('interact'))){
           if(this.tvWildbound.victoryRewards.some(Boolean))game.openInventory(hero,'tv-victory');
           else {this.returnFromTv();return;}
@@ -557,11 +583,13 @@ export class PlayableLobby {
           s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
           if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
         }else if(!p.room&&!s.inventoryRelease){
-          const o=this.state.nearest(p);
+          const o=this.state.nearest(p,this.television?.controllers);
           if(o?.id==='character-station'&&edge('lobbyInteract'))this.openCharacterStation(p);
           if(this.television?.players.has(p.id)){
             if(edge('interact'))this.television.leave(p.id,s);
-          }else if((edge('tvA')||edge('lobbyInteract'))&&o?.id==='television'){this.open(p,'television');joinedTv.add(p.id);}
+          }else if(o?.id==='television'){
+            if(edge('lobbyInteract')&&!input.jump&&!input.tvA){this.open(p,'television');if(this.television.players.has(p.id))joinedTv.add(p.id);}
+          }
           else if(edge('lobbyInteract')&&o?.id!=='character-station'){
             if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}
             else if(o)this.open(p,o.id);
@@ -582,12 +610,15 @@ export class PlayableLobby {
     // jump in the practice scene underneath it.
     for(const p of players){
       const s=this.state.members.get(p.id);
-      if(s?.panel||p.ui)practiceInputs[p.device]={x:0,y:0,attack:false,jump:false,dodge:false};
+      if(s?.panel)s.panelInputRelease=true;
+      const input=inputs[p.device]||{};
+      if(s?.panelInputRelease&&!s.panel&&!['jump','tvA','attack','dodge','close','use','lobbyInteract','interact','block'].some(key=>input[key]))s.panelInputRelease=false;
+      if(s?.panel||s?.panelInputRelease||p.ui)practiceInputs[p.device]={x:0,y:0,attack:false,jump:false,dodge:false};
     }
-    for(const p of players)if(this.state.members.get(p.id)?.stationPress)practiceInputs[p.device]={...inputs[p.device],attack:false};
+    for(const p of players){const s=this.state.members.get(p.id);if(s?.stationPress&&!s.panel&&!s.panelInputRelease&&!p.ui)practiceInputs[p.device]={...inputs[p.device],attack:false};}
     for(const p of players)if(this.television?.players.has(p.id)){
       const input=inputs[p.device]||{};
-      tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA&&!joinedTv.has(p.id),joinHeld:joinedTv.has(p.id),run:!!input.tvX,down:!!input.tvDown,up:!!input.tvUp};
+      tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA&&!joinedTv.has(p.id),joinHeld:joinedTv.has(p.id),run:!!input.tvX,dash:!!input.dodge,down:!!input.tvDown,up:!!input.tvUp};
       practiceInputs[p.device]={x:input.walkX||0,y:input.walkY||0};
     }
     this.practice.stepPractice(dt,players,this.state.members,practiceInputs,blocked);
@@ -608,10 +639,14 @@ export class PlayableLobby {
     if(this.television?.completed){
       const party=players.filter(p=>this.television.players.has(p.id));
       restockStarterChests(this.getGame());
-      this.tvWildbound=new TvWildbound(party,this.television.seed);
+      // Keep each trip reproducible, but don't replay the same scene order on
+      // every visit to the TV. The TV seed stays the base for this lobby.
+      this.tvWorldRun=(this.tvWorldRun||0)+1;
+      const worldSeed=(this.television.seed+Math.imul(this.tvWorldRun,0x9e3779b9))>>>0;
+      this.tvWildbound=new TvWildbound(party,worldSeed);
       this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
-      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · D-pad / arrows: move · bottom face / Z: jump · left face / F or X: attack · I / Back: inventory · E / top face: collect dropped items · face and strike the central board to roll';
+      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · D-pad / arrows: move · bottom face / Z: double jump · R / Dodge / Space / RMB: directional dash (cooldown) · Down: crouch / marked pipes enter coin room · left face / F or X: attack / flower fireball · I / Back: inventory · E / top face: collect items; after 48 spaces interact at center to call WILDBOUND (far gate is optional) · strike the board to roll';
     }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
@@ -629,7 +664,7 @@ export class PlayableLobby {
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
     for(const a of this.practice.loot){if(a.embedded&&ARROW_TYPES.includes(a.type))drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());else{drawItem(c,a.type,a.x,a.y-(a.z||0),26);if(a.qty>1){c.fillStyle='#fff2c4';c.font='bold 10px system-ui';c.textAlign='right';c.fillText(String(a.qty),a.x+14,a.y+13);}}}
-    for(const a of groupLodgedArrows(this.practice.arrows)){if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
+    for(const a of groupLodgedArrows(this.practice.arrows)){drawArrowTrail(c,a,this.practice.time);if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
     for(const b of this.practice.spells)drawMagicBolt(c,b);
     for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';this.label(f.text,f.x,f.y,14,f.color||'#fff');}
     c.restore();
@@ -640,6 +675,7 @@ export class PlayableLobby {
     c.drawImage(this.difficultyArt,index*w,0,w,this.difficultyArt.naturalHeight,x,y,size,size);
   }
   drawMapIcon(c,value,x,y,size){
+    if(REALM_COLORS[value]){const image=this.realmMapArt?.[value];if(image?.complete&&image.naturalWidth){c.save();c.imageSmoothingEnabled=false;c.drawImage(image,0,0,image.naturalWidth,image.naturalHeight,x,y,size,size);c.restore();return;}image?.addEventListener('load',()=>this.drawMapIcon(c,value,x,y,size),{once:true});c.fillStyle=Object.values(REALM_COLORS[value])[0];c.fillRect(x,y,size,size);drawRealmSprite(c,{swamp:'mangrove',caverns:'cave_crystal',shadow:'wither_tree'}[value],x+size/2,y+size*.94,size*.95);return;}
     if(value==='graveyard'){
       if(this.cemeteryArt?.complete&&this.cemeteryArt.naturalWidth){c.drawImage(this.cemeteryArt,0,0,this.cemeteryArt.naturalWidth,this.cemeteryArt.naturalHeight,x,y,size,size);return;}
       // Menu icons are painted once, so repaint if the player opens the menu before loading finishes.
@@ -655,19 +691,17 @@ export class PlayableLobby {
     c.drawImage(this.mapArt,index*w,0,w,this.mapArt.naturalHeight,x,y,size,size);
   }
   drawBackdrop(c){
-    c.fillStyle='#293c35';c.fillRect(0,0,1024,620);
-    for(let y=68;y<590;y+=42){
-      for(let x=16;x<1010;x+=42){
-        c.fillStyle=x<530?((Math.floor(y/42)%2)?'#756349':'#806d50'):((Math.floor(x/42)+Math.floor(y/42))%3===0?'#526259':'#58695e');
-        c.fillRect(x,y,40,40);
-        if(x<530){c.fillStyle='#9a825951';c.fillRect(x+3,y+2,34,2);c.fillStyle='#4a403a';c.fillRect(x+3,y+34,2,2);c.fillRect(x+35,y+4,2,2);}
-      }
-    }
-    c.fillStyle='#343d40';c.fillRect(559,68,5,522);
-    c.fillRect(8,58,1008,11);c.fillRect(8,590,1008,12);
-    c.fillRect(8,68,7,522);c.fillRect(1010,68,7,522);
+    drawLobbyBackdrop(c,{warm:true,pack:false});
+  }
+  paintIdlePreview(panel,time){
+    const view=panel._idlePreview;if(!view)return;
+    const {canvas,hero}=view,c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.imageSmoothingEnabled=false;
+    drawLobbyCastShadow(c,130,175,48,13);c.save();c.translate(130,174);c.scale(3.5,3.5);
+    drawPlayer(c,{...hero,faceX:0,faceY:1,bowVisualAngle:undefined,animationAction:'idle',moving:false,playerFrame:undefined},time);c.restore();
   }
   draw(){
+    for(const panel of this.nodes.values())this.paintIdlePreview(panel,this.practice.time);
+    this.animator.lighting=characterLightingFrame(this.practice);
     const c=this.canvas.getContext('2d'),{w,h,scale}=resizeGameSurface(this.canvas,c);
     if(this.tvWildbound){this.tvWildbound.draw(c,w,h,this.animator);return;}
     // Fit the room, totem card, and lower captions. Joining never crops stations.
@@ -677,6 +711,8 @@ export class PlayableLobby {
     c.translate(w/2,h/2);c.scale(view.zoom/2,view.zoom/2);c.translate(-view.x,-view.y);
     this.root?.classList.toggle('lobby-exploring',this.getGame().players.some(p=>this.state.members.get(p.id)?.spawned));
     this.drawBackdrop(c);
+    drawLobbyCeilingWash(c,LOBBY_FLOOR);
+    drawTracks(c,this.practice);
     drawBansheeSteps(c,this.practice,{spacing:20});drawDeathSteps(c,this.practice,{spacing:20});
     c.textAlign='center';
     for(const t of this.practice.targets){
@@ -688,17 +724,17 @@ export class PlayableLobby {
       c.restore();const alpha=targetReportAlpha(t);if(alpha)this.label(t.hits+' hits · '+Math.round(t.score)+' damage',t.x+(t.angle<-1?54:0),t.y+(t.angle<-1?14:30),12,'#f4efdc',500,alpha);
     }
     const actors=this.getGame().players.filter(p=>this.state.members.get(p.id)?.spawned&&!p.room).map(p=>this.practice.players.find(a=>a.id===p.id)||{...p,...this.state.members.get(p.id)});
-    const scene=[...LOBBY_OBJECTS.map(o=>({depth:lobbyPropDepth(o),object:o})),...actors.map(a=>({depth:this.practice.house.furniture.reduce((depth,f)=>{const o=LOBBY_OBJECTS.find(o=>o.id===f.id);return (a.jumpHeight||a.groundHeight||0)>=f.surfaceHeight&&a.x>=f.x&&a.x<f.x+f.w&&a.y>=f.y&&a.y<f.y+f.h?Math.max(depth,lobbyPropDepth(o)+1):depth;},a.y),actor:a}))].sort((a,b)=>a.depth-b.depth);
+    const scene=[...LOBBY_OBJECTS.map(o=>({depth:lobbyPropDepth(o),object:o})),...actors.map(a=>({depth:lobbyActorDepth(a,this.practice.house.furniture,LOBBY_OBJECTS),actor:a}))].sort((a,b)=>a.depth-b.depth);
     for(const entry of scene){
       if(entry.actor){
         const actor=entry.actor,slot=this.television.players.get(actor.id)?.slot;
-        c.fillStyle='#17251e55';c.beginPath();c.ellipse(actor.x,actor.y+4,20,7,0,0,Math.PI*2);c.fill();
+        drawLobbyCastShadow(c,actor.x,actor.y+4,34,12);
         if(slot!==undefined)drawSeatedLobbyPlayer(c,actor,slot);
         else {this.animator.draw(c,{...actor,kind:'player'},this.practice.time,LOBBY_PLAYER_SIZE);drawBowAim(c,actor,LOBBY_PLAYER_SIZE/48,this.practice.time);}
         continue;
       }
       const o=entry.object;
-      if(['board','starter-chest'].includes(o.id)){c.fillStyle='#42474a';c.beginPath();c.ellipse(o.x,o.y+12,58,18,0,0,Math.PI*2);c.fill();}
+      if(['board','starter-chest'].includes(o.id))drawLobbyCastShadow(c,o.x,o.y+12,112,22);
       if(o.id==='environment'){
         drawLobbyMapTable(c,o,document.getElementById('environment').value);
       }else if(o.id==='difficulty'){
@@ -718,7 +754,7 @@ export class PlayableLobby {
       }else{
         drawLobbyBoard(c,this.practice.time);
       }
-      if(lobbyObjectNearby(o,this.getGame().players,this.state.members)){
+      if(lobbyObjectNearby(o,this.getGame().players,this.state.members,this.television.controllers)){
         const y=lobbyLabelY(o);this.label(o.name,o.x,y,15,'#f4efdc',650);
       }
     }
@@ -732,7 +768,7 @@ export class PlayableLobby {
     }
     for(const p of this.getGame().players){
       const s=this.state.members.get(p.id);if(!s.spawned||p.room||s.panel||p.ui)continue;
-      const o=this.state.nearest(p);if(!o)continue;
+      const o=this.state.nearest(p,this.television.controllers);if(!o)continue;
       const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3];
       this.label(this.television.players.has(p.id)?'Walk away · leave':interact+' · interact',o.x,lobbyLabelY(o)-18,12,p.color,650);
     }

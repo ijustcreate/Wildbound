@@ -2,10 +2,19 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { createHash, randomUUID } = require("node:crypto");
+// Electron can report a late failed request while the parent terminal or
+// launcher is already closing its stdio pipes. Keep that diagnostic from
+// becoming a second, uncaught main-process exception.
+for (const stream of [process.stdout, process.stderr]) {
+  stream?.on("error", (error) => {
+    if (error.code !== "EPIPE") throw error;
+  });
+}
 let window;
 const worldsSmoke=process.argv.includes('--worlds-smoke-test');
+const shadowPipelineSmoke=process.argv.includes('--shadow-pipeline-smoke-test');
 const bootSmoke = process.argv.includes('--boot-smoke-test')||worldsSmoke;
-const testMode = bootSmoke || process.argv.includes('--smoke-test');
+const testMode = bootSmoke || shadowPipelineSmoke || process.argv.includes('--smoke-test');
 const preview = process.argv.includes('--preview');
 if (preview) app.setPath('userData', path.join(app.getPath('appData'), 'Wildbound Night Hunt Preview'));
 let releaseControllerClaims = () => {};
@@ -204,7 +213,9 @@ app.whenReady().then(async () => {
     return true;
   });
   await window.loadFile("index.html");
-  if(worldsSmoke)
+  if(shadowPipelineSmoke)
+    await require('./scripts/shadow-pipeline-smoke.cjs')({window,testOutput,app});
+  else if(worldsSmoke)
     await require('./scripts/verify-worlds-desktop.cjs')({window,testOutput,app});
   else if (bootSmoke)
     await require('./scripts/boot-smoke.cjs')({window,testOutput,app});

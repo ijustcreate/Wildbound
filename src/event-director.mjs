@@ -1,3 +1,4 @@
+import {realmContexts} from './realm-world.mjs';
 import {encounterRole,pacingWeight} from './expedition-trials.mjs';
 export const EVENT_HISTORY_LIMIT=24;
 export const EVENT_COVERAGE_LIMIT=256;
@@ -48,6 +49,7 @@ export function selectEvent(g,events,available){
   if(!available(g,event)||!(event.weight??10)||event.weight<0)return [];
   if(event.type==='old_well'&&(g.portals||[]).some(d=>d.oldWell))return [];
   if(event.type==='mausoleum'&&(g.portals||[]).some(d=>d.mausoleum&&d.oldWell))return [];
+  if(event.type==='realm_expedition'&&realmContexts(g).some(ctx=>ctx.realmState?.event&&!ctx.realmState.event.done))return [];
   if(event.type==='mystery'&&g.mystery&&!g.mystery.done)return [];
   if(event.type==='merchant'&&g.merchant)return [];
   if(weather.has(event.type)&&g.weather?.life>0)return [];

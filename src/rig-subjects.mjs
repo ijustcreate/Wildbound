@@ -33,6 +33,7 @@ import {
 import {
   playerMotion,
   defaultPlayerMotion,
+  defaultNativePlayerMotion,
   replacePlayerMotion,
   drawPlayer,
 } from "./player-motion.mjs";
@@ -172,7 +173,7 @@ export const RIG_SUBJECTS = {
   player: {
     name: "Player / humanoid",
     data: playerMotion,
-    defaults: defaultPlayerMotion,
+    defaults: defaultNativePlayerMotion,
     replace: replacePlayerMotion,
     draw: drawPlayer,
     sprite: "explorer-teal",

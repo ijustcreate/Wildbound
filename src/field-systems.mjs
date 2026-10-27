@@ -1,4 +1,5 @@
 import { ITEMS, SLOTS, give, take, equip, stat, itemKind,refreshVitals,clearSlot,gearStat } from "./items.mjs";
+import {ensureRescueExplorer,completeRescueExplorer} from './npc-quests.mjs';
 
 export const SYMBOLS = ["◆", "●", "▲", "✦", "■", "✚"];
 export const RECIPES = [
@@ -323,6 +324,7 @@ export function tickField(g, dt, inputs) {
   }
   if (g.objective && !g.objective.done) {
     const o = g.objective;
+    if(o.kind==='rescue')ensureRescueExplorer(g,o);
     if (o.kind === "survive")
       o.progress = Math.min(o.target, (o.progress || 0) + dt);
     else if (o.kind === "explore") o.progress = g.explored.size - o.start;
@@ -350,11 +352,12 @@ export function tickField(g, dt, inputs) {
 
     if (!o.done && o.progress >= o.target) {
       o.done = true;
+      if(o.kind==='rescue')completeRescueExplorer(g,o);
       for (const p of g.players) {
         p.coins = (p.coins || 0) + 10;
         record(p, "objectives");
       }
-      g.message("Trail objective complete · 10 gold for each explorer.");
+      g.message(o.kind==='rescue'?'Explorer rescued! They’re safe now—talk to them for a thank-you reward.':'Trail objective complete · 10 gold for each explorer.');
       g.persist();
     }
   }

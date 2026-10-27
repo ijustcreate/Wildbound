@@ -1,0 +1,9 @@
+# Cavern art study — rejected, superseded
+
+The user rejected this native study and supplied a new art standard. See `CAVERN_IMPLEMENTATION_PLAN.md` and `art/caverns/` for the new generated concepts and staged plan. Do not expand or ship this rejected study.
+
+Reference: the approved swamp's chunky native pixels, coherent material colors, organic edges, and clear player scale. Keep the existing cavern gameplay requirements: connected chambers, underground pools, wall crystals, cuttable/mineable props, solid exterior rock, and sparse hidden ceiling hazards with dust/shadow warnings.
+
+Native art prompt: build one connected pool chamber, narrow bent passage, and crystal chamber. Break circular room silhouettes with broad rock shelves and irregular recessed edges. Show layered limestone wall faces above the floor and dark impassable rock beyond. Use blue-grey floor shadows, warm limestone highlights, teal underground water, and restrained cyan glow around wall-grown crystals. Give stalagmites tapered asymmetric silhouettes and crystals distinct planar faces. Avoid tile borders, rectangular corridors, evenly scattered rocks, bright outlines on every surface, or luminous hazards that obscure the floor. Keep open routes readable around placed formations.
+
+Contract: 960×640 preview, 480×320 native drawing grid, nearest-neighbor display. The current player animator is drawn at the game's normal world size. Room and passage control points, rock silhouettes, palettes and placements are plain editable source in `src/cavern-study.mjs`. This is an isolated composition study, not a finished collision/navigation integration. No shipping runtime imports it. No catalog expansion, package or shortcut changes before visual approval. Preview: `scripts/review-cavern-study.cjs`, muted isolated Electron, output in `test-output/cavern-study`.

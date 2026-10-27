@@ -532,6 +532,7 @@ function drawCaveCreature(c, e, time) {
   c.restore();
 }
 export function wellRoomCamera(p, s, view=WELL_VIEW) {
+  p=view.focus||p;
   const w=view.width/(view.zoom||1),h=(view.height-view.top-view.bottom)/(view.zoom||1);
   return {x: Math.round(clamp(p.roomX - w/2, 0, Math.max(0,s.width * WELL_TILE-w))),
     y: Math.round(clamp(p.roomY - h/2, 0, Math.max(0,s.height * WELL_TILE-h)))};
@@ -582,7 +583,7 @@ export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
   rect(c, ch.x - 2, ch.y - 6, 4, 4, '#edcf80');
   for (const drop of s.drops) rect(c, drop.x - 2, drop.y - 2, 4, 4, ITEMS[drop.type].color);
   for (const e of s.enemies.filter(e => e.hp > 0)) if (known.has(tileIndex(s, Math.floor(e.x / 16), Math.floor(e.y / 16)))) {
-    if(animator)animator.draw(c,e,g.time||0,creatureRenderSize(e.kind));else drawCaveCreature(c,e,g.time||0);
+    if(animator)animator.draw(c,{...e,room:d.id},g.time||0,creatureRenderSize(e.kind));else drawCaveCreature(c,e,g.time||0);
   }
   for (const b of s.bolts) {
     if (b.healing) drawMagicBolt(c, b);

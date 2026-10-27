@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'test-output');
 fs.mkdirSync(out,{recursive:true});
 app.setPath('userData',path.join(out,'cel-shading-profile'));
 app.whenReady().then(async()=>{
-  const win=new BrowserWindow({show:false,width:1280,height:850});
+  const win=new BrowserWindow({show:false,width:1280,height:850});win.webContents.setAudioMuted(true);
   try {
     await win.loadFile(path.join(root,'index.html'),{query:{tools:'1'}});
     await win.webContents.executeJavaScript('window.wildboundBoot.ready');

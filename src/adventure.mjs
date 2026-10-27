@@ -24,10 +24,11 @@ import {waterAt} from './environment.mjs';
 import {tickBoomerangs} from './boomerang.mjs';
 import {anacondaProjectileHit,anacondaBody,anacondaContact} from './anaconda-body.mjs';
 import {interactMystery} from './mysteries.mjs';
-import {toggleHouseLight} from './house-lights.mjs';
+import {toggleWorldLight} from './house-lights.mjs';
 import {inventoryCarryAction} from './inventory-carry.mjs';
 import {playerInput} from './inventory-input.mjs';
 import {magicBoltGlow} from './magic-bolt-render.mjs';
+import {igniteTallGrassAt} from './tall-grass.mjs';
 import {merchantAction,openMerchant} from './traveling-merchant.mjs';
 import {faceOpeningBoard,seatOpeningParty,openingCamera} from './opening-board.mjs';
 import {canHitEventTestBoard} from './event-test-board.mjs';
@@ -39,7 +40,7 @@ import {equipmentNeighbor} from './equipment-navigation.mjs';
 import {tickStorageRoom,resetStorageJump} from './storage-room.mjs';
 import {cancelRobotRepair,robotOnline,openRobotIntroduction} from './storage-repair.mjs';
 import {canDropInventoryItem,dropInventoryItem} from './inventory-world.mjs';
-import {arrowVisualAngle} from './embedded-arrow.mjs';
+import {arrowVisualAngle,recordArrowTrail} from './embedded-arrow.mjs';
 import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
 import {tickMeltingIce} from './ice-crafting.mjs';
 import { takeFromBag } from './inventory-containers.mjs';
@@ -57,7 +58,10 @@ import {lightTorchFire} from './night-equipment.mjs';
 import {templeRoomStep,summonTempleTigers} from './temple.mjs';
 import {interactIce} from './ice-world.mjs';
 import {clearShot} from './navigation.mjs';
+import {controlledFollower,FELINE_CONTROL_KINDS} from './follower-control.mjs';
 import {resolveEnvironment,toggleDoor} from './expansion.mjs';
+import {interactHouseVehicle,openHouseChest,tryInstallVehiclePart,toggleGarageDoor,houseVehicleForPlayer,vehicleDriver} from './house-vehicles.mjs';
+import {interactHouseSurface} from './house-surfaces.mjs';
 import {
   initializeField,
   protectedItem,
@@ -273,6 +277,7 @@ export const adventureMethods = {
     this.loot = [];
     for (const p of this.players) {
       clearCharm(p,false);
+      refreshVitals(p);
       p.hp = p.maxHp;
       p.sealHold = 0;
       p.secondWindUsed = false;
@@ -327,6 +332,7 @@ export const adventureMethods = {
     this.victoryShown = false;
     for (const [i, p] of this.players.entries()) {
       clearCharm(p,false);
+      refreshVitals(p);p.hp=p.maxHp;
       const f = initializeField(p);
       f.boon = null;
       f.boonReady = false;
@@ -475,9 +481,12 @@ export const adventureMethods = {
         p.inventory.findIndex((i) => i?.type === l.type),
       );
     this.onSound("loot",p);
-    p.pickupTime = 0.42;
-    p.pickupItem = l.type;
-    if (["unique", "legendary"].includes(ITEMS[l.type]?.rarity)) p.foundUnique = 1.1;
+    const controlled=controlledFollower(this,p),april=controlled?.villagerId==='april';
+    const looter=april?controlled:p;
+    looter.pickupTime = 0.42;
+    looter.pickupItem = l.type;
+    if (!april&&["unique", "legendary"].includes(ITEMS[l.type]?.rarity)) looter.foundUnique = 1.1;
+    if(april){p.pickupTime=0;p.foundUnique=0;}
     this.loot = this.loot.filter((i) => i !== l);
     this.persist();
     return true;
@@ -684,7 +693,11 @@ export const adventureMethods = {
       if(!reusable)u.panel='chest';
       const list=(u.panel==='pack'?p.inventory:this.storageFor(p))||[],occupied=list.map((item,index)=>item?index:-1).filter(index=>index>=0);
       if(['up','prev','down','next'].includes(action)){
-        if(reusable){const limit=Math.max(24,Math.ceil(list.length/24)*24),columns=u.storageColumns===6?6:4,step=action==='down'?columns:action==='up'?-columns:action==='next'?1:-1;u.index=list.some(Boolean)?(u.index+step+limit)%limit:0;}
+        if(reusable){const limit=Math.max(24,Math.ceil(list.length/24)*24),columns=u.storageColumns===6?6:4;
+          const crossesDown=action==='down'&&u.panel==='pack'&&u.index>=limit-columns;
+          const crossesUp=action==='up'&&u.panel==='chest'&&u.index<columns;
+          if(crossesDown||crossesUp){u.panel=crossesDown?'chest':'pack';const target=u.panel==='pack'?p.inventory:this.storageFor(p);u.index=crossesDown?u.index%columns:Math.max(0,Math.ceil(target.length/24)*24-columns+(u.index%columns));u.notice='';}
+          else {const step=action==='down'?columns:action==='up'?-columns:action==='next'?1:-1;u.index=!list.some(Boolean)?0:['up','down'].includes(action)?Math.max(0,Math.min(limit-1,u.index+step)):(u.index+step+limit)%limit;}}
         else if(['victory','tv-victory'].includes(u.storage)){const limit=Math.max(24,Math.ceil(list.length/24)*24),step=action==='down'?6:action==='up'?-6:action==='next'?1:-1;u.index=list.some(Boolean)?(u.index+step+limit)%limit:0;}
         else {const at=occupied.indexOf(u.index),step=['up','prev'].includes(action)?-1:1;u.index=occupied[(at<0?(step>0?0:occupied.length-1):(at+step+occupied.length)%occupied.length)]??0;}
         return;
@@ -931,6 +944,7 @@ export const adventureMethods = {
     }
     if (action === "use" || action === "equip") {
       const selectedList = u.panel === 'chest' ? storage : p.inventory;
+      if(action==='use'&&u.panel==='pack'&&!storage&&tryInstallVehiclePart(this,p,u.index))return;
       if (u.panel !== 'gear' && ITEMS[selectedList?.[u.index]?.type]?.bag) {
         u.bag = { mode: u.panel, index: u.index }; return;
       }
@@ -1091,13 +1105,21 @@ export const adventureMethods = {
         if(oldWellRoomStep(this,p,i,dt)||templeRoomStep(this,p,i,dt)){p.previousInput={...i};continue;}
         tickStorageRoom(this,p,i,dt,edge('interact'));
       } else if (!p.consumeInput) {
+        const car=houseVehicleForPlayer(this,p);
+        if(car&&vehicleDriver(this,car)===p){
+          p.charge=0;p.bowAiming=false;p.blocking=false;delete p.queuedAttack;
+          if(edge('interact'))interactHouseVehicle(this,p);
+          p.previousInput={...i};continue;
+        }
         if(this.openingBoard)faceOpeningBoard(p);else if (!p.sleeping) updateAimFacing(p, i);
-        p.bowAiming = !!i.block && hasAimWeapon(p) && !p.swimming && !p.sleeping && !this.openingBoard;
+        const aimFollower=controlledFollower(this,p);
+        p.bowAiming = !!(i.block && (hasAimWeapon(p)||['golem','imp','fire_elemental','water_elemental'].includes(aimFollower?.kind)||FELINE_CONTROL_KINDS.has(aimFollower?.kind)) && !p.swimming && !p.sleeping && !this.openingBoard);
         updateBowAimBlend(p,this.openingBoard?{}:i,dt);
         if (edge("interact"))p.interactAnimation=.35;
         if (edge("summon")) this.raiseSkeleton(p);
         if (edge("potion")) this.usePotion(p);
         p.blocking = !!i.block && !hasAimWeapon(p) && itemKind(p.equipment.hand2) === "shield";
+        p.bowAiming = Boolean(p.bowAiming);
         if (
           edge("bait") &&
           (take(p.inventory, "meat") || take(p.inventory, "fruit"))
@@ -1119,15 +1141,29 @@ export const adventureMethods = {
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
         if(!sealPriority&&!this.openingBoard&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
         if (!sealPriority && !this.openingBoard && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
-          const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
+          const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||interactOldWell(this,p)||openMerchant(this,p)||openHouseChest(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
         if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
-        if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui)
+        if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui){
           p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
+          const controlled=controlledFollower(this,p);
+          const feline=FELINE_CONTROL_KINDS.has(controlled?.kind);
+          p.pounceAimActive=!!(feline&&p.bowAiming);
+          if(feline&&p.pounceAimActive){
+            const n=Math.hypot(p.faceX||0,p.faceY||0)||1,range=55+Math.min(1,p.charge/1.2)*125;
+            p.pounceAim={x:p.x+(p.faceX||0)/n*range,y:p.y+(p.faceY||0)/n*range,range};
+          }else p.pounceAim=null;
+          if(controlled?.kind==='golem'&&p.charge>=.52){
+            controlled.state='rocklift';controlled.animationAction=null;controlled.moving=false;
+            controlled.rockGrabCharge=Math.max(0,Math.min(1,(p.charge-.52)/.68));
+            controlled.poseTime=controlled.rockGrabCharge;controlled.motionDuration=.8;controlled.timer=.8;
+          }else if(['imp','fire_elemental','water_elemental'].includes(controlled?.kind)&&p.bowAiming){controlled.moving=false;if(['fire_elemental','water_elemental'].includes(controlled.kind))controlled.fireballsAttack=.08;}
+        }
         if (!i.attack && old.attack && p.charge&&!p.swimming) {
           this.attack(p, p.charge);
           p.charge = 0;
+          p.pounceAimActive=false;p.pounceAim=null;
         }
         const l = this.nearbyLoot(p), embeddedArrow = this.nearbyArrow(p);
         if (!(sealPriority&&i.interact) && edge("loot") && embeddedArrow) this.collectArrow(p, embeddedArrow);
@@ -1141,7 +1177,7 @@ export const adventureMethods = {
         } else {
           if (!sealPriority && old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if(openNpcDialogue(this,p)||interactMystery(this,p)||toggleHouseLight(this,p)){}
+            if(interactHouseVehicle(this,p)||toggleGarageDoor(this,p)||openHouseChest(this,p)||openNpcDialogue(this,p)||interactMystery(this,p)||interactHouseSurface(this,p)||toggleWorldLight(this,p)){}
             else if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)||pickPumpkin(this,p)) {}
@@ -1202,6 +1238,7 @@ export const adventureMethods = {
           distance = Math.min((speed * dt) / steps, bolt.remaining);
         bolt.x += (bolt.vx / speed) * distance;
         bolt.y += (bolt.vy / speed) * distance;
+        if(bolt.fire)igniteTallGrassAt(this,bolt.x,bolt.y);
         bolt.remaining -= distance;
         if(damageStructureProjectile(this,bolt)){this.persist();bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true)){bolt.life=0;finishMagicBolt(this,bolt,true);break;}
@@ -1229,6 +1266,7 @@ export const adventureMethods = {
     this.baits = this.baits.filter((b) => b.life > 0);
     tickBoomerangs(this,dt);
     for (const a of this.arrows) {
+      recordArrowTrail(a,this.time-dt);
       if (a.stuck) {
         if (a.enemy!==undefined&&a.enemy!==null) {
           const e = this.enemies.find((e) => e.id === a.enemy);
@@ -1250,10 +1288,12 @@ export const adventureMethods = {
         if(a.bansheeFrost){a.rangeLeft=(a.rangeLeft??460)-Math.hypot(a.vx,a.vy)*s;if(a.rangeLeft<=0){a.remove=true;a.stuck=true;break;}}
         const gravity=a.gravity??rules.arrowGravity;
         a.z += a.vz * s-.5*gravity*s*s;
+        recordArrowTrail(a,this.time-dt+(n+1)*s);
         a.vz -= gravity * s;
         if(this.projectileBlocked(a.x,a.y,1,true)){
           const impactHeight=a.z,impactX=a.x,impactY=a.y;
           a.angle=arrowVisualAngle(a);
+          if(a.rock)this.effects.push({particle:'rock-fragments',x:impactX,y:impactY-impactHeight,life:.42,duration:.42,seed:a.owner||0});
           const prop=arrowScenery(this,impactX,impactY);
           a.stuck=true;a.impactTime=this.time;frostImpact(this,a);
           if(prop?.kind==='rock'&&!a.rock&&!a.ice){
@@ -1270,6 +1310,7 @@ export const adventureMethods = {
               : dist(e,a)<19 && a.z<38) && clearShot(this,a,e));
         if (target && (target.practiceTarget || a.z < 38)) {
           this.onSound("hit",a);
+          if(a.rock)this.effects.push({particle:'rock-fragments',x:a.x,y:a.y-a.z,life:.42,duration:.42,seed:a.owner||0});
           if (a.hostile || this.players.includes(target)) {
             if (this.shieldBlocks(target, a)) {
               this.onSound("shield",target);
@@ -1307,6 +1348,7 @@ export const adventureMethods = {
           this.projectileBlocked(a.x, a.y, 1,true)
         ) {
           a.angle=arrowVisualAngle(a);
+          if(a.rock)this.effects.push({particle:'rock-fragments',x:a.x,y:a.y-a.z,life:.42,duration:.42,seed:a.owner||0});
           a.stuck = true;a.impactTime=this.time;
           a.z = 0;
           a.embedDepth = a.embedDepth || 7;

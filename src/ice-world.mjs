@@ -36,6 +36,8 @@ export function iceWorld(seed){
  return {terrain,scenery,house:null,webs:[],snowDepth:0};
 }
 export function snowAt(g,x,y){if(g.generatedEnvironment!=='ice')return 0;const depth=g.snowDepth||0;return Math.min(1,depth*(.75+hash(Math.floor(x/64),Math.floor(y/64))*.25));}
+export function snowCoverDepth(g,x,y){return snowAt(g,x,y)*18;}
+export function snowShadowFactor(g,x,y){return 1-snowAt(g,x,y)*.84;}
 export function iceMotion(g,p,mx,my,speed,dt){
  const tile=g.terrain?.[Math.floor(p.y/32)*50+Math.floor(p.x/32)];
  if(g.generatedEnvironment!=='ice'||tile!=='ice'){p.slideX=p.slideY=0;return {dx:mx*speed*dt,dy:my*speed*dt};}
@@ -56,8 +58,8 @@ export function interactIce(g,p){
 }
 export function tickSnow(g,dt){if(g.generatedEnvironment!=='ice'){g.snowDepth=0;return;}if(g.weather?.type==='blizzard')g.snowDepth=Math.min(1,(g.snowDepth||0)+dt/22);else g.snowDepth=Math.max(0,(g.snowDepth||0)-dt/150);}
 export function drawSnowGround(c,g){if(!g.snowDepth)return;c.save();const depth=g.snowDepth;c.fillStyle='#e7f4f7';c.globalAlpha=depth*.18;c.fillRect(0,0,1600,1600);c.globalAlpha=depth*.5;c.strokeStyle='#ffffff';c.lineWidth=1;for(let y=0;y<25;y++)for(let x=0;x<25;x++){const h=hash(x,y);if(h>.58){const ox=hash(x+8,y)-.5,oy=hash(x,y+8)-.5;c.beginPath();c.moveTo(x*64+8+ox*8,y*64+30+oy*5);c.quadraticCurveTo(x*64+28+ox*8,y*64+20-h*6+oy*5,x*64+46+ox*8,y*64+28+oy*5);c.stroke();}}c.restore();}
-export function clipSnow(c,g,x,base,width,reach=300){const d=snowAt(g,x,base)*7;if(d<.1)return;c.beginPath();c.rect(x-width/2,base-reach,width,reach-d);c.clip();}
-export function snowRim(c,g,x,base,width){const d=snowAt(g,x,base)*7;if(d<.1)return;c.fillStyle='#e3f0f3';c.beginPath();c.ellipse(x,base-d+1,width/2,Math.max(1,d*.3),0,0,Math.PI*2);c.fill();}
+export function clipSnow(c,g,x,base,width,reach=300){const d=snowCoverDepth(g,x,base);if(d<.1)return;c.beginPath();c.rect(x-width/2,base-reach,width,reach-d);c.clip();}
+export function snowRim(c,g,x,base,width){const d=snowCoverDepth(g,x,base);if(d<.1)return;c.save();c.fillStyle='#dcecf0';c.beginPath();c.ellipse(x,base-d+2,width/2,Math.max(2,d*.38),0,0,Math.PI*2);c.fill();c.strokeStyle='#f7ffff';c.globalAlpha=.82;c.lineWidth=Math.max(1,Math.min(3,d*.12));c.beginPath();c.ellipse(x,base-d,width*.46,Math.max(1,d*.26),0,Math.PI*.08,Math.PI*.92);c.stroke();c.restore();}
 export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return false;
  const b=iceBase(p),scale=p.size/64;if(!p.falling&&!p.used&&['ice_spire','frost_shrub','frozen_log'].includes(p.kind)&&drawBiomeSprite(c,p.kind,b.x,b.y,p.size,p.kind==='ice_spire'?p.size*1.3:p.size))return true;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
  const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},poly=(points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};

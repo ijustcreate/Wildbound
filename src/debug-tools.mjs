@@ -40,6 +40,15 @@ export function installDebugTools(ctx) {
       const press=(pad,button)=>{pads[pad].buttons[button]={pressed:true,value:1};step();pads[pad].buttons[button]={pressed:false,value:0};step();};
       step();const [a,b]=heroes.map(p=>lobby.nodes.get(p.id));
       if(!a.textContent.includes('A: choose')||!b.textContent.includes('B: choose'))throw Error('Creator families wrong');
+      const previewStage=a.querySelector('.creation-preview-stage'),colorRows=a.querySelector('.creation-colors'),rotateButton=a.querySelector('[aria-label="Rotate character view"]');
+      if(!previewStage||!rotateButton||colorRows?.querySelectorAll('button').length!==5||a.querySelector('[aria-label="Randomize appearance"]'))throw Error('Creator preview controls do not match the five-color layout');
+      const stageRect=previewStage.getBoundingClientRect(),colorsRect=colorRows.getBoundingClientRect();
+      if(stageRect.width<200||Math.abs((stageRect.top+stageRect.height/2)-(colorsRect.top+colorsRect.height/2))>8)throw Error('Creator preview is too small or color rows are not vertically centered');
+      const fullPreview=a.querySelector('.creation-preview-stage canvas'),frontView=fullPreview.toDataURL();rotateButton.click();if(fullPreview.toDataURL()===frontView)throw Error('Creator rotate button did not change the preview direction');
+      const focusButtons=[...a.querySelectorAll('button')],skinIndex=focusButtons.findIndex(q=>q.dataset.label==='Skin'),hairColorIndex=focusButtons.findIndex(q=>q.dataset.label==='Hair color');
+      const creatorState=lobby.state.members.get(heroes[0].id);
+      creatorState.focus=skinIndex;a.creationNavigate({y:1});if(creatorState.focus!==hairColorIndex)throw Error('Creator down navigation did not follow the color column');
+      creatorState.focus=skinIndex;a.creationNavigate({x:-1});if(focusButtons[creatorState.focus]!==rotateButton)throw Error('Creator left navigation did not follow the preview column');
       const row=(panel,label)=>[...panel.querySelectorAll('.creation-select-row')].find(q=>q.textContent.startsWith(label));
       row(b,'Hair style').click();
       if(b.querySelector('.creation-carousel-count')?.textContent!=='2 / 19')throw Error('Hair carousel missing');
@@ -47,8 +56,10 @@ export function installDebugTools(ctx) {
       b.querySelector('[aria-label="Next hair style"]').click();if(c.toDataURL()===before)throw Error('Hair preview did not update');
       press(1,5);if(!b.querySelector('.creation-popup')||c.toDataURL()===before)throw Error('Preview rotation closed picker');
       a.querySelector('button').focus();const qBefore=JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook);press(1,13);if(JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook)!==qBefore)throw Error('Other controller changed look');
-      press(1,1);row(b,'Face details').click();if(b.querySelector('.creation-carousel-count')?.textContent!=='1 / 8')throw Error('Face carousel missing');
-      b.querySelector('[aria-label="Next face details"]').click();if(lobby.state.members.get(heroes[1].id).creationLook.face!=='freckles')throw Error('Face selection not applied');press(1,1);
+      press(1,1);row(b,'Face details').click();if(b.querySelector('.creation-carousel-count')?.textContent!=='1 / 9')throw Error('Face carousel missing');
+      b.querySelector('[aria-label="Next face details"]').click();if(lobby.state.members.get(heroes[1].id).creationLook.face!=='freckles')throw Error('Face selection not applied');
+      b.querySelector('[aria-label="Next face details"]').click();b.querySelector('[aria-label="Next face details"]').click();
+      if(lobby.state.members.get(heroes[1].id).creationLook.face!=='glasses')throw Error('Glasses selection not applied');press(1,1);
       b.querySelector('.creation-name button').click();let kb=document.querySelector('#controller-keyboard');
       if(kb.dataset.ownerDevice!=='pad:1'||!kb.textContent.includes('Y: delete')||!kb.textContent.includes('+: done'))throw Error('Keyboard labels/owner wrong');
       const nameBefore=kb.querySelector('output').textContent;press(0,0);if(kb.querySelector('output').textContent!==nameBefore)throw Error('Wrong owner typed');
@@ -60,7 +71,7 @@ export function installDebugTools(ctx) {
       dialog.querySelector('[aria-label="Hair style"]').focus();step();if(dialog.querySelector('canvas').dataset.previewMode!=='hair')throw Error('Drop-in hair close-up missing');
       dialog.querySelector('[aria-label="Face details"]').focus();step();if(dialog.querySelector('canvas').dataset.previewMode!=='face'||!dialog.textContent.includes('B: choose'))throw Error('Drop-in face close-up/family missing');dialog.querySelector('.name-cancel').click();
       row(b,'Hair style').click();window.creatorVerification={g,lobby,heroes,a,b,press};
-      return {checks:'Actual inputFrame: Xbox/Switch prompts, 19 hair and 8 face carousel options, live close-ups/rotation, independent look control, keyboard cursor and owner-only typing/delete/Plus commit; drop-in creator close-ups'};
+      return {checks:'Actual inputFrame: Xbox/Switch prompts, 19 hair and 9 face carousel options including glasses, live close-ups/rotation, independent look control, keyboard cursor and owner-only typing/delete/Plus commit; drop-in creator close-ups'};
     }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();ctx.keys.clear();}
   };
   window.verifyStarterChestControls=async()=>{

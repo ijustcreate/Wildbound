@@ -660,12 +660,13 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   // Migrate missing built-in clips in memory; never replace authored keys/art.
   d={...d};
   for(const key of ['player','imp','zombie','ghost','succubus','banshee','warlock'])if(d[key])d[key]=upgradePlayerMotion(d[key]);
-  // Older authored villager rigs predate this built-in resting clip. Add only
-  // the missing default in memory; keep every authored pose and stored file.
-  if (d.villager && !d.villager.clips?.sit) {
+  // Older authored villager rigs predate built-in resting/pickup clips. Add
+  // only missing defaults in memory; keep every authored pose and stored file.
+  if (d.villager && ['sit','pickup'].some(name=>!d.villager.clips?.[name])) {
     const villager = structuredClone(d.villager);
     villager.clips ||= {};
-    villager.clips.sit = structuredClone(defaultVillagerMotion().clips.sit);
+    const defaults=defaultVillagerMotion();
+    for(const name of ['sit','pickup'])if(!villager.clips[name])villager.clips[name]=structuredClone(defaults.clips[name]);
     d = { ...d, villager };
   }
   if (Object.hasOwn(d, 'npcQuests') && !validateNpcQuestConfig(d.npcQuests))
@@ -826,7 +827,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
         'shore_goblin',
         'slime',
         'beholder','lesser_beholder','burrower',
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||e.environment==='graveyard'||['beholder','lesser_beholder','burrower','slime'].includes(e.kind))&&!d.events.some(old=>old.name===e.name),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||['graveyard','swamp','caverns','shadow'].includes(e.environment)||['beholder','lesser_beholder','burrower','slime'].includes(e.kind))&&!d.events.some(old=>old.name===e.name),
     );
     events.splice(0, events.length, ...importedEvents, ...added);
   }

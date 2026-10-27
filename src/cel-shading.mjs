@@ -37,10 +37,8 @@ void main(){
   float ol=luma(outer);
   vec3 edge=(ol<lo||ol>hi)?inner:outer;
   c=mix(c,edge,smoothstep(.025,.10,hi-lo));
-  // Eight luminance bands preserve hue. Soft band boundaries avoid flicker.
-  float light=luma(c),scaled=light*8.;
-  float band=(floor(scaled)+smoothstep(.30,.70,fract(scaled)))/8.;
-  c*=mix(1.,band/max(light,.015),.55);
+  // Native cutout surfaces already own their shape boundaries. This final
+  // presentation pass only antialiases; it must not recolor their artwork.
   gl_FragColor=vec4(clamp(c,0.,1.),1.);
 }`;
 

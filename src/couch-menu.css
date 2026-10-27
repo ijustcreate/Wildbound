@@ -82,7 +82,7 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 #event-card { top:max(var(--event-top,64px),calc(124px * var(--ui-scale,1))); }
 /* Compact vertical inventory: equipment above the backpack. */
 #hero-overlays { top:112px; bottom:68px; }
-.hero-panel.storage-session:not(.vending-panel) { background:#10251ff5; border:1px solid #839985; border-radius:8px; padding:10px; }
+.hero-panel.storage-session:not(.vending-panel):not(.chest-redesign) { background:#10251ff5; border:1px solid #839985; border-radius:8px; padding:10px; }
 .hero-panel.storage-session > header { padding-right:55px; font: bold 13px system-ui; }
 .hero-panel.storage-session > button[data-action="close"] { position:absolute; top:6px; right:6px; width:48px; min-height:26px; font-size:0; padding:3px; }
 .hero-panel.storage-session > button[data-action="close"]::after { content:'✕ B'; font:12px system-ui; }
@@ -162,11 +162,11 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 .hero-panel .storage-sheet > nav { height:auto; min-height:0; flex-wrap:wrap; }
 
 /* Keep a single-player inventory fully visible on short screens. */
-.hero-panel.storage-session:not(.vending-panel) {
+.hero-panel.storage-session:not(.vending-panel):not(.chest-redesign) {
   overflow: hidden;
   padding: 6px;
 }
-.hero-panel.storage-session > header {
+.hero-panel.storage-session:not(.chest-redesign) > header {
   font-size: 11px;
   line-height: 1.1;
   margin: 0 0 2px;
@@ -175,14 +175,14 @@ body[data-screen="lobby"] #site-header { display:none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.hero-panel.storage-session > button[data-action="close"] {
+.hero-panel.storage-session:not(.chest-redesign) > button[data-action="close"] {
   top: 3px;
   right: 3px;
   width: 40px;
   min-height: 22px;
   padding: 2px;
 }
-.hero-panel.storage-session > button[data-action="close"]::after {
+.hero-panel.storage-session:not(.chest-redesign) > button[data-action="close"]::after {
   font-size: 10px;
 }
 .hero-panel.storage-session .coin-balance {

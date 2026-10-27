@@ -5,21 +5,24 @@ $ErrorActionPreference = 'Stop'
 try {
   $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
   $version = [string](Get-Content -Raw (Join-Path $root 'package.json') | ConvertFrom-Json).version
-  $buildDir = Join-Path $root "dist\$version\Wildbound-win32-x64"
-  $exe = Join-Path $buildDir 'Wildbound.exe'
-  $manifestPath = Join-Path $buildDir 'wildbound-build.json'
-
-  if (-not (Test-Path -LiteralPath $exe -PathType Leaf) -or -not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-    throw "No verified desktop build for source version $version. Run node scripts/package.cjs from $root."
-  }
-  $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-  if ([string]$manifest.version -ne $version -or $manifest.preview) {
-    throw "Build identity does not match source version $version. Rebuild with node scripts/package.cjs."
-  }
   $commit = Get-WildboundCheckoutCommit -Root $root
-  if ($commit -ne [string]$manifest.sourceCommit) {
-    throw "The desktop build is from commit $($manifest.sourceCommit). This checkout is at $commit. Rebuild with node scripts/package.cjs."
-  }
+  $candidates = @(Get-ChildItem -LiteralPath (Join-Path $root 'dist') -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "$version-*" } |
+    ForEach-Object {
+      $dir = Join-Path $_.FullName 'Wildbound-win32-x64'
+      $manifestPath = Join-Path $dir 'wildbound-build.json'
+      if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+        if ([string]$manifest.version -eq $version -and -not $manifest.preview -and [string]$manifest.sourceCommit -eq $commit -and (Test-Path -LiteralPath (Join-Path $dir 'Wildbound.exe') -PathType Leaf)) {
+          [pscustomobject]@{ Dir=$dir; Manifest=$manifest }
+        }
+      }
+    } | Sort-Object { $_.Manifest.builtAt } -Descending)
+  $selected = $candidates | Select-Object -First 1
+  if (-not $selected) { throw "No verified desktop build for source version $version and checkout $commit. Run node scripts/package.cjs from $root." }
+  $buildDir = $selected.Dir
+  $exe = Join-Path $buildDir 'Wildbound.exe'
+  $manifest = $selected.Manifest
   if ($manifest.sourceDirty) {
     Write-Warning 'This build was packaged with modified tracked source. Its commit alone does not identify every change.'
   }

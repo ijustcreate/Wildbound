@@ -4,8 +4,14 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 require('./check-syntax.cjs').checkSyntax();
 const preview = process.argv.includes('--preview');
-const buildFolder = preview ? 'night-hunt-' + new Date().toISOString().replace(/[:.]/g, '-') : require('../package.json').version;
+const version = require('../package.json').version;
+// Never replace a normal development build: an older Electron executable may
+// still be open while the next fix is being tested.
+const buildFolder = preview
+  ? 'night-hunt-' + new Date().toISOString().replace(/[:.]/g, '-')
+  : version + '-' + new Date().toISOString().replace(/[:.]/g, '-');
 packager({
+  tmpdir:fs.mkdtempSync(path.join(require('node:os').tmpdir(),'wildbound-worlds-package-')),
   dir: path.resolve(__dirname, ".."),
   out: path.join("dist", buildFolder),
   name: "Wildbound",
@@ -15,7 +21,7 @@ packager({
   // The renderer dynamically imports app.mjs. Keep the app as a normal
   // directory so Electron's file:// module loader can resolve that graph.
   asar: false,
-  overwrite: !preview,
+  overwrite: false,
   // Stage real production packages, resolving npm or pnpm links at the source.
   // The pruner assumes a flattened installation and fails on pnpm's virtual
   // dependency tree. Development tools are excluded before copying instead.

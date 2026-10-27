@@ -35,7 +35,7 @@ test('40-pixel sections accumulate sparse damage and invalidate collision only o
   assert.deepEqual(b.sectionDamage, {1: {damage: 35, broken: false}});
   assert.equal(g.house.destructionRevision || 0, 0);
   assert.equal(sectionBlocked(b, 360, 340, 8), true);
-  assert.equal(damageStructureProjectile(g, bolt({damage: 75})), true);
+  assert.equal(damageStructureProjectile(g, bolt({damage: 165})), true);
   assert.equal(g.house.destructionRevision, 1);
   assert.equal(sectionBlocked(b, 360, 340, 8), false);
   assert.equal(sectionBlocked(b, 360, 300, 8), true);
@@ -47,21 +47,25 @@ test('40-pixel sections accumulate sparse damage and invalidate collision only o
   assert.equal(JSON.stringify(b), before);
   assert.equal(destructionStats(g).particles, particles);
 });
-test('A pane shatters audibly even when it breaks immediately after a lighter impact',()=>{
+test('A window shatters in one hit and does not accept a second hit',()=>{
  const {g}=setup(),sounds=[];g.onSound=cue=>sounds.push(cue);
  g.house.walls.push(wall({kind:'window'}));
  assert.equal(damageStructureProjectile(g,bolt({damage:10})),true);
- g.time=.01;assert.equal(damageStructureProjectile(g,bolt({damage:20})),true);
- assert.deepEqual(sounds,['hit','glassBreak']);
+ g.time=.01;assert.equal(damageStructureProjectile(g,bolt({damage:20})),false);
+ assert.deepEqual(sounds,['glassBreak']);
+});
+test('One sword strike shatters an overlapping window without also damaging its wall',()=>{
+ const {g,p}=setup(),pane=wall({kind:'window'}),backing=wall();g.house.walls.push(backing,pane);
+ g.attack(p);assert.equal(pane.sectionDamage[1].broken,true);assert.equal(backing.sectionDamage,undefined);
 });
 
 test('the final partial-width cell must break before the entire asset is destroyed', () => {
   const {g} = setup(), b = wall({w: 95, h: 20});
   g.house.walls.push(b);
-  for (const x of [360, 400]) assert.equal(damageStructureProjectile(g, bolt({x, y: 290})), true);
+  for (const x of [360, 400]) assert.equal(damageStructureProjectile(g, bolt({x, y: 290,damage:200})), true);
   assert.equal(b.destroyed || false, false);
   assert.equal(sectionBlocked(b, 427, 290, 2), true);
-  assert.equal(damageStructureProjectile(g, bolt({x: 427, y: 290})), true);
+  assert.equal(damageStructureProjectile(g, bolt({x: 427, y: 290,damage:200})), true);
   assert.equal(b.destroyed, true);
   assert.equal(Object.keys(b.sectionDamage).length, 3);
   assert.equal(g.house.destructionRevision, 3);
@@ -77,7 +81,7 @@ test('melee strikes the nearest exposed cell and respects facing and intervening
   assert.equal(damageStructureMelee(g, p, 20, 100), true);
   assert.deepEqual(front.sectionDamage, {1: {damage: 20, broken: false}});
   assert.equal(behind.sectionDamage, undefined);
-  assert.equal(damageStructureProjectile(g, bolt({damage: 90})), true);
+  assert.equal(damageStructureProjectile(g, bolt({damage: 180})), true);
   assert.equal(sectionBlocked(front, 360, 340, 8), false);
   p.y = 300;
   assert.equal(damageStructureMelee(g, p, 20, 100), true);
@@ -131,6 +135,27 @@ test('ordinary Game sword attacks create a local passable gap with solid neighbo
   }
   assert.deepEqual(Object.keys(b.sectionDamage), ['1']);
 });
+test('walls take ten melee strikes, fences/decor take five, and cracks appear at the requested hit counts',()=>{
+ const hit=(g,b)=>damageStructureMelee(g,{x:300,y:340,faceX:1,faceY:0},80,100);
+ const {g,p}=setup(),b=wall();g.house.walls.push(b);
+ for(let n=1;n<=2;n++){assert.equal(hit(g,b),true);assert.equal(b.sectionDamage[1].broken,false);}
+ assert.equal(b.sectionDamage[1].damage,40);
+ for(let n=3;n<=9;n++)hit(g,b);assert.equal(b.sectionDamage[1].broken,false);
+ hit(g,b);assert.equal(b.sectionDamage[1].damage,200);assert.equal(b.sectionDamage[1].broken,true);
+ for(const prop of [{kind:'fence',x:340,y:280,w:40,h:16,destructionGroup:'walls'},{kind:'table',x:340,y:280,w:40,h:16,destructionGroup:'furniture'}]){
+  const q=setup(),item=prop.kind==='table'?q.g.house.furniture:q.g.house.walls;item.push({...prop});const target=item[0];
+  for(let n=1;n<=4;n++){assert.equal(damageStructureMelee(q.g,{...p,x:300,y:340,faceX:1,faceY:0},60,100),true);assert.equal(target.sectionDamage[0].broken,false);}
+  damageStructureMelee(q.g,{...p,x:300,y:340,faceX:1,faceY:0},60,100);assert.equal(target.sectionDamage[0].damage,100);assert.equal(target.sectionDamage[0].broken,true);
+ }
+});
+test('Wall cracks appear on hit three; fence and furniture cracks appear on hit two',()=>{
+ const crackCount=b=>{let paths=0;const c=new Proxy({},{get:(_t,k)=>k==='beginPath'?()=>paths++:(()=>{}),set:()=>true});drawBreakable(c,{house:{temple:false}},b,()=>{});return paths;};
+ for(const [prop,threshold]of [[wall(),3],[{kind:'fence',x:340,y:280,w:40,h:16},2],[{kind:'chair',x:340,y:280,w:40,h:16},2]]){
+  const {g}=setup(),target={...prop};(target.kind==='chair'?g.house.furniture:g.house.walls).push(target);
+  for(let n=1;n<threshold;n++){damageStructureMelee(g,{x:300,y:340,faceX:1,faceY:0},20,100);assert.equal(crackCount(target),1,target.kind+' should not crack yet');}
+  damageStructureMelee(g,{x:300,y:340,faceX:1,faceY:0},20,100);assert.equal(crackCount(target),2,target.kind+' should show cracks at hit '+threshold);
+ }
+});
 
 test('real charged Game bolts damage walls; uncharged, healing and friendship casts do not', () => {
   for (const [item, charge, damaging] of [['wand', 1.2, true], ['wand', 0, false],
@@ -156,18 +181,18 @@ test('real charged Game bolts damage walls; uncharged, healing and friendship ca
 test('session JSON round trips retain cracks and gaps, resume damage, and omit cosmetic debris', () => {
   const {g} = setup(), b = wall();
   g.house.walls.push(b);
-  damageStructureProjectile(g, bolt());
+  damageStructureProjectile(g, bolt({damage:200}));
   damageStructureProjectile(g, bolt({y: 380, damage: 45}));
   assert.ok(destructionStats(g).particles > 0);
   const saved = JSON.parse(JSON.stringify(saveSession(g)));
   assert.deepEqual(saved.state.house.walls[0].sectionDamage, {
-    1: {damage: 110, broken: true}, 2: {damage: 45, broken: false},
+    1: {damage: 200, broken: true}, 2: {damage: 45, broken: false},
   });
   const loaded = restoreSession(saved), restored = loaded.house.walls[0];
   assert.equal(destructionStats(loaded).particles, 0);
   assert.equal(sectionBlocked(restored, 360, 340, 8), false);
   assert.equal(sectionBlocked(restored, 360, 380, 8), true);
-  assert.equal(damageStructureProjectile(loaded, bolt({y: 380, damage: 65})), true);
+  assert.equal(damageStructureProjectile(loaded, bolt({y: 380, damage: 155})), true);
   assert.equal(restored.sectionDamage[2].broken, true);
   assert.equal(loaded.house.destructionRevision, 2);
   assert.equal(restored.sectionDamage[0], undefined);
@@ -234,7 +259,7 @@ test('many distinct impacts cap debris at 160 without skipping damage, and expir
   const {g} = setup();
   for (let n = 0; n < 80; n++) g.house.walls.push(wall({x: 100 + n * 12, y: 200, w: 8, h: 8}));
   for (const b of g.house.walls) {
-    assert.equal(damageStructureProjectile(g, bolt({x: b.x + 4, y: 204, size: 2})), true);
+    assert.equal(damageStructureProjectile(g, bolt({x: b.x + 4, y: 204, size: 2,damage:200})), true);
     assert.equal(b.destroyed, true);
     assert.ok(destructionStats(g).particles <= 160);
   }
@@ -246,14 +271,14 @@ test('many distinct impacts cap debris at 160 without skipping damage, and expir
   assert.equal(destructionStats(g).particles, 0);
   const fresh = wall();
   g.house.walls.push(fresh);
-  assert.equal(damageStructureProjectile(g, bolt()), true);
+  assert.equal(damageStructureProjectile(g, bolt({damage:200})), true);
   assert.ok(destructionStats(g).particles > 0);
 });
 
 test('headless breakable rendering clips surviving cells and omits the broken section', () => {
   const {g} = setup(), b = wall();
   g.house.walls.push(b);
-  damageStructureProjectile(g, bolt());
+  damageStructureProjectile(g, bolt({damage:200}));
   const rectangles = [], painted = [], debris = [];
   let current;
   const c = {save() {}, restore() {}, beginPath() {}, clip() {},

@@ -14,3 +14,11 @@ export function drawBowAim(ctx,actor,scale=1,time=0){
   ctx.lineTo(x+dx*64*scale,y+dy*64*scale);ctx.stroke();ctx.setLineDash([]);
   ctx.beginPath();ctx.arc(x+dx*64*scale,y+dy*64*scale,2,0,Math.PI*2);ctx.stroke();}ctx.restore();
 }
+
+export function drawPounceAim(ctx,actor){
+ const target=actor?.pounceAim;if(!target||actor.hp<=0)return;
+ ctx.save();ctx.strokeStyle='#9ff5d7';ctx.globalAlpha=.92;ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+ ctx.beginPath();ctx.moveTo(actor.x,actor.y);ctx.lineTo(target.x,target.y);ctx.stroke();ctx.setLineDash([]);
+ const x=Math.round(target.x),y=Math.round(target.y);ctx.strokeRect(x-7,y-7,14,14);
+ ctx.fillStyle='#bdf9e4';ctx.fillRect(x-1,y-1,2,2);ctx.restore();
+}

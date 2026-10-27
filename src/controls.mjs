@@ -17,10 +17,18 @@ export const PAD_NAMES = [
   "D-right",
 ];
 export const DEFAULT_MAPPING = {attack:2,jump:0,dodge:7,loot:1,trap:10,interact:3,pause:9,board:4,potion:5,block:6,inventory:8,portal:12,bait:13,field:11};
+// Driving uses physical face positions, independently of combat remapping.
+export function vehiclePadInput(pad) {
+  const pedal=index=>Math.max(0,Math.min(1,pad.buttons[index]?.value ?? (pad.buttons[index]?.pressed?1:0)));
+  return {vehicleGas:pedal(0),vehicleBrake:pedal(2),vehicleReverse:(pad.axes[1]||0)>.5};
+}
+export function lobbyPadInput(pad){
+  return {dodge:!!pad.buttons[5]?.pressed,portal:!!pad.buttons[12]?.pressed,potion:!!pad.buttons[7]?.pressed};
+}
 const LEGACY_MAPPING = {...DEFAULT_MAPPING,attack:0,jump:1,loot:2};
 export function controllerFamily(pad) {
   const id = String(pad?.id || '').toLowerCase();
-  const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id);
+  const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id)||globalThis.localStorage?.getItem('wildbound-controller-family');
   if(['switch','xbox','playstation','generic'].includes(override))return override;
   if (/switch|nintendo|joy[- ]?con|pro controller|057e/.test(id)) return 'switch';
   if (/xbox|xinput|360/.test(id)) return 'xbox';
@@ -73,6 +81,7 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
       row.device.startsWith('pad:')?'Controller disconnected':row.device;card.append(desc);
     const list=document.createElement('dl');
       const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'R · set skill: Tame / Raise Skeleton','Follower control':'RB · cycle followers',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
+    if(row.device!=='keyboard'){const names=controllerButtonNames(row.pad||'generic');Object.assign(bindings,{'Lobby dash':names[5],'Lobby storage portal':names[12],'Lobby potion':names[7]});}
     for(const [action,key] of Object.entries(bindings)){const term=document.createElement('dt'),value=document.createElement('dd');term.textContent=action;value.textContent=key;list.append(term,value);}
     card.append(list);root.append(card);
     const family=row.device==='keyboard'?'keyboard':row.pad?controllerFamily(row.pad):'xbox';

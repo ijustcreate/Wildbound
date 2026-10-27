@@ -115,6 +115,9 @@ test("Snake coils, plant stays rooted, golem raises fists and trap closes jaws",
   assert.ok(
     poseAt(golem, "windup", 7).handR[2] > poseAt(golem, "windup", 0).handR[2],
   );
+  assert.ok(poseAt(golem,"grab",2).handR[2]<poseAt(golem,"grab",0).handR[2],'golem grab bends down to lift the stone');
+  assert.ok(poseAt(golem,"grab",7).handR[2]>poseAt(golem,"grab",0).handR[2],'golem holds the lifted stone overhead');
+  assert.ok(poseAt(golem,"throw",7).handR[2]<poseAt(golem,"throw",0).handR[2],'golem throw follows through after releasing the overhead stone');
   assert.equal(creatureAction("monkey", { throwTime: 0.3 }), "throw");
   assert.equal(
     creatureAction("golem", { state: "recover", attack: 0.3 }),

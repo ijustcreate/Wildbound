@@ -1,4 +1,7 @@
+import {waterAt} from './environment.mjs';
+
 const ownerKey = (p) => String(p.profileId || p.id);
+export const FELINE_CONTROL_KINDS = new Set(['lion','tiger','panther','white_lion','snow_leopard']);
 
 export function ownedFollowers(game, player) {
   const candidates = [
@@ -49,6 +52,13 @@ function beginControl(player, follower) {
   // Route the existing inventory UI to the controlled creature's own bag.
   // Empty loadout slots keep the hero's equipment and backpack out of view.
   follower.inventory = Array.isArray(follower.inventory) ? follower.inventory : [];
+  follower.equipment ||= {};
+  if (follower.villagerId === 'april' && (!follower.equipment.hand1 || follower.equipment.hand1 === 'sword'))
+    follower.equipment.hand1 = 'april_blade';
+  follower.animationAction = null;
+  follower.poseTime = null;
+  delete follower.gestureAge;
+  delete follower.captainAction;
   player.inventory = follower.inventory;
   player.equipment = follower.equipment ||= {};
   player.equipmentSockets = follower.equipmentSockets ||= {};
@@ -101,23 +111,44 @@ export function cycleFollowerControl(game, player) {
 export function syncControlledFollower(game, player, dt = 1 / 60) {
   const follower = controlledFollower(game, player);
   if (!follower) return null;
+  follower.pickupTime=Math.max(0,(follower.pickupTime||0)-dt);
   follower.controlledBy = player.id;
   follower.faceX = player.faceX;
   follower.faceY = player.faceY;
   follower.moving = player.moving;
   follower.walking = player.walking;
   follower.step = player.step;
-  follower.swimming = !!player.swimming;
+  if (follower.villagerId === 'april' && !follower.controlledAttack) {
+    if (follower.jumpHeight > 0) {
+      follower.animationAction = 'jump';
+      follower.poseTime = null;
+    } else if (follower.animationAction === 'jump') {
+      follower.animationAction = null;
+      follower.poseTime = null;
+    }
+  }
+  for (const key of ['attack','attackDuration','attackClip','attackArc','attackReach','spin','meleeSweep','bowAiming','bowAimBlend','pounceAim'])
+    follower[key] = player[key] || (typeof player[key] === 'boolean' ? false : 0);
   follower.room = player.room || null;
   if (player.room) {
     follower.roomX = player.roomX;
     follower.roomY = player.roomY;
-  } else {
+  } else if(follower.controlledAttack?.phase!=='pounce') {
     delete follower.roomX;
     delete follower.roomY;
     follower.x = player.x;
     follower.y = player.y;
   }
+  if (follower.villagerId === 'april') {
+    // April's swim state follows her actual floor tile, not the displaced
+    // player's cached water flag. The hero slot temporarily carries inputs
+    // and may have entered control (or jumped) in a different water state.
+    const inWater = !follower.room && waterAt(game, follower.x, follower.y) === 'water' &&
+      !(follower.jumpHeight > 0 || follower.groundHeight > 0) && follower.hp > 0;
+    follower.swimming = inWater;
+    player.swimming = inWater;
+    if (!inWater) player.diveDepth = 0;
+  } else follower.swimming = !!player.swimming;
 
   // Keep the real hero visible as a little companion behind the controlled
   // creature. This detached position is only for rendering until control ends.
@@ -137,6 +168,12 @@ export function syncControlledFollower(game, player, dt = 1 / 60) {
       pet.moving = step > 0.01;
       pet.step = (pet.step || 0) + step * .13;
     }
+    // The displaced player is still rendered as a swimming companion while
+    // following a swimmer; carry the water state into its presentation copy.
+    pet.swimming=!!player.swimming;
+    pet.diveDepth=player.diveDepth||0;
+    pet.breath=player.breath;
+    pet.breathVisible=player.breathVisible;
     pet.room = null;
   } else {
     player.controlPetPosition.room = player.room;

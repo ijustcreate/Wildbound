@@ -39,7 +39,7 @@ test('vending resets on new expedition, not session resume, and preserves paid p
  g.start();assert.deepEqual(p.vendingStock,vendingStock());assert.equal(p.vendingOrders.length,1);assert.equal(p.coins,90);
 });
 const mockCanvas=()=>{
- const ops=[],c={globalAlpha:1,save(){ops.push(['save']);},restore(){ops.push(['restore']);},translate(...a){ops.push(['translate',...a]);},scale(){},transform(){},rotate(...a){ops.push(['rotate',...a]);},beginPath(){},rect(...a){ops.push(['clip-rect',...a]);},clip(){},fillRect(...a){ops.push(['pixel',this.fillStyle,...a]);}};
+ const ops=[],c={globalAlpha:1,save(){ops.push(['save']);},restore(){ops.push(['restore']);},translate(...a){ops.push(['translate',...a]);},scale(){},transform(){},rotate(...a){ops.push(['rotate',...a]);},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},rect(...a){ops.push(['clip-rect',...a]);},clip(){},fillRect(...a){ops.push(['pixel',this.fillStyle,...a]);}};
  return {c,ops};
 };
 test('all tree families split above stationary roots, with bounded falling pose and gradual acceleration',()=>{

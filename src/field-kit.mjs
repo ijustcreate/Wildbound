@@ -507,25 +507,33 @@ export class FieldKit {
         "All modes consume one snare trap. Craft supplies from harvested materials.",
       ),
     );
+    const recipeGrid=node('div',null,'field-bento-grid field-recipe-grid');
     for (const r of RECIPES) {
       if(r.unlock&&!p.field?.recipes?.[r.unlock])continue;
-      const card = node("article", null, "field-card"),
+      const card = node("article", null, "field-card field-bento-card field-recipe-card"),
         icon = node("canvas");
       icon.width = icon.height = 24;
       drawItem(icon.getContext("2d"), r.output, 12, 12, 24);
-      card.append(
-        icon,
-        node("strong", `${r.name} ×${r.qty}`),
-        node(
-          "p",
-          Object.entries(r.ingredients)
-            .map(([t, n]) => `${n} ${ITEMS[t]?.name || t}`)
-            .join(" + "),
-        ),
-      );
-      this.action("Craft", () => g.remoteAuthoritative?g.serverAction(p,'craft',r.id):craft(p, r.id), card);
-      this.body.append(card);
+      const materialsAvailable=Object.entries(r.ingredients).every(([type,qty])=>p.inventory.reduce((sum,item)=>sum+(item?.type===type?(item.qty||1):0),0)>=qty);
+      const draft=structuredClone(p.inventory);
+      if(materialsAvailable)for(const [type,qty] of Object.entries(r.ingredients))take(draft,type,qty);
+      const outputFits=materialsAvailable&&give(draft,r.output,r.qty);
+      card.classList.add(outputFits?'is-craftable':'is-unavailable');
+      const head=node('button',null,'field-card-select');head.setAttribute('aria-expanded','false');head.append(icon,node('span',r.name),node('small',outputFits?'Ready to craft':materialsAvailable?'Backpack full':'Needs materials',outputFits?'is-ready':'is-missing'));
+      const detail=node('div',null,'field-expanded-detail');
+      detail.append(node('p',`${ITEMS[r.output]?.description||r.name} · Makes ${r.qty} ${ITEMS[r.output]?.name||r.output}.`,'field-expanded-copy'));
+      detail.append(node('p','Crafting consumes the listed ingredients from this backpack; the result is placed back into your inventory.','field-skill-instruction'));
+      const requirements=node('ul',null,'field-requirements');
+      for(const [type,qty] of Object.entries(r.ingredients)){
+        const have=p.inventory.reduce((sum,item)=>sum+(item?.type===type?(item.qty||1):0),0);
+        requirements.append(node('li',`${ITEMS[type]?.name||type} · ${have}/${qty}`,have>=qty?'ingredient-owned':'ingredient-missing'));
+      }
+      detail.append(requirements);
+      const button=this.action(outputFits?'Craft':materialsAvailable?'Make backpack space':'Missing materials',()=>g.remoteAuthoritative?g.serverAction(p,'craft',r.id):craft(p,r.id),detail);button.disabled=!outputFits;button.classList.add('field-craft-action');
+      head.onclick=()=>{const selected=card.classList.toggle('is-selected');head.setAttribute('aria-expanded',String(selected));};
+      card.append(head,detail);recipeGrid.append(card);
     }
+    this.body.append(recipeGrid);
     this.action("Deploy barricade · lasts 30 seconds", () => {
       if(g.remoteAuthoritative)return g.serverAction(p,'deployBarricade');
       if (p.room || p.hp <= 0 || g.openingBoard)
@@ -543,19 +551,29 @@ export class FieldKit {
     });
   }
   skills(g, p, f) {
-    const ranger=node('article',null,'field-card');ranger.append(node('h3','Ranger · Tame companion'),node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.'));
-    const tame=this.action('Tame nearby animal',()=>{if(g.remoteAuthoritative)return g.serverAction(p,'tamePet');tamePet(g,p);return 'Use R / RB while near a wild animal.';},ranger);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
-    if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},ranger);this.body.append(ranger);
-    this.body.append(node("p", `Training Points: ${trainingPoints(p)} · Earn one per level. XP: ${p.xp || 0} · Level ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} XP to go.`, "field-card"));
+    const skillGrid=node('div',null,'field-bento-grid field-skill-grid');
+    const ranger=node('article',null,'field-card field-bento-card field-skill-card is-expanded');
+    const rangerHead=node('button',null,'field-card-select');rangerHead.setAttribute('aria-expanded','true');
+    const rangerIcon=node('span','♧','field-skill-icon');rangerHead.append(rangerIcon,node('span','Ranger · Tame companion'),node('small',hasSetSkill(p,'tame_pet')?'Unlocked':'Requires Ranger set',hasSetSkill(p,'tame_pet')?'is-ready':'is-missing'));
+    const rangerDetail=node('div',null,'field-expanded-detail');rangerDetail.append(node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.','field-expanded-copy'));
+    const tame=this.action('Tame nearby animal',()=>{if(g.remoteAuthoritative)return g.serverAction(p,'tamePet');tamePet(g,p);return 'Use R / RB while near a wild animal.';},rangerDetail);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
+    if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},rangerDetail);ranger.classList.add('is-selected');rangerHead.onclick=()=>{const selected=ranger.classList.toggle('is-selected');rangerHead.setAttribute('aria-expanded',String(selected));};ranger.append(rangerHead,rangerDetail);skillGrid.append(ranger);
+    this.body.append(node("p", `Training points · ${trainingPoints(p)} available · Earn one per level. XP: ${p.xp || 0} · Level ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} XP to go.`, "field-training-summary"));
+    const skillIcons={second_wind:'potion',long_jump:'boots',quick_revive:'potion',pack_mule:'crafting_bag',scavenger:'bone_shard',steady_hand:'arrow'};
     for (const s of SKILLS) {
       const rank = f.skills?.[s.id] || 0;
-      const card = node("article", null, "field-card");
-      card.append(node("h3", `${s.name} · ${rank}/${s.max}`), node("p", s.detail));
+      const card = node("article", null, "field-card field-bento-card field-skill-card"),icon=node('canvas');icon.width=icon.height=32;drawItem(icon.getContext('2d'),skillIcons[s.id]||'potion',16,16,32);
+      const head=node('button',null,'field-card-select');head.setAttribute('aria-expanded','false');head.append(icon,node('span',s.name),node('small',`${rank}/${s.max} ranks`));
+      const detail=node('div',null,'field-expanded-detail');detail.append(node('p',s.detail,'field-expanded-copy'));
       const unlocked=skillAvailable(p,s.id);
-      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : 'Train · 1 Training Point', () => trainSkill(p,s.id), card);
-      button.disabled = !unlocked || rank >= s.max;
-      this.body.append(card);
+      detail.append(node('p',!unlocked?'Find this skill scroll on a defeated boss to unlock training.':rank>=s.max?'Fully mastered.':'Train to improve this skill; training spends one point.','field-skill-instruction'));
+      const canTrain=unlocked&&rank<s.max&&trainingPoints(p)>=1;
+      const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : canTrain?'Train · 1 point':'Need 1 Training Point', () => trainSkill(p,s.id), detail);
+      button.disabled = !canTrain;
+      head.onclick=()=>{const selected=card.classList.toggle('is-selected');head.setAttribute('aria-expanded',String(selected));};
+      card.append(head,detail);skillGrid.append(card);
     }
+    this.body.append(skillGrid);
     this.body.append(node("p", "More possible skills: silent movement, stronger parries, faster gathering, better lantern range, and a once-per-round emergency dodge.", "subtle"));
   }
   look(g, p, f) {

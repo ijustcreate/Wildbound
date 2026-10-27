@@ -2,6 +2,7 @@ import { HAIR_STYLES, FACE_STYLES } from './appearance.mjs';
 import { drawCreationPreview, creationFamily, creationButtonLabels, creationHelp } from './creation-preview.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
+import { spatialMenuNeighbor } from './menu-navigation.mjs';
 
 export const CREATION_COLORS = [
   ['Ivory','#f2d6b3'], ['Sand','#d9ab76'], ['Copper','#a86c48'], ['Umber','#54372c'],
@@ -32,8 +33,12 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
   const nameRow=document.createElement('div');nameRow.className='creation-name';body.append(nameRow);
   const input=document.createElement('input');input.value=s.creationName;input.maxLength=20;input.setAttribute('aria-label','Explorer name');input.oninput=()=>s.creationName=input.value;nameRow.append(input);
   add('Edit',()=>openControllerKeyboard(input),nameRow).setAttribute('aria-label','Edit explorer name');
-  const art=document.createElement('canvas');art.width=240;art.height=116;art.setAttribute('aria-label','Explorer appearance preview');body.append(art);
-  const preview=()=>{const time=performance.now()/1000;drawCreationPreview(art.getContext('2d'),look,{width:art.width,height:art.height,time});if(popupPreview)drawCreationPreview(popupPreview.getContext('2d'),look,{width:popupPreview.width,height:popupPreview.height,mode:popupMode,direction:popupDirection,time});};
+  const nameRefresh=add('↻',()=>{input.value=s.creationName=suggestCharacterName(profiles.data.heroes);},nameRow);nameRefresh.className='creation-square';nameRefresh.setAttribute('aria-label','Suggest explorer name');
+  const previewRow=document.createElement('div');previewRow.className='creation-preview-row';body.append(previewRow);
+  const previewStage=document.createElement('div');previewStage.className='creation-preview-stage';previewRow.append(previewStage);
+  const art=document.createElement('canvas');art.width=360;art.height=380;art.setAttribute('aria-label','Explorer appearance preview');previewStage.append(art);
+  let previewDirection=0;
+  const preview=()=>{const time=performance.now()/1000;drawCreationPreview(art.getContext('2d'),look,{width:art.width,height:art.height,direction:previewDirection,time});if(popupPreview)drawCreationPreview(popupPreview.getContext('2d'),look,{width:popupPreview.width,height:popupPreview.height,mode:popupMode,direction:popupDirection,time});};
   const refreshers=[];
   const refresh=()=>{preview();refreshers.forEach(fn=>fn());};
   let popup=null,opener=null,popupFocus=0,wheel=null,popupPreview=null,popupMode='full',popupDirection=0,carousel=null;
@@ -71,15 +76,17 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
     const rainbow=add('',()=>showWheel(key,source),grid);rainbow.className='creation-rainbow';rainbow.setAttribute('aria-label','Custom spectrum');rainbow.title='Custom spectrum';
     add('Cancel',close,box);highlight();buttons()[0].focus({preventScroll:true});
   };
-  const colors=document.createElement('div');colors.className='creation-colors';body.append(colors);
+  const colors=document.createElement('div');colors.className='creation-colors';previewRow.append(colors);
   for(const [key,label] of Object.entries({skin:'Skin',hairColor:'Hair color',shirt:'Shirt',pants:'Pants',shoes:'Shoes'})) {
     const b=add(label,()=>showPalette(key,b),colors);b.className='creation-color-row';b.dataset.label=label;
     const chip=document.createElement('i');chip.setAttribute('aria-hidden','true');b.append(chip);refreshers.push(()=>b.style.setProperty('--swatch',look[key]));
   }
+  const rotate=add('↻',()=>{previewDirection=(previewDirection+1)%8;refresh();},previewStage);rotate.className='creation-square creation-rotate';rotate.setAttribute('aria-label','Rotate character view');rotate.title='Rotate character view';
   const select=(key,label,options,fallback)=>{
     const b=add('',()=>{
       const box=open(label,b);box.classList.add('creation-detail-popup','creation-carousel-popup');popupMode=key==='face'?'face':'hair';popupDirection=0;
-      popupPreview=document.createElement('canvas');popupPreview.width=280;popupPreview.height=236;popupPreview.className='creation-detail-preview';popupPreview.setAttribute('aria-label',label+' close-up preview');box.append(popupPreview);
+      const previewFrame=document.createElement('div');previewFrame.className='creation-detail-frame';box.append(previewFrame);
+      popupPreview=document.createElement('canvas');popupPreview.width=280;popupPreview.height=236;popupPreview.className='creation-detail-preview';popupPreview.setAttribute('aria-label',label+' close-up preview');previewFrame.append(popupPreview);
       const picker=document.createElement('div');picker.className='creation-style-carousel';box.append(picker);
       const previous=add('‹',()=>carousel.step(-1),picker);previous.setAttribute('aria-label','Previous '+label.toLowerCase());
       const chosen=document.createElement('div');chosen.className='creation-carousel-choice';chosen.setAttribute('aria-live','polite');picker.append(chosen);
@@ -101,27 +108,22 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
   };
   select('hair','Hair style',Object.entries(HAIR_STYLES),'crop');
   select('face','Face details',Object.entries(FACE_STYLES),'classic');
-  const actions=document.createElement('div');actions.className='creation-actions';body.append(actions);
-  add('Suggest name',()=>{input.value=s.creationName=suggestCharacterName(profiles.data.heroes);},actions);
-  add('Random look',()=>{Object.assign(look,presets[Math.floor(Math.random()*presets.length)]);refresh();},actions);
   const error=document.createElement('p');error.className='lobby-error';error.setAttribute('role','alert');body.append(error);
   add('Create & join',()=>{const problem=characterNameError(input.value,profiles.data.heroes);if(problem){error.textContent=problem;return;}onCreate(input.value,look);}).className='creation-primary';
   add('Back',onBack);
   const hint=document.createElement('small');hint.dataset.creationHelp='menu';body.append(hint);
-  function updateLabels(){const family=panel.dataset.controllerFamily,n=creationButtonLabels(family);panel.querySelectorAll('[data-creation-help]').forEach(q=>{q.textContent=q.dataset.creationHelp==='wheel'?`${n.move}: color · ${n.choose}: choose · ${n.back}: palette · ${n.adjust}: brightness`:creationHelp(family)+(q.dataset.creationHelp==='detail'?` · ${n.rotate}: rotate`: '');});}
-  const rotatePreview=delta=>{popupDirection=(popupDirection+delta+8)%8;refresh();};
+  function updateLabels(){const family=panel.dataset.controllerFamily,n=creationButtonLabels(family);panel.querySelectorAll('[data-creation-help]').forEach(q=>{q.textContent=q.dataset.creationHelp==='wheel'?`${n.move}: color · ${n.choose}: choose · ${n.back}: palette · ${n.adjust}: brightness`:creationHelp(family)+(q.dataset.creationHelp==='detail'?` · ${n.rotate}: rotate`:q.dataset.creationHelp==='menu'?` · ${n.rotate}: rotate`: '');});}
+  const rotatePreview=delta=>{if(popupPreview)popupDirection=(popupDirection+delta+8)%8;else previewDirection=(previewDirection+delta+8)%8;refresh();};
   panel.updateControllerFamily=family=>{panel.dataset.controllerFamily=family;updateLabels();};
   panel.creationNavigate=({x=0,y=0,accept=false,back=false,adjust=false,rotate=0})=>{
-    if(rotate&&popupPreview){rotatePreview(rotate);return;}
+    if(rotate){rotatePreview(rotate);return;}
     if(wheel){if(adjust)popup.querySelector('button').click();else if(back)wheel.back();else if(accept)wheel.accept();else if(x||y)wheel.move(x,y);return;}
     if(back){if(popup)close();else onBack();return;}
     if(x||y){const list=buttons(),grid=popup?.querySelector('.creation-palette');let index=popup?popupFocus:s.focus;
       if(grid)index=y?Math.max(0,Math.min(16,index+y*4)):(index<16?Math.floor(index/4)*4+(index%4+x+4)%4:0);
       else if(carousel){if(x){carousel.step(x);return;}index=Math.max(0,Math.min(list.length-1,index+y));}
-      else if(!popup&&y&&list[index]?.parentElement===colors){
-        const first=list.indexOf(colors.firstElementChild),offset=index-first;
-        index=y>0?(offset<2?index+2:offset<4?first+4:first+5):(offset>=2?first+(offset===4?2:offset-2):first-1);
-      }else index=(index+(y||x)+list.length)%list.length;
+      else if(!popup){const next=spatialMenuNeighbor(list,list[index],x,y);index=Math.max(0,list.indexOf(next));}
+      else index=(index+(y||x)+list.length)%list.length;
       if(popup)popupFocus=index;else s.focus=index;highlight();
     }
     if(accept)buttons()[popup?popupFocus:s.focus]?.click();

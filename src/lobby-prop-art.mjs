@@ -80,6 +80,7 @@ const MAP_PALETTES = Object.freeze({
   house: ['#94a372', '#79694e'], temple: ['#719071', '#8d8460'],
   beach: ['#8dc6bb', '#438b92'],
   graveyard: ['#465649', '#9aa38a'],
+  swamp:['#4a6954','#253f3e'],caverns:['#4b5962','#96c9ca'],shadow:['#41344f','#b49bc4'],
 });
 
 function chart(c, x, y, value) {

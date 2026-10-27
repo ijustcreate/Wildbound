@@ -1,6 +1,7 @@
 import {raisedSurfaceBlocked} from './terrain-support.mjs';
+import {BOARD_TABLE} from './board-table-geometry.mjs';
 // Two 32px floor squares wide, one deep; shared by physics and rendering.
-export const BOARD_TABLE=Object.freeze({x:768,y:784,w:64,h:32,surfaceHeight:16});
+export {BOARD_TABLE};
 export const hasBoardTable=g=>!!g&&g.generatedEnvironment!=='lobby';
 export const boardTableDepth=(b=BOARD_TABLE)=>b.y+b.h/2;
 const contains=(b,x,y)=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;

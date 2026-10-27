@@ -1,4 +1,8 @@
 import {drawBoundlessGrass,drawBoundlessRoutes} from './boundless-art.mjs';
+import {scenePropCasters} from './scene-casters.mjs';
+import {nearbyScenery} from './performance.mjs';
+import {LocomotionHistory} from './native-locomotion.mjs';
+import {GrassFieldRenderer} from './grass-field.mjs';
 import {drawShoreGoblinTells} from './shore-goblin-ai.mjs';
 import {drawDeathSteps} from './death-steps.mjs';
 import {drawReaperDrain} from './reaper-ai.mjs';
@@ -10,18 +14,23 @@ import {drawVictoryChest} from './victory-chest.mjs';
 import {packAssets} from './world-pack-assets.mjs';
 import {drawOldWells} from './old-well.mjs';
 import {drawRoomScene} from './hero-ui.mjs';
+import {sharedRoomGroups,roomWindowLayout,sharedRoomCamera} from './room-windows.mjs';
 import {anacondaRenderParts,drawAnacondaSegment,drawAnacondaShadow} from './anaconda-art.mjs';
 import {drawMerchant} from './traveling-merchant.mjs';
 import {visibleVillagers,drawVillagerNpc,drawVillagerCampfire} from './villagers.mjs';
 import {drawQuestNpc,drawNpcQuestMarkers} from './npc-quests.mjs';
 import {drawBiomeTile,drawBiomeAccents,drawBiomeAir} from './biome-art.mjs';
 import {drawDesertChunk} from './desert-art.mjs';
+import {drawRealmGround,drawRealmAtmosphere,REALM_COLORS} from './realm-art.mjs';
+import {realmContexts} from './realm-world.mjs';
+import {drawRealmLife,drawRealmEvent} from './realm-life.mjs';
+import {drawMarshFireflyGlows} from './swamp-fireflies.mjs';
 import {drawBeachGround,drawBeachGulls} from './beach-art.mjs';
 import {drawWildFaunaTells} from './wild-fauna.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {clipRiverTile,drawDepthCorners} from './river-edges.mjs';
 import {drawSupplyChest} from './supply-chests.mjs';
-import {resizeGameSurface,PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
+import {resizeGameSurface,PLAYER_RENDER_SIZE,creatureRenderSize,actorRenderSize} from './render-settings.mjs';
 import {drawMagicBolt} from "./magic-bolt-render.mjs";
 import {drawFriendshipHearts} from './friendship-hearts.mjs';
 import {drawJumanjiVines} from './jumanji-vines.mjs';
@@ -35,19 +44,23 @@ import {drawWaterSurface} from './water-surface.mjs';
 import {drawBridges} from './bridges.mjs';
 import {terrainActorDepth} from './terrain-support.mjs';
 import {drawSwimmer,drawBreath,drawWaterline} from './swim-render.mjs';
-import {drawBowAim} from './bow-aim.mjs';
+import {drawBowAim,drawPounceAim} from './bow-aim.mjs';
 import {drawSinking} from './quicksand.mjs';
 import {QuicksandSurface} from './quicksand-surface.mjs';
 import {drawNightLight, drawNightStatus, enemyVisibility} from './night-cycle.mjs';
 import {drawMysteryWorld,drawMysteryTracker} from './mysteries.mjs';
 import {drawHouseLights} from './house-lights.mjs';
+import {drawHouseCar,drawVehicleEffects,drawVehicleHood,drawVehicleWheels} from './house-render.mjs';
+import {drawWorldGrid} from './world-grid.mjs';
+import {drawPavingTile} from './house-paving.mjs';
+import {vegetationBlocked} from './house-surfaces.mjs';
 import {drawLivingEcosystem} from './living-ecosystem.mjs';
 import {drawNightEnemyEffects, nightEnemyOpacity} from './night-enemies.mjs';
 import {drawNightEquipment} from './night-equipment.mjs';
 import {NIGHT_KINDS} from './night-rigs.mjs';
 import {drawTemple} from './temple.mjs';
 import {drawDestruction} from './structure-destruction.mjs';
-import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt,drawWinterTile} from './ice-world.mjs';
+import {drawIceHints,iceSolid,iceBase,clipSnow,snowRim,drawSnowGround,snowAt,snowShadowFactor,drawWinterTile} from './ice-world.mjs';
 import { drawFieldWorld } from "./field-art.mjs";
 import {drawExpansion,drawTreeWeb} from './expansion.mjs';
 import { waterAt, isShallow, drawTracks, drawProp } from "./environment.mjs";
@@ -70,6 +83,8 @@ import {
 } from "./core.mjs";
 import { propDepth, isOccluded } from "./world.mjs";
 import { Animator } from "./animation.mjs";
+import {characterLightingFrame} from './character-lighting.mjs';
+import {WorldLightRenderer,propLightGeometry} from './world-lighting.mjs';
 import { drawBoard } from "./board.mjs";
 import {BOARD_TABLE,boardActorDepth,boardTableDepth} from './board-table.mjs';
 import { canSee, VISION } from "./adventure.mjs";
@@ -79,10 +94,15 @@ import { rules } from "./definitions.mjs";
 import { drawItem } from "./item-art.mjs";
 import {drawPumpkin} from './pumpkin-art.mjs';
 import { rigSubject } from "./rig-subjects.mjs";
-import { ellipse } from "./player-motion.mjs";
+import { ellipse,playerPose,playerMotion,playerAction,playerFrame,projectPoint,facingIndex } from "./player-motion.mjs";
 import { actorContact } from './contact-shadow.mjs';
+import {authoredShadowScenes} from './world-authoring.mjs';
+import {drawRealtimeWorldShadows,runtimeSun} from './realtime-shadows.mjs';
+import {emptyShadowMaps} from './realtime-shadows.mjs';
+import {daylight} from './night-cycle.mjs';
+import {dynamicShadowsEnabled} from './shadow-settings.mjs';
 import {drawCorpse} from './corpse-pose.mjs';
-import {drawEmbeddedArrow,drawFlyingArrow,arrowVisualAngle} from './embedded-arrow.mjs';
+import {drawEmbeddedArrow,drawFlyingArrow,arrowVisualAngle,drawArrowTrail} from './embedded-arrow.mjs';
 import {drawBoomerang} from './boomerang.mjs';
 import {drawForestGround,drawFallingLeaves} from './forest.mjs';
 import {hasForestLandscape,drawLandscapeGround,drawForestBank} from './forest-art.mjs';
@@ -101,8 +121,10 @@ const hash = (x, y) => {
 };
 const sortedProceduralScenery = new Set(["palm"]);
 const sceneryNeedsDepthSort = (d, library = {}) =>
+  d.realm ||
   d.graveyard&&['leafless_tree','grave_forest_tree','gravestone','mausoleum','cemetery_fence','cemetery_gate','pumpkin_crop'].includes(d.kind) ||
   d.coastal&&['tree','palm','rock','beach_arch'].includes(d.kind) ||
+  ['tall_grass','short_grass'].includes(d.kind) ||
   d.kind === "forest_ruin" ||
   iceSolid(d) ||
   sortedProceduralScenery.has(d.kind) ||
@@ -180,12 +202,19 @@ export class Renderer {
     this.actorQueue = [];
     this.decor = [];
     this.showLootDetails = false;
+    this.dynamicShadows = dynamicShadowsEnabled();
     this.pixelScale = 2;
     this.viewport = { w: 1, h: 1 };
     this.uiPlayArea = {x: .5, y: .5, width: 1};
   }
+  setDynamicShadows(enabled){
+    const next=!!enabled;if(next===this.dynamicShadows)return;
+    this.dynamicShadows=next;this.decorationCache=new DecorationCache();this.worldLights=new WorldLightRenderer();
+  }
   resize() {
-    const {w,h}=resizeGameSurface(this.canvas,this.ctx,this.pixelScale);
+    // Two samples per logical world pixel already preserve the half-pixel
+    // character art. Extra OS-DPI supersampling adds cost without new artwork.
+    const {w,h}=resizeGameSurface(this.canvas,this.ctx,this.pixelScale,{densityLimit:1});
     this.viewport = { w, h };
     return { w, h };
   }
@@ -210,33 +239,25 @@ export class Renderer {
     if(!sealCapture)warmWorldTravelArt(this,game);
     if(!sealCapture&&this.worldTravelArt)clearWorldTravelArt(this);
     if(game.phase==='sealing'&&!sealCapture){this.drawSeal(game,dt);return;}
+    // Frozen travel/sealing frames must not scan scenery for local lights.
+    this.animator.lighting=characterLightingFrame(game,null,{occluded:this.dynamicShadows});
+    this.worldLights ||= new WorldLightRenderer();
     if(!sealCapture&&this.sealReady&&(this.sealReady.game!==game||this.sealReady.seed!==game.seed||game.phase!=='play')){this.sealReady.canvas.width=this.sealReady.canvas.height=1;this.sealReady=null;}
     if(!sealCapture&&this.sealGame){this.sealVortex?.clear();for(const key of ['sealAnchors','sealFrame','sealHouseBackdrop'])if(this[key]){this[key].width=this[key].height=1;this[key]=null;}this.sealGame=null;}
     this.lod=renderLOD(this.camera.zoom);
     this.decorationCache ||= new DecorationCache();
     this.actorPoseCache ||= new ActorPoseCache();
     const cacheWorld=game.seed+':'+game.generatedEnvironment;
-    if(this.cacheWorld!==cacheWorld){this.decorationCache=new DecorationCache();this.actorPoseCache=new ActorPoseCache();this.cacheWorld=cacheWorld;}
+    if(this.cacheWorld!==cacheWorld){this.decorationCache=new DecorationCache();this.actorPoseCache=new ActorPoseCache();this.worldLights=new WorldLightRenderer();this.cacheWorld=cacheWorld;}
     beginParticleFrame(this.ctx,{budget:this.lod===2?128:this.lod===1?256:384,quality:this.lod===2?.3:this.lod===1?.6:1});
     const { w, h } = this.resize(),
       ctx = this.ctx;
     this.age += dt;
-    const roomPlayer=game.players.find(p=>p.room),roomPortal=roomPlayer&&game.portals?.find(d=>d.id===roomPlayer.room);
-    if(roomPlayer&&roomPortal){
-      if(roomPortal.oldWell){drawRoomScene(ctx,game,roomPlayer,roomPortal,this,{width:w,height:h,top:26,bottom:22,zoom:this.camera.zoom||2.6});applyCelShading(ctx);return;}
-      // Room spaces use the same game canvas and animator as the expedition.
-      // The scene is letterboxed only when necessary; it is no longer a
-      // miniature inventory-style card rendered by HeroUI.
-      const scale=Math.min(3,w/320,h/240),left=(w-320*scale)/2,top=(h-240*scale)/2;
-      ctx.fillStyle='#091512';ctx.fillRect(0,0,w,h);
-      ctx.save();ctx.translate(left,top);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
-      drawRoomScene(ctx,game,roomPlayer,roomPortal,this);
-      ctx.restore();applyCelShading(ctx);return;
-    }
+    const viewDecor=nearbyScenery(game.scenery||[],this.camera.x,this.camera.y,Math.hypot(w/this.camera.zoom/2,h/this.camera.zoom/2)+220);
     this.decor =
       (game.mapMode==='boundless'||game.bloom >= 3)
-        ? game.scenery || []
-        : (game.scenery || [])
+        ? viewDecor
+        : viewDecor
             .filter(
               (d) =>
                 game.bloom >= 3 ||
@@ -249,7 +270,7 @@ export class Renderer {
     if (game.phase === "play" && game.openingBoard)
       Object.assign(this.camera, target);
     const k = 1 - Math.exp(-dt * 3);
-    for (const v of ["x", "y", "zoom"])
+    if(game.players.some(p=>!p.room))for (const v of ["x", "y", "zoom"])
       this.camera[v] += (target[v] - this.camera[v]) * k;
     ctx.fillStyle = "#10271f";
     ctx.fillRect(0, 0, w, h);
@@ -272,7 +293,8 @@ export class Renderer {
     const cemeteryGround=packAssets(game).cemetery;
     if(game.generatedEnvironment==='graveyard'&&cemeteryGround?.complete&&cemeteryGround.naturalWidth)ctx.drawImage(cemeteryGround,0,0,1600,1600);
     drawBeachGulls(ctx,game,p=>this.visible(p,w,h,40));
-    drawBridges(ctx,game);
+    const bridgeBounds={sx:Math.floor((this.camera.x-w/this.camera.zoom/2-40)/32),sy:Math.floor((this.camera.y-h/this.camera.zoom/2-40)/32),ex:Math.ceil((this.camera.x+w/this.camera.zoom/2+40)/32),ey:Math.ceil((this.camera.y+h/this.camera.zoom/2+40)/32)};
+    drawBridges(ctx,game,false,bridgeBounds);
     drawPuddles(ctx,game);
     drawSnowGround(ctx,game);
     for(const patch of game.arrowIcePatches||[]){
@@ -280,9 +302,36 @@ export class Renderer {
       for(let i=0;i<7;i++){const a=i*Math.PI*2/6,x=patch.x+Math.cos(a)*patch.radius,y=patch.y+Math.sin(a)*patch.radius*.55;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.fill();
       ctx.strokeStyle='#e2ffff';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(patch.x-17,patch.y+5);ctx.lineTo(patch.x+9,patch.y-6);ctx.stroke();ctx.restore();
     }
-    drawExpansion(ctx,game,(p,margin=64)=>this.visible(p,w,h,margin));
-    drawForestGround(ctx,game,p=>this.visible(p,w,h,160)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
-    drawTemple(ctx,game,this.animator);
+    drawExpansion(ctx,game,(p,margin=64)=>this.visible(p,w,h,margin),{floorOnly:true});
+    drawWorldGrid(ctx,this.camera,w,h);
+    this.grassField ||= new GrassFieldRenderer();
+    this.shaderGrass=this.grassField.draw(ctx,game,this.camera,w,h);
+    drawForestGround(ctx,game,p=>this.visible(p,w,h,160)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0),{dynamicShadows:this.dynamicShadows,shaderGrass:this.shaderGrass});
+    if(this.dynamicShadows){
+      const cameraLeft=this.camera.x-w/(2*this.camera.zoom),cameraTop=this.camera.y-h/(2*this.camera.zoom);
+      const minX=Math.floor(cameraLeft/1600),minY=Math.floor(cameraTop/1600),maxX=Math.floor((cameraLeft+w/this.camera.zoom)/1600),maxY=Math.floor((cameraTop+h/this.camera.zoom)/1600);
+      const intensity=.035+.34*daylight(game);
+      const casters=[];
+      for(const b of [BOARD_TABLE,game.eventTestBoard].filter(Boolean)){const half=Math.max(b.w,b.h)/2;casters.push({x:b.x+b.w/2,y:b.y+b.h/2,shadowShape:'box',shadowHeight:b.surfaceHeight,radiusX:half,radiusY:half});}
+      const propCasters=scenePropCasters(game);casters.push(...propCasters.casters);
+      for(const chest of game.supplyChests||[])if(!chest.opened)casters.push({...chest,kind:'supply_chest',shadowShape:'box',shadowHeight:30,radiusX:20,radiusY:14});
+      for(const actor of [...(game.players||[]),...(game.followers||[]),...(game.enemies||[]),...(game.questNpcs||[]),...(game.villagers||[]),...(game.ghosts||[])])if(actor&&!actor.room&&actor.hp!==0&&!actor.swimming){const kind=String(actor.kind||'actor').toLowerCase(),shape=actor.shadowShape||(kind==='golem'?'golem':/bat|crow|raven|wasp|bee|tsetse/.test(kind)?'bird':/crocodile|elephant|lion|tiger|wolf|boar|rhino|zebra|dragon/.test(kind)?'quadruped':'actor'),wide=shape==='quadruped',lift=Math.max(0,actor.jumpHeight||0)+Math.max(0,actor.groundHeight||0);casters.push({...actor,shadowDynamic:true,shadowShape:shape,shadowLift:lift,shadowHeight:Math.max(18,actor.shadowHeight||actor.height||52),radiusX:actor.radiusX|| (wide?24:shape==='bird'?12:actor.kind==='golem'?28:11),radiusY:actor.radiusY|| (wide?13:shape==='bird'?7:actor.kind==='golem'?25:16)});}
+      for(const pet of hunterPets(game))if(!pet.room&&Number.isFinite(pet.x))casters.push({...pet,shadowDynamic:true,shadowHeight:Math.max(18,pet.shadowHeight||pet.roostHeight||38),radius:13});
+      for(const f of game.house?.furniture||[])if(!f.destroyed)casters.push({x:f.x+f.w/2,y:f.y+f.h/2,shadowShape:'furniture',shadowHeight:f.surfaceHeight||34,radiusX:f.w*.5,radiusY:f.h*.5});
+      for(const v of game.house?.vehicles||[])casters.push({x:v.x,y:v.y,shadowShape:'vehicle',shadowHeight:42,radiusX:v.w*.42,radiusY:v.h*.38});
+      for(const f of [...(game.house?.walls||[]),...(game.house?.doors||[])])if(!f.destroyed&&!f.broken)casters.push({x:f.x+f.w/2,y:f.y+f.h/2,shadowShape:'wall',shadowHeight:f.height||58,radiusX:f.w*.5,radiusY:f.h*.5});
+      const authored=authoredShadowScenes().filter(({level})=>level.environment===game.generatedEnvironment);
+      const regions=new Map();for(const entry of authored){const key=`${entry.scene.regionX},${entry.scene.regionY}`;if(!regions.has(key))regions.set(key,[]);regions.get(key).push(entry.scene);}
+      this.shadowFallbacks ||= new Map();
+      for(let cy=minY;cy<=maxY;cy++)for(let cx=minX;cx<=maxX;cx++){
+        const left=cx*1600,top=cy*1600,near=casters.filter(c=>c.x>=left-220&&c.x<left+1820&&c.y>=top-220&&c.y<top+1820),scenes=regions.get(`${cx},${cy}`);
+        if(scenes?.length){for(const [index,scene]of scenes.entries()){const sun=runtimeSun(game,scene.shadowMaps.lightAzimuth,scene.shadowMaps.lightElevation);drawRealtimeWorldShadows(ctx,scene,left,top,{azimuth:sun.azimuth,elevation:sun.elevation,darkness:intensity,softActors:game.generatedEnvironment==='forest',budgetMs:game.generatedEnvironment==='forest'?.8:Infinity,casters:index===0?near:[]});}}
+        else {const key=`${game.generatedEnvironment}:${cx}:${cy}`;let fallback=this.shadowFallbacks.get(key);if(!fallback){const shadowMaps=emptyShadowMaps(256,256);shadowMaps.raySteps=12;fallback={id:key,shadowMaps};this.shadowFallbacks.set(key,fallback);if(this.shadowFallbacks.size>12)this.shadowFallbacks.delete(this.shadowFallbacks.keys().next().value);}const sun=runtimeSun(game,fallback.shadowMaps.lightAzimuth,fallback.shadowMaps.lightElevation);drawRealtimeWorldShadows(ctx,fallback,left,top,{azimuth:sun.azimuth,elevation:sun.elevation,darkness:intensity,softActors:game.generatedEnvironment==='forest',budgetMs:game.generatedEnvironment==='forest'?.8:Infinity,casters:near});}
+      }
+    }
+    if(this.dynamicShadows&&game.phase==='play')this.worldLights.drawGround(ctx,this.animator.lighting,(s,radius)=>this.visible(s,w,h,radius));
+    drawExpansion(ctx,game,(p,margin=64)=>this.visible(p,w,h,margin),{structuresOnly:true,lightPaint:this.dynamicShadows?(c,f,paint)=>this.worldLights.drawStructure(c,f,paint,this.animator.lighting):null});
+    drawTemple(ctx,game,this.animator,{lightPaint:this.dynamicShadows?(c,f,paint)=>this.worldLights.drawStructure(c,f,paint,this.animator.lighting):null});
     drawDestruction(ctx,game,p=>this.visible(p,w,h,80));
     drawNpcQuestMarkers(ctx,game,p=>this.visible(p,w,h,100));
     drawBiomeAccents(ctx,game,p=>this.visible(p,w,h,120)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0));
@@ -293,8 +342,10 @@ export class Renderer {
 
     drawLivingEcosystem(ctx, game, 'ground');
     drawGraveyardEcology(ctx,game,'ground');
+    drawRealmEvent(ctx,game);
+    drawRealmLife(ctx,game,'ground');
     drawHazards(ctx, game);
-    for(const npc of game.questNpcs||[]) if(this.visible(npc,w,h,120)){drawCampfire(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10,game.time,npc.id);drawCampfireLabel(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10);}
+    for(const npc of game.questNpcs||[]) if(!npc.rescueExplorer&&this.visible(npc,w,h,120)){drawCampfire(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10,game.time,npc.id);drawCampfireLabel(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10);}
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
     for (const orb of game.xpOrbs || []) {
       if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;
@@ -316,37 +367,39 @@ export class Renderer {
     for (const l of game.loot) {
       if (!this.visible(l, w, h, 40)) continue;
       if (!canSee(game, l)) continue;
+      if(l.quicksandHidden)continue;
+      const lootY=l.y+(l.quicksandSink||0);
       ctx.fillStyle = "#07100d88";
       ctx.beginPath();
-      ctx.ellipse(l.x, l.y + (l.embedded?1:6), l.embedded?3:9, l.embedded?1.5:4, 0, 0, Math.PI * 2);
+      ctx.ellipse(l.x, lootY + (l.embedded?1:6), l.embedded?3:9, l.embedded?1.5:4, 0, 0, Math.PI * 2);
       ctx.fill();
       const selected = selectedLoot.has(l);
       if (selected) {
         ctx.strokeStyle = "#f0d79d";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.ellipse(l.x, l.y + 6, 12, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(l.x, lootY + 6, 12, 6, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       if (l.embedded && l.type === "arrow") {
-        drawEmbeddedArrow(ctx,l,game.time,this.showLootDetails);
+        drawEmbeddedArrow(ctx,{...l,y:lootY},game.time,this.showLootDetails);
       } else {
-        if (ITEMS[l.type]?.gmOnly) drawParticleEffect(ctx,'pink-sparkle',l.x,l.y-8,game.time,l.id);
+        if (ITEMS[l.type]?.gmOnly) drawParticleEffect(ctx,'pink-sparkle',l.x,lootY-8,game.time,l.id);
         const fall=l.salvageBorn===undefined?0:Math.max(0,1-(game.time-l.salvageBorn)/.55);
-        if(l.type==='jack_o_lantern')drawPumpkin(ctx,l.x,l.y-3-Math.sin(fall*Math.PI/2)*24,{carved:true,time:game.time});
-        else drawItem(ctx, l.type, l.x, l.y - 3 - Math.sin(fall*Math.PI/2)*24, 24);
+        if(l.type==='jack_o_lantern')drawPumpkin(ctx,l.x,lootY-3-Math.sin(fall*Math.PI/2)*24,{carved:true,time:game.time});
+        else drawItem(ctx, l.type, l.x, lootY + (l.type==='log'?6:-3) - Math.sin(fall*Math.PI/2)*24, 24);
       }
       if (ITEMS[l.type]?.slot) {
         ctx.fillStyle = ITEMS[l.type].color;
-        ctx.fillRect(l.x - 8, l.y + 9, 16, 1);
+        ctx.fillRect(l.x - 8, lootY + 9, 16, 1);
       }
       if (l.qty > 1) {
         ctx.font = "bold 6px monospace";
         ctx.textAlign = "right";
         ctx.fillStyle = "#101e18";
-        ctx.fillRect(l.x + 2, l.y + 5, 12, 8);
+        ctx.fillRect(l.x + 2, lootY + 5, 12, 8);
         ctx.fillStyle = "#f0e6c5";
-        ctx.fillText(l.qty, l.x + 13, l.y + 11);
+        ctx.fillText(l.qty, l.x + 13, lootY + 11);
       }
     }
     for (const b of game.baits) {
@@ -359,6 +412,7 @@ export class Renderer {
     for(const b of game.boomerangs||[])if(this.visible(b,w,h,80)&&canSee(game,b))drawBoomerang(ctx,b,game.time);
     for (const a of game.arrows) {
       if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
+      drawArrowTrail(ctx,a,game.time);
       if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time,this.showLootDetails);continue;}
       ctx.save();
       ctx.translate(a.x, a.y - (a.z || 0));
@@ -405,12 +459,13 @@ export class Renderer {
     }
     for (const d of this.decor)
       if (
-        !sceneryNeedsDepthSort(d, this.assets.library) &&
-        this.visible(d, w, h)
+        this.visible(d, w, h) &&
+        !sceneryNeedsDepthSort(d, this.assets.library)
       ) {
+        if(['short_grass','tall_grass','grass'].includes(d.kind)&&vegetationBlocked(game,d.x,d.rootY??d.y+d.size*.4,Math.max(6,(d.size||20)*.35)))continue;
         ctx.save();const base=iceBase(d);clipSnow(ctx,game,d.x,base.y,d.size*2);
-        this.decorationCache.draw(ctx,d,this.lod,c=>drawProp(c, d, this.lod?0:game.time,game) ||
-          this.assets.draw(c, d.kind, d.x, d.y, d.size));
+        const paint=c=>this.decorationCache.draw(c,d,this.lod,pen=>drawProp(pen, d, ['mangrove','old_cypress'].includes(d.kind)&&this.lod<2?game.time:this.lod?0:game.time,game,{dynamicShadows:this.dynamicShadows,shaderGrass:this.shaderGrass,spriteLibrary:this.assets.library}) ||this.assets.draw(pen,d.kind,d.x,d.y,d.size));
+        if(this.dynamicShadows)this.worldLights.drawProp(ctx,d,paint,this.animator.lighting);else paint(ctx);
         drawTreeWeb(ctx,d);ctx.restore();snowRim(ctx,game,d.x,base.y,d.size*.5);
       }
     for (const p of game.pickups)
@@ -448,7 +503,7 @@ export class Renderer {
       ctx.setLineDash([]);
     }
     for (const e of game.enemies)
-      if (e.state === "windup" && !e.night && !['anaconda','shore_goblin'].includes(e.kind)) {
+      if ((e.state === "windup"||e.kind==='golem'&&(e.state==='rocklift'||e.controlledAttack?.phase==='windup')) && !e.night && !['anaconda','shore_goblin'].includes(e.kind)) {
         ctx.fillStyle = "#e96b5140";
         ctx.strokeStyle = "#ff9470";
         ctx.lineWidth = 1;
@@ -488,10 +543,11 @@ export class Renderer {
     if(!sealCapture&&game.eventTestBoard)this.boardBase(ctx,game,game.eventTestBoard);
     const actors = this.actorQueue;
     actors.length = 0;
+    if(!sealCapture)for(const v of game.house?.vehicles||[])if(this.visible(v,w,h,120))actors.push({...v,isHouseVehicle:true,drawDepth:v.y+v.h/2});
     for(const chest of game.supplyChests||[])actors.push({...chest,isSupplyChest:true,drawDepth:chest.y});
     for(const pet of hunterPets(game))if(!sealCapture&&!pet.controlledBy&&Number.isFinite(pet.x))actors.push({...pet,drawDepth:pet.y+(pet.roostHeight>0?1:0)});
     for (const p of game.players) if (!sealCapture) {
-      if (!p.controlledFollowerId&&!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
+      if (!p.vehicleId&&!p.controlledFollowerId&&!p.room) actors.push({ ...p, isPlayer: true, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
       else if(p.controlledFollowerId&&p.controlPetPosition&&!p.controlPetPosition.room){
         const hero={...p,...p.controlPetPosition,...(p.controlMainLoadout||{}),controlledFollowerId:null,controlledByFollower:true,moving:!!p.controlPetPosition.moving,walking:true,attack:0,charge:0,jumpHeight:0,groundHeight:0,dodge:0,dashTime:0,blocking:false,bowAiming:false};
         actors.push({...hero,isPlayer:true,hidePlayerMarker:true,drawDepth:terrainActorDepth(game,hero,boardActorDepth(game,hero))});
@@ -517,11 +573,12 @@ export class Renderer {
     }
     for (const d of this.decor)
       if (
-        sceneryNeedsDepthSort(d, this.assets.library) &&
-        this.visible(d, w, h)
+        this.visible(d, w, h) &&
+        sceneryNeedsDepthSort(d, this.assets.library)
       )
         actors.push({
           ...d,
+          sourceProp: d,
           isScenery: true,
           drawDepth: iceSolid(d)?iceBase(d).y:propDepth(d, this.assets.library[d.kind]),
         });
@@ -536,6 +593,7 @@ export class Renderer {
     if(!sealCapture)for(const v of visibleVillagers(game))if(this.visible(v,w,h,90)){const shown=controlledPresentation(v);actors.push({...shown,isVillager:true,drawDepth:v.y});}
     actors.sort((a, b) => a.drawDepth - b.drawDepth);
     for (const a of actors) {
+      if(a.isHouseVehicle){drawVehicleEffects(ctx,a);drawHouseCar(ctx,a,game);drawVehicleWheels(ctx,a);drawVehicleHood(ctx,a,game);continue;}
       if(a.isAnacondaSegment){ctx.save();ctx.globalAlpha*=Math.min(enemyVisibility(game,a.anacondaActor),nightEnemyOpacity(game,a.anacondaActor));
         const draw=()=>{drawAnacondaShadow(ctx,a.anacondaActor,a.anacondaIndex);drawAnacondaSegment(ctx,a.anacondaActor,a.anacondaIndex,game.time);};
         if(waterAt(game,a.x,a.y)==='water')drawWaterline(ctx,a,game.time,draw,{radius:13});else draw();
@@ -543,7 +601,7 @@ export class Renderer {
       if(a.isVictoryChest){drawVictoryChest(ctx,game);continue;}
       if(a.isMerchant){drawMerchant(ctx,game,this.animator);continue;}
       if(a.isVillagerCampfire){drawVillagerCampfire(ctx,game,game.villageCampState.fire);continue;}
-      if(a.isVillager){drawVillagerNpc(ctx,game,a,this.animator);if(a.isPlayer){ctx.save();ctx.strokeStyle=a.color;ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(a.x,a.y+10,18,6,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle=a.color;ctx.font='5px monospace';ctx.textAlign='center';ctx.fillText(a.name.toUpperCase(),a.x,a.y+29);ctx.restore();}continue;}
+      if(a.isVillager){drawVillagerNpc(ctx,game,a,this.animator);if(a.isPlayer){ctx.save();ctx.strokeStyle=a.color;ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(a.x,a.y+10,18,6,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle=a.color;ctx.font='7px sans-serif';ctx.textAlign='center';if(game.players.length>1)ctx.fillText(a.name.toUpperCase(),a.x,a.y-48);ctx.restore();}continue;}
       if(a.isQuestNpc){drawQuestNpc(ctx,game,a,this.animator);continue;}
       if(a.isSupplyChest){drawSupplyChest(ctx,game,a);continue;}
       if(a.isEventTestBoard){this.eventTestBoard(ctx,game);continue;}
@@ -552,6 +610,7 @@ export class Renderer {
         continue;
       }
       if (a.isScenery) {
+        if(['short_grass','tall_grass','grass'].includes(a.kind)&&vegetationBlocked(game,a.x,a.rootY??a.y+a.size*.4,Math.max(6,(a.size||20)*.35)))continue;
         const obscures = !a.fallen && game.players.some((p) =>
             isOccluded(a, this.assets.library[a.kind], p),
           ),
@@ -562,34 +621,36 @@ export class Renderer {
         this.canopyAlpha.set(alphaKey, alpha);
         ctx.save();
         ctx.globalAlpha = alpha;const base=iceBase(a);clipSnow(ctx,game,a.x,base.y,a.size*2);
-        this.decorationCache.draw(ctx,a,this.lod,c=>drawProp(c, a, this.lod?0:game.time,game) ||
-          this.assets.draw(c, a.kind, a.x, a.y, a.size));
+        const paint=c=>this.decorationCache.draw(c,a,this.lod,pen=>drawProp(pen,a.sourceProp||a,['mangrove','old_cypress'].includes(a.kind)&&this.lod<2?game.time:this.lod?0:game.time,game,{dynamicShadows:this.dynamicShadows,shaderGrass:this.shaderGrass,spriteLibrary:this.assets.library}) ||this.assets.draw(pen,a.kind,a.x,a.y,a.size));
+        if(this.dynamicShadows)this.worldLights.drawProp(ctx,a,paint,this.animator.lighting);else paint(ctx);
         drawTreeWeb(ctx,a);
         ctx.restore();snowRim(ctx,game,a.x,base.y,a.size*.5);
         continue;
       }
       if(a.hunterPet===true&&!a.controlledBy){const owner=game.players.find(p=>p.id===a.owner);if(owner){ctx.save();if(a.spiritGhost){ctx.globalAlpha=.78;ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}if(a.ritualPet)this.animator.draw(ctx,a,game.time,43);else drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);ctx.restore();}continue;}
       const player = a.isPlayer,
-        size = player
-          ? PLAYER_RENDER_SIZE
-          : creatureRenderSize(a.kind);
+        size = actorRenderSize(a);
       ctx.save();
       ctx.globalAlpha *= player || a.isGhostActor ? (a.isGhostActor ? .78 : 1) : Math.min(enemyVisibility(game, a), nightEnemyOpacity(game, a));
       if(a.isGhostActor)ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';
       const contact=actorContact(game,a,size,player||!!rigSubject(a.kind)||WILD_FAUNA_KINDS.includes(a.kind));
       const floating=waterAt(game,a.x,a.y)==='water'&&!(a.jumpHeight>0)&&!(a.groundHeight>0);
-      ctx.fillStyle = `rgba(9,28,22,${a.swimming||floating?0:contact.alpha*(1-Math.min(1,(a.sink||0)/48))})`;
-      ctx.beginPath();
-      ctx.ellipse(
-        contact.x,
-        contact.y,
-        contact.rx,
-        contact.ry,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
+      const snowShadow=snowShadowFactor(game,a.x,a.y);
+      if(!this.dynamicShadows){
+        ctx.fillStyle = `rgba(9,28,22,${a.swimming||floating?0:contact.alpha*snowShadow*(1-Math.min(1,(a.sink||0)/48))})`;
+        ctx.beginPath();ctx.ellipse(contact.x,contact.y,contact.rx,contact.ry,0,0,Math.PI*2);ctx.fill();
+      }
+      if(this.dynamicShadows&&player&&!floating&&!a.swimming&&!(a.jumpHeight>1)){
+        if(playerMotion.locomotionRevision===1){
+          this.animator.locomotionHistory??=new LocomotionHistory();
+          const presentation=this.animator.locomotionHistory.sample(a,game.time,playerAction(a),playerFrame(a,game.time));
+          const pose=playerPose({...a,...presentation},game.time),d=presentation.locomotionVisualDirection??facingIndex(a.faceX,a.faceY),scale=size/48;
+          for(const side of ['L','R'])if(pose['foot'+side][2]<2){
+            const p=projectPoint(pose['foot'+side],d);
+            ellipse(ctx,a.x+p.x*scale,a.y-(a.groundHeight||0)+p.y*scale+2,3.6,1.25,'#142b2866');
+          }
+        }else {ctx.fillStyle='#142b2845';ctx.fillRect(contact.x-contact.rx*.65,contact.y,contact.rx*1.3,1.5);}
+      }
       if (player) {
         if (a.poison > 0) {
           ctx.fillStyle = "#a0e565";
@@ -655,7 +716,7 @@ export class Renderer {
         ctx.strokeStyle = a.color;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.ellipse(contact.x, contact.y, 18, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(contact.x, contact.y-(a.controlledBy?4:0), 18, 6, 0, 0, Math.PI * 2);
         ctx.stroke();
         }
         if (!a.hidePlayerMarker&&(a.id === game.current?.id || a.controlledBy === game.current?.id)) {
@@ -672,6 +733,15 @@ export class Renderer {
       const grounded=!['bat','wasp','bee','dragon','pelican'].includes(a.kind),snowBase=a.y+(player||rigSubject(a.kind)?1:14);
       if(grounded)clipSnow(ctx,game,a.x,snowBase,200,a.kind==='dreadmane_lion'?560:300);
       if (a.invuln > 0 && Math.floor(this.age * 15) % 2) ctx.globalAlpha *= 0.5;
+      if(player&&a.dashGhosts?.length){
+        for(const ghost of a.dashGhosts){
+          const alpha=Math.max(0,1-ghost.age/.16)*.24;
+          if(alpha<=0)continue;
+          ctx.save();ctx.globalAlpha*=alpha;ctx.filter='blur(1.2px) saturate(1.15)';
+          this.animator.draw(ctx,{...a,...ghost},Math.max(0,game.time-ghost.age),size);
+          ctx.restore();
+        }
+      }
       if (!player && a.kind === 'necromancer' && a.hp>0) {
         drawParticleEffect(ctx,'purple-aura',a.x,a.y-22,game.time,a.id);
       }
@@ -687,7 +757,7 @@ export class Renderer {
         drawSwimmer(ctx,a,game.time,actor=>this.animator.draw(ctx,actor,game.time,size));
       } else if (!player&&a.kind==='snake'&&floating) {
         drawWaterline(ctx,a,game.time,actor=>this.animator.draw(ctx,actor,game.time,size),{shift:-10,radius:15});
-      } else if (!player&&a.kind==='oathless_captain'&&a.swimming&&floating) {
+      } else if (!player&&(a.kind==='oathless_captain'||a.villagerId==='april')&&a.swimming&&floating) {
         drawWaterline(ctx,a,game.time,actor=>this.animator.draw(ctx,actor,game.time,size),{shift:-12,radius:18});
       } else if (player&&a.sink>0) {
         drawSinking(ctx,a,actor=>this.animator.draw(ctx,actor,game.time,size));
@@ -703,9 +773,17 @@ export class Renderer {
           (c,actor,time)=>this.animator.draw(c,actor,time,size));
       }
       ctx.restore();
+      if(a.kind==='golem'&&(a.rockGrabCharge||0)>.28){
+        const x=a.x+(a.faceX||0)*11,y=a.y+(a.faceY||0)*11-34-(a.rockGrabCharge||0)*10;
+        ctx.save();ctx.translate(Math.round(x),Math.round(y));ctx.fillStyle='#18282477';ctx.beginPath();ctx.ellipse(0,28,12,4,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#263b3a';ctx.beginPath();ctx.moveTo(-8,1);ctx.lineTo(-6,-6);ctx.lineTo(-2,-11);ctx.lineTo(6,-8);ctx.lineTo(10,-1);ctx.lineTo(7,6);ctx.lineTo(0,9);ctx.lineTo(-7,6);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#758b80';ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(-4,-5);ctx.lineTo(-1,-8);ctx.lineTo(4,-6);ctx.lineTo(7,-1);ctx.lineTo(4,4);ctx.lineTo(-3,5);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#c1c6a8';ctx.fillRect(-3,-6,4,2);ctx.fillRect(2,-2,3,2);ctx.fillStyle='#455e55';ctx.fillRect(-5,3,4,2);ctx.restore();
+      }
       drawFrostPrison(ctx,a,game.time);
       if(player&&a.scaredTime>0)drawFearFace(ctx,a.x,a.y-(a.jumpHeight||a.groundHeight||0)-43);
-      if(player)drawBowAim(ctx,a,1,game.time);
+      if(player&&a.pounceAim)drawPounceAim(ctx,a);
+      else if(player)drawBowAim(ctx,a,1,game.time);
       if(player)drawCryptWeaponFlames(ctx,a,game.time);
       if (!player && a.hp>0 && (a.frostMage || (a.kind === "skeleton" && a.frostBound))) {
         ctx.fillStyle = "#8cecff";
@@ -824,10 +902,11 @@ export class Renderer {
         ctx.textAlign = "center";
         ctx.font = "5px monospace";
         ctx.fillStyle = a.color;
-        if(!a.hidePlayerMarker)ctx.fillText(
+        ctx.font='7px sans-serif';
+        if(!a.hidePlayerMarker&&(game.players.length>1||a.hp<=0))ctx.fillText(
           a.hp <= 0 ? "HOLD INTERACT TO REVIVE" : a.name.toUpperCase(),
           a.x,
-          a.y + 29,
+          a.hp<=0?a.y+24:a.y-48-(a.jumpHeight||0),
         );
         if (a.hp <= 0) {
           ctx.fillStyle = "#d1e2a4";
@@ -837,11 +916,14 @@ export class Renderer {
       ctx.restore();
     }
     drawSuccubusEffects(ctx,game);
+    if(this.shaderGrass)this.grassField.draw(ctx,game,this.camera,w,h,true);
     drawImpBombs(ctx,game);
     // Draw burn sparks after actors so the fire visibly clings to the target.
-    drawBridges(ctx,game,true);
+    drawBridges(ctx,game,true,bridgeBounds);
     drawLivingEcosystem(ctx, game, 'air');
     drawGraveyardEcology(ctx,game,'air');
+    drawRealmLife(ctx,game,'air');
+    drawRealmAtmosphere(ctx,game);
     if(!sealCapture){
       const visibleGame=Object.create(game);visibleGame.enemies=game.enemies.filter(e=>!e.room&&canSee(game,e)&&this.visible(e,w,h,120));
       drawShoreGoblinTells(ctx,visibleGame);drawDreadmaneTells(ctx,visibleGame);drawCaptainTells(ctx,visibleGame);drawReaperDrain(ctx,visibleGame);drawBansheeSkills(ctx,visibleGame);
@@ -884,11 +966,20 @@ export class Renderer {
     drawHouseLights(ctx,game);
     ctx.restore();
     if(!sealCapture)this.rememberSealScene(game,w,h);
-    if(!sealCapture)drawFog(ctx, game, this.camera, w, h);
-    drawNightLight(ctx, game, this.camera, w, h);
+    if(!sealCapture){
+      // On restoring directly into a room there may be no last surface frame.
+      // Preserve the entrance view for presentation only; never reveal tiles or
+      // move/simulate a fake player in the actual world.
+      const fogGame=Object.create(game);
+      fogGame.players=game.players.every(p=>p.room)?game.players.map(p=>({...p,room:null})):game.players;
+      drawFog(ctx, fogGame, this.camera, w, h);
+    }
+    drawNightLight(ctx, game, this.camera, w, h,null,{occluded:this.dynamicShadows});
+    drawMarshFireflyGlows(ctx,game,this.camera,w,h);
     if(sealCapture)return;
     drawWeather(ctx, game, w, h);
     drawNightStatus(ctx, game, w, h);
+    this.houseRoomTitle(ctx,game,w,h);
     drawMysteryTracker(ctx,game,w);
     this.lootPrompts(game, w, h);
     const bx = w / 2 + (CENTER - this.camera.x) * this.camera.zoom,
@@ -954,8 +1045,25 @@ export class Renderer {
       ctx.textAlign = "center";
       ctx.fillText(p.name + " · REVIVE", x, y + 14);
     }
-    applyCelShading(ctx);
     this.minimap(ctx, game, w, h);
+    this.drawRoomWindows(ctx,game,w,h);
+    applyCelShading(ctx);
+  }
+  drawRoomWindows(ctx,game,w,h){
+    const windows=roomWindowLayout(sharedRoomGroups(game),w,h);this.roomWindows=windows;
+    for(const box of windows){
+      const {portal,players,x,y,width,height}=box,p=players[0],header=18,footer=15,innerW=Math.max(1,width-8),innerH=Math.max(1,height-header-footer-8);
+      ctx.save();ctx.fillStyle='#061510b8';ctx.fillRect(x+4,y+5,width,height);ctx.fillStyle='#142b25';ctx.fillRect(x,y,width,height);
+      ctx.strokeStyle='#b8a16c';ctx.lineWidth=1;ctx.strokeRect(x,y,width,height);ctx.textAlign='left';ctx.font='bold 8px sans-serif';ctx.fillStyle='#f0dfad';
+      ctx.fillText(portal.temple?'TEMPLE · UPPER SANCTUM':portal.mausoleum?'MAUSOLEUM · LOWER CRYPT':'LOWER TUNNELS',x+7,y+12,width-14);
+      ctx.save();ctx.beginPath();ctx.rect(x+4,y+header,innerW,innerH);ctx.clip();ctx.translate(x+4,y+header);
+      const previous=this.animator.lighting;this.animator.lighting=characterLightingFrame(game,box.id);
+      try{
+        if(portal.oldWell){const camera=sharedRoomCamera(players,innerW,innerH-24,this.camera.zoom||2.6);drawRoomScene(ctx,game,p,portal,this,{width:innerW,height:innerH,top:12,bottom:12,...camera});}
+        else{const scale=Math.min(innerW/320,innerH/240);ctx.translate((innerW-320*scale)/2,(innerH-240*scale)/2);ctx.scale(scale,scale);drawRoomScene(ctx,game,p,portal,this);}
+      }finally{this.animator.lighting=previous;}
+      ctx.restore();ctx.fillStyle='#d0c59e';ctx.font='7px sans-serif';ctx.fillText(players.map(q=>q.name||'Player').join(' · ')+'  |  Return at the stairs / exit',x+7,y+height-5,width-14);ctx.restore();
+    }
   }
   rememberSealScene(game,w,h){
     if(houseKeepsWorld(game))return;
@@ -1090,7 +1198,7 @@ export class Renderer {
       if (p.room || p.ui || p.hp <= 0) continue;
       if (game.phase === 'play' && p.progress >= 48 && Math.hypot(p.x - 800, p.y - 800) < 120) continue;
       const item = game.nearbyLoot(p);
-      if (!item || used.has(item.id) || !canSee(game, item)) continue;
+      if (!item || item.quicksandHidden || used.has(item.id) || !canSee(game, item)) continue;
       used.add(item.id);
       const sx = (item.x - this.camera.x) * this.camera.zoom + w / 2,
         sy = (item.y - this.camera.y) * this.camera.zoom + h / 2;
@@ -1236,6 +1344,7 @@ export class Renderer {
         rawEy,
       );
     const landscape=hasForestLandscape(game);
+    if(game.phase!=='won'&&drawRealmGround(ctx,game,{sx,sy,ex,ey}))return;
     if(game.generatedEnvironment==='beach'&&game.phase!=='won'){drawBeachGround(ctx,game,{sx,sy,ex,ey});drawBoundlessRoutes(ctx,game,{sx,sy,ex,ey});return;}
     if(game.generatedEnvironment==='graveyard'&&game.phase!=='won'){drawGraveyardGround(ctx,game,{sx,sy,ex,ey});drawBoundlessRoutes(ctx,game,{sx,sy,ex,ey});return;}
     this.ground(ctx, sx, sy, ex, ey, game.generatedEnvironment === "desert",game);
@@ -1248,7 +1357,7 @@ export class Renderer {
         const kind = waterAt(game, x * 32 + 16, y * 32 + 16);
         const streamed=boundless&&(x<0||y<0||x>=50||y>=50);
         if((game.phase==='won'&&!houseKeepsWorld(game))||(!boundless&&game.bloom<3&&Math.hypot(x*32+16-CENTER,y*32+16-CENTER)>game.bloom*430)){
-          ctx.fillStyle='#888a8e';ctx.fillRect(x*32,y*32,32.5,32.5);ctx.strokeStyle='#73767a';ctx.strokeRect(x*32,y*32,32,32);continue;
+          ctx.fillStyle='#888a8e';ctx.fillRect(x*32,y*32,32.5,32.5);continue;
         }
         if(game.house?.pools&&kind==='water')continue;
         if(game.generatedEnvironment==='desert'&&kind==='sand')continue;
@@ -1259,6 +1368,7 @@ export class Renderer {
         if(drawBiomeTile(ctx,game,kind,x*32,y*32))continue;
         if(['snow','ice'].includes(kind)){drawWinterTile(ctx,kind,x*32,y*32,32);continue;}
         if(['wood','path','temple_stone'].includes(kind)){
+          if(kind==='path'){drawPavingTile(ctx,game,x*32,y*32);continue;}
           ctx.fillStyle=kind==='temple_stone'?(r>.5?'#7c8766':'#6c785c'):kind==='wood'?(y%2?'#997450':'#a5815a'):'#c1b49a';
           ctx.fillRect(x*32,y*32,32,32);ctx.strokeStyle=kind==='wood'?'#73573f':'#b3cdd4';ctx.lineWidth=1;
           ctx.beginPath();ctx.moveTo(x*32+2,y*32+16);ctx.lineTo(x*32+30,y*32+16);ctx.stroke();continue;
@@ -1317,9 +1427,6 @@ export class Renderer {
           }
         }
         if(!landscape){
-        ctx.strokeStyle = d < 5 ? "#81926b20" : "#6b866120";
-        ctx.lineWidth = 0.6;
-        ctx.strokeRect(x * 32 + 0.3, y * 32 + 0.3, 31.4, 31.4);
         ctx.fillStyle = d < 5 ? "#77806035" : "#5d774050";
         ctx.fillRect(x * 32 + 5 + r * 19, y * 32 + 7 + r * 16, 2, 1);
         if (r > 0.7) {
@@ -1335,8 +1442,7 @@ export class Renderer {
         ) {
           ctx.fillStyle = "#888a8e";
           ctx.fillRect(x * 32, y * 32, 32.5, 32.5);
-          ctx.strokeStyle = "#73767a";
-          ctx.strokeRect(x * 32, y * 32, 32, 32);
+
         }
       }
     (this.quicksandSurface ||= new QuicksandSurface()).draw(ctx,game,{sx,sy,ex,ey});
@@ -1350,7 +1456,7 @@ export class Renderer {
   }
   boardBase(ctx, game, b=BOARD_TABLE) {
     ctx.save();
-    ctx.fillStyle='#17251d55';ctx.beginPath();ctx.ellipse(b.x+b.w/2,b.y+b.h/2+9,36,15,0,0,Math.PI*2);ctx.fill();
+    if(!this.dynamicShadows||game.openingBoard){ctx.fillStyle='#17251d55';ctx.fillRect(b.x,b.y+5,b.w,b.h);}
     ctx.fillStyle='#443020';
     for(const x of [b.x+3,b.x+b.w-8])ctx.fillRect(x,b.y+8,5,23);
     ctx.fillStyle='#5a3d28';ctx.fillRect(b.x,b.y-b.surfaceHeight+5,b.w,b.h);
@@ -1378,11 +1484,20 @@ export class Renderer {
     const width=ctx.measureText(label).width+12;ctx.fillStyle='#102b32ee';ctx.fillRect(x-width/2,y-7,width,14);
     ctx.fillStyle='#a9f5fa';ctx.fillText(label,x,y);ctx.restore();
   }
+  houseRoomTitle(ctx,game,w,h){
+    const player=game.players.find(p=>p.hp>0&&!p.room);
+    const indoors=player&&(game.house?.floors||[]).some(r=>player.x>=r.x&&player.y>=r.y&&player.x<r.x+r.w&&player.y<r.y+r.h);
+    const room=indoors?(game.house.rooms||[]).reduce((best,r)=>!best||Math.hypot(r.x-player.x,r.y-player.y)<Math.hypot(best.x-player.x,best.y-player.y)?r:best,null):null;
+    const name=room?.name||'';if(this.lastHouseRoom!==name){this.lastHouseRoom=name;this.houseRoomSince=game.time;}
+    const age=game.time-this.houseRoomSince;if(!name||age>2.5)return;
+    ctx.save();ctx.globalAlpha=Math.min(1,(2.5-age)*2);ctx.font='12px Georgia';ctx.textAlign='center';
+    const width=ctx.measureText(name).width+24;ctx.fillStyle='#132c27df';ctx.fillRect(w/2-width/2,42,width,22);ctx.fillStyle='#eddbaf';ctx.fillText(name,w/2,57);ctx.restore();
+  }
   minimap(ctx, game, w, h) {
     ctx.save();
     const s = 65,
       x = w - s - 14,
-      y = h - s - 65;
+      y = h - s - 88;
     ctx.fillStyle = "#10271ecc";
     ctx.fillRect(x - 4, y - 4, s + 8, s + 8);
     ctx.strokeStyle = "#82966860";
@@ -1393,8 +1508,9 @@ export class Renderer {
       for(let ty=startY;ty<startY+cells;ty++)for(let tx=startX;tx<startX+cells;tx++){
         if(!game.explored.has(`${tx},${ty}`))continue;
         const kind=waterAt(game,tx*32+16,ty*32+16),px=x+(tx-startX)*cell,py=y+(ty-startY)*cell;
-        ctx.fillStyle=kind==='water'?'#244b60':isShallow(kind)?'#497b79':kind==='bridge'?'#a28a56':kind==='ice'?'#8daebb':kind==='sand'?'#b99a62':kind==='temple_stone'?'#727d5e':'#334c35';ctx.fillRect(px,py,cell+.15,cell+.15);
+        ctx.fillStyle=REALM_COLORS[game.generatedEnvironment]?.[kind]|| (kind==='water'?'#244b60':isShallow(kind)?'#497b79':kind==='bridge'?'#a28a56':kind==='ice'?'#8daebb':kind==='sand'?'#b99a62':kind==='temple_stone'?'#727d5e':'#334c35');ctx.fillRect(px,py,cell+.15,cell+.15);
       }
+      for(const region of realmContexts(game))for(const n of region.realmState?.event?.nodes||[]){if(n.done||region.realmState.event.done)continue;const p=screen(n);if(p.x>=x&&p.x<=x+s&&p.y>=y&&p.y<=y+s){ctx.fillStyle='#d1b8e7';ctx.fillRect(p.x-1.5,p.y-1.5,3,3);}}
       // A local, player-centered map keeps this fast at any world coordinate.
       const center=screen({x:800,y:800});ctx.fillStyle='#d4ba72';ctx.fillRect(center.x-1.4,center.y-1.4,2.8,2.8);
       for(const e of game.enemies)if(e.hp>0&&canSee(game,e)){const p=screen(e);if(p.x>=x&&p.x<=x+s&&p.y>=y&&p.y<=y+s){ctx.fillStyle='#ed9275';ctx.fillRect(p.x-1,p.y-1,2,2);}}
@@ -1408,14 +1524,14 @@ export class Renderer {
       const tx = i % 50,
         ty = Math.floor(i / 50),
         kind = waterAt(game, tx * 32 + 16, ty * 32 + 16);
-      ctx.fillStyle =
+      ctx.fillStyle = REALM_COLORS[game.generatedEnvironment]?.[kind] || (
         kind === "water"
           ? "#244b60"
           : isShallow(kind)
             ? "#497b79"
             : kind === "bridge"
               ? "#a28a56"
-              : "#334c35";
+              : "#334c35");
       ctx.fillRect(
         x + (tx * s) / 50,
         y + (ty * s) / 50,
@@ -1432,6 +1548,7 @@ export class Renderer {
       ctx.fillStyle = "#ed9275";
       ctx.fillRect(x + (e.x / WORLD) * s, y + (e.y / WORLD) * s, 1.5, 1.5);
     }
+    if(game.realmState?.event&&!game.realmState.event.done)for(const n of game.realmState.event.nodes.filter(n=>!n.done)){ctx.fillStyle='#d1b8e7';ctx.fillRect(x+n.x/WORLD*s-2,y+n.y/WORLD*s-2,4,4);}
     const treasures = [
       ...game.loot,
       ...(game.phase === "won" ? [{ x: 800, y: 915 }] : []),

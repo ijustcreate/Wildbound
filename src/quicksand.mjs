@@ -1,5 +1,22 @@
 import {waterAt} from './environment.mjs';
 export const SAND_HEAD_DEPTH=38,MAX_SAND_DEPTH=48;
+export const QUICKSAND_LOOT_HIDE_DEPTH=24,QUICKSAND_LOOT_GRACE=1;
+/** Loot sinks below the sand surface, but remains interactable for one second. */
+export function tickQuicksandLoot(g,dt){
+ if(!g.loot?.length||!(dt>0))return false;
+ let changed=false;
+ for(const loot of [...g.loot]){
+  if(loot.quicksandHidden){
+   loot.quicksandGrace=Math.max(0,(loot.quicksandGrace??QUICKSAND_LOOT_GRACE)-dt);
+   if(loot.quicksandGrace<=0){g.loot=g.loot.filter(item=>item!==loot);changed=true;}
+   continue;
+  }
+  if(waterAt(g,loot.x,loot.y)!=='quicksand')continue;
+  loot.quicksandSink=Math.min(QUICKSAND_LOOT_HIDE_DEPTH,(loot.quicksandSink||0)+26*dt);
+  if(loot.quicksandSink>=QUICKSAND_LOOT_HIDE_DEPTH){loot.quicksandHidden=true;loot.quicksandGrace=QUICKSAND_LOOT_GRACE;changed=true;}
+ }
+ return changed;
+}
 export function tickQuicksand(g,p,input,dt){
  const sand=!p.room&&waterAt(g,p.x,p.y)==='quicksand'&&!(p.groundHeight>0);
  let depth=p.sink||0;

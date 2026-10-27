@@ -1,4 +1,5 @@
 import {drawFurniture,drawWindow} from './house-render.mjs';
+import {surfaceAction,visibleSurfaceItems} from './house-surfaces.mjs';
 import {drawHouseFloor,drawHouseWall,drawHouseDoor} from './house-architecture-art.mjs';
 import {boardTableBlocked} from './board-table.mjs';
 import {raisedSurfaceBlocked} from './terrain-support.mjs';
@@ -7,11 +8,13 @@ import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
 import {creatures} from './definitions.mjs';
 import {sectionBlocked,drawBreakable,breakDamagedWindow} from './structure-destruction.mjs';
-export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','graveyard'];
+import {controlledFollower} from './follower-control.mjs';
+export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','graveyard','swamp','caverns','shadow'];
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
 export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false,from=null,flying=false){
+ r=from?.vehicleId?Math.max(r,34):r;
  if(!projectile&&boardTableBlocked(g,x,y,r,elevation,from))return true;
  const hit=b=>raisedSurfaceBlocked(b,x,y+footOffset,r);
  const clearsFence=!projectile&&(flying||from?.wingHover&&elevation>=32);
@@ -35,11 +38,14 @@ export function toggleDoor(g,p){
   if(d.open&&[...g.players,...g.enemies].some(a=>a.hp>0&&Math.abs(a.x-d.x-d.w/2)<d.w/2+12&&Math.abs(a.y-d.y-d.h/2)<d.h/2+12)){g.message('Doorway occupied.');return true;}
   d.open=!d.open;g.onSound(d.open?'doorOpen':'doorClose',p);g.message(d.open?'Door opened.':'Door closed.');return true;
 }
-export const isSpider=e=>['spider','tarantula','baby_spider'].includes(e.kind);
+export const isSpider=e=>['spider','tarantula','baby_spider'].includes(e?.kind);
 const adultSpider=e=>e.kind==='spider'||e.kind==='tarantula';
 const airborne=(a)=>!!(a?.flying||a?.flightHeight||a?.roostHeight||a?.impFlightHeight||a?.succubusFlightHeight||
   (a?.jumpHeight||0)>2||['bat','bee','wasp','tsetse','dragonfly','fairy','bird','pelican','raven','crow'].includes(a?.kind));
-export const webSlow=(g,a)=>!isSpider(a)&&!airborne(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
+export const webSlow=(g,a)=>{
+ const owner=(g.players||[]).find(p=>p===a),controlled=owner?.controlledFollowerId?controlledFollower(g,owner):null;
+ return !isSpider(a)&&!isSpider(controlled)&&!airborne(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
+};
 export function maintainSpiderWebs(g, dt = 0) {
   const adults = (g.enemies || []).filter(e => e.hp > 0 && adultSpider(e));
   if (!adults.length) {
@@ -134,18 +140,24 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   }
   return true;
 }
-export function drawExpansion(c,g,visible=()=>true){
+export function drawExpansion(c,g,visible=()=>true,{floorOnly=false,structuresOnly=false,lightPaint=null}={}){
+ if(!structuresOnly){
   for(const w of g.webs||[]){c.save();c.translate(w.x,w.y);c.strokeStyle='#dae6de80';c.lineWidth=1;
     for(let ring=1;ring<=5;ring++){c.beginPath();for(let j=0;j<=12;j++){const a=j*Math.PI/6,r=w.radius*ring/5;j?c.lineTo(Math.cos(a)*r,Math.sin(a)*r*.65):c.moveTo(Math.cos(a)*r,Math.sin(a)*r*.65);}c.stroke();}
     for(let j=0;j<12;j++){const a=j*Math.PI/6;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*w.radius,Math.sin(a)*w.radius*.65);c.stroke();}c.restore();
   }
   if(!g.house)return;
   if(g.generatedEnvironment==='house')drawHouseFloor(c,g.house);
-  for(const r of g.house.rooms){c.fillStyle='#e5d8bc70';c.font='10px sans-serif';c.textAlign='center';c.fillText(r.name,r.x,r.y);}
   for(const p of g.house.pools||[]){drawWaterSurface(c,g,p.x,p.y,p.w,p.h);c.strokeStyle='#bcece488';c.lineWidth=2;c.strokeRect(p.x+5,p.y+5,p.w-10,p.h-10);c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);}
-  for(const f of g.house.furniture||[]){if(!visible({x:f.x+f.w/2,y:f.y+f.h/2},Math.max(f.w,f.h)+64))continue;drawBreakable(c,g,f,drawFurniture,'furniture');if(!f.destroyed&&furnitureHeight(f)&&g.players.some(p=>!p.room&&Math.hypot(p.x-f.x-f.w/2,p.y-f.y-f.h/2)<90)){c.fillStyle='#e7edce';c.font='9px sans-serif';c.textAlign='center';c.fillText('Jumpable · '+f.kind,f.x+f.w/2,f.y-7);}}
-  for(const b of g.house.walls){if(g.house.temple)continue;if(!visible({x:b.x+b.w/2,y:b.y+b.h/2},Math.max(b.w,b.h)+64))continue;drawBreakable(c,g,b,b.kind==='window'?drawWindow:drawHouseWall,b.kind==='window'?'window':'wall');}
-  for(const d of g.house.doors){drawBreakable(c,g,d,drawHouseDoor,'door:'+!!d.open);
+ }
+ if(!g.house||floorOnly)return;
+ const paint=(shape,draw,key)=>{const run=ctx=>drawBreakable(ctx,g,shape,draw,key);if(lightPaint)lightPaint(c,key.startsWith('furniture:')?{...shape,surfaceArtKey:key}:shape,run);else run(c);};
+  for(const f of g.house.furniture||[]){if(!visible({x:f.x+f.w/2,y:f.y+f.h/2},Math.max(f.w,f.h)+64))continue;paint(f,(pen,shape)=>drawFurniture(pen,shape,g),'furniture:'+JSON.stringify(visibleSurfaceItems(g,f)));}
+  const nearby=(g.players||[]).filter(p=>p.hp>0&&!p.room&&!p.vehicleId&&!p.ui).map(p=>surfaceAction(g,p)).filter(Boolean).sort((a,b)=>a.d-b.d)[0];
+  if(nearby){const {f,prop}=nearby,label='Interact · '+({kettle:'Cook broth',recipe_book:'Read recipe',candle:prop.lit?'Extinguish candle':'Light candle'}[prop.kind]||'Inspect '+prop.kind.replaceAll('_',' '));
+    c.save();c.font='8px sans-serif';c.textAlign='center';const width=c.measureText(label).width+12;c.fillStyle='#142c27ed';c.fillRect(f.x+f.w/2-width/2,f.y-28,width,14);c.fillStyle='#f0dfb7';c.fillText(label,f.x+f.w/2,f.y-18);c.restore();}
+  for(const b of g.house.walls){if(g.house.temple)continue;if(!visible({x:b.x+b.w/2,y:b.y+b.h/2},Math.max(b.w,b.h)+64))continue;paint(b,b.kind==='window'?drawWindow:drawHouseWall,b.kind==='window'?'window':'wall');}
+  for(const d of g.house.doors){paint(d,drawHouseDoor,'door:'+!!d.open);
     if(g.players.some(p=>!p.room&&Math.hypot(p.x-d.x-d.w/2,p.y-d.y)<65)){c.fillStyle='#fff3c5';c.font='9px sans-serif';c.textAlign='center';c.fillText(d.open?'Interact: close':'Interact: open',d.x+d.w/2,d.y-8);}}
 
 }

@@ -14,6 +14,8 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  car_key:{name:'Car key',stack:1,rarity:'common',color:'#e6c66f',description:'A brass key for the house car. A future hotwire skill can replace it.'},
+  car_engine_part:{name:'Replacement engine part',stack:1,rarity:'common',color:'#84939a',description:'A missing engine component. Use it beside an open hood to repair a vehicle.'},
   pumpkin:{name:'Pumpkin',stack:12,color:'#ed962f',material:true,sellPrice:1,description:'Picked from a cemetery pumpkin patch. Equip a knife in either hand to reveal Carve in your backpack.'},
   jack_o_lantern:{name:'Jack-o’-lantern',base:'hat',slot:'head',stack:1,armor:2,sockets:0,supplyOnly:true,color:'#ed962f',artColor:'#ed962f',style:'pumpkin',description:'A carved pumpkin helmet with flickering fiery eyes. Armor +2. Drop it to decorate the ground.'},
   unknown_mushroom:{name:'Strange mushroom',stack:999,rarity:'unique',color:'#c58bfa',sellPrice:0,description:'A mysterious mushroom found inside a question block in the TV world. Purple quality. Its purpose is unknown; no use yet.'},
@@ -26,8 +28,9 @@ export const ITEMS = {
   sun_boomerang:{name:'Sunfire boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:42,range:360,speed:480,stack:1,rarity:'unique',color:'#f4b75d',artColor:'#f4b75d',description:'A powerful golden returning weapon. One throw at a time; no ammunition needed.'},
   critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip in either hand and press Attack near a critter. Automatically uses an empty bottle/jar or travel cage from your backpack.'},
   empty_jar:{name:'Empty critter bottle',stack:12,color:'#abdcd9',sellPrice:2,description:'An empty bottle/jar for catching critters, including fish. Use a catcher net nearby.'},
-  critter_cage:{name:'Empty travel cage',stack:6,color:'#b69b67',sellPrice:4,description:'An empty cage for catching critters. The net automatically uses an available empty container.'},
+  critter_cage:{name:'Empty travel cage',stack:999,color:'#b69b67',sellPrice:4,description:'An empty cage for catching critters. The net automatically uses an available empty container.'},
   caught_frog:{name:'Frog in a jar',stack:1,color:'#85aa62',sellPrice:7,description:'A damp passenger with strong opinions about dinner.'},
+  caught_marsh_firefly:{name:'Marsh firefly',stack:1,captureContainer:'empty_jar',color:'#d8e993',sellPrice:7,description:'A tiny nocturnal marsh light. Release beside a swamp bank at night.'},
   caught_dragonfly:{name:'Dragonfly in a jar',stack:1,color:'#85c6cd',sellPrice:6},
   caught_fairy:{name:'Fairy in a jar',stack:1,color:'#c7a1dd',sellPrice:12},
   caught_bird:{name:'Bird in a cage',stack:1,color:'#bca477',sellPrice:9},
@@ -37,6 +40,8 @@ export const ITEMS = {
   caught_fish:{name:'Captured reef fish',stack:1,color:'#76d9df',sellPrice:8,description:'A bright reef fish. Release near deep water.'},
   caught_grave_moth:{name:'Grave moth',stack:1,captureContainer:'empty_jar',color:'#c6b3a1',sellPrice:7,description:'A soft-winged crypt visitor, carried in a critter bottle.'},
   caught_crypt_beetle:{name:'Crypt beetle',stack:1,captureContainer:'empty_jar',color:'#877b9b',sellPrice:8,description:'An iron-dark beetle from the crypt, carried in a critter bottle.'},
+  cave_crystal_shard:{name:'Cave crystal',stack:99,color:'#8ed9d1',material:true,sellPrice:7,description:'A luminous mineral mined from Hollowdeep geodes.'},
+  veil_shard:{name:'Veil shard',stack:99,color:'#b18ac8',material:true,sellPrice:9,description:'A dark crystal with a cold inner glow.'},
   raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'A piece of frozen ice. Melts after five minutes outside the ice level.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Stored relics grant no passive bonuses.' },
@@ -45,10 +50,12 @@ export const ITEMS = {
   magic_essence:{name:'Magic Essence',stack:999,color:'#77d9ec',material:true,sellPrice:2,description:'Salvaged from magical or uncommon gear. Stacks to 999.'},
   legendary_essence:{name:'Legendary Essence',stack:999,color:'#f4bd62',material:true,sellPrice:10,description:'Salvaged from legendary gear. Stacks to 999.'},
   lantern: {
-    name: "Trail lantern", slot: "hand1", eitherHand: true, damage: 0,
-    utility: true, stack: 1, color: "#edc776",
+      name: "Trail lantern", slot: "hand1", eitherHand: true, damage: 3,
+      stack: 1, color: "#edc776",
     lightSource: { radius: 150, intensity: 1, color: "#ffdf91" },
-    description: "Either hand · light source only; deals no damage.",
+      fire: { duration: 2, damage: 1, meltRadius: 24 },
+      meleeBurn: { duration: 2, damage: 1 },
+      description: "Either hand · a weak, flaming strike that can ignite enemies and trees.",
   },
   torch: {
     name: "Trail torch", slot: "hand1", eitherHand: true, damage: 5,
@@ -85,6 +92,17 @@ export const ITEMS = {
     stack: 99,
     color: "#a78652",
     description: "Crafting material or improvised sword. Equip one from a stack. Small chance to break on a hit (1 in 20 / 5%); equip another stick if it breaks.",
+  },
+  april_blade: {
+    name: "April's Trail Blade",
+    base: "sword",
+    slot: "hand1",
+    damage: 18,
+    stack: 1,
+    rarity: "unique",
+    color: "#d9dce8",
+    artColor: "#e7c66e",
+    description: "April's personal sword. A normal unique weapon that can be replaced or returned to her backpack.",
   },
   log: {
     name: "Log",
@@ -962,6 +980,7 @@ ITEMS.starter_quiver={name:'Starter quiver',base:'quiver',slot:'back',stack:1,ra
 // deliberately outside random loot pools; the warlock's existing rewards stay intact.
 export const REAPER_EQUIPMENT=Object.freeze({head:'reaper_hood',chest:'reaper_chest',gloves:'reaper_gloves',pants:'reaper_skirt',cape:'deaths_shroud',hand1:'reaper_scythe',hand2:'occupied'});
 ITEMS.scythe={name:'Harvest scythe',base:'scythe',slot:'hand1',twoHanded:true,damage:26,reach:76,stack:1,rarity:'rare',color:'#bdc8c4',artColor:'#bdc8c4',description:'A two-handed curved blade with sweeping scythe attacks.'};
+ITEMS.skeleton_long_axe={name:'Skeleton long axe',base:'sword',slot:'hand1',twoHanded:true,damage:24,reach:84,stack:1,npcOnly:true,style:'long_axe',color:'#c5c5b8',artColor:'#c5c5b8',description:'A long two-handed bone axe for skeletons.'};
 ITEMS.reaper_scythe={...ITEMS.scythe,name:"Reaper's scythe",damage:34,rarity:'unique',reaperGear:true,description:'The long crescent blade of the Grim Reaper. Sweep, return, and reap.'};
 for(const [id,name,base,slot,armor]of [['reaper_hood','Skullface cowl','hat','head',4],['reaper_chest','Reaper ribcage vestment','armor','chest',7],['reaper_gloves','Skeletal gloves','gloves','gloves',3],['reaper_skirt','Reaper robe skirt','pants','pants',5]])ITEMS[id]={name,base,slot,armor,stack:1,rarity:'unique',reaperGear:true,color:'#81858f',artColor:'#30323b',description:'Dark cloth and old ivory, fitted to the humanoid rig.'};
 export const REAPER_SET=Object.freeze(['reaper_hood','reaper_chest','reaper_gloves','reaper_skirt','deaths_shroud','reaper_scythe']);
@@ -982,12 +1001,13 @@ for(const [id,name,color,bonus,description] of [
 // Five distinct Queen drops. The remaining outfit pieces are enemy costume only.
 export const BANSHEE_SET=Object.freeze(['banshee_bow','banshee_quiver','banshee_hood','banshee_cape','banshee_shoulders']);
 export const SUCCUBUS_DROPS=Object.freeze(['succubus_horns','succubus_whip','succubus_wings']);
-export const GHOST_EQUIPMENT=Object.freeze({head:'ghost_hood',chest:'ghost_robe',gloves:'ghost_claws',pants:'ghost_mist',cape:'ghost_cape'});
+export const GHOST_EQUIPMENT=Object.freeze({head:'ghost_hood',chest:'ghost_robe',gloves:'ghost_gloves',pants:'ghost_mist',cape:'ghost_cape'});
 export const GHOST_DROPS=Object.freeze(Object.values(GHOST_EQUIPMENT));
 for(const [id,name,base,slot,flags,description]of [
  ['ghost_hood','Ghost hood','hat','head',{spectralHood:true,spectralEyes:true},'A pale hood with glowing spectral eyes and a small eye trail.'],
  ['ghost_robe','Ghost robe','armor','chest',{spectralRobe:true},'Pale torn cloth from a restless cemetery ghost.'],
  ['ghost_claws','Ghost claws','gloves','gloves',{spectralClaws:true,damage:2},'Long, curved spectral fingers.'],
+ ['ghost_gloves','Ghost gloves','gloves','gloves',{spectralHands:true},'Pale spectral gloves form luminous, tapered ghost hands.'],
  ['ghost_mist','Ghost mist wraps','pants','pants',{spectralLegs:true},'Your legs dissolve into drifting wisps. A visual effect; your footing and collision stay the same.'],
  ['ghost_cape','Spectral cape','cape','cape',{},'A ragged pale cape that trails like haunted mist.'],
 ])ITEMS[id]={name,base,slot,style:id==='ghost_cape'?'spectral':'ghost',color:'#b8d9c4',artColor:'#b8d9c4',rarity:'rare',stack:1,armor:1,...flags,description};
@@ -1062,6 +1082,12 @@ for (const skill of SKILLS) ITEMS[skillScrollId(skill.id)] = {
   name:skill.name+' skill scroll',skillScroll:skill.id,stack:1,color:'#edce82',
   description:'Unlocks '+skill.name+' training in the Field Guild when collected. '+skill.detail,
 };
+// Explicit visual families keep exceptional named items on the shared fitted
+// renderer instead of silently drawing an empty hand or generic headpiece.
+ITEMS.santa_hat.base='hat';
+ITEMS.ranger_hood.style='hood';
+ITEMS.friendship_wand.base='wand';
+ITEMS.sword_of_a_thousand_truths.base='sword';
 for (const [id, item] of Object.entries(ITEMS)) {
   item.base ??= id;
   item.rarity ??= "common";
@@ -1140,6 +1166,14 @@ export function migrateLegacySupplies(list){
     const item=list[i];if(item?.type!=='arrow')continue;
     if(target&&target.qty<ITEMS.arrow.stack){const n=Math.min(item.qty,ITEMS.arrow.stack-target.qty);target.qty+=n;item.qty-=n;if(!item.qty){clearSlot(list,i);continue;}}
     target=item;
+  }
+  for(const type of ['critter_cage']){
+    let stack;
+    for(let i=0;i<list.length;i++){
+      const item=list[i];if(item?.type!==type)continue;
+      if(stack&&stack.qty<ITEMS[type].stack){const n=Math.min(item.qty,ITEMS[type].stack-stack.qty);stack.qty+=n;item.qty-=n;if(!item.qty){clearSlot(list,i);continue;}}
+      stack=item;
+    }
   }
 }
 const itemCaptureContainer=(type,item={})=>critterContainer(type,{captureContainer:item.captureContainer??ITEMS[type]?.captureContainer});
@@ -1448,6 +1482,7 @@ ITEMS.healing_wand={name:'Healing wand',base:'wand',slot:'hand1',magic:true,heal
   color:RARITIES.common,artColor:'#9cddff',style:'crystal',
   description:'Light-blue bolts heal living allied heroes and companions for 24 health (36 fully charged); never harm enemies. With a halo, each hit adds 4 healing/sec for 3 seconds, up to 3 independent stacks. Full stacks do not refresh.'};
 ITEMS.halo={name:'Halo',base:'hat',slot:'head',healingHalo:true,
+  coversHair:false,
   outgoingSpellHealing:.25,incomingSpellHealing:.25,stack:1,sockets:1,maxHp:0,rarity:'rare',
   color:RARITIES.rare,artColor:'#ffe8a0',style:'halo',
   description:'A floating ring of warm light: +25% outgoing and +25% incoming spell healing (multiplicative). Combine with a healing wand for three one-second healing ticks per hit, up to 3 stacks.'};

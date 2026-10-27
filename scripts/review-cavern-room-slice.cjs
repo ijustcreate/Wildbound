@@ -1,0 +1,21 @@
+const {app,BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'test-output/cavern-room-slice');
+fs.mkdirSync(out,{recursive:true});app.disableHardwareAcceleration();app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
+app.whenReady().then(async()=>{const w=new BrowserWindow({show:false,width:1200,height:820,webPreferences:{backgroundThrottling:false}});w.webContents.setAudioMuted(true);try{
+ await w.loadFile(path.join(root,'index.html'));await w.webContents.executeJavaScript('window.wildboundBoot.ready');
+ const result=await w.webContents.executeJavaScript(`(async()=>{
+ const {Assets}=await import('./src/assets.mjs'),{Game}=await import('./src/core.mjs'),{Renderer}=await import('./src/render.mjs'),{installCavernRoomSlice}=await import('./src/cavern-room-slice.mjs'),{realmFootprint}=await import('./src/realm-world.mjs'),{harvest}=await import('./src/environment.mjs'),{terrainSupport}=await import('./src/terrain-support.mjs'),{validateSprite}=await import('./src/pixels.mjs');
+ const assets=new Assets();await assets.load();const g=new Game(()=>.5,{deferWorld:true});g.addPlayer('keyboard','');g.start();g.openingBoard=false;const hero=g.players[0];
+ const canvas=document.createElement('canvas');Object.defineProperty(canvas,'clientWidth',{value:1200});Object.defineProperty(canvas,'clientHeight',{value:820});document.body.append(canvas);const renderer=new Renderer(canvas,assets),scene=installCavernRoomSlice(g,assets,renderer);Object.assign(hero,scene.spawn,{equipment:{...hero.equipment,hand1:'lantern'}});
+ renderer.camera={x:505,y:800,zoom:.95};renderer.draw(g,0);
+ const images={gameplay:canvas.toDataURL()};
+ const map=document.createElement('canvas');map.width=960;map.height=640;const c=map.getContext('2d');c.fillStyle='#182b26';c.fillRect(0,0,map.width,map.height);c.save();c.scale(.54,.54);c.translate(-160,-185);renderer.floor(c,1780,1190,g);for(const p of [...g.scenery].sort((a,b)=>a.rootY-b.rootY))renderer.drawProp?.(c,p,20,g)||null;for(const p of [...g.scenery].sort((a,b)=>a.rootY-b.rootY)){const {drawRealmProp}=await import('./src/realm-art.mjs');drawRealmProp(c,p,20,g,{dynamicShadows:true,spriteLibrary:assets.library});}c.restore();images.overview=map.toDataURL();
+ const checks=[];if(g.blocked(hero.x,hero.y,12))throw Error('Spawn is blocked at '+hero.x+','+hero.y);checks.push('Player spawn clear');
+ const {rooms,tunnel}=scene;const open=(x,y)=>!g.blocked(x,y,12,false,false,false,0);for(let i=0;i<=20;i++){const t=i/20,p={x:tunnel[0].x+(tunnel[2].x-tunnel[0].x)*t,y:tunnel[0].y+(tunnel[2].y-tunnel[0].y)*t};if(!open(p.x,p.y))throw Error('Tunnel obstructed at '+i);}checks.push('Chamber and tunnel traversable at player radius');
+ if(!g.terrain.some(t=>t==='water')||!g.terrain.some(t=>t==='shallow'))throw Error('Pool lacks depth gradient');checks.push('Underground pool has shallow and deep water');
+ for(const [kind,s] of Object.entries(scene.native))if(!validateSprite(s))throw Error('Invalid native asset '+kind);checks.push('Shelf and crystal are editable native pixel assets');
+ const crystal=g.scenery.find(p=>p.kind==='cave_crystal');if(!crystal||realmFootprint(crystal).w<=0)throw Error('Crystal footprint missing');Object.assign(hero,{x:crystal.x,y:crystal.rootY+24,faceX:0,faceY:-1});for(let i=0;i<8;i++)harvest(g,hero,100,90);if(!crystal.depleted)throw Error('Crystal mining failed');checks.push('Crystal mines and depletes through existing gameplay');
+ const shelf=g.scenery.find(p=>p.kind==='limestone_shelf');if(!(terrainSupport(g,{x:shelf.x,y:shelf.rootY-3})>0))throw Error('Shelf support missing');checks.push('Shelf has collision and jump support');
+ return {images,checks,camera:renderer.camera,viewport:renderer.viewport,canvas:[canvas.width,canvas.height],openingBoard:g.openingBoard,phase:g.phase,player:[hero.x,hero.y]};})()`);
+ for(const [name,url]of Object.entries(result.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(url.split(',')[1],'base64'));fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(result.checks,null,2));console.log(result.checks,result.camera,result.viewport,result.canvas,result.openingBoard,result.phase,result.player);w.destroy();app.quit();
+ }catch(e){console.error(e);w.destroy();app.exit(1);}});

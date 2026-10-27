@@ -33,8 +33,9 @@ test('Non-house levels retain the original whole-world recall, and friendly/ambi
  assert.equal(recalledEnemy({kind:'lion'}),true);assert.equal(recalledEnemy({faction:'hostile'}),true);
 });
 test('New default floorplan has an open central gallery, six rooms, wider doors and preserves saved custom layouts',()=>{
- const h=defaultHouse();assert.ok(validateHouse(h));assert.equal(h.floorplanVersion,2);assert.equal(h.rooms.length,6);
- assert.ok(h.doors.every(d=>Math.max(d.w,d.h)>=96));
+ const h=defaultHouse();assert.ok(validateHouse(h));assert.equal(h.floorplanVersion,3);assert.equal(h.rooms.length,6);
+ assert.ok(h.rooms.some(r=>r.name==='Garage'));
+ assert.ok(h.doors.every(d=>Math.max(d.w,d.h)>=(d.y>=1120?64:96)));
  for(let y=504;y<1104;y+=8)assert.ok(!h.walls.some(r=>contains(r,800,y))&&!h.furniture.filter(f=>!['rug','plant'].includes(f.kind)).some(r=>contains(r,800,y)),'central gallery is clear at '+y);
  assert.ok(h.doors.some(d=>d.x===1104&&d.w===16),'bedroom has an outdoor side exit');
  const previous=globalThis.localStorage,custom=structuredClone(h);custom.name='User custom house';custom.rooms[0].name='My room';custom.doors[0].open=true;

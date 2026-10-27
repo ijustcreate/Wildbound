@@ -56,7 +56,7 @@ test('Every fitted gear piece follows its joint in eight directions without chan
       for(const [key,color] of original) {
         const [x,y]=key.split(',').map(Number);
         assert.equal(moved.get(`${x+9},${y-12}`),color,id);
-        assert.ok(Math.abs(x)<=10&&Math.abs(y)<=12,id);
+        assert.ok(Math.abs(x)<=10&&Math.abs(y)<=(/horn/.test(ITEMS[id].style||'')?14:12),id);
       }
     }
   }

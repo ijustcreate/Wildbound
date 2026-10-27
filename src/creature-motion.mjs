@@ -324,7 +324,18 @@ function makeKeys(kind, action) {
         j["knee" + side] = [0, stride * 0.6, Math.max(0, -stride) * 0.3];
         j["hand" + side] = [0, -stride, Math.max(0, stride) * 0.4 + bob];
         j["elbow" + side] = [0, -stride * 0.5, bob];
-        if (["windup", "slam", "punch"].includes(action)) {
+        if(action==='grab'){
+          const lift=Math.max(0,Math.min(1,(t-.24)/.62)),crouch=Math.sin(Math.min(1,t*3.4)*Math.PI/2)*(1-lift);
+          j.pelvis=[0,crouch*4,-crouch*2];
+          j["hand"+side]=[sign*-2,crouch*12+lift*2,-crouch*8+lift*28];
+          j["elbow"+side]=[0,crouch*5+lift*2,-crouch*4+lift*17];
+          j.chest=[0,crouch*4+lift*2,-crouch*3];j.head=[0,crouch*5,-crouch*3];
+        } else if(action==='throw'){
+          const follow=Math.sin(Math.min(1,t*1.25)*Math.PI/2);
+          j["hand"+side]=[sign*-2,2+follow*15,27-follow*31];
+          j["elbow"+side]=[0,4+follow*7,16-follow*18];
+          j.chest=[0,follow*5,-follow*2];
+        } else if (["windup", "slam", "punch"].includes(action)) {
           const raised = action === "windup" ? t : 1 - t;
           j["hand" + side] = [sign * -2, 4 + 5 * (1 - raised), raised * 28];
           j["elbow" + side] = [0, 3, raised * 13];
@@ -442,7 +453,7 @@ export function defaultCreatureMotion(kind) {
           : kind === "monkey"
             ? ["idle", "run", "punch", "throw", "recover", "hurt", "snared"]
             : kind === "golem"
-              ? ["idle", "walk", "windup", "slam", "recover", "hurt", "snared"]
+              ? ["idle", "walk", "windup", "grab", "throw", "slam", "recover", "hurt", "snared"]
               : kind === "vine"
                 ? ["idle", "windup", "bite", "recover", "hurt", "snared"]
                 : ["idle", "arm", "snap", "hold"];
@@ -477,12 +488,13 @@ export function defaultCreatureMotion(kind) {
     });
   if (kind === "golem")
     Object.assign(pal, {
-      body: "#788982",
-      shade: "#465950",
-      light: "#a5afa0",
-      face: "#859589",
-      detail: "#bed37a",
-      eye: "#b9ecc5",
+      body: "#748a80",
+      shade: "#354c49",
+      light: "#b1c0a7",
+      face: "#829990",
+      detail: "#d5cb7a",
+      eye: "#c6ffca",
+      outline: "#26383a",
     });
   if (kind === "vine")
     Object.assign(pal, { face: "#d75c73", detail: "#fff1cd", eye: "#f7d788" });
@@ -578,6 +590,10 @@ export const creatureMotions = Object.fromEntries(
 );
 export function upgradeCreatureMotion(kind, model) {
   const m = structuredClone(model);
+  if(kind==='golem'&&m?.clips){
+    const defaults=defaultCreatureMotion(kind);
+    for(const action of ['grab','throw'])if(!m.clips[action])m.clips[action]=structuredClone(defaults.clips[action]);
+  }
   if (kind === "dragon" && m && !m.artRevision && m.joints) {
     for (const [name, [, ...oldPosition]] of Object.entries(
       legacyDragonSkeleton,
@@ -622,6 +638,7 @@ export function creatureAction(kind, a) {
     return a.moving ? "float" : "idle";
   }
   if (kind === "vine" && a.spitTime > 0) return "bite";
+  if(kind==='golem'&&a.state==='rocklift')return 'grab';
   if (["fire_elemental", "water_elemental"].includes(kind)) {
     if (a.animationAction)
       return a.animationAction === "attack" ? "cast" : a.animationAction;
@@ -1166,6 +1183,7 @@ export function drawCreature(
       ]) {
         const [a, b, end] = chain.map((n) => n + side);
         add((p[a].depth + p[end].depth) / 2, () => {
+          if(kind==='golem')line(a,end,s.limbWidth+2,pal.outline);
           line(a, b, s.limbWidth, pal.shade);
           line(b, end, s.limbWidth, pal.body);
           ball(
@@ -1178,14 +1196,24 @@ export function drawCreature(
     add(p.chest.depth, () => {
       line("pelvis", "chest", s.bodyWidth, pal.body);
       if (kind === "golem") {
-        line("pelvis", "chest", 2, pal.shade);
-        ball("chest", 2, pal.detail);
+        const x=p.chest.x,y=p.chest.y;
+        pixelPolygon(c,[{x:x-10,y:y-8},{x:x+8,y:y-7},{x:x+12,y:y+1},{x:x+7,y:y+10},{x:x-9,y:y+9},{x:x-13,y:y+1}],pal.outline);
+        pixelPolygon(c,[{x:x-8,y:y-7},{x:x+7,y:y-6},{x:x+10,y:y+1},{x:x+5,y:y+8},{x:x-8,y:y+7},{x:x-10,y:y+1}],pal.body);
+        c.fillStyle=pal.light;c.fillRect(Math.round(x-7),Math.round(y-6),8,2);c.fillRect(Math.round(x-10),Math.round(y-3),2,5);
+        c.fillStyle=pal.shade;c.fillRect(Math.round(x+4),Math.round(y+2),5,4);c.fillRect(Math.round(x-3),Math.round(y+4),5,2);
+        c.fillStyle=pal.detail;c.fillRect(Math.round(x-1),Math.round(y-2),3,2);c.fillRect(Math.round(x+1),Math.round(y),2,2);
       }
     });
     add(p.head.depth, () => {
       for (const n of ["earL", "earR"])
         if (visible(n)) ball(n, kind === "monkey" ? 3 : 2, pal.face);
       ball("head", s.headRadius, pal.body);
+      if(kind==='golem'){
+        const h=p.head;c.fillStyle=pal.outline;c.fillRect(Math.round(h.x-7),Math.round(h.y-5),14,11);
+        c.fillStyle=pal.face;c.fillRect(Math.round(h.x-6),Math.round(h.y-5),12,9);
+        c.fillStyle=pal.light;c.fillRect(Math.round(h.x-5),Math.round(h.y-4),7,2);c.fillRect(Math.round(h.x-6),Math.round(h.y-2),2,3);
+        c.fillStyle=pal.shade;c.fillRect(Math.round(h.x+3),Math.round(h.y+1),3,3);
+      }
       if (!(d >= 3 && d <= 5) && visible("muzzle")) {
         ball("muzzle", kind === "monkey" ? 3.5 : 3, pal.face);
       }

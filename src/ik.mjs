@@ -18,9 +18,9 @@ export function solveTwoBone(root,mid,end,target,lengths,bend=1){
  const along=(a*a-b*b+distance*distance)/(2*distance),height=Math.sqrt(Math.max(0,a*a-along*along));
  return {mid:add(add(root,axis,along),pole,height*(bend<0?-1:1)),end:add(root,axis,distance)};
 }
-export function applyIK(model,pose){
+export function applyIK(model,pose,disabled=[]){
  for(const chain of Object.values(model.ik||{})){
-  if(!chain||chain.enabled===false)continue;
+  if(!chain||chain.enabled===false||disabled.includes(chain.end))continue;
   const {root,mid,end}=chain;if(!pose[root]||!pose[mid]||!pose[end]||model.joints[mid]?.parent!==root||model.joints[end]?.parent!==mid)continue;
   const rest=model.joints, lengths=[len(sub(rest[mid].position,rest[root].position)),len(sub(rest[end].position,rest[mid].position))];
   // Authored middle-joint keys provide the pole. End-joint keys are targets.

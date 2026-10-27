@@ -7,7 +7,7 @@ export class ItemStudioPreview {
   constructor(root,id,items,editFit) {
     this.id=id;this.items=items;this.direction=0;this.frame=0;this.playing=false;this.clip='idle';this.root=root;
     root.className='item-studio-preview';
-    root.innerHTML='<section class="item-character"><h3>ON CHARACTER</h3><canvas width="360" height="300" aria-label="Equipped item on character"></canvas><div class="item-directions"></div><div class="item-playback"><select aria-label="Preview animation"><option>idle</option><option>run</option><option>slash</option><option>block</option></select><button type="button">Play</button><button type="button" data-fit>Edit fit</button><button type="button" data-art>Edit pixel art</button></div><p class="item-preview-note"></p></section><section class="item-artwork"><h3>INVENTORY ICON</h3><canvas class="item-icon" width="144" height="144" aria-label="Item inventory icon"></canvas><h3>WORN ARTWORK</h3><p>Actual runtime layers affected by this item in the selected facing. Transparent areas are shown on a checkerboard.</p><div class="item-sprite-list"></div></section>';
+    root.innerHTML='<section class="item-character"><h3>ON CHARACTER</h3><canvas width="360" height="300" aria-label="Equipped item on character"></canvas><div class="item-directions"></div><div class="item-playback"><select aria-label="Preview animation"><option>idle</option><option>run</option><option>slash</option><option>block</option><option>ranged</option><option>cast</option><option>jump_air</option></select><button type="button">Play</button><button type="button" data-fit>Edit fit</button><button type="button" data-art>Edit pixel art</button></div><p class="item-preview-note"></p><h3>8-DIRECTION TURNAROUND</h3><p>Shared rig review · pixel grid locked · inspect silhouette, occlusion and fit before approving.</p><canvas class="item-turnaround" width="640" height="180" aria-label="Eight direction wearable turnaround"></canvas></section><section class="item-artwork"><h3>INVENTORY ICON</h3><canvas class="item-icon" width="144" height="144" aria-label="Item inventory icon"></canvas><h3>WORN ARTWORK</h3><p>Actual runtime layers affected by this item in the selected facing. Transparent areas are shown on a checkerboard.</p><div class="item-sprite-list"></div></section>';
     DIRECTIONS.forEach((name,d)=>{const b=document.createElement('button');b.textContent=name;b.onclick=()=>{this.direction=d;this.dirty=true;this.animate(0);};root.querySelector('.item-directions').append(b);});
     root.querySelector('select').onchange=e=>{this.clip=e.target.value;this.frame=0;this.dirty=true;this.animate(0);};
     root.querySelector('.item-playback button').onclick=e=>{this.playing=!this.playing;e.target.textContent=this.playing?'Pause':'Play';};
@@ -27,6 +27,7 @@ export class ItemStudioPreview {
     const c=this.root.querySelector('.item-character canvas').getContext('2d');
     c.imageSmoothingEnabled=false;c.fillStyle='#182c2c';c.fillRect(0,0,360,300);
     c.save();c.translate(180,250);c.scale(4.5,4.5);drawPlayer(c,this.actor(),0,playerMotion);c.restore();
+    this.renderTurnaround();
     if(!this.dirty)return;
     this.dirty=false;
     [...this.root.querySelector('.item-directions').children].forEach((b,d)=>b.classList.toggle('active',d===this.direction));
@@ -67,5 +68,20 @@ export class ItemStudioPreview {
       card.append(canvas,label);list.append(card);
     }
     if(!list.children.length)list.textContent=def.relic?'This relic uses a small belt ornament drawn after the rig layers.':def.slot?'No visible layer change in this facing. Try another direction.':'No character sprite: this item uses the icon artwork.';
+  }
+  renderTurnaround() {
+    const canvas=this.root.querySelector('.item-turnaround');
+    if(!canvas)return;
+    const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.fillStyle='#182c2c';c.fillRect(0,0,canvas.width,canvas.height);
+    const labels=['S','SW','W','NW','N','NE','E','SE'];
+    for(let d=0;d<8;d++) {
+      const x=d*80;c.fillStyle=d===this.direction?'#8fd8b2':'#315148';c.fillRect(x+2,2,76,176);
+      c.save();c.translate(x+40,151);c.scale(2.2,2.2);drawPlayer(c,this.actorForDirection(d),0,playerMotion);c.restore();
+      c.fillStyle='#d7e4cf';c.font='10px monospace';c.textAlign='center';c.fillText(labels[d],x+40,173);
+    }
+  }
+  actorForDirection(direction) {
+    const def=this.items[this.id],[faceX,faceY]=directionVector(direction);
+    return {faceX,faceY,appearance:DEFAULT_APPEARANCE,equipment:def.slot?{[def.slot]:this.id}:{},inventory:def.relic?[{type:this.id,qty:1}]:[],animationAction:this.clip,playerFrame:this.frame};
   }
 }

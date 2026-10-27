@@ -3652,6 +3652,216 @@
     "source": "Original deterministic synthesis; no external samples"
   },
   {
+    "id": "encounter-92",
+    "name": "Lanterns in the reeds",
+    "role": "hazard",
+    "voice": "chime",
+    "file": "assets/sfx/encounters/encounter-92.wav",
+    "duration": 1.1387422929517925,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.137,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.205,
+        "duration": 0.369,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.31,
+        "duration": 0.319,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.465,
+        "duration": 0.127,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-93",
+    "name": "The nesting bank",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-93.wav",
+    "duration": 1.3306675460888073,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.305,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.142,
+        "duration": 0.446,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.282,
+        "duration": 0.326,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-94",
+    "name": "The singing geodes",
+    "role": "hazard",
+    "voice": "bell",
+    "file": "assets/sfx/encounters/encounter-94.wav",
+    "duration": 1.3357347120298073,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.197,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.21,
+        "duration": 0.215,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.389,
+        "duration": 0.152,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-95",
+    "name": "Wings in the echo hall",
+    "role": "ordinary",
+    "voice": "flutter",
+    "file": "assets/sfx/encounters/encounter-95.wav",
+    "duration": 1.2941610135138035,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.22,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.208,
+        "duration": 0.304,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.438,
+        "duration": 0.2,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.547,
+        "duration": 0.316,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-96",
+    "name": "Keep the last lights",
+    "role": "hazard",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-96.wav",
+    "duration": 1.4033207901054994,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.196,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.176,
+        "duration": 0.214,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.352,
+        "duration": 0.455,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.577,
+        "duration": 0.243,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.747,
+        "duration": 0.222,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-97",
+    "name": "Hounds beyond the veil",
+    "role": "ordinary",
+    "voice": "howl",
+    "file": "assets/sfx/encounters/encounter-97.wav",
+    "duration": 1.342436757707037,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.168,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.208,
+        "duration": 0.262,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.416,
+        "duration": 0.245,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.607,
+        "duration": 0.298,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.826,
+        "duration": 0.134,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
     "id": "travel-forest",
     "name": "Travel · forest",
     "voice": "wood",
@@ -3909,6 +4119,105 @@
         "at": 0.812,
         "duration": 0.373,
         "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-swamp",
+    "name": "Travel · swamp",
+    "voice": "water",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-swamp.wav",
+    "duration": 1.4098753883270547,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.124,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.194,
+        "duration": 0.415,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.369,
+        "duration": 0.297,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-caverns",
+    "name": "Travel · caverns",
+    "voice": "drip",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-caverns.wav",
+    "duration": 1.3669807029189542,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.165,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.252,
+        "duration": 0.278,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.362,
+        "duration": 0.147,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.564,
+        "duration": 0.359,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.691,
+        "duration": 0.323,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "travel-shadow",
+    "name": "Travel · shadow",
+    "voice": "ghost",
+    "role": "travel",
+    "file": "assets/sfx/encounters/travel-shadow.wav",
+    "duration": 1.2096033134264872,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.37,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.151,
+        "duration": 0.411,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.272,
+        "duration": 0.137,
+        "note": 12,
         "accent": true
       }
     ],

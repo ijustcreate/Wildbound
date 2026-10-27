@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LobbyPractice,LOBBY_FURNITURE} from '../src/lobby-practice.mjs';
+import {LOBBY_TV} from '../src/lobby-geometry.mjs';
 import {LobbyTelevision} from '../src/lobby-tv.mjs';
 import {LOBBY_OBJECTS} from '../src/playable-lobby.mjs';
 import {damageEnemy} from '../src/enemy-damage.mjs';
@@ -17,14 +18,14 @@ test('target total is absent before a hit, holds for a minute, fades, and refres
  damageEnemy(t,8);assert.equal(t.hits,2);assert.equal(t.score,18);assert.equal(targetReportAlpha(t),1);g.updateTargets(63);assert.equal(targetReportAlpha(t),0);
 });
 test('labels require a nearby active player, and tall prop captions are above their art',()=>{
- const o=LOBBY_OBJECTS.find(o=>o.id==='television'),p={id:1,hp:100},s={spawned:true,x:o.x,y:o.y+70},members=new Map([[1,s]]);
+ const o=LOBBY_OBJECTS.find(o=>o.id==='television'),p={id:1,hp:100},s={spawned:true,x:723,y:234},members=new Map([[1,s]]);
  assert.equal(lobbyObjectNearby(o,[p],members),true);s.y+=100;assert.equal(lobbyObjectNearby(o,[p],members),false);s.y=o.y;s.spawned=false;assert.equal(lobbyObjectNearby(o,[p],members),false);
  for(const id of ['television','character-station','difficulty']){const o=LOBBY_OBJECTS.find(o=>o.id===id);assert.ok(lobbyLabelY(o)<o.y-50);assert.ok(lobbyPropDepth(o)>o.y);}
 });
 test('TV has a ground footprint and a jumpable top while the totem stays solid at flight/jump height',()=>{
  const g=new LobbyPractice(),f=LOBBY_FURNITURE.find(f=>f.id==='television');
  assert.equal(g.blocked(785,145),false);assert.equal(g.blocked(785,178),true);assert.equal(g.blocked(785,178,8,false,false,false,0,f.surfaceHeight),false);
- assert.equal(g.blocked(955,165,8,false,false,false,0,150),true);assert.equal(furnitureHeight({kind:'table',surfaceHeight:78}),18);assert.equal(furnitureHeight(f),78);
+ assert.equal(g.blocked(955,165,8,false,false,false,0,150),true);assert.equal(furnitureHeight({kind:'table',surfaceHeight:78}),18);assert.equal(furnitureHeight(f),LOBBY_TV.height);
 });
 test('controllers belong to two independent owners, drop on leaving, and can be picked up again',()=>{
  const tv=new LobbyTelevision(1);assert.equal(tv.join(1),true);assert.equal(tv.join(2),true);assert.equal(tv.join(3),false);

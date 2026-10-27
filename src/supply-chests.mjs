@@ -1,8 +1,12 @@
 import {dropIceRecipe} from './ice-crafting.mjs';
 import {drawStarterChest} from './starter-chest.mjs';
 import {ensureChestCritter,drawChestCritter} from './supply-chest-critters.mjs';
+import {supplyChestShape} from './terrain-support.mjs';
 // A small, seeded supply route, selected from ground reachable from the board.
 export const LEVEL_SUPPLIES = {
+ swamp:{item:'fern_pendant',name:'Bayou supplies',color:'#bac77f'},
+ caverns:{item:'jade_pendant',name:'Cavern supplies',color:'#8fc6cc'},
+ shadow:{item:'fern_pendant',name:'Veil supplies',color:'#bba0cd'},
  forest: {item:'fern_pendant',name:'Woodland supplies',color:'#8fb779'},
  desert: {item:'sunstone_pendant',name:'Dune supplies',color:'#d7b568'},
  ice: {item:'snowflake_pendant',name:'Winter supplies',color:'#b5e5ef'},
@@ -43,6 +47,11 @@ export function openSupplyChest(g,p){
  if(p.room||p.hp<=0)return false;
  const chest=(g.supplyChests||[]).filter(c=>!c.opened&&Math.hypot(c.x-p.x,c.y-p.y)<60).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
  if(!chest)return false;
+ const top=supplyChestShape(chest);
+ if((p.groundHeight||0)>=top.height-1&&p.x>=top.x&&p.x<=top.x+top.w&&p.y>=top.y&&p.y<=top.y+top.h){
+  const dx=Math.abs(p.faceX||0)>=Math.abs(p.faceY||0)?Math.sign(p.faceX||1):0,dy=dx?0:Math.sign(p.faceY||1);
+  p.x+=dx*26;p.y+=dy*26;p.groundHeight=0;p.jumpHeight=0;p.jumpVelocity=0;
+ }
  chest.opened=true;
  g.dropLoot(chest.x+20,chest.y+26,'empty_jar',1,chest.name,true);
  dropIceRecipe(g,p,chest.x,chest.y+25);
@@ -51,8 +60,8 @@ export function openSupplyChest(g,p){
  g.onSound('loot',chest);g.message(chest.name+' opened. Collect the supplies with Interact.');g.persist();return true;
 }
 export function drawSupplyChest(c,g,a){
- c.save();c.translate(a.x,a.y);c.fillStyle='#0005';c.beginPath();c.ellipse(0,9,29,7,0,0,7);c.fill();
- c.save();c.scale(.5,.5);drawStarterChest(c,{x:0,y:0},a.opened?1:0);
+ c.save();c.translate(a.x,a.y);c.fillStyle='#0005';c.beginPath();c.ellipse(0,5,15,4,0,0,7);c.fill();
+ c.save();c.scale(.25,.25);drawStarterChest(c,{x:0,y:0},a.opened?1:0);
  const biome=a.biome||g.generatedEnvironment,lid=-38-(a.opened?18:0);
  if(biome==='ice'){
   c.fillStyle='#accbd0';c.fillRect(-49,lid+1,98,5);c.fillStyle='#ecf1dc';c.fillRect(-42,lid-2,84,5);c.fillRect(-32,lid-4,35,3);c.fillRect(20,lid+2,19,7);
@@ -60,6 +69,6 @@ export function drawSupplyChest(c,g,a){
   c.fillStyle='#b69259';c.fillRect(-44,lid+2,88,4);c.fillStyle='#ddc087';c.fillRect(-34,lid,68,4);c.fillRect(-12,lid-2,36,3);
  }c.restore();
  if(!a.opened&&g.players.some(p=>!p.room&&p.hp>0&&Math.hypot(p.x-a.x,p.y-a.y)<70)){
-  const text='Open supplies · '+(g.controlLabels?.interact||'E / Y');c.font='9px sans-serif';c.textAlign='center';const w=c.measureText(text).width;c.fillStyle='#102c25ed';c.fillRect(-w/2-5,10,w+10,17);c.fillStyle='#fff0c9';c.fillText(text,0,22);
+  const text=(a.name||'Supplies')+' · '+(g.controlLabels?.interact||'E / Y');c.font='9px sans-serif';c.textAlign='center';const w=c.measureText(text).width;c.fillStyle='#102c25ed';c.fillRect(-w/2-5,-31,w+10,15);c.fillStyle='#fff0c9';c.fillText(text,0,-20);
  }c.restore();drawChestCritter(c,a,g.time||0);
 }
