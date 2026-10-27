@@ -1,3 +1,5 @@
+# Combined 1.2.57: [empty chooser, native blank costume and scaling](history/2026-10-27-empty-explorer-1.2.57.md). Includes the pending scaling repair, two-action empty explorer menu and dev-only grey costume. All 1,518 Node tests pass; previous notes are historical.
+
 # Scaling repair 1.2.57: [stable resizing and title fit](history/2026-10-27-scaling-1.2.57.md). Latest source fixes panel resize lag, compact layout/focus scrolling, and title-image fit. Earlier notes below are historical.
 
 # Title-screen update 1.2.56: [entry flow, Studio toolbar and verification](history/2026-10-27-title-screen-1.2.56.md). The current source includes the title scene and direct input-to-explorer selection. Final package identities are recorded in the generated local publication receipt and build manifest. Earlier build notes below are historical.

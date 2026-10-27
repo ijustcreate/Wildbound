@@ -30,6 +30,10 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  if(ITEMS[type]?.blankExplorer){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(8,2,8,7,'#414b4d');r(9,3,6,5,'#8b9596');r(5,9,14,8,'#414b4d');r(6,10,12,6,'#858f90');r(7,16,4,6,'#697476');r(13,16,4,6,'#697476');r(11,4,2,1,'#b7c0bf');r(12,5,1,1,'#b7c0bf');r(11,7,1,1,'#b7c0bf');return;
+  }
   if (type === 'skeleton_long_axe') {
     c.fillStyle = '#342d2d'; c.fillRect(9, 1, 6, 13);
     c.fillStyle = '#c5c5b8'; c.fillRect(10, 2, 4, 20); c.fillRect(9, 11, 6, 2);

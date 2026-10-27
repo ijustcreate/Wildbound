@@ -14,6 +14,7 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  blank_explorer_costume:{name:'Blank explorer costume',base:'armor',slot:'chest',stack:1,armor:0,sockets:0,rarity:'common',artColor:'#858f90',color:'#858f90',blankExplorer:true,supplyOnly:true,devOnly:true,sellPrice:0,description:'A quiet grey explorer disguise with a subtle question mark. Used by unclaimed explorers. Developer-only costume; never found in normal loot.'},
   car_key:{name:'Car key',stack:1,rarity:'common',color:'#e6c66f',description:'A brass key for the house car. A future hotwire skill can replace it.'},
   car_engine_part:{name:'Replacement engine part',stack:1,rarity:'common',color:'#84939a',description:'A missing engine component. Use it beside an open hood to repair a vehicle.'},
   pumpkin:{name:'Pumpkin',stack:12,color:'#ed962f',material:true,sellPrice:1,description:'Picked from a cemetery pumpkin patch. Equip a knife in either hand to reveal Carve in your backpack.'},
@@ -1136,7 +1137,7 @@ export function rollGear(random = Math.random, minTier = null) {
   const r = random(),
     tier = minTier || (r < 0.62 ? "common" : r < 0.9 ? "rare" : "unique");
   const pool = Object.keys(ITEMS).filter(
-    (id) => ITEMS[id].slot && !ITEMS[id].supplyOnly && !ITEMS[id].npcOnly && !ITEMS[id].bossOnly && !ITEMS[id].questReward && ITEMS[id].rarity === tier,
+    (id) => ITEMS[id].slot && !ITEMS[id].devOnly && !ITEMS[id].supplyOnly && !ITEMS[id].npcOnly && !ITEMS[id].bossOnly && !ITEMS[id].questReward && ITEMS[id].rarity === tier,
   );
   return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
 }

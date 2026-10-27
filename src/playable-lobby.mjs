@@ -38,6 +38,7 @@ import {drawPortal} from './portal-art.mjs';
 import {drawStarterChest,restockStarterChests} from './starter-chest.mjs';
 import {freshCharacter} from './items.mjs';
 import {drawItem} from './item-art.mjs';
+import {blankExplorerPreview} from './blank-explorer.mjs';
 
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
@@ -192,15 +193,16 @@ export class PlayableLobby {
     this.panelViewportKey=viewportKey;
     const layout=planPlayerPanels(players,open,bounds.width,bounds.height,{
       width:p=>this.state.members.get(p.id)?.panel==='environment'?520:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?340:this.state.members.get(p.id)?.panel==='create'?540:280,
-      height:p=>this.state.members.get(p.id)?.panel==='environment'?680:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
+      height:p=>this.state.members.get(p.id)?.panel==='environment'?680:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:this.state.members.get(p.id)?.panel==='choose'&&!this.available(p).length?410:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
     });
     for(const p of open){
       const box=layout.get(p.id),panel=this.nodes.get(p.id);
       const chooser=['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel);
+      const cardHeight=panel.classList.contains('empty-chooser')?410:520;
       // Compact the card in small windows without letting its text become tiny.
-      const scale=chooser?Math.max(.8,Math.min(1,bounds.width/960,bounds.height/640,box.width/340,box.height/520)):1;
+      const scale=chooser?Math.max(.8,Math.min(1,bounds.width/960,bounds.height/640,box.width/340,box.height/cardHeight)):1;
       if(chooser){
-        const width=Math.min(box.width,340*scale),height=Math.min(box.height,520*scale);
+        const width=Math.min(box.width,340*scale),height=Math.min(box.height,cardHeight*scale);
         if(box.side==='right')box.x+=box.width-width;
         if([2,3].includes(players.indexOf(p)%4))box.y+=box.height-height;
         box.width=width;box.height=height;
@@ -360,19 +362,20 @@ export class PlayableLobby {
       heading.textContent='Choose your explorer';
       const heroes=this.available(p);s.choice=((s.choice%Math.max(1,heroes.length))+heroes.length)%Math.max(1,heroes.length);
       const h=heroes[s.choice];
+      panel.classList.toggle('empty-chooser',!h);
       const stage=document.createElement('div');stage.className='lobby-character-stage';
       const preview=document.createElement('canvas');preview.width=260;preview.height=208;stage.append(preview);panel.append(stage);
-      if(h){panel._idlePreview={canvas:preview,hero:h};this.paintIdlePreview(panel,this.practice.time);}
-      const choice=button(h?'‹  '+h.name+'  ›':'No saved explorers',()=>{s.choice++;this.renderPanel(p);});choice.dataset.cycle='character';
+      panel._idlePreview={canvas:preview,hero:h||blankExplorerPreview()};this.paintIdlePreview(panel,this.practice.time);
+      const choice=h?button('‹  '+h.name+'  ›',()=>{s.choice++;this.renderPanel(p);}):null;if(choice)choice.dataset.cycle='character';
       if(h){const level=document.createElement('span');level.className='lobby-level';level.textContent='LEVEL '+(h.level||1);choice.append(level);}
       if(h)button('Choose',()=>{
         if(!this.available(p).some(q=>q.id===h.id)){this.renderPanel(p);return;}
         this.profiles.assign(p,h);s.spawned=true;this.state.invalidate(this.getGame().players);this.close(p);this.refreshChoosers();
       });
-      const remove=button('Delete',()=>{s.panel='confirm-delete';s.deleteHeroId=h?.id;s.focus=0;this.renderPanel(p);});remove.disabled=!h;
+      if(h)button('Delete',()=>{s.panel='confirm-delete';s.deleteHeroId=h.id;s.focus=0;this.renderPanel(p);});
       button('+ New character',()=>{s.panel='create';s.focus=0;this.renderPanel(p);}).classList.add('choice-new');
       button('Close',()=>this.close(p)).classList.add('choice-close');
-      button('Drop from game',()=>{const g=this.getGame();g.players=g.players.filter(q=>q.id!==p.id);this.state.members.delete(p.id);panel.remove();this.nodes.delete(p.id);this.state.invalidate(g.players);this.refreshChoosers();});
+      if(h)button('Drop from game',()=>{const g=this.getGame();g.players=g.players.filter(q=>q.id!==p.id);this.state.members.delete(p.id);panel.remove();this.nodes.delete(p.id);this.state.invalidate(g.players);this.refreshChoosers();});
     }else if(s.panel==='confirm-delete'){
       const hero=this.profiles.data.heroes.find(h=>h.id===s.deleteHeroId);
       if(!hero||!this.available(p).some(h=>h.id===hero.id)){s.panel='choose';s.focus=0;this.renderPanel(p);return;}

@@ -25,6 +25,7 @@ import {pumpkinHeadgear} from './pumpkin-art.mjs';
 import {SUCCUBUS_JOINTS,attachmentPose,drawHumanoidWing,drawHumanoidTail} from './succubus-attachments.mjs';
 import { wearableDetails, directionalHelmet } from "./wearable-art.mjs";
 import { drawHumanHead, skinPalette } from './human-head.mjs';
+import {BLANK_EXPLORER_LOOK,BLANK_EXPLORER_COLORS,drawBlankExplorerFace} from './blank-explorer.mjs';
 import {drawFaceAccessories} from './face-accessories.mjs';
 import {drawZombieFace,drawZombieClaws,drawZombieRags} from './zombie-art.mjs';
 import {drawHeroTorso,withPixelRotation,unrotateFace} from './hero-art.mjs';
@@ -758,6 +759,11 @@ export function drawPlayer(
     if (cosmetics[slot] && ITEMS[cosmetics[slot]]?.slot === slot)
       gear[slot] = cosmetics[slot];
   if (cosmetics.hideHelmet) gear.head = null;
+  const blankExplorer=!!ITEMS[gear.chest]?.blankExplorer;
+  if(blankExplorer){
+    for(const slot of ['head','neck','cape','back','shoulders','gloves','pants','feet'])gear[slot]=null;
+    model={...model,boneSprites:{}};
+  }
   const stowed =
     cosmetics.stow &&
     !actor.moving &&
@@ -776,13 +782,13 @@ export function drawPlayer(
   const nativeSkeleton=model.skeleton&&model.nativeSkeletonRevision>=1;
   if(sculpted){stabilizeSculptedEyes(p,model,d);alignWorkKnees(p,playerAction(actor));}
   const equipmentPose=playerEquipmentAction(actor,time,model);
-  const look = actor.appearance || (human ? DEFAULT_APPEARANCE : null);
-  const ink = human ? "#302b2b" : pal.outline;
+  const look = blankExplorer ? BLANK_EXPLORER_LOOK : actor.appearance || (human ? DEFAULT_APPEARANCE : null);
+  const ink = blankExplorer ? BLANK_EXPLORER_COLORS.outline : human ? "#302b2b" : pal.outline;
   const pixel = (x, y, w, h, color) => {
     c.fillStyle = color;
     c.fillRect(Math.round(x), Math.round(y), w, h);
   };
-  if (actor.appearance)
+  if (actor.appearance || blankExplorer)
     Object.assign(pal, {
       head: look.skin,
       headShade: shade(look.skin),
@@ -1344,7 +1350,7 @@ export function drawPlayer(
           if(gear.pants==='reaper_skirt'||ITEMS[gear.pants]?.spectralLegs)return;
           const pantsColor = gear.pants ? ITEMS[gear.pants]?.artColor || "#819a9b" : pal.legs;
           const pantsShade = gear.pants ? gearPalette(gear.pants,cosmetics.dye).dark : pal.legShade;
-          if(native?drawNativePelvis(c,positions,visualDirection??d,pantsColor):human&&detailedPelvis(c,p,d,pantsColor,back)){
+          if(native?drawNativePelvis(c,positions,visualDirection??d,pantsColor,blankExplorer):human&&detailedPelvis(c,p,d,pantsColor,back)){
             keeperGearDetails(c,gear.pants,p,d,cosmetics.dye);
             return;
           }
@@ -1375,7 +1381,7 @@ export function drawPlayer(
         });
       }
       wearableDetails(c, p, {pants:gear.pants}, null, d, time, cosmetics);
-      if (human&&!c.__humanoidDetail) {
+      if (human&&!c.__humanoidDetail&&!blankExplorer) {
         pixel(p.pelvis.x-4,p.pelvis.y-1,8,2,"#493628");
         if (!back) { pixel(p.pelvis.x-1,p.pelvis.y-1,2,2,"#d6ad60"); }
       }
@@ -1452,6 +1458,7 @@ export function drawPlayer(
       withPixelRotation(c,p.head,headAngle,()=>withDetailedHeadScale(c,p.head,!hasCustomHead,()=>{
       const h = p.head,
         side = d === 2 || d === 6;
+      if(blankExplorer){drawBlankExplorerFace(c,h,d);return;}
       const visible = (n) => model.visibility?.[n]?.[d] !== false;
       if (model.robot) {
         c.fillStyle = pal.headShade;

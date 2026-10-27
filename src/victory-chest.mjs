@@ -10,7 +10,7 @@ export function victoryRewards(players,random=Math.random,earned=null){
   for(let i=0;i<count;i++){
    const tier=score>=16&&i===0?'legendary':score>=6&&i<party.length?'rare':'common';
    const hero=party[i%Math.max(1,party.length)],weapon=ITEMS[hero?.equipment?.hand1]?.base;
-   let pool=Object.keys(ITEMS).filter(id=>{const d=ITEMS[id];return d.slot&&!d.supplyOnly&&!d.npcOnly&&!d.bossOnly&&!d.questReward&&d.rarity===tier&&!seen.has(id);});
+   let pool=Object.keys(ITEMS).filter(id=>{const d=ITEMS[id];return d.slot&&!d.devOnly&&!d.supplyOnly&&!d.npcOnly&&!d.bossOnly&&!d.questReward&&d.rarity===tier&&!seen.has(id);});
    if(i<party.length){const relevant=pool.filter(id=>ITEMS[id].base===weapon||ITEMS[id].slot==='chest');if(relevant.length)pool=relevant;}
    const type=pool.length?pool[Math.min(pool.length-1,Math.floor(random()*pool.length))]:rollGear(random,tier)||'potion';
    seen.add(type);rewards.push({type,qty:1});
@@ -21,7 +21,7 @@ export function victoryRewards(players,random=Math.random,earned=null){
  const party=players.slice(0,6),level=party.reduce((sum,p)=>sum+Math.max(1,p.level||1),0)/Math.max(1,party.length),count=3+party.length*2;
  const tiers=level>=10?['rare','rare','legendary']:level>=5?['common','unique','rare']:['rare'];
  while(tiers.length<count)tiers.push(level>=10?'rare':'common');
- return tiers.map(tier=>({type:rollGear(random,tier)||Object.keys(ITEMS).find(id=>ITEMS[id].slot&&ITEMS[id].rarity==='common'),qty:1}));
+ return tiers.map(tier=>({type:rollGear(random,tier)||Object.keys(ITEMS).find(id=>ITEMS[id].slot&&!ITEMS[id].devOnly&&ITEMS[id].rarity==='common'),qty:1}));
 }
 
 export function victoryChestBlocked(g,x,y,radius,elevation,from){return !!g.victoryChest&&elevation<20&&raisedSurfaceBlocked(VICTORY_CHEST,x,y,radius,from,0);}

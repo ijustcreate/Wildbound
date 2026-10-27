@@ -18,7 +18,7 @@ app.whenReady().then(async()=>{
    await resize(width,height);
    const title=await js(`(()=>{const scene=document.querySelector('.landing-scene').getBoundingClientRect(),image=document.querySelector('.landing-scene>img').getBoundingClientRect(),prompt=document.querySelector('.landing-join').getBoundingClientRect(),room=document.querySelector('.lobby-world').getBoundingClientRect();return {full:scene.left>=room.left-.1&&scene.right<=room.right+.1&&scene.top>=room.top-.1&&scene.bottom<=room.bottom+.1,ratio:image.width/image.height,join:prompt.top>=scene.top&&prompt.bottom<=scene.bottom+.1,players:c.game.players.length};})()`);
    assert(title.full&&title.join&&Math.abs(title.ratio-1672/941)<.005&&title.players===0,'Complete title art and prompt fit '+width+'x'+height);
-   await js(`document.querySelector('.landing-scene').dispatchEvent(new PointerEvent('pointermove',{bubbles:true,movementX:4,movementY:0}))`);
+   await js(`window.dispatchEvent(new Event('resize'));document.querySelector('.landing-scene').dispatchEvent(new PointerEvent('pointermove',{bubbles:true,movementX:4,movementY:0}))`);
    assert(await js('c.game.players.length===0'),'Resize does not accidentally join '+width+'x'+height);
    if([620,1440,1600].includes(width))await capture('title-'+width+'x'+height);
   }

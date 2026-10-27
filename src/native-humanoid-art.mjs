@@ -93,11 +93,11 @@ export function drawNativeTorso(c,points,d,color,skin){
   }
   return true;
 }
-export function drawNativePelvis(c,points,d,color){
+export function drawNativePelvis(c,points,d,color,plain=false){
   const right=unit(sub(points.hipR,points.hipL)),axes=basis(sub(points.chest,points.pelvis),right);
   const center=mix(points.hipL,points.hipR);center[2]+=.7;
   volume(c,center,axes,[Math.hypot(...sub(points.hipR,points.hipL))/2+1.6,2.4,2.4],d,material(color));
   const waist=points.pelvis.map((v,i)=>v+axes[1][i]*2.5),p=projectPoint(waist,d);
-  if(d<3||d>5){c.fillStyle='#624735';c.fillRect(Math.round(p.x)-3,Math.round(p.y)-1,7,1);c.fillStyle='#bda16c';c.fillRect(Math.round(p.x)-1,Math.round(p.y)-1,2,1);}
+  if(!plain&&(d<3||d>5)){c.fillStyle='#624735';c.fillRect(Math.round(p.x)-3,Math.round(p.y)-1,7,1);c.fillStyle='#bda16c';c.fillRect(Math.round(p.x)-1,Math.round(p.y)-1,2,1);}
   return true;
 }

@@ -4,6 +4,8 @@ A work-in-progress pixel adventure with shared-screen local co-op, living worlds
 
 The title screen welcomes new parties with pixel artwork of two explorers opening the Wildbound board. Press a key, move/click the mouse, scroll, or use a controller button, trigger or stick to open **Choose your explorer**. The room fills the screen below one **Studio** button. Studio opens the creation tools without joining a player.
 
+When no saved explorer is available, the chooser shows a grey question-mark character with only **+ New character** and **Close**. The placeholder's **Blank explorer costume** is real developer-only gear; it does not appear in normal loot.
+
 ## Play in your browser
 
 | Edition | Play |

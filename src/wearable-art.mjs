@@ -8,6 +8,7 @@ import {drawAlanTurtleHelmet} from './alan-gear-art.mjs';
 import {drawResolvedHeadwear,headwearStyle} from './resolved-headwear.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
+  if(ITEMS[gear.chest]?.blankExplorer)return;
   if(detailedProcedural(c,p.chest,pen=>wearableDetails(pen,p,gear,look,d,time,cosmetics),materialIndex(gear.chest||gear.pants)))return;
   const back = d >= 3 && d <= 5,
     side = d === 2 || d === 6;
