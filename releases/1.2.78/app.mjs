@@ -1,0 +1,2235 @@
+import {routeLootController} from './src/loot-controller.mjs';
+import {seatOpeningParty} from './src/opening-board.mjs';
+import {mountCampSettings,readCampInputSettings,shapeCampStick} from './src/settings-camp.mjs';
+import {renderVictoryReport,scrollVictoryReport} from './src/victory-ui.mjs';
+import {continueAfterDefeat} from './src/defeat-flow.mjs';
+import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
+import {worldGridSettings,setWorldGridSettings} from './src/world-grid.mjs';
+import {dynamicShadowsEnabled,setDynamicShadowsEnabled} from './src/shadow-settings.mjs';
+import {hudIcon} from './src/hud-icons.mjs';
+import {tickMeltingIce} from './src/ice-crafting.mjs';
+import {petCard} from './src/hunter-pet-ui.mjs';
+import {RosterPortraits} from './src/roster-portrait.mjs';
+import { PlayableLobby } from './src/playable-lobby.mjs';
+import {loadHouseStorage} from './src/house-design.mjs';
+import {loadLocationStorage,activeLocationDesign,applyDungeonDesign} from './src/location-designs.mjs';
+import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
+import { GameAudio } from './src/audio.mjs';
+import { creatureCue } from './src/sound-bank.mjs';
+import { openCharacterGallery } from "./src/character-gallery.mjs";
+import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES, vehiclePadInput, lobbyPadInput } from "./src/controls.mjs";
+import { controllerGlyph } from './src/controller-glyphs.mjs';
+import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
+import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels} from './src/creation-preview.mjs';
+import { dialogNeighbour,focusDialogControl } from './src/dialog-navigation.mjs';
+import { createLobbySettingsControllerRouter } from './src/lobby-settings-controller.mjs';
+import { FieldKit } from "./src/field-kit.mjs";
+import { FrameMetrics, FixedClock } from "./src/performance.mjs";
+import { createPerformanceOverlay } from './src/performance-overlay.mjs';
+import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
+import { drawPlayer } from "./src/player-motion.mjs";
+import { generateWorld } from "./src/world.mjs";
+import { restoreForestLandscape } from './src/forest-landscape.mjs';
+import { MUSIC_TRACKS, musicTrack, levelMusicPair } from "./src/music.mjs";
+import { AdaptiveMusic } from './src/adaptive-music.mjs';
+import { CombatMusicThreat } from './src/adaptive-music-threat.mjs';
+import { mountMusicPicker } from './src/music-picker.mjs';
+import { Game, CENTER, EVENTS, FINISH, cameraTarget } from "./src/core.mjs";
+import { Assets } from "./src/assets.mjs";
+import { Renderer, drawMenu,drawDie } from "./src/render.mjs";
+import {warmSealVortex} from './src/seal-vortex.mjs';
+import { drawBoard } from "./src/board.mjs";
+import { Animator } from "./src/animation.mjs";
+import { ITEM_ART_TYPES, drawItem } from "./src/item-art.mjs";
+import {
+  lionMotion,
+  replaceLionMotion,
+  defaultLionMotion,
+} from "./src/lion-motion.mjs";
+import {
+  playerMotion,
+  replacePlayerMotion,
+  defaultPlayerMotion,
+  poseAt,
+  projectPoint,
+  DIRECTIONS,
+  directionVector,
+} from "./src/player-motion.mjs";
+import { Workshop } from "./src/workshop.mjs";
+import { convertRegion, validateSprite } from "./src/pixels.mjs";
+import { HeroUI } from "./src/hero-ui.mjs";
+if(window.desktop?.version)document.title=`Wildbound ${window.desktop.preview?'· Night Hunt Preview · ': '• The Living Board · '}v${window.desktop.version}`;
+import { RIG_SUBJECTS } from "./src/rig-subjects.mjs";
+import { FrameWorkshop } from "./src/frame-workshop.mjs";
+let framesWorkshop;
+import {
+  Profiles,
+  characterNameError,
+  cleanCharacterName,
+  suggestCharacterName,
+} from "./src/profiles.mjs";
+import { count, give, equip, ITEMS } from "./src/items.mjs";
+import { Designer } from "./src/designer.mjs";
+import { loadDefinitions, creatures } from "./src/definitions.mjs";
+import { createGameDebug } from './src/game-debug.mjs';
+import { createDebugCodeTracker, createPauseCheatTracker } from './src/debug-code.mjs';
+loadDefinitions(EVENTS, ITEMS);
+await (await import('./src/project-rigs.mjs')).loadProjectRigs(EVENTS, ITEMS);
+let designer;
+import { Rooms, cleanInput } from "./src/rooms.mjs";
+import { saveSession, restoreSession } from "./src/session.mjs";
+import {createLocalWorld,saveLocalWorld,restoreLocalWorld,worldAction} from './src/world-instances.mjs';
+import {mountWorldsUI} from './src/worlds-ui.mjs';
+import {studioPreviewOwnsPad} from './src/rig-live-preview.mjs';
+import {loadWorldPackAssets,packMusicPair} from './src/world-pack-assets.mjs';
+const rooms = new Rooms(onRoomEvent);
+await loadHouseStorage();
+await loadLocationStorage();
+const profiles = await new Profiles().load();
+const heroRoot = document.createElement("div");
+heroRoot.id = "hero-overlays";
+document.getElementById("play").append(heroRoot);
+const heroUI = new HeroUI(heroRoot);
+const $ = (id) => document.getElementById(id);
+const assets = new Assets();
+const lobbyAnimator = new Animator(assets);
+const rosterPortraits = new RosterPortraits(lobbyAnimator);
+let playableLobby;
+let lobbyLanding;
+import {LobbyLanding,landingPadActive} from './src/lobby-landing.mjs';
+let gameDebug;
+
+let game = new Game(),
+  screen = "home",
+  paused = false,
+  workshop,
+  renderer,
+  ready = false;
+let boardPinned = false,
+  boardDismissedRoll = null,
+  lootDetailsVisible = false;
+let mapping = { ...DEFAULT_MAPPING };
+try { Object.assign(mapping, normalizeMapping(JSON.parse(localStorage.getItem("wildbound-mapping") || "{}"))); } catch {}
+const keys = new Set(),
+  mouse = { x: 0, y: 0, down: false, active: false },
+  previousPads = new Map(),
+  controllerClaims = new Map(),
+  pendingControllerJoins = new Set(),
+  pendingControllerSettings = new Set(),
+  pendingControllerClaims = new Map(),
+  controllerLastSeen = new Map();
+const controllerClaimKey = (pad) =>
+  `${pad.index}|${pad.id || "unknown"}|${pad.mapping || ""}`;
+const controllerSettingsRouter = createLobbySettingsControllerRouter();
+const trackDebugCode = createDebugCodeTracker();
+const pauseCheat = createPauseCheatTracker();
+const pauseCheatActive = () => screen==='play' && game.phase==='play' && paused && $('pause-dialog').open && [...document.querySelectorAll('dialog[open]')].at(-1)===$('pause-dialog');
+function pressPauseCheat(device='keyboard'){
+  if(pauseCheat.press(pauseCheatActive())){
+    const owner=game.players.find(p=>p.device===device);
+    if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
+    gameDebug.open($('pause-dialog'));
+  }
+}
+function feedDebugCode(token,device='keyboard'){
+  if(trackDebugCode(token)){
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
+    pause(undefined,device);
+    gameDebug.open($('pause-dialog'));
+  }
+}
+function requestControllerClaim(pad, key, joinRequested = false, settingsRequested = false) {
+  if (!window.desktop?.claimController) return;
+  const pending = pendingControllerClaims.get(key);
+  if (pending) {
+    if (settingsRequested) Object.assign(pending, { settingsRequested: true, joinRequested: false, requestedScreen: screen });
+    return;
+  }
+  const request = { joinRequested, settingsRequested, requestedScreen: screen };
+  pendingControllerClaims.set(key, request);
+  window.desktop.claimController(key).then((claimed) => {
+    if (claimed) {
+      controllerClaims.set(pad.index, key);
+      if(request.joinRequested && screen==='lobby')pendingControllerJoins.add(key);
+      if(request.settingsRequested && screen===request.requestedScreen && !document.querySelector('dialog[open]'))
+        pendingControllerSettings.add(key);
+    }
+  }).catch(() => {}).finally(() => pendingControllerClaims.delete(key));
+}
+function releaseControllerClaim(key) {
+  if (window.desktop?.releaseController) window.desktop.releaseController(key).catch(() => {});
+  for (const [index, owned] of controllerClaims)
+    if (owned === key) controllerClaims.delete(index);
+  controllerLastSeen.delete(key);
+  pendingControllerJoins.delete(key);
+  pendingControllerSettings.delete(key);
+  controllerSettingsRouter.release(key);
+}
+let soundEnabled = localStorage.getItem('wildbound-sound') !== 'off';
+let musicVolume = Number(localStorage.getItem('wildbound-music-volume') ?? .45);
+const audio = new GameAudio(); audio.enabled=soundEnabled;
+let selectedMusic = musicTrack('curious-groove'), levelMusicKey=null, musicIntensity=0;
+const music = new AdaptiveMusic(),musicThreat=new CombatMusicThreat();
+music.setPair(levelMusicPair('lobby'));
+const musicPreview = new Audio();musicPreview.loop=true;musicPreview.volume=0;
+let previewTrack=null,previewRequest=0;
+function stopMusicPreview(){previewRequest++;previewTrack=null;musicPreview.pause();musicPreview.volume=0;const status=$('music-status');if(status)status.textContent=(screen==='play'?'Expedition: ':'Menu: ')+selectedMusic.name;}
+function previewMusic(track){
+ if(!track){stopMusicPreview();return;}
+ if(previewTrack===track.id)return;
+ const request=++previewRequest;previewTrack=track.id;
+ musicPreview.pause();musicPreview.volume=0;musicPreview.src=track.file;
+ $('music-status').textContent='Preview: '+track.name;
+ audio.unlock();
+ if(soundEnabled&&musicVolume>0)musicPreview.play().then(()=>{if(!soundEnabled||musicVolume<=0||!previewTrack)musicPreview.pause();}).catch(()=>{if(request===previewRequest){stopMusicPreview();$('music-status').textContent='Preview unavailable. Choose another track.';}});
+}
+function startMusic(){audio.unlock();music.enabled=soundEnabled;if(soundEnabled&&musicVolume>0){music.resume();if(previewTrack&&musicPreview.paused)musicPreview.play().then(()=>{if(!soundEnabled||musicVolume<=0||!previewTrack)musicPreview.pause();}).catch(()=>{});}}
+window.addEventListener('pointerdown',startMusic);window.addEventListener('keydown',startMusic);
+document.addEventListener('focusin',e=>{if(e.target.matches('button,input,select'))audio.play('focus');});
+document.addEventListener('click',e=>{if(e.target.closest('button'))audio.play('click');});
+document.addEventListener('change',()=>audio.play('click'));
+function sound(type,actor){audio.play(type,actor);}
+function routeMusic(dt=.016){
+ const active=screen==='play',television=screen==='lobby'&&playableLobby?.television?.players.size>0;
+ const tv=screen==='lobby'&&(playableLobby?.tvWildbound||(television?playableLobby.television:null));
+ const level=active?(game.generatedEnvironment||game.environment||'forest'):tv?'tv':'lobby';
+ const choice=active||tv?localStorage.getItem('wildbound-level-music')||'adaptive':'adaptive';
+ const key=level+':'+(active?game.seed:tv?.landscapeSeed||(television?'platformer':'menu'))+':'+choice;
+ if(key!==levelMusicKey){levelMusicKey=key;const pair=packMusicPair(game,levelMusicPair(level,choice));selectedMusic=pair.calm;music.setPair(pair);if(audio.unlocked)startMusic();if(!previewTrack&&$('music-status'))$('music-status').textContent=(active?'Expedition: ':tv?'TV: ':'Menu: ')+selectedMusic.name+' · adaptive mix';}
+ musicIntensity=musicThreat.update(tv||game,dt,!paused&&(active||!!tv),{tv:!!tv});
+}
+// Audio fades must continue even when rendering is paused or the window is hidden.
+let musicFadeTime=performance.now();
+setInterval(()=>{
+ const now=performance.now(),dt=(now-musicFadeTime)/1000;musicFadeTime=now;
+ const target=soundEnabled?musicVolume*audio.settings.master*(performance.now()<(audio.duckUntil||0)?.4:1):0;
+ music.update({enabled:soundEnabled,volume:musicVolume*audio.settings.master,intensity:musicIntensity,preview:!!previewTrack,duck:performance.now()<(audio.duckUntil||0)?.4:1},dt);
+ if(!soundEnabled||musicVolume<=0){musicPreview.pause();musicPreview.volume=0;return;}
+ musicPreview.volume+=(Math.max(0,Math.min(1,previewTrack?target:0))-musicPreview.volume)*.12;
+}, 16);
+window.addEventListener('wildbound-house-applied',e=>{
+  if(rooms.role==='client'){e.detail.message='Saved locally. The host controls the current map.';return;}
+  e.detail.message=applyActiveHouse(game)?'Saved and applied to the current House expedition.':'Saved and active. Your next House expedition will use this layout.';
+});
+window.addEventListener('wildbound-location-applied',e=>{
+ if(rooms.role==='client')return;
+ const id=e.detail.id,design=activeLocationDesign(id);if(!design)return;
+ if(id==='temple'&&game.generatedEnvironment==='temple'){game.house=structuredClone(design.house);game.house.temple=true;game.terrain=game.terrain.map((kind,i)=>{const x=i%50*32,y=Math.floor(i/50)*32;return game.house.floors.some(r=>x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h)?'temple_stone':kind==='temple_stone'?'grass':kind;});if(Array.isArray(design.house.scenery)){const old=new Map(game.scenery.map(p=>[p.id,p]));game.scenery=[...structuredClone(design.house.scenery),...structuredClone(design.house.trees||[])].map(p=>{const previous=old.get(p.id);if(previous)for(const key of ['depleted','fallen','falling','fallX','fallY','harvest','hitAt'])if(previous[key]!==undefined)p[key]=previous[key];return p;});}}
+ for(const portal of game.portals||[])if(portal.well&&((id==='mausoleum'&&portal.mausoleum)||(id==='old-well'&&portal.oldWell&&!portal.mausoleum))){
+  applyDungeonDesign(portal.well,id,{preserveProgress:true});
+  for(const p of game.players.filter(p=>p.room===portal.id)){p.roomX=portal.well.exit.x;p.roomY=portal.well.exit.y;p.wellExitArmed=false;}
+ }
+ game.uiRevision=(game.uiRevision||0)+1;game.persist?.();
+});
+function wireGame() {
+  game.onSound = sound;
+  game.onVictoryBoard = () => openNextGamePrompt();
+  game.mapping = mapping;
+  game.pvp=localStorage.getItem("wildbound-pvp")==="on";
+  game.controlLabels = controlLabels(mapping);
+  game.spriteLibrary = assets.library;
+  if(game.phase==='lobby'){
+    game.environment = game.houseWorldsEnabled?'house':$("environment").value;
+    game.mapMode = game.houseWorldsEnabled?'bounded':$("map-mode").value || game.mapMode || 'bounded';
+  }
+  game.sharedStash = structuredClone(profiles.data.sharedStash || []);
+  game.eventDuration = Number(
+    localStorage.getItem("wildbound-event-duration") || 5,
+  );
+  game.persist = () => {
+    game.uiRevision = (game.uiRevision || 0) + 1;
+    profiles.capture(game);
+    persistSession().catch(()=>{});
+  };
+}
+let pendingSession = null,
+  sessionSaving = false,
+  lastSessionBody = "";
+async function persistSession() {
+  if (rooms.role === "client" || !game.players.length || game.phase === "lobby")
+    return;
+  if(game.localWorld)return persistLocalGame(game);
+  const body = JSON.stringify(saveSession(game));
+  if (body === lastSessionBody && !game.saveError) return;
+  pendingSession = { body, data: JSON.parse(body) };
+  if (sessionSaving) return;
+  sessionSaving = true;
+  game.saving = true;
+  while (pendingSession) {
+    const next = pendingSession;
+    pendingSession = null;
+    const started = performance.now();
+    try {
+      if (window.desktop) await window.desktop.saveSession(next.data);
+      else localStorage.setItem("wildbound-session", next.body);
+      lastSessionBody = next.body;
+      game.saveError = null;
+    } catch (e) {
+      game.saveError = e.message;
+      game.message("Save failed: " + e.message);
+    } finally {
+      if (typeof metrics !== "undefined")
+        metrics.record("save", performance.now() - started);
+    }
+  }
+  sessionSaving = false;
+  game.saving = false;
+}
+
+wireGame();
+let worldSaveTask=Promise.resolve();
+function persistLocalGame(target=game){
+  if(!target.localWorld)return Promise.resolve();
+  const record=saveLocalWorld(target);
+  target.saving=true;
+  const task=worldSaveTask.catch(()=>{}).then(async()=>{
+    if(window.desktop?.saveWorld)await window.desktop.saveWorld(record);
+    else{
+      localStorage.setItem('wildbound-world-'+record.id,JSON.stringify(record));
+      const index=JSON.parse(localStorage.getItem('wildbound-world-index')||'[]').filter(w=>w.id!==record.id);
+      index.unshift({id:record.id,name:record.session.state.localWorld.name,pack:record.session.state.localWorld.pack.name,seed:record.session.state.seed,savedAt:record.savedAt,regions:Object.keys(record.session.state.localWorld.regions).length});
+      localStorage.setItem('wildbound-world-index',JSON.stringify(index));
+    }
+    target.saveError=null;
+  }).catch(error=>{target.saveError=error.message;target.message('World save failed: '+error.message);throw error;}).finally(()=>{target.saving=false;});
+  worldSaveTask=task;return task;
+}
+window.wildboundFlushLocalWorld=()=>persistLocalGame();
+let worldsWasPaused=false;
+async function activateLocalGame(next){
+  await loadWorldPackAssets(next);
+  game=next;const stash=game.sharedStash;wireGame();game.sharedStash=stash;
+  renderer=new Renderer($('game-canvas'),assets);renderer.showLootDetails=lootDetailsVisible;
+  $('world-status-button').hidden=false;$('world-status-button').textContent=game.localWorld.name+' · WORLD';
+  show('play');paused=true;worldsWasPaused=false;fixedClock.reset();renderRoster();
+}
+const worldsUI=mountWorldsUI({getGame:()=>game,
+  create:async options=>{
+    if(!ready)throw Error('The game is still loading.');
+    if(!game.players.length)throw Error('Choose explorers in the lobby first, then open Worlds again.');
+    await persistSession();if(game.saveError)throw Error(game.saveError);
+    await rooms.stop();
+    const next=createLocalWorld({...options,id:crypto.randomUUID(),party:game.players});
+    await persistLocalGame(next);await activateLocalGame(next);
+  },
+  load:async id=>{
+    await persistSession();if(game.saveError)throw Error(game.saveError);
+    const record=window.desktop?.loadWorld?await window.desktop.loadWorld(id):JSON.parse(localStorage.getItem('wildbound-world-'+id)||'null');
+    const next=restoreLocalWorld(record);await rooms.stop();await activateLocalGame(next);await persistLocalGame(next);
+  },
+  save:()=>persistLocalGame(),
+  action:async id=>{const message=worldAction(game,id,give);await persistLocalGame();return message;},
+  onOpen:()=>{worldsWasPaused=paused;paused=true;keys.clear();mouse.down=false;},
+  onClose:()=>{paused=worldsWasPaused;keys.clear();mouse.down=false;fixedClock.reset();},
+  chooseParty:()=>newLobby({keepParty:true}),
+});
+$('worlds-button').onclick=()=>worldsUI.open();
+$('world-status-button').onclick=()=>worldsUI.open();
+for(const [id,parent,label]of [['pause-worlds','pause-dialog','WORLDS · SAVE & EXPLORE'],['home-worlds',null,'EXPLORE LOCAL WORLDS']]){
+  const button=document.createElement('button');button.id=id;button.textContent=label;button.className=parent==='pause-dialog'?'small-button full':'text-button';
+  button.onclick=()=>worldsUI.open();
+  if(parent)$(parent).append(button);else $('local-button').after(button);
+}
+const metrics = new FrameMetrics(),
+  fixedClock = new FixedClock();
+const performanceOverlay = createPerformanceOverlay(metrics);
+let fieldWasPaused = false;
+const fieldKit = new FieldKit({
+  game: () => game,
+  profiles,
+  metrics,
+  mapping,
+  onPause: () => {
+    fieldWasPaused = paused;
+    paused = true;
+    keys.clear();
+    mouse.down = false;
+  },
+  onResume: () => {
+    paused = fieldWasPaused;
+    keys.clear();
+    mouse.down = false;
+    fixedClock.reset();
+  },
+});
+document.documentElement.style.setProperty(
+  "--ui-scale",
+  localStorage.getItem("wildbound-ui-scale") || "1",
+);
+document.body.dataset.boardSize =
+  localStorage.getItem("wildbound-board-size") || "compact";
+function show(next) {
+  if(next==='home'){newLobby();return;}
+  screen = next;
+  (next === 'lobby' ? $('lobby') : $('play')).append(heroRoot);
+  (next==='lobby'?(playableLobby?.area||$('lobby')):$('play')).append($('roster'));
+  document.body.dataset.screen = next;
+  keys.clear();
+  mouse.down = false;
+  for (const el of document.querySelectorAll(".screen"))
+    el.classList.toggle("active", el.id === next);
+  $("nav-play").classList.toggle("active", next !== "workshop");
+  $("nav-workshop").classList.toggle("active", next === "workshop");
+  if (next === "workshop") workshop?.render();
+}
+function newLobby({ keepParty = false } = {}) {
+  if(game.localWorld){const target=game;return persistLocalGame(target).then(()=>{if(game!==target)return;delete target.localWorld;newLobby({keepParty});}).catch(()=>worldsUI.open());}
+  $('world-status-button').hidden=true;
+  const returning = keepParty ? game.players.map(p=>({
+    device:p.device,
+    name:p.name,
+    profileId:p.profileId,
+    controllerFamily:p.controllerFamily,
+    controllerName:p.controllerName,
+  })) : [];
+  if (game.phase !== "lobby" && game.phase !== "lost") profiles.capture(game);
+  boardPinned = false;
+  boardDismissedRoll = null;
+  game = new Game();
+  game.houseWorldsEnabled=localStorage.getItem('wildbound-mode')!=='off';
+  playableLobby?.reset();
+  wireGame();
+  for(const saved of returning){
+    const p=game.addPlayer(saved.device,saved.name);
+    if(!p)continue;
+    const hero=profiles.data.heroes.find(h=>h.id===saved.profileId);
+    if(hero)profiles.assign(p,hero);
+    p.controllerFamily=saved.controllerFamily;
+    p.controllerName=saved.controllerName;
+  }
+  paused = false;
+  show("lobby");
+  if(returning.length)playableLobby?.keepSelectedPlayers(game.players);
+  renderLobby();
+  lobbyLanding?.sync();
+}
+function onRoomEvent(data) {
+  if (rooms.role === "host") {
+    if (data.type === "hello") {
+      let p = game.players.find((p) => p.device === "net:" + data.peer);
+      if (!p) {
+        p = game.players.find((p) => p.netDisconnected && p.name === data.name);
+        if (p) {
+          p.device = "net:" + data.peer;
+          p.netDisconnected = false;
+        }
+      }
+      if (!p) {
+        p = game.addPlayer("net:" + data.peer, data.name);
+        if (p) {
+          const h = profiles.data.heroes.find(
+            (h) =>
+              h.name === data.name &&
+              !game.players.some((q) => q !== p && q.profileId === h.id),
+          );
+          if (h) profiles.assign(p, h);
+        }
+      }
+      rooms.send({ type: "welcome", peer: data.peer, playerId: p?.id });
+      if (screen === "lobby") renderLobby();
+    }
+    if (data.type === "input")
+      rooms.inputs["net:" + data.peer] = cleanInput(data.input);
+    if (data.type === "action") {
+      const p = game.players.find((p) => p.device === "net:" + data.peer);
+      if (
+        p &&
+        [
+          "portal",
+          "usePotion",
+          "openInventory",
+          "leaveRoom",
+          "inventoryAction",
+        ].includes(data.action)
+      )
+        game[data.action](p, data.arg);
+    }
+    if (data.type === "left") {
+      delete rooms.inputs["net:" + data.peer];
+      const left = game.players.find((p) => p.device === "net:" + data.peer);
+      if (left) left.netDisconnected = true;
+      if (screen === "play")
+        pause(
+          "A room player disconnected. Rejoin with the same character name before continuing.",
+        );
+      else {
+        game.players = game.players.filter(
+          (p) => p.device !== "net:" + data.peer,
+        );
+        renderLobby();
+      }
+    }
+  } else if (rooms.role === "client") {
+    if (data.type === "welcome" && !rooms.peer) {
+      rooms.peer = data.peer;
+      rooms.playerId = data.playerId;
+    }
+    if (data.type === "disconnected") {
+      rooms.role = null;
+      pause("Room connection lost. Return home and rejoin the host.");
+    }
+    if (data.type === "state") {
+      const oldSeed = game.seed;
+      Object.assign(game, data.state);
+      restoreForestLandscape(game,data.state.forestLandscapeVersion??0);
+      if (game.phase === "won") game.scenery = [];
+      else if (!data.state.scenery && oldSeed !== game.seed)
+        game.scenery = generateWorld(game.seed).scenery;
+      game.explored = new Set(data.state.explored);
+      game.spriteLibrary = assets.library;
+      for (const action of [
+        "portal",
+        "usePotion",
+        "openInventory",
+        "leaveRoom",
+        "inventoryAction",
+      ])
+        game[action] = (p, arg) => {
+          if (p.id === rooms.playerId)
+            rooms.send({ type: "action", action, arg });
+        };
+      game.persist = () => {};
+      if (game.phase === "lobby") {
+        if (screen !== "lobby") show("lobby");
+        renderLobby();
+        $("begin-button").disabled = true;
+      } else if (screen !== "play") {
+        renderer = new Renderer($("game-canvas"), assets);
+        renderer.showLootDetails = lootDetailsVisible;
+        show("play");
+        paused = false;
+      }
+    }
+  }
+}
+const roomDialog = document.createElement("dialog");
+roomDialog.innerHTML =
+  '<h2>Play in a room</h2><p>Direct connection on your local network. Host shares the full room address. No public matchmaking server is used.</p><label>Your character name <input id="room-name" maxlength="16" value="Explorer"></label><label>Host address <input id="room-address" placeholder="192.168.1.10:port/code"></label><p id="room-status"></p><button id="room-host">Host room</button><button id="room-join">Join room</button><button id="room-close">Close</button>';
+document.body.append(roomDialog);
+const roomButton = document.createElement("button");
+roomButton.textContent = "HOST / JOIN ROOM";
+roomButton.className = "text-button";
+$("local-button").after(roomButton);
+roomButton.hidden=true; // Multiplayer remains a dormant adapter for a future edition.
+roomButton.onclick = () => roomDialog.showModal();
+$("room-close").onclick = () => roomDialog.close();
+$("room-host").onclick = async () => {
+  try {
+    if (!window.desktop) throw Error("Rooms require the desktop app.");
+    newLobby();
+    const address = await rooms.host();
+    $("room-address").value = address;
+    $("room-status").textContent =
+      "Room open. Share: " +
+      address +
+      " — close this panel to select characters and start.";
+  } catch (e) {
+    $("room-status").textContent = e.message;
+  }
+};
+$("room-join").onclick = async () => {
+  try {
+    if (!window.desktop) throw Error("Rooms require the desktop app.");
+    rooms.peer = null;
+    await rooms.join($("room-address").value.trim(), $("room-name").value);
+    roomDialog.close();
+  } catch (e) {
+    $("room-status").textContent = e.message;
+  }
+};
+function renderLobby() { playableLobby?.sync();renderRoster(); }
+function nameNewCharacter(p, done = () => {}) {
+  const wasPaused = paused;
+  if (screen === "play") paused = true;
+  if (document.querySelector("#character-name-dialog")) return;
+  const dialog = document.createElement("dialog");
+  dialog.id = "character-name-dialog";
+  dialog.dataset.ownerDevice=p.device;
+  dialog.innerHTML =
+    '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back. You can type with the mouse/keyboard or use the on-screen keyboard.</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off"></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
+  document.body.append(dialog);
+  dialog.updateControllerFamily=family=>{dialog.dataset.controllerFamily=family;dialog.querySelector('form>p').textContent=creationHelp(family)+' · Left/right: change options · '+creationButtonLabels(family).rotate+': rotate preview';};
+  dialog.updateControllerFamily(creationFamily(p));
+  const input = dialog.querySelector("input");
+  input.value = p.name;
+  const appearance = structuredClone(DEFAULT_APPEARANCE);
+  let creationDirection = 0,
+    creationMode = 'full',
+    starterKit = "classic";
+  const preview = () => {
+    const c = dialog.querySelector("canvas").getContext("2d");
+    const canvas=dialog.querySelector('canvas');canvas.dataset.previewMode=creationMode;
+    drawCreationPreview(c,appearance,{width:canvas.width,height:canvas.height,mode:creationMode,direction:creationDirection,time:performance.now()/1000});
+  };
+  dialog.rotatePreview=delta=>{creationDirection=(creationDirection+delta+8)%8;preview();};
+  const views=document.createElement('div');views.className='creation-preview-views';
+  for(const [label,delta] of [['↶ View',-1],['View ↷',1]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>dialog.rotatePreview(delta);views.append(b);}
+  dialog.querySelector('canvas').after(views);
+  dialog.refreshPreviewFocus=target=>{if(!target)return;const label=target.getAttribute?.('aria-label');if(label==='Face details')creationMode='face';else if(label==='Hair style'||label==='Hair color')creationMode='hair';else if(!views.contains(target))creationMode='full';dialog.querySelectorAll('.creator-selected').forEach(q=>q.classList.remove('creator-selected'));target.classList.add('creator-selected');preview();};
+  dialog.addEventListener('focusin',e=>dialog.refreshPreviewFocus(e.target));
+  const kitLabel = document.createElement("label");
+  kitLabel.className = "creation-choice creation-starting-gear";
+  kitLabel.textContent = "Starting gear";
+  const kit = document.createElement("select");
+  kit.setAttribute("aria-label", "Starting gear");
+  for (const [v, t] of [
+    ["classic", "Classic · three traps"],
+    ["melee", "Blade · sword and one trap"],
+    ["ranged", "Archer · bow, eight arrows and one trap"],
+    ["trapper", "Trapper · five traps"],
+  ]) kit.append(new Option(t, v));
+  kit.onchange = () => {
+    starterKit = kit.value;
+    preview();
+  };
+  kitLabel.append(kit);
+  dialog.querySelector(".creation-preview").after(kitLabel);
+  const nameTools = document.createElement("div");
+  nameTools.className = "appearance-toolbar";
+  const nameButton = document.createElement("button");
+  nameButton.type = "button";
+  nameButton.textContent = "Suggest unique name";
+  nameButton.onclick = () => {
+    input.value = suggestCharacterName(profiles.data.heroes);
+  };
+  const editName=document.createElement('button');editName.type='button';editName.textContent='Edit name · on-screen keyboard';editName.onclick=()=>openControllerKeyboard(input);
+  nameTools.append(editName,nameButton);
+  input.parentElement.after(nameTools);
+  appearanceControls(
+    dialog.querySelector(".creation-appearance"),
+    appearance,
+    preview,
+    { compact: true },
+  );
+  kit.focus({ preventScroll: true });
+  const animateCreation = () => {
+    if (!dialog.isConnected) return;
+    preview();
+    requestAnimationFrame(animateCreation);
+  };
+  animateCreation();
+  dialog.querySelector("form").onsubmit = (e) => {
+    e.preventDefault();
+    const error = characterNameError(input.value, profiles.data.heroes);
+    if (error) {
+      dialog.querySelector(".name-error").textContent = error;
+      input.focus();
+      return;
+    }
+    profiles.assign(p, profiles.create(input.value, appearance));
+    if (starterKit !== "classic") {
+      p.inventory = [];
+      give(p.inventory, "trap", starterKit === "trapper" ? 5 : 1);
+      if (starterKit === "melee") p.equipment.hand1 = "sword";
+      if (starterKit === "ranged") {
+        p.equipment.hand1 = "bow";
+        p.equipment.hand2 = "occupied";
+        give(p.inventory, "arrow", 8);
+      }
+      profiles.capture(game);
+    }
+    paused = wasPaused;
+    dialog.close();
+    dialog.remove();
+    renderLobby();
+    done();
+  };
+  const cancel = () => {
+    paused = wasPaused;
+    if (
+      screen === "play" &&
+      !profiles.data.heroes.some((h) => h.id === p.profileId)
+    )
+      game.players = game.players.filter((q) => q !== p);
+    dialog.close();
+    dialog.remove();
+    renderLobby();
+  };
+  dialog.querySelector(".name-cancel").onclick = cancel;
+  dialog.oncancel = (e) => {
+    e.preventDefault();
+    cancel();
+  };
+  dialog.showModal();
+  editName.focus();
+}
+function startGame() {
+  if(game.localWorld){worldsUI.open();return;}
+  const unnamed = game.players.find(
+    (p) => !profiles.data.heroes.some((h) => h.id === p.profileId),
+  );
+  if (unnamed) {
+    nameNewCharacter(unnamed, startGame);
+    return;
+  }
+  game.spriteLibrary = assets.library;
+  game.environment = game.houseWorldsEnabled?'house':$("environment").value;
+  game.mapMode = game.houseWorldsEnabled?'bounded':$("map-mode").value || 'bounded';
+  if(game.openingBoard)seatOpeningParty(game.players);
+  if (!game.start()) return;
+  game.difficulty = $("difficulty").value;
+  game.diceCount = Number($("dice-count").value);
+  profiles.capture(game);
+  renderer = new Renderer($("game-canvas"), assets);
+  renderer.showLootDetails = lootDetailsVisible;
+  paused = false;
+  show("play");
+  renderRoster();
+}
+function renderRoster() {
+  const rosterPlayers = screen === 'lobby'
+    ? game.players.filter(p => p.profileId && playableLobby?.state.members.get(p.id)?.spawned)
+    : game.players;
+  const elements = rosterPlayers.map((p, i) => {
+    const el = document.createElement("div");
+    const hasMana = Boolean(ITEMS[p.equipment?.hand1]?.magic);
+    el.className = "roster-card" + (p === game.current ? " current" : "") + (hasMana ? " has-mana" : "");
+    el.style.setProperty("--player", p.color);
+    const name = document.createElement("div");
+    name.className = "roster-name";
+    const b = document.createElement("b");
+    b.textContent = p.name;
+    const span = document.createElement("span");
+    if(p.hp>0){
+      const value=document.createElement('strong');value.className='roster-hp-value';value.textContent=String(Math.ceil(p.hp));
+      span.append(value,document.createTextNode(' HP'));
+      if(p.stun>0)span.append(document.createTextNode(' · STUN '+p.stun.toFixed(1)+'s'));
+      if(p.scaredTime>0)span.append(document.createTextNode(' · SCARED '+Math.ceil(p.scaredTime)+'s'));
+    }else span.textContent='DOWN';
+    name.append(b, span);
+    const health = document.createElement("div");
+    health.className = "health-track";
+    health.setAttribute("role", "meter");
+    health.setAttribute("aria-label", "Health");
+    health.setAttribute("aria-valuemin", "0");
+    health.setAttribute("aria-valuemax", String(p.maxHp || 100));
+    health.setAttribute("aria-valuenow", String(Math.max(0, Math.ceil(p.hp))));
+    const fill = document.createElement("i");
+    fill.style.width = Math.max(0, Math.min(100, (p.hp / (p.maxHp || 100)) * 100)) + "%";
+    health.append(fill);
+    const info = document.createElement("div");
+    info.className = "roster-info";
+    const progress = document.createElement("span");
+    progress.textContent =
+      p.progress >= FINISH
+        ? "CENTER REACHED"
+        : p.progress + " / " + FINISH + " SPACES";
+    const supplies = document.createElement("span");
+    supplies.className = "roster-supplies";
+    const addSupply = (kind, label, value, symbol) => {
+      const item = document.createElement("span");
+      item.className = "roster-supply roster-supply-" + kind;
+      item.title = label;
+      item.setAttribute("aria-label", `${value} ${label.toLowerCase()}`);
+      const icon = document.createElement("i");
+      icon.className = "supply-icon";
+      icon.setAttribute("aria-hidden", "true");
+      const amount = document.createElement("b");
+      amount.textContent = value;
+      item.append(icon, amount);
+      supplies.append(item);
+    };
+    addSupply("traps", "Traps", p.traps, "✣");
+    addSupply("potions", "Potions", count(p, "potion"), "⚗");
+    addSupply("arrows", "Arrows", count(p, "arrow"), "➶");
+    const dashCooldown=screen==='lobby'?(playableLobby?.practice.players.find(a=>a.id===p.id)?.dodge||0):(p.dodge||0);
+    const dash = document.createElement("span");
+    dash.className = "roster-dash" + (dashCooldown > 0 ? "" : " ready");
+    dash.title=dashCooldown>0?'Dash ready in '+dashCooldown.toFixed(1)+'s':'Dash ready';
+    if(p.staminaBoost>0)dash.title+=' · Stamina '+Math.ceil(p.staminaBoost)+'s';
+    dash.setAttribute('aria-label',dash.title);dash.setAttribute('role','img');
+    if(dashCooldown>0){const timer=document.createElement('small');timer.textContent=dashCooldown.toFixed(1);dash.append(timer);}
+    supplies.append(dash);
+    info.append(progress, supplies);
+    const mana = document.createElement("div");
+    mana.className = "mana-meter";
+    if (hasMana) {
+      const label = document.createElement("small");
+      label.className='mana-value';
+      label.textContent =
+        Math.floor(p.mana ?? 100) + " / " + (p.maxMana || 100) + " MANA";
+      const track = document.createElement("div");
+      track.className = "health-track mana-track";
+      track.setAttribute("role", "meter");
+      track.setAttribute("aria-label", "Mana");
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", String(p.maxMana || 100));
+      track.setAttribute("aria-valuenow", String(Math.floor(p.mana ?? 100)));
+      const bar = document.createElement("i");
+      bar.style.width = Math.max(0,Math.min(100,((p.mana ?? 100) / (p.maxMana || 100))*100)) + "%";
+      track.append(bar,label);
+      mana.append(track);
+    }
+    const portrait=document.createElement('canvas');portrait.width=96;portrait.height=112;portrait.className='roster-portrait';portrait.setAttribute('aria-label',p.name+' portrait');
+    rosterPortraits.draw(portrait,game,p);
+    const minions=document.createElement('div');minions.className='roster-minions';
+    for(const minion of (game.ghosts||[]).filter(a=>a.owner===p.id&&a.hp>0&&!a.pet).slice(0,3)){
+      const dot=document.createElement('span');dot.className='minion-dot';dot.style.setProperty('--cooldown',Math.max(0,1-minion.cooldown)*360+'deg');dot.title=minion.cooldown>0?'Ghost attack ready in '+minion.cooldown.toFixed(1)+'s':'Ghost attack ready';dot.setAttribute('aria-label',dot.title);minions.append(dot);
+    }
+    const portraitWrap=document.createElement('div');portraitWrap.className='roster-portrait-wrap';
+    const portraitGlow=document.createElement('span');portraitGlow.className='roster-portrait-glow';portraitGlow.setAttribute('aria-hidden','true');
+    portraitWrap.append(portraitGlow,portrait);
+    const companion=petCard(game,p);if(companion)minions.append(companion);
+    el.append(portraitWrap,name, health, info, mana,minions);
+    const existing = [...$("roster").children].find((card) => card.hero === p);
+    if (existing) {
+      existing.className = el.className;
+      existing.style.cssText = el.style.cssText;
+      existing.replaceChildren(portraitWrap,name, health, info, mana,minions);
+      return existing;
+    }
+    el.hero = p;
+    return el;
+  });
+  for (const card of [...$("roster").children])
+    if (!elements.includes(card)) card.remove();
+  elements.forEach((card, index) => {
+    if ($("roster").children[index] !== card)
+      $("roster").insertBefore(card, $("roster").children[index] || null);
+  });
+}
+function updateHud() {
+  game.controlLabels = controlLabels(mapping);
+  const p = game.current;
+  $("round-label").textContent = "ROUND " + String(game.round).padStart(2, "0");
+  $("turn-label").textContent = game.realm?'Explore the persistent forest':p
+    ? p.name + "'s turn"
+    : game.players.length&&game.players.every(p=>p.progress>=FINISH)
+    ? "The center awaits your call"
+    : "First hits set turn order";
+  $("turn-dot").style.background = p?.color || "#d5ad64";
+  $("turn-dot").style.color = p?.color || "#d5ad64";
+  $("turn-caption").textContent =
+    game.phase === "won"
+      ? "INTERACT: VICTORY CHEST · STRIKE BOARD: PLAY AGAIN?"
+      : game.players.some((p) => p.progress >= FINISH)
+        ? "FINISHER: HOLD INTERACT AT TABLE TO CALL WILDBOUND"
+        : game.roll
+          ? "THE DICE HAVE SPOKEN"
+          : game.players.every((p) => p.progress >= FINISH)
+            ? "CLEAR THE JUNGLE & SEAL THE BOARD"
+            : "HIT THE TABLE TO ROLL";
+  $("threat-label").textContent =
+    game.enemies.length + " CREATURE" + (game.enemies.length === 1 ? "" : "S");
+  const toast=$("game-toast");
+  if(game.phase==='play'&&game.openingBoard&&!profiles.error){
+    const attackDirection={0:'up',1:'right',2:'left',3:'down'}[mapping.attack]||'left';
+    const controller=game.players.find(p=>p.device?.startsWith('pad:'));
+    const family=controller?.controllerFamily||'xbox',signature=family+':'+attackDirection;
+    if(toast.dataset.openingPrompt!==signature){
+      const label=document.createElement('span');label.textContent='Press';
+      const glyph=controllerGlyph(document.createElement('canvas'),family,'face',attackDirection);
+      const action=document.createElement('span');action.textContent='to roll';
+      const keyboard=document.createElement('small');keyboard.textContent='F / click';keyboard.setAttribute('aria-label','Keyboard: F or click');
+      toast.replaceChildren(label,glyph,action,keyboard);toast.dataset.openingPrompt=signature;
+    }
+    toast.classList.add('opening-board-prompt');
+    toast.classList.remove('hidden');
+  }else{
+    toast.classList.remove('opening-board-prompt');toast.dataset.openingPrompt='';
+    toast.textContent=game.log[0]||'';
+    const victoryLootOpen=game.players.some(p=>p.ui?.storage==='victory'||p.ui?.storage==='tv-victory');
+    toast.classList.toggle('hidden',victoryLootOpen||!!(game.event&&game.eventTime>0&&!profiles.error&&(game.log[0]||'').startsWith(game.event.name)));
+    if(profiles.error)toast.textContent='SAVE FAILED: '+profiles.error;
+  }
+  $("event-card").classList.toggle(
+    "hidden",
+    !!game.roll || !!game.eventOnBoard || !game.event || game.eventTime <= 0,
+  );
+  if (game.event) {
+    $("event-card").style.opacity = String(
+      Math.max(
+        0,
+        Math.min(
+          1,
+          ((game.eventDuration || 5) - game.eventTime) / 0.4,
+          game.eventTime / 1.1,
+        ),
+      ),
+    );
+    $("event-name").textContent = game.event.name;
+    $("event-verse").textContent = game.event.verse;
+    $("event-tip").textContent = game.event.tip;
+    $('event-progress').style.transform='scaleX('+Math.max(0,game.eventTime/(game.eventDuration||5))+')';
+    if($('event-portrait').dataset.event!==game.event.name){
+      const canvas=$('event-portrait'),c=canvas.getContext('2d');canvas.dataset.event=game.event.name;c.clearRect(0,0,144,144);c.imageSmoothingEnabled=false;
+      c.strokeStyle='#c6ad6560';c.lineWidth=1;c.beginPath();c.arc(72,72,62,0,Math.PI*2);c.stroke();
+      if(creatures[game.event.kind])lobbyAnimator.draw(c,{kind:game.event.kind,x:72,y:83,faceX:-1,faceY:1,state:'idle',hp:100,step:0},0,82);
+      else {c.fillStyle='#dbc48a';c.font='64px Georgia';c.textAlign='center';c.fillText('✦',72,96);}
+      $('event-count').textContent=game.event.count?game.event.count+' CREATURE'+(game.event.count===1?'':'S'):'WORLD EVENT';
+    }
+  }
+  $("dice-result").classList.toggle(
+    "hidden",
+    !game.roll || game.roll.elapsed < 1.6,
+  );
+  if (game.roll && game.roll.elapsed >= 1.6)
+    $("dice-result").textContent =
+      game.roll.dice.join(" + ") + " = " + game.roll.total;
+  $("game-hint").textContent = game.realm
+    ? controlHelp(mapping)+' · Meet the Keeper east of camp · Return Home keeps your forest progress'
+    : game.openingBoard
+    ? "The board is waking. Hit it to roll; movement unlocks when the first event appears."
+    : game.locked
+      ? controlHelp(mapping) + " · Field Kit: " + game.controlLabels.field
+      : "First round: use a controller to control your solo hero; Start/Menu on an unused controller or Enter adds a player";
+  renderRoster();
+}
+function disconnected() {
+  const pads = navigator.getGamepads?.() || [];
+  if(!audio.unlocked&&Array.from(pads).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
+  return game.players.filter(
+    (p) => p.device.startsWith("pad:") && !pads[Number(p.device.split(":")[1])],
+  );
+}
+function showVictoryResults() {
+  keys.clear();mouse.down=false;
+  const dialog = $("victory-results");
+  renderVictoryReport(dialog,game);
+  if (!dialog.open) dialog.showModal();
+  $("victory-continue").focus({preventScroll:true});
+}
+$("victory-results").addEventListener("cancel", (event) => event.preventDefault());
+$("victory-results").addEventListener("keydown", (event) => {
+  if(['ArrowUp','ArrowDown','PageUp','PageDown'].includes(event.key)){
+    event.preventDefault();scrollVictoryReport($("victory-results"),['ArrowUp','PageUp'].includes(event.key)?-1:1);return;
+  }
+  if (["Enter", " ", "Escape"].includes(event.key)) {
+    event.preventDefault();
+    $("victory-results").close();
+  }
+});
+$("victory-continue").addEventListener("click", () => $("victory-results").close());
+function restartSameLevel() {
+  const level = { seed: game.seed, environment: game.environment, mapMode:game.mapMode||'bounded', difficulty: game.difficulty, diceCount: game.diceCount };
+  const party = game.players.map((p) => ({
+    device: p.device, name: p.name, profileId: p.profileId,
+    controllerFamily: p.controllerFamily, controllerName: p.controllerName,
+  }));
+  $("victory-results").close();
+  $("next-game-dialog").close();
+  if($('defeat-dialog').open)$('defeat-dialog').close();
+  if($('pause-dialog').open)$('pause-dialog').close();
+  heroRoot.replaceChildren();
+  heroUI.panels.clear();
+  game = new Game();
+  game.seed = level.seed;
+  game.environment = level.environment;
+  game.mapMode = level.mapMode;
+  game.generatedEnvironment = "";
+  game.difficulty = level.difficulty;
+  game.diceCount = level.diceCount;
+  for (const saved of party) {
+    const p = game.addPlayer(saved.device, saved.name);
+    if (!p) continue;
+    const hero = profiles.data.heroes.find((entry) => entry.id === saved.profileId);
+    if (hero) profiles.assign(p, hero);
+    p.controllerFamily = saved.controllerFamily;
+    p.controllerName = saved.controllerName;
+  }
+  $("environment").value = level.environment;
+  $("map-mode").value = level.mapMode;
+  $("difficulty").value = level.difficulty;
+  $("dice-count").value = String(level.diceCount);
+  startGame();
+}
+function openNextGamePrompt() {
+  keys.clear();mouse.down=false;
+  const dialog = $("next-game-dialog");
+  if (!dialog.open) dialog.showModal();
+  dialog.querySelector("#next-game-no").focus();
+}
+$("next-game-yes").onclick = restartSameLevel;
+$("next-game-no").onclick = () => $("next-game-dialog").close();
+$("next-game-lobby").onclick = () => {
+  $("next-game-dialog").close();
+  newLobby({ keepParty: true });
+};
+heroRoot.addEventListener('victory-action', (event) => {
+  if(event.detail==='restart') restartSameLevel();
+  else if(event.detail==='lobby') newLobby({keepParty:true});
+});
+function showDefeatMenu(){
+  if(screen!=='play'||$('defeat-dialog').open)return;
+  paused=true;persistSession();if(rooms.role!=='client')profiles.capture(game);keys.clear();mouse.down=false;
+  $('pause-dialog').close();
+  const dialog=$('defeat-dialog');dialog.showModal();focusDialogControl(dialog,$('defeat-continue'));
+}
+function pause(reason,device) {
+  // A completed expedition still leaves the player in the house/world so the
+  // normal pause menu must remain available for restart/lobby actions.
+  // Defeat has its own modal and should continue to block the pause dialog.
+  if (screen==='play'&&game.phase === 'lost') return;
+  refreshPauseOptions();
+  if (!['play','lobby'].includes(screen)) return;
+  const owner=game.players.find(p=>p.device===(device||'keyboard'))||game.current||game.players[0];
+  if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
+  pauseCheat.reset();
+  paused = true;
+  persistSession();
+  if (rooms.role !== "client") profiles.capture(game);
+  keys.clear();
+  mouse.down = false;
+  const ended = game.phase === "won";
+  const inLobby=screen==='lobby';
+  $('pause-dialog').dataset.context=inLobby?'lobby':'expedition';
+  document.querySelector('.pause-actions').append($('pause-worlds'));
+  $('pause-dialog').dataset.ended=String(ended);
+  $("pause-eyebrow").textContent =
+    game.phase === "won"
+      ? "THE JUNGLE REMEMBERS YOUR NAMES"
+      : "TAKE A BREATH";
+  $("pause-title").textContent =
+    game.phase === "won"
+      ? "You sealed the board."
+      : inLobby ? "Lobby menu" : "Expedition paused";
+  $("pause-text").textContent =
+    reason ||
+    (game.phase === "won"
+      ? game.cleared + " creatures cleared. Everyone made it home."
+      : inLobby ? "Your party is waiting. Ready when you are." : "Take a breath. Your expedition is paused.");
+  $("resume-button").classList.toggle("hidden", ended);
+  $("resume-button").textContent = inLobby ? "Back to lobby" : "Resume expedition";
+  $("restart-button").textContent = inLobby ? "New party" : "New expedition";
+  $("reassign-button").classList.toggle(
+    "hidden",
+    !disconnected().length || game.players.some((p) => p.device === "keyboard"),
+  );
+  if (!$("pause-dialog").open) {
+    $("pause-dialog").showModal();
+    const initial = $("resume-button");
+    focusDialogControl($('pause-dialog'),initial);
+    initial.scrollIntoView({block:'nearest'});
+  }
+  openSettings(device||'keyboard',true);
+}
+function resume() {
+  if (disconnected().length) {
+    $("pause-text").textContent =
+      "Reconnect the missing controller and press a button, or assign keyboard control.";
+    return;
+  }
+  $("settings-dialog").close();
+  delete $("settings-dialog").dataset.pauseMenu;
+  $("pause-dialog").close();
+  pauseCheat.reset();
+  $('pause-dialog').querySelector('.game-debug-console')?.remove();
+  paused = false;
+  keys.clear();
+}
+$("local-button").onclick = newLobby;
+$("begin-button").onclick = startGame;
+for(const button of document.querySelectorAll('[data-option-target]')){
+  const select=$(button.dataset.optionTarget);
+  const label={'map-mode':'Mode',environment:'Map','dice-count':'Dice',difficulty:'Difficulty'}[button.dataset.optionTarget];
+  const update=()=>{if(select.id==='difficulty')$('difficulty-description').textContent={gentle:'Gentle · Each hit deals only 1 damage. A relaxed expedition.',adventure:'Adventure · Take 35% less damage. The balanced adventure.',wild:'Wild · Full enemy damage. For a tougher expedition.'}[select.value];button.textContent=label+'   ‹  '+select.options[select.selectedIndex].text+'  ›';button.setAttribute('aria-label',label+': '+select.options[select.selectedIndex].text);};
+  button.onclick=()=>{select.selectedIndex=(select.selectedIndex+1)%select.options.length;select.dispatchEvent(new Event('change'));update();};
+  button.changeOption=delta=>{select.selectedIndex=(select.selectedIndex+delta+select.options.length)%select.options.length;select.dispatchEvent(new Event('change',{bubbles:true}));update();};update();
+}
+$("back-home").onclick = () => show("home");
+$("how-button").onclick = () => $("info-dialog").showModal();
+$("close-info").onclick = () => $("info-dialog").close();
+$("nav-play").onclick = () => {
+  if (screen === "play") {
+    pause();
+    return;
+  }
+  show("home");
+};
+$("home-link").onclick = (e) => {
+  e.preventDefault();
+  if (screen === "play") pause();
+  else show("home");
+};
+$("nav-workshop").onclick = () => {
+  if (screen === "play") {
+    pause("Return to the landing screen before editing sprites.");
+    return;
+  }
+  show("workshop");
+};
+$("pause-button").onclick = () => pause();
+function refreshPauseOptions(){
+ $('pause-pvp').textContent='PvP: '+(game.pvp?'ON':'OFF');
+ $('pause-difficulty').textContent='Difficulty: '+(game.difficulty||'adventure');
+ $('pause-pvp').disabled=$('pause-difficulty').disabled=rooms.role==='client';
+ $('pause-music-value').textContent=Math.round(musicVolume*100)+'%';
+ $('pause-sfx-value').textContent=Math.round(audio.settings.sfx*100)+'%';
+ $('pause-mute').textContent=soundEnabled?'Mute all audio':'Unmute audio';
+}
+$('pause-fullscreen').onclick=()=>$('fullscreen-button').click();
+$('pause-pvp').onclick=()=>{$('pvp-toggle').checked=!game.pvp;$('pvp-toggle').dispatchEvent(new Event('change'));refreshPauseOptions();};
+$('pause-difficulty').onclick=()=>{const modes=['gentle','adventure','wild'];game.difficulty=modes[(modes.indexOf(game.difficulty)+1)%modes.length];$('difficulty').value=game.difficulty;game.persist();refreshPauseOptions();};
+$('pause-mute').onclick=()=>{$('sound-toggle').checked=!soundEnabled;$('sound-toggle').dispatchEvent(new Event('change'));refreshPauseOptions();};
+for(const sign of ['down','up']){
+ $('pause-music-'+sign).onclick=()=>{$('music-volume').value=Math.max(0,Math.min(1,musicVolume+(sign==='up'?.1:-.1)));$('music-volume').dispatchEvent(new Event('input'));refreshPauseOptions();};
+ $('pause-sfx-'+sign).onclick=()=>{audio.set('sfx',audio.settings.sfx+(sign==='up'?.1:-.1));$('sfx-volume').value=audio.settings.sfx;refreshPauseOptions();};
+}
+$('pause-settings').onclick=()=>$('settings-button').click();
+$('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});const host=$('settings-dialog').open?$('settings-dialog'):$('pause-dialog');host.dataset.debugOwnerId=$('pause-dialog').dataset.debugOwnerId||'';gameDebug.open(host);};
+$("board-button").onclick = () => (boardPinned = !boardPinned);
+$("close-board").onclick = () => {
+  if(game.roll)return;
+  boardPinned = false;
+  boardDismissedRoll = game.roll;
+};
+$("resume-button").onclick = resume;
+// Gamepads focus controls programmatically; :focus-visible is not guaranteed.
+$('pause-dialog').addEventListener('focusin', e => {
+  for (const el of $('pause-dialog').querySelectorAll('.menu-focus')) el.classList.remove('menu-focus');
+  e.target.closest('button,input,select,summary')?.classList.add('menu-focus');
+});
+$('pause-dialog').addEventListener('focusout', e => e.target.classList.remove('menu-focus'));
+$("pause-dialog").addEventListener("cancel", (e) => {
+  e.preventDefault();
+  if (game.phase === "play" || screen==='lobby') resume();
+});
+$("restart-button").onclick = () => {
+  $("settings-dialog").close();delete $("settings-dialog").dataset.pauseMenu;
+  $("pause-dialog").close();
+  newLobby({keepParty:["won","lost"].includes(game.phase)});
+};
+$('defeat-dialog').addEventListener('cancel',e=>e.preventDefault());
+$('defeat-lobby').onclick=()=>{$('defeat-dialog').close();newLobby({keepParty:true});};
+$('defeat-restart').onclick=restartSameLevel;
+$('defeat-continue').onclick=()=>{
+  if(!continueAfterDefeat(game))return;
+  $('defeat-dialog').close();paused=false;keys.clear();
+};
+$("quit-button").onclick = () => {
+  $("settings-dialog").close();delete $("settings-dialog").dataset.pauseMenu;
+  profiles.capture(game);
+  persistSession();
+  $("pause-dialog").close();
+  paused = false;
+  show("home");
+};
+$("reassign-button").onclick = () => {
+  const p = disconnected()[0];
+  if (p && !game.players.some((q) => q.device === "keyboard")){
+    p.device = "keyboard";
+    if(p.ui)p.ui.ownerDevice='keyboard';
+  }
+  pause("Keyboard assigned. Press Back to the Jungle to continue.");
+};
+const settingsTabNames = ['display', 'sound', 'controls'];
+let settingsTab = 'display';
+function focusSettingsPanel(){
+  const panel=document.querySelector(`[data-settings-panel="${settingsTab}"]`);
+  const control=[...panel.querySelectorAll('button,select,input,summary')].find(el=>{
+    if(el.disabled||el.dataset.campArrow||!el.getClientRects().length)return false;
+    for(let node=el.parentElement;node&&node!==panel;node=node.parentElement)if(node.tagName==='DETAILS'&&!node.open&&!(el.tagName==='SUMMARY'&&el.parentElement===node))return false;
+    return true;
+  });if(control)focusDialogControl($('settings-dialog'),control);
+}
+function selectSettingsTab(name, focus = false) {
+  musicPicker.close();
+  document.querySelector('.settings-panels').scrollTop=0;
+  settingsTab = settingsTabNames.includes(name) ? name : 'display';
+  document.querySelectorAll('[data-settings-tab]').forEach(button => {
+    const selected = button.dataset.settingsTab === settingsTab;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll('[data-settings-panel]').forEach(panel => {
+    const selected = panel.dataset.settingsPanel === settingsTab;
+    panel.hidden = !selected;
+    panel.setAttribute('aria-hidden', String(!selected));
+  });
+  if(focus)focusSettingsPanel();
+}
+document.querySelectorAll('[data-settings-tab]').forEach(button => {
+  button.onclick = () => selectSettingsTab(button.dataset.settingsTab, true);
+});
+let controllerDialogDevice = null;
+function openSettings(device = controllerDialogDevice || 'keyboard', fromPause = false) {
+  const dialog = $("settings-dialog");
+  if (dialog.open) return;
+  if (screen === "play"&&!paused){pause(undefined,device);return;}
+  if(fromPause){
+    dialog.dataset.pauseMenu="true";
+    const actions=$("camp-session-actions");actions.hidden=false;actions.open=false;
+    actions.querySelector("summary").textContent=screen==="lobby"?"Lobby actions":"Expedition actions";
+    for(const selector of ["#pause-text",".pause-secondary",".pause-actions"]){const node=$("pause-dialog").querySelector(selector);if(node)actions.append(node);}
+    const options=actions.querySelector(".pause-actions");for(const id of ["pause-pvp","pause-difficulty"])options.append($(id));
+    // Full game settings own the paused surface; the old shell is bookkeeping only.
+    $("pause-dialog").dataset.campMenu="true";
+  }else $("camp-session-actions").hidden=true;
+  dialog.dataset.ownerDevice = device;
+  const pad = Array.from(navigator.getGamepads?.() || []).find(pad => pad && device === 'pad:' + pad.index);
+  dialog.dataset.controllerFamily = pad ? controllerFamily(pad) : 'keyboard';
+  dialog.showModal();
+  selectSettingsTab('display');
+  renderPlayerMappings($("player-mappings"), game, mapping);
+  const hero = game.players[0];
+  if (hero) {
+    hero.appearance ||= structuredClone(DEFAULT_APPEARANCE);
+    appearanceControls($("appearance-settings"), hero.appearance, () => game.persist(), { compact: true });
+  }
+  focusSettingsPanel();
+}
+function closeSettings() {
+  if($("settings-dialog").dataset.pauseMenu){
+    musicPicker.close();
+    if(disconnected().length){$("camp-session-actions").open=true;$("reassign-button").focus();return;}
+    resume();return;
+  }
+  musicPicker.close();
+  $("settings-dialog").close();
+  delete $("settings-dialog").dataset.ownerDevice;
+  delete $("settings-dialog").dataset.controllerFamily;
+}
+$("settings-button").onclick = () => openSettings();
+$("close-settings").onclick = closeSettings;
+for (const type of ['keydown', 'cancel']) $("settings-dialog").addEventListener(type, event => {
+  if ($("settings-dialog").dataset.ownerDevice?.startsWith('pad:')) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
+$("settings-dialog").addEventListener('cancel',event=>{
+  event.preventDefault();
+  if(musicPicker.picker.open){musicPicker.close();musicPicker.picker.querySelector("summary").focus();}
+  else closeSettings();
+});
+$("settings-dialog").addEventListener('close', () => {
+  if (!$("settings-dialog").open) {
+    delete $("settings-dialog").dataset.ownerDevice;
+    delete $("settings-dialog").dataset.controllerFamily;
+  }
+});
+$("ui-scale").value = localStorage.getItem("wildbound-ui-scale") || "1";
+$("ui-scale").onchange = e => { localStorage.setItem("wildbound-ui-scale", e.target.value); document.documentElement.style.setProperty("--ui-scale", e.target.value); };
+$("board-size").value = localStorage.getItem("wildbound-board-size") || "compact";
+$("board-size").onchange = e => { localStorage.setItem("wildbound-board-size", e.target.value); document.body.dataset.boardSize = e.target.value; };
+$("event-duration").value = localStorage.getItem("wildbound-event-duration") || "5";
+$("event-duration").onchange = e => { localStorage.setItem("wildbound-event-duration", e.target.value); game.eventDuration = Number(e.target.value); };
+$("pvp-toggle").checked=game.pvp;
+$("pvp-toggle").onchange=e=>{game.pvp=e.target.checked;localStorage.setItem("wildbound-pvp",game.pvp?"on":"off");game.persist();};
+$("cel-shading-toggle").checked = celShadingEnabled();
+$("cel-shading-toggle").onchange = e => setCelShading(e.target.checked);
+const initialGrid=worldGridSettings();
+$('world-grid-toggle').checked=initialGrid.enabled;$('world-grid-style').value=initialGrid.style;$('world-grid-opacity').value=initialGrid.opacity;
+$('world-grid-toggle').onchange=e=>setWorldGridSettings({enabled:e.target.checked});
+$('world-grid-style').onchange=e=>setWorldGridSettings({style:e.target.value});
+$('world-grid-opacity').addEventListener('input',e=>setWorldGridSettings({opacity:Number(e.target.value)}));
+$("dynamic-shadows-toggle").checked=dynamicShadowsEnabled();
+$("dynamic-shadows-toggle").onchange=e=>{const enabled=setDynamicShadowsEnabled(e.target.checked);renderer?.setDynamicShadows(enabled);};
+$("sound-toggle").checked = soundEnabled;
+$("sound-toggle").onchange = (e) => {
+  soundEnabled = e.target.checked; audio.enabled=soundEnabled; audio.apply();
+  localStorage.setItem("wildbound-sound", soundEnabled ? "on" : "off");
+  if (soundEnabled) startMusic();
+  else music.pause();
+};
+$("music-volume").value = String(musicVolume);
+$('music-track').append(new Option('Adaptive soundtrack for each level','adaptive'),new Option('Random expedition soundtrack','random'), ...MUSIC_TRACKS.map(t=>new Option(t.name,t.id)));
+$('music-track').value=localStorage.getItem('wildbound-level-music') || 'adaptive';
+$('music-track').onchange=e=>{localStorage.setItem('wildbound-level-music',e.target.value);levelMusicKey=null;routeMusic();};
+const musicPicker=mountMusicPicker($('music-track'),MUSIC_TRACKS,{preview:previewMusic,stop:stopMusicPreview});
+$('settings-dialog').addEventListener('close',()=>musicPicker.close());
+$('settings-dialog').addEventListener('cancel',e=>{if(musicPicker.picker.open){e.preventDefault();musicPicker.close();musicPicker.picker.querySelector('summary').focus();}});
+window.addEventListener('blur',()=>musicPicker.close());
+$('music-status').textContent='Menu: Curious Groove';
+$('music-volume').oninput=e=>{musicVolume=Number(e.target.value);localStorage.setItem('wildbound-music-volume',String(musicVolume));if(musicVolume>0)startMusic();};
+for(const key of ['master','sfx','ui','ambience']){const label=document.createElement('label');label.className='field-label';label.textContent=(key==='ambience'?'AMBIENT LEVEL ':key.toUpperCase()+' ')+'VOLUME';const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.01;input.id=key+'-volume';input.value=audio.settings[key];input.setAttribute('aria-label',label.textContent);input.oninput=()=>audio.set(key,input.value);label.append(input);$('audio-mixer').append(label);}
+$('audio-night').checked=audio.settings.night;$('audio-night').onchange=e=>audio.set('night',e.target.checked);
+$('audio-test').onclick=()=>{startMusic();audio.play('loot');};
+$("fullscreen-button").onclick = async () => {
+  let enabled;
+  if (window.desktop) enabled=await window.desktop.fullscreen();
+  else if (document.fullscreenElement){await document.exitFullscreen();enabled=false;}
+  else {await document.documentElement.requestFullscreen();enabled=true;}
+  $('fullscreen-button').setAttribute('aria-checked',String(!!enabled));
+};
+for (const [action, value] of Object.entries(mapping)) {
+  const label = document.createElement("label");
+  label.textContent = action==='controlCycle'?'Control creature':action[0].toUpperCase() + action.slice(1);
+  const input = document.createElement("select");
+  input.dataset.mapping = action;
+  for(let n=0;n<32;n++) input.append(new Option(`${PAD_NAMES[n] || 'Button'} · ${n}`, n));
+  input.value = value;
+  input.onchange = () => {
+    const old = mapping[action], next = Number(input.value);
+    const other = Object.keys(mapping).find(k=>k!==action && mapping[k]===next);
+    if(other) { mapping[other]=old; document.querySelector(`[data-mapping="${other}"]`).value=old; }
+    mapping[action] = Math.max(
+      0,
+      Math.min(31, Math.floor(Number(input.value) || 0)),
+    );
+    localStorage.setItem("wildbound-mapping", JSON.stringify(mapping));
+    renderPlayerMappings($("player-mappings"), game, mapping);
+  };
+  label.append(input);
+  $("mapping-fields").append(label);
+}
+const campSettings=mountCampSettings($('settings-dialog'),{mapping,defaults:DEFAULT_MAPPING,
+  onMapping:()=>{localStorage.setItem('wildbound-mapping',JSON.stringify(mapping));for(const input of document.querySelectorAll('[data-mapping]'))input.value=mapping[input.dataset.mapping];renderPlayerMappings($('player-mappings'),game,mapping);},
+  promptsChanged:()=>renderPlayerMappings($('player-mappings'),game,mapping)});
+window.addEventListener("keydown", (e) => {
+  if(lobbyLanding?.handleKey(e))return;
+  if(e.code==='KeyY' && pauseCheatActive()){
+    e.preventDefault();
+    if(!e.repeat)pressPauseCheat();
+    return;
+  }
+  if(screen==='play'&&!document.querySelector('dialog[open]')){
+    const token={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyA:'a',KeyB:'b',Backspace:'select',Enter:'start'}[e.code];
+    if(token&&!e.repeat)feedDebugCode(token);
+  }
+  if (
+    screen === "play" &&
+    !playableLobby?.isPlayingTelevision('keyboard') &&
+    (e.code === "AltLeft" || e.code === "AltRight") &&
+    !e.repeat &&
+    !document.querySelector("dialog[open]")
+  ) {
+    e.preventDefault();
+    lootDetailsVisible = !lootDetailsVisible;
+    if (renderer) renderer.showLootDetails = lootDetailsVisible;
+    return;
+  }
+  if(screen==='lobby' && !document.querySelector('dialog[open]')) {
+    if(['Enter',' '].includes(e.key))e.preventDefault();
+    if(playableLobby?.key(e)) return;
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','KeyZ','KeyX','Space','KeyC','KeyQ','KeyH','KeyT','KeyI','Tab','Digit2','KeyR'].includes(e.code)||(e.code==='Enter'&&game.players.some(p=>p.device==='keyboard'&&p.ui))) {
+      e.preventDefault();keys.add(e.code);return;
+    }
+  }
+
+  const editing = ["INPUT", "SELECT", "TEXTAREA"].includes(
+    document.activeElement.tagName,
+  );
+  if (editing) return;
+  if (
+    screen === "play" &&
+    ["Tab", "Enter"].includes(e.key) &&
+    game.players.some((p) => p.device === "keyboard" && p.ui)
+  )
+    e.preventDefault();
+  const hero = game.players.find((p) => p.device === "keyboard");
+  if (
+    screen === "play" &&
+    e.code === "KeyG" &&
+    !e.repeat &&
+    !document.querySelector("dialog[open]")
+  ) {
+    e.preventDefault();
+    fieldKit.open(hero);
+    return;
+  }
+  if (screen === "play" && hero?.ui && e.key === "Escape") {
+    e.preventDefault();
+    hero.ui = null;
+    return;
+  }
+  if (
+    e.code === "KeyB" &&
+    screen === "play" &&
+    !document.querySelector("dialog[open]") &&
+    !e.repeat
+  ) {
+    boardPinned = !boardPinned;
+    return;
+  }
+  if (
+    e.key === "Escape" &&
+    screen === "play" &&
+    !document.querySelector("dialog[open]")
+  ) {
+    e.preventDefault();
+    pause();
+    return;
+  }
+  if (document.querySelector("dialog[open]")) return;
+  if (
+    e.code === "Enter" &&
+    rooms.role !== "client" &&
+    (screen === "lobby" || (screen === "play" && !paused)) &&
+    !e.repeat
+  ) {
+    const joined = game.addPlayer("keyboard");
+    if (joined) {
+      if (screen === "play") nameNewCharacter(joined);
+      sound("heal");
+      if (screen === "lobby") renderLobby();
+    }
+  }
+  if (screen === "play") {
+    if (
+      ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
+        e.code,
+      )
+    )
+      e.preventDefault();
+    keys.add(e.code);
+  }
+}, true);
+window.addEventListener("keyup", (e) => {
+  if(screen==='lobby'&&['Enter',' '].includes(e.key)&&!document.querySelector('dialog[open]'))e.preventDefault();
+  keys.delete(e.code);
+},true);
+window.addEventListener("blur", () => {
+  keys.clear();
+  mouse.down = false;
+  mouse.dash = false;
+  mouse.active = false;
+});
+$("game-canvas").addEventListener("pointermove", (e) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  mouse.active = true;
+});
+$("game-canvas").addEventListener("pointerdown", (e) => {
+  if (e.button === 2) mouse.dash = true;
+  if (e.button === 0) {
+    mouse.down = true;
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.active = true;
+  }
+});
+$("game-canvas").addEventListener("contextmenu", (e) => e.preventDefault());
+window.addEventListener("pointerup", () => {
+  mouse.down = false;
+  mouse.dash = false;
+});
+window.addEventListener("gamepaddisconnected", (e) => {
+  if (
+    screen === "play" &&
+    game.players.some((p) => p.device === "pad:" + e.gamepad.index)
+  )
+    pause(
+      "Controller disconnected. Reconnect it and press a button to reclaim your explorer.",
+    );
+});
+function lobbyController(pad, previous) { playableLobby?.controller(pad, previous); }
+const previousDialogAxes = new Map();
+const settingsDirectionRepeat = new Map();
+const modalControllerHeld = new Set();
+function dialogController(pad, previous) {
+  const dialog = [...document.querySelectorAll("dialog[open]")].at(-1);
+  if (!dialog) return;
+  if(dialog.dataset.ownerDevice && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
+  dialog.updateControllerFamily?.(controllerFamily(pad));
+  if(dialog.id==='victory-results'){
+    if((pad.buttons[0]?.pressed&&!previous[0])||(pad.buttons[1]?.pressed&&!previous[1]))dialog.close();
+    else if(pad.buttons[12]?.pressed&&!previous[12])scrollVictoryReport(dialog,-1);
+    else if(pad.buttons[13]?.pressed&&!previous[13])scrollVictoryReport(dialog,1);
+    return;
+  }
+  if(dialog.id==='character-name-dialog'&&((pad.buttons[4]?.pressed&&!previous[4])||(pad.buttons[5]?.pressed&&!previous[5]))){dialog.rotatePreview(pad.buttons[4]?.pressed?-1:1);return;}
+  const controls = Array.from(
+    (dialog.querySelector('.game-debug-console')||dialog).querySelectorAll(
+      "button:not(:disabled), select:not(:disabled), input:not(:disabled), summary",
+    ),
+  ).filter((el) => {
+    if (el.dataset.controllerSkip === "true") return false;
+    if(!el.getClientRects().length||el.dataset.campArrow)return false;
+    for(let node=el.parentElement;node&&node!==dialog;node=node.parentElement)
+      if(node.tagName==='DETAILS'&&!node.open && !(el.tagName==='SUMMARY'&&el.parentElement===node))return false;
+    return true;
+  });
+  if (!controls.length) return;
+  if (
+    dialog.id === "field-kit-dialog" &&
+    ((pad.buttons[4]?.pressed && !previous[4]) ||
+      (pad.buttons[5]?.pressed && !previous[5]))
+  ) {
+    const tabs = ["Craft", "Skills"];
+    fieldKit.tab =
+      tabs[
+      (tabs.indexOf(fieldKit.tab) + (pad.buttons[5]?.pressed ? 1 : tabs.length - 1)) % tabs.length
+      ];
+    fieldKit.render();
+    fieldKit.dialog
+      .querySelector(".field-body button,.field-body select")
+      ?.focus();
+    return;
+  }
+  if (dialog.id === "settings-dialog" &&
+    ((pad.buttons[4]?.pressed && !previous[4]) ||
+      (pad.buttons[5]?.pressed && !previous[5]))) {
+    const index = settingsTabNames.indexOf(settingsTab);
+    const next = (index + (pad.buttons[5]?.pressed ? 1 : settingsTabNames.length - 1)) % settingsTabNames.length;
+    selectSettingsTab(settingsTabNames[next], true);
+    return;
+  }
+  const active = controls.indexOf(document.activeElement),
+    axis = previousDialogAxes.get(pad.index) || [0, 0],
+    x = Math.abs(pad.axes[0] || 0) > 0.65 ? Math.sign(pad.axes[0]) : 0,
+    y = Math.abs(pad.axes[1] || 0) > 0.65 ? Math.sign(pad.axes[1]) : 0;
+  let left =
+      (!!pad.buttons[14]?.pressed && !previous[14]) || (x < 0 && axis[0] >= 0),
+    right =
+      (!!pad.buttons[15]?.pressed && !previous[15]) || (x > 0 && axis[0] <= 0),
+    up =
+      (!!pad.buttons[12]?.pressed && !previous[12]) || (y < 0 && axis[1] >= 0),
+    down =
+      (!!pad.buttons[13]?.pressed && !previous[13]) || (y > 0 && axis[1] <= 0),
+    accept = !!pad.buttons[0]?.pressed && !previous[0],
+    back = !!pad.buttons[1]?.pressed && !previous[1];
+  previousDialogAxes.set(pad.index, [x, y]);
+  if(dialog.id==='settings-dialog'){
+    const dx=pad.buttons[14]?.pressed?-1:pad.buttons[15]?.pressed?1:x,dy=pad.buttons[12]?.pressed?-1:pad.buttons[13]?.pressed?1:y;
+    const key=dy?'y'+dy:dx?'x'+dx:'',now=performance.now(),repeat=settingsDirectionRepeat.get(pad.index);
+    if(!key)settingsDirectionRepeat.delete(pad.index);
+    else if(!repeat||repeat.key!==key)settingsDirectionRepeat.set(pad.index,{key,next:now+330});
+    else if(now>=repeat.next){left=dx<0&&!dy;right=dx>0&&!dy;up=dy<0;down=dy>0;repeat.next=now+120;}
+  }
+  if(dialog.id==='settings-dialog'&&!dialog.querySelector('.game-debug-console')){
+    const current=controls[active],tabs=[...dialog.querySelectorAll('[data-settings-tab]')];
+    if(current?.dataset.settingsTab){
+      if(left||right){const next=tabs[(tabs.indexOf(current)+(right?1:tabs.length-1))%tabs.length];selectSettingsTab(next.dataset.settingsTab);focusDialogControl(dialog,next);return;}
+      if(down||accept){selectSettingsTab(current.dataset.settingsTab,true);return;}
+      if(up){focusDialogControl(dialog,$('close-settings'));return;}
+    }
+    const first=controls.find(el=>el.closest('[data-settings-panel]'));
+    if((up&&current===first)||(down&&current===$('close-settings'))){focusDialogControl(dialog,tabs.find(t=>t.dataset.settingsTab===settingsTab));return;}
+  }
+  if(dialog.id==='controller-keyboard') {navigateControllerKeyboard(dialog,{left,right,up,down,accept,back},pad,previous);return;}
+  if(dialog.id==='character-gallery') {
+    if(back){dialog.dispatchEvent(new Event('cancel',{cancelable:true}));return;}
+    if(pad.buttons[2]?.pressed&&!previous[2]){dialog.deleteSelected();return;}
+    const cards=[...dialog.querySelectorAll('.character-card:not(:disabled)')],index=cards.indexOf(document.activeElement);
+    if(index>=0&&(left||right||up||down)){
+      const cols=getComputedStyle(dialog.querySelector('.character-gallery-grid')).gridTemplateColumns.split(' ').length;
+      const next=index+(left?-1:right?1:up?-cols:cols);
+      if(next>=cards.length)dialog.querySelector('.gallery-footer button').focus();else cards[Math.max(0,next)]?.focus();
+      document.activeElement.scrollIntoView({block:'nearest'});return;
+    }
+    if(index<0&&(left||right)){const buttons=[...dialog.querySelectorAll('.gallery-footer button:not(:disabled)')],i=buttons.indexOf(document.activeElement);buttons[(i+(right?1:buttons.length-1))%buttons.length]?.focus();return;}
+  }
+  if(['delete-character-dialog','rename-character-dialog'].includes(dialog.id)&&(left||right)){controls[(Math.max(0,active)+1)%controls.length]?.focus();return;}
+  let selected = controls[active];
+  if (active < 0 && (left || right || up || down || accept)) {
+    selected = controls[0];
+    selected.focus();
+  } else if (active >= 0 && (dialog.id==='pause-dialog'||selected?.closest('#camp-session-actions')) && (left||right||up||down) && !(selected instanceof HTMLSelectElement) && !dialog.querySelector('.game-debug-console')) {
+    selected = dialogNeighbour(controls,selected,left?-1:right?1:0,up?-1:down?1:0);
+    selected.focus();
+  } else if (active >= 0 && (up || down)) {
+    selected =
+      controls[(active + (down ? 1 : controls.length - 1)) % controls.length];
+    selected.focus();
+  }
+  if ((left || right) && selected instanceof HTMLSelectElement) {
+    selected.selectedIndex =
+      (selected.selectedIndex + (right ? 1 : selected.options.length - 1)) %
+      selected.options.length;
+    selected.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  if(dialog.id==='settings-dialog'&&(left||right)&&selected?.matches('input[type=range]'))campSettings.step(selected,right?1:-1);
+  if(dialog.id==='settings-dialog'&&(left||right)&&selected?.matches('input[type=checkbox]')){selected.checked=right;selected.dispatchEvent(new Event('change',{bubbles:true}));}
+  if(dialog.id==='settings-dialog'&&(left||right)&&selected?.matches('[role=switch]')&&selected.getAttribute('aria-checked')!==String(right))selected.click();
+  if((dialog.id==='pause-dialog'||dialog.id==='settings-dialog')&&selected)focusDialogControl(dialog,selected);
+  if(dialog.id==='character-name-dialog')dialog.refreshPreviewFocus?.(selected);
+  selected?.scrollIntoView({block:'nearest'});
+  if (accept) {
+    if(selected?.id==='pause-dev'){
+      const owner=game.players.find(p=>p.device==='pad:'+pad.index);
+      if(owner)dialog.dataset.debugOwnerId=String(owner.id);
+    }
+    if(selected.matches?.('input[name="characterName"]')) openControllerKeyboard(selected);
+    else if(selected instanceof HTMLSelectElement){selected.selectedIndex=(selected.selectedIndex+1)%selected.options.length;selected.dispatchEvent(new Event('change',{bubbles:true}));}
+    else selected?.click();
+  }
+  if (back) {
+    if(dialog.querySelector('.game-debug-console')){dialog.querySelector('.game-debug-console').remove();dialog.querySelector('button')?.focus();return;}
+    if (dialog.id === "pause-dialog") {
+      if (game.phase === "play" || screen==='lobby') resume();
+    } else if (dialog.id === "settings-dialog") {
+      if(musicPicker.picker.open){musicPicker.close();musicPicker.picker.querySelector('summary').focus();}
+      else $("close-settings").click();
+    }
+    else if (dialog.id === "info-dialog") $("close-info").click();
+    else if (dialog.id === "field-kit-dialog") fieldKit.close();
+    else if (dialog.id === "character-name-dialog")
+      dialog.querySelector(".name-cancel").click();
+    else if(['delete-character-dialog','rename-character-dialog'].includes(dialog.id))dialog.dispatchEvent(new Event('cancel',{cancelable:true}));
+  }
+}
+function inputFrame() {
+  if(!pauseCheatActive())pauseCheat.reset();
+  const inputs = {},
+    pads = Array.from(navigator.getGamepads?.() || []).filter(Boolean);
+  // Offscreen smoke tests supply synthetic pads, not real shared controllers.
+  const now = performance.now(), claimSupported = !!window.desktop?.claimController && !window.desktop?.testMode;
+  const seenControllerClaims = new Set();
+  for (const pad of pads) {
+    let previous = previousPads.get(pad.index) || [];
+    const openDialog = [...document.querySelectorAll("dialog[open]")].at(-1),
+      modal = !!openDialog,
+      rising = pad.buttons.some((b, i) => b.pressed && !previous[i]);
+    let joinedNow = false;
+    // Reclaim an existing explorer before considering drop-in character creation.
+    // Solo mouse-started expeditions should work as soon as a controller is used.
+    const device = "pad:" + pad.index;
+    const playerForPad = game.players.find((p) => p.device === device);
+    if (playerForPad) {
+      playerForPad.controllerFamily = controllerFamily(pad);
+      playerForPad.controllerName = CONTROLLER_NAMES[playerForPad.controllerFamily];
+    }
+    const active = rising || (lobbyLanding?.active ? landingPadActive(pad) : pad.axes.slice(0, 2).some(v=>Math.abs(v)>.35));
+    const claimKey = controllerClaimKey(pad), ownedKey = controllerClaims.get(pad.index);
+    controllerLastSeen.set(claimKey, now);
+    if (ownedKey === claimKey) {
+      seenControllerClaims.add(claimKey);
+    } else if (claimSupported) {
+      if (active && document.hasFocus()) requestControllerClaim(pad, claimKey,
+        screen==='lobby' && !modal && (lobbyLanding?.active ? active : rising && !pad.buttons[9]?.pressed),
+        !lobbyLanding?.active && !!pad.buttons[9]?.pressed && !previous[9] && ['home','lobby'].includes(screen) && !modal);
+      previousPads.set(pad.index, pad.buttons.map((b) => b.pressed));
+      continue;
+    }
+    if(lobbyLanding?.waitingForRelease(pad)){inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
+    if(lobbyLanding?.active&&!modal&&(active||pendingControllerJoins.has(claimKey))&&lobbyLanding.activate(device,pad)){pendingControllerJoins.delete(claimKey);pendingControllerSettings.delete(claimKey);inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
+    if(modal&&openDialog.id!=='settings-dialog')modalControllerHeld.add(pad.index);
+    if(!modal&&modalControllerHeld.has(pad.index)){
+      if(pad.buttons.some(b=>b.pressed)||pad.axes.some(v=>Math.abs(v)>.35)){inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
+      modalControllerHeld.delete(pad.index);
+    }
+    if(openDialog?.id==='settings-dialog'&&openDialog.dataset.ownerDevice==='keyboard'){
+      const intent=[0,1,4,5,9,12,13,14,15].some(i=>pad.buttons[i]?.pressed&&!previous[i])||pad.axes.slice(0,2).some(v=>Math.abs(v)>.65);
+      if(intent){openDialog.dataset.ownerDevice=device;openDialog.dataset.controllerFamily=controllerFamily(pad);}
+    }
+    const settingsAction = controllerSettingsRouter.route({
+      pad, previous, screen, dialog: openDialog, pendingOpen: pendingControllerSettings.has(claimKey),
+      explorerSelected:game.players.some(p=>p.device===device&&p.profileId),
+    });
+    pendingControllerSettings.delete(claimKey);
+    if (settingsAction) {
+      if (settingsAction === 'open') openSettings(device);
+      else if (settingsAction === 'close') closeSettings();
+      else if (settingsAction === 'navigate') dialogController(pad, previous);
+      pendingControllerJoins.delete(claimKey);
+      inputs[device] = {};
+      previousPads.set(pad.index, pad.buttons.map(button => button.pressed));
+      continue;
+    }
+    if (active && screen === "play" && rooms.role !== "client" &&
+        !game.players.some((p) => p.device === device)) {
+      const connected = new Set(pads.map((p) => "pad:" + p.index));
+      const missing = game.players.find((p) => p.device.startsWith("pad:") && !connected.has(p.device)&&!p.ui);
+      const solo = !modal && game.players.length === 1 && !game.players[0].ui && game.players[0].device === "keyboard" &&
+        !pad.buttons[9]?.pressed ? game.players[0] : null;
+      const reclaim = (!modal || $("pause-dialog").open) && (missing || solo);
+      if (reclaim) {
+        reclaim.device = device;
+        joinedNow = true;
+        previous = pad.buttons.map((b) => b.pressed);
+        if ($("pause-dialog").open) $("pause-text").textContent =
+          "Controller reconnected. Resume when everyone is ready.";
+      }
+    }
+    if (modal) {
+      if(studioPreviewOwnsPad(pad.index)){previousPads.set(pad.index,pad.buttons.map(button=>button.pressed));inputs[device]={};continue;}
+      controllerDialogDevice = device;
+      try { dialogController(pad, previous); }
+      finally { controllerDialogDevice = null; }
+      inputs[device]={};
+      previousPads.set(pad.index,pad.buttons.map(button=>button.pressed));
+      continue;
+    }
+    if (
+      !modal &&
+      screen === "play" &&
+      game.players.some((p) => p.device === device) &&
+      pad.buttons[mapping.field]?.pressed &&
+      !playerForPad?.ui &&
+      !previous[mapping.field]
+    ) {
+      fieldKit.open(game.players.find((p) => p.device === "pad:" + pad.index));
+      previousPads.set(
+        pad.index,
+        pad.buttons.map((b) => b.pressed),
+      );
+      continue;
+    }
+    if (
+      (rising || pendingControllerJoins.has(claimKey)) &&
+      !joinedNow &&
+      rooms.role !== "client" &&
+      (screen === "lobby" || (screen === "play" && !game.locked && pad.buttons[9]?.pressed && !previous[9])) &&
+      !modal
+    ) {
+      const joined = game.addPlayer("pad:" + pad.index);
+      pendingControllerJoins.delete(claimKey);
+      if (joined) {
+        joined.controllerFamily=controllerFamily(pad);
+        joined.controllerName=CONTROLLER_NAMES[joined.controllerFamily];
+        joinedNow = true;
+        if (screen === "play") nameNewCharacter(joined);
+        sound("heal");
+        if (screen === "lobby") {renderLobby();document.querySelector(`[data-device="pad:${pad.index}"] [data-lobby-focus$="-saved"]`)?.focus();}
+      }
+    }
+    const lootOwner=game.players.find(p=>p.device===device);
+    if(!modal&&lootOwner&&routeLootController(heroUI.panels.get(lootOwner.id),game,lootOwner,pad,previous)){
+      inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
+      if(!lootOwner.ui)modalControllerHeld.add(pad.index);
+      continue;
+    }
+    const pressed = (key) => !joinedNow && (pad.buttons[mapping[key]]?.pressed || false);
+    if(!joinedNow&&pressed('pause')&&!previous[mapping.pause]&&screen==='lobby'&&game.players.some(p=>p.device===device&&p.profileId)){
+      if(paused&&$('pause-dialog').open)resume();
+      else if(!modal)pause(undefined,device);
+      inputs[device]={};
+      previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
+      continue;
+    }
+    if(!joinedNow && pad.buttons[3]?.pressed && !previous[3] && pauseCheatActive())pressPauseCheat(device);
+    if (screen === 'play' && !modal && !joinedNow) {
+      const debugButtons = [[12,'up'],[13,'down'],[14,'left'],[15,'right'],[0,'a'],[1,'b'],[8,'select'],[9,'start']];
+      for (const [index,token] of debugButtons) if (pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token,device);
+    }
+    if (screen === "lobby") {
+      if(!modal && !joinedNow) lobbyController(pad, previous);
+      inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:pressed('interact'),summon:false,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
+      inputs[device].tvDown=!!pad.buttons[13]?.pressed;
+      inputs[device].tvUp=!!pad.buttons[12]?.pressed;
+      Object.assign(inputs[device],joinedNow||modal?{dodge:false,portal:false,potion:false}:lobbyPadInput(pad));
+      inputs[device].controlCycle=!joinedNow&&!modal&&pressed('controlCycle')&&!previous[mapping.controlCycle]&&!game.players.find(p=>p.device===device)?.ui;
+      inputs[device].pick=!!pad.buttons[10]?.pressed;
+      inputs[device].dropOne=!!pad.buttons[2]?.pressed&&!!pad.buttons[6]?.pressed;
+      inputs[device].salvage=!!pad.buttons[7]?.pressed;
+      inputs[device].store=!!pad.buttons[2]?.pressed&&!pad.buttons[6]?.pressed;
+      previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
+      continue;
+    }
+    if (
+      pressed("board") &&
+      !previous[mapping.board] &&
+      screen === "play" &&
+      game.players.some((p) => p.device === device) &&
+      !game.players.find((p) => p.device === "pad:" + pad.index)?.ui &&
+      !modal
+    )
+      boardPinned = !boardPinned;
+    const controllerPlayer = game.players.find((p) => p.device === device);
+    const lootTogglePressed = pad.buttons[15]?.pressed && !previous[15];
+    if (
+      screen === "play" &&
+      !playableLobby?.isPlayingTelevision(device) &&
+      controllerPlayer &&
+      !controllerPlayer.ui &&
+      !modal &&
+      lootTogglePressed
+    ) {
+      lootDetailsVisible = !lootDetailsVisible;
+      if (renderer) renderer.showLootDetails = lootDetailsVisible;
+    }
+    if (pressed("pause") && !previous[mapping.pause] && screen === "play" && game.players.some((p) => p.device === device)) {
+      if (paused && $("pause-dialog").open && game.phase === "play") resume();
+      else if (!modal) pause(undefined,device);
+    }
+    const dead = (v) => (Math.abs(v || 0) < 0.18 ? 0 : v);
+    const campInput=readCampInputSettings();
+    const continuousAim=shapeCampStick(pad.axes[2]||0,pad.axes[3]||0,campInput);
+    if(campInput.vibration&&!modal&&pressed('attack')&&!previous[mapping.attack]){
+      try{pad.vibrationActuator?.playEffect('dual-rumble',{duration:65,strongMagnitude:.12,weakMagnitude:.2})?.catch(()=>{});}catch{}
+    }
+    inputs["pad:" + pad.index] = {
+      ...(!joinedNow?vehiclePadInput(pad):{vehicleGas:0,vehicleBrake:0,vehicleReverse:false}),
+      x: lootTogglePressed ? 0 : dead(pad.axes[0]),
+      y: dead(pad.axes[1]),
+      aimX: continuousAim.x,
+      aimY: continuousAim.y,
+      attack: pressed("attack"),
+      loot: pressed("loot"),
+      jump: pressed("jump"),
+      dodge: pressed("dodge"),
+      trap: pressed("trap"),
+      interact: pressed("interact"),
+      controlCycle: pressed('controlCycle') && !previous[mapping.controlCycle] && !controllerPlayer?.ui && !modal,
+      summon: false,
+      potion: pressed("potion"),
+      block: pressed("block"),
+      holdPosition: pressed("block"),
+      inventory: pressed("inventory"),
+      portal: pressed("portal"),
+      bait: pressed("bait"),
+      next: !!pad.buttons[15]?.pressed || dead(pad.axes[0]) > 0.5,
+      prev: lootTogglePressed&&!controllerPlayer?.ui ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
+      up: !!pad.buttons[12]?.pressed || dead(pad.axes[1]) < -0.5,
+      down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
+      panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
+      use: !!pad.buttons[0]?.pressed,
+      store: !!pad.buttons[2]?.pressed && !pad.buttons[6]?.pressed,
+      dropOne: !!pad.buttons[2]?.pressed && !!pad.buttons[6]?.pressed,
+      offhand: !!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed, sockets: !!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,
+      salvage: !!pad.buttons[7]?.pressed,
+      pick: !!pad.buttons[10]?.pressed,
+      close: !!pad.buttons[1]?.pressed,
+    };
+    previousPads.set(
+      pad.index,
+      pad.buttons.map((b) => b.pressed),
+    );
+  }
+  if (claimSupported) {
+    for (const [index, key] of controllerClaims) {
+      if (!seenControllerClaims.has(key) && now - (controllerLastSeen.get(key) || 0) > 1500)
+        releaseControllerClaim(key);
+    }
+  }
+  if (screen === "lobby") {
+    $("device-status").textContent = pads.length
+      ? pads
+          .map(
+            (p) =>
+              p.id +
+              " · sticks " +
+              p.axes
+                .slice(0, 2)
+                .map((v) => v.toFixed(1))
+                .join(", ") +
+              " · buttons " +
+              (p.buttons
+                .map((b, i) => (b.pressed ? i : null))
+                .filter((i) => i !== null)
+                .join(", ") || "—"),
+          )
+          .join(" | ")
+      : "No active controllers yet. Connect them, then press a button. Enter joins with keyboard & mouse.";
+  }
+  const p = game.players.find((p) =>
+      rooms.role === "client"
+        ? p.id === rooms.playerId
+        : p.device === "keyboard",
+    ),
+    aim =
+      screen === "play" && mouse.active && renderer && p
+        ? renderer.screenToWorld(mouse.x, mouse.y)
+        : null;
+  inputs.keyboard = {
+    walkX:(keys.has("KeyD")?1:0)-(keys.has("KeyA")?1:0),
+    walkY:(keys.has("KeyS")?1:0)-(keys.has("KeyW")?1:0),
+    tvLeft:keys.has("ArrowLeft"),
+    tvRight:keys.has("ArrowRight"),
+    tvDown:keys.has("ArrowDown"),
+    tvUp:keys.has("ArrowUp"),
+    tvA:keys.has("KeyZ"),
+    tvX:keys.has("KeyX"),
+    x:
+      (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) -
+      (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0),
+    y:
+      (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0) -
+      (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0),
+    aimX: aim ? aim.x - p.x : 0,
+    aimY: aim ? aim.y - p.y : 0,
+    attack: mouse.down || keys.has("KeyF"),
+    jump: keys.has("KeyJ"),
+    dodge: keys.has("Space") || mouse.dash,
+    trap: keys.has("KeyQ"),
+    lobbyInteract: keys.has("KeyE"),
+    interact: keys.has("KeyE"),
+    potion: keys.has("KeyH"),
+    summon: keys.has("KeyR"),
+    block: keys.has("KeyC"),
+    inventory: keys.has("KeyI"),
+    portal: keys.has("KeyP"),
+    bait: keys.has("KeyT"),
+    next: keys.has("ArrowRight"),
+    prev: keys.has("ArrowLeft"),
+    up: keys.has("ArrowUp"),
+    down: keys.has("ArrowDown"),
+    panel: keys.has("Tab"),
+    use: keys.has("Enter"),
+    store: keys.has("KeyR"),
+    offhand: keys.has("Digit2"), sockets: keys.has("KeyT"),
+    salvage: keys.has('KeyV'),
+    pick: keys.has('KeyM'),
+    drop: keys.has("Delete") && !keys.has("ShiftLeft") && !keys.has("ShiftRight"),
+    dropOne: keys.has("Delete") && (keys.has("ShiftLeft") || keys.has("ShiftRight")),
+  };
+  return inputs;
+}
+let last = performance.now(),
+  hudAge = 0;
+let saveAge = 0;
+let diagnosticAge=0;
+const diagnosticErrors=[];
+window.addEventListener('error',e=>{diagnosticErrors.push(String(e.message).slice(0,500));if(diagnosticErrors.length>8)diagnosticErrors.shift();});
+window.addEventListener('unhandledrejection',e=>{diagnosticErrors.push(String(e.reason?.message||e.reason).slice(0,500));if(diagnosticErrors.length>8)diagnosticErrors.shift();});
+const menuHeldInputs = new Map();
+function frame(now) {
+  const cpuStart = metrics.enabled ? performance.now() : 0;
+  const elapsed = Math.max(0, (now - last) / 1000);
+  const dt = Math.min(elapsed, 0.05);
+  if(document.visibilityState!=='hidden') metrics.record("frame", elapsed * 1000);
+  last = now;
+  if (ready) {
+    lobbyLanding?.sync();
+    designer?.animate(dt);
+    const wasBlocked = paused || !!document.querySelector('dialog[open]');
+    const inputs = inputFrame();
+    diagnosticAge+=dt;
+    if(diagnosticAge>=.5&&window.desktop?.reportDiagnostics){
+      diagnosticAge=0;
+      window.desktop.reportDiagnostics({screen,phase:game.phase,paused,focused:document.hasFocus(),
+        focusedPanelOwner:document.activeElement?.closest('[data-owner-device]')?.dataset.ownerDevice,
+        countdown:playableLobby?.state.countdown,
+        players:game.players.map(p=>{const s=screen==='lobby'?playableLobby?.state.members.get(p.id):p;return {id:p.id,name:p.name,device:p.device,profileSelected:!!p.profileId,x:s?.x,y:s?.y,ready:p.ready,disconnected:p.lobbyDisconnected,panel:s?.panel,input:inputs[p.device]};}),
+        controllers:Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>({index:p.index,id:p.id,claimed:controllerClaims.has(p.index),axes:p.axes,buttons:p.buttons.map((b,i)=>b.pressed?i:-1).filter(i=>i>=0)})),
+        settings:{map:$('environment').value,difficulty:$('difficulty').value,dice:Number($('dice-count').value)},errors:diagnosticErrors});
+    }
+    const blocked = wasBlocked || paused || !!document.querySelector('dialog[open]');
+    for(const [device,input] of Object.entries(inputs)) {
+      const held=menuHeldInputs.get(device)||new Set();
+      for(const [key,value] of Object.entries(input)) if(typeof value==='boolean') {
+        if(blocked && value) held.add(key);
+        if(!value) held.delete(key);
+        if(blocked || held.has(key)) input[key]=false;
+      }
+      menuHeldInputs.set(device,held);
+    }
+    if(blocked) for(const p of game.players){p.charge=0;p.previousInput={};p.interactTime=0;p.interactUsed=false;}
+    if (screen === 'lobby' && playableLobby) {
+      const connected = new Set(Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>'pad:'+p.index));
+      for(const p of game.players) {p.lobbyDisconnected=p.device.startsWith('pad:')&&!connected.has(p.device);if(p.lobbyDisconnected)p.ready=false;}
+      playableLobby.update(dt,inputs,blocked);
+      hudAge+=dt;if(hudAge>.12){renderRoster();hudAge=0;}
+      heroUI.draw(game,renderer);
+    }
+    if (screen === "home") drawMenu($("menu-art"), assets, now / 1000);
+    if (screen === "workshop") {
+      workshop.animate(now / 1000);
+      framesWorkshop?.animate(now / 1000);
+    }
+    if (screen === "play" && renderer) {
+      const effective = rooms.tick(game, dt, inputs);
+      if (!paused && rooms.role !== "client")
+        metrics.measure("simulation", () =>
+          fixedClock.advance(elapsed, (step) => game.update(step, effective)),
+        );
+      else fixedClock.reset();
+      saveAge += dt;
+      if (saveAge > 5 && !paused && rooms.role !== "client") {
+        persistSession().catch(()=>{});
+        profiles.capture(game);
+        saveAge = 0;
+      }
+      renderer.animator.metrics = metrics;
+      metrics.measure("world", () => renderer.draw(game, dt));
+      metrics.measure("inventory", () =>
+        heroUI.draw(
+          game,
+          renderer,
+          rooms.role === "client" ? rooms.playerId : null,
+        ),
+      );
+      fieldKit.tick(now / 1000);
+      const boardVisible =
+        boardPinned || !!game.roll;
+      if(game.roll){boardPinned=false;$('event-card').classList.add('hidden');}
+      $("board-panel").classList.toggle("hidden", !boardVisible);
+      $("board-panel").classList.toggle('board-sequence',!!game.roll);
+      $('close-board').disabled=!!game.roll;
+      if (boardVisible) {
+        const boardCanvas=$('board-closeup'),boardWidth=Math.max(560,Math.round(boardCanvas.getBoundingClientRect().width*Math.min(2,window.devicePixelRatio||1))),boardHeight=Math.round(boardWidth*380/560);
+        if(boardCanvas.width!==boardWidth||boardCanvas.height!==boardHeight){boardCanvas.width=boardWidth;boardCanvas.height=boardHeight;}
+        const c = boardCanvas.getContext("2d");c.setTransform(boardCanvas.width/560,0,0,boardCanvas.height/380,0,0);
+        c.imageSmoothingEnabled = false;
+        c.clearRect(0, 0, 560, 380);
+        c.save();
+        c.translate(280, 185);
+        const reveal=game.roll?.resolved?Math.min(1,Math.max(0,(game.roll.elapsed-game.roll.landingAt)/.45)):0;
+        const boardScale=1.9+5.9*(reveal*reveal*(3-2*reveal));
+        c.scale(boardScale, boardScale);
+        drawBoard(c, game, game.roll?.elapsed??game.time, { closeup: true,drawDie });
+        c.restore();
+        $("board-caption").textContent = game.roll
+          ? game.roll.resolved
+            ? [game.event?.name, game.event?.tip].filter(Boolean).join(" — ")
+            : game.roll.elapsed < 1.6
+              ? "The dice are rolling…"
+              : "Moving space " +
+                Math.min(48, Math.ceil(game.players.find(p=>p.id===game.roll.playerId)?.boardProgress||0)) +
+                " · " +
+                game.roll.total +
+                " rolled"
+          : "Figures walk every space. The jungle keeps moving.";
+      }
+      hudAge += dt;
+      if (hudAge > 0.12) {
+        updateHud();
+        hudAge = 0;
+      }
+      if (game.phase === "won" && !game.victoryShown) {
+        game.victoryShown = true;
+        boardPinned = false;
+        showVictoryResults();
+      }
+      if (game.phase === "lost" && !paused) showDefeatMenu();
+    }
+  }
+  if (ready && screen === "lobby") {rooms.tick(game, dt, {});if(rooms.role!=='client')tickMeltingIce(game,dt,'lobby');}
+  if(!audio.unlocked&&Array.from(navigator.getGamepads?.()||[]).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
+  $('pvp-safe-indicator').hidden=screen!=='play'||game.pvp;
+  routeMusic(elapsed); audio.update(game,screen==="play"&&!paused);
+  if(metrics.enabled&&cpuStart)metrics.record('cpu',performance.now()-cpuStart);
+  performanceOverlay.tick(now,{game,screen,paused,canvas:renderer?.canvas,memory:performance.memory,errors:diagnosticErrors});
+  requestAnimationFrame(frame);
+}
+document.addEventListener('visibilitychange',()=>{last=performance.now();metrics.reset();});
+requestAnimationFrame(frame);
+try {
+  await assets.load();
+  warmSealVortex();
+  workshop = new Workshop(assets);
+  framesWorkshop = new FrameWorkshop(assets);
+  designer = new Designer(assets, EVENTS, ITEMS, () => {
+    for (const e of game.enemies) game.configureCreature(e);
+    game.persist();
+  });
+  window.addEventListener('rig-sprite-edit', ({detail})=>{
+    const priorScreen=screen, priorPaused=paused;
+    const original={sprite:workshop.sprite,name:workshop.name,history:workshop.history,future:workshop.future};
+    designer.dialog.close();show('workshop');paused=true;
+    const finish=()=>{workshop.attachmentSave=null;Object.assign(workshop,original);back.remove();$('save-sprite').textContent='SAVE SPRITE';show(priorScreen);paused=priorPaused;designer.dialog.showModal();designer.playerStudio.animate(0);};
+    const back=document.createElement('button');back.textContent='Cancel and return to rig';back.className='full';back.onclick=finish;$('save-sprite').after(back);
+    workshop.name=detail.name;workshop.sprite=structuredClone(detail.sprite);workshop.history=[];workshop.future=[];workshop.layer='art';$('sprite-layer').value='art';$('sprite-name').value=detail.name;
+    workshop.attachmentSave=async(sprite)=>{await detail.apply(sprite);finish();};$('save-sprite').textContent='SAVE TO BONE & RETURN';workshop.render();
+  });
+  const studioButton = document.createElement("button");
+  studioButton.textContent = "ANIMATION & GAME STUDIO";
+  studioButton.className = "text-button";
+  studioButton.id='lobby-studio';
+  $('party-menu').append(studioButton);studioButton.textContent='Studio';
+  studioButton.onclick = () => {
+    if (screen === "play") paused = true;
+    designer.tab = "Players";
+    designer.open();
+  };
+  designer.dialog.addEventListener("close", () => {
+    if (screen === "play" && !$("pause-dialog").open && !$("defeat-dialog").open) paused = false;
+  });
+  playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
+  playableLobby.showLootDetails=()=>lootDetailsVisible;
+  lobbyLanding=new LobbyLanding({area:playableLobby.area,available:()=>screen==='lobby'&&game.players.length===0,join:(device,pad)=>{const player=game.addPlayer(device);if(!player)return null;if(pad){player.controllerFamily=controllerFamily(pad);player.controllerName=CONTROLLER_NAMES[player.controllerFamily];}renderLobby();playableLobby.sync();sound('heal');return player;}});
+  ready = true;
+  if(window.desktop?.testMode)window.wildboundWorldsTest={
+    inspect:()=>({ready,screen,world:game.localWorld?.id,errors:[...diagnosticErrors]}),
+    open:()=>worldsUI.open(),
+    get game(){return game;},
+    get studio(){return designer.playerStudio;},
+    openStudio:()=>{designer.tab='Players';designer.open();},
+    openShadowEditor:()=>{designer.tab='Worlds';designer.open();},
+  };
+  newLobby();
+  $("loading").classList.add("done");
+} catch (e) {
+  $("loading").querySelector("p").textContent =
+    "Could not load game assets. Restart the app.";
+  console.error(e);
+}
+
+if (
+  window.desktop?.testMode ||
+  new URLSearchParams(location.search).has("tools")
+) {
+  const { installDebugTools } = await import("./src/debug-tools.mjs");
+  installDebugTools({
+    get drawPlayer() {
+      return drawPlayer;
+    },
+    get fieldKit() {
+      return fieldKit;
+    },
+    get metrics() {
+      return metrics;
+    },
+    get Animator() {
+      return Animator;
+    },
+    get assets() {
+      return assets;
+    },
+    get RIG_SUBJECTS() {
+      return RIG_SUBJECTS;
+    },
+    get DIRECTIONS() {
+      return DIRECTIONS;
+    },
+    get directionVector() {
+      return directionVector;
+    },
+    get game() {
+      return game;
+    },
+    set game(value) {
+      game = value;
+    },
+    get updateHud() {
+      return updateHud;
+    },
+    get $() {
+      return $;
+    },
+    get designer() {
+      return designer;
+    },
+    set designer(value) {
+      designer = value;
+    },
+    get Game() {
+      return Game;
+    },
+    get wireGame() {
+      return wireGame;
+    },
+    get renderer() {
+      return renderer;
+    },
+    set renderer(value) {
+      renderer = value;
+    },
+    get Renderer() {
+      return Renderer;
+    },
+    get show() {
+      return show;
+    },
+    get paused() {
+      return paused;
+    },
+    set paused(value) {
+      paused = value;
+    },
+    get boardPinned() {
+      return boardPinned;
+    },
+    set boardPinned(value) {
+      boardPinned = value;
+    },
+    get ITEM_ART_TYPES() {
+      return ITEM_ART_TYPES;
+    },
+    get FINISH() {
+      return FINISH;
+    },
+    get CENTER() {
+      return CENTER;
+    },
+    get give() {
+      return give;
+    },
+    get equip() {
+      return equip;
+    },
+    get heroUI() {
+      return heroUI;
+    },
+    get newLobby() {
+      return newLobby;
+    },
+    get playableLobby() { return playableLobby; },
+    get lobbyController() { return lobbyController; },
+    get renderLobby() {
+      return renderLobby;
+    },
+    get workshop() {
+      return workshop;
+    },
+    set workshop(value) {
+      workshop = value;
+    },
+    get replaceLionMotion() {
+      return replaceLionMotion;
+    },
+    get defaultLionMotion() {
+      return defaultLionMotion;
+    },
+    get MUSIC_TRACKS() {
+      return MUSIC_TRACKS;
+    },
+    get selectedMusic() {
+      return selectedMusic;
+    },
+    set selectedMusic(value) {
+      selectedMusic = value;
+    },
+    get music() {
+      return music;
+    },
+    get EVENTS() {
+      return EVENTS;
+    },
+    get validateSprite() {
+      return validateSprite;
+    },
+    get nameNewCharacter() {
+      return nameNewCharacter;
+    },
+    get profiles() {
+      return profiles;
+    },
+    get screen() {
+      return screen;
+    },
+    set screen(value) {
+      screen = value;
+    },
+    get keys() {
+      return keys;
+    },
+    get mouse() {
+      return mouse;
+    },
+    get convertRegion() {
+      return convertRegion;
+    },
+    get previousPads() {
+      return previousPads;
+    },
+    get inputFrame() {
+      return inputFrame;
+    },
+    get startGame() {
+      return startGame;
+    },
+    get Assets() {
+      return Assets;
+    },
+    get renderRoster() {
+      return renderRoster;
+    },
+    get heroRoot() {
+      return heroRoot;
+    },
+    get count() {
+      return count;
+    },
+    get Profiles() {
+      return Profiles;
+    },
+    get saveSession() {
+      return saveSession;
+    },
+    get restoreSession() {
+      return restoreSession;
+    },
+    get creatures() {
+      return creatures;
+    },
+    get playerMotion() {
+      return playerMotion;
+    },
+    get replacePlayerMotion() {
+      return replacePlayerMotion;
+    },
+    get projectPoint() {
+      return projectPoint;
+    },
+    get poseAt() {
+      return poseAt;
+    },
+    get lionMotion() {
+      return lionMotion;
+    },
+  });
+}
+

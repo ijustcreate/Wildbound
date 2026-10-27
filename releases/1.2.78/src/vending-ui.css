@@ -1,0 +1,37 @@
+#hero-overlays:has(.vending-refresh) {top:16px!important;bottom:16px!important;z-index:60;}
+body:has(.vending-refresh) #game-toast {display:none;}
+.hero-panel.vending-refresh {gap:8px;}
+.hero-panel.vending-refresh .vending-catalog {grid-template-columns:minmax(0,130px) minmax(0,1fr);gap:8px;overflow:auto;}
+.hero-panel.vending-refresh .vending-slots {grid-template-rows:repeat(4,minmax(76px,1fr));gap:5px;}
+.hero-panel.vending-refresh .vending-slots button {display:grid;grid-template-columns:24px minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;justify-items:start;gap:3px 5px;padding:5px;}
+.hero-panel.vending-refresh .vending-slots .item-icon {grid-column:1;grid-row:1/4;width:24px;height:24px;max-height:24px;flex:none;align-self:center;}
+.hero-panel.vending-refresh .vending-slots :is(.vending-item-name,.vending-price,.vending-stock) {grid-column:2;text-align:left;}
+.hero-panel.vending-refresh .vending-item-name {font-size:11px;overflow-wrap:anywhere;}
+.hero-panel.vending-refresh .vending-stock {font-size:10px;}
+.hero-panel.vending-refresh .vending-tray {min-height:48px;padding:6px;flex-wrap:wrap;}
+.hero-panel.vending-refresh .vending-tray button {min-height:34px;}
+.hero-panel.vending-refresh .vending-tray button.selected {outline:2px solid #7c551e;outline-offset:2px;background:#ffe49a!important;color:#25392b!important;box-shadow:0 0 0 4px #ffe49a;}
+.hero-panel.vending-refresh .vending-tray .item-icon {width:24px;height:24px;}
+.hero-panel.vending-refresh .storage-notice {min-height:18px;max-height:36px;}
+@container(max-width:480px) {
+ .hero-panel.vending-refresh .vending-catalog {grid-template-columns:minmax(0,1fr);}
+}
+
+/* The machine is the shop: product hit areas share the painted window. */
+#hero-overlays .hero-panel.vending-refresh .vending-catalog{display:flex;justify-content:center;align-items:stretch;min-height:0;flex:1;}
+#hero-overlays .hero-panel.vending-refresh .vending-machine{display:block!important;position:relative;width:auto!important;height:100%;max-width:100%;aspect-ratio:360/520;align-self:stretch;overflow:visible;}
+#hero-overlays .hero-panel.vending-refresh :is(.vending-canvas,.vending-falling){position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;}
+#hero-overlays .hero-panel.vending-refresh .vending-slots{position:absolute;left:5.55%;top:10.77%;width:77.23%;height:65.58%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:2px;}
+#hero-overlays .hero-panel.vending-refresh .vending-slots button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:3px!important;background:#132a3020!important;border:1px solid #8faf9b55!important;border-radius:0;box-shadow:none!important;min-width:0;min-height:0;}
+#hero-overlays .hero-panel.vending-refresh .vending-slots button .item-icon,#hero-overlays .hero-panel.vending-refresh .vending-item-name{display:none;}
+#hero-overlays .hero-panel.vending-refresh .vending-slots button[aria-disabled=true]{filter:grayscale(.55);opacity:.6;}
+#hero-overlays .hero-panel.vending-refresh .vending-slots button.selected{background:#7dcab02b!important;}
+#hero-overlays .hero-panel.vending-refresh .vending-price{color:#ffe4a3!important;font:bold clamp(9px,1.4vh,12px)/1 system-ui;}
+#hero-overlays .hero-panel.vending-refresh .vending-stock{color:#d8e8dc!important;font:9px/1 system-ui;}
+#hero-overlays .hero-panel.vending-refresh .vending-tray{position:absolute;left:5.83%;top:81.92%;width:87.78%;height:14.42%;min-height:0;max-height:none;margin:0;padding:4px;background:#09151d99;display:flex;flex-wrap:wrap;align-items:center;gap:4px;overflow:auto;}
+#hero-overlays .hero-panel.vending-refresh .vending-tray button{padding:3px;min-width:0;min-height:28px;font:11px system-ui;background:#1a343e!important;}
+#hero-overlays .hero-panel.vending-refresh .vending-collect-all{flex:none;min-height:38px;width:100%;margin:0;}
+#hero-overlays .hero-panel.vending-refresh .storage-notice{min-height:16px;max-height:32px;color:#f5dfb2!important;}
+#hero-overlays .hero-panel.vending-refresh>small{color:#f5dfb2!important;}
+#hero-overlays .hero-panel.vending-refresh .inventory-xp{display:none;}
+#hero-overlays .hero-panel.vending-refresh .inventory-progress-row{min-height:18px;flex:none;}

@@ -1,0 +1,31 @@
+/* Expedition celebration: native heroes and treasure, illustrated Camp materials. */
+body #victory-results{width:min(1040px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:0!important;border:6px solid #302114!important;border-radius:15px!important;outline:1px solid #bc914f;outline-offset:-6px;background:#162a22!important;box-shadow:0 28px 100px #000b,inset 0 0 0 1px #d8ad60!important;color:#fff0cf!important;overflow:hidden;text-align:left;}
+body #victory-results[open]{display:flex;flex-direction:column;}
+body #victory-results .victory-heading{padding:25px 30px 23px;text-align:center;background:linear-gradient(#20382dcc,#12271fe8),url('../assets/settings-wood.png') center/cover;border-bottom:1px solid #a7854d;position:relative;}
+body #victory-results .victory-kicker{font:700 10px/1.4 system-ui;letter-spacing:.25em;color:#d6c59f;}
+body #victory-results .victory-stamp{font:bold clamp(34px,5.2vw,64px)/1 Georgia,serif;margin:9px 0;color:#ffe0a0;text-shadow:0 3px #111d16,0 0 25px #e4bd6033;letter-spacing:.04em;}
+body #victory-results #victory-title{font:17px/1.4 Georgia,serif;color:#e8e2c4!important;margin:8px 0 0;}
+body #victory-results .victory-content{padding:20px 26px;overflow:auto;min-height:0;background:#14251f;}
+body #victory-results #victory-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0;margin:0 0 22px;border:1px solid #8b754b;border-radius:9px;background:#23392d;gap:0;}
+body #victory-results .victory-stat{padding:13px 8px;text-align:center;gap:4px;}
+body #victory-results .victory-stat strong{font:bold 32px/1 Georgia,serif;color:#ffe1a1;}
+body #victory-results .victory-stat span{font:12px/1.4 system-ui;color:#e7dfc6;}
+body #victory-results .victory-stat+.victory-stat{border-color:#caa65b44;}
+body #victory-results .victory-report h3{font:700 12px/1.4 system-ui;letter-spacing:.12em;text-transform:uppercase;color:#d5c79e!important;margin:0 0 12px;}
+.victory-explorers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(270px,100%),1fr));gap:12px;}
+.victory-explorer{display:grid;grid-template-columns:100px 1fr;align-items:center;gap:0 12px;padding:12px 14px;border:1px solid #9e7f49;border-radius:9px;background:linear-gradient(130deg,#3d3022,#282319);box-shadow:inset 0 0 0 3px #161e19;min-width:0;}
+.victory-portrait{width:100px;height:100px;image-rendering:pixelated;background:radial-gradient(ellipse at 50% 88%,#a28d4b44,transparent 64%);}
+.victory-explorer-name small{font:700 9px/1.4 system-ui;letter-spacing:.15em;color:#bfb28d;}
+.victory-explorer-name h4{margin:5px 0;font:bold 23px/1.15 Georgia,serif;color:#fff0ca;overflow-wrap:anywhere;}
+.victory-explorer-name span{font:11px/1.4 system-ui;color:#becbb5;}
+.victory-personal-stats{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 2px;padding-top:12px;border-top:1px solid #9c855344;}
+.victory-personal-stats div{min-width:0;}.victory-personal-stats dt{font:11px/1.4 system-ui;color:#c9c1a7;}.victory-personal-stats dd{margin:2px 0 0;font:bold 21px/1.2 Georgia,serif;color:#fff1cf;font-variant-numeric:tabular-nums;}
+body #victory-results .victory-footer{display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:12px;padding:13px 22px;background:#263a2b;border-top:1px solid #a18049;}
+.victory-treasure-art{width:80px;height:80px;image-rendering:pixelated;}
+body #victory-results #victory-return-hint{font:12px/1.5 system-ui;color:#ddd8bd!important;margin:0;max-width:440px;}
+body #victory-results #victory-return-hint strong{display:block;color:#ffe2a4;font:700 16px/1.3 Georgia,serif;margin-bottom:5px;}
+body #victory-results #victory-return-hint span{color:#ddd8bd;}
+body #victory-results #victory-continue{min-height:48px;padding:12px 20px;border:2px solid #e2bd68!important;border-radius:7px;background:linear-gradient(#286443,#17452f)!important;color:#fff3cc!important;font:bold 15px/1.3 Georgia,serif;box-shadow:inset 0 0 0 2px #122d21!important;}
+body #victory-results #victory-continue:focus-visible{outline:3px solid #ffe69c!important;outline-offset:3px;box-shadow:0 0 20px #e3b74655!important;}
+@media(max-width:650px){body #victory-results .victory-heading{padding:16px;}body #victory-results .victory-content{padding:14px;}body #victory-results .victory-footer{grid-template-columns:60px 1fr;padding:12px;}.victory-treasure-art{width:60px;height:60px;}body #victory-results #victory-continue{grid-column:1/-1;width:100%;}body #victory-results .victory-stat span{font-size:10px;}body #victory-results .victory-stat strong{font-size:27px;}}
+@media(max-height:550px){body #victory-results .victory-heading{padding:10px 16px;}body #victory-results .victory-stamp{font-size:30px;margin:4px;}body #victory-results #victory-title{font-size:13px;}body #victory-results .victory-footer{padding:8px 14px;}.victory-treasure-art{width:55px;height:55px;}body #victory-results .victory-content{padding:12px 16px;}}

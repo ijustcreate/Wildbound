@@ -1,0 +1,111 @@
+{
+  "reference": "https://modelviewer.lol/model-viewer?group=extras&alias=sru_murkwolfmini&id=0",
+  "sourceSha256": "8fc337bedce3c072a6545b15d9567e9154d3d04f610f066230fc1ab6ce71046a",
+  "sourceAnimations": 24,
+  "scale": 29,
+  "axes": "glTF (X,Y,Z) -> Wildbound (X,Z,Y)",
+  "rootMotion": "Horizontal Root translation removed; vertical movement retained.",
+  "rights": "Riot animation data: local compatibility experiment. New generated pixel artwork. Not cleared for redistribution.",
+  "clips": {
+    "idle": {
+      "clip": "SRU_MurkwolfMini_idle1.anm",
+      "duration": 3
+    },
+    "run": {
+      "clip": "Run_Base",
+      "duration": 0.800000011920929
+    },
+    "bite": {
+      "clip": "Attack1_BASE",
+      "duration": 1.6666666269302368
+    },
+    "attack2": {
+      "clip": "Attack2_BASE",
+      "duration": 1.6666666269302368
+    },
+    "pounce": {
+      "clip": "SRU_Murkwolf_pounce.anm",
+      "duration": 0.6000000834465027
+    },
+    "howl": {
+      "clip": "SRU_MurkwolfMini_howl.anm",
+      "duration": 2.7666666507720947
+    },
+    "death": {
+      "clip": "Death_Base",
+      "duration": 3.999997615814209
+    },
+    "death2": {
+      "clip": "SRU_Murkwolf_death2.anm",
+      "duration": 3.3333332538604736
+    },
+    "alert": {
+      "clip": "SRU_MurkwolfMini_idle_aggro1.anm",
+      "duration": 1
+    },
+    "look_left": {
+      "clip": "Idle_Lookat_L45",
+      "duration": 0
+    },
+    "look_right": {
+      "clip": "Idle_Lookat_R45",
+      "duration": 0
+    },
+    "spawn_left": {
+      "clip": "SRU_MurkwolfMini_spawn_left.anm",
+      "duration": 2
+    },
+    "spawn_right": {
+      "clip": "SRU_MurkwolfMini_spawn_right.anm",
+      "duration": 1.3333333730697632
+    },
+    "idle2": {
+      "clip": "SRU_MurkwolfMini_idle2.anm",
+      "duration": 3
+    },
+    "idle3": {
+      "clip": "SRU_MurkwolfMini_idle3.anm",
+      "duration": 3
+    },
+    "idle4": {
+      "clip": "SRU_MurkwolfMini_idle4.anm",
+      "duration": 3
+    },
+    "idle5": {
+      "clip": "SRU_MurkwolfMini_idle5.anm",
+      "duration": 2.933333396911621
+    },
+    "idle6": {
+      "clip": "SRU_MurkwolfMini_idle6.anm",
+      "duration": 3
+    },
+    "idle7": {
+      "clip": "SRU_MurkwolfMini_idle7.anm",
+      "duration": 3
+    },
+    "alert2": {
+      "clip": "SRU_MurkwolfMini_idle_aggro2.anm",
+      "duration": 2.4000000953674316
+    },
+    "alert3": {
+      "clip": "SRU_MurkwolfMini_idle_aggro3.anm",
+      "duration": 0.9666666388511658
+    },
+    "alert_to_idle": {
+      "clip": "SRU_MurkwolfMini_idle1_a2n.anm",
+      "duration": 1.1666666269302368
+    },
+    "idle_to_alert": {
+      "clip": "SRU_MurkwolfMini_idle1_n2a.anm",
+      "duration": 0.9333333373069763
+    },
+    "look_forward": {
+      "clip": "Idle_Lookat_0",
+      "duration": 0
+    },
+    "walk": {
+      "derivedFrom": "run",
+      "playbackRate": 0.55
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "subject": "shore_goblin",
+  "renderer": "src/shore-goblin-motion.mjs",
+  "pipeline": "native articulated pixel parts",
+  "pixelDensity": 1,
+  "views": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "colors": [
+    "teal and orange",
+    "moss and gold",
+    "violet and pink"
+  ],
+  "preserved": [
+    "31 native joints",
+    "52 imported animation entries",
+    "per-view boneSprites",
+    "visibility",
+    "renderOrder",
+    "beach squad AI",
+    "save state"
+  ],
+  "parts": [
+    "Shore neck",
+    "Shore body",
+    "Shore skull",
+    "Shore throat",
+    "Shore dorsal crest",
+    "Shore jaw",
+    "Shore mouth",
+    "Shore eye L",
+    "Shore eye R",
+    "Shore cheek fin L",
+    "Shore cheek fin R",
+    "Shore arm L",
+    "Shore arm R",
+    "Shore leg L",
+    "Shore leg R",
+    "Shore kelp belt",
+    "Shore healer shells",
+    "Shore weapon",
+    "Shore grip R"
+  ],
+  "attachment": "Right weapon pivots at gripR; curled palm follows the weapon layer. Throat follows chest and jaw, after skull. Rear crest follows head depth.",
+  "review": "Revised for user review; visual acceptance remains separate from mechanical validation."
+}

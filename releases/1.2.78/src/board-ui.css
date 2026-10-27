@@ -1,0 +1,61 @@
+/* The illustrated board supplies the ornament; its surround stays compact. */
+body #board-panel,
+body[data-board-size="compact"] #board-panel {
+  box-sizing:border-box;
+  width:min(380px,calc(100vw - 24px))!important;
+  padding:4px!important;
+  border:1px solid #ac8b50;
+  border-radius:5px;
+  background:#10271f;
+  color:#f5e7c5;
+  box-shadow:0 8px 30px #0008;
+}
+body #board-panel.board-sequence,
+body[data-board-size="compact"] #board-panel.board-sequence {
+  width:min(calc(100vw - 24px),calc((100dvh - 154px)*1.474),1000px)!important;
+  max-height:calc(100dvh - 24px);
+  padding:4px!important;
+  border:1px solid #ac8b50;
+  overflow:auto;
+  box-shadow:0 0 0 100vmax #06130edb,0 14px 50px #0009;
+}
+body #board-panel > .board-status {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-start;
+  gap:6px 10px;
+  padding:7px 10px;
+  min-height:36px;
+  font:500 13px/1.35 system-ui,sans-serif;
+  letter-spacing:normal;
+}
+#board-panel #turn-dot {
+  flex:0 0 8px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  box-shadow:0 0 0 3px #ffffff0d;
+}
+#board-panel #turn-label {flex:1 1 auto;min-width:0;overflow-wrap:anywhere;color:#f5e7c5;font:700 14px/1.35 system-ui,sans-serif;}
+#board-panel #turn-caption {flex:0 1 auto;max-width:65%;color:#c2ccb6;font:500 11px/1.4 system-ui,sans-serif;letter-spacing:.3px;text-transform:none;}
+#board-panel #close-board {flex:0 0 30px;width:30px;height:30px;min-height:0;padding:0;border:0;border-radius:3px;color:#f5e7c5;font:22px/1 system-ui;}
+#board-panel #close-board:hover {background:#f5e7c51a;}
+#board-panel #close-board:focus-visible {outline:2px solid #edcd85;outline-offset:0;}
+body #board-panel.board-sequence #close-board {display:none;}
+body #board-panel #board-closeup {width:100%!important;height:auto!important;aspect-ratio:560/380;}
+body #board-panel #board-caption,
+body #board-panel.board-sequence #board-caption {
+  display:block;
+  padding:8px 12px 9px;
+  margin:0;
+  border-top:1px solid #d1b67730;
+  color:#e9dfc7;
+  font:500 13px/1.45 system-ui,sans-serif;
+  text-align:center;
+  overflow-wrap:anywhere;
+}
+@media(max-width:600px) {
+  #board-panel #turn-caption {flex-basis:100%;max-width:none;order:2;margin-left:18px;}
+  body #board-panel > .board-status {gap:3px 8px;padding:5px 8px;}
+}

@@ -1,0 +1,1 @@
+export function interruptShoreGoblin(e){if(e?.kind!=='shore_goblin'||e.hp<=0)return;e.shoreAction=null;e.shoreAge=0;e.shoreRecovery=Math.max(e.shoreRecovery||0,.65);e.animationAction='hurt';e.poseTime=0;e.state='recover';e.shoreHealTarget=null;e.shoreAim=null;}

@@ -1,0 +1,1 @@
+{"version":1,"id":"beach","name":"Beach","environment":"beach","description":"Native coastal terrain and artwork with pigs, weather fronts and local trade.","prey":["pig","pig_spotted"],"predators":["scorpion"],"food":0.65,"water":0.9,"factions":["Shore Traders"],"quests":[{"id":"shore-surveyor","name":"Chart five coastal regions","target":5}]}

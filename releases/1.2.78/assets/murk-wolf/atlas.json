@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "subject": "murk_wolf",
+  "pixelDensity": 2,
+  "parts": [
+    {
+      "id": "head",
+      "joint": "head",
+      "views": [
+        {
+          "direction": 0,
+          "file": "parts-source.png",
+          "rect": [
+            24,
+            76,
+            267,
+            237
+          ],
+          "pivot": [
+            133.5,
+            132.72
+          ],
+          "size": [
+            18,
+            15
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        },
+        {
+          "direction": 1,
+          "mirrorFrom": 7
+        },
+        {
+          "direction": 2,
+          "file": "parts-source.png",
+          "rect": [
+            667,
+            80,
+            261,
+            234
+          ],
+          "pivot": [
+            130.5,
+            131.04000000000002
+          ],
+          "size": [
+            20,
+            17
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        },
+        {
+          "direction": 3,
+          "file": "parts-source.png",
+          "rect": [
+            980,
+            78,
+            250,
+            231
+          ],
+          "pivot": [
+            125,
+            129.36
+          ],
+          "size": [
+            19,
+            17
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        },
+        {
+          "direction": 4,
+          "file": "parts-source.png",
+          "rect": [
+            29,
+            383,
+            258,
+            230
+          ],
+          "pivot": [
+            129,
+            128.8
+          ],
+          "size": [
+            18,
+            17
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        },
+        {
+          "direction": 5,
+          "file": "parts-source.png",
+          "rect": [
+            342,
+            380,
+            258,
+            229
+          ],
+          "pivot": [
+            129,
+            128.24
+          ],
+          "size": [
+            19,
+            17
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        },
+        {
+          "direction": 6,
+          "file": "parts-source.png",
+          "rect": [
+            661,
+            380,
+            252,
+            236
+          ],
+          "pivot": [
+            126,
+            132.16000000000003
+          ],
+          "size": [
+            20,
+            17
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        },
+        {
+          "direction": 7,
+          "file": "parts-source.png",
+          "rect": [
+            968,
+            376,
+            259,
+            240
+          ],
+          "pivot": [
+            129.5,
+            134.4
+          ],
+          "size": [
+            19,
+            16
+          ],
+          "offset": [
+            0,
+            -1
+          ]
+        }
+      ]
+    }
+  ]
+}
