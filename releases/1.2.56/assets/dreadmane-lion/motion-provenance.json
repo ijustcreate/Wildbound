@@ -1,0 +1,690 @@
+{
+  "reference": "https://www.wowhead.com/npc=55491/lion#modelviewer",
+  "npcId": 55491,
+  "displayId": 39134,
+  "modelFileId": 124781,
+  "sourceUrl": "https://wow.zamimg.com/modelviewer/live/m2/124781.m2",
+  "sourceSha256": "bf79def9135e612fb6701b85fdeedc0ddd3bced9093cea1fcf54c213135110e2",
+  "sourceBones": 69,
+  "sourceAnimations": 49,
+  "distinctSequences": 38,
+  "scale": 22,
+  "axes": "WoW (X forward,Y left,Z up) -> Wildbound (Y,X,Z)",
+  "rootMotion": "Horizontal bone-0 translation removed; vertical motion retained.",
+  "boneMap": {
+    "pelvis": [
+      9,
+      ""
+    ],
+    "spine": [
+      5,
+      "pelvis"
+    ],
+    "chest": [
+      0,
+      "spine"
+    ],
+    "neck": [
+      3,
+      "chest",
+      [
+        0.57,
+        0,
+        1.11
+      ]
+    ],
+    "head": [
+      8,
+      "neck",
+      [
+        0.98,
+        0,
+        1.15
+      ]
+    ],
+    "jaw": [
+      14,
+      "head"
+    ],
+    "jawTip": [
+      64,
+      "jaw"
+    ],
+    "earL": [
+      12,
+      "head"
+    ],
+    "earR": [
+      13,
+      "head"
+    ],
+    "tailBase": [
+      17,
+      "pelvis"
+    ],
+    "tailMid": [
+      22,
+      "tailBase"
+    ],
+    "tailEnd": [
+      27,
+      "tailMid"
+    ],
+    "tailTip": [
+      30,
+      "tailEnd"
+    ],
+    "shoulderL": [
+      6,
+      "chest"
+    ],
+    "elbowL": [
+      10,
+      "shoulderL"
+    ],
+    "wristL": [
+      20,
+      "elbowL"
+    ],
+    "frontPawL": [
+      25,
+      "wristL"
+    ],
+    "hipL": [
+      18,
+      "pelvis"
+    ],
+    "kneeL": [
+      23,
+      "hipL"
+    ],
+    "hockL": [
+      28,
+      "kneeL"
+    ],
+    "ankleL": [
+      31,
+      "hockL"
+    ],
+    "rearPawL": [
+      33,
+      "ankleL"
+    ],
+    "eyeL": [
+      8,
+      "head",
+      [
+        1.16,
+        0.17,
+        1.22
+      ]
+    ],
+    "earTipL": [
+      12,
+      "earL",
+      [
+        0.985,
+        0.18,
+        1.38
+      ]
+    ],
+    "shoulderR": [
+      7,
+      "chest"
+    ],
+    "elbowR": [
+      11,
+      "shoulderR"
+    ],
+    "wristR": [
+      21,
+      "elbowR"
+    ],
+    "frontPawR": [
+      26,
+      "wristR"
+    ],
+    "hipR": [
+      19,
+      "pelvis"
+    ],
+    "kneeR": [
+      24,
+      "hipR"
+    ],
+    "hockR": [
+      29,
+      "kneeR"
+    ],
+    "ankleR": [
+      32,
+      "hockR"
+    ],
+    "rearPawR": [
+      34,
+      "ankleR"
+    ],
+    "eyeR": [
+      8,
+      "head",
+      [
+        1.16,
+        -0.17,
+        1.22
+      ]
+    ],
+    "earTipR": [
+      13,
+      "earR",
+      [
+        0.985,
+        -0.18,
+        1.38
+      ]
+    ],
+    "muzzle": [
+      8,
+      "head",
+      [
+        1.19,
+        0,
+        1.03
+      ]
+    ],
+    "nose": [
+      8,
+      "muzzle",
+      [
+        1.29,
+        0,
+        1.04
+      ]
+    ]
+  },
+  "externalAnimations": [
+    {
+      "key": "97:0",
+      "id": 477858,
+      "sha256": "19a616e65fadf6b2c97d79dc68763b5617ad99c6da9c04da55440a901dc1dfd2"
+    },
+    {
+      "key": "96:0",
+      "id": 477856,
+      "sha256": "cbca1a1ae47137f6eb0134d9689ebb674b80d633e5b4e0718fb557ddfd9a07b1"
+    },
+    {
+      "key": "98:0",
+      "id": 477857,
+      "sha256": "17f54485e87ad3fcf6f72ad9e886011eab61f8664958cc8203d9609a716da1cc"
+    },
+    {
+      "key": "100:0",
+      "id": 477863,
+      "sha256": "80ada1790b4e938cddec4d1c581297c554f3756bac078cda7319a36c29865216"
+    },
+    {
+      "key": "99:0",
+      "id": 477859,
+      "sha256": "9eed4e52607f2effe4d2a0362e6c779a5363011fbd22b99cdb2ebe2a9b9ea2cb"
+    },
+    {
+      "key": "101:0",
+      "id": 477861,
+      "sha256": "0fb44b51f6fd2889633f70ec4d2009fb516c13909db5f359034f2579a0350b7d"
+    },
+    {
+      "key": "69:0",
+      "id": 477862,
+      "sha256": "6890f227a6af0fa0ba2b0a888a54bd80c451c0ea3061bd700eb2c1463287944e"
+    },
+    {
+      "key": "123:0",
+      "id": 477854,
+      "sha256": "436a67567dc009955e253e69bf282ff5a596d3b075c84c27c4d30c2c358cd0ba"
+    }
+  ],
+  "clips": {
+    "idle": {
+      "source": "Stand",
+      "animationId": 0,
+      "variation": 0,
+      "sequence": 0,
+      "resolvedSequence": 0,
+      "duration": 2,
+      "alias": false
+    },
+    "walk": {
+      "source": "Walk",
+      "animationId": 4,
+      "variation": 0,
+      "sequence": 1,
+      "resolvedSequence": 1,
+      "duration": 1,
+      "alias": false
+    },
+    "run": {
+      "source": "Run",
+      "animationId": 5,
+      "variation": 0,
+      "sequence": 2,
+      "resolvedSequence": 2,
+      "duration": 0.8,
+      "alias": false
+    },
+    "claw_left": {
+      "source": "AttackUnarmed",
+      "animationId": 16,
+      "variation": 0,
+      "sequence": 3,
+      "resolvedSequence": 3,
+      "duration": 1,
+      "alias": false
+    },
+    "rip": {
+      "source": "DruidCatRip",
+      "animationId": 171,
+      "variation": 0,
+      "sequence": 4,
+      "resolvedSequence": 3,
+      "duration": 1,
+      "alias": true
+    },
+    "claw_right": {
+      "source": "AttackUnarmed",
+      "animationId": 16,
+      "variation": 1,
+      "sequence": 5,
+      "resolvedSequence": 5,
+      "duration": 1,
+      "alias": false
+    },
+    "claw": {
+      "source": "DruidCatClaw",
+      "animationId": 174,
+      "variation": 0,
+      "sequence": 6,
+      "resolvedSequence": 5,
+      "duration": 1,
+      "alias": true
+    },
+    "critical": {
+      "source": "CombatCritical",
+      "animationId": 10,
+      "variation": 0,
+      "sequence": 7,
+      "resolvedSequence": 7,
+      "duration": 1,
+      "alias": false
+    },
+    "death": {
+      "source": "Death",
+      "animationId": 1,
+      "variation": 0,
+      "sequence": 8,
+      "resolvedSequence": 8,
+      "duration": 2,
+      "alias": false
+    },
+    "hurt": {
+      "source": "CombatWound",
+      "animationId": 9,
+      "variation": 0,
+      "sequence": 9,
+      "resolvedSequence": 9,
+      "duration": 0.666,
+      "alias": false
+    },
+    "stand_wound": {
+      "source": "StandWound",
+      "animationId": 8,
+      "variation": 0,
+      "sequence": 10,
+      "resolvedSequence": 9,
+      "duration": 0.666,
+      "alias": true
+    },
+    "cower": {
+      "source": "Stand",
+      "animationId": 0,
+      "variation": 1,
+      "sequence": 11,
+      "resolvedSequence": 11,
+      "duration": 4,
+      "alias": false
+    },
+    "cat_cower": {
+      "source": "DruidCatCower",
+      "animationId": 175,
+      "variation": 0,
+      "sequence": 12,
+      "resolvedSequence": 11,
+      "duration": 4,
+      "alias": true
+    },
+    "idle_scan": {
+      "source": "Stand",
+      "animationId": 0,
+      "variation": 2,
+      "sequence": 13,
+      "resolvedSequence": 13,
+      "duration": 3,
+      "alias": false
+    },
+    "sidestep_right": {
+      "source": "ShuffleRight",
+      "animationId": 12,
+      "variation": 0,
+      "sequence": 14,
+      "resolvedSequence": 14,
+      "duration": 0.5,
+      "alias": false
+    },
+    "sidestep_left": {
+      "source": "ShuffleLeft",
+      "animationId": 11,
+      "variation": 0,
+      "sequence": 15,
+      "resolvedSequence": 15,
+      "duration": 0.5,
+      "alias": false
+    },
+    "sit": {
+      "source": "SitGround",
+      "animationId": 97,
+      "variation": 0,
+      "sequence": 16,
+      "resolvedSequence": 16,
+      "duration": 2,
+      "alias": false
+    },
+    "sit_down": {
+      "source": "SitGroundDown",
+      "animationId": 96,
+      "variation": 0,
+      "sequence": 17,
+      "resolvedSequence": 17,
+      "duration": 1,
+      "alias": false
+    },
+    "sit_up": {
+      "source": "SitGroundUp",
+      "animationId": 98,
+      "variation": 0,
+      "sequence": 18,
+      "resolvedSequence": 18,
+      "duration": 1,
+      "alias": false
+    },
+    "sleep": {
+      "source": "Sleep",
+      "animationId": 100,
+      "variation": 0,
+      "sequence": 19,
+      "resolvedSequence": 19,
+      "duration": 2,
+      "alias": false
+    },
+    "sleep_down": {
+      "source": "SleepDown",
+      "animationId": 99,
+      "variation": 0,
+      "sequence": 20,
+      "resolvedSequence": 20,
+      "duration": 1.333,
+      "alias": false
+    },
+    "sleep_up": {
+      "source": "SleepUp",
+      "animationId": 101,
+      "variation": 0,
+      "sequence": 21,
+      "resolvedSequence": 21,
+      "duration": 1.334,
+      "alias": false
+    },
+    "swim": {
+      "source": "Swim",
+      "animationId": 42,
+      "variation": 0,
+      "sequence": 22,
+      "resolvedSequence": 22,
+      "duration": 0.8,
+      "alias": false
+    },
+    "swim_idle": {
+      "source": "SwimIdle",
+      "animationId": 41,
+      "variation": 0,
+      "sequence": 23,
+      "resolvedSequence": 23,
+      "duration": 1.333,
+      "alias": false
+    },
+    "jump_start": {
+      "source": "JumpStart",
+      "animationId": 37,
+      "variation": 0,
+      "sequence": 24,
+      "resolvedSequence": 24,
+      "duration": 1,
+      "alias": false
+    },
+    "jump_land": {
+      "source": "JumpEnd",
+      "animationId": 39,
+      "variation": 0,
+      "sequence": 25,
+      "resolvedSequence": 25,
+      "duration": 1,
+      "alias": false
+    },
+    "jump": {
+      "source": "Jump",
+      "animationId": 38,
+      "variation": 0,
+      "sequence": 26,
+      "resolvedSequence": 26,
+      "duration": 1,
+      "alias": false
+    },
+    "fall": {
+      "source": "Fall",
+      "animationId": 40,
+      "variation": 0,
+      "sequence": 27,
+      "resolvedSequence": 27,
+      "duration": 1,
+      "alias": false
+    },
+    "rake_left": {
+      "source": "SpecialUnarmed",
+      "animationId": 118,
+      "variation": 0,
+      "sequence": 28,
+      "resolvedSequence": 28,
+      "duration": 1.5,
+      "alias": false
+    },
+    "ravage": {
+      "source": "DruidCatRavage",
+      "animationId": 173,
+      "variation": 0,
+      "sequence": 29,
+      "resolvedSequence": 28,
+      "duration": 1.5,
+      "alias": true
+    },
+    "rake_right": {
+      "source": "SpecialUnarmed",
+      "animationId": 118,
+      "variation": 1,
+      "sequence": 30,
+      "resolvedSequence": 30,
+      "duration": 1.5,
+      "alias": false
+    },
+    "rake": {
+      "source": "DruidCatRake",
+      "animationId": 172,
+      "variation": 0,
+      "sequence": 31,
+      "resolvedSequence": 30,
+      "duration": 1.5,
+      "alias": true
+    },
+    "swim_backwards": {
+      "source": "SwimBackwards",
+      "animationId": 45,
+      "variation": 0,
+      "sequence": 32,
+      "resolvedSequence": 32,
+      "duration": 1,
+      "alias": false
+    },
+    "swim_left": {
+      "source": "SwimLeft",
+      "animationId": 43,
+      "variation": 0,
+      "sequence": 33,
+      "resolvedSequence": 33,
+      "duration": 1,
+      "alias": false
+    },
+    "swim_right": {
+      "source": "SwimRight",
+      "animationId": 44,
+      "variation": 0,
+      "sequence": 34,
+      "resolvedSequence": 34,
+      "duration": 1,
+      "alias": false
+    },
+    "walk_backwards": {
+      "source": "Walkbackwards",
+      "animationId": 13,
+      "variation": 0,
+      "sequence": 35,
+      "resolvedSequence": 35,
+      "duration": 1,
+      "alias": false
+    },
+    "pounce": {
+      "source": "DruidCatPounce",
+      "animationId": 170,
+      "variation": 0,
+      "sequence": 36,
+      "resolvedSequence": 36,
+      "duration": 1.533,
+      "alias": false
+    },
+    "roar": {
+      "source": "MountSpecial",
+      "animationId": 94,
+      "variation": 0,
+      "sequence": 37,
+      "resolvedSequence": 37,
+      "duration": 2,
+      "alias": false
+    },
+    "dance": {
+      "source": "EmoteDance",
+      "animationId": 69,
+      "variation": 0,
+      "sequence": 38,
+      "resolvedSequence": 38,
+      "duration": 1,
+      "alias": false
+    },
+    "drown": {
+      "source": "Drown",
+      "animationId": 131,
+      "variation": 0,
+      "sequence": 39,
+      "resolvedSequence": 39,
+      "duration": 1.666,
+      "alias": false
+    },
+    "eat": {
+      "source": "UseStandingLoop",
+      "animationId": 123,
+      "variation": 0,
+      "sequence": 40,
+      "resolvedSequence": 40,
+      "duration": 1.167,
+      "alias": false
+    },
+    "use_standing": {
+      "source": "EmoteUseStanding",
+      "animationId": 63,
+      "variation": 0,
+      "sequence": 41,
+      "resolvedSequence": 40,
+      "duration": 1.167,
+      "alias": true
+    },
+    "use_standing_2": {
+      "source": "EmoteUseStanding",
+      "animationId": 63,
+      "variation": 1,
+      "sequence": 42,
+      "resolvedSequence": 40,
+      "duration": 1.167,
+      "alias": true
+    },
+    "kneel_down": {
+      "source": "KneelStart",
+      "animationId": 114,
+      "variation": 0,
+      "sequence": 43,
+      "resolvedSequence": 43,
+      "duration": 1,
+      "alias": false
+    },
+    "spell_kneel_down": {
+      "source": "SpellKneelStart",
+      "animationId": 140,
+      "variation": 0,
+      "sequence": 44,
+      "resolvedSequence": 43,
+      "duration": 1,
+      "alias": true
+    },
+    "loot": {
+      "source": "Loot",
+      "animationId": 50,
+      "variation": 0,
+      "sequence": 45,
+      "resolvedSequence": 43,
+      "duration": 1,
+      "alias": true
+    },
+    "kneel_up": {
+      "source": "KneelEnd",
+      "animationId": 116,
+      "variation": 0,
+      "sequence": 46,
+      "resolvedSequence": 46,
+      "duration": 1,
+      "alias": false
+    },
+    "spell_kneel_up": {
+      "source": "SpellKneelEnd",
+      "animationId": 142,
+      "variation": 0,
+      "sequence": 47,
+      "resolvedSequence": 46,
+      "duration": 1,
+      "alias": true
+    },
+    "drowned": {
+      "source": "Drowned",
+      "animationId": 132,
+      "variation": 0,
+      "sequence": 48,
+      "resolvedSequence": 48,
+      "duration": 2.334,
+      "alias": false
+    }
+  },
+  "rights": "Blizzard source animation; native Wildbound pixel art. Source mesh and textures are not bundled."
+}
