@@ -1,0 +1,64 @@
+/* Reuse the shipping Camp Settings materials (1.2.51), after legacy parchment.
+   Layout and hit areas stay with their owning component; this is shared chrome. */
+:root{--camp-ink:#17130d;--camp-paper:#f4ddb0;--camp-edge:#80603b;--camp-gold:#ffb338;--camp-well:#2b241b;}
+body #pause-dialog,
+#hero-overlays .hero-panel,
+#lobby .lobby-player-panel,
+body :is(#board-panel,#field-kit-dialog,#worlds-dialog,#info-dialog,#victory-results,#defeat-dialog){
+  border-image:none!important;border:4px solid #251b12!important;outline:1px solid #ae7b3d;outline-offset:-6px;border-radius:8px!important;
+  background:linear-gradient(120deg,#3b2918bb,#62412355),url('/Wildbound/releases/1.2.78/assets/settings-wood.png') center/cover!important;
+  background-color:#48321f!important;
+  color:#fff0cf!important;box-shadow:inset 0 0 0 1px #bc8a48,0 15px 40px #0009!important;
+}
+body #pause-dialog{width:min(480px,calc(100vw - 24px));padding:16px;}
+body #pause-dialog::before{display:none;}
+body #pause-dialog #pause-title{padding:3px 10px 14px;margin:0;color:#fff7e7!important;text-shadow:1px 2px #130e08,-1px -1px #130e08;}
+body #pause-dialog #pause-title::before{content:'';display:inline-block;width:32px;height:32px;margin-right:10px;vertical-align:-6px;background:url('/Wildbound/releases/1.2.78/assets/settings-icons.png') 4% 50%/auto 76px no-repeat;}
+body #pause-dialog .pause-body{padding:16px;border:2px solid #17130d;border-radius:8px;background:linear-gradient(130deg,#30291feF,#201b15f5);box-shadow:inset 0 0 0 1px #8b673a;}
+body #pause-dialog .pause-body #pause-text{color:#e5d3af!important;}
+body #pause-dialog .pause-actions{border-top-color:#96734866;}
+body #pause-dialog .pause-control-help{color:#e5d3af!important;}
+body #pause-dialog button,
+body #pause-dialog .pause-quick-options summary,
+#hero-overlays .hero-panel button,
+#lobby .lobby-player-panel button,
+body :is(#field-kit-dialog,#worlds-dialog,#info-dialog,#victory-results,#defeat-dialog) button{
+  border-image:none!important;border:2px solid #241c12!important;border-radius:5px!important;
+  background:linear-gradient(110deg,#f7e3b5,#d9b478)!important;color:#2a2318!important;
+  box-shadow:inset 0 0 0 1px #b78b50,0 1px 1px #100d08!important;text-shadow:none!important;
+}
+body #pause-dialog .pause-quick-options summary{background:linear-gradient(120deg,#352b1e,#211c15)!important;color:#fff0cf!important;}
+body #pause-dialog #resume-button{background:linear-gradient(120deg,#285d39,#153e29)!important;color:#fff5dd!important;border-color:#17130d!important;font-family:Georgia,serif!important;}
+body #pause-dialog #quit-button{color:#fff0cf!important;background:#30261b!important;}
+body #pause-dialog button:is(.menu-focus,:focus-visible),
+body #pause-dialog summary:is(.menu-focus,:focus-visible),
+#hero-overlays .hero-panel button:is(.selected,:focus-visible),
+#lobby .lobby-player-panel button:is(.lobby-focus,:focus-visible),
+body :is(#field-kit-dialog,#worlds-dialog,#info-dialog,#victory-results,#defeat-dialog) button:is(.selected,.menu-focus,:focus-visible){
+  outline:2px solid #ffdb72!important;outline-offset:1px;
+  box-shadow:inset 0 0 0 1px #fff1c1,0 0 0 3px #ec8a18,0 0 10px #ffb32c88!important;
+}
+#hero-overlays .hero-panel :is(header,h2,h3,p,small,label,.storage-capacity,.coin-balance,.inventory-help,.storage-help,.equipment-slot-label),
+#lobby .lobby-player-panel :is(h2,h3,p,small,label),
+body :is(#field-kit-dialog,#worlds-dialog,#info-dialog,#victory-results,#defeat-dialog) :is(h2,h3,header,p,small,label){color:#fff0cf!important;}
+#hero-overlays .hero-panel :is(.equipment-window,.backpack-window,.storage-container,.field-card,.storage-section){
+  background:linear-gradient(130deg,#30281e,#211c16)!important;border:1px solid #81613b!important;border-radius:5px;
+}
+#hero-overlays .hero-panel :is(.storage-slots,.backpack-grid,.equipment-grid) button,
+#hero-overlays .hero-panel button[data-mode],
+#hero-overlays .hero-panel .equipment-layout button{
+  background:linear-gradient(120deg,#3b3225,#28231b)!important;color:#fff0cf!important;box-shadow:inset 0 0 0 1px #76603f!important;
+}
+#hero-overlays .hero-panel .storage-slots button.empty-slot{background:#312a20!important;opacity:.7;}
+#hero-overlays .hero-panel button.storage-container-heading{
+  background:#2a231b!important;color:#fff0cf!important;border:0!important;border-bottom:1px solid #b18a50!important;border-radius:0!important;box-shadow:none!important;
+}
+#hero-overlays .hero-panel .inventory-selection{background:#292219!important;border-color:#80613b;}
+#hero-overlays .hero-panel :is(.chest-menu-title,.backpack-title,.equipment-title){color:#fff0cf!important;}
+#hero-overlays .hero-panel .item-tooltip{background:#211c15!important;color:#fff0cf!important;border-color:#ab834d!important;}
+#hero-overlays .hero-panel .item-tooltip p{color:#e8dabd!important;}
+#hero-overlays .hero-panel button[data-action="close"]{background:transparent url('/Wildbound/releases/1.2.78/assets/ui-parchment/close.png') center/contain no-repeat!important;border:0!important;box-shadow:none!important;}
+body :is(#field-kit-dialog,#worlds-dialog,#info-dialog,#victory-results,#defeat-dialog) :is(section,.field-card){background-color:#2b241b!important;color:#fff0cf!important;border-color:#80603b!important;}
+@media(max-height:550px){body #pause-dialog{padding:10px 12px;}body #pause-dialog #pause-title{padding:0 8px 8px;font-size:23px;}body #pause-dialog .pause-body{padding:10px;}body #pause-dialog #pause-title::before{width:25px;height:25px;background-size:auto 60px;vertical-align:-5px;}}
+
+#hero-overlays .hero-panel button.controller-focus{outline:3px solid #ffd368!important;outline-offset:1px;box-shadow:0 0 8px #e8ad42!important}

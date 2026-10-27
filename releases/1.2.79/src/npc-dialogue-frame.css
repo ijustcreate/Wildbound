@@ -1,0 +1,167 @@
+/* Wildbound conversation: the frame is a real 3x3 sliced sprite. Decorative
+   joins live in the corners; edge-middle tiles are intentionally plain so the
+   panel can stretch for long quest text without duplicating ornaments. */
+.hero-panel.npc-dialogue-session {
+  --dialogue-frame: url('/Wildbound/releases/1.2.78/assets/npc-dialogue-frame-9slice.png');
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 25px;
+  overflow: hidden;
+  background: #eadfbf;
+  color: #243e35;
+  border: 22px solid transparent;
+  border-image-source: var(--dialogue-frame);
+  border-image-slice: 256 fill;
+  border-image-width: 22px;
+  border-image-outset: 0;
+  border-image-repeat: stretch;
+  box-shadow: 0 14px 38px #081611aa;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12px;
+}
+.hero-panel.npc-dialogue-session > header {
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+  padding: 0 4px 7px;
+  color: #e7d79e;
+  border-bottom: 2px solid #b38b4e;
+  font: 700 clamp(13px, 2.1vw, 17px)/1.1 Georgia, 'Times New Roman', serif;
+  letter-spacing: .02em;
+}
+.hero-panel.npc-dialogue-session > [data-action="close"] {
+  position: absolute;
+  z-index: 3;
+  top: 4px;
+  right: 4px;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: url('/Wildbound/releases/1.2.78/assets/npc-dialogue-close.png') center / contain no-repeat;
+  color: transparent;
+  image-rendering: pixelated;
+}
+.hero-panel.npc-dialogue-session > [data-action="close"]:focus-visible {
+  outline: 3px solid #fff1a8;
+  outline-offset: 2px;
+}
+.npc-dialogue {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  scrollbar-color: #6e5837 #dfd1a9;
+}
+.npc-dialogue-cast {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  flex: 0 0 auto;
+}
+.npc-dialogue-person {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  background: #afaa83;
+  border: 3px solid #65462b;
+  box-shadow: inset 0 0 0 2px #ddbd6b;
+}
+.npc-dialogue-portrait {
+  width: 100% !important;
+  height: clamp(78px, 16vh, 132px) !important;
+  background: #809071;
+  image-rendering: pixelated;
+}
+.npc-dialogue-npc .npc-dialogue-portrait { background: #aa9870; }
+.npc-dialogue-person figcaption {
+  display: flex;
+  min-height: 31px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3px 7px 4px;
+  background: #dcc895;
+  color: #2e3e31;
+}
+.npc-dialogue-person figcaption strong { font-size: clamp(12px, 1.8vw, 16px); }
+.npc-dialogue-person figcaption small { color: #675b42; font-size: 10px; }
+.npc-dialogue-body { min-width: 0; display: block; }
+.npc-dialogue-body > * + * { margin-top: 10px; }
+.npc-dialogue-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.npc-dialogue-heading h2 { margin: 0; color: #1e493e; font-size: clamp(17px, 2.5vw, 25px); line-height: 1.05; }
+.npc-dialogue-stage { color: #755d37; font-size: 10px; white-space: nowrap; }
+.npc-dialogue-text { min-height: 0 !important; margin: 0; color: #332f24; font-size: clamp(12px, 1.8vw, 16px); line-height: 1.35; overflow-wrap: anywhere; }
+.npc-dialogue-quest { margin: 0; padding: 7px 9px; background: #d9c48d; border: 2px solid #80633d; color: #3d3929; }
+.npc-dialogue-quest p { min-height: 0 !important; margin: 3px 0; font-size: 11px; }
+.npc-dialogue-quest progress { width: 100%; accent-color: #3e9271; }
+.npc-dialogue-choices { display: grid; gap: 7px; margin-top: 2px; }
+.hero-panel.npc-dialogue-session .npc-dialogue-choice {
+  display: grid;
+  grid-template-columns: minmax(65px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  margin: 0;
+  padding: 7px 9px;
+  text-align: left;
+  background: #4f9e79;
+  border: 2px solid #285a47;
+  color: #102b22;
+  font-family: Inter, Segoe UI, sans-serif;
+  font-size: 12px;
+}
+.hero-panel.npc-dialogue-session .npc-dialogue-choice:hover,
+.hero-panel.npc-dialogue-session .npc-dialogue-choice.selected {
+  background: #58ae83;
+  border-color: #285a47;
+  box-shadow: 0 0 0 3px #f1d36e, 0 0 0 5px #fff3a8;
+}
+.npc-dialogue-choice-key { color: #dfd08f; font-size: 10px; font-weight: 800; }
+.npc-dialogue-choice strong { min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+.npc-dialogue-choice-detail { grid-column: 2; color: #dbe5bd; font-size: 10px; }
+.npc-dialogue-notice { min-height: 0 !important; margin: 0; color: #6e4f2c; font-size: 10px; }
+.npc-dialogue-help { flex: 0 0 auto; margin-top: auto; padding-top: 5px; color: #745f3b; font: 10px/1.2 Inter, Segoe UI, sans-serif; text-align: center; }
+.npc-dialogue-compact { padding: 20px; }
+.npc-dialogue-compact .npc-dialogue-cast { gap: 5px; }
+.npc-dialogue-compact .npc-dialogue-portrait { height: 70px !important; }
+.npc-dialogue-compact .npc-dialogue-choice { min-height: 32px; padding: 4px 7px; }
+@media (max-width: 520px) {
+  .hero-panel.npc-dialogue-session { padding: 21px; }
+  .npc-dialogue-cast { gap: 5px; }
+  .npc-dialogue-choice-key { font-size: 9px; }
+}
+/* Keep recovered responsive layout and usable contrast at party sizes. */
+.hero-panel.npc-dialogue-session { box-sizing: border-box; }
+.hero-panel.npc-dialogue-session .npc-dialogue { overflow: hidden; }
+.hero-panel.npc-dialogue-session .npc-dialogue-body { overflow: auto; padding: 4px; }
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice { background: #4f9e79; border: 2px solid #285a47; color: #102b22; border-radius: 0; }
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice.selected { background: #58ae83; box-shadow: 0 0 0 2px #f1d36e; }
+.hero-panel.npc-dialogue-session .npc-dialogue-choice-key, .hero-panel.npc-dialogue-session .npc-dialogue-choice-detail { color: #102b22; }
+.hero-panel.npc-dialogue-session > header { color: #294b3e; }
+
+/* Global inventory polish resets borders with !important. Preserve this
+   conversation-specific authored sprite instead of the generic panel edge. */
+.hero-panel.inventory-redesign.npc-dialogue-session {
+  border: 22px solid transparent !important;
+  border-image: var(--dialogue-frame) 256 fill / 22px / 0 stretch !important;
+  border-radius: 0 !important;
+}
+
+@container npc-dialogue (max-width:260px) {
+  .hero-panel.npc-dialogue-session .npc-dialogue-heading h2 {font-size:15px;line-height:1.2;}
+  .npc-dialogue-person figcaption {min-height:22px;padding:3px;}
+  .npc-dialogue-person figcaption strong {font:700 10px/1.2 Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .npc-dialogue-person figcaption small {display:none;}
+  .hero-panel.npc-dialogue-session .npc-dialogue-text {font-size:12px;line-height:1.4;}
+  .hero-panel.npc-dialogue-session button.npc-dialogue-choice {grid-template-columns:minmax(18px,auto) minmax(0,1fr);padding:6px;gap:4px;}
+}
+
+
+.hero-panel.npc-dialogue-session nav.npc-dialogue-choices {height:auto;min-height:0;grid-auto-rows:min-content;align-items:stretch;align-content:start;}

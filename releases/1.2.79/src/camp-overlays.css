@@ -1,0 +1,28 @@
+/* Compact pause card: typography and controls share one padded surface. */
+#pause-dialog{box-sizing:border-box;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:24px;border:1px solid #ad945b!important;border-radius:7px!important;background:linear-gradient(145deg,#19392f,#10261f)!important;color:#f4e6c3!important;box-shadow:0 18px 70px #0009,inset 0 0 0 5px #10261f,inset 0 0 0 6px #786b434d!important;container-type:inline-size;overflow:auto;}
+#pause-dialog::before{content:'WILDBOUND';display:block;position:static;color:#c9af73;font:600 10px/1.3 system-ui;letter-spacing:3px;text-align:left;border:0;border-bottom:1px solid #a58d4e55;margin:0 0 16px;padding:0 0 12px;}
+#pause-dialog::after{display:none;}
+#pause-dialog .eyebrow{display:none;}
+#pause-dialog h2{color:#f4e6c3!important;font:30px/1.12 Georgia,serif;margin:0 0 8px;letter-spacing:-.5px;}
+#pause-dialog p{color:#c3cdbb!important;font:12px/1.45 system-ui;margin:0 0 18px;}
+#pause-dialog button{box-sizing:border-box;min-height:38px!important;height:auto!important;margin:0!important;padding:9px 12px!important;border:1px solid #6c8064!important;border-image:none!important;border-radius:3px!important;background:#213e31!important;box-shadow:none!important;color:#eee2bd!important;font:600 12px/1.25 system-ui!important;letter-spacing:0;}
+#pause-dialog button:is(.menu-focus,:focus-visible){outline:2px solid #f0d68c!important;outline-offset:2px;background:#3d5638!important;}
+#pause-dialog #resume-button{display:block;width:100%;min-height:44px!important;background:#dac286!important;border-color:#ebd596!important;color:#203429!important;margin:0 0 16px!important;}
+#pause-dialog .pause-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+#pause-dialog .pause-volume-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 42px 1fr;gap:6px;align-items:center;text-align:center;color:#eee2bd;}
+#pause-dialog .pause-secondary{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 16px;}
+#pause-dialog .pause-quick-options{margin:0;color:#cad2bc;}
+#pause-dialog .pause-quick-options summary{cursor:pointer;font:600 12px/1.4 system-ui;padding:10px 12px;border:1px solid #6c8064;border-radius:3px;background:#172e25;}
+#pause-dialog .pause-quick-options[open] .pause-options{margin-top:8px;}
+#pause-dialog .pause-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;border-top:1px solid #a58d4e55;padding-top:14px;}
+#pause-dialog #pause-worlds{grid-column:1/-1;}
+#pause-dialog .text-button{background:transparent!important;}
+#pause-dialog #pause-text{color:#c3cdbb!important;}
+#pause-dialog #quit-button{color:#eee2bd!important;}
+#pause-dialog .pause-control-help{font-size:10px;color:#a8bba4!important;margin:16px 0 0;}
+#pause-dialog :is(output,.controller-dialog-hint){color:#eee2bd!important;opacity:1;text-shadow:none;}
+@media(max-height:550px){#pause-dialog{padding:16px 20px;}#pause-dialog::before{margin-bottom:10px;padding-bottom:8px;}#pause-dialog h2{font-size:24px;}#pause-dialog #pause-text{margin-bottom:12px;}#pause-dialog button{min-height:30px!important;padding:6px 8px!important;}#pause-dialog #resume-button{min-height:36px!important;margin-bottom:10px!important;}#pause-dialog .pause-secondary{margin:7px 0 10px;}#pause-dialog .pause-actions{padding-top:10px;}#pause-dialog .pause-control-help{margin-top:10px;font-size:9px;}}
+.hero-panel.private-storage-room{overflow:hidden!important;}
+.hero-panel.private-storage-room>canvas.room-view{flex:1 1 0!important;height:0!important;min-height:120px!important;width:100%!important;object-fit:fill!important;image-rendering:pixelated;}
+.hero-panel.private-storage-room>header{font-size:clamp(13px,1.4vw,19px)!important;}
+.hero-panel.private-storage-room>p{font-size:11px;line-height:1.3;}

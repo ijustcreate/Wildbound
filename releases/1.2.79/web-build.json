@@ -1,0 +1,14 @@
+{
+  "version": "1.2.79",
+  "sourceCommit": "532e8d72a781734750ea1f5fe64c8dcebf5167d2",
+  "sourceDirty": true,
+  "builtAt": "2026-10-27T15:59:28.345Z",
+  "path": "releases/1.2.79/",
+  "sharedAssets": {
+    "version": "1.2.78",
+    "prefix": "/Wildbound/releases/1.2.78/",
+    "verifiedFiles": 662,
+    "savedBytes": 199832205
+  },
+  "publishedSourceCommit": "e0aa349d7713da739fe08ba332a88b0c328cf9d2"
+}

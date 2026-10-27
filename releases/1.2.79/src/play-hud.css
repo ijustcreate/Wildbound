@@ -1,0 +1,26 @@
+/* Fixed action rail; help expands on request. Notifications have their own lane. */
+body[data-screen="lobby"] .lobby-world>#roster{top:4px;left:12px;right:12px;z-index:2}
+body[data-screen="play"] #roster{top:8px;left:8px;right:8px;}
+body[data-screen="lobby"] .lobby-panels{z-index:3}
+body[data-screen="lobby"] .lobby-pets{top:auto;bottom:12px}
+body[data-screen="play"] .game-top-right{position:fixed;right:16px;bottom:16px;gap:8px;min-height:36px;z-index:14}
+body[data-screen="play"] .game-top-right :is(button,#threat-label){box-sizing:border-box;min-height:36px;display:flex;align-items:center;padding:8px 12px}
+body[data-screen="play"] .game-top-right [hidden]{display:none!important}
+body[data-screen="play"] .field-open{left:16px;bottom:16px;height:36px;padding:8px 12px;box-sizing:border-box;z-index:14}
+#game-controls-help{position:absolute;left:190px;bottom:16px;z-index:15;color:#e4e1c3;font:12px system-ui}
+#game-controls-help>summary{list-style:none;cursor:pointer;background:#142d27ed;border:1px solid #718c69;border-radius:3px;padding:8px 12px;height:36px;box-sizing:border-box}
+#game-controls-help>summary::-webkit-details-marker{display:none}
+#game-controls-help[open]>#game-hint{position:absolute;left:0;bottom:48px;width:min(470px,calc(100vw - 220px));padding:14px;background:#122a24f5;border:1px solid #9aab80;border-radius:5px;font:12px/1.7 system-ui;color:#e8dfbe;text-shadow:none;box-sizing:border-box}
+#game-controls-help:not([open]) #game-hint{display:none}
+#game-toast{left:50%;bottom:18px;transform:translateX(-50%);max-width:calc(100% - 32px);width:min(600px,calc(100% - 440px));padding:10px 18px;border-color:#9caf7f;border-radius:5px;font-size:13px;line-height:1.4;text-align:center;box-shadow:0 3px 12px #071d2440}
+#game-toast:empty{display:none}
+#game-toast.opening-board-prompt{left:50%;transform:translateX(-50%);bottom:104px;max-width:calc(100% - 40px)}
+@media(max-width:720px){
+ #game-controls-help{left:132px;font-size:11px}
+ body[data-screen="play"] .field-open{max-width:132px;font-size:11px;padding:8px}
+ body[data-screen="play"] .game-top-right{gap:4px}
+ body[data-screen="play"] .game-top-right button{padding:8px;font-size:10px}
+ body[data-screen="play"] #threat-label{display:none!important}
+ #game-toast{bottom:68px;width:min(600px,calc(100% - 32px));font-size:12px}
+ #game-controls-help[open]>#game-hint{left:-116px;width:calc(100vw - 32px)}
+}

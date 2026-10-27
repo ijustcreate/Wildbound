@@ -1,0 +1,21 @@
+/* The room owns the viewport below one small, separate Studio toolbar. */
+body[data-screen="lobby"]{margin:0;overflow:hidden}
+body[data-screen="lobby"] #hero-overlays{inset:44px 0 0}
+#lobby.playable-lobby.active{height:100dvh;width:100%;max-width:none;margin:0;padding:0;gap:0;background:#142820}
+#lobby.playable-lobby .party-banner{height:44px;flex:0 0 44px;margin:0;background:#10251f;border:0;overflow:visible}
+#lobby.playable-lobby .party-topbar{position:static;height:44px;padding:4px 10px;display:flex;justify-content:flex-end;align-items:center;border:0}
+#lobby.playable-lobby .party-menu,#party-menu{display:flex;justify-content:flex-end}
+#lobby.playable-lobby #lobby-studio{min-height:32px;padding:5px 20px;font:15px Georgia,serif;letter-spacing:.04em;border:1px solid #9d915c;border-radius:3px;background:#193c2e;color:#f3e4b4}
+#lobby.playable-lobby .party-heading,#lobby.playable-lobby .party-help{display:none!important}
+#lobby.playable-lobby .lobby-world{flex:1 1 0;width:100%;min-height:0;margin:0;border:0;box-shadow:none;overflow:hidden}
+#lobby.playable-lobby .lobby-world>canvas{display:block;width:100%;height:100%;aspect-ratio:auto}
+.lobby-landing{position:absolute;inset:0;z-index:30;display:grid;place-items:center;overflow:hidden;background:#06171b;isolation:isolate}
+.lobby-landing[hidden]{display:none}
+.landing-scene{position:relative;display:flex;justify-content:center;align-items:flex-end;width:min(100%,calc((100dvh - 44px)*1672/941));aspect-ratio:1672/941;max-height:100%;container-type:inline-size;isolation:isolate}
+.landing-scene>img{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;user-select:none;pointer-events:none}
+.landing-scene::after{content:'';position:absolute;inset:65% 0 0;background:linear-gradient(transparent,#04131388);z-index:-1;pointer-events:none}
+.landing-join{position:relative;z-index:1;max-width:calc(100% - 24px);margin:0 12px clamp(8px,2.5cqw,36px);padding:clamp(8px,1cqw,14px) clamp(18px,2.2cqw,32px);border:1px solid #d0b76799;border-radius:4px;background:#0b221dd9;box-shadow:0 4px 20px #0008;color:#f9ebbd;text-align:center;cursor:pointer;min-height:0}
+.landing-join span{display:block;font:600 clamp(16px,2.2cqw,28px)/1.25 Georgia,serif;letter-spacing:.035em}
+.landing-join small{display:block;margin-top:clamp(3px,.5cqw,7px);color:#c4cbae;font:clamp(9px,.9cqw,11px)/1.4 system-ui;letter-spacing:.12em;text-transform:uppercase}
+.landing-join:hover{background:#173c2ce8;border-color:#f0d58d}
+.landing-join:focus-visible{outline:3px solid #fff1b8;outline-offset:5px}

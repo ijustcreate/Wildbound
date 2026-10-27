@@ -1,0 +1,1 @@
+{"version":1,"id":"cemetery","name":"Cemetery","environment":"graveyard","description":"Weathered cemetery art, graves and surface ecology, with restless creatures beyond the clearing.","prey":["bat"],"predators":["skeleton"],"food":0.4,"water":0.4,"factions":["Gravekeepers"],"quests":[{"id":"grave-surveyor","name":"Survey five cemetery regions","target":5}]}
