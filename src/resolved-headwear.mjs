@@ -1,7 +1,9 @@
+import {drawWitchHat} from './broom-art.mjs';
+import {drawCarverCrown} from './bone-carver-art.mjs';
 // Skull-local pixel drawings. Union construction shapes before shading and
 // outlining the whole item; never outline each primitive. Five view plans plus
 // verified symmetric opposite views. Light stays upper-left as the object turns.
-export const HEADWEAR_ART_REVISION=6;
+export const HEADWEAR_ART_REVISION=7;
 const cache=new Map();
 const supported=new Set(['brim','safari','cap','circlet','crown','helmet','fullhelm','horned','hood','mask','santa','pumpkin','keeper','turtle','reaper','warlock','ghost','imp','succubus','banshee','halo']);
 export function hoodOpening(d){
@@ -25,6 +27,7 @@ export function drawHoodLining(c,h,d,color){
  }
 }
 export function drawResolvedHeadwear(c,h,d,style,p,id=''){
+ if(style==='witch')return drawWitchHat(c,h,d);if(style==='carver')return drawCarverCrown(c,h,d);
  if(!supported.has(style))return false;
  const key=JSON.stringify([HEADWEAR_ART_REVISION,d,style,p,id]);let pixels=cache.get(key);
  if(!pixels){pixels=buildView(d,style,p,id);if(cache.size>=256)cache.delete(cache.keys().next().value);cache.set(key,pixels);}
@@ -62,10 +65,15 @@ function buildView(d,style,p,id){
  // Near/far horn roots deliberately change positions and overlap in profile.
  // They must not remain pinned to the screen-left/right edge during a turn.
  const horns=(kind)=>{
-  const roots=[ [[-5,-7,-1],[5,-7,1]], [[-5,-8,-1],[2,-6,1]], [[-3,-8,-1],[0,-6,-1]], [[-5,-6,-1],[2,-8,1]], [[-5,-7,-1],[5,-7,1]] ][view];
+  // Succubus horns emerge through the brow, not above the hair's crown.
+  // The far root moves up/in as the forehead turns away from the camera.
+  const roots=(kind==='succubus'?
+   [ [[-4,-3,-1],[4,-3,1]], [[-4,-4,-1],[2,-2,1]], [[-2,-4,-1],[-4,-2,-1]], [[-4,-3,-1],[2,-5,1]], [[-4,-4,-1],[4,-4,1]] ]:
+   [ [[-5,-7,-1],[5,-7,1]], [[-5,-8,-1],[2,-6,1]], [[-3,-8,-1],[0,-6,-1]], [[-5,-6,-1],[2,-8,1]], [[-5,-7,-1],[5,-7,1]] ])[view];
   for(const [i,[x,y,s]]of roots.entries()){
    const rise=kind==='imp'?3:5,reach=kind==='horned'?3:2;
-   const map=points=>points.map(([u,v])=>[x+s*u,y+v]);
+   const farScale=kind==='succubus'&&side&&i===0?.65:1;
+   const map=points=>points.map(([u,v])=>[x+s*u*farScale,y+v*farScale]);
    const shape=map([[-1,1],[1.5,.5],[reach+1,-1],[reach+1,-rise],[reach,-rise+1],[reach-1,-2],[0,-1],[-1,-1]]);
    poly(shape);mark(shape,kind==='horned'?'#c7b58c':p.base);
    mark(map([[0,0],[reach,-1],[reach,-rise+1],[reach-1,-2],[0,-1]]),i===0&&diag?p.dark:kind==='horned'?p.shine:p.light);

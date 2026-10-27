@@ -16,16 +16,17 @@ export const PAD_NAMES = [
   "D-left",
   "D-right",
 ];
-export const DEFAULT_MAPPING = {attack:2,jump:0,dodge:7,loot:1,trap:10,interact:3,pause:9,board:4,potion:5,block:6,inventory:8,portal:12,bait:13,field:11};
+export const DEFAULT_MAPPING = {attack:2,jump:0,dodge:7,loot:1,trap:10,interact:3,pause:9,board:14,potion:4,block:6,controlCycle:5,inventory:8,portal:12,bait:13,field:11};
+const PREVIOUS_MAPPING = {...DEFAULT_MAPPING,dodge:7,board:4,potion:5,block:6};
 // Driving uses physical face positions, independently of combat remapping.
 export function vehiclePadInput(pad) {
   const pedal=index=>Math.max(0,Math.min(1,pad.buttons[index]?.value ?? (pad.buttons[index]?.pressed?1:0)));
-  return {vehicleGas:pedal(0),vehicleBrake:pedal(2),vehicleReverse:(pad.axes[1]||0)>.5};
+  return {vehicleGas:pedal(0),vehicleBrake:pedal(2),vehicleReverse:pedal(2)>0};
 }
 export function lobbyPadInput(pad){
-  return {dodge:!!pad.buttons[5]?.pressed,portal:!!pad.buttons[12]?.pressed,potion:!!pad.buttons[7]?.pressed};
+  return {dodge:!!pad.buttons[7]?.pressed,block:!!pad.buttons[6]?.pressed,holdPosition:!!pad.buttons[6]?.pressed,inventory:!!pad.buttons[8]?.pressed,portal:!!pad.buttons[12]?.pressed,potion:!!pad.buttons[4]?.pressed};
 }
-const LEGACY_MAPPING = {...DEFAULT_MAPPING,attack:0,jump:1,loot:2};
+const LEGACY_MAPPING = {...PREVIOUS_MAPPING,attack:0,jump:1,loot:2};
 export function controllerFamily(pad) {
   const id = String(pad?.id || '').toLowerCase();
   const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id)||globalThis.localStorage?.getItem('wildbound-controller-family');
@@ -54,9 +55,16 @@ export function labelsForController(mapping, padOrFamily) {
   return Object.fromEntries(Object.entries(mapping).map(([action, index]) => [action, names[index] || `Button ${index}`]));
 }
 export function normalizeMapping(saved = {}) {
+  saved={...saved};
+  // Repair the reversed menu pair without discarding other custom bindings.
+  if(saved.inventory===9&&saved.pause===8){saved.inventory=8;saved.pause=9;}
   // Existing installs saved every default binding. Move that untouched layout
   // forward, while preserving any layout the player customized.
-  if(Object.keys(saved).length&&Object.entries(saved).every(([action,value])=>LEGACY_MAPPING[action]===value))saved={};
+  if(Object.keys(saved).length&&[LEGACY_MAPPING,PREVIOUS_MAPPING].some(layout=>Object.entries(saved).every(([action,value])=>layout[action]===value)))saved={};
+  // Older saves predate an explicit creature-control binding. L/R mean the
+  // lower triggers; the right bumper owns creature control. Preserve faces.
+  if(!Number.isInteger(saved.controlCycle)||[4,6].includes(saved.board)||(saved.dodge===5&&saved.block===4))
+    Object.assign(saved,{dodge:7,block:6,board:14,potion:4,portal:12,controlCycle:5});
   const result = {}, used = new Set();
   for (const [action, fallback] of Object.entries(DEFAULT_MAPPING)) {
     const value = saved[action];
@@ -80,8 +88,8 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
       `Controller ${row.pad.index+1} · ${CONTROLLER_NAMES[controllerFamily(row.pad)]} · ${row.pad.id} · ${row.pad.mapping==='standard'?'standard layout':'device-specific button layout'}`:
       row.device.startsWith('pad:')?'Controller disconnected':row.device;card.append(desc);
     const list=document.createElement('dl');
-      const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','summon':'R · set skill: Tame / Raise Skeleton','Follower control':'RB · cycle followers',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
-    if(row.device!=='keyboard'){const names=controllerButtonNames(row.pad||'generic');Object.assign(bindings,{'Lobby dash':names[5],'Lobby storage portal':names[12],'Lobby potion':names[7]});}
+      const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','Loot labels':controllerButtonNames(row.pad||'generic')[15],'Summon skill':'Keyboard R · Tame / Raise Skeleton',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k==='controlCycle'?'Control creature':k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
+    if(row.device!=='keyboard'){const names=controllerButtonNames(row.pad||'generic');Object.assign(bindings,{'Lobby hold / ranged aim':names[6],'Lobby inventory':names[8],'Lobby pause':names[9],'Lobby dash':names[7],'Lobby storage portal':names[12],'Lobby potion':names[4]});}
     for(const [action,key] of Object.entries(bindings)){const term=document.createElement('dt'),value=document.createElement('dd');term.textContent=action;value.textContent=key;list.append(term,value);}
     card.append(list);root.append(card);
     const family=row.device==='keyboard'?'keyboard':row.pad?controllerFamily(row.pad):'xbox';

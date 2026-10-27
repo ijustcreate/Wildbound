@@ -35,7 +35,12 @@ export function drawSkeletonTorso(c,p,d,pal){
   bone(c,p.pelvis,edge,pal,1.8);bone(c,edge,h,pal,1.8);
  }
 }
-export function drawSkeletonSkull(c,p,d,pal,visible){
+export function drawSkeletonSkull(c,p,d,pal,visible,scale=1){
+ const h=p.head;c.save();c.translate(h.x,h.y);c.scale(scale,scale);c.translate(-h.x,-h.y);
+ const points=scale===1?p:Object.fromEntries(Object.entries(p).map(([key,v])=>[key,{...v,x:h.x+(v.x-h.x)/scale,y:h.y+(v.y-h.y)/scale}]));
+ try{return paintSkeletonSkull(c,points,d,pal,visible);}finally{c.restore();}
+}
+function paintSkeletonSkull(c,p,d,pal,visible){
  const h=p.head,profile=d===2||d===6,back=d>=3&&d<=5;
  const rect=(x,y,w,height,color)=>{c.fillStyle=color;c.fillRect(Math.round(h.x+x),Math.round(h.y+y),w,height);};
  const width=profile?6.3:7.6,ink='#302b29',cream='#f5ebd1',shadow='#aaa38e';
@@ -44,7 +49,7 @@ export function drawSkeletonSkull(c,p,d,pal,visible){
  ellipse(c,h.x-.8,h.y-1.8,width-1,6,cream);
  ellipse(c,h.x-2,h.y-3,width-3,3.6,'#fff7e0');
  if(back){rect(-3,3,6,2,shadow);return;}
- // Cheek pads and three little teeth finish a broad baby-skull silhouette.
+ // Cheek pads and three little teeth finish a fitted skeletal jaw.
  rect(-4,3,8,3,ink);rect(-3,3,6,3,cream);rect(-2,6,4,1,shadow);
  for(const name of ['eyeL','eyeR'])if(visible(name)){
   const q=p[name],x=Math.round(Math.max(h.x-width+2,Math.min(h.x+width-2,q.x))),y=Math.round(q.y);

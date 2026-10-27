@@ -30,7 +30,7 @@ test('facial hair is independent of face details, preserves old saves and is hid
 });
 test('skeletons share the new rest rig and preserve customized rest geometry',()=>{
  const native=defaultNativePlayerMotion();
- for(const kind of SKELETON_KINDS){const m=defaultSkeletonMotion(kind);assert.ok(validateSkeletonMotion(kind,m));if(kind!=='krampus'){assert.deepEqual(Object.keys(m.joints),Object.keys(native.joints));assert.ok(m.joints.head.position[2]<native.joints.head.position[2]*.7);assert.equal(m.nativeSkeletonRevision,2);}}
+ for(const kind of SKELETON_KINDS){const m=defaultSkeletonMotion(kind);assert.ok(validateSkeletonMotion(kind,m));if(kind!=='krampus'){assert.deepEqual(Object.keys(m.joints),Object.keys(native.joints));assert.deepEqual(m.joints,native.joints);assert.equal(m.nativeSkeletonRevision,3);}}
  const custom=defaultPlayerMotion();custom.type='skeleton';custom.skeleton=true;custom.joints.head.position[2]+=1;
  assert.equal(upgradeSkeletonToNative(custom),custom);
 });

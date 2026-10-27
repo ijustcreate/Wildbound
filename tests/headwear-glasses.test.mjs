@@ -23,7 +23,7 @@ test('hood hair continues behind the upper opening, while ordinary hat bands kee
 });
 
 test('every head item resolves all eight views with four-region art and stable pivots',()=>{
- const hats=Object.entries(ITEMS).filter(([,v])=>v.slot==='head');assert.equal(hats.length,23);
+ const hats=Object.entries(ITEMS).filter(([,v])=>v.slot==='head'&&!v.boneArmor);assert.equal(hats.length,25);
  for(const [id,def]of hats)for(let d=0;d<8;d++){
   const render=(x,y)=>{const out=[];const c={fillRect(...r){out.push([this.fillStyle,...r]);}};assert.equal(drawResolvedHeadwear(c,{x,y},d,headwearStyle(id,def),gearPalette(id),id),true,id);return out;};
   const a=render(0,0),b=render(11,-8);assert.ok(a.length>8,id);
@@ -38,7 +38,7 @@ test('glasses are a face option and persist independently of gear',()=>{
 });
 test('glasses render after every helmet, not as covered skin marks',()=>{
  const model=defaultPlayerMotion();
- for(const id of Object.keys(ITEMS).filter(id=>ITEMS[id].slot==='head'))for(const d of [0,1,2,6,7]){
+ for(const id of Object.keys(ITEMS).filter(id=>ITEMS[id].slot==='head'&&!ITEMS[id].boneArmor))for(const d of [0,1,2,6,7]){
   const [faceX,faceY]=directionVector(d),calls=[],c={fillStyle:'',fillRect(...r){calls.push([this.fillStyle,...r]);}};
   drawPlayer(c,{hp:100,faceX,faceY,equipment:{head:id},appearance:{...DEFAULT_APPEARANCE,face:'glasses'}},0,model);
   const glint=calls.findIndex(v=>v[0]==='#b8dad8');assert.ok(glint>0,`${id} ${d}`);

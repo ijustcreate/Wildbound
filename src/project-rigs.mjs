@@ -6,7 +6,7 @@ import {playerMotion,replacePlayerMotion,upgradePlayerToNative,defaultNativePlay
 import {oathlessCaptainMotion} from './oathless-captain-motion.mjs';
 import {villagerMotion} from './villager-motion.mjs';
 
-const RIG_KEYS = ['player', 'warlock', 'grim_reaper', 'safari_hunter', 'alan', 'banshee', 'succubus', 'imp', 'zombie', 'ghost', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'murk_wolf', 'dreadmane_lion', 'slime', 'shore_goblin', 'oathless_captain', 'villager', 'bat', 'rhino', 'creatureMotions', 'beastMotions', 'nightMotions'];
+const RIG_KEYS = ['player', 'warlock', 'grim_reaper', 'safari_hunter', 'alan', 'banshee', 'succubus', 'imp', 'zombie', 'ghost', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'murk_wolf', 'dreadmane_lion', 'slime', 'shore_goblin', 'oathless_captain', 'villager', 'bat', 'rhino', 'creatureMotions', 'beastMotions', 'nightMotions','graveyard_cat','marsh_firefly'];
 export function rigPack(events, items) {
   const definitions = definitionPack(events, items);
   return structuredClone(Object.fromEntries([['version', 1], ...RIG_KEYS.map(key => [key, definitions[key]])]));

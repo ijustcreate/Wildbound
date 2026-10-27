@@ -8,9 +8,9 @@ import {createBoundlessChunk,createBoundlessChunkTask} from '../src/boundless-wo
 import {generateWorld} from '../src/world.mjs';
 
 test('current native gait has planted, flat soles and fixed limb lengths in every view',()=>{
- const m=defaultNativePlayerMotion();assert.equal(m.locomotionRevision,1);
+ const m=defaultNativePlayerMotion();assert.equal(m.locomotionRevision,2);
  for(const action of ['idle','walk','run'])for(let frame=0;frame<24;frame++){
-  const p=poseAt(m,action,frame),stance=action==='run'?.38:action==='walk'?.6:1;
+  const p=poseAt(m,action,frame),stance=action==='run'?.30:action==='walk'?.52:1;
   for(const side of ['L','R']){
    const phase=(frame/24+(side==='R'?.5:0))%1,foot='foot'+side;
    if(phase<stance){

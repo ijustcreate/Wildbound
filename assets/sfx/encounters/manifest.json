@@ -3862,6 +3862,352 @@
     "source": "Original deterministic synthesis; no external samples"
   },
   {
+    "id": "encounter-98",
+    "name": "A little Christmas spirit",
+    "role": "peaceful",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-98.wav",
+    "duration": 1.3672320015728474,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.398,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.235,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.358,
+        "duration": 0.429,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.542,
+        "duration": 0.243,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-the-bone-carver-1fa9eac5",
+    "name": "The Bone Carver",
+    "role": "hazard",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-the-bone-carver-1fa9eac5.wav",
+    "duration": 1.2860181026160717,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.29,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.231,
+        "duration": 0.366,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.345,
+        "duration": 0.379,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.499,
+        "duration": 0.245,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-99",
+    "name": "Winter on blue wings",
+    "role": "boss",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-99.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.388,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.134,
+        "duration": 0.399,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.294,
+        "duration": 0.149,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.485,
+        "duration": 0.471,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.696,
+        "duration": 0.501,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.833,
+        "duration": 0.674,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 1.036,
+        "duration": 0.51,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-100",
+    "name": "The bones that burned violet",
+    "role": "boss",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-100.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.567,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.253,
+        "duration": 0.549,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.43,
+        "duration": 0.427,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.61,
+        "duration": 0.163,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.787,
+        "duration": 0.31,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.889,
+        "duration": 0.441,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 1.069,
+        "duration": 0.718,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-101",
+    "name": "Copper tails in the undergrowth",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-101.wav",
+    "duration": 1.3170320848701522,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.234,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.167,
+        "duration": 0.275,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.321,
+        "duration": 0.319,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-102",
+    "name": "The pumpkins have teeth",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-102.wav",
+    "duration": 1.2570261302869767,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.217,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.179,
+        "duration": 0.338,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.334,
+        "duration": 0.2,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.493,
+        "duration": 0.247,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.608,
+        "duration": 0.128,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.829,
+        "duration": 0.333,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-103",
+    "name": "The dune matriarch",
+    "role": "boss",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-103.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.398,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.216,
+        "duration": 0.76,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.327,
+        "duration": 0.403,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.45,
+        "duration": 0.576,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.6,
+        "duration": 0.361,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.718,
+        "duration": 0.191,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.851,
+        "duration": 0.732,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-104",
+    "name": "The pack beneath the moon",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-104.wav",
+    "duration": 1.4254162836121396,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.459,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.25,
+        "duration": 0.281,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.44,
+        "duration": 0.188,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.668,
+        "duration": 0.328,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.853,
+        "duration": 0.176,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
     "id": "travel-forest",
     "name": "Travel · forest",
     "voice": "wood",

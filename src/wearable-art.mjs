@@ -1,3 +1,5 @@
+import {drawCarverCrown} from './bone-carver-art.mjs';
+import {drawWitchHat} from './broom-art.mjs';
 import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
 import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
@@ -5,6 +7,7 @@ import {drawSuccubusHorns} from './succubus-attachments.mjs';
 import {drawGhostHood} from './ghost-art.mjs';
 import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
 import {drawAlanTurtleHelmet} from './alan-gear-art.mjs';
+import {drawSantaHat} from './christmas-art.mjs';
 import {drawResolvedHeadwear,headwearStyle} from './resolved-headwear.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
@@ -77,16 +80,7 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
       if(style==='safari') {rect(k.x-2,k.y-3,4,2,material.dark);rect(k.x-2,k.y-3,4,1,material.light);}
       if(style==='wilderness'){rect(k.x-2,k.y-3,4,1,'#6e512d');rect(k.x-1,k.y-1,3,1,'#bb9357');}
     }
-  if(gear.shoulders==='alan_leaf_mantle'&&!back){
-    for(const [side,base]of [[-1,-6],[1,3]])for(const [n,len]of [[0,7],[1,10],[2,8]]){
-      const x=chest.x+base+n*2;
-      for(let y=0;y<len;y++){
-        const taper=Math.floor(y/4),left=side<0?x+taper:x;
-        rect(left,chest.y+y,Math.max(1,3-taper),1,'#24482d');
-        rect(left+1,chest.y+y,1,1,y%3===0?'#95af65':n===1?'#4a7c3f':'#356c38');
-      }
-    }
-  }
+  // Alan's mantle is painted once at the shoulder pivots by fittedGear.
   if (look?.face === "freckles" && !back) {
     rect(head.x - 3, head.y, 1, 1, "#985e42");
     rect(head.x + 2, head.y, 1, 1, "#985e42");
@@ -98,7 +92,10 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     rect(head.x - 1, head.y + 4, 3, 1, look.hairColor || "#593923");
   }
 }
-export function directionalHelmet(c, id, h, d, cosmetics = {}) {
+export function directionalHelmet(c, id, h, d, cosmetics = {}, time = 0) {
+  if(id==='bone_carver_crown')return drawCarverCrown(c,h,d,time);
+  if(id==='witch_hat')return drawWitchHat(c,h,d);
+  if(id==='santa_hat')return drawSantaHat(c,h,d);
   const def=ITEMS[id];
   if(!def) return false;
   if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics),materialIndex(id,'metal')))return true;

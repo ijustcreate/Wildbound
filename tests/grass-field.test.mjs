@@ -5,7 +5,7 @@ import {generateWorld} from '../src/world.mjs';
 import {routeDistance,clearingDistance,forestPavingAt} from '../src/forest-landscape.mjs';
 import {meadowAllowed} from '../src/pixel-meadow.mjs';
 
-test('sparse animated tufts respect water, paths, paving and the starting clearing',()=>{
+test('short meadow carpet respects water, paths, paving and the starting clearing',()=>{
  const g={...generateWorld(42,'forest'),seed:42};
  const data=grassFieldInstances(g);let short=0,tall=0;
  for(let i=0;i<data.length;i+=8){
@@ -18,7 +18,7 @@ test('sparse animated tufts respect water, paths, paving and the starting cleari
   assert.ok(clearingDistance(x,y,g.seed)>=.95);
   assert.equal(forestPavingAt(g.forestLandscape,data[i],data[i+1]),false,`shader blades leave authored mosaic stones visible at ${data[i]},${data[i+1]}`);
  }
- assert.ok(short>500&&short<10000,'cached ground needs only sparse animated accents');
+ assert.ok(short>10000&&short<65000,'visible-region low grass has continuous clustered coverage within a bounded density');
  assert.ok(tall>1000&&tall<15000,'cuttable tall patches use fewer, wider blades');
 });
 

@@ -1,9 +1,10 @@
+import {buildExpeditionMenu} from './expedition-menu.mjs';
 import {drawDeathSteps} from './death-steps.mjs';
 import {drawTracks} from './environment.mjs';
 import {drawRealmSprite,REALM_COLORS} from './realm-art.mjs';
 import { buildCreationMenu } from './creation-menu.mjs';
 import {drawLobbyBackdrop} from './lobby-backdrop.mjs';
-import {drawLobbyCeilingWash,drawLobbyCastShadow} from './lobby-lighting.mjs';
+import {drawLobbyCeilingWash,drawLobbyCastShadow,drawLobbyActorShadow} from './lobby-lighting.mjs';
 import {LOBBY_FLOOR} from './lobby-geometry.mjs';
 import { Animator } from './animation.mjs';
 import {characterLightingFrame} from './character-lighting.mjs';
@@ -21,6 +22,7 @@ import {take} from './items.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {petCard} from './hunter-pet-ui.mjs';
 import {LobbyPractice} from './lobby-practice.mjs';
+import {lobbyPracticeInput} from './lobby-input-release.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
 import { controllerButtonNames, controllerFamily } from './controls.mjs';
@@ -91,8 +93,8 @@ export function moveLobbyCharacter(s,input,dt){
   s.step+=moved*.13;
 }
 export function lobbyCamera(width,height){
-  const zoom=Math.min(Math.max(1,width)/1024,Math.max(1,height)/632);
-  return {x:512,y:314,zoom};
+  const zoom=Math.min(Math.max(1,width)/1024,Math.max(1,height)/592);
+  return {x:516,y:324,zoom};
 }
 export class LobbyState {
   constructor(){this.members=new Map();this.countdown=null;this.started=false;}
@@ -133,7 +135,7 @@ export class PlayableLobby {
     area.innerHTML='<canvas width="1024" height="620" aria-label="Playable lobby: move with WASD or left stick. E or the primary controller button interacts with nearby objects."></canvas><div class="lobby-panels"></div><div class="lobby-countdown" aria-live="polite"></div>';
     root.querySelector('#player-slots').before(area);this.area=area;this.canvas=area.querySelector('canvas');this.panels=area.querySelector('.lobby-panels');
     root.querySelector('.party-heading h1').textContent='Gather around the board';
-    this.defaultHelp='Enter / A: join · WASD / left stick: move · E / Y (X on Switch): interact · F / X (Y on Switch): attack · J / A (B on Switch): jump · R / RB: dash · D-pad Up / P: storage portal · ZR / RT / H: potion · TV: D-pad / arrows move; A (Z key) jumps twice; X runs (X key); down enters pipes; walk away to leave';
+    this.defaultHelp='Enter / A: join · WASD / left stick: move · E / Y (X on Switch): interact · F / X (Y on Switch): attack · J / A (B on Switch): jump · RT / ZR / Space: dash · LT / ZL: hold position / aim · D-pad Up / P: storage portal · LB / L / H: potion · TV: D-pad / arrows move; A (Z key) jumps twice; X runs (X key); down enters pipes; walk away to leave';
     root.querySelector('.party-help').textContent=this.defaultHelp;
     this.canvas.onclick=e=>{
       const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return;
@@ -192,8 +194,8 @@ export class PlayableLobby {
     if(key===this.panelLayoutKey)return;
     this.panelViewportKey=viewportKey;
     const layout=planPlayerPanels(players,open,bounds.width,bounds.height,{
-      width:p=>this.state.members.get(p.id)?.panel==='environment'?520:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?340:this.state.members.get(p.id)?.panel==='create'?540:280,
-      height:p=>this.state.members.get(p.id)?.panel==='environment'?680:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:this.state.members.get(p.id)?.panel==='choose'&&!this.available(p).length?410:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
+      width:p=>this.state.members.get(p.id)?.panel==='environment'?440:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?340:this.state.members.get(p.id)?.panel==='create'?540:280,
+      height:p=>this.state.members.get(p.id)?.panel==='dice-count'?280:this.state.members.get(p.id)?.panel==='environment'?780:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:this.state.members.get(p.id)?.panel==='choose'&&!this.available(p).length?410:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
     });
     for(const p of open){
       const box=layout.get(p.id),panel=this.nodes.get(p.id);
@@ -210,11 +212,18 @@ export class PlayableLobby {
       if(players.length===1&&open.length===1&&['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)){
         box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;
       }
-      if(this.state.members.get(p.id)?.panel==='difficulty'){
-        const totem=LOBBY_OBJECTS.find(o=>o.id==='difficulty');
+      if(this.state.members.get(p.id)?.panel==='environment'){box.width=Math.min(box.width,box.height*.57);box.height=box.width/.57;if(players.length===1){box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;}}
+      if(['difficulty','dice-count'].includes(this.state.members.get(p.id)?.panel)){
+        panel.style.transition='none';
+        const menu=this.state.members.get(p.id)?.panel;
+        const totem=LOBBY_OBJECTS.find(o=>o.id===menu);
         const x=canvasBounds.left-bounds.left+canvasBounds.width/2+(totem.x-view.x)*view.zoom;
         const y=canvasBounds.top-bounds.top+canvasBounds.height/2+(totem.y-view.y)*view.zoom;
         Object.assign(box,anchoredPopupBox(bounds.width,bounds.height,box.width,box.height,x,y));
+        if(menu==='dice-count'){
+          box.x=Math.max(8,Math.min(bounds.width-box.width-8,x-box.width/2));
+          box.y=Math.max(8,Math.min(bounds.height-box.height-8,y-box.height-35*view.zoom));
+        }
       }
       panel.style.position='absolute';panel.style.boxSizing='border-box';
       // A viewport resize must be immediate; party joins may still animate docks.
@@ -239,6 +248,7 @@ export class PlayableLobby {
       this.getGame().openInventory(p,'starter');
       s.inventoryRelease=true;this.state.invalidate(this.getGame().players);return;
     }
+    if(panel==='environment')delete s.expeditionDraft;
     s.panel=panel;s.focus=0;this.renderPanel(p);
   }
   openCharacterStation(p){
@@ -247,7 +257,7 @@ export class PlayableLobby {
     s.panel='choose';s.focus=0;s.choice=index>=0?index:0;s.characterHold=0;
     p.ready=false;this.state.countdown=null;this.renderPanel(p);this.sound?.('ui');
   }
-  close(p){const s=this.state.members.get(p.id);s.panel=null;s.panelInputRelease=true;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);this.panelLayoutKey=null;this.positionPanels();}
+  close(p){const s=this.state.members.get(p.id);delete s.expeditionDraft;s.panel=null;s.panelInputRelease=true;s.practiceClosing=true;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);this.panelLayoutKey=null;this.positionPanels();}
   isPlayingTelevision(device){const player=this.getGame().players.find(p=>p.device===device);return !!player&&!!this.television?.players.has(player.id);}
   openBoardReadyMenu(player){
     if(player)player.ready=false;
@@ -256,6 +266,8 @@ export class PlayableLobby {
     this.syncBoardReadyMenu();
   }
   closeBoardReadyMenu(){
+    // Closing ready/back owns this press until release, just like player panels.
+    for(const s of this.state.members.values())s.practiceClosing=true;
     this.boardReadyMenuOpen=false;this.state.countdown=null;
     this.boardReadyNode?.remove();this.boardReadyNode=null;
     this.sync();
@@ -405,6 +417,13 @@ export class PlayableLobby {
       panel.append(info);
       button(p.ready?'Cancel readiness':'Ready',()=>{p.ready=!p.ready;this.close(p);});
       button('Not yet',()=>this.close(p));
+    }else if(s.panel==='environment'){
+      buildExpeditionMenu({panel,member:s,game:this.getGame(),select:document.getElementById('environment'),mode:document.getElementById('map-mode'),details:MAP_DETAILS,tooltip:b=>this.mapTooltip(panel,b),drawIcon:(...args)=>this.drawMapIcon(...args),highlight:()=>{if(panel.isConnected)this.highlight(p);},close:()=>this.close(p),accept:draft=>{
+        this.setWildboundMode(draft.wild);
+        const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value=draft.map;mode.value=draft.boundless&&!draft.wild?'boundless':'bounded';
+        for(const input of [env,mode])input.dispatchEvent(new Event('change'));
+        this.close(p);this.refreshMapMenus();this.sync();
+      }});
     }else{
       const o=LOBBY_OBJECTS.find(o=>o.id===s.panel);heading.textContent=o.name;
       const select=document.getElementById(s.panel);
@@ -424,10 +443,10 @@ export class PlayableLobby {
           this.setWildboundMode(false);
           mode.value=mode.value==='boundless'?'bounded':'boundless';mode.dispatchEvent(new Event('change'));this.refreshMapMenus();
         });toggle.classList.add('map-mode-toggle');toggle.setAttribute('aria-pressed',String(enabled));
-        const name=document.createElement('strong');name.textContent='Boundless: '+(enabled?'ON':'OFF');
+        const name=document.createElement('strong');name.textContent='Boundless';
         const hint=document.createElement('small');hint.textContent=enabled?'Explore beyond the board into streamed regions.':'Bounded expedition · clear edges and a finale.';
         const mark=document.createElement('i');mark.setAttribute('aria-hidden','true');
-        toggle.append(mark,name,hint);toggle.title=MAP_MODE_DETAILS[mode.value];
+        toggle.append(name,mark,hint);toggle.setAttribute('role','switch');toggle.setAttribute('aria-checked',String(enabled));toggle.setAttribute('aria-label','Boundless '+(enabled?'on':'off'));toggle.title=MAP_MODE_DETAILS[mode.value];
         mapChoices=document.createElement('div');mapChoices.className='map-choices';panel.append(mapChoices);
       }
       for(const option of select.options){const b=button('',()=>{
@@ -449,26 +468,41 @@ export class PlayableLobby {
         b.title=MAP_DETAILS[option.value];
         if(option.value==='random')panel.insertBefore(b,mapChoices);else mapChoices.append(b);
         b.setAttribute('aria-label',`${option.text}. ${MAP_DETAILS[option.value]}`);
-        const icon=document.createElement('canvas');icon.width=40;icon.height=40;icon.className='map-choice-icon';this.drawMapIcon(icon.getContext('2d'),option.value,0,0,40);
+        const icon=document.createElement('canvas');icon.width=64;icon.height=64;icon.className='map-choice-icon';this.drawMapIcon(icon.getContext('2d'),option.value,0,0,64);
         const copy=document.createElement('span');copy.className='difficulty-choice-copy';
         const name=document.createElement('strong');name.textContent=(!this.getGame().houseWorldsEnabled&&select.value===option.value?'✓ ':'')+option.text;
         const detail=document.createElement('small');detail.textContent=MAP_DETAILS[option.value];
         copy.append(name,detail);b.append(icon,copy);
+        b.dataset.mapDetail=MAP_DETAILS[option.value];b.removeAttribute('title');
+        b.addEventListener('pointerenter',()=>this.mapTooltip(panel,b));
+        b.addEventListener('pointerleave',()=>this.mapTooltip(panel,null));
+        b.addEventListener('focus',()=>this.mapTooltip(panel,b));
       }else b.textContent=(select.value===option.value?'✓ ':'')+option.text;}
       button('Close',()=>this.close(p)).classList.toggle('map-menu-close',s.panel==='environment');
     }
     panel.append(error);
     if(previousPanel?.isConnected)previousPanel.replaceWith(panel);
     else this.panels.append(panel);
-    this.nodes.set(p.id,panel);this.highlight(p);this.panelLayoutKey=null;this.positionPanels();
+    this.nodes.set(p.id,panel);this.panelLayoutKey=null;this.positionPanels();this.highlight(p);
   }
   refreshChoosers(){for(const p of this.getGame().players)if(this.state.members.get(p.id)?.panel==='choose')this.renderPanel(p);}
+  mapTooltip(panel,button){
+    let tip=panel.querySelector('.map-choice-tooltip');
+    if(!button?.dataset.mapDetail){if(tip?.matches(':popover-open'))tip.hidePopover();return;}
+    if(!tip){tip=document.createElement('div');tip.className='map-choice-tooltip';tip.setAttribute('popover','manual');tip.setAttribute('role','tooltip');tip.id='map-tooltip-'+panel.dataset.ownerDevice;panel.append(tip);}
+    tip.textContent=button.dataset.mapDetail;button.setAttribute('aria-describedby',tip.id);
+    if(!tip.matches(':popover-open'))tip.showPopover();
+    const r=button.getBoundingClientRect(),box=tip.getBoundingClientRect();
+    tip.style.left=Math.max(8,Math.min(innerWidth-box.width-8,r.left))+'px';
+    tip.style.top=Math.max(8,r.bottom+box.height+8<innerHeight?r.bottom+6:r.top-box.height-6)+'px';
+  }
   highlight(p){
     const s=this.state.members.get(p.id),panel=this.nodes.get(p.id),buttons=[...panel?.querySelectorAll('button')||[]];
     s.focus=Math.max(0,Math.min(s.focus,buttons.length-1));buttons.forEach((b,i)=>b.classList.toggle('lobby-focus',i===s.focus));
     // Reveal the owner's current choice without scrolling or moving another
     // player's panel. Native scrollbar chrome is hidden throughout the UI.
     const selected=buttons[s.focus];
+    if(s.panel==='environment')this.mapTooltip(panel,selected);
     const scroller=selected?.closest('.map-choices')||panel;
     if(selected&&scroller.scrollHeight>scroller.clientHeight){
       const box=scroller.getBoundingClientRect(),choice=selected.getBoundingClientRect();
@@ -481,6 +515,7 @@ export class PlayableLobby {
   navigate(p,{x=0,y=0,accept=false,back=false,adjust=false,rotate=0},device=p.device){
     const s=this.state.members.get(p.id),panel=this.nodes.get(p.id);if(!panel)return;
     if(device!==p.device||panel.dataset.ownerDevice!==device)return;
+    if(panel.expeditionNavigate){panel.expeditionNavigate({x,y,accept,back});return;}
     if(panel.creationNavigate){panel.creationNavigate({x,y,accept,back,adjust,rotate});return;}
     if(back){if(s.panel==='confirm-delete'||s.panel==='create'){s.panel='choose';s.focus=0;this.renderPanel(p);}else this.close(p);return;}
     const buttons=[...panel.querySelectorAll('button')];
@@ -590,11 +625,12 @@ export class PlayableLobby {
     const joinedTv=new Set();
     for(const p of players){
       const s=this.state.members.get(p.id),input=playerInput(players,p,inputs);
+      const hadUI=!!p.ui;
       if(this.television?.players.has(p.id)&&(Math.hypot(input.walkX||0,input.walkY||0)>.15||s.panel||blocked||!s.spawned||p.lobbyDisconnected||Math.hypot(s.x-785,s.y-165)>103||p.ui))this.television.leave(p.id,s);
       if(!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected){
         const game=this.getGame(),edge=key=>input[key]&&!s.held[key];
         if(p.ui)s.inventoryRelease=true;
-        if(edge('inventory')){if(p.ui)p.ui=null;else{game.openInventory(p);this.state.invalidate(players);}}
+        if(edge('inventory')){if(p.ui){p.ui=null;s.practiceClosing=true;}else{game.openInventory(p);this.state.invalidate(players);}}
         if(p.ui){
           s.inventoryRelease=true;
           if(!s.storageUiOpened)for(const action of ['next','prev','up','down','panel','use','offhand','sockets','store','pick','close'])if(edge(action))game.inventoryAction(p,action);
@@ -617,6 +653,7 @@ export class PlayableLobby {
           if(!input.lobbyInteract)s.stationPress=false;
         }
       }else s.moving=false;
+      if(hadUI&&!p.ui)s.practiceClosing=true;
       p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
       tickSalvage(this.getGame(),p,!blocked&&s.spawned&&!s.panel&&!p.lobbyDisconnected&&!!p.ui&&(!!input.salvage||!!p.ui.salvagePointer),dt);
       if(!p.ui&&!['inventory','use','close','interact','lobbyInteract','attack','jump','dodge','block','trap','potion','bait','offhand','panel','portal'].some(key=>input[key]))s.inventoryRelease=false;
@@ -629,12 +666,12 @@ export class PlayableLobby {
     // jump in the practice scene underneath it.
     for(const p of players){
       const s=this.state.members.get(p.id);
-      if(s?.panel)s.panelInputRelease=true;
+      if(s?.panel||this.boardReadyMenuOpen)s.panelInputRelease=true;
       const input=inputs[p.device]||{};
       if(s?.panelInputRelease&&!s.panel&&!['jump','tvA','attack','dodge','close','use','lobbyInteract','interact','block'].some(key=>input[key]))s.panelInputRelease=false;
-      if(s?.panel||s?.panelInputRelease||p.ui)practiceInputs[p.device]={x:0,y:0,attack:false,jump:false,dodge:false};
+      practiceInputs[p.device]=lobbyPracticeInput(s,input,this.boardReadyMenuOpen||!!s.panel||!!p.ui);
     }
-    for(const p of players){const s=this.state.members.get(p.id);if(s?.stationPress&&!s.panel&&!s.panelInputRelease&&!p.ui)practiceInputs[p.device]={...inputs[p.device],attack:false};}
+    for(const p of players){const s=this.state.members.get(p.id);if(s?.stationPress&&!s.panel&&!p.ui)practiceInputs[p.device]={...practiceInputs[p.device],attack:false};}
     for(const p of players)if(this.television?.players.has(p.id)){
       const input=inputs[p.device]||{};
       tvCommands[p.id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA&&!joinedTv.has(p.id),joinHeld:joinedTv.has(p.id),run:!!input.tvX,dash:!!input.dodge,down:!!input.tvDown,up:!!input.tvUp};
@@ -677,12 +714,16 @@ export class PlayableLobby {
     this.draw();
     this.area.querySelector('.lobby-countdown').textContent=this.state.countdown!==null?`The board opens in ${Math.max(1,Math.ceil(this.state.countdown))}…`:'';
   }
-  drawPractice(c){
-    for(const b of this.practice.boomerangs||[])drawBoomerang(c,b,this.practice.time);
+  drawPracticeGround(c){
     c.save();
     for(const t of this.practice.traps){c.strokeStyle='#dbbd76';c.lineWidth=3;c.beginPath();c.ellipse(t.x,t.y,15,8,0,0,Math.PI*2);c.stroke();}
     for(const b of this.practice.baits){c.fillStyle='#dc9880';c.fillRect(b.x-4,b.y-3,8,6);}
     for(const a of this.practice.loot){if(a.embedded&&ARROW_TYPES.includes(a.type))drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());else{drawItem(c,a.type,a.x,a.y-(a.z||0),26);if(a.qty>1){c.fillStyle='#fff2c4';c.font='bold 10px system-ui';c.textAlign='right';c.fillText(String(a.qty),a.x+14,a.y+13);}}}
+    c.restore();
+  }
+  drawPractice(c){
+    for(const b of this.practice.boomerangs||[])drawBoomerang(c,b,this.practice.time);
+    c.save();
     for(const a of groupLodgedArrows(this.practice.arrows)){drawArrowTrail(c,a,this.practice.time);if(a.stuck){drawEmbeddedArrow(c,a,this.practice.time,this.showLootDetails?.());continue;}c.save();c.translate(a.x,a.y-(a.z||0));c.rotate(arrowVisualAngle(a));drawFlyingArrow(c,a,this.practice.time);c.restore();}
     for(const b of this.practice.spells)drawMagicBolt(c,b);
     for(const f of this.practice.effects){if(f.magicBolt){drawMagicBurst(c,f);continue;}if(!f.text)continue;c.fillStyle=f.color||'#fff';c.font='12px system-ui';this.label(f.text,f.x,f.y,14,f.color||'#fff');}
@@ -721,6 +762,7 @@ export class PlayableLobby {
   draw(){
     for(const panel of this.nodes.values())this.paintIdlePreview(panel,this.practice.time);
     this.animator.lighting=characterLightingFrame(this.practice);
+    this.root?.classList.toggle('lobby-exploring',this.getGame().players.some(p=>this.state.members.get(p.id)?.spawned));
     const c=this.canvas.getContext('2d'),{w,h,scale}=resizeGameSurface(this.canvas,c);
     if(this.tvWildbound){this.tvWildbound.draw(c,w,h,this.animator);return;}
     // Fit the room, totem card, and lower captions. Joining never crops stations.
@@ -728,7 +770,6 @@ export class PlayableLobby {
     const view=this.view;this.labels=[];
     c.fillStyle='#20292d';c.fillRect(0,0,w,h);
     c.translate(w/2,h/2);c.scale(view.zoom/2,view.zoom/2);c.translate(-view.x,-view.y);
-    this.root?.classList.toggle('lobby-exploring',this.getGame().players.some(p=>this.state.members.get(p.id)?.spawned));
     this.drawBackdrop(c);
     drawLobbyCeilingWash(c,LOBBY_FLOOR);
     drawTracks(c,this.practice);
@@ -742,12 +783,13 @@ export class PlayableLobby {
       for(const [radius,color] of [[23,'#8d744a'],[20,'#dbca99'],[16,'#e5e1ca'],[12,'#36464c'],[9,'#598ea6'],[6,'#bf5948'],[3,'#e8bf52']]){c.fillStyle=t.flash>0&&radius===23?'#fff5b2':color;c.beginPath();c.arc(travel,0,radius,0,Math.PI*2);c.fill();}
       c.restore();const alpha=targetReportAlpha(t);if(alpha)this.label(t.hits+' hits · '+Math.round(t.score)+' damage',t.x+(t.angle<-1?54:0),t.y+(t.angle<-1?14:30),12,'#f4efdc',500,alpha);
     }
+    this.drawPracticeGround(c);
     const actors=this.getGame().players.filter(p=>this.state.members.get(p.id)?.spawned&&!p.room).map(p=>this.practice.players.find(a=>a.id===p.id)||{...p,...this.state.members.get(p.id)});
     const scene=[...LOBBY_OBJECTS.map(o=>({depth:lobbyPropDepth(o),object:o})),...actors.map(a=>({depth:lobbyActorDepth(a,this.practice.house.furniture,LOBBY_OBJECTS),actor:a}))].sort((a,b)=>a.depth-b.depth);
     for(const entry of scene){
       if(entry.actor){
         const actor=entry.actor,slot=this.television.players.get(actor.id)?.slot;
-        drawLobbyCastShadow(c,actor.x,actor.y+4,34,12);
+        drawLobbyActorShadow(c,actor,this.practice.time,LOBBY_PLAYER_SIZE);
         if(slot!==undefined)drawSeatedLobbyPlayer(c,actor,slot);
         else {this.animator.draw(c,{...actor,kind:'player'},this.practice.time,LOBBY_PLAYER_SIZE);drawBowAim(c,actor,LOBBY_PLAYER_SIZE/48,this.practice.time);}
         continue;

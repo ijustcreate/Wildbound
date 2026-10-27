@@ -1,3 +1,5 @@
+import {requestedCreatureDefaults,upgradeRequestedCreature} from './requested-creature-transfer.mjs';
+import {drawDragonPixels} from './dragon-pixels.mjs';
 import { paintLayers } from "./render-order.mjs";
 import {
   poseAt,
@@ -161,15 +163,19 @@ const skeletons = {
     pelvis: ["", 0, 0, 14],
     body: ["pelvis", 0, 0, 22],
     eye: ["body", 0, 7, 28],
-    stalk0: ["body", -12, -7, 24], stalk0Tip: ["stalk0", -8, -8, 35],
-    stalk1: ["body", -14, 0, 25], stalk1Tip: ["stalk1", -12, -1, 34],
-    stalk2: ["body", -10, 8, 24], stalk2Tip: ["stalk2", -8, 10, 34],
-    stalk3: ["body", 12, -7, 24], stalk3Tip: ["stalk3", 8, -8, 35],
-    stalk4: ["body", 14, 0, 25], stalk4Tip: ["stalk4", 12, -1, 34],
-    stalk5: ["body", 10, 8, 24], stalk5Tip: ["stalk5", 8, 10, 34],
+    stalk0: ["body", -8, -7, 29], stalk0Tip: ["stalk0", -15, -12, 38],
+    stalk1: ["body", -11, 0, 23], stalk1Tip: ["stalk1", -23, -2, 25],
+    stalk2: ["body", -8, 8, 18], stalk2Tip: ["stalk2", -20, 12, 15],
+    stalk3: ["body", 8, -7, 29], stalk3Tip: ["stalk3", 15, -12, 38],
+    stalk4: ["body", 11, 0, 23], stalk4Tip: ["stalk4", 23, -2, 25],
+    stalk5: ["body", 8, 8, 18], stalk5Tip: ["stalk5", 20, 12, 15],
+    stalk6: ["body", 0, -4, 32], stalk6Tip: ["stalk6", 0, -8, 46],
   },
 };
-skeletons.lesser_beholder = skeletons.beholder;
+skeletons.lesser_beholder = {pelvis:skeletons.beholder.pelvis,body:skeletons.beholder.body,eye:skeletons.beholder.eye};
+for(const [i,v]of [[-12,-7,24,-8,-8,35],[-14,0,25,-12,-1,34],[-10,8,24,-8,10,34],[12,-7,24,8,-8,35],[14,0,25,12,-1,34],[10,8,24,8,10,34]].entries()){
+  skeletons.lesser_beholder[`stalk${i}`]=['body',...v.slice(0,3)];skeletons.lesser_beholder[`stalk${i}Tip`]=[`stalk${i}`,...v.slice(3)];
+}
 const labels = {
   dragon: "Dragon / winged quadruped",
   fire_elemental: "Fire elemental / living flame",
@@ -211,7 +217,7 @@ function makeKeys(kind, action) {
     if (kind === "beholder" || kind === "lesser_beholder") {
       const bob = action === "death" ? -t * 7 : Math.sin(a) * (action === "idle" ? 1.2 : 2.4);
       for (const n of Object.keys(spec)) j[n] = [0, 0, bob];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < (kind==='beholder'?7:6); i++) {
         const phase = a + i * 0.75;
         const idleSway=action==='idle'?1:1.5;
         j[`stalk${i}`] = [Math.sin(phase) * idleSway, Math.cos(phase) * idleSway, bob];
@@ -418,7 +424,7 @@ function makeKeys(kind, action) {
     return { frame, joints: j };
   });
 }
-export function defaultCreatureMotion(kind) {
+export function legacyCreatureMotion(kind) {
   const spec = skeletons[kind];
   if (!spec) throw Error("Unknown creature rig");
   const clips =
@@ -520,7 +526,7 @@ export function defaultCreatureMotion(kind) {
     version: 1,
     type: kind,
     name: labels[kind],
-    ...(kind === "dragon" ? { artRevision: 2 } : {}),
+      ...(["dragon","beholder"].includes(kind) ? { artRevision: 2 } : {}),
     joints: Object.fromEntries(
       Object.entries(spec).map(([n, [parent, ...position]]) => [
         n,
@@ -579,17 +585,29 @@ export function defaultCreatureMotion(kind) {
             "snared",
             "hold",
           ].includes(action),
-          keys: makeKeys(kind === "lesser_beholder" ? "beholder" : kind, action),
+          keys: makeKeys(kind, action),
         },
       ]),
     ),
   };
 }
+export function defaultCreatureMotion(kind){const m=legacyCreatureMotion(kind);return kind==='dragon'?requestedCreatureDefaults(m):m;}
 export const creatureMotions = Object.fromEntries(
   Object.keys(skeletons).map((k) => [k, defaultCreatureMotion(k)]),
 );
 export function upgradeCreatureMotion(kind, model) {
-  const m = structuredClone(model);
+  const m = kind==='dragon'?upgradeRequestedCreature(model,legacyCreatureMotion(kind)):structuredClone(model);
+  if(kind==='beholder'&&m?.joints&&!m.artRevision){
+    const defaults=defaultCreatureMotion(kind),old=[[-12,-7,24,-8,-8,35],[-14,0,25,-12,-1,34],[-10,8,24,-8,10,34],[12,-7,24,8,-8,35],[14,0,25,12,-1,34],[10,8,24,8,10,34]];
+    for(let i=0;i<6;i++)for(const [name,position] of [[`stalk${i}`,old[i].slice(0,3)],[`stalk${i}Tip`,old[i].slice(3)]]){
+      if(JSON.stringify(m.joints[name]?.position)===JSON.stringify(position))m.joints[name]=structuredClone(defaults.joints[name]);
+    }
+    for(const name of ['stalk6','stalk6Tip'])if(!m.joints[name]){
+      m.joints[name]=structuredClone(defaults.joints[name]);
+      for(const [action,clip] of Object.entries(m.clips||{}))for(const key of clip.keys||[]){const source=defaults.clips[action]?.keys.find(k=>k.frame===key.frame);if(source&&!key.joints[name])key.joints[name]=structuredClone(source.joints[name]);}
+    }
+    m.artRevision=2;
+  }
   if(kind==='golem'&&m?.clips){
     const defaults=defaultCreatureMotion(kind);
     for(const action of ['grab','throw'])if(!m.clips[action])m.clips[action]=structuredClone(defaults.clips[action]);
@@ -601,13 +619,15 @@ export function upgradeCreatureMotion(kind, model) {
       const position = m.joints[name]?.position;
       if (Array.isArray(position))
         m.joints[name].position = position.map(
-          (v, i) => v - oldPosition[i] + skeletons.dragon[name][i + 1],
+          (v, i) => v - oldPosition[i] + defaultCreatureMotion(kind).joints[name].position[i],
         );
     }
     if (m.shape?.bodyWidth === 10) m.shape.bodyWidth = 8.5;
     if (m.shape?.limbWidth === 3) m.shape.limbWidth = 4.5;
     m.artRevision = 2;
+    m.motionDonorRevision=1;
   }
+  if(kind==='dragon'&&m.clips){const def=defaultCreatureMotion(kind);for(const[name,clip]of Object.entries(def.clips))m.clips[name]??=structuredClone(clip);}
   return m;
 }
 export function validateCreatureMotion(kind, m) {
@@ -761,6 +781,8 @@ export function drawCreature(
   model = creatureMotions[actor.kind || actor.sprite],
   suppliedPose = null,
 ) {
+  // The old lesser rig remains readable for save compatibility; active artwork uses the shared current rig.
+  if(model.type==='lesser_beholder')return drawCreature(c,actor,time,creatureMotions.beholder);
   const kind = model.type,
     d = facingIndex(actor.faceX, actor.faceY),
     pose =
@@ -770,6 +792,7 @@ export function drawCreature(
         creatureAction(kind, actor),
         creatureFrame(kind, actor, time, model),
       );
+  if(kind==='dragon'&&model.motionDonorRevision===1)return drawDragonPixels(c,actor,model,pose,d);
   if (kind === "beholder" || kind === "lesser_beholder")
     return drawBeholder(c, actor, time, model, pose, d);
   if(kind==='monkey'&&actor.jumpHeight>0&&!suppliedPose){for(const name of ['footL','footR','kneeL','kneeR'])pose[name]=[pose[name][0],pose[name][1]+3,pose[name][2]+5];for(const name of ['handL','handR'])pose[name]=[pose[name][0],pose[name][1],pose[name][2]+8];}
@@ -1247,21 +1270,52 @@ function drawBeholder(c, actor, time, model, pose, d) {
   const p = Object.fromEntries(Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]));
   const pal = {...model.palette, ...(actor.beholderPalette || {})};
   const s = model.shape || {}, action = creatureAction(model.type, actor);
-  const eye = p.eye, body = p.body;
+  const body=p.body,eye=p.eye;
+  if(model.type==='beholder'){
+    // Near stalks turn across the face; they do not stay pinned to the silhouette.
+    // Authored joint/pose deltas still move each editable root and eye handle.
+    const fronts=[[-8,-6,-15,-19],[-11,0,-23,-1],[-8,7,-20,12],[8,-6,15,-19],[11,0,23,-1],[8,7,20,12],[0,-10,0,-25]];
+    const diagonals=[[-10,-5,-20,-15],[-11,1,-25,1],[-7,8,-19,14],[6,-7,8,-17],[11,-1,12,0],[7,7,10,16],[-1,-10,-3,-26]];
+    const profiles=[[-7,-8,-16,-20],[-11,-1,-24,-4],[-7,7,-18,13],[-2,-8,-6,-18],[-7,0,-10,0],[-3,8,-6,17],[0,-11,0,-27]];
+    const rearDiagonals=[[-9,-6,-18,-19],[-11,1,-24,2],[-7,7,-17,15],[-8,-7,-10,-11],[-11,0,-13,2],[-7,8,-11,13],[0,-11,2,-26]];
+    const rear=[[-8,-7,-17,-20],[-11,0,-24,-2],[-8,7,-20,13],[8,-7,17,-20],[11,0,24,-2],[8,7,20,13],[0,-11,0,-26]];
+    const view=d===0?fronts:d===4?rear:d===2||d===6?profiles:d===1||d===7?diagonals:rearDiagonals;
+    for(let i=0;i<7;i++)for(const [suffix,start]of [['',0],['Tip',2]]){
+      const name=`stalk${i}${suffix}`,rest=skeletons.beholder[name];if(!p[name]||!rest)continue;
+      const base=projectPoint(rest.slice(1),d),mirror=d>=5?-1:1;
+      p[name]={...p[name],x:body.x+view[i][start]*mirror+p[name].x-base.x,y:body.y+view[i][start+1]+p[name].y-base.y};
+    }
+  }
   const beam = action === "attack" && actor.hp > 0;
   const radius = model.type === "lesser_beholder" ? 9 : 12;
-  const limbEye = (base, tip, scale = 1, index = 0) => {
-    limb(c, p[base], p[tip], 3.5 * scale, pal.outline);
-    limb(c, p[base], p[tip], 2.2 * scale, pal.shade);
-    ellipse(c, p[tip].x, p[tip].y, 3.2 * scale, 3.2 * scale, pal.outline);
-    ellipse(c, p[tip].x, p[tip].y, 2.2 * scale, 2.2 * scale, pal.face);
+  const limbEye = (base, tip, scale = 1, index = 0, part = 'all') => {
+    // Curved, tapered flesh stems; endpoints remain the editable rig handles.
+    const root=p[base],end=p[tip],dx=end.x-root.x,dy=end.y-root.y,length=Math.hypot(dx,dy)||1;
+    const bend=(index%2?-1:1)*(3+Math.sin(time*.9+index*1.7)*.65)*scale;
+    const nx=-dy/length,ny=dx/length;
+    if(model.type==='lesser_beholder'&&part!=='eye'){limb(c,root,end,3.5*scale,pal.outline);limb(c,root,end,2.2*scale,pal.shade);}
+    else if(part!=='eye')for(const [color,width] of [[pal.outline,3.6],[pal.body,2.2]]){
+      c.fillStyle=color;
+      for(let j=0;j<=24;j++){
+        const t=j/24,curve=Math.sin(t*Math.PI)*(index%3===0?Math.cos(t*Math.PI):1)*bend;
+        const x=root.x+dx*t+nx*curve,y=root.y+dy*t+ny*curve;
+        const size=(width*(1-t*.3))*scale;
+        c.fillRect(Math.round(x-size/2),Math.round(y-size/2),Math.max(1,Math.ceil(size)),Math.max(1,Math.ceil(size)));
+      }
+    }
+    if(part==='stem')return;
+    const bulb=model.type==='lesser_beholder'?3.2:4.3,inner=model.type==='lesser_beholder'?2.2:3.2;
+    ellipse(c,p[tip].x,p[tip].y,bulb*scale,bulb*scale,pal.outline);
+    const back=model.type==='beholder'&&d>=3&&d<=5;
+    ellipse(c,p[tip].x,p[tip].y,inner*scale,inner*scale,back?pal.body:pal.face);
+    if(back){ellipse(c,p[tip].x-scale,p[tip].y-scale,1.6*scale,1.2*scale,pal.light);return;}
     const idle=action==='idle',phase=time*.78+index*2.13;
     const blink=idle?Math.pow(Math.max(0,Math.cos(phase)),34):0;
     if(blink>.22){
       c.fillStyle=pal.face;c.fillRect(Math.round(p[tip].x-2*scale),Math.round(p[tip].y-.7*scale),Math.ceil(4*scale),Math.max(1,Math.ceil(1.4*scale)));
       c.fillStyle=pal.outline;c.fillRect(Math.round(p[tip].x-2*scale),Math.round(p[tip].y-.7*scale),Math.ceil(4*scale),1);
     }else{
-      const gx=idle?Math.round(Math.sin(time*.63+index*1.71)*scale):0;
+      const gx=(model.type==='beholder'?(d===1||d===2?-1:d===6||d===7?1:0)*scale:0)+(idle?Math.round(Math.sin(time*.63+index*1.71)*scale):0);
       const gy=idle?Math.round(Math.cos(time*.51+index*2.27)*scale*.55):0;
       c.fillStyle=pal.outline;
       c.fillRect(Math.round(p[tip].x-.7*scale+gx),Math.round(p[tip].y-1.7*scale+gy),Math.max(1,Math.ceil(1.5*scale)),Math.ceil(3.5*scale));
@@ -1269,12 +1323,39 @@ function drawBeholder(c, actor, time, model, pose, d) {
       c.fillRect(Math.round(p[tip].x-1.5*scale+gx),Math.round(p[tip].y-1.5*scale+gy),Math.max(1,Math.ceil(scale)),Math.max(1,Math.ceil(scale)));
     }
   };
-  for (let i = 0; i < 6; i++) limbEye(`stalk${i}`, `stalk${i}Tip`, model.type === "lesser_beholder" ? .8 : 1,i);
-  ellipse(c, body.x, body.y + 2, radius + 2, radius * .86 + 2, pal.outline);
-  ellipse(c, body.x, body.y, radius, radius * .86, pal.body);
+  const queue=[],add=(depth,fn,id,bones)=>queue.push({depth,fn,id,bones});
+  const faceVisible=model.type==='lesser_beholder'||!(d>=3&&d<=5),eyeWidth=model.type==='lesser_beholder'?7:d===2||d===6?2.8:d===1||d===7?5.6:7;
+  const ray=()=>{
+    const fx=actor.faceX??0,fy=actor.faceY??1,len=Math.hypot(fx,fy)||1,dx=fx/len,dy=fy/len;
+    c.save();c.globalAlpha=.8;c.strokeStyle=pal.detail;c.lineWidth=5;
+    c.beginPath();c.moveTo(eye.x,eye.y);c.lineTo(eye.x+dx*58,eye.y+dy*58);c.stroke();
+    c.globalAlpha=1;c.strokeStyle='#c15cff';c.lineWidth=2;
+    c.beginPath();c.moveTo(eye.x,eye.y);c.lineTo(eye.x+dx*58,eye.y+dy*58);c.stroke();c.restore();
+  };
+  if(beam)add(body.depth+(faceVisible?100:-100),ray,'Eye ray',['eye']);
+  for(let i=0;i<7;i++){
+    const base=`stalk${i}`,tip=base+'Tip';if(!p[base]||!p[tip])continue;
+    const scale=model.type==='lesser_beholder'?.8:1;
+    // Profile/rear roots grow from the far crown, as in the authored turn
+    // reference. The orb masks their overlapping portions, including tips.
+    const behindOrb=model.type==='beholder'&&d>=2&&d<=6;
+    const depth=(p[base].depth+p[tip].depth)/2,eyeDepth=p[tip].depth;
+    if(model.type==='lesser_beholder'){add(depth,()=>limbEye(base,tip,scale,i),`Stalk ${i}`,[base,tip]);continue;}
+    const far=behindOrb||depth<body.depth;
+    // Bulbs cap the stems rather than being painted underneath their own tips.
+    add(body.depth+(far?-60:10)+depth*.1,()=>limbEye(base,tip,scale,i,'stem'),`Stalk ${i} / stem`,[base,tip]);
+    add(body.depth+(far?-20:30)+eyeDepth*.1,()=>limbEye(base,tip,scale,i,'eye'),`Stalk ${i} / eye`,[tip]);
+  }
+  add(body.depth,()=>{
+  const bodyY=model.type==='lesser_beholder'?radius*.86:radius;
+  ellipse(c,body.x,body.y+(model.type==='lesser_beholder'?2:0),radius+2,bodyY+2,pal.outline);
+  ellipse(c,body.x,body.y,radius,bodyY,pal.body);
   ellipse(c, body.x - 2, body.y - 3, radius * .7, radius * .38, pal.light);
-  ellipse(c, eye.x, eye.y, 7, 7, pal.outline);
-  ellipse(c, eye.x, eye.y, 5.8, 5.8, pal.face);
+  },'Orb',['body']);
+  add(body.depth+50,()=>{
+  if(faceVisible){
+  ellipse(c,eye.x,eye.y,eyeWidth,7,pal.outline);
+  ellipse(c,eye.x,eye.y,Math.max(1.6,eyeWidth-1.2),5.8,pal.face);
   const centralPhase=time*.78+9.1,centralBlink=action==='idle'?Math.pow(Math.max(0,Math.cos(centralPhase)),34):0;
   if(centralBlink>.22){c.fillStyle=pal.face;c.fillRect(Math.round(eye.x-4),Math.round(eye.y-1),8,2);c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x-4),Math.round(eye.y-1),8,1);}
   else{
@@ -1282,18 +1363,16 @@ function drawBeholder(c, actor, time, model, pose, d) {
     c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x-1.5+gx),Math.round(eye.y-4+gy),3,8);
     c.fillStyle=pal.detail;c.fillRect(Math.round(eye.x-2.5+gx),Math.round(eye.y-2.5+gy),2,2);
   }
+  }
+  if(faceVisible){
   c.fillStyle = pal.outline;
-  c.beginPath(); c.arc(body.x, body.y + 7, 5, 0, Math.PI); c.fill();
+  c.beginPath(); c.arc(body.x+(model.type==='beholder'?(d===2?-6:d===6?6:0):0), body.y + 7, model.type==='beholder'&&(d===2||d===6)?3:5, 0, Math.PI); c.fill();
   c.fillStyle = pal.detail;
   c.fillRect(Math.round(body.x - 3), Math.round(body.y + 7), 2, 2);
   c.fillRect(Math.round(body.x + 1), Math.round(body.y + 7), 2, 2);
-  if (beam) {
-    const dx = actor.faceX || 1, dy = actor.faceY || 0;
-    c.save(); c.globalAlpha = .8; c.strokeStyle = pal.detail; c.lineWidth = 5;
-    c.beginPath(); c.moveTo(eye.x, eye.y); c.lineTo(eye.x + dx * 58, eye.y + dy * 58); c.stroke();
-    c.globalAlpha = 1; c.strokeStyle = "#c15cff"; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(eye.x, eye.y); c.lineTo(eye.x + dx * 58, eye.y + dy * 58); c.stroke(); c.restore();
   }
+  },'Main eye and mouth',['eye','body']);
+  paintLayers(queue,model,d,c,p,true);
   if (action === "hurt") {
     c.strokeStyle = "#fff0c4"; c.lineWidth = 2;
     c.beginPath(); c.moveTo(body.x - 7, body.y - 7); c.lineTo(body.x + 7, body.y + 7); c.moveTo(body.x + 7, body.y - 7); c.lineTo(body.x - 7, body.y + 7); c.stroke();

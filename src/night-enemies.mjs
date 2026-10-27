@@ -1,4 +1,5 @@
 import {defeatTrialMember} from './expedition-trials.mjs';
+import {tickProvokedFauna,drawProvokedFaunaTells} from './provoked-fauna.mjs';
 import { clearShot, navigateEnemy } from './navigation.mjs';
 import {isCharmed} from './succubus-charm.mjs';
 import * as items from './items.mjs';
@@ -27,8 +28,16 @@ const specs = [
   ['elephant','Heavy footsteps',1,260,44,24],
   ['zebra','Stripes in motion',3,65,110,9],
   ['pelican','A low sweep',2,55,85,10],
+  ['fox','Copper tails in the undergrowth',2,48,92,9],
+  ['squashling','The pumpkins have teeth',1,72,48,13],
+  ['scorpion_boss','The dune matriarch',5,420,46,24],
+  ['werewolf','The pack beneath the moon',3,115,85,17],
 ];
 const warnings = {
+  scorpion_boss:['A crowned tail rises from the sand.\nSmall pincers answer its command.','The matriarch leads four desert scorpions. Leave the marked tail-strike circle, avoid the front pincers and attack during recovery.'],
+  werewolf:['Claws wake where the shadows lie.\nThree rough voices split the sky.','Werewolves howl before leaping toward a locked position. Step aside, then strike while they recover.'],
+  squashling:['A lantern grins beneath the moon.\nThe tangled roots will follow soon.','Some cemetery pumpkins awaken when approached. Dodge their warned vine lashes, then strike while they recover.'],
+  fox:['Copper tails weave through the fern.\nSmall sharp teeth wait their turn.','Foxes warn before biting, then pause to recover. Wild forest foxes stay peaceful until provoked.'],
   night_stalker: ['The leaves lie still. The footsteps creep.\nSomething hungry will not sleep.', 'Listen for footsteps. Light reveals the stalker and drives it back; dodge its warned pounce.'],
   carrion_pack: ['A wounded trail, a hungry ring.\nStay close to those still breathing.', 'The pack follows wounded explorers. Guard anyone helping a downed friend.'],
   burrower: ['The earth grows restless underfoot.\nA hungry mouth comes through the root.', 'Follow the moving dirt trail. Step clear of the emergence ring, then strike while it is exposed.'],
@@ -38,9 +47,10 @@ const warnings = {
   hunter: ['A measured step, a rifle gleam.\nTwo minutes end the hunter\'s scheme.', 'Survive 120 seconds or defeat the hunter. Dodge his locked aim line and watch for traps.'],
 };
 export const NIGHT_EVENTS = specs.map(([kind,name,count,hp,speed,damage]) => ({
-  kind,name,type:'enemy',count,hp,speed,damage,weight:['elephant','zebra','pelican'].includes(kind)?0:kind==='hunter'?1:3,
-  ...(kind==='hunter'?{}:{environments:kind==='burrower'?['forest','temple','desert']:kind==='night_stalker'?['forest','temple','house']:['forest','temple']}),
+  kind,name,type:'enemy',count,hp,speed,damage,weight:['elephant','zebra','pelican','squashling'].includes(kind)?0:kind==='hunter'?1:3,
+  ...(kind==='hunter'?{}:{environments:kind==='scorpion_boss'?['desert']:kind==='werewolf'?['forest','temple','house','beach','graveyard','swamp','caverns','shadow']:kind==='squashling'?['graveyard']:kind==='burrower'?['forest','temple','desert']:kind==='night_stalker'?['forest','temple','house']:['forest','temple']}),
   times:['night_stalker','carrion_pack','burrower','mimic_vine'].includes(kind)?['night','dusk']:['day','dusk','night','dawn'],
+  ...(kind==='scorpion_boss'?{role:'boss',squad:['scorpion_boss','scorpion','scorpion','scorpion','scorpion'],squadStats:{scorpion:{hp:34,speed:38,damage:10}}}:{}),
   ...(kind==='hunter'?{duration:120,objective:'survive-or-kill'}:{}),
   verse:warnings[kind]?.[0] || 'The wild wakes beneath the sky.\nStand aside and let it by.',
   tip:warnings[kind]?.[1] || 'Stand clear of the stampede. Animals retaliate only if provoked.',
@@ -89,7 +99,7 @@ function trail(e,dt) {
   if(n.trailTimer<=0){n.trail.push({x:e.x,y:e.y,life:1.3});n.trailTimer=.16;}
 }
 function windup(e,p,seconds,phase='windup') {
-  const n=brain(e);face(e,p);n.phase=phase;n.timer=seconds;n.aim={x:p.x,y:p.y,room:p.room||null};n.targetId=p.id;
+  const n=brain(e);face(e,p);n.phase=phase;n.timer=seconds;n.duration=seconds;n.aim={x:p.x,y:p.y,room:p.room||null};n.targetId=p.id;
   e.state='windup';e.attack=seconds;
 }
 function melee(g,e,p,dt,{range=42,warning=.6,recovery=1,speed=e.speed||60}={}) {
@@ -160,6 +170,7 @@ function stepNightEnemy(g,e,target,dt) {
   if(!active(g,dt))return true;
   if(e.state==='stampede'&&!e.aggro)return true; // Hazard system owns peaceful runners.
   const n=brain(e);e.moving=false;
+  if(e.kind==='squashling'){if(e.pumpkinAwaken>0){e.pumpkinAwaken=Math.max(0,e.pumpkinAwaken-dt);e.animationAction='awaken';e.animationProgress=1-e.pumpkinAwaken/.85;return true;}e.animationAction=null;delete e.animationProgress;}
   if(e.state==='snared') {e.timer-=dt;if(e.timer<=0)e.hp=0;if(e.hp<=0&&e.kind==='hunter'){n.objective??={elapsed:0,status:'active'};completeHunter(g,e,'killed');}return true;}
   const trap=(g.traps||[]).find(t=>t.life>0&&sameRoom(e,t)&&distance(e,t)<30&&visible(g,e,t));
   if(trap&&e.hp>0){
@@ -177,6 +188,40 @@ function stepNightEnemy(g,e,target,dt) {
   if(e.kind==='hunter') {hunter(g,e,target,dt);return true;}
   if(e.hp<=0){if(n.captiveId!=null)release(e);return true;}
   let p=valid(e,target)?target:null;
+  if(e.kind==='werewolf'){
+    const enraged=e.hp<e.maxHp*.35;
+    if(!n.awoke){n.awoke=true;n.phase='howl';n.timer=n.duration=.9;return true;}
+    if(n.phase==='howl'){if(n.timer<=0)n.phase='idle';return true;}
+    if(n.phase==='windup'){
+      if(!p||p.id!==n.targetId){n.phase='recover';n.timer=1;e.jumpHeight=0;return true;}
+      if(n.timer<=0){n.phase='pounce';n.timer=n.duration=.42;}return true;
+    }
+    if(n.phase==='pounce'){
+      if(n.aim)move(g,e,n.aim,dt,225);e.jumpHeight=Math.max(0,Math.sin((1-n.timer/.42)*Math.PI)*12);
+      if(p&&distance(e,p)<38&&damage(g,p,e,e.damage||17)){n.phase='recover';n.timer=n.duration=1.2;e.jumpHeight=0;}
+      else if(n.timer<=0){n.phase='recover';n.timer=n.duration=1.2;e.jumpHeight=0;}return true;
+    }
+    if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';return true;}
+    if(p&&enabled(e,'melee')&&distance(e,p)<150&&visible(g,e,p))windup(e,p,enraged?.55:.8);
+    else if(p)move(g,e,p,dt,enraged?105:85);return true;
+  }
+  if(e.kind==='scorpion_boss'){
+    e.boss=true;const enraged=e.hp<e.maxHp*.5;
+    if(n.phase==='windup'){
+      if(!p||p.id!==n.targetId){n.phase='recover';n.timer=1;return true;}
+      if(n.timer<=0){
+        const sting=n.strike==='sting',point=n.aim||e;
+        for(const q of g.players||[]){if(!valid(e,q)||(q.jumpHeight||0)>16||!visible(g,e,q))continue;
+          const d=distance(e,q)||1,inside=sting?distance(q,point)<34&&d<150:d<76&&((q.x-e.x)*e.faceX+(q.y-e.y)*e.faceY)/d>.35;
+          if(inside&&damage(g,q,e,e.damage||24)&&sting){const resist=Math.max(0,1-stat(q,'poisonResist'));q.poison=Math.max(q.poison||0,(enraged?5:4)*resist);q.poisonDamage=2;q.poisonTick=1;}
+        }
+        g.effects?.push({x:point.x,y:point.y,radius:sting?32:20,color:sting?'#a4bc5c':'#d9b77c',life:.35});n.phase='recover';n.timer=n.duration=enraged?.9:1.4;e.attack=.28;
+      }return true;
+    }
+    if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';return true;}
+    if(p&&enabled(e,'melee')&&distance(e,p)<125&&visible(g,e,p)){n.strike=(n.strikeCount=(n.strikeCount||0)+1)%2?'sting':'pincer';if(n.strike==='pincer'&&distance(e,p)>70)move(g,e,p,dt,enraged?64:46);else windup(e,p,n.strike==='sting'?(enraged?.7:1):.65);}
+    else if(p)move(g,e,p,dt,enraged?64:46);return true;
+  }
   if(e.kind==='carrion_pack') {
     p=(g.players||[]).filter(q=>!q.room&&sameRoom(e,q)).sort((a,b)=>
       (a.hp/Math.max(1,a.maxHp||100))-(b.hp/Math.max(1,b.maxHp||100))||distance(e,a)-distance(e,b))[0];
@@ -252,6 +297,13 @@ function stepNightEnemy(g,e,target,dt) {
     else if(p&&distance(e,p)<220&&visible(g,e,p))move(g,e,p,dt,35);
     e.opacity=nightEnemyOpacity(g,e);return true;
   }
+  if(e.kind==='fox'&&e.wildlife&&!e.aggro&&e.hp>=n.lastHp){
+    e.homeX??=e.x;e.homeY??=e.y;n.wanderAge=(n.wanderAge||0)-dt;
+    if(n.wanderAge<=0){const angle=(g.time||0)*.37+e.id*2.4;n.wander={x:e.homeX+Math.cos(angle)*65,y:e.homeY+Math.sin(angle)*50};n.wanderAge=5;}
+    if(n.wanderAge>2&&n.wander)move(g,e,n.wander,dt,26);n.lastHp=e.hp;return true;
+  }
+  if(e.kind==='fox'&&(!e.wildlife||e.aggro||e.hp<n.lastHp)){e.aggro=true;n.lastHp=e.hp;melee(g,e,p,dt,{range:32,warning:.6,recovery:1.1,speed:92});return true;}
+  if(e.kind==='squashling'){melee(g,e,p,dt,{range:58,warning:.7,recovery:1.1,speed:48});return true;}
   // Wildlife stays passive until provoked; zebra flees and pelican swoops.
   if(!e.aggro&&e.hp>=n.lastHp){n.lastHp=e.hp;return true;}
   e.aggro=true;n.lastHp=e.hp;
@@ -262,6 +314,7 @@ function stepNightEnemy(g,e,target,dt) {
 
 // Match night-rigs.mjs's state selector without overriding death/hit clips.
 export function tickNightEnemy(g,e,target,dt) {
+  if(tickProvokedFauna(g,e,target,dt))return true;
   const handled=stepNightEnemy(g,e,target,dt);
   if(!handled||!active(g,dt)||e.state==='snared'||(e.state==='stampede'&&!e.aggro)||e.hp<=0||!e.night)return handled;
   const n=e.night;
@@ -347,9 +400,14 @@ export function nightEnemyOpacity(g,e) {
   return ['windup','pounce','recover'].includes(e.night?.phase)||e.flash>0?1:light<.35?.09:.8;
 }
 export function drawNightEnemyEffects(ctx,g) {
+  drawProvokedFaunaTells(ctx,g);
   ctx.save();
   for(const e of g.enemies||[]){
     if(e.hp<=0||e.room)continue;const n=e.night;if(!n)continue;
+    if(n.phase==='windup'&&n.aim&&['werewolf','scorpion_boss'].includes(e.kind)){
+      ctx.strokeStyle=e.kind==='scorpion_boss'&&n.strike==='sting'?'#c2d475':'#e9ad7e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(n.aim.x,n.aim.y);ctx.stroke();
+      ctx.beginPath();ctx.arc(n.aim.x,n.aim.y,e.kind==='scorpion_boss'?34:22,0,Math.PI*2);ctx.stroke();
+    }
     for(const t of n.trail||[]){ctx.fillStyle=`rgba(195,177,133,${Math.max(0,t.life/2)})`;ctx.fillRect(t.x-2,t.y-2,4,3);}
     if(['windup','emerge','grab','barbs','aim'].includes(n.phase)){
       ctx.strokeStyle=n.phase==='aim'?'#ff6156':'#efcf78';ctx.lineWidth=2;ctx.beginPath();

@@ -20,6 +20,7 @@ test('Nineteen hairstyles have distinct authored silhouettes and preserve legacy
 test('Close-up previews frame the head using integer pixel scaling',()=>{
  const a=drawCreationPreview(raster(),DEFAULT_APPEARANCE,{height:180});
  for(const mode of ['face','hair']){const b=drawCreationPreview(raster(),DEFAULT_APPEARANCE,{height:180,mode});assert.ok(b.scale>a.scale);assert.ok(Math.abs(b.headY-90)<10);assert.equal(b.scale,Math.round(b.scale));}
+ const hair=drawCreationPreview(raster(),DEFAULT_APPEARANCE,{width:360,height:380,mode:'hair'}),face=drawCreationPreview(raster(),DEFAULT_APPEARANCE,{width:360,height:380,mode:'face'});assert.ok(face.scale>hair.scale,'Face details frame closer than hair in the main creator stage');
 });
 test('Creator portrait background is clean and stripe-free',()=>{
  const c=raster();drawCreationPreview(c,DEFAULT_APPEARANCE,{width:220,height:180,mode:'face'});

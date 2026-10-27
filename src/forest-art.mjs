@@ -1,6 +1,7 @@
 import {waterAt} from './environment.mjs';
-import {drawJungleFern} from './fern-art.mjs';
-import {forestHash as hash, forestNoise as noise, forestWind, clearingDistance, routeDistance} from './forest-landscape.mjs';
+import {drawJungleFern,fernAccentGroup} from './fern-art.mjs';
+import {vegetationWindStrength} from './vegetation-motion.mjs';
+import {forestHash as hash, forestNoise as noise, forestWind, clearingDistance, routeDistance,forestPavingAt} from './forest-landscape.mjs';
 
 const rect = (c, x, y, w, h, color) => {
   c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h));
@@ -124,9 +125,9 @@ export function drawLandscapeCover(c, g, visible,shaderGrass=false) {
     if(shaderGrass&&p.kind==='grass')continue;
     if (!visible(p) || (g.bloom < 3 && Math.hypot(p.x - 800, p.y - 800) > g.bloom * 430)) continue;
     if (p.kind === 'fern') {
-        drawJungleFern(c,p,g.time);
+        if(fernAccentGroup(plan.cover).has(p)&&!forestPavingAt(plan,p.x,p.y))drawJungleFern(c,p,g.time,vegetationWindStrength(g));
     } else {
-      const wind = Math.round(forestWind(p.x, p.y, g.time) * 2);
+      const wind = Math.round(forestWind(p.x, p.y, g.time,vegetationWindStrength(g)) * 2);
       const shade = noise(p.x / 235, p.y / 235, plan.seed) < .45;
       for (let i = 0; i < 3; i++) {
         const height = 3 + hash(i, p.seed) * 7;

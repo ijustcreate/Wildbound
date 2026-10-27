@@ -48,13 +48,13 @@ export function drawBoardScene(c,game,time,options,trail,point){
   else if(background?.complete&&background.naturalWidth){c.save();c.filter=`brightness(${settings.boardLight})`;c.drawImage(background,-140,-96,280,192);c.restore();}
   else if(boardArtBiome(game)==='graveyard')drawCemeteryBoard(c,trail);
   else{c.strokeStyle='#d5c49a';c.lineWidth=10;c.beginPath();trail.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.stroke();}
-  drawEntryStone(c);
   const resolved=game.roll?.resolved&&game.event;
   const center=game.roll?.centerLanding||(!game.roll&&game.players?.some(p=>p.progress>=48));
   const title=options.previewTitle??(center?'WILDBOUND':resolved?game.event.name:game.event&&game.eventTime>0?game.event.name:'');
   const warning=options.previewWarning??(center?'':resolved?game.event.tip:'');
   const age=options.previewAge??(game.roll?.resolved?Math.max(0,game.roll.elapsed-game.roll.landingAt):center?10:(game.eventTime||0));
   drawBoardMagic(c,time,settings,{title,warning,age});
+  drawEntryStone(c);
   if(settings.showPath){c.font='3px system-ui';c.textAlign='center';for(const [i,p]of trail.entries()){c.fillStyle='#0c211ccc';c.fillRect(p.x-2,p.y-2,4,4);c.fillStyle='#ffffff';c.fillText(String(i),p.x,p.y+1);}}
   const pawns=(game.players||[]).map((p,i)=>{const progress=p.boardProgress??p.progress??0,v=Math.max(0,Math.min(48,progress)),q=point(v),next=point(Math.min(48,v+.1)),prev=point(Math.max(0,v-.1));
     const occupants=game.players.filter(other=>Math.abs((other.boardProgress??other.progress??0)-v)<1e-6),crowded=Number.isInteger(v)&&occupants.length>1,slot=occupants.indexOf(p);

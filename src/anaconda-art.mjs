@@ -45,7 +45,7 @@ export function drawAnacondaShadow(ctx,e,index){
 export function drawAnacondaSegment(ctx,e,index,time=0){
   const points=anacondaBody(e).segments,p=points[index];if(!p)return;
   const next=points[Math.min(index+1,points.length-1)],previous=points[Math.max(0,index-1)];
-  const angle=index===0?Math.atan2(e.faceY||0,e.faceX||1):Math.atan2(previous.y-next.y,previous.x-next.x);
+  const angle=index===0?Math.atan2(e.faceY??0,e.faceX??1):Math.atan2(previous.y-next.y,previous.x-next.x);
   const direction=(Math.round(angle/(Math.PI/4))+8)%8,head=index===0,mouth=head&&['windup','bite'].includes(e.state);
   const rise=e.hp>0&&head?(e.state==='windup'?9:e.state==='bite'?5:2):0;
   ctx.save();ctx.globalAlpha*=alpha(e);ctx.imageSmoothingEnabled=false;

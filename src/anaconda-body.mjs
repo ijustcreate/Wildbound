@@ -30,7 +30,7 @@ function resample(body) {
 }
 
 export function initializeAnaconda(e, game = null) {
-  const angle = Math.atan2(e.faceY || 0, e.faceX || 1) + Math.PI;
+  const angle = Math.atan2(e.faceY ?? 0, e.faceX ?? 1) + Math.PI;
   const body = {version:1, trail:[{x:e.x,y:e.y}], segments:[], distance:0};
   let direction = angle;
   // Seed a curved, collision-aware tail, rather than stretching it through trees.
@@ -39,7 +39,7 @@ export function initializeAnaconda(e, game = null) {
     let next=null;
     for (const turn of [0,.28,-.28,.6,-.6,1,-1,1.6,-1.6,Math.PI]) {
       const a=desired+turn, x=last.x+Math.cos(a)*SAMPLE, y=last.y+Math.sin(a)*SAMPLE;
-      if(x<24||x>1576||y<24||y>1576||game?.blocked(x,y,ANACONDA_RADIUS,false,false,false,0,0,false,e))continue;
+      if(game?.mapMode!=='boundless'&&(x<24||x>1576||y<24||y>1576)||game?.blocked(x,y,ANACONDA_RADIUS,false,false,false,0,0,false,e))continue;
       next={x,y};direction=a;break;
     }
     body.trail.push(next||{...last});
@@ -52,7 +52,7 @@ export function anacondaBody(e, game = null) {
   if(valid.has(body))return body;
   if(body?.version!==1||!Array.isArray(body.trail)||body.trail.length<2)return initializeAnaconda(e,game);
   body.trail=body.trail.slice(0,ANACONDA_TRAIL_LIMIT);
-  if(!body.trail.every(p=>pointOK(p)&&p.x>=0&&p.x<=1600&&p.y>=0&&p.y<=1600)||Math.hypot(body.trail[0].x-e.x,body.trail[0].y-e.y)>120)return initializeAnaconda(e,game);
+  if(!body.trail.every(p=>pointOK(p)&&Math.abs(p.x-e.x)<=600&&Math.abs(p.y-e.y)<=600)||Math.hypot(body.trail[0].x-e.x,body.trail[0].y-e.y)>120)return initializeAnaconda(e,game);
   body.segments=[];body.distance=Number.isFinite(body.distance)?body.distance:0;
   resample(body);valid.add(body);return body;
 }

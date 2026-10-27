@@ -225,3 +225,26 @@ test('a flower fireball bounces, and mushrooms drift while flowers stay in place
  tv.released.add(mushroomSection);tv.camera=mushroomSection*448;tv.pickups();tv.powerups.get(`powerup:${mushroomSection}`).emerging=0;const mx=tv.powerups.get(`powerup:${mushroomSection}`).x;tv.step(.1,{});assert.ok(tv.powerups.get(`powerup:${mushroomSection}`).x>mx);
  if(flowerSection!==undefined){tv.released.add(flowerSection);tv.camera=flowerSection*448;tv.pickups();const flower=tv.powerups.get(`powerup:${flowerSection}`),fx=flower.x;tv.step(.1,{});assert.equal(flower.x,fx);}
 });
+
+
+test('sliding shells fall down real gaps and despawn below the television',()=>{
+ const tv=new LobbyTelevision(42);tv.join('one');const gap=tv.scene(0).gaps[0],x=gap*16-10;tv.camera=x-80;
+ Object.assign(tv.players.get('one'),{x:x-40,y:104,invulnerable:10});
+ const shell={x,y:111,w:14,h:9,vx:148,vy:0,alive:true,kind:'shell',safeTimer:0};tv.enemies.set('pit-shell',shell);
+ let fell=false;for(let i=0;i<90&&shell.alive;i++){tv.step(1/60,{});if(shell.y>120)fell=true;}
+ assert.ok(fell,'shell descends below ground over gap');assert.equal(shell.alive,false);assert.ok(shell.y>168);
+});
+
+test('underground rooms have authored masonry roofs, block stairs, safe seams and green pipes',()=>{
+ assert.ok(new Set(TV_CAVERN_SCENES.map(s=>s.name)).size===14);
+ for(const s of TV_CAVERN_SCENES){assert.ok(s.ceiling.length>12);assert.ok(s.gaps.every(c=>c>=6&&c<=21));assert.ok(s.pipes.length);}
+ const tv=new LobbyTelevision(42);tv.level=2;const blocks=tv.blocks(0,448);
+ assert.ok(blocks.some(b=>b.kind==='ceiling'));assert.ok(blocks.some(b=>b.kind==='hill'));assert.ok(blocks.some(b=>b.kind==='pipe'));
+ const brick=blocks.find(b=>b.kind==='brick');tv.breakBrick(brick);assert.ok(!tv.blocks(0,448).some(b=>b.key===brick.key));
+ assert.ok(tv.blockCache.size<=96);tv.level=1;assert.ok(!tv.blocks(0,448).some(b=>b.kind==='ceiling'));
+});
+
+test('two-player camera advances smoothly without reversing or snapping on input handoffs',()=>{
+ const tv=new LobbyTelevision(42);tv.join('one');tv.join('two');tv.spawnEnemies=()=>{};let last=0;
+ for(let i=0;i<160;i++){for(const [id,p]of tv.players)Object.assign(p,{x:tv.camera+(id==='one'?150:65)+i*.1,y:40,vy:0,invulnerable:10});tv.step(1/60,{one:{right:i%2===0},two:{right:i%2===1}});assert.ok(tv.camera>=last);assert.ok(tv.camera-last<9,'bounded camera displacement');last=tv.camera;}
+});

@@ -41,7 +41,7 @@ test('removing all combos falls back safely and malformed configs are rejected',
 });
 test('combo finisher gains reach and an attack press can buffer during recovery',()=>{
  const {g,p}=setup();p.equipment.hand1='sword';const e={id:999,kind:'lion',x:600,y:690,hp:1000,state:'hunt',faceX:0,faceY:1};g.enemies=[e];
- for(let i=0;i<3;i++){p.attack=0;g.time=i*.4;g.attack(p);}assert.equal(p.attackClip,'swipe_big');assert.ok(e.hp<1000);g.attack(p);assert.ok(p.queuedAttack);
+ for(let i=0;i<3;i++){p.attack=0;g.time=i*.4;g.attack(p);for(let tick=0;tick<10;tick++)g.update(.02,{});}assert.equal(p.attackClip,'swipe_big');assert.ok(e.hp<1000);g.attack(p);assert.ok(p.queuedAttack);
 });
 test('jump input is network-safe, lands, has a cooldown and cannot double jump',()=>{
  const a={hp:100};assert.equal(cleanInput({jump:true}).jump,true);assert.ok(startJump(a));assert.equal(startJump(a),false);for(let i=0;i<50;i++)tickJump(a,.02);assert.equal(a.jumpHeight,0);assert.ok(a.jumpCooldown>0);

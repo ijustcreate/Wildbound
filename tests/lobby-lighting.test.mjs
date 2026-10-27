@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {drawLobbyCeilingWash,drawLobbyCastShadow} from '../src/lobby-lighting.mjs';
+import {drawLobbyCeilingWash,drawLobbyCastShadow,lobbyFootContacts} from '../src/lobby-lighting.mjs';
 
 function context(){
   const calls={rects:[],polygons:0,ellipses:0,gradients:[]};
@@ -19,4 +19,12 @@ test('lobby cast shadows use short angular shapes rather than oval blobs',()=>{
   assert.equal(c.calls.polygons,2);
   assert.equal(c.calls.ellipses,0);
   assert.equal(c.calls.gradients.length,1);
+});
+
+test('standing foot contacts turn with the rig, follow elevated support and disappear during jumps',()=>{
+ const a={x:300,y:240,hp:100,equipment:{},faceX:0,faceY:1,animationAction:'idle'};
+ const front=lobbyFootContacts(a,0),side=lobbyFootContacts({...a,faceX:1,faceY:0},0);
+ assert.equal(front.length,2);assert.notDeepEqual(front,side);assert.ok(front.every(p=>Math.abs(p.y-a.y)<8));
+ const raised=lobbyFootContacts({...a,groundHeight:40},0);assert.deepEqual(raised,front.map(p=>({...p,y:p.y-40})));
+ assert.deepEqual(lobbyFootContacts({...a,jumpHeight:30},0),[]);assert.deepEqual(lobbyFootContacts({...a,wingHover:true},0),[]);
 });

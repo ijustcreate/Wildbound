@@ -1,4 +1,37 @@
 import {waterAt} from './environment.mjs';
+import {ensureSkeletonEquipment} from './skeleton-equipment.mjs';
+import {CONTROLLED_WATER_FIELDS} from './controlled-water.mjs';
+import {updateAnacondaBody} from './anaconda-body.mjs';
+import {creatureEgg} from './stationary-creatures.mjs';
+import {navigateEnemy} from './navigation.mjs';
+
+const heroFollowActors=new WeakMap();
+export function followControlledUnit(game,player,follower,dt){
+  const pet=player.controlPetPosition;
+  if(!pet)return;
+  pet.moving=false;pet.walking=false;pet.locomotionSpeed=0;
+  const elapsed=Math.max(0,Math.min(.1,dt||0));
+  if(!elapsed||game.paused)return;
+  let actor=heroFollowActors.get(pet);
+  if(!actor){actor={id:player.id,heroFollower:true,faction:'ally',allyOwner:player.id,speed:145};heroFollowActors.set(pet,actor);}
+  actor.x=pet.x;actor.y=pet.y;actor.hp=player.hp;actor.step=pet.step||0;
+  const distance=Math.hypot(follower.x-pet.x,follower.y-pet.y);
+  if(distance>80)actor.following=true;
+  if(distance<=56)actor.following=false;
+  if(actor.following){
+    const gap=Math.max(0,distance-56),ratio=gap/(distance||1);
+    const target={x:pet.x+(follower.x-pet.x)*ratio,y:pet.y+(follower.y-pet.y)*ratio};
+    if(game.moveActor&&game.blocked)navigateEnemy(game,actor,target,elapsed);
+    else{
+      const step=Math.min(gap,145*elapsed),dx=(follower.x-pet.x)/(distance||1)*step,dy=(follower.y-pet.y)/(distance||1)*step;
+      if(!game.blocked?.(actor.x+dx,actor.y+dy,8)){actor.x+=dx;actor.y+=dy;}
+    }
+    const dx=actor.x-pet.x,dy=actor.y-pet.y,travel=Math.hypot(dx,dy);
+    if(travel>.01){pet.x=actor.x;pet.y=actor.y;pet.faceX=dx/travel;pet.faceY=dy/travel;pet.moving=true;pet.walking=true;pet.step=(pet.step||0)+travel*.13;pet.locomotionSpeed=travel/elapsed;}
+  }
+  pet.swimming=waterAt(game,pet.x,pet.y)==='water';
+  pet.diveDepth=0;pet.breath=20;pet.breathVisible=0;pet.drownClock=0;pet.room=null;
+}
 
 const ownerKey = (p) => String(p.profileId || p.id);
 export const FELINE_CONTROL_KINDS = new Set(['lion','tiger','panther','white_lion','snow_leopard']);
@@ -10,7 +43,7 @@ export function ownedFollowers(game, player) {
     ...(game.ghosts || []).filter((a) => a.pet && a.owner === player.id),
     player.hunterPet,
     player.ritualPet,
-  ].filter((a) => a && a.hp > 0 && !a.defeated);
+  ].filter((a) => a && a.hp > 0 && !a.defeated && !creatureEgg(a));
   return [...new Map(candidates.map((a) => [a.id, a])).values()];
 }
 
@@ -31,17 +64,23 @@ function restoreMain(player, fallbackPosition = true) {
 export function controlledFollower(game, player) {
   if (!player.controlledFollowerId) return null;
   const follower = ownedFollowers(game, player).find((a) => a.id === player.controlledFollowerId);
-  if (follower) return follower;
+  if (follower) {
+    // Equip/drag/craft transactions can replace containers while this player
+    // carries the controlled unit's UI. Publish the committed containers back.
+    if(player.controlMainLoadout){follower.inventory=player.inventory;follower.equipment=player.equipment;follower.equipmentSockets=player.equipmentSockets;}
+    return follower;
+  }
   restoreMain(player);
   game.message?.(`${player.name}'s follower fell. Control returned to ${player.name}.`);
   return null;
 }
 
 function beginControl(player, follower) {
+  ensureSkeletonEquipment(follower);
   if (!player.controlMainPosition) {
     player.controlMainPosition = { x: player.x, y: player.y, room: player.room || null, roomX: player.roomX, roomY: player.roomY,
       jumpHeight: player.jumpHeight || 0, groundHeight: player.groundHeight || 0, jumpVelocity: player.jumpVelocity || 0,
-      jumpAge: player.jumpAge || 0, landTime: player.landTime || 0, swimming: !!player.swimming };
+      jumpAge: player.jumpAge || 0, landTime: player.landTime || 0, swimming: !!player.swimming,diveDepth:0,breath:player.breath??20,breathVisible:0,drownClock:0 };
     player.controlPetPosition = { ...player.controlMainPosition };
     player.controlMainLoadout = {
       inventory: player.inventory,
@@ -53,7 +92,7 @@ function beginControl(player, follower) {
   // Empty loadout slots keep the hero's equipment and backpack out of view.
   follower.inventory = Array.isArray(follower.inventory) ? follower.inventory : [];
   follower.equipment ||= {};
-  if (follower.villagerId === 'april' && (!follower.equipment.hand1 || follower.equipment.hand1 === 'sword'))
+  if (follower.villagerId === 'april' && !Object.hasOwn(follower.equipment,'hand1'))
     follower.equipment.hand1 = 'april_blade';
   follower.animationAction = null;
   follower.poseTime = null;
@@ -104,7 +143,7 @@ export function cycleFollowerControl(game, player) {
     return null;
   }
   beginControl(player, next);
-  game.message?.(`Controlling ${next.name || next.kind}. Your hero is following. RB cycles companions.`);
+  game.message?.(`Controlling ${next.name || next.kind}. Your hero is following. Right bumper cycles companions.`);
   return next;
 }
 
@@ -138,6 +177,7 @@ export function syncControlledFollower(game, player, dt = 1 / 60) {
     delete follower.roomY;
     follower.x = player.x;
     follower.y = player.y;
+    if(follower.kind==='anaconda')updateAnacondaBody(game,follower);
   }
   if (follower.villagerId === 'april') {
     // April's swim state follows her actual floor tile, not the displaced
@@ -149,32 +189,12 @@ export function syncControlledFollower(game, player, dt = 1 / 60) {
     player.swimming = inWater;
     if (!inWater) player.diveDepth = 0;
   } else follower.swimming = !!player.swimming;
+  for(const key of CONTROLLED_WATER_FIELDS)follower[key]=player[key];
 
-  // Keep the real hero visible as a little companion behind the controlled
-  // creature. This detached position is only for rendering until control ends.
+  // The real hero follows with its own footprint, route and grounded gait.
   if (!player.room) {
-    const pet = player.controlPetPosition || (player.controlPetPosition = { x: follower.x, y: follower.y });
-    const fx = follower.faceX || 0, fy = follower.faceY || 1;
-    // Keep the avatar at companion spacing, matching ordinary allied-creature
-    // following, instead of overlapping the controlled creature.
-    const tx = follower.x - fx * 56 + fy * 18, ty = follower.y - fy * 56 - fx * 18;
-    const dx = tx - pet.x, dy = ty - pet.y, d = Math.hypot(dx, dy);
-    const step = Math.min(d, Math.max(1, 145 * dt));
-    if (d > 0.01) {
-      pet.x += dx / d * step;
-      pet.y += dy / d * step;
-      pet.faceX = dx / d;
-      pet.faceY = dy / d;
-      pet.moving = step > 0.01;
-      pet.step = (pet.step || 0) + step * .13;
-    }
-    // The displaced player is still rendered as a swimming companion while
-    // following a swimmer; carry the water state into its presentation copy.
-    pet.swimming=!!player.swimming;
-    pet.diveDepth=player.diveDepth||0;
-    pet.breath=player.breath;
-    pet.breathVisible=player.breathVisible;
-    pet.room = null;
+    player.controlPetPosition ||= {x:follower.x,y:follower.y};
+    followControlledUnit(game,player,follower,dt);
   } else {
     player.controlPetPosition.room = player.room;
     player.controlPetPosition.roomX = player.roomX;

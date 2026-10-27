@@ -1,9 +1,11 @@
+import {openBoneCarver,boneCarverView,boneCarverAction,tickBoneCarver,drawBoneCarver} from './bone-carver.mjs';
 import {openVillagerDialogue,villagerDialogueView,villagerDialogueAction} from './villagers.mjs';
 import {getNpcQuestConfig} from './npc-quest-data.mjs';
 import {ITEMS,give} from './items.mjs';
 import {merchantSites} from './traveling-merchant.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {alanActor} from './alan-ally.mjs';
+import {openSantaDialogue,santaDialogueView,santaDialogueAction,drawSanta} from './christmas.mjs';
 
 const clone=x=>structuredClone(x),distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const key=p=>p.profileId||String(p.id);
@@ -69,10 +71,12 @@ export function spawnQuestNpc(g){
   g.reveal={x:npc.x,y:npc.y,life:4};g.message?.(`${config.name} has made camp. Approach and interact to talk.`);g.persist?.();return npc;
 }
 export function openNpcDialogue(g,p){
+  if(openBoneCarver(g,p))return true;
+  if(openSantaDialogue(g,p))return true;
   if(openVillagerDialogue(g,p))return true;
   if(p.ui||p.room||p.hp<=0||g.phase!=='play')return false;
   const alan=alanActor(g);
-  if(alan&&distance(alan,p)<=68){
+  if(alan&&!alan.dialogueResolved&&distance(alan,p)<=68){
     p.ui={shop:'npc-dialogue',ownerDevice:p.device,npcId:'alan',node:'story',index:0};
     p.consumeInput=true;p.charge=0;p.interactUsed=true;p.menuRepeat=0;g.onSound?.('ui',p);return true;
   }
@@ -92,6 +96,8 @@ const carried=(p,item)=>(p.inventory||[]).reduce((n,s)=>n+(s?.type===item?s.qty|
 function progress(p,a){return a.contract.objective.type==='collect'?Math.min(a.contract.objective.count,carried(p,a.contract.objective.item)):a.progress||0;}
 function choicesForNode(config,node){const def=config.dialogue.nodes[node];return (def?.choices||[]).map(c=>({label:c.label,action:'node:'+c.next}));}
 export function npcDialogueView(g,p){
+  if(p.ui?.npcId==='bone_carver')return boneCarverView(g,p);
+  if(p.ui?.npcId==='santa')return santaDialogueView(g,p);
   if(p.ui?.villagerId)return villagerDialogueView(g,p);
   if(p.ui?.npcId==='alan'){
     const alan=alanActor(g),following=alan?.allyMode==='follow',you=following&&alan.allyOwner===p.id;
@@ -101,7 +107,7 @@ export function npcDialogueView(g,p){
       choices:[{label:'Follow me, Alan.',action:'alan:follow',detail:'Alan follows this player and fights nearby monsters.'},
         {label:'Keep patrolling and protect the board.',action:'alan:patrol',detail:'Alan guards the board and hunts nearby monsters.'},
         {label:'Tell me how you survived.',action:'alan:story'},
-        {label:'Stay safe out there.',action:'close'}],stage:1,totalStages:1,notice:p.ui.notice||'',quest:null};
+        {label:'Stay safe out there.',action:'alan:leave'}],stage:1,totalStages:1,notice:p.ui.notice||'',quest:null};
   }
   if(String(p.ui?.npcId||'').startsWith('rescue:')){
     const npc=(g.questNpcs||[]).find(n=>n.npcId===p.ui.npcId),claimed=!!npc?.rewardClaimed;
@@ -130,19 +136,22 @@ export function npcDialogueView(g,p){
   if(!view.choices.length)view.choices=[{label:'Goodbye.',action:'close'}];
   return view;
 }
-function validTalk(g,p){const u=p.ui,npc=u?.npcId==='alan'?alanActor(g):(g.questNpcs||[]).find(n=>n.npcId===u?.npcId);return u?.shop==='npc-dialogue'&&u.ownerDevice===p.device&&g.players.filter(q=>q.device===p.device).length===1&&npc&&!npc.fled&&!p.room&&p.hp>0&&distance(npc,p)<=110;}
+function validTalk(g,p){const u=p.ui,npc=u?.npcId==='alan'?alanActor(g):(g.questNpcs||[]).find(n=>n.npcId===u?.npcId);return u?.shop==='npc-dialogue'&&u.ownerDevice===p.device&&g.players.filter(q=>q.device===p.device).length===1&&npc&&!(npc.kind==='alan'&&npc.dialogueResolved)&&!npc.fled&&!p.room&&p.hp>0&&distance(npc,p)<=110;}
 export function npcDialogueAction(g,p,action){
   if(villagerDialogueAction(g,p,action))return true;
   const u=p.ui;if(u?.shop!=='npc-dialogue')return false;
   if(!validTalk(g,p)){p.ui=null;p.consumeInput=true;return true;}
+  if(u.npcId==='bone_carver')return boneCarverAction(g,p,action);
+  if(u.npcId==='santa')return santaDialogueAction(g,p,action);
   if(u.npcId==='alan'){
     const view=npcDialogueView(g,p),alan=alanActor(g);
     if(['next','prev','down','up'].includes(action)){u.index=(Math.max(0,u.index||0)+(['next','down'].includes(action)?1:-1)+view.choices.length)%view.choices.length;return true;}
     if(action==='use')action=view.choices[u.index||0]?.action;
     if(action?.startsWith('choice:'))action=view.choices[Number(action.slice(7))]?.action;
-    if(action==='alan:follow'){alan.allyMode='follow';alan.allyOwner=p.id;u.node='status';u.notice=`Alan is following ${p.name}.`;g.message?.(u.notice);g.persist?.();}
-    else if(action==='alan:patrol'){alan.allyMode='patrol';alan.allyOwner=null;u.node='status';u.notice='Alan is patrolling the board.';g.message?.(u.notice);g.persist?.();}
+    if(action==='alan:follow'){alan.allyMode='follow';alan.allyOwner=p.id;alan.dialogueResolved=true;g.message?.(`Alan is following ${p.name}.`);p.ui=null;p.consumeInput=true;g.persist?.();}
+    else if(action==='alan:patrol'){alan.allyMode='patrol';alan.allyOwner=null;alan.dialogueResolved=true;g.message?.('Alan is patrolling the board.');p.ui=null;p.consumeInput=true;g.persist?.();}
     else if(action==='alan:story'){u.node='story';u.notice='';}
+    else if(action==='alan:leave'){alan.dialogueResolved=true;p.ui=null;p.consumeInput=true;g.persist?.();}
     else if(action==='close'){p.ui=null;p.consumeInput=true;}
     u.index=0;return true;
   }
@@ -202,6 +211,7 @@ export function recordNpcQuestKill(g,e){
 export function tickNpcQuests(g,dt){
   if(g.phase!=='play')return;
   for(const npc of g.questNpcs||[]){
+    if(npc.boneCarver){tickBoneCarver(g,npc,dt);continue;}
     const talk=g.players.find(p=>p.ui?.shop==='npc-dialogue'&&p.ui.npcId===npc.npcId);
     if(npc.rescueExplorer){
       if(talk){npc.moving=false;const d=distance(talk,npc)||1;npc.faceX=(talk.x-npc.x)/d;npc.faceY=(talk.y-npc.y)/d;continue;}
@@ -230,6 +240,8 @@ export function tickNpcQuests(g,dt){
   if(g.questSpawnTimer<=0){g.questSpawnTimer=1;for(const npc of g.questNpcs||[])for(const p of g.players)if(p.npcQuests?.[npc.npcId]?.active)establishObjective(g,p,npc);}
 }
 export function drawQuestNpc(c,g,npc,animator){
+  if(npc.boneCarver){drawBoneCarver(c,g,npc,animator);return;}
+  if(npc.santa){drawSanta(c,g,npc,animator);return;}
   if(npc.rescueExplorer){
     const actor={...npc,sprite:'player',equipment:npc.equipment||{},appearance:npc.appearance||DEFAULT_APPEARANCE,
       animationAction:npc.rescueReady?(npc.moving?'run':'idle'):npc.animationAction};

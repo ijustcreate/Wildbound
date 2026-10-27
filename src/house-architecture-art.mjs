@@ -58,10 +58,9 @@ export function drawHouseWall(c,b){
  c.restore();
 }
 export function drawHouseDoor(c,d){
- // Open doors rotate around their hinge but keep the authored doorway's full
- // clear-span length. Previously the leaf was hard-coded to 48px and looked
- // shorter than the horizontal opening it covered when closed.
- const horizontal=d.w>d.h,w=d.open?(horizontal?7:d.h):d.w,h=d.open?(horizontal?d.w:7):d.h;
+ // Swing the whole authored leaf: dimensions, panels and handle stay together.
+ if(d.open&&d.kind!=='garage'){c.save();c.translate(d.x+d.h,d.y);c.rotate(Math.PI/2);drawHouseDoor(c,{...d,x:0,y:0,open:false});c.restore();return;}
+ const horizontal=d.w>d.h,w=d.w,h=d.h;
  c.save();c.fillStyle='#18212066';c.fillRect(d.x+2,d.y+4,w,h);if(d.kind==='garage'){c.fillStyle=d.open?'#465b55':'#586064';c.fillRect(d.x,d.y,w,h);c.fillStyle='#a5aaa0';for(let n=8;n<(horizontal?w:h)-4;n+=14)c.fillRect(d.x+(horizontal?n:3),d.y+(horizontal?3:n),horizontal?Math.max(1,w-6):2,horizontal?2:Math.max(1,h-6));if(d.open)c.globalAlpha=.3;c.fillStyle='#172522';c.fillRect(d.x,d.y,w,h);c.restore();return;}c.fillStyle='#5d412d';c.fillRect(d.x,d.y,w,h);
  c.fillStyle=d.open?'#b99b64':'#b18a51';c.fillRect(d.x+1,d.y+1,Math.max(1,w-2),Math.max(1,h-2));
  c.fillStyle='#eed39a';c.fillRect(d.x+1,d.y+1,Math.max(1,w-2),2);

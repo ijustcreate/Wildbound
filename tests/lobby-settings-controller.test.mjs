@@ -9,6 +9,25 @@ const pad = (index = 0, id = 'Xbox Wireless Controller') => ({
 });
 const settings = ownerDevice => ({ id: 'settings-dialog', dataset: { ownerDevice } });
 
+test('ordinary held navigation never blocks confirm, tabs or subsequent settings frames',()=>{
+ const router=createLobbySettingsControllerRouter(),p=pad(),dialog=settings('pad:0');p.axes[1]=1;
+ assert.equal(router.route({pad:p,screen:'lobby',dialog}),'navigate');
+ p.buttons[0].pressed=true;assert.equal(router.route({pad:p,screen:'lobby',dialog}),'navigate');
+ p.buttons[0].pressed=false;p.buttons[5].pressed=true;assert.equal(router.route({pad:p,screen:'lobby',dialog}),'navigate');
+ assert.equal(router.route({pad:p,screen:'lobby'}),'consume','closing still suppresses held inputs behind the menu');
+});
+test('right-stick drift does not trap the Start release barrier',()=>{
+ const router=createLobbySettingsControllerRouter(),p=pad();p.buttons[9].pressed=true;
+ assert.equal(router.route({pad:p,screen:'home'}),'open');p.buttons[9].pressed=false;p.axes[2]=.5;
+ assert.equal(router.route({pad:p,screen:'home',dialog:settings('pad:0')}),'navigate');
+});
+
+test('Selected lobby explorer reserves the right menu button for Pause',()=>{
+ const router=createLobbySettingsControllerRouter(),p=pad();p.buttons[9].pressed=true;
+ assert.equal(router.route({pad:p,screen:'lobby',explorerSelected:true}),null);
+ assert.equal(router.route({pad:p,screen:'home',explorerSelected:true}),'open');
+});
+
 for (const [screen, id, family, startName] of [
   ['home', 'Xbox Wireless Controller', 'xbox', 'Menu'],
   ['lobby', 'Nintendo Switch Pro Controller', 'switch', '+'],

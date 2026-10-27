@@ -3,6 +3,7 @@ import { creatures } from './definitions.mjs';
 import {beachWorld} from './beach-world.mjs';
 import {BOUNDLESS_GENERATION_VERSION,boundlessMap,naturalBoundlessTile,boundlessGeneratedTile,boundlessRegionPlan,boundlessRegionPlanTask,regionRouteDistance,translateRegionProps,clearBoundlessGeneration,regionSeed} from './boundless-generation.mjs';
 import {applyAuthoredScenes,authoredPropsInRegion} from './world-authoring-runtime.mjs';
+import {forestUnderstoryTask} from './forest-props.mjs';
 
 // Boundless worlds are streamed in fixed 50×50 tile regions. Only scenery
 // within one region of an active explorer is resident in the live simulation.
@@ -97,10 +98,14 @@ export function* createBoundlessChunkTask(g,cx,cy){
   const x=plan.hub.x+dx,y=plan.hub.y-180;
   if(regionRouteDistance(plan,x,y)>95&&!['water','shallow'].includes(boundlessTerrainAt(g,Math.floor(x/32),Math.floor(y/32))))props.push({id:prefix+'ruin:'+i,kind:'forest_ruin',x,y,width:70,depth:32,height:biome==='temple'?96:48,shape:biome==='temple'?'pillar':'terrace',size:96,seed:plan.seed+i,procedural:true,boundlessRegion:plan.key});
  }
+ if(biome==='forest')props.push(...(yield* forestUnderstoryTask(plan.seed,cx,cy,(x,y)=>{
+  const tx=Math.floor((x-cx*1600)/32),ty=Math.floor((y-cy*1600)/32);
+  return plan.terrain[ty*50+tx]==='grass'&&regionRouteDistance(plan,x,y)>85&&Math.hypot(x-plan.hub.x,y-plan.hub.y)>120;
+ })).map(p=>({...p,id:prefix+p.id,boundlessRegion:plan.key})));
  if(g.localWorld)props.push(...authoredPropsInRegion(g.environment,cx,cy));
  return {props,plots:[],mausoleums:[],plan};
 }
-const persistentPropKeys=['hp','harvest','fallen','falling','fallDirection','depleted','chipped','chunks','coconuts','picked','opened','doorOpen','cryptPortalId','burning','burned','cut','charred','grassFire','grassSizzle','grassSpreadIn','grassSpreadDepth','grassSpreadDone','hazardState','hazardTime'];
+const persistentPropKeys=['hp','harvest','fallen','falling','fallDirection','fallX','fallY','depleted','chipped','chunks','coconuts','picked','opened','doorOpen','cryptPortalId','burning','burned','cut','charred','grassFire','grassSizzle','grassBurnMarks','grassBurnRevision','grassSpreadIn','grassSpreadDepth','grassSpreadDone','hazardState','hazardTime'];
 const persistentState=p=>JSON.stringify(persistentPropKeys.map(k=>p?.[k]));
 function rememberChunk(g,entry){
  const live=new Map(g.scenery.map(p=>[p.id,p])),changes={props:{},plots:{},...(entry.realmState?{realmState:structuredClone(entry.realmState)}:{})};
@@ -139,6 +144,7 @@ function spawnThreat(g, explorer) {
 const pendingChunks=new WeakMap();
 /** Keep outer scenery and encounters proportional to active play, not travel distance. */
 export function updateBoundlessWorld(g, dt) {
+ if(g.interiorWorld)return;
   if (g.mapMode !== 'boundless' || g.phase !== 'play' || g.openingBoard) return;
   initializeBoundlessWorld(g);
   const players = g.players.filter(p => p.hp > 0 && !p.room);

@@ -13,6 +13,7 @@ import {
   creatureAction,
   drawCreature,
   validateCreatureMotion,
+  upgradeCreatureMotion,
 } from "../src/creature-motion.mjs";
 const kinds = [
   "bat",
@@ -144,11 +145,38 @@ test("Dragon is in the main rig list and animates travel, breath and tail swipes
 test('Beholder stalks emerge around its body and idle eyes independently look and blink',()=>{
  for(const kind of ['beholder','lesser_beholder']){
   const m=defaultCreatureMotion(kind),roots=Array.from({length:6},(_,i)=>m.joints[`stalk${i}`].position);
+  assert.equal(validateCreatureMotion(kind,m),true,'Defaults must survive the shared definition pack');
   assert.equal(new Set(roots.map(p=>p.slice(0,2).join(','))).size,6);
   assert.ok(roots.some(p=>p[0]<-10)&&roots.some(p=>p[0]>10));
   assert.ok(roots.some(p=>p[1]<-5)&&roots.some(p=>p[1]>5));
   const render=time=>{const pixels=[],c={fillStyle:'#000',beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},stroke(){},ellipse(){},arc(){},fillRect(x,y,w,h){pixels.push([Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h),this.fillStyle]);}};drawCreature(c,{kind,hp:100,x:0,y:0,faceX:0,faceY:1,moving:false},time,m);return pixels;};
   assert.notDeepEqual(render(0),render(1),'idle gaze changes instead of staring straight ahead');
   assert.notDeepEqual(render(.2),render(8),'occasional eyelid closure changes the rendered eye pixels');
+ }
+});
+
+
+test('beholder stalk migration repairs only old defaults and preserves custom keys and attachments',()=>{
+ for(const kind of ['beholder']){
+  const current=defaultCreatureMotion(kind),old=structuredClone(current);delete old.artRevision;delete old.joints.stalk6;delete old.joints.stalk6Tip;
+  old.joints.stalk0.position=[-12,-7,24];old.joints.stalk0Tip.position=[-8,-8,35];
+  old.joints.stalk1Tip.position=[-31,-2,36];old.clips.idle.keys[0].joints.stalk1Tip=[7,8,9];old.boneSprites={stalk1Tip:{custom:'retained'}};
+  const before=JSON.stringify(old),m=upgradeCreatureMotion(kind,old);
+  assert.equal(JSON.stringify(old),before);assert.deepEqual(m.joints.stalk0,current.joints.stalk0);assert.deepEqual(m.joints.stalk0Tip,current.joints.stalk0Tip);
+  assert.deepEqual(m.joints.stalk1Tip.position,[-31,-2,36]);assert.deepEqual(m.clips.idle.keys[0].joints.stalk1Tip,[7,8,9]);assert.deepEqual(m.boneSprites,old.boneSprites);
+  assert.ok(m.joints.stalk6&&m.joints.stalk6Tip);assert.equal(validateCreatureMotion(kind,m),true);assert.deepEqual(upgradeCreatureMotion(kind,m),m);
+  assert.ok(current.joints.stalk1Tip.position[0]<-20&&current.joints.stalk4Tip.position[0]>20);
+  assert.ok(current.joints.stalk2Tip.position[2]<current.joints.body.position[2]);assert.ok(current.joints.stalk6Tip.position[2]>40);
+ }
+});
+
+test('beholder profile and rear stalks are occluded by the orb, with outgoing rays in every facing',async()=>{
+ const {renderLayers}=await import('../src/render-order.mjs');
+ for(const kind of ['beholder','lesser_beholder'])for(let d=0;d<8;d++){
+  const model=defaultCreatureMotion(kind),rays=[],ctx=new Proxy({fillStyle:'#000',lineTo:(x,y)=>rays.push([x,y])},{get:(o,k)=>k in o?o[k]:()=>{}}),[faceX,faceY]=directionVector(d);
+  drawCreature(ctx,{kind,hp:100,x:0,y:0,faceX,faceY,animationAction:'attack',attack:.25},1,model);
+  assert.equal(rays.length,2,'Both ray strokes are present in '+kind+' view '+d);assert.ok(rays.flat().every(Number.isFinite));
+  if(d===4)assert.ok(Math.abs(rays[0][0])<2,'Northward beam stays vertical');
+  if(kind==='beholder'&&d>=2&&d<=6){const order=renderLayers(model,d),orb=order.indexOf('Orb');assert.ok(orb>=0);assert.ok(order.every((id,i)=>!id.startsWith('Stalk ')||i<orb),'Profile/rear stems and bulbs stay behind the orb');}
  }
 });

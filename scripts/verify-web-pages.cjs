@@ -1,10 +1,10 @@
 const {app,BrowserWindow}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),pages=path.join(root,'dist/pages-publish'),out=path.join(root,'test-output/web-pages');
+const root=path.resolve(__dirname,'..'),pages=path.resolve(process.env.WILDBOUND_PAGES_DIR||path.join(root,'dist/pages-publish')),out=path.join(root,'test-output/web-pages');
 const version=require('../package.json').version;
 fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
 const server=http.createServer((req,res)=>{
- const relative=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
+ const relative=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\/Wildbound\//,'/');
  let file=path.resolve(pages,'.'+relative);
  if(!file.startsWith(pages+path.sep)&&file!==pages){res.writeHead(403);return res.end();}
  if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');

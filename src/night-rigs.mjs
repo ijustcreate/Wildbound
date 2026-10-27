@@ -1,3 +1,7 @@
+import {drawWerewolfPixels} from './werewolf-pixels.mjs';
+import {drawScorpionBossPixels} from './scorpion-boss-pixels.mjs';
+import {drawChickenPixels} from './chicken-pixels.mjs';
+import {drawSquashlingPixels} from './squashling.mjs';
 import { poseAt, projectPoint, facingIndex, ellipse, limb, validateMotion } from './player-motion.mjs';
 import { paintLayers } from './render-order.mjs';
 import { ITEMS, itemKind, SAFARI_HUNTER_SET } from './items.mjs';
@@ -6,24 +10,28 @@ import { drawItem } from './item-art.mjs';
 import {flowerDefaults,upgradeFlowerMotion,drawCarnivorous} from './carnivorous-art.mjs';
 import {applyWowCreatureMotion,upgradeWowCreatureMotion} from './wow-creature-transfer.mjs';
 import {drawElephantPixels} from './elephant-pixels.mjs';
+import {ravenPelicanDefaults,upgradeRavenPelican} from './pelican-raven.mjs';
+import {drawPelicanPixels} from './pelican-pixels.mjs';
+import {requestedCreatureDefaults,upgradeRequestedCreature} from './requested-creature-transfer.mjs';
+import {drawFoxPixels} from './fox-pixels.mjs';
 
 export const HUNTER_EQUIPMENT = Object.freeze({ ...SAFARI_HUNTER_SET, hand1: 'rifle', hand2: null });
 
 // Positions and key deltas are absolute, as in the Animation Studio pose format.
 // Every factory call owns its joints, clips, palette and optional sprite layers.
-export const NIGHT_KINDS = ['carnivorous_flower', 'night_stalker', 'burrower', 'mimic_vine', 'poison_pod', 'carrion_pack', 'hunter', 'elephant', 'zebra', 'pelican'];
+export const NIGHT_KINDS = ['carnivorous_flower', 'night_stalker', 'burrower', 'mimic_vine', 'poison_pod', 'carrion_pack', 'hunter', 'elephant', 'zebra', 'pelican','fox','squashling','chicken','scorpion_boss','werewolf'];
 export const STAMPEDE_KINDS = ['elephant', 'zebra', 'pelican'];
 export const nightRigLabels = {
   carnivorous_flower: 'Carnivorous flower / rooted jaws', night_stalker: 'Night stalker / crouching predator',
   burrower: 'Burrower / segmented ambusher', mimic_vine: 'Mimic vine / grasping tendril',
   poison_pod: 'Poison pod / spore sacs', carrion_pack: 'Carrion pack / scavenger',
-  hunter: 'Hunter / safari rifle', elephant: 'Elephant / stampede', zebra: 'Zebra / stampede', pelican: 'Pelican / stampede',
+  werewolf:'Werewolf / Nightbane rig',scorpion_boss:'Scorpion matriarch / desert boss',chicken:'Chicken / pecking wildlife',squashling:'Sinister pumpkin / walking vines',fox: 'Copper fox / native pixel rig', hunter: 'Hunter / safari rifle', elephant: 'Elephant / stampede', zebra: 'Zebra / stampede', pelican: 'Pelican / stampede',
 };
 const actions = {
   carnivorous_flower: ['sway', 'grab', 'mouth', 'wilt'], night_stalker: ['crouch', 'stalk', 'pounce', 'retreat'],
   burrower: ['underground', 'emerge', 'bite', 'burrow'], mimic_vine: ['wrap', 'grab', 'cut', 'retract'],
   poison_pod: ['swell', 'spit', 'burst', 'wilt'], carrion_pack: ['stalk', 'bite', 'feed', 'retreat'],
-  hunter: ['aim', 'shoot', 'reload', 'retreat'], elephant: ['charge', 'trumpet'], zebra: ['charge', 'rear'], pelican: ['charge', 'fly', 'flap'],
+  hunter: ['aim', 'shoot', 'reload', 'retreat'], elephant: ['charge', 'trumpet'], zebra: ['charge', 'rear'], pelican: ['charge', 'fly', 'flap'],fox:['stalk','bite','retreat'],squashling:['awaken'],chicken:['peck'],werewolf:['howl','pounce'],scorpion_boss:['pincer','sting'],
 };
 const plantKinds = ['carnivorous_flower', 'mimic_vine', 'poison_pod'];
 function skeleton(kind) {
@@ -55,7 +63,7 @@ function skeleton(kind) {
     for (let i = 0; i < 6; i++) spec['segment' + i] = [i ? 'segment' + (i - 1) : 'pelvis', 0, 5 - i * 5, 7 - i * .6];
     return spec;
   }
-  if (kind === 'hunter' || kind === 'pelican') {
+  if (kind === 'hunter' || kind === 'pelican' || kind==='squashling'||kind==='chicken'||kind==='werewolf') {
     const spec = { pelvis: ['', 0, -1, 14], chest: ['pelvis', 0, 0, 24], neck: ['chest', 0, 1, 29], head: ['neck', 0, 3, 34],
       eyeL: ['head', -2, 7, 35], eyeR: ['head', 2, 7, 35] };
     for (const [side, s] of [['L', -1], ['R', 1]]) Object.assign(spec, {
@@ -88,6 +96,11 @@ const colors = {
   elephant: ['#879594', '#4d6061', '#b4beba', '#9aa5a2', '#f4e7ba'],
   zebra: ['#e6e4cc', '#353c40', '#fff3d9', '#6b7774', '#262f36'],
   pelican: ['#e8e5ce', '#7a8d93', '#fff8e6', '#e6bb68', '#f6d887'],
+  werewolf:['#576178','#333b4d','#8991a4','#bcab86','#e7bd64'],
+  scorpion_boss:['#b58b50','#6e543c','#dfbc7e','#8e6bad','#e7d78b'],
+  chicken:['#e4e3cc','#889a8d','#fff4d8','#d6a14d','#b23e3b'],
+  squashling:['#60733b','#354c2e','#8d9c4d','#d97827','#ffd974'],
+  fox:['#c76b32','#713d30','#ed9a4c','#f4e1bb','#71b75b'],
 };
 function keys(kind, action, spec) {
   return Array.from({ length: 8 }, (_, frame) => {
@@ -173,28 +186,36 @@ export function legacyNightMotion(kind) {
   }
   return rig;
 }
-export function defaultNightMotion(kind){const model=legacyNightMotion(kind);return kind==='carnivorous_flower'?flowerDefaults(model):kind==='elephant'?applyWowCreatureMotion(model,'elephant'):model;}
+export function defaultNightMotion(kind){const model=legacyNightMotion(kind);return ['zebra','fox','squashling','chicken','scorpion_boss','werewolf'].includes(kind)?requestedCreatureDefaults(model):kind==='carnivorous_flower'?flowerDefaults(model):kind==='pelican'?ravenPelicanDefaults(model):kind==='elephant'?applyWowCreatureMotion(model,'elephant'):model;}
 export const nightMotions = Object.fromEntries(NIGHT_KINDS.map(k => [k, defaultNightMotion(k)]));
 export const nightMotionRevisions = Object.fromEntries(NIGHT_KINDS.map(k => [k, 0]));
 export function validateNightMotion(kind, model) {
   if (!NIGHT_KINDS.includes(kind) || model?.type !== kind) return false;
+  if(kind==='pelican')model=upgradeRavenPelican(model,legacyNightMotion(kind));
+  if(['zebra','fox','squashling','chicken','scorpion_boss','werewolf'].includes(kind))model=upgradeRequestedCreature(model,legacyNightMotion(kind));
   if(kind==='carnivorous_flower'&&model.artGeneration!==2){if(!validateMotion(model,legacyNightMotion(kind)))return false;model=upgradeFlowerMotion(model,legacyNightMotion(kind));}
   const def = defaultNightMotion(kind);
   return validateMotion(model, def) && Object.keys(def.visibility).every(n => Array.isArray(model.visibility?.[n]) && model.visibility[n].length === 8 && model.visibility[n].every(v => typeof v === 'boolean'));
 }
 export function replaceNightMotion(kind, model) {
   if (!validateNightMotion(kind, model)) throw Error('Invalid ' + kind + ' animation. Nothing imported.');
-  const copy = kind==='carnivorous_flower'?upgradeFlowerMotion(model,legacyNightMotion(kind)):kind==='elephant'?upgradeWowCreatureMotion(model,legacyNightMotion(kind),defaultNightMotion(kind)):structuredClone(model), target = nightMotions[kind];
+  const copy = ['zebra','fox','squashling','chicken','scorpion_boss','werewolf'].includes(kind)?upgradeRequestedCreature(model,legacyNightMotion(kind)):kind==='carnivorous_flower'?upgradeFlowerMotion(model,legacyNightMotion(kind)):kind==='pelican'?upgradeRavenPelican(model,legacyNightMotion(kind)):kind==='elephant'?upgradeWowCreatureMotion(model,legacyNightMotion(kind),defaultNightMotion(kind)):structuredClone(model), target = nightMotions[kind];
   for (const key of Object.keys(target)) delete target[key];
   Object.assign(target, copy); nightMotionRevisions[kind]++;
 }
-const attackAction = { carnivorous_flower: 'grab', night_stalker: 'pounce', burrower: 'bite', mimic_vine: 'grab', poison_pod: 'spit', carrion_pack: 'bite', hunter: 'shoot', elephant: 'charge', zebra: 'charge', pelican: 'flap' };
+const attackAction = { carnivorous_flower: 'grab', night_stalker: 'pounce', burrower: 'bite', mimic_vine: 'grab', poison_pod: 'spit', carrion_pack: 'bite', hunter: 'shoot', elephant: 'charge', zebra: 'charge', pelican: 'flap',fox:'bite',squashling:'attack',werewolf:'pounce',scorpion_boss:'sting' };
 export function nightAction(kind, actor = {}, model = nightMotions[kind]) {
   const valid = name => model?.clips[name] ? name : null;
+  if(actor.kind==='squashling'&&actor.pumpkinAwaken>0)return 'awaken';
   if (actor.animationAction) return valid(actor.animationAction) || 'idle';
   if (actor.hp <= 0 || actor.dead) return plantKinds.includes(kind) && model.clips.wilt ? 'wilt' : 'death';
   if (actor.hit > 0 || actor.flash > 0) return 'hit';
   if (actor.state === 'snared') return 'idle';
+  if(actor.faunaCombat){const phase=actor.faunaCombat.phase;if(kind==='zebra'&&phase==='windup')return valid('rear')||'idle';if(kind==='pelican')return valid(phase==='windup'?'flap':phase==='charge'?'charge':'fly')||'idle';}
+  if(kind==='scorpion_boss'&&actor.night?.phase==='windup')return actor.night.strike==='sting'?'sting':'pincer';
+  if(kind==='werewolf'&&actor.night?.phase==='windup')return 'pounce';
+  if(kind==='fox'&&actor.night?.phase==='windup')return 'bite';
+  if(kind==='squashling'&&actor.night?.phase==='windup')return 'attack';
   if (actor.night?.phase && actor.state !== 'stampede') {
     const phase = actor.night.phase;
     const mapped = {
@@ -217,6 +238,7 @@ export function nightAction(kind, actor = {}, model = nightMotions[kind]) {
   if (actor.state === 'recover') return valid({ night_stalker: 'retreat', carrion_pack: 'retreat', hunter: 'reload', burrower: 'burrow', mimic_vine: 'retract' }[kind]) || 'idle';
   if (valid(actor.state)) return actor.state;
   if (kind === 'burrower' && actor.underground) return 'underground';
+  if(kind==='chicken')return actor.moving?(actor.state==='flee'?'run':'walk'):'peck';
   if (actor.moving || Math.hypot(actor.vx || 0, actor.vy || 0) > 2) return valid('stalk') || 'run';
   return kind === 'carnivorous_flower' ? 'sway' : 'idle';
 }
@@ -224,6 +246,7 @@ export function nightAction(kind, actor = {}, model = nightMotions[kind]) {
 // a countdown timer + motionDuration, or elapsed stateAge/animationTime in seconds.
 export function nightFrame(kind, actor, time, model = nightMotions[kind]) {
   const action = nightAction(kind, actor, model), clip = model.clips[action];
+  if(kind==='chicken'&&action==='peck'&&actor.hp>0&&!Number.isFinite(actor.playerFrame))return (time*clip.fps)%(clip.length-1);
   if (Number.isFinite(actor.playerFrame)) return actor.playerFrame;
   if (Number.isFinite(actor.poseTime)) return actor.poseTime * (clip.length - 1);
   if (Number.isFinite(actor.animationProgress)) return Math.max(0, Math.min(1, actor.animationProgress)) * (clip.length - 1);
@@ -251,6 +274,12 @@ export function drawNightRig(c, actor, time, model = nightMotions[actor.sprite] 
   const pose = suppliedPose || poseAt(model, nightAction(kind, actor, model), nightFrame(kind, actor, time, model));
   if(kind==='carnivorous_flower')return drawCarnivorous(c,actor,model,pose,d);
   if(kind==='elephant')return drawElephantPixels(c,model,pose,d);
+  if(kind==='pelican'&&model.pelicanRavenRevision===1)return drawPelicanPixels(c,model,pose,d);
+  if(kind==='werewolf')return drawWerewolfPixels(c,model,pose,d);
+  if(kind==='scorpion_boss')return drawScorpionBossPixels(c,model,pose,d);
+  if(kind==='chicken')return drawChickenPixels(c,model,pose,d);
+  if(kind==='squashling')return drawSquashlingPixels(c,model,pose,d,time);
+  if(kind==='fox')return drawFoxPixels(c,model,pose,d);
   const p = Object.fromEntries(Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]));
   const queue = [], visible = n => model.visibility?.[n]?.[d] !== false;
   // Preview defaults use real equippable IDs. An explicit equipment object is
@@ -341,7 +370,7 @@ export function drawNightRig(c, actor, time, model = nightMotions[actor.sprite] 
       }
       if (kind === 'hunter') wearableDetails(c, p, gear, actor.appearance, d, time, actor.field?.cosmetics);
     }, (p.chest.depth + p.pelvis.depth) / 2);
-    add('Neck', ['neck', 'chest'], () => outlined('chest', 'neck', kind === 'pelican' ? 5 : s.headRadius, pal.body));
+    add('Neck', ['neck', 'chest'], () => {outlined('chest', 'neck', kind === 'pelican' ? 5 : s.headRadius, pal.body);if(kind==='zebra')outlined('neck','head',s.headRadius,pal.body);});
     if (kind === 'pelican') {
       for (const side of ['L', 'R']) add('Wing ' + side, ['wingTip' + side, 'shoulder' + side], () => {
         const a = p['shoulder' + side], b = p['wingTip' + side];

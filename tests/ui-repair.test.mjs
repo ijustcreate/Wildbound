@@ -70,3 +70,15 @@ test('whip has wind-up, extension, snap and recovery and reuses a fixed rope buf
  assert.ok(snap.extension>load.extension+.9);assert.ok(snap.crack>.9);assert.equal(recovery.extension,0);
  assert.ok(Math.hypot(...snap.points.slice(-3))>Math.hypot(...load.points.slice(-3))*2);
 });
+
+
+test('pause full-width rows do not skip the nearer paired actions in either direction',()=>{
+ const resume=button(0,0,500),summary=button(0,75,500),settings=button(0,135,245),dev=button(254.99997,135,245),restart=button(0,220,245),quit=button(255,220,245),worlds=button(0,275,500);
+ const controls=[resume,summary,settings,dev,restart,quit,worlds];
+ assert.equal(dialogNeighbour(controls,resume,0,1),summary);
+ assert.equal(dialogNeighbour(controls,summary,0,1),settings);
+ assert.equal(dialogNeighbour(controls,settings,1,0),dev);
+ assert.equal(dialogNeighbour(controls,dev,0,1),quit);
+ assert.equal(dialogNeighbour(controls,quit,-1,0),restart);
+ assert.equal(dialogNeighbour(controls,worlds,0,-1),restart);
+});

@@ -18,27 +18,28 @@ test('old bridge banks become supported deck without bridging unrelated water',(
  g.weather={type:'monsoon'};assert.equal(waterAt(g,9*32+16,656),'grass','rain preserves dry bridge landing');
 });
 
-test('board casts a square shadow which follows the light and invalidates on removal',()=>{
+test('board uses its rectangular tabletop and four grounded leg casters, and invalidates on removal',()=>{
  const b=BOARD_TABLE,g={phase:'play',scenery:[],players:[]};
  const source={x:b.x-40,y:b.y-40,height:50,radius:200};
  const field=worldLightField(g,[source]),box=field.volumes.find(v=>v.owner.startsWith('board:'));
- assert.equal(box.shape,'box');assert.equal(box.rx,Math.max(b.w,b.h)/2);assert.equal(box.ry,box.rx);
+ assert.equal(box.shape,'box');assert.equal(box.rx,b.w/2);assert.equal(box.ry,b.h/2);
+ const legs=field.volumes.filter(v=>v.owner===box.owner&&v.minZ===0);assert.equal(legs.length,4);assert.ok(legs.every(v=>v.maxZ===b.surfaceHeight-3&&v.rx===2.5));
  assert.notDeepEqual(groundShadowPolygon(source,box),groundShadowPolygon({...source,x:b.x+100},box));
  g.openingBoard=true;assert.ok(!worldLightField(g,[source]).volumes.some(v=>v.owner.startsWith('board:')));
 });
 
-test('warm grass frames reuse raster, edits invalidate it, and cut grass disappears',()=>{
- const old=globalThis.document;let allocations=0,blits=0,paint=0;
+test('warm grass frames reuse raster, edits invalidate it, and cuts leave short stubble',()=>{
+ const old=globalThis.document;let allocations=0,blits=0,paint=0,stubble=0;
  const pen={translate(){},fillRect(){paint++;}};
  globalThis.document={createElement(){allocations++;return {getContext:()=>pen};}};
- const c={save(){},restore(){},translate(){},transform(){},drawImage(){blits++;}};
+ const c={save(){},restore(){},translate(){},scale(){},fillRect(){stubble++;},transform(){},drawImage(){blits++;}};
  try{
   const p={kind:'tall_grass',x:100,y:100,size:80,tuftSeed:17};
   drawGrassProp(c,p,1,'forest');const cold=paint;
   for(let i=0;i<60;i++)drawGrassProp(c,p,2+i/60,'forest');
   assert.equal(allocations,1);assert.equal(blits,61);assert.equal(paint,cold);
   p.grassTint='#ccaa44';drawGrassProp(c,p,3,'forest');assert.equal(allocations,2);
-  p.cut=true;drawGrassProp(c,p,4,'forest');assert.equal(blits,62);
+  p.cut=true;drawGrassProp(c,p,4,'forest');assert.equal(blits,62);assert.ok(stubble>0,'cut fallback draws low blades instead of bare earth');
  }finally{globalThis.document=old;}
 });
 

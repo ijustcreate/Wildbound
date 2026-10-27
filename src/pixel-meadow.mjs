@@ -20,7 +20,13 @@ export function meadowAllowed(g,x,y,margin=0){
  return true;
 }
 export function meadowTerrainKey(g,x,y){
- let key='';for(let ty=y/32;ty<(y+256)/32;ty++)for(let tx=x/32;tx<(x+256)/32;tx++)key+=meadowTerrain(g,tx*32+16,ty*32+16)+',';
+ let key='';const plans=new Map();
+ for(let ty=y/32;ty<(y+256)/32;ty++)for(let tx=x/32;tx<(x+256)/32;tx++){
+  let terrain=null;
+  if(tx>=0&&tx<50&&ty>=0&&ty<50)terrain=g.terrain[ty*50+tx];
+  else if(g.mapMode==='boundless'){const cx=Math.floor(tx/50),cy=Math.floor(ty/50),id=cx+','+cy;let plan=plans.get(id);if(!plan){plan=boundlessRegionPlan(g,cx,cy);plans.set(id,plan);}terrain=plan.terrain[((ty%50+50)%50)*50+(tx%50+50)%50];}
+  key+=terrain+',';
+ }
  return key;
 }
 export function paintPixelMeadow(g,x,y){

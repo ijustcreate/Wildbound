@@ -58,9 +58,9 @@ export class LobbyPractice extends Game {
       a.equipment=structuredClone(p.equipment);a.inventory=structuredClone(p.inventory);
       (a.field||={}).quiver=p.field?.quiver;
       a.equipmentSockets=structuredClone(p.equipmentSockets||{});refreshVitals(a);
-      const active=!blocked&&!s.panel&&!p.ui&&!p.room&&!s.inventoryRelease&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
+      const active=!blocked&&!s.panel&&!p.ui&&!p.room&&!p.lobbyDisconnected&&players.find(q=>q.device===p.device)===p;
       commands[p.device]=active?{...inputs[p.device],inventory:false,portal:false}:{};
-      if(!active){a.charge=0;a.queuedAttack=null;a.previousInput={};a.dashTime=0;a.bowAiming=false;a.blocking=false;}
+      if(!active){delete a.swordStrike;delete a.swordFacing;a.swordHitPause=0;a.attack=0;a.charge=0;a.queuedAttack=null;a.previousInput={};a.dashTime=0;a.dashRecovery=0;a.slideX=a.slideY=0;a.bowAiming=false;a.holdingPosition=false;a.blocking=false;}
       a.consumeInput=false;
     }
     if(this.players.length&&!blocked){this.updateTargets(dt);super.update(dt,commands);}

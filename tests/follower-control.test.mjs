@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { controlledFollower, cycleFollowerControl, syncControlledFollower } from "../src/follower-control.mjs";
+import { controlledFollower, cycleFollowerControl, syncControlledFollower, followControlledUnit } from "../src/follower-control.mjs";
 import {startFollowerAttack,tickFollowerAttack} from '../src/follower-attacks.mjs';
 import {Game,EVENTS} from '../src/core.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
@@ -66,8 +66,8 @@ test('hero follows behind the controlled creature and returns at its following p
  assert.equal(f.x,350);assert.ok(Math.hypot(p.controlPetPosition.x-f.x,p.controlPetPosition.y-f.y)>40);
  p.swimming=true;p.diveDepth=.2;p.breath=12;p.breathVisible=1;f.swimming=true;
  syncControlledFollower(g,p,1/60);
- assert.equal(p.controlPetPosition.swimming,true,'the following hero inherits the water presentation state');
- assert.equal(p.controlPetPosition.diveDepth,.2);
+ assert.equal(p.controlPetPosition.swimming,false,'the following hero uses its own floor instead of the controlled swimmer');
+ assert.equal(p.controlPetPosition.diveDepth,0);
  const x=p.controlPetPosition.x;cycleFollowerControl(g,p);assert.equal(p.x,x);
 });
 
@@ -274,4 +274,33 @@ test('controlled companion invulnerability and blink timers expire instead of fr
 test('recovered shared authored rigs load with newly added default clips without rewriting source',()=>{
  const source=fs.readFileSync(new URL('../authored/rigs.json',import.meta.url),'utf8'),data=JSON.parse(source);
  applyDefinitions(data,structuredClone(EVENTS),{});assert.equal(JSON.stringify(data),JSON.stringify(JSON.parse(source)));
+});
+
+test('displaced hero routes around walls, settles, and never moves from creature rotation or zero dt',()=>{
+ const g=new Game(()=>.4),p=g.addPlayer('pad:0','Hero');g.phase='play';g.openingBoard=false;
+ // A solid wall separates the real hero and controlled flying creature.
+ const blocked=(x,y,r=8)=>x+r>600&&x-r<650&&y+r>300&&y-r<600;
+ g.blocked=blocked;g.generatedEnvironment='forest';g.traps=[];g.house=null;
+ p.controlPetPosition={x:520,y:450,room:null};const f={x:760,y:450,faceX:0,faceY:-1};
+ let detoured=false;
+ for(let i=0;i<800;i++){g.time+=1/60;followControlledUnit(g,p,f,1/60);const h=p.controlPetPosition;assert.equal(blocked(h.x,h.y),false);if(h.y<292||h.y>608)detoured=true;}
+ const h=p.controlPetPosition;assert.ok(detoured,'Hero goes around the wall');assert.ok(Math.hypot(h.x-f.x,h.y-f.y)<81);assert.equal(h.moving,false,'Hero settles at follow spacing');
+ const before=[h.x,h.y,h.step];for(let i=0;i<80;i++){f.faceX=Math.sin(i);f.faceY=Math.cos(i);followControlledUnit(g,p,f,1/60);}assert.deepEqual([h.x,h.y,h.step],before,'Turning alone does not make the hero orbit');
+ f.x+=200;followControlledUnit(g,p,f,0);assert.deepEqual([h.x,h.y,h.step],before);assert.equal(h.moving,false);
+});
+
+
+test('April receives replaced equipment and bag containers immediately from inventory UI',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');p.profileId='april-gear-owner';
+ const heroGear=p.equipment,heroBag=p.inventory;
+ const april={id:991,villagerId:'april',kind:'villager',ownerKey:p.profileId,name:'April',x:p.x+40,y:p.y,hp:80,equipment:{hand1:'april_blade'},inventory:[{type:'wand',qty:1},{type:'hat',qty:1}],equipmentSockets:{}};
+ g.villageFollowers=[april];cycleFollowerControl(g,p);p.ui={panel:'pack',index:0};
+ g.inventoryAction(p,'equip');assert.equal(april.equipment.hand1,'wand');assert.equal(april.equipment,p.equipment);assert.equal(april.inventory,p.inventory);
+ p.ui.index=1;g.inventoryAction(p,'equip');assert.equal(april.equipment.head,'hat');
+ cycleFollowerControl(g,p);assert.equal(p.equipment,heroGear);assert.equal(p.inventory,heroBag);assert.equal(april.equipment.hand1,'wand');
+ cycleFollowerControl(g,p);assert.equal(p.equipment.hand1,'wand');
+ p.ui={panel:'gear',index:0};g.inventoryAction(p,'use');assert.equal(april.equipment.head,null);
+ const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),rp=restored.players[0];
+ assert.equal(controlledFollower(restored,rp).equipment.hand1,'wand');assert.equal(controlledFollower(restored,rp).equipment.head,null);
+ cycleFollowerControl(restored,rp);cycleFollowerControl(restored,rp);assert.equal(rp.equipment.hand1,'wand');
 });

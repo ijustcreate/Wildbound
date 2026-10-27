@@ -7,7 +7,7 @@ import {PEACEFUL_FAUNA_KINDS,WILD_FAUNA_KINDS,WILD_FAUNA_LIMIT} from './wild-fau
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export function holdsThreateningWeapon(p){return ['hand1','hand2'].some(slot=>{const id=p.equipment?.[slot];return id!=='occupied'&&!!ITEMS[id]&&(ITEMS[id].damage>0||['bow','gun','rifle','wand','staff','torch','whip'].includes(itemKind(id)));});}
-const species=env=>['forest','temple'].includes(env)?['mother_deer','stag','baby_deer','mother_deer','baby_deer','pig','pig_spotted']:env==='beach'?['pig','pig_spotted']:env==='desert'?['scorpion','scorpion','scorpion','scorpion']:env==='ice'?['arctic_fox','arctic_fox','arctic_fox']:[];
+const species=env=>['forest','temple'].includes(env)?['mother_deer','stag','baby_deer','mother_deer','baby_deer','pig','pig_spotted','fox','chicken','chicken']:env==='house'?['chicken','chicken','chicken']:env==='beach'?['pig','pig_spotted']:env==='desert'?['scorpion','scorpion','scorpion','scorpion']:env==='ice'?['arctic_fox','arctic_fox','arctic_fox']:[];
 /** Lazy generation on first exploration keeps the board's opening clear.
  * Seeded once per expedition, saved with normal actors. No respawn timer,
  * hidden per-frame population growth or dependence on rendering/camera depth.
@@ -16,9 +16,12 @@ export function seedWildFauna(g,force=false){
  const env=g.generatedEnvironment,signature=env+':'+g.seed;
  if(g.wildFaunaState?.signature===signature&&g.wildFaunaState.seeded)return 0;
  if(!force&&(g.phase!=='play'||g.openingBoard||!(g.players||[]).some(p=>p.hp>0&&!p.room&&distance(p,{x:800,y:800})>360)))return 0;
- const kinds=species(env),old=g.enemies.filter(e=>e.wildlife&&WILD_FAUNA_KINDS.includes(e.kind));
+ const kinds=species(env),old=g.enemies.filter(e=>e.wildlife&&(WILD_FAUNA_KINDS.includes(e.kind)||e.kind==='fox'));
  g.wildFaunaState={version:1,signature,seeded:true,ids:old.slice(0,WILD_FAUNA_LIMIT).map(e=>e.id)};
  if(old.length||!kinds.length)return 0;
+ if(Array.isArray(g.house?.spawnPoints)){
+  const ids=new Map(),added=[];for(const point of g.house.spawnPoints.slice(0,64)){if(!creatures[point.kind])continue;const e={...structuredClone(point),id:g.nextId++,homeX:point.x,homeY:point.y,state:'graze',cooldown:1,attack:0,moving:false,step:0};g.configureCreature(e,false);Object.assign(e,{hp:point.hp||e.hp,maxHp:point.hp||e.maxHp,speed:point.speed??e.speed,damage:point.damage??e.damage,faction:point.faction||e.faction});ids.set(point.id,e.id);added.push(e);g.enemies.push(e);g.wildFaunaState.ids.push(e.id);}for(const e of added)if(e.motherId)e.motherId=ids.get(e.motherId);return added.length;
+ }
  let family=null,mother=null,count=0;
  for(const [i,kind]of kinds.slice(0,WILD_FAUNA_LIMIT).entries()){
   let spot=null;
@@ -34,7 +37,7 @@ export function seedWildFauna(g,force=false){
   const cfg=creatures[kind],e={...spot,id:g.nextId++,kind,skin:kind,wildlife:true,faction:cfg.faction,hp:cfg.stats.hp,maxHp:cfg.stats.hp,speed:cfg.stats.speed,damage:cfg.stats.damage,state:'graze',timer:0,cooldown:1,flash:0,frozen:0,attack:0,step:0,moving:false,faceX:0,faceY:1,homeX:spot.x,homeY:spot.y,wildLastHp:cfg.stats.hp,wanderIn:0};
   if(kind==='mother_deer'){mother=e;family=spot;}
   if(kind==='baby_deer')e.motherId=mother?.id;
-  g.configureCreature(e,false);g.enemies.push(e);g.wildFaunaState.ids.push(e.id);count++;
+  g.configureCreature(e,false);if(kind==='fox')e.faction='neutral';g.enemies.push(e);g.wildFaunaState.ids.push(e.id);count++;
  }
  return count;
 }

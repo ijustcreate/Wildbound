@@ -1,3 +1,4 @@
+import {applyTreeFall} from './tree-fall.mjs';
 import {realmTerrainAt} from './realm-world.mjs';
 import {REALMS,REALM_ASSETS,realmAsset,realmHash,realmTree,realmResourceScale} from './realm-layout.mjs';
 import {makeSwampTreeSprite,swampMossCurtains} from './swamp-art.mjs';
@@ -81,7 +82,7 @@ export function drawRealmProp(c,p,time,g={},renderOptions={}){
  if(p.fallen){c.fillStyle='#3b3935';c.fillRect(p.x-p.size*.1,y-5,p.size*.2,7);c.fillStyle='#a39474';c.fillRect(p.x-p.size*.08,y-6,p.size*.16,3);c.restore();return true;}
  if(p.depleted&&!p.falling){c.restore();return true;}
  if(!renderOptions.dynamicShadows&&resourceType==='crystal'){const glow=c.createRadialGradient(p.x,y-20,1,p.x,y-20,p.size*.8*resourceScale);glow.addColorStop(0,p.kind==='shadow_obsidian'?'#a481d633':'#83dbd833');glow.addColorStop(1,'#83dbd800');c.fillStyle=glow;c.fillRect(p.x-p.size*resourceScale,y-p.size*resourceScale,p.size*2*resourceScale,p.size*2*resourceScale);}
- if(p.falling){c.translate(p.x,y);c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);}
+ if(p.falling){c.translate(p.x,y);applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);}
  else if(!drawLivingSwampTree(c,p,y,time,library))drawRealmSprite(c,p.kind,p.x,y,p.size*resourceScale,library);
  if(realmTree(p)&&p.harvest&&!p.falling&&time-(p.hitAt||0)<4){c.fillStyle='#c9bd83';c.fillRect(p.x-15,y+8,30*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}
  c.restore();return true;

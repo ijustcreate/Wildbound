@@ -27,7 +27,7 @@ test('bee attack is a short sting with bounded flight speed; hidden players are 
  g.traps=[{x:e.x,y:e.y,life:10,variant:'snare'}];tickBee(g,e,.05,[p]);assert.equal(e.state,'snared');tickBee(g,e,2.1,[p]);assert.ok(e.hp<=0);
 });
 test('actual game attacks damage the hive and a destroyed hive cannot respawn in the next game update',()=>{
- const g=field();g.spawnEvent(EVENTS.findIndex(e=>e.kind==='bee'));const hive=g.enemies.find(e=>e.kind==='bee_hive'),p=g.players[0];Object.assign(p,{x:hive.x,y:hive.y+30,faceX:0,faceY:-1});p.equipment.hand1='sword';const before=hive.hp;g.attack(p);assert.ok(hive.hp<before);
+ const g=field();g.spawnEvent(EVENTS.findIndex(e=>e.kind==='bee'));const hive=g.enemies.find(e=>e.kind==='bee_hive'),p=g.players[0];Object.assign(p,{x:hive.x,y:hive.y+30,faceX:0,faceY:-1});p.equipment.hand1='sword';const before=hive.hp;g.attack(p);for(let i=0;i<6;i++)g.update(.02,{});assert.ok(hive.hp<before);
  for(const e of g.enemies)e.hp=0;g.update(.05,{});assert.ok(hive.defeated);const count=g.enemies.length;for(let i=0;i<80;i++)g.update(.05,{});assert.ok(!g.enemies.some(e=>e.kind==='bee'&&e.hp>0));assert.ok(g.enemies.length<=count);
 });
 test('hives sit on the floor or hang from a live tree with a ground-anchored shadow, and drop if the tree falls',()=>{

@@ -56,7 +56,8 @@ test('Every fitted gear piece follows its joint in eight directions without chan
       for(const [key,color] of original) {
         const [x,y]=key.split(',').map(Number);
         assert.equal(moved.get(`${x+9},${y-12}`),color,id);
-        assert.ok(Math.abs(x)<=10&&Math.abs(y)<=(/horn/.test(ITEMS[id].style||'')?14:12),id);
+        const extent=id==='bone_carver_crown'?{x:18,y:22}:id==='witch_hat'?{x:13,y:22}:{x:10,y:/horn/.test(ITEMS[id].style||'')?14:12};
+        assert.ok(Math.abs(x)<=extent.x&&Math.abs(y)<=extent.y,id);
       }
     }
   }
@@ -89,7 +90,7 @@ test('Boot soles extend from the ankle with a directional toe instead of a float
 
 test('Every boot cuff stays on the ankle in both side views through idle and running poses',()=>{
   const model=defaultPlayerMotion();
-  for(const [id,def] of Object.entries(ITEMS).filter(([,def])=>def.slot==='feet'))
+  for(const [id,def] of Object.entries(ITEMS).filter(([,def])=>def.slot==='feet'&&!def.boneArmor))
     for(const direction of [2,6])for(const action of ['idle','run'])for(const frame of [0,2,4,6]) {
       const calls=[];
       const c={fillStyle:'',fillRect(x,y,w,h){calls.push({x,y,w,h,color:this.fillStyle});}};

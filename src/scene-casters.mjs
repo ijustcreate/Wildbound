@@ -5,9 +5,9 @@ const caches=new WeakMap();
 // Static arrays retain identity until a harvest, editor change or region load.
 export function scenePropCasters(game){
  let entry=caches.get(game);if(!entry){entry={props:new WeakMap(),list:[],revision:0};caches.set(game,entry);}
- const list=[];let changed=entry.source!==game.scenery||entry.length!==game.scenery.length;
+ const list=[];let changed=false;
  for(const p of game.scenery){
-  if(['tall_grass','short_grass','grass','fern','flower'].includes(p.kind))continue;
+  if(['tall_grass','short_grass','grass','fern','flower','forest_understory'].includes(p.kind))continue;
   let slot=entry.props.get(p);
   let stale=!slot;
   if(slot)for(let i=0;i<fields.length;i++)if(slot.values[i]!==p[fields[i]]){stale=true;break;}
@@ -20,6 +20,7 @@ export function scenePropCasters(game){
   }
   if(slot.caster)list.push(slot.caster);
  }
- if(changed||list.length!==entry.list.length){entry.list=list;entry.source=game.scenery;entry.length=game.scenery.length;entry.revision++;}
+ const identical=list.length===entry.list.length&&list.every((p,i)=>{const old=entry.list[i];return p===old||['x','y','shadowShape','shadowHeight','radiusX','radiusY'].every(k=>p[k]===old[k]);});
+ if(!identical){entry.list=list;entry.source=game.scenery;entry.length=game.scenery.length;entry.revision++;}
  return {casters:entry.list,revision:entry.revision};
 }

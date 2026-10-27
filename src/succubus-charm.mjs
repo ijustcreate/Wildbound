@@ -43,7 +43,7 @@ export function charmCanTarget(g,source,target){
 }
 export function playerCombatTargets(g,source){
  const owner=source?.owner??source?.id;
- return [...(g.enemies||[]),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&(friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
+  return [...(g.enemies||[]),...(g.ghosts||[]).filter(a=>a.wildTiger&&a.faction==='hostile'&&!a.room&&a.hp>0),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&(friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
 }
 export const charmShot=p=>({charmShot:isCharmed(p)});
 export function tickCharmedPlayer(g,p,dt){

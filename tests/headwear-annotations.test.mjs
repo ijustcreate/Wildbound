@@ -40,3 +40,10 @@ test('annotation: horn roots turn between front and profile instead of deleting 
   assert.ok(front.size>profile.size,id);
  }
 });
+test('succubus horns join the forehead below the hair crown in all eight views',()=>{
+ for(let d=0;d<8;d++){
+  const pixels=raster('succubus_horns',d),ys=[...pixels.keys()].map(k=>Number(k.split(',')[1]));
+  assert.ok(Math.max(...ys)>=-4,'Brow root is connected in view '+d);
+  assert.ok(Math.min(...ys)>=-11,'Horns do not float above the crown in view '+d);
+ }
+});

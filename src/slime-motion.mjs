@@ -80,9 +80,11 @@ export function drawSlime(c, actor, time, model=slimeMotion, suppliedPose=null) 
   const body=()=>pixelPolygon(c,ring(core,size*.75,height*.29,d),pal.body);
   const dome=()=>pixelPolygon(c,ring(core,size*.59,height*.39,d),pal.light);
   const crown=()=>{
-    const center=[core[0]+(top[0]-core[0])*.38,core[1]+(top[1]-core[1])*.38,core[2]+height*.37];
-    pixelPolygon(c,ring(center,size*.39,height*.22,d),pal.body);
-    const a=projectPoint(translated(center,-size*.25,0,height*.18),d);
+    // Keep the upper lobe embedded in the dome; donor crest travel only adds a bounded wobble.
+    const wobble=v=>Math.max(-size*.12,Math.min(size*.12,v*.1));
+    const center=[core[0]+wobble(top[0]-core[0]),core[1]+wobble(top[1]-core[1]),core[2]];
+    pixelPolygon(c,ring(center,size*.39,height*.43,d),pal.body);
+    const a=projectPoint(translated(center,-size*.25,0,height*.47),d);
     drawSparkle(c,a.x,a.y,pal.highlight,3);
   };
   add('Slime body',['core','rimL','rimR'],p.core.depth-1,silhouette);

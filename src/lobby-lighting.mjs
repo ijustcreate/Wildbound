@@ -1,3 +1,24 @@
+import {playerPose,projectPoint,facingIndex} from './player-motion.mjs';
+
+export function lobbyFootContacts(actor,time,size=86){
+  if((actor.jumpHeight||0)>.5||actor.wingHover)return [];
+  const pose=playerPose(actor,time),d=facingIndex(actor.faceX,actor.faceY),scale=size/48;
+  const low=Math.min(pose.footL[2],pose.footR[2]);
+  return ['footL','footR'].filter(id=>pose[id][2]<=low+1).map(id=>{
+    const foot=projectPoint(pose[id],d);
+    return {x:actor.x+foot.x*scale,y:actor.y-(actor.groundHeight||0)+(foot.y+1)*scale};
+  });
+}
+export function drawLobbyActorShadow(c,actor,time,size=86){
+  c.save();c.globalAlpha*=Math.max(.35,1-(actor.jumpHeight||0)/150);
+  drawLobbyCastShadow(c,actor.x,actor.y-5,26,8);
+  c.fillStyle='rgba(9,16,18,.36)';
+  for(const foot of lobbyFootContacts(actor,time,size)){
+    c.beginPath();c.ellipse(foot.x,foot.y,5,2,0,0,Math.PI*2);c.fill();
+  }
+  c.restore();
+}
+
 /** A cool, steady wash from ceiling-mounted fluorescent fixtures. */
 export function drawLobbyCeilingWash(c,{left=0,top=70,right=1024,bottom=590}={}){
   c.save();

@@ -63,7 +63,11 @@ test('Rifle grip separates the support hand from the trigger hand without stretc
 test('Shipping authored player upgrades to every supported action without replacing authored clips',()=>{
   const authored=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
   const shipping=upgradePlayerMotion(authored);
-  for(const [name,clip]of Object.entries(authored.clips))assert.deepEqual(shipping.clips[name],clip,name);
+  for(const [name,clip]of Object.entries(authored.clips)){
+    // Recognized shipping scythe defaults migrate to the new coordinated cut.
+    if(['scythe_sweep','scythe_reap'].includes(name))assert.notDeepEqual(shipping.clips[name],clip,name);
+    else assert.deepEqual(shipping.clips[name],clip,name);
+  }
   assert.equal(shipping.artGeneration,3);
   assert.ok(validatePlayerMotion(shipping));
   assert.deepEqual(Object.keys(upgradePlayerMotion(shipping).clips).sort(),Object.keys(model.clips).sort());

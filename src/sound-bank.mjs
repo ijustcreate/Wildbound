@@ -27,15 +27,17 @@ Object.assign(CUES.jump,{group:'movement',priority:35,cooldown:200,maxDuration:.
 Object.assign(CUES.land,{group:'movement',priority:40,cooldown:220,maxDuration:.45});
 Object.assign(CUES.repair,{group:'repair',priority:30,cooldown:420,maxDuration:.35,distance:220});
 Object.assign(CUES,ENCOUNTER_CUES);
+CUES.dragonBreath={files:['assets/sfx/dragon2/breath.ogg'],gain:.3,priority:65,cooldown:400,distance:750};
 CUES.swing=CUES.attack;
 export const FAMILIES={gorilla:[9,.65],lion:[1,.75],tiger:[1,.7],white_lion:[1,.66],panther:[2,.85],snow_leopard:[2,.78],wolf:[3,1],crocodile:[4,.65],boar:[5,.9],snake:[6,1.5],bat:[7,1.9],beetle:[8,1.6],wasp:[8,2.2],bee:[8,2.3],vine:[6,.65],golem:[9,.5],monkey:[0,1],skeleton:[10,1.1],skeleton_unarmed:[10,1.2],skeleton_boss:[10,.65],archer:[10,1.05],skeleton_wizard:[10,.85],rhino:[5,.6],dragon:[9,.55],fire_elemental:[6,.65],spider:[8,1.25],baby_spider:[8,1.8],spider_egg:[8,.8]};
-Object.assign(FAMILIES,{shore_goblin:[6,1.35],dreadmane_lion:[1,.6],oathless_captain:[10,.8],grim_reaper:[10,.55],banshee_queen:[6,.72],succubus:[6,.9],imp:[0,1.45],zombie:[9,.8],tarantula:[8,.85],anaconda:[6,.5],tsetse:[8,2.5],water_elemental:[6,1.1],frost_skeleton_mage:[10,.8],hunter:[10,1],night_stalker:[2,.75],carrion_pack:[3,.85],burrower:[9,.65],mimic_vine:[6,.8],carnivorous_flower:[6,.7],poison_pod:[8,.7],elephant:[9,.45],zebra:[5,1.1],pelican:[7,1.1],bee_hive:[8,.65]});
+Object.assign(FAMILIES,{fox:[3,1.6],shore_goblin:[6,1.35],dreadmane_lion:[1,.6],oathless_captain:[10,.8],grim_reaper:[10,.55],banshee_queen:[6,.72],succubus:[6,.9],imp:[0,1.45],zombie:[9,.8],tarantula:[8,.85],anaconda:[6,.5],tsetse:[8,2.5],water_elemental:[6,1.1],frost_skeleton_mage:[10,.8],hunter:[10,1],night_stalker:[2,.75],carrion_pack:[3,.85],burrower:[9,.65],mimic_vine:[6,.8],carnivorous_flower:[6,.7],poison_pod:[8,.7],elephant:[9,.45],zebra:[5,1.1],pelican:[7,1.1],bee_hive:[8,.65]});
 export function creatureCue(kind,action){
  const cue=creatureRecording(kind,action);
  return {...cue,bus:'sfx',group:action==='death'?'critical':'creature',priority:action==='death'?85:action==='spawn'?25:action==='hurt'?60:55,
    polyphony:action==='death'?6:4,cooldown:action==='spawn'?1800:action==='hurt'?240:360,distance:action==='spawn'?420:620,key:`creature:${kind}:${action}`};
 }
 function creatureRecording(kind,action){
+ if(kind==='dragon')return {files:['assets/sfx/dragon2/'+(action==='spawn'?'flap':action==='hurt'?'hurt':action==='death'?'death':'attack')+'.ogg'],rate:1,gain:.28,maxDuration:action==='death'?4:2};
  if(kind==='wolf')return {files:[`assets/sfx/wolf/${action==='spawn'?'howl':action==='death'?'whimper':action==='hurt'?'yelp':'snarl'}.wav`],rate:1,gain:action==='spawn'?.23:.28,maxDuration:action==='spawn'?2.4:1};
  if(kind==='panther'){
   const panther={

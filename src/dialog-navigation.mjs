@@ -8,11 +8,14 @@ export function dialogNeighbour(controls, current, dx, dy) {
     const b = el.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2;
     const forward = dx ? (bx - x) * dx : (by - y) * dy;
     if (forward < 2) continue;
-    const lateral = dx ? Math.abs(by - y) : Math.abs(bx - x);
+    // Full-width actions overlap both columns: prefer the nearest row,
+    // rather than skipping its buttons to another centered action.
+    const lateral = dx ? Math.abs(by - y)
+      : Math.max(0,b.left-(r.left+r.width),r.left-(b.left+b.width))+Math.abs(bx-x)*.01;
     // Horizontal input cannot jump to a different row.
     if (dx && lateral > Math.max(r.height, b.height) * .6) continue;
     const nextScore = forward + lateral * 2;
-    if (nextScore < score) { best = el; score = nextScore; }
+    if (nextScore < score - .01) { best = el; score = nextScore; }
   }
   return best;
 }

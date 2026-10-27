@@ -119,18 +119,18 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
     // the canvas edge, keeping the head/shoulders and equipped upper body.
     animator.draw(c, {
       ...source, sprite: !player&&source.sprite==='alan'?'alan':!player&&source.villagerId?'villager':'explorer-teal', kind: !player&&source.sprite==='alan'?'alan':!player&&source.villagerId?'villager':'player',
-      x: canvas.width / 2, y: canvas.height + (player ? 78 : source.villagerId ? 110 : 50),
+      x: canvas.width / 2, y: canvas.height + 52,
       // A dialogue portrait is a stable presentation render, never the live
       // actor's direction or movement state.
       faceX: 0, faceY: 1,
       hp: Math.max(1, source.hp || 1), dead: false, moving: false,
-      animationAction: 'idle', playerFrame: undefined, poseTime: undefined,
+      animationAction: source.santa?source.animationAction:'idle', playerFrame:source.santa?source.playerFrame:undefined, poseTime: undefined,
       animationProgress: undefined, rigOverride: undefined,
       attack: 0, spin: 0, charge: 0, hit: 0, flash: 0, jumpHeight: 0, groundHeight: 0,
       bowAiming: false, bowAimBlend: 0, bowVisualAngle: undefined, gatherTime: 0,
       equipment: source.equipment || {},
       step: undefined, dx: 0, dy: 0, direction: undefined,
-    }, time, player || source.villagerId ? 264 : 168);
+    }, time, 200);
     c.restore();
   }
 }

@@ -29,5 +29,8 @@ export function drawAlan(c,actor,time,model=alanMotion,pose=null){
     if(!source||!point)continue;
     fitted[name]=rest.position.map((v,i)=>v+point[i]-source[i]);
   }
-  return drawPlayer(c,visual,time,model,fitted);
+  // Face stabilization reads rest landmarks as well as the posed points. Keep
+  // those in the same retargeted space; Captain eye offsets on the human head
+  // were flattening the eyes against the brim after the pose was fitted.
+  return drawPlayer(c,visual,time,model,fitted,playerMotion);
 }

@@ -3,7 +3,7 @@
 - [Choose a version](https://ijustcreate.github.io/Wildbound/)
 - [Latest build](https://ijustcreate.github.io/Wildbound/latest/)
 - [Preserved original](https://ijustcreate.github.io/Wildbound/original/)
-- [Permanent 1.2.57 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.57/)
+- [Permanent 1.2.79 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.79/)
 - [Earlier 1.0.74 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.0.74/)
 
 The original is the exact root game from gh-pages commit 68c739c03499648f686f44ceb73508f62fb0808e, copied into original/ without modifying its game files. The root now provides a version chooser. Existing root asset URLs remain available for historical bookmarks.
@@ -28,3 +28,5 @@ Electron, localhost and GitHub Pages have separate storage. Historical versions 
 4. Verify browser loading, Workshop and Worlds, game rendering, save separation, historical file hashes and links. Commit/push source and the Pages checkout separately, without force-pushing. Verify the GitHub Pages deployment and the live build identity.
 
 Keep original/ and earlier releases/ unchanged. Do not publish local saves, credentials, test profiles, dependencies or desktop packages. web-build.json identifies the source commit and whether it contained modified source. Publishing Pages does not update desktop packages or create a downloadable GitHub release.
+
+For 1.2.79, the published edition reuses byte-equivalent media and shared rigs from the immutable 1.2.78 edition. Run node scripts/share-web-assets.cjs <pages-checkout> 1.2.79 1.2.78 after assembly to verify and share them. The standalone web build remains complete. Keep 1.2.78 assets intact; the Pages smoke accepts WILDBOUND_PAGES_DIR for an alternate checkout.

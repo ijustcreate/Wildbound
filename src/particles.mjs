@@ -6,6 +6,8 @@ export {loadParticleSprites,particleSpriteStatus} from './particle-sprites.mjs';
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
 export const DEFAULT_EFFECTS={
+  'cinder-trail':{name:'Cinder · ground fire trail',count:7,life:1.4,speedX:0,speedY:-14,spread:6,gravity:-3,size:2,orbit:2,shape:'square',blend:'lighter',start:'#ffe69b',end:'#e34d22'},
+  'portal-runes':{name:'Storage portal · flowing energy',description:'Short wisps curl around the aperture and fade into its dark center.',count:28,life:2.8,speedX:0,speedY:-5,spread:4,gravity:0,size:1,orbit:20,shape:'square',motion:'portal',blend:'lighter',start:'#b5f3dc',end:'#386a79',loop:true},
   ...CARTOON_EFFECTS,
   ...PIXEL_EFFECTS,
   'arrow-splash':{name:'Arrow water impact',count:7,life:.4,speedX:0,speedY:-22,spread:12,gravity:95,size:2,orbit:3,shape:'square',blend:'source-over',start:'#e3fffa',end:'#4da8c1'},
@@ -34,12 +36,25 @@ export function saveEffect(id,value){if(!/^[a-z0-9_-]{1,60}$/.test(id)||!validEf
 const noise=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
 const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 export function particleSamples(effect,time,seed=0){
+ if(effect.motion==='portal')return portalParticleSamples(effect,time,seed);
  const points=[];
  for(let i=0;i<effect.count;i++){
   const phase=time/effect.life+i/effect.count,cycle=Math.floor(phase),u=phase-cycle,t=u*effect.life,n=i+cycle*719+seed;
   const angle=time*2+i*6.283/effect.count;
   points.push({x:(noise(n)-.5)*effect.spread+effect.speedX*t+Math.cos(angle)*effect.orbit,y:effect.speedY*t+.5*effect.gravity*t*t+Math.sin(angle)*effect.orbit*.28,u,size:effect.size*(1-u*.7),alpha:Math.min(1,u*12)*(1-u)});
  }return points;
+}
+export function portalParticleSamples(effect,time,seed=0){
+ const t=Number.isFinite(time)?time:0;
+ return Array.from({length:effect.count},(_,i)=>{
+  const phase=t/effect.life+i/effect.count,u=phase-Math.floor(phase),n=i+seed;
+  const position=v=>{
+   const a=n*2.399963+v*2.4+t*.3,r=(1.2-v*.55)*(effect.orbit/20)+(noise(n)-.5)*effect.spread*.025;
+   return {x:Math.cos(a)*19*r+effect.speedX*v*.15,y:-29+Math.sin(a)*39*r+effect.speedY*v*.3};
+  };
+  const p=position(u),tail=position(Math.max(0,u-.026));
+  return {...p,tailX:tail.x,tailY:tail.y,u,size:effect.size,alpha:Math.sin(u*Math.PI)**1.5*.65};
+ });
 }
 const frames=new WeakMap(),palettes=new WeakMap();
 export function beginParticleFrame(c,{budget=768,maxEmitters=48,quality=1,reducedMotion=false}={}){
@@ -62,6 +77,17 @@ export function drawParticleEffect(c,id,x,y,time,seed=0){
  }
  let palette=palettes.get(effect);if(!palette||palette.start!==effect.start||palette.end!==effect.end){const a=rgb(effect.start),b=rgb(effect.end);palette={start:effect.start,end:effect.end,colors:Array.from({length:16},(_,n)=>`rgb(${a.map((v,i)=>Math.round(v+(b[i]-v)*n/15)).join(',')})`)};palettes.set(effect,palette);}
  const count=Math.min(effect.count,Math.floor(effect.count*(frame?.quality??1))||1);
+ if(effect.motion==='portal'){
+  const samples=portalParticleSamples({...effect,count},time,seed);
+  for(const p of samples){
+   if(!spend())break;
+   const s=Math.max(1,Math.round(p.size));
+   c.fillStyle=palette.colors[Math.min(15,Math.floor(p.u*16))];
+   c.globalAlpha=alpha*p.alpha*.25;c.fillRect(Math.round(p.tailX),Math.round(p.tailY),s,s);
+   c.globalAlpha=alpha*p.alpha;c.fillRect(Math.round(p.x),Math.round(p.y),s,s);
+  }
+  c.restore();return;
+ }
  for(let i=0;i<count;i++){
   if(!spend())break;
   const phase=time/effect.life+i/count,cycle=Math.floor(phase),u=phase-cycle,t=u*effect.life,n=i+cycle*719+seed,angle=time*2+i*6.283/count;

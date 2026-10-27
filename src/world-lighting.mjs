@@ -1,5 +1,5 @@
 import {nearbyScenery} from './performance.mjs';
-import {BOARD_TABLE} from './board-table-geometry.mjs';
+import {BOARD_TABLE,boardLightVolumes} from './board-table-geometry.mjs';
 import {realmAsset} from './realm-layout.mjs';
 import {pointLightVisibility} from './realtime-shadows.mjs';
 
@@ -60,7 +60,7 @@ export function worldLightField(game,sources,room=null){
  const relevant=v=>sources.some(s=>Math.hypot(s.x-v.x,s.y-v.y)<(s.radius||280)+Math.max(v.rx,v.ry));
  const add=v=>{if(relevant(v))volumes.push(v);};
  if(!room){
-  if(game.phase==='play'&&!game.openingBoard)for(const b of [BOARD_TABLE,game.eventTestBoard].filter(Boolean)){const half=Math.max(b.w,b.h)/2;add({owner:`board:${b.x}:${b.y}`,x:b.x+b.w/2,y:b.y+b.h/2,rx:half,ry:half,minZ:b.surfaceHeight-3,maxZ:b.surfaceHeight,shape:'box',opacity:1});}
+  if(game.phase==='play'&&!game.openingBoard)for(const b of [BOARD_TABLE,game.eventTestBoard].filter(Boolean))for(const volume of boardLightVolumes(b))add(volume);
   for(const p of nearbyProps)for(const v of propLightGeometry(p).volumes)add(v);
   for(const p of game.supplyChests||[])if(!p.opened)for(const v of propLightGeometry({...p,kind:'supply_chest',size:48,lightHeight:30}).volumes)add(v);
   for(const f of [...(game.house?.walls||[]),...(game.house?.doors||[]),...(game.house?.furniture||[])]){

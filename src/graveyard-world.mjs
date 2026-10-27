@@ -1,6 +1,7 @@
 // Self-contained generation: do not import world.mjs (which routes biomes here).
 // Coordinates are world pixels; rootY and graveyardFootprint are on the ground.
 export const GRAVEYARD_TILE = 32;
+const regionalCollisionCache=new WeakMap();
 export const GRAVEYARD_SCENERY_LIMIT = 320;
 export const GRAVE_BREAK_SPAWN_CHANCE = 0.20;
 export const GRAVE_EMERGENCE_SECONDS = 2.4;
@@ -116,15 +117,27 @@ export function graveyardWorld(seed=0) {
 
 /** Input is the ground/feet plane, NOT the actor's drawing origin. */
 export function graveyardBlocked(g,x,y,radius=8,flying=false,elevation=0,actor=null) {
-  if(!active(g)||flying||g.phase==='won'||!Number.isFinite(x)||!Number.isFinite(y))return false;
+  if(flying||!Number.isFinite(x)||!Number.isFinite(y))return false;
+  const cemetery=active(g);
+    let candidates=g.scenery||[];
+    if(!cemetery){
+      let cached=regionalCollisionCache.get(candidates);
+      if(!cached||cached.length!==candidates.length){cached={length:candidates.length,props:candidates.filter(p=>p.graveyard&&p.boundlessRegion)};regionalCollisionCache.set(candidates,cached);}
+      candidates=cached.props;if(!candidates.length)return false;
+    }
   radius=Number.isFinite(radius)?Math.max(0,radius):8;
-  return (g.scenery || []).some(p=>{
-    if(!p.graveyard || p.depleted || p.falling) return false;
+    return candidates.some(p=>{
+    if(!p.graveyard||p.depleted||p.falling||!cemetery&&!p.boundlessRegion||g.phase==='won'&&p.kind!=='mausoleum')return false;
     if(actor?.wingHover&&elevation>=32&&['cemetery_fence','cemetery_gate'].includes(p.kind))return false;
     // Leave a clean approach to every mausoleum doorway. The structure still
     // blocks its walls, but the player can stand at the threshold and use the
     // interaction before or after the event opens the gate.
-    if(p.kind==='mausoleum' && p.doorOpen && Math.abs(x-(p.x||0))<=26 && y >= (p.rootY??p.y)-10) return false;
+    if(p.kind==='mausoleum'){
+        if(!Number.isFinite(p.x)||!Number.isFinite(p.rootY??p.y))return !!p.graveyardFootprint&&rectHit(p.graveyardFootprint,x,y,radius);
+      const base=p.rootY??p.y,width=(p.width||128)+12,depth=p.depth||64;
+        if(p.doorOpen&&Math.abs(x-p.x)+radius<20&&y-radius>=base-18)return false;
+      return rectHit({x:p.x-width/2,y:base-depth,w:width,h:depth+5},x,y,radius);
+    }
     return (p.graveyardFootprint && rectHit(p.graveyardFootprint,x,y,radius) ||
       (p.blockers || []).some(r=>rectHit(r,x,y,radius)));
   });

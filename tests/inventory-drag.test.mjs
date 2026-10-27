@@ -126,6 +126,7 @@ test("Offhand-only sword contributes full weapon damage to facing melee", () => 
   p.faceY = 0;
   g.enemies = [{ id: 10, x: 430, y: 400, hp: 100, stun: 0, kind: "lion" }];
   g.attack(p);
+  for(let i=0;i<6;i++)g.update(.02,{});
   assert.equal(g.enemies[0].hp, 100 - ITEMS.sword.damage);
 });
 test("Player drops never auto-pickup, even for another player with a charm or after saving", () => {

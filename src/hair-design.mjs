@@ -142,6 +142,25 @@ export function facialHairStyle(look={}){
 }
 export function drawFacialHair(c,h,look,d,scale=1){
  const style=facialHairStyle(look);if(style==='none'||d>=3&&d<=5)return;
+ if(look.face==='alan'&&!look.facialHair){
+  // Alan's cropped, squared beard leaves a clear mouth and cheek plane. Side
+  // views have one jaw mass, rather than two frontal moustache halves.
+  const p=hairPalette(look.facialHairColor||look.hairColor),side=d===2||d===6,diagonal=d===1||d===7,sign=d<4?-1:1;
+  const shape=(pts,tone)=>polygon(c,h,pts,p[tone],scale);
+  if(side){
+   shape([[sign*2,1.5],[sign*4,1],[sign*4,3.5],[sign*2,5.5],[sign*-1,5],[sign*-1,3.5],[sign*1,3]],'ink');
+   shape([[sign*2,2],[sign*3.5,2],[sign*3,3.5],[sign*1.5,5],[0,4.5],[0,3.5],[sign*1.5,3]],'base');
+   shape([[sign*2,2.5],[sign*3,2.5],[sign*2,4.5],[sign*1,4.5]],'light');
+  }else{
+   const shift=diagonal?sign*.5:0;
+   const pts=a=>a.map(([x,y])=>[x*(diagonal?.85:1)+shift,y]);
+   shape(pts([[-4,.5],[-3,1],[-3,3],[-1.5,3.5],[1.5,3.5],[3,3],[3,1],[4,.5],[4,3.5],[2,5.5],[-2,5.5],[-4,3.5]]),'ink');
+   shape(pts([[-3.5,1.5],[-3,3.5],[-1.5,4],[1.5,4],[3,3.5],[3.5,1.5],[3.5,3.5],[1.5,5],[-1.5,5],[-3.5,3.5]]),'base');
+   shape(pts([[-3,2],[-2.5,3.5],[-1,4.5],[-2,4.5],[-3.5,3]]),'light');
+   shape(pts([[-2,1.8],[-.5,1.5],[0,2],[.5,1.5],[2,1.8],[2,2.5],[.5,2.5],[0,2.2],[-.5,2.5],[-2,2.5]]),'shade');
+  }
+  return;
+ }
  const p=hairPalette(look.facialHairColor||look.hairColor),profile=d===2||d===6,turn=d<4?-1:1;
  const shape=(pts,tone='base')=>polygon(c,h,pts.map(([x,y])=>[x+(profile?turn*.7:0),y]),p[tone],scale);
  if(['moustache','goatee','shortbeard','fullbeard'].includes(style)){

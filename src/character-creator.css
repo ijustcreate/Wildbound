@@ -43,3 +43,41 @@
 .creation-carousel-popup .creation-carousel-done{flex:0 0 auto;border-radius:7px}
 .creation-carousel-popup>small[data-creation-help]{text-align:center}
 @media(max-height:630px){.creation-carousel-popup{padding:10px;gap:5px}.creation-style-carousel{grid-template-columns:36px minmax(0,1fr) 36px}.creation-menu .creation-style-carousel button{min-height:35px}.creation-carousel-choice{font-size:16px}}
+
+/* Palette colors are content: the shared Camp button skin must not paint them. */
+#lobby .creation-menu .creation-palette{flex:none;width:min(100%,360px,calc(100dvh - 190px));align-self:center;gap:9px;padding:4px;box-sizing:border-box;}
+#lobby .creation-menu .creation-palette button{background:var(--palette-color)!important;border:2px solid #b29a67!important;min-height:0;padding:0;box-shadow:inset 0 0 0 1px #0003!important;}
+#lobby .creation-menu .creation-palette button.creation-rainbow{background:conic-gradient(#d85862,#e1bf55,#65a467,#53b0be,#6c6cbd,#ab64a5,#d85862)!important;}
+#lobby .creation-menu .creation-palette button:is(.lobby-focus,:focus-visible){outline:3px solid #ffe276!important;outline-offset:1px!important;box-shadow:0 0 0 2px #102820!important;}
+#lobby .creation-menu .creation-popup:has(.creation-palette){justify-content:center;}
+#lobby .creation-menu .creation-popup:has(.creation-palette)>:is(h3,button){flex:none;}
+#lobby .creation-menu .creation-wheel{align-self:center;width:min(100%,250px,calc(100dvh - 230px));flex:none;}
+.creation-menu .creation-preview-stage{grid-template-rows:minmax(0,1fr) auto;padding:6px;gap:0;border-radius:3px;}
+.creation-menu .creation-preview-stage>canvas{min-height:0;max-height:none;}
+.creation-menu .creation-stage-turns{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:5px 7px;background:#102922;}
+.creation-menu .creation-stage-turns span{text-align:center;color:#e9cf94;font:13px Georgia,serif;white-space:nowrap;}
+#lobby .creation-menu .creation-stage-turns button{width:32px;min-height:28px;height:28px;padding:0;font:24px/1 Georgia,serif;}
+.creation-menu .creation-select-row span{color:#554125;}
+
+/* Color tools occupy only the option column; the original preview stays visible. */
+#lobby .creation-menu .creation-color-popup{inset:auto;box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:6px;padding:8px;min-width:0;min-height:0;overflow:hidden;justify-content:stretch;}
+#lobby .creation-menu .creation-color-popup h3{font-size:16px;margin:0;line-height:1.2;}
+#lobby .creation-menu .creation-color-popup:has(.creation-palette){justify-content:stretch;grid-template-columns:minmax(0,1fr);}
+#lobby .creation-menu .creation-color-popup .creation-palette{width:100%;height:100%;min-height:0;align-self:stretch;grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;padding:3px;margin:0;}
+#lobby .creation-menu .creation-color-popup .creation-palette button{aspect-ratio:auto;min-height:0;height:100%;}
+#lobby .creation-menu .creation-color-popup>button{min-height:26px;padding:3px 6px;}
+#lobby .creation-menu .creation-color-wheel-popup{display:flex;align-items:stretch;gap:5px;overflow:auto;}
+#lobby .creation-menu .creation-color-wheel-popup .creation-wheel{width:min(100%,200px,max(36px,calc(var(--creation-color-height) - 150px)));height:auto;max-height:none;min-height:0;flex:none;align-self:center;}
+#lobby .creation-menu .creation-color-wheel-popup p{font-size:10px;margin:0;}
+.creation-inline-style{flex:none;min-width:0;}
+.creation-inline-style>.creation-select-row{width:100%;}
+.creation-inline-style>.creation-select-row[hidden]{display:none;}
+.creation-menu .creation-inline-controls{grid-template-columns:32px minmax(0,1fr) 32px 54px;gap:6px;margin:4px 2px 2px;}
+.creation-menu .creation-inline-controls[hidden]{display:none;}
+.creation-menu .creation-inline-controls button{min-height:28px;font-size:23px;}
+.creation-menu .creation-inline-controls .creation-inline-done{font:12px system-ui;}
+.creation-menu .creation-inline-controls .creation-carousel-count{font-size:12px;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.creation-menu{container-type:inline-size;}
+.creation-menu .creation-preview-row{min-height:180px;flex-shrink:0;}
+.lobby-player-panel.creation-menu .creation-body{overflow:auto;}
+@container(max-width:340px){.creation-menu .creation-preview-row{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);}.creation-menu .creation-stage-turns{grid-template-columns:26px minmax(0,1fr) 26px;gap:2px;padding:4px 0;}.creation-menu .creation-stage-turns span{font-size:10px;}.creation-menu .creation-color-row{font-size:11px;padding:4px;}.creation-menu .creation-inline-controls{gap:3px;grid-template-columns:28px minmax(0,1fr) 28px 44px;}}

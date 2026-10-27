@@ -7,7 +7,7 @@ const scenes=new WeakMap();
 export function sampleBansheeSteps(g,{room=null,time=g.time||0,spacing=10}={}){
  let scene=scenes.get(g);if(!scene){scene={steps:[],positions:new Map()};scenes.set(g,scene);}
  scene.steps=scene.steps.filter(s=>time>=s.time&&time-s.time<BANSHEE_STEP_LIFE);
- const actors=[...(g.players||[]),...(g.enemies||[]).filter(e=>e.kind==='banshee_queen'&&e.hp>0)];
+ const actors=[...(g.players||[]),...(g.enemies||[]).filter(e=>e.kind==='banshee_queen'&&e.hp>0),...(g.questNpcs||[]).filter(n=>n.santa)];
  for(const p of actors){
   if((p.room||null)!==room)continue;
   const key=String(room)+':'+(p.kind==='banshee_queen'?'queen:'+p.id:p.id),x=room?p.roomX:p.x,y=room?p.roomY:p.y;

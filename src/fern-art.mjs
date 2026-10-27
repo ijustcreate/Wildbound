@@ -1,4 +1,18 @@
-const hash=n=>{const x=Math.sin(n*127.1)*43758.5453;return x-Math.floor(x);};
+import {vegetationWind} from './vegetation-motion.mjs';
+export const fernAccentVisible=p=>{const n=Math.sin(p.x*127.1+p.y*311.7+(p.seed||0))*43758.5453;return n-Math.floor(n)<.23;};
+const fernGroups=new WeakMap();
+export function fernAccentGroup(cover){
+ let selected=fernGroups.get(cover);if(selected)return selected;
+ selected=new Set();const cells=new Map(),span=40;
+ for(const p of cover){
+  if(p.kind!=='fern'||!fernAccentVisible(p))continue;
+  const cx=Math.floor(p.x/span),cy=Math.floor(p.y/span);let crowded=false;
+  for(let y=cy-1;y<=cy+1;y++)for(let x=cx-1;x<=cx+1;x++)for(const q of cells.get(x+','+y)||[])if(Math.hypot(p.x-q.x,p.y-q.y)<span)crowded=true;
+  if(crowded)continue;
+  selected.add(p);const key=cx+','+cy;if(!cells.has(key))cells.set(key,[]);cells.get(key).push(p);
+ }
+ fernGroups.set(cover,selected);return selected;
+}
 const sprites=new Map();
 export const FERN_SIZE=32;
 export function tickFern(p,players,dt){
@@ -17,7 +31,7 @@ export function tickFern(p,players,dt){
   p.fernX=Math.max(-13,Math.min(13,(p.fernX||0)+p.fernVX*dt));
   p.fernY=Math.max(-10,Math.min(10,(p.fernY||0)+p.fernVY*dt));
 }
-export function drawJungleFern(c,p,time=0){
+export function drawJungleFern(c,p,time=0,windStrength=1){
   // Eight shared, half-size silhouettes: no leaf geometry in the frame loop.
   const variant=Math.abs(Math.floor(p.seed||0))%8;
   let sprite=sprites.get(variant);
@@ -27,7 +41,7 @@ export function drawJungleFern(c,p,time=0){
     const context=sprite.getContext('2d');context.translate(16,24);
     paintFern(context,{x:0,y:0,seed:variant*137});sprites.set(variant,sprite);
   }
-  const bend=(p.fernX||0)+Math.sin(time*1.7+(p.seed||0))*.4;
+  const bend=(p.fernX||0)+vegetationWind(p.x,p.y,time,windStrength)*.8;
   c.save();c.imageSmoothingEnabled=false;
   c.translate(Math.round(p.x),Math.round(p.y));
   c.transform(1,0,-bend/20,1-(p.fernY||0)/40,0,0);
@@ -35,15 +49,20 @@ export function drawJungleFern(c,p,time=0){
 }
 function paintFern(c,p){
  const pixel=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
- const fronds=[[-13,8],[-10,13],[-4,19],[4,20],[10,14],[14,8]];
+ const fronds=[[-12,9],[-7,16],[0,21],[7,16],[12,10]];
  for(let i=0;i<fronds.length;i++){
   const [dx,height]=fronds[i];
-  for(let n=1;n<=7;n++){
-   const t=n/7,x=dx*t,y=-height*Math.sin(t*2.1),leaf=n===7?1:n>4?2:3;
-   pixel(x,y,1,3,'#355d39');
-   pixel(x-leaf,y,leaf+1,2,i<3?'#547941':'#466d3b');
-   pixel(x+1,y-1,leaf,2,'#78954f');
+  // Solid tapered frond masses survive gameplay scale. Tiny detached leaflet
+  // dots were the source of the noisy fishbone pattern in overlapping groups.
+  for(let n=0;n<=height;n+=2){
+   const t=n/height,x=dx*t,leaf=Math.max(1,Math.round(3*Math.sin(t*Math.PI)));
+   pixel(x-leaf,-n,leaf*2+1,3,'#315338');
   }
+  for(let n=2;n<height-1;n+=2){
+   const t=n/height,x=dx*t,leaf=Math.max(1,Math.round(3*Math.sin(t*Math.PI))-1);
+   pixel(x-leaf,-n,leaf*2,3,'#527444');
+  }
+  if(i===1||i===2)pixel(dx*.65-1,-height*.65,2,4,'#78904d');
  }
  pixel(-2,-1,4,2,'#466d3b');
 }

@@ -1,0 +1,24 @@
+const {app,BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),base=process.env.WILDBOUND_VERIFY_APP||root,out=path.join(root,'test-output/sword-feel-review');fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
+app.whenReady().then(async()=>{const w=new BrowserWindow({show:false,width:1200,height:900,webPreferences:{backgroundThrottling:false}});w.webContents.setAudioMuted(true);const errors=[];w.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});try{
+ await w.loadFile(path.join(base,'index.html'));await w.webContents.executeJavaScript('window.wildboundBoot.ready');await w.webContents.executeJavaScript('window.requestAnimationFrame=()=>0;void 0');
+ const data=await w.webContents.executeJavaScript(`(async()=>{try{
+  const {drawPlayer,playerMotion,playerPose,directionVector,validatePlayerMotion}=await import('./src/player-motion.mjs'),{DEFAULT_APPEARANCE}=await import('./src/appearance.mjs'),{drawGraveyardProp}=await import('./src/graveyard-art.mjs'),{Game}=await import('./src/core.mjs'),{Renderer}=await import('./src/render.mjs'),{Assets}=await import('./src/assets.mjs');
+  if(playerMotion.nativeSwordRevision!==1||playerMotion.locomotionRevision!==2)throw Error('Wrong rig revisions '+JSON.stringify({sword:playerMotion.nativeSwordRevision,locomotion:playerMotion.locomotionRevision,native:playerMotion.nativeHumanoidRevision,source:!!playerMotion.locomotionSource}));if(!validatePlayerMotion(playerMotion))throw Error('Native editable rig is invalid');
+  const c=document.createElement('canvas');c.width=1120;c.height=620;const p=c.getContext('2d');p.imageSmoothingEnabled=false;const images={},checks=[];
+  const gear={head:'leather_hood',cape:'cape',hand1:'sword',feet:'boots'},look={...DEFAULT_APPEARANCE,hair:'undercut',hairColor:'#50323f',shirt:'#886938',pants:'#43645b'};
+  p.fillStyle='#203c32';p.fillRect(0,0,c.width,c.height);p.fillStyle='#f4dfaf';p.font='17px sans-serif';p.fillText('Current native sword rig | S, SW, W, NW, N, NE, E, SE',18,25);
+  for(let d=0;d<8;d++)for(let i=0;i<4;i++){const [faceX,faceY]=directionVector(d),t=[.18,.32,.48,.8][i];p.save();p.translate(70+d*140,150+i*145);p.scale(2.6,2.6);drawPlayer(p,{equipment:gear,appearance:look,faceX,faceY,animationAction:'swipe_one',playerFrame:t*(playerMotion.clips.swipe_one.length-1),hp:100},0,playerMotion);p.restore();}images.sword=c.toDataURL();
+  p.fillStyle='#59634a';p.fillRect(0,0,c.width,c.height);p.fillStyle='#f4dfaf';p.fillText('Tree branches remain above their root plane in all five silhouettes',18,25);
+  for(let v=0;v<5;v++){p.save();p.translate(110+v*220,380);p.scale(1.5,1.5);drawGraveyardProp(p,{kind:'leafless_tree',graveyard:true,x:0,y:0,rootY:0,size:150,variant:v});p.fillStyle='#e1ba6e';p.fillRect(-45,8,90,1);p.restore();}images.branches=c.toDataURL();
+  const assets=new Assets();await assets.load();const view=document.createElement('canvas');Object.assign(view.style,{width:'1100px',height:'800px',position:'fixed',inset:'0'});document.body.append(view);const r=new Renderer(view,assets);r.setDynamicShadows(true);
+  const g=new Game(()=>.5,{deferWorld:true});g.seed=42;g.environment='forest';const hero=g.addPlayer('keyboard','Sword review');g.start();g.openingBoard=false;g.weather=null;g.onSound=()=>{};g.persist=()=>{};g.time=20;g.sky.elapsed=100;g.enemies=[];g.scenery=g.scenery.filter(s=>s.kind!=='tree'||Math.hypot(s.x-810,s.y-900)>350);g.spriteLibrary=assets.library;Object.assign(hero,{x:810,y:900,faceX:1,faceY:0,equipment:gear,appearance:look,invincible:true});
+  for(let n=0;n<50;n++){r.camera={x:810,y:875,zoom:1.8};r.draw(g,0);}images.daylight=view.toDataURL();
+  const enemy={id:901,kind:'lion',x:hero.x+43,y:hero.y,hp:500,maxHp:500,speed:0,frozen:100,state:'hunt',cooldown:99,faceX:-1,faceY:0};g.enemies=[enemy];g.attack(hero);
+  for(let frame=0;frame<18;frame++){g.update(1/60,{});r.camera={x:810,y:875,zoom:1.8};r.draw(g,0);if([3,6,9,13].includes(frame))images['contact-'+frame]=view.toDataURL();}
+  if(enemy.hp>=500)throw Error('Actual game sword failed to hit');checks.push('Current editable native rig validated','Eight directions through four sword phases','Five corrected tree silhouettes','Actual forest lighting capture','Actual timed sword contact in Renderer');
+  return {images,checks,revisions:{sword:playerMotion.nativeSwordRevision,locomotion:playerMotion.locomotionRevision}};
+ }catch(e){return {error:String(e),stack:e.stack};}})()`);
+ if(data.error)throw Error(data.error+'\n'+data.stack);
+ for(const [name,url]of Object.entries(data.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(url.split(',')[1],'base64'));delete data.images;data.errors=errors;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(data,null,2));console.log(JSON.stringify(data));app.exit(errors.length?1:0);
+ }catch(e){console.error(e);app.exit(1);}});

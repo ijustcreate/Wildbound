@@ -1,3 +1,4 @@
+import {visualActorId} from './animation-id.mjs';
 import {drawGorilla} from './temple.mjs';
 import {CapeInertia} from './cape-inertia.mjs';
 import {LocomotionHistory} from './native-locomotion.mjs';
@@ -66,7 +67,8 @@ export class Animator {
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
-    if((actor.sprite==='player'||actor.sprite?.startsWith('explorer')||!actor.kind)&&playerMotion.locomotionRevision===1){
+    if(typeof actor.id==='string')actor={...actor,id:visualActorId(actor.id)};
+    if((actor.sprite==='player'||actor.sprite?.startsWith('explorer')||!actor.kind)&&playerMotion.locomotionRevision>=1){
       this.locomotionHistory??=new LocomotionHistory();
       actor={...actor,...this.locomotionHistory.sample(actor,time,playerAction(actor),playerFrame(actor,time))};
     }
@@ -105,7 +107,7 @@ export class Animator {
   drawActor(ctx, actor, time, size = 48,lighting=null) {
     if(drawRaven(ctx,actor,time,size))return;
     if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
-    if(WILD_FAUNA_KINDS.includes(actor.kind)){drawWildFauna(ctx,actor,time,size);return;}
+    if(WILD_FAUNA_KINDS.includes(actor.kind)&&actor.kind!=="chicken"){drawWildFauna(ctx,actor,time,size);return;}
     if(actor.kind==='bee'){drawBee(ctx,actor,time,size);return;}
     if(actor.kind==='tsetse'){drawTsetse(ctx,actor,time,size);return;}
     if(actor.kind==='bee_hive'){drawBeeHive(ctx,actor,time,size);return;}
@@ -162,7 +164,7 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
-        actor.equipment?.head !== 'jack_o_lantern' &&
+        actor.equipment?.head !== 'jack_o_lantern' && actor.equipment?.head !== 'bone_carver_crown' && actor.equipment?.gloves !== 'bone_carver_claws' &&
         playerAction(actor) === "idle" && !playerLayers(actor,time).length && !actor.locomotionTransition && !actor.locomotionTurning
       ) {
         if (this.playerRevision !== playerMotionRevision) {
@@ -181,6 +183,7 @@ export class Animator {
           facingIndex(actor.faceX, actor.faceY),
           frame,
           actor.equipment,
+          Object.values(actor.equipment||{}).map(id=>ITEMS[id]?.artRevision||0),
           actor.appearance,
           actor.field?.cosmetics,
           (actor.inventory || [])

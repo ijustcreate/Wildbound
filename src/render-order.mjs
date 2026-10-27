@@ -24,7 +24,7 @@ function inferredBones(id, joints) {
   if (name.includes("body") || name.includes("pelvis") || name.includes("chest")) return has("pelvis", "chest", "neck");
   return Object.keys(joints || {}).slice(0, 1);
 }
-export function paintLayers(queue, model, direction, context, joints, posedDepth=false) {
+export function paintLayers(queue, model, direction, context, joints, posedDepth=false, itemSprites=null) {
   // Static studio ordering cannot describe crossed arms moving around a bow.
   const order = posedDepth?[]:model.renderOrder?.[direction] || [];
   const sorted = queue.map((part,i)=>({...part,id:part.id || `Layer ${i+1}`})).sort((a,b)=>a.depth-b.depth);
@@ -54,7 +54,7 @@ export function paintLayers(queue, model, direction, context, joints, posedDepth
     const bones = part.bones?.length ? part.bones : inferredBones(part.id, joints);
     const bone = part.bone || bones[0];
     const anchor=joints?.[bone];
-    const sprite=model.boneSprites?.[part.id]?.[direction];
+    const sprite=part.sprite||itemSprites?.[part.id]||model.boneSprites?.[part.id]?.[direction];
     const paint=()=>{
       if(sprite && context && anchor) {
         sprite.pixels.forEach((index,i)=>{const color=sprite.palette[index];if(!index || color==='transparent')return;context.fillStyle=color;context.fillRect(Math.round(anchor.x)+sprite.x+i%sprite.width,Math.round(anchor.y)+sprite.y+Math.floor(i/sprite.width),1,1);});

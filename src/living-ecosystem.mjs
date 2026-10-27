@@ -1,3 +1,4 @@
+import {perchReleasedCritter} from './broom-pets.mjs';
 import { footprintHit, terrainHash } from './world.mjs';
 import {forestDecor} from './forest.mjs';
 import {give,take,clearSlot,ITEMS,migrateLegacySupplies} from './items.mjs';
@@ -157,6 +158,7 @@ export function updateLivingEcosystem(g,dt) {
     }
   }
   for(const a of r.animals) {
+    if(perchReleasedCritter(g,a))continue;
     if(fleeGhostCritter(g,a,dt,(x,y)=>a.kind==='fish'?['water','shallow'].includes(waterAt(g,x,y)):openSpot(g,x,y,4)&&!livingEcosystemBlocked(g,x,y,4,['dragonfly','bird','fairy','grave_moth'].includes(a.kind),0)))continue;
     if(['crab','fish'].includes(a.kind)){
       const owner=a.releasedOwner!=null?g.players.find(p=>p.id===a.releasedOwner&&p.hp>0&&!p.room):null;
@@ -260,26 +262,7 @@ export function drawLivingEcosystem(c,g,layer='all') {
   for(const a of r.animals) {
     const flying=['dragonfly','bird','fairy'].includes(a.kind);
     if(flying?!air:!ground)continue;
-    if(['crab','fish'].includes(a.kind)){drawCoastalCritter(c,a,r.time);continue;}
-    const x=Math.round(a.x),y=Math.round(a.y-(a.hopHeight||0)),flap=Math.sin(r.time*16+a.phase)>0?2:-1;
-    pixel(x-3,y+2,7,2,'#20352b55');
-    if(a.kind==='dragonfly'||a.kind==='fairy') {
-      const fairy=a.kind==='fairy',yy=y-10-Math.round(Math.sin(r.time*3+a.phase)*2);
-      pixel(x-6,yy-flap,5,2,fairy?'#dce4ff':'#b8e7d7');pixel(x+2,yy+flap,5,2,fairy?'#f4dcff':'#d1f1e4');
-      pixel(x,yy-2,2,7,fairy?'#a992e3':'#467e9b');pixel(x,yy-3,2,2,'#fff0b4');
-      if(fairy)pixel(x+7,yy+6,1,1,'#ffffff');
-    } else if(a.kind==='frog') {
-      if(a.swimming&&!a.hop){c.strokeStyle='#a0cac088';c.lineWidth=1;c.beginPath();c.ellipse(x,y+1,8,3,0,0,7);c.stroke();pixel(x-4,y-2,8,3,'#417b52');pixel(x-4,y-4,2,2,'#dee6a2');pixel(x+2,y-4,2,2,'#dee6a2');pixel(x-6,y+2,3,1,'#749968');pixel(x+4,y+2,3,1,'#749968');continue;}
-      pixel(x-5,y-2,10,4,'#3c7040');pixel(x-3,y-4,6,4,'#88aa54');
-      pixel(x-4,y-5,2,2,'#e6dc87');pixel(x+2,y-5,2,2,'#e6dc87');pixel(x-6,y+1,3,2,'#628348');pixel(x+3,y+1,3,2,'#628348');
-    } else if(a.kind==='bird') {
-      pixel(x-3,y-10,7,4,'#b08b50');pixel(x-8,y-11-flap,6,2,'#5d6954');pixel(x+3,y-11-flap,6,2,'#5d6954');pixel(x+4,y-10,3,1,'#efcb78');
-    } else {
-      const mouse=a.kind==='white_mouse';
-      pixel(x-8,y,5,1,mouse?'#d7b4c1':'#75614d');pixel(x-4,y-4,9,5,mouse?'#f8faf7':'#807765');
-      pixel(x+2,y-6,3,3,mouse?'#e5bac6':'#ac9e82');pixel(x+4,y-3,1,1,'#292e38');
-      pixel(x-3,y+1,2,1,mouse?'#dabac8':'#3f423b');
-    }
+    if(!a.broomPerched)drawLivingAnimal(c,a,r.time);
   }
   c.restore();
 }
@@ -317,3 +300,27 @@ export function releaseCritter(g,p,index){
 }
 
 
+
+export function drawLivingAnimal(c,a,time=0){const pixel=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
+    if(['crab','fish'].includes(a.kind)){drawCoastalCritter(c,a,time);return;}
+    const x=Math.round(a.x),y=Math.round(a.y-(a.hopHeight||0)),flap=Math.sin(time*16+a.phase)>0?2:-1;
+    if(!a.broomPerched)pixel(x-3,y+2,7,2,'#20352b55');
+    if(a.kind==='dragonfly'||a.kind==='fairy') {
+      const fairy=a.kind==='fairy',yy=y-10-Math.round(Math.sin(time*3+a.phase)*2);
+      pixel(x-6,yy-flap,5,2,fairy?'#dce4ff':'#b8e7d7');pixel(x+2,yy+flap,5,2,fairy?'#f4dcff':'#d1f1e4');
+      pixel(x,yy-2,2,7,fairy?'#a992e3':'#467e9b');pixel(x,yy-3,2,2,'#fff0b4');
+      if(fairy)pixel(x+7,yy+6,1,1,'#ffffff');
+    } else if(a.kind==='frog') {
+      if(a.swimming&&!a.hop){c.strokeStyle='#a0cac088';c.lineWidth=1;c.beginPath();c.ellipse(x,y+1,8,3,0,0,7);c.stroke();pixel(x-4,y-2,8,3,'#417b52');pixel(x-4,y-4,2,2,'#dee6a2');pixel(x+2,y-4,2,2,'#dee6a2');pixel(x-6,y+2,3,1,'#749968');pixel(x+4,y+2,3,1,'#749968');return;}
+      pixel(x-5,y-2,10,4,'#3c7040');pixel(x-3,y-4,6,4,'#88aa54');
+      pixel(x-4,y-5,2,2,'#e6dc87');pixel(x+2,y-5,2,2,'#e6dc87');pixel(x-6,y+1,3,2,'#628348');pixel(x+3,y+1,3,2,'#628348');
+    } else if(a.kind==='bird'&&a.broomPerched) {pixel(x-3,y-6,7,6,'#b08b50');pixel(x-2,y-4,4,3,'#5d6954');pixel(x+3,y-6,2,2,'#efcb78');pixel(x+1,y-7,1,1,'#292e38');
+    } else if(a.kind==='bird') {
+      pixel(x-3,y-10,7,4,'#b08b50');pixel(x-8,y-11-flap,6,2,'#5d6954');pixel(x+3,y-11-flap,6,2,'#5d6954');pixel(x+4,y-10,3,1,'#efcb78');
+    } else {
+      const mouse=a.kind==='white_mouse';
+      pixel(x-8,y,5,1,mouse?'#d7b4c1':'#75614d');pixel(x-4,y-4,9,5,mouse?'#f8faf7':'#807765');
+      pixel(x+2,y-6,3,3,mouse?'#e5bac6':'#ac9e82');pixel(x+4,y-3,1,1,'#292e38');
+      pixel(x-3,y+1,2,1,mouse?'#dabac8':'#3f423b');
+    }
+}

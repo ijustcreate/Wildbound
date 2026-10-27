@@ -1,3 +1,9 @@
+import {BONE_CARVER_EVENT,spawnBoneCarver} from './bone-carver.mjs';
+import {tickBroomFlight} from './broom-mount.mjs';
+import {vehicleRollsOver} from './vehicle-ground.mjs';
+import {awakenCemeteryPumpkins} from './squashling-awakening.mjs';
+import {DRAGON_EVENTS,dragonBreath} from './dragon-events.mjs';
+import {swordLoadout,swordTiming,swordStep} from './sword-feel.mjs';
 import {REALMS,realmVoidBlocked,realmSafeSpawn,realmEventContext} from './realm-world.mjs';
 import {REALM_EVENTS,startRealmEvent,seedRealmLife} from './realm-life.mjs';
 import {SHORE_GOBLIN_EVENT,tickShoreGoblin} from './shore-goblin-ai.mjs';
@@ -55,6 +61,7 @@ import {updateBoundlessWorld, initializeBoundlessWorld, BOUNDLESS_SAFE_RADIUS} f
 import {tickLocalWorld,noteLocalAnimalRemoved} from './world-runtime.mjs';
 import {BEHOLDER_EVENT,LESSER_BEHOLDER_EVENT,beholderPaletteFor,tickBeholder} from './beholder.mjs';
 import {tickSwimming,inDeepWater} from './swimming.mjs';
+import {tickControlledWater} from './controlled-water.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
 import {tickQuicksand,tickQuicksandLoot} from './quicksand.mjs';
 import {tickBoardSequence} from './board-sequence.mjs';
@@ -74,6 +81,7 @@ import {damageStructureMelee} from './structure-destruction.mjs';
 import {VILLAGER_EVENT,spawnVillagerCamp,tickVillagers} from './villagers.mjs';
 import {NPC_QUEST_EVENT} from './npc-quest-data.mjs';
 import {spawnQuestNpc,tickNpcQuests,recordNpcQuestKill} from './npc-quests.mjs';
+import {SANTA_EVENT,spawnSanta,tickChristmas,hitToyTrain} from './christmas.mjs';
 import {
   waterAt,
   isShallow,
@@ -95,12 +103,13 @@ import { meleeProfile, meleeCanHit } from './melee-geometry.mjs';
 import {GRAVEYARD_EVENTS,GHOST_EVENT,cemeteryEvent} from './graveyard-events.mjs';
 import {strikeTallGrass} from './tall-grass.mjs';
 import {graveyardBlocked,harvestGravestone,tickGraveyard,GRAVE_EMERGENCE_SECONDS} from './graveyard-world.mjs';
-import {vehicleMotion,syncHouseVehicle,resolveVehicleImpact,tickVehicleEffects,houseVehicleForPlayer,vehicleDriver} from './house-vehicles.mjs';
+import {vehicleMotion,syncHouseVehicle,resolveVehicleImpact,tickVehicleEffects,houseVehicleForPlayer,vehicleDriver,vehicleColliderBlocked,hitVehicleTree} from './house-vehicles.mjs';
 import {spawnSurfaceEcology,tickSurfaceEcology,catchGraveyardCritter,startleGraveyardCats} from './graveyard-ecology.mjs';
 import {resetHouseWorlds,prepareHouseWorldTravel,tickHouseWorldTravel} from './house-worlds.mjs';
 import {spawnMausoleumEvent} from './mausoleum-crypt.mjs';
 import {spawnRavenFlock,tickRaven,dropRavenLoot} from './raven.mjs';
 import {flamingMeleeHit,onFlamingHarvest} from './crypt-gear.mjs';
+import {stationaryCreature} from './stationary-creatures.mjs';
 import {healingAdventureMethods} from './healing-magic.mjs';
 import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
 import {categorizeEvents} from './event-zones.mjs';
@@ -264,7 +273,7 @@ EVENTS.push(
   },
 );
 EVENTS.push(...HAZARD_EVENTS);
-EVENTS.push(...NIGHT_EVENTS);
+EVENTS.push(...NIGHT_EVENTS.filter(e=>!['fox','squashling','scorpion_boss','werewolf'].includes(e.kind)));
 EVENTS.push(...MYSTERY_EVENTS);
 EVENTS.push({name:'The Krampus comes down',kind:'krampus',environment:'ice',count:1,hp:260,speed:58,damage:26,weight:8,verse:'Bells beneath the frozen sky.\nA red shadow cracks its whip.',tip:"Keep outside the whip's long sweep, then strike between lashes."});
 EVENTS.push(
@@ -532,6 +541,9 @@ EVENTS.push(
 );
 categorizeEvents(EVENTS);
 EVENTS.push(...REALM_EVENTS.map(e=>structuredClone(e)));
+EVENTS.push(structuredClone(SANTA_EVENT),structuredClone(BONE_CARVER_EVENT));
+EVENTS.push(...DRAGON_EVENTS.map(e=>structuredClone(e)));
+EVENTS.push(...NIGHT_EVENTS.filter(e=>['fox','squashling','scorpion_boss','werewolf'].includes(e.kind)));
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {
@@ -683,6 +695,8 @@ export class Game {
     return (
       !flying &&
       nearbyScenery(this.scenery, x, y + footOffset, radius).some((prop) => {
+        // Tyres can roll over cut roots; standing trunks and rocks remain solid.
+        if(from?.vehicleId&&(vehicleRollsOver(prop)))return false;
         const stump=stumpShape(prop)||rockSurface(prop);
         // Player rigs are anchored at their visible feet. The legacy sprite
         // offset otherwise makes a short stump block empty ground above it.
@@ -703,20 +717,22 @@ export class Game {
     );
   }
   moveActor(actor, dx, dy, flying = false) {
-    flying ||= flies(actor);
+    const collider=this.players.includes(actor)?controlledFollower(this,actor)||actor:actor;
+    if(stationaryCreature(collider)){actor.moving=false;actor.slideX=actor.slideY=0;return 0;}
+    flying ||= flies(collider);
     if(!flying&&this.generatedEnvironment==='ice'){const snow=1-snowAt(this,actor.x,actor.y)*.45;dx*=snow;dy*=snow;}
     if(webSlow(this,actor)){dx*=.45;dy*=.45;}
     if (actor.field === undefined && actor.slowUntil > this.time) {
       dx *= 0.45;
       dy *= 0.45;
     }
-    const ground = waterAt(this, actor.x, actor.y + collisionOffset(this,actor));
-    const canSwim=this.players.includes(actor)||['snake','anaconda','oathless_captain'].includes(actor.kind)||actor.villagerId==='april';
+    const ground = waterAt(this, actor.x, actor.y + collisionOffset(this,collider));
+    const canSwim=this.players.includes(actor)||actor.heroFollower===true||['snake','anaconda','oathless_captain'].includes(actor.kind)||actor.villagerId==='april';
     if(canSwim&&!flying&&ground==='water'&&!(actor.jumpHeight>0)){dx*=.58;dy*=.58;}
-    if (!flying && isQuicksand(ground)) {
+    if (!flying && !actor.broomMount && isQuicksand(ground)) {
       dx *= 0.32;
       dy *= 0.32;
-    } else if (!flying && isShallow(ground)) {
+    } else if (!flying && !actor.broomMount && isShallow(ground)) {
       dx *= ground==='mud'?.85:.55;
       dy *= ground==='mud'?.85:.55;
     }
@@ -727,10 +743,10 @@ export class Game {
       const x = this.mapMode==='boundless'?actor.x+dx/steps:clamp(actor.x + dx / steps, 24, WORLD - 24);
       const hostile = this.mapMode==='boundless' && this.enemies.includes(actor) && !['ally','neutral'].includes(actor.faction);
       const outsideSanctuary = (x - CENTER) ** 2 + (actor.y - CENTER) ** 2 >= BOUNDLESS_SAFE_RADIUS ** 2;
-      if ((!hostile||outsideSanctuary) && !this.blocked(x, actor.y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.x = x;
+      if ((!hostile||outsideSanctuary) && !(actor.vehicleId?vehicleColliderBlocked(this,actor,x,actor.y):this.blocked(x, actor.y, actorRadius(collider), flying,canSwim,false,collisionOffset(this,collider),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor))) actor.x = x;
       const y = this.mapMode==='boundless'?actor.y+dy/steps:clamp(actor.y + dy / steps, 24, WORLD - 24);
       const outsideSanctuaryY = (actor.x - CENTER) ** 2 + (y - CENTER) ** 2 >= BOUNDLESS_SAFE_RADIUS ** 2;
-      if ((!hostile||outsideSanctuaryY) && !this.blocked(actor.x, y, actorRadius(actor), flying,canSwim,false,collisionOffset(this,actor),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor)) actor.y = y;
+      if ((!hostile||outsideSanctuaryY) && !(actor.vehicleId?vehicleColliderBlocked(this,actor,actor.x,y):this.blocked(actor.x, y, actorRadius(collider), flying,canSwim,false,collisionOffset(this,collider),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor))) actor.y = y;
     }
     const moved = Math.hypot(actor.x - oldX, actor.y - oldY);
     if (!this.players.includes(actor)) {
@@ -806,6 +822,8 @@ export class Game {
   }
   start() {
     if (!this.players.length) return false;
+    this.templeBolts=[];
+    this.templeLoot=[];
     for(const player of this.players){refreshVitals(player);player.hp=player.maxHp;}
     if(this.houseWorldsEnabled)resetHouseWorlds(this);
     this.eventTestBoard=null;
@@ -853,6 +871,8 @@ export class Game {
     this.log = this.log.slice(0, 5);
   }
   hurt(p, amount, source) {
+    if(this.players.includes(p)&&source?.id&&(this.enemies.includes(source)||(this.ghosts||[]).includes(source)))p.reindeerThreatId=source.id;
+    if(p.holidayReindeer){if(p.hp>0&&!(p.invuln>0)){p.hp=Math.max(0,p.hp-Math.max(1,amount));p.invuln=.6;p.hit=.2;if(!p.hp){p.defeated=true;this.message('Your reindeer fell protecting you.');}}return;}
     if(this.players.includes(p)){
       const controlled=controlledFollower(this,p);
       if(controlled){
@@ -943,6 +963,7 @@ export class Game {
     if(!isCharmed(p))startleGraveyardCats(this,p);
     if(throwBoomerang(this,p))return true;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
+    delete p.swordStrike;delete p.swordFacing;
     // Utility items do no melee damage; rifles have their own aimed shot and reload.
     if(tryEquipmentAttack(this,p,charge)){
       if(this.canHitBoard(p)){this.tableShake=.2;this.hitTable(p);}
@@ -977,6 +998,18 @@ export class Game {
     if (ITEMS[p.equipment.hand1]?.truthSword || ITEMS[p.equipment.hand2]?.truthSword) {
       p.attackClip = 'swipe_big'; p.attackReach = 2; p.attackArc = 120; p.attackDuration = p.attack = .5; p.spin = .5;
     }
+    if(swordLoadout(p)){
+      if(combo.duration===.34)p.attack=p.attackDuration=.30;
+      else if(combo.duration===.55)p.attack=p.attackDuration=.46;
+      p.swordStrike={charge,combo:{...combo},hand1:p.equipment.hand1,hand2:p.equipment.hand2};
+      p.swordFacing={x:p.faceX,y:p.faceY};p.swordHitPause=0;p.swordPrevious=0;
+      return true;
+    }
+    return this.resolveMelee(p,charge,combo);
+  }
+  resolveMelee(p,charge,combo){
+    const hands=[ITEMS[p.equipment.hand1],ITEMS[p.equipment.hand2]].filter(i=>i?.damage&&(!i.magic||i.base==='staff')&&!i.ranged);
+    const weapon=hands[0],off=hands[1];
     const damage = combo.damage * (
       (weapon?.damage || 12 + stat(p, "punch")) + stat(p,'damageBonus') + (p.equipment.hand1==='reaper_scythe'?stat(p,'reaperDamage'):0) +
       (off && off.damage && !off.magic
@@ -996,9 +1029,10 @@ export class Game {
       );
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
+    const toyHit=!isCharmed(p)&&hitToyTrain(this,p,spin?96:melee.range);
     const structureHit=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword')&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin);
     let stickHit=grassHit||!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
-    if(structureHit){stickHit=true;this.persist();}
+    if(structureHit||toyHit){stickHit=true;this.persist();}
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
     if(!structureHit)for(const pane of this.house?.walls||[]){
@@ -1006,7 +1040,7 @@ export class Game {
       const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
       if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35)){stickHit=true;breakWindow(this,x,y,2);}
     }
-    for (const e of [...playerCombatTargets(this,p),...(this.ghosts||[]).filter(e=>e.wildTiger&&!e.room&&charmCanTarget(this,p,e))]) {
+    for (const e of playerCombatTargets(this,p)) {
       let struckSection=null;
       const dx = e.x - p.x,
         dy = e.y - p.y,
@@ -1041,6 +1075,10 @@ export class Game {
         for(const slot of ['hand1','hand2'])flamingMeleeHit(this,p,e,slot);
         applyTorchHit(this,p,e);
         e.flash = 0.13;
+        if(p.swordFacing){
+          p.swordHitPause=Math.max(p.swordHitPause||0,.035);e.swordHitPause=Math.max(e.swordHitPause||0,.055);
+          this.effects.push({swordImpact:true,x:struckSection?.x??e.x,y:(struckSection?.y??e.y)-16-(e.jumpHeight||0),angle:Math.atan2(p.faceY,p.faceX)+.7,life:.16});
+        }
         if (charge > 0.6) {
           e.state = "recover";
           e.timer = 0.7;
@@ -1240,6 +1278,8 @@ export class Game {
     }
     if(this.event.type==='old_well'){const spawned=spawnOldWell(this,null,{test:test||force});if(spawned){if(!test)beginTrial(this,this.event);this.onSound(encounterCue(this.event));}return !!spawned;}
     if(this.event.type==='villager_camp'){const spawned=spawnVillagerCamp(this);if(spawned)this.onSound(encounterCue(this.event));return !!spawned;}
+    if(this.event.type==='bone_carver')return !!spawnBoneCarver(this);
+    if(this.event.type==='santa')return !!spawnSanta(this,{force:!!this.eventTestBoard});
     if(this.event.type==='friendly_npc'){const spawned=spawnQuestNpc(this);if(spawned)this.onSound(encounterCue(this.event));return !!spawned;}
     if(this.event.type==='mausoleum'){const spawned=spawnMausoleumEvent(this,{test:test||force});if(spawned){if(!test)beginTrial(this,this.event);this.onSound(encounterCue(this.event));}return !!spawned;}
     if(['raven_flock','murder_of_crows'].includes(this.event.type)){
@@ -1457,7 +1497,7 @@ export class Game {
     tickNightCycle(this, dt);
     ensureTemple(this);
     this.tickAdventure(dt, inputs);
-    tickNpcQuests(this,dt);tickVillagers(this,dt);
+    tickNpcQuests(this,dt);tickVillagers(this,dt);tickChristmas(this,dt);
     if(this.roll)return;
     tickGhosts(this,dt);
     tickHunterPets(this,dt,inputs);
@@ -1467,7 +1507,7 @@ export class Game {
     tickTrials(this,dt);
     tickImpHazards(this,dt);
     tickEnvironment(this, dt);
-    tickGraveyard(this,dt);tickSurfaceEcology(this,dt);
+    tickGraveyard(this,dt);awakenCemeteryPumpkins(this);tickSurfaceEcology(this,dt);
     tickMystery(this);
     tickNightEquipment(this, dt);
     tickNightEnemyHazards(this, dt);
@@ -1491,9 +1531,12 @@ export class Game {
       if (this.reveal.life <= 0) this.reveal = null;
     }
     for (const p of this.players) {
+      if(p.nativeCryptActive&&p.room)continue;
       const activeVehicle=houseVehicleForPlayer(this,p), passenger=activeVehicle&&vehicleDriver(this,activeVehicle)!==p;
-      const rawInput=inputs[p.device]||{};
-      const input=activeVehicle?{...rawInput,jump:false,dodge:false,block:passenger&&rawInput.block,controlCycle:false,trap:false}:rawInput;
+      let rawInput=inputs[p.device]||{};
+      if(this.openingBoard&&rawInput.jump)p.boardJumpRelease=true;
+      if(p.boardJumpRelease){if(!rawInput.jump)delete p.boardJumpRelease;else rawInput={...rawInput,jump:false};}
+      const input=p.broomMount?{...rawInput,jump:false,dodge:false,block:false,attack:false,trap:false,controlCycle:false}:activeVehicle?{...rawInput,jump:false,dodge:false,block:passenger&&rawInput.block,controlCycle:false,trap:false}:rawInput;
       if (input.controlCycle && !p.ui && !p.room && p.hp > 0) cycleFollowerControl(this,p);
       const controlled = controlledFollower(this,p);
       const jumpActor=controlled||p;
@@ -1501,9 +1544,9 @@ export class Game {
       if(controlled)for(const key of ['jumpHeight','groundHeight','jumpVelocity','jumpAge','landTime'])p[key]=controlled[key]||0;
       tickPlayerIce(p,dt);
       if(!activeVehicle){
-        if(!controlled&&!tickWingFlight(this,p,input,dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
+        if(!controlled&&!tickBroomFlight(this,p,dt)&&!tickWingFlight(this,p,input,dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
         tickQuicksand(this,p,input,dt);
-        tickSwimming(this,p,input,dt);
+        if(controlled)tickControlledWater(this,p,controlled,input,dt);else tickSwimming(this,p,input,dt);
       }
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
@@ -1511,11 +1554,15 @@ export class Game {
       p.pickupTime=Math.max(0,(p.pickupTime||0)-dt);p.foundUnique=Math.max(0,(p.foundUnique||0)-dt);
       p.gatherTime=Math.max(0,(p.gatherTime||0)-dt);if(!p.gatherTime)p.gatherAction=null;
       p.parry=Math.max(0,(p.parry||0)-dt);
-      p.attack = Math.max(0, p.attack - dt);
+      const swordPause=Math.min(dt,p.swordHitPause||0);p.swordHitPause=Math.max(0,(p.swordHitPause||0)-dt);
+      p.swordPrevious=1-(p.attack||0)/(p.attackDuration||.34);
+      p.attack = Math.max(0, p.attack - (dt-swordPause));
+      if(!p.attack&&!p.swordStrike)delete p.swordFacing;
+      if(p.swordStrike&&p.attack===0){const strike=p.swordStrike;delete p.swordStrike;if(p.hp>0&&!p.room&&!p.ui&&!p.consumeInput&&!p.stun&&!p.frozen&&!p.sleeping&&!p.dashTime&&!p.swimming&&strike.hand1===p.equipment.hand1&&strike.hand2===p.equipment.hand2)this.resolveMelee(p,strike.charge,strike.combo);}
       if(p.queuedAttack&&p.attack===0){const queued=p.queuedAttack;delete p.queuedAttack;if(queued.until>=this.time&&!p.room&&!p.ui&&p.hp>0)this.attack(p,queued.charge);}
       p.spin = Math.max(0, (p.spin || 0) - dt);
       p.stun = Math.max(0, (p.stun || 0) - dt);
-      p.dodge = Math.max(0, p.dodge - dt);
+      p.dodge = Math.max(0, (Number.isFinite(p.dodge)?p.dodge:0) - dt);
       const previousDashTime=p.dashTime||0;
       p.dashTime = Math.max(0, previousDashTime - dt);
       if(previousDashTime>0&&p.dashTime===0){p.dashRecovery=p.dashRecoveryDuration||.18;}
@@ -1527,7 +1574,9 @@ export class Game {
       if(isCharmed(p)){tickCharmedPlayer(this,p,dt);continue;}
       const chargeAimFollower=controlled&&(['golem','imp','fire_elemental','water_elemental'].includes(controlled.kind)||FELINE_CONTROL_KINDS.has(controlled.kind));
       p.bowAiming = Boolean(input.block && (hasAimWeapon(p)||chargeAimFollower) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !p.frozen && !this.openingBoard);
-      if(p.bowAiming){p.blocking=false;p.dashTime=0;p.dashRecovery=0;p.dashGhosts=[];p.slideX=p.slideY=0;}
+      p.holdingPosition=Boolean(input.holdPosition && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !p.frozen && !this.openingBoard);
+      if(p.bowAiming||p.holdingPosition){if(p.bowAiming)p.blocking=false;p.dashTime=0;p.dashRecovery=0;p.dashGhosts=[];p.slideX=p.slideY=0;}
+      if(p.room||p.ui||p.consumeInput||p.hp<=0||p.stun>0||p.frozen>0||p.sleeping>0){delete p.swordStrike;delete p.swordFacing;}
       if (p.room || p.ui || p.consumeInput || p.stun > 0 || p.frozen > 0) {
         p.moving = false;p.slideX=p.slideY=0;
         continue;
@@ -1573,12 +1622,13 @@ export class Game {
       }
       if(activePounce){mx=0;my=0;p.moving=false;p.walking=false;}
       if(this.openingBoard)faceOpeningBoard(p);else updateAimFacing(p, input);
-      const canJump=!controlled||(!flies(controlled)&&!controlled.wingHover);
+      if(p.swordFacing&&p.attack>0){p.faceX=p.swordFacing.x;p.faceY=p.swordFacing.y;}
+      const canJump=!controlled||(!stationaryCreature(controlled)&&!flies(controlled)&&!controlled.wingHover);
       if(!this.openingBoard&&canJump&&input.jump&&!jumpActor.jumpHeld&&!jumpActor.wingHover)startJump(jumpActor);
       jumpActor.jumpHeld=!!input.jump;
       if(controlled)p.jumpHeld=false;
       if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
-      if (!this.openingBoard && !p.bowAiming && input.dodge && !p.dashHeld && p.dodge === 0) {
+      if (!this.openingBoard && !stationaryCreature(controlled) && !p.bowAiming && !p.holdingPosition && input.dodge && !p.dashHeld && p.dodge === 0) {
         p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
         p.dashRecovery=0;
@@ -1592,19 +1642,21 @@ export class Game {
       p.dashHeld = !!input.dodge;
       p.rooted = Math.max(0, (p.rooted || 0) - dt);
       p.jumanjiVineCooldown=Math.max(0,(p.jumanjiVineCooldown||0)-dt);
-      const normalSpeed=p.vehicleId?0:(p.rooted>0?55:controlled?Math.max(34,controlled.speed||133)*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')):133*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')));
+      const normalSpeed=p.vehicleId?0:p.broomMount?210:(p.rooted>0?55:controlled?Math.max(34,controlled.speed||133)*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')):133*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')));
       const recoveryRatio=Math.max(0,Math.min(1,(p.dashRecovery||0)/(p.dashRecoveryDuration||.18)));
-      const speed=p.dashTime>0?rules.dashSpeed:p.dashRecovery>0?normalSpeed+(rules.dashSpeed-normalSpeed)*recoveryRatio:normalSpeed;
+      const speed=p.dashTime>0?rules.dashSpeed:p.dashRecovery>0?normalSpeed+(rules.dashSpeed-normalSpeed)*recoveryRatio:normalSpeed*(p.walking&&!controlled?.72:1);
       if (p.dashTime > 0 || p.dashRecovery > 0) {
         mx = p.dashX;
         my = p.dashY;
       }
       if(passenger){p.moving=false;p.walking=false;}
-      else if (p.bowAiming) {p.moving=false;p.walking=false;}
+      else if (p.bowAiming||p.holdingPosition) {p.moving=false;p.walking=false;}
       else if (!this.openingBoard) {
         const oldX=p.x,oldY=p.y,motion=p.vehicleId?vehicleMotion(this,p,input,dt):((!controlled||controlledCat)&&!p.dashTime&&!p.dashRecovery?jumpMotion(p,mx,my,speed*(controlledCat?1.15:1),dt):null)||iceMotion(this,p,mx,my,speed,dt);
-        this.moveActor(p,motion.dx,motion.dy);
-        if(p.vehicleId){syncHouseVehicle(this,p);resolveVehicleImpact(this,p,oldX,oldY);}
+        const swordProgress=1-(p.attack||0)/(p.attackDuration||.34),swordDistance=p.swordFacing&&!p.dashTime&&!p.dashRecovery&&!p.swimming&&!(p.jumpHeight>0)?swordStep(p.attackClip,p.swordPrevious,swordProgress):0;
+        const control=p.swordFacing&&p.attack>0?(swordPause>0?0:swordProgress<.48?.48:.85):1;
+        this.moveActor(p,motion.dx*control+(p.swordFacing?.x||0)*swordDistance,motion.dy*control+(p.swordFacing?.y||0)*swordDistance);
+        if(p.vehicleId){syncHouseVehicle(this,p);hitVehicleTree(this,p,oldX,oldY);resolveVehicleImpact(this,p,oldX,oldY);}
         if(Math.abs(p.x-oldX)<.01)p.slideX=0;if(Math.abs(p.y-oldY)<.01)p.slideY=0;
         if(p.dashTime>0){
           p.dashGhostTimer=(p.dashGhostTimer||0)-dt;
@@ -1616,6 +1668,10 @@ export class Game {
         }
       }
       else p.moving = false;
+      if(p.swordStrike){
+        if(p.hp<=0||p.room||p.ui||p.stun>0||p.frozen>0||p.dashTime>0||p.swimming||p.swordStrike.hand1!==p.equipment.hand1||p.swordStrike.hand2!==p.equipment.hand2){delete p.swordStrike;delete p.swordFacing;}
+        else if(1-p.attack/(p.attackDuration||.34)>=swordTiming(p.attackClip).contact){const strike=p.swordStrike;delete p.swordStrike;this.resolveMelee(p,strike.charge,strike.combo);}
+      }
       syncControlledFollower(this,p,dt);
       if(controlled){const pouncing=controlled.controlledAttack?.phase==='pounce';tickFollowerAttack(this,controlled,dt);if(pouncing){p.x=controlled.x;p.y=controlled.y;}}
       // April is outside `enemies`; advance her jump in the player update.
@@ -1631,8 +1687,10 @@ export class Game {
         }
       }
     }
-    const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet),...(this.villageFollowers||[])].filter((p) => p.hp > 0 && !p.room);
+    const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet),...(this.villageFollowers||[]),...this.enemies.filter(e=>e.holidayReindeer)].filter((p) => p.hp > 0 && !p.room);
     for (const e of this.enemies) {
+      if(e.cryptBoss)continue;
+      if(e.swordHitPause>0){e.swordHitPause=Math.max(0,e.swordHitPause-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.moving=false;continue;}
       if(e.practiceTarget)continue;
       if(e.graveEmergence)continue;
       if(e.hp>0&&tickRaven(this,e,dt))continue;
@@ -1671,7 +1729,11 @@ export class Game {
       if (e.maxMana) e.mana = Math.min(e.maxMana, (e.mana ?? e.maxMana) + dt * (e.manaRegen ?? 5));
       e.frozen = Math.max(0, (e.frozen || 0) - dt);
       e.jumanjiVines=Math.max(0,(e.jumanjiVines||0)-dt);
-      if (e.frozen > 0) { interruptShoreGoblin(e);interruptReaper(e);if(e.kind==='ghost')interruptGhost(e);if(e.kind==='banshee_queen')cancelBansheeSkill(e);e.moving = false; continue; }
+      if (e.frozen > 0) {
+        interruptShoreGoblin(e);interruptReaper(e);if(e.kind==='ghost')interruptGhost(e);if(e.kind==='banshee_queen')cancelBansheeSkill(e);
+        if(e.faunaCombat){e.faunaCombat.phase='recover';e.faunaCombat.timer=.7;e.attack=0;}
+        e.moving = false; continue;
+      }
       e.attack = Math.max(0, (e.attack || 0) - dt);
       e.healEffect = Math.max(0, (e.healEffect || 0) - dt);
       e.throwTime = Math.max(0, (e.throwTime || 0) - dt);
@@ -1799,37 +1861,7 @@ export class Game {
                 life: 0.35,
               });
             } else {
-              const reach = cfg.stats.flameRange || 190;
-              for (let step = 2; step <= reach; step += 28) {
-                const cx = e.x + e.faceX * step,
-                  cy = e.y + e.faceY * step;
-                firePatch(this, cx, cy, 3, cfg.stats.burnDamage);
-                firePatch(
-                  this,
-                  cx - e.faceY * 22,
-                  cy + e.faceX * 22,
-                  2.4,
-                  cfg.stats.burnDamage,
-                );
-                firePatch(
-                  this,
-                  cx + e.faceY * 22,
-                  cy - e.faceX * 22,
-                  2.4,
-                  cfg.stats.burnDamage,
-                );
-              }
-              for (const q of alive) {
-                const dx = q.x - e.x,
-                  dy = q.y - e.y,
-                  d = Math.hypot(dx, dy) || 1;
-                if (d < reach && (dx * e.faceX + dy * e.faceY) / d > 0.62) {
-                  this.hurt(q, e.damage, e);
-                  q.burning = Math.max(q.burning || 0, 2);
-                  q.burnDamage = cfg.stats.burnDamage;
-                  q.burnTick = 0.5;
-                }
-              }
+              dragonBreath(this,e,alive,cfg);
             }
             e.fireAction = null;
             e.state = "recover";

@@ -10,7 +10,7 @@ app.whenReady().then(async()=>{
  try{
   await w.loadURL('about:blank');w.webContents.debugger.attach('1.3');await w.webContents.debugger.sendCommand('Debugger.enable');
   await w.webContents.debugger.sendCommand('Debugger.setBreakpointByUrl',{urlRegex:'src/debug-tools\\.mjs$',lineNumber:3,condition:'(window.blankCtx=ctx,false)'});
-  await w.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});await js('window.wildboundBoot.ready');
+  if(process.env.WILDBOUND_VERIFY_URL)await w.loadURL(process.env.WILDBOUND_VERIFY_URL+'?tools=1');else await w.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});await js('window.wildboundBoot.ready');
   for(let i=0;i<300;i++){if(await js(`!!window.blankCtx&&document.getElementById('loading').classList.contains('done')`))break;await new Promise(r=>setTimeout(r,30));}
   await js(`window.c=window.blankCtx;c.profiles.data.heroes=[];c.newLobby();window.dispatchEvent(new KeyboardEvent('keydown',{key:'k',code:'KeyK',bubbles:true,cancelable:true}));void 0`);await frame();
   assert(await js(`JSON.stringify([...document.querySelector('.character-select').querySelectorAll('button')].map(b=>b.textContent))===JSON.stringify(['+ New character','Close'])`),'First-use chooser has exactly New character and Close');
@@ -28,6 +28,12 @@ app.whenReady().then(async()=>{
   const gear=await js(`(async()=>{const {spawnDebugItem}=await import('./src/game-debug.mjs'),{equip}=await import('./src/items.mjs');const p=c.game.players[0];p.inventory=[];const result=spawnDebugItem(c.game,p.id,'blank_explorer_costume',1);return result.ok&&equip(p,0,'chest')&&p.equipment.chest==='blank_explorer_costume';})()`);
   assert(gear,'Existing dev console grants and equips the actual costume');
   await capture('dev-equipped');
+  await js(`c.game.players[0].device='keyboard';c.game.openInventory(c.game.players[0]);void 0`);await frame();
+  assert(await js(`!!document.querySelector('[aria-label*="Blank explorer costume"]')`),'Equipped costume is present in the actual inventory UI');
+  await capture('inventory-costume');
+  await js(`c.game.players[0].ui=null;document.getElementById('lobby-studio').click();const studio=c.designer.playerStudio;studio.previewEquipment={chest:'blank_explorer_costume'};studio.refresh();studio.animate(0);void 0`);await frame();
+  assert(await js(`c.designer.playerStudio.actor().equipment.chest==='blank_explorer_costume'&&!!document.querySelector('dialog[open] .ps-canvas')`),'Studio previews the actual native costume');
+  await capture('studio-costume');
   const art=await js(`(async()=>{
    const {blankExplorerPreview}=await import('./src/blank-explorer.mjs'),{drawPlayer,playerMotion,directionVector}=await import('./src/player-motion.mjs'),{paintItem}=await import('./src/item-art.mjs');
    const before=JSON.stringify(playerMotion),sheet=document.createElement('canvas');sheet.width=1120;sheet.height=500;const p=sheet.getContext('2d');p.fillStyle='#142b28';p.fillRect(0,0,1120,500);p.imageSmoothingEnabled=false;p.font='14px sans-serif';p.fillStyle='#ece4ce';

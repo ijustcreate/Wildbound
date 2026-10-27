@@ -33,7 +33,7 @@ test('existing forest saves upgrade to dense patches without restoring nearby cu
  world.seed=217;world.environment='forest';world.generatedEnvironment='forest';world.forestLandscapeVersion=1;
  restoreForestLandscape(world,1);
  const patches=world.scenery.filter(p=>p.kind==='tall_grass');
- assert.equal(world.forestLandscapeVersion,2);assert.ok(patches.length>100);
+ assert.equal(world.forestLandscapeVersion,3);assert.ok(patches.length>100);
  assert.ok(patches.some(p=>p.charred&&Math.hypot(p.x-old.x,p.rootY-old.rootY)<old.size*.7));
 });
 
@@ -49,7 +49,7 @@ const tuft=(x=536)=>({id:'test-grass-'+x,kind:'tall_grass',x,y:482,rootY:514,siz
 
 test('only a bladed swing cuts tall grass; a torch swing burns it while lighting a torch patch does not',()=>{
  const {g,p}=field(),patch=tuft();g.scenery=[patch];g.attack(p);assert.equal(patch.cut,undefined);
- p.attack=0;p.equipment.hand1='starter_sword';g.attack(p);assert.equal(patch.cut,true);assert.equal(patch.charred,undefined);
+ p.attack=0;p.equipment.hand1='starter_sword';g.attack(p);for(let i=0;i<6;i++)g.update(.02,{});assert.equal(patch.cut,true);assert.equal(patch.charred,undefined);
  p.attack=0;p.equipment.hand1='torch';const torchTarget=tuft(536);g.scenery=[torchTarget];g.attack(p);assert.equal(torchTarget.charred,true);
  p.attack=0;const litTarget=tuft(536);g.scenery=[litTarget];assert.equal(lightTorchFire(g,p),true);tickTallGrass(g,.1);assert.equal(litTarget.charred,undefined);
 });

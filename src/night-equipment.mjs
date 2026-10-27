@@ -1,3 +1,4 @@
+import {setTreeFallDirection} from './tree-fall.mjs';
 import {weaponHitContext} from './dark-essence.mjs';
 import { ITEMS, take } from "./items.mjs";
 import {isCharmed,charmShot,playerCombatTargets} from './succubus-charm.mjs';
@@ -75,7 +76,7 @@ export function applyTorchHit(g, p, target) {
   const cfg = ITEMS[id].fire;
   if (g.scenery?.includes(target)) {
     if (trees.has(target.kind) && !target.falling) {
-      target.torchBurn = Math.max(target.torchBurn || 0, cfg.duration);
+      target.torchBurn = Math.max(target.torchBurn || 0, cfg.duration);setTreeFallDirection(target,p.faceX,p.faceY);
       target.torchSource = p.id;
       return true;
     }

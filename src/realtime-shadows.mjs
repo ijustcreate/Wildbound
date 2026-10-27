@@ -134,18 +134,31 @@ function stampCasters(planes,m,casters,lights,originX,originY){
    for(let y=Math.floor(py-ry);y<=Math.ceil(py+ry);y++)for(let x=Math.floor(px-rx);x<=Math.ceil(px+rx);x++)if(x>=0&&y>=0&&x<m.width&&y<m.height){const d=footprint((x-px)/rx,(y-py)/ry,shape);if(d>.08){const i=y*m.width+x;planes.detail[i]=Math.max(planes.detail[i],clamp(height*d));}}
   }
 }
-export function makeShadowCanvas(m,{azimuth,elevation,steps,bias,darkness,casters=[],originX=0,originY=0,budgetMs=Infinity,canvas:reuseCanvas,softActors=false}={}){
+const actorShadowKernels=new Map();
+function softActorKernel(o){
+ const key=Object.values(o).join(':');let result=actorShadowKernels.get(key);if(result)return result;
+ const {rx,ry,height,shape,dx,dy,slope,steps,darkness,ratio,fx,fy}=o,cells=new Map();
+ for(let y=-Math.ceil(ry);y<=Math.ceil(ry);y++)for(let x=-Math.ceil(rx);x<=Math.ceil(rx);x++){
+  const strength=footprint(x/rx,y/ry,shape);if(strength<.08)continue;
+  const reach=Math.min(steps,shape==='actor'?6:8,height*strength/slope),alpha=clamp(darkness*255*(.25+strength*.35)*(1-ratio*.28));
+  for(let t=0;t<=reach;t++)for(const [ox,oy,weight]of softShadowTaps){const px=Math.round(fx+x+dx*t)+ox,py=Math.round(fy+y+dy*t)+oy,k=px+','+py;cells.set(k,Math.max(cells.get(k)||0,Math.round(alpha*weight)));}
+ }
+ result=Int16Array.from([...cells].flatMap(([key,alpha])=>[...key.split(',').map(Number),alpha]));
+ if(actorShadowKernels.size>=128)actorShadowKernels.delete(actorShadowKernels.keys().next().value);actorShadowKernels.set(key,result);return result;
+}
+export function makeShadowCanvas(m,{azimuth,elevation,steps,bias,darkness,casters=[],originX=0,originY=0,budgetMs=Infinity,canvas:reuseCanvas,softActors=false,staticRevision=null}={}){
  const canvas=reuseCanvas||(typeof OffscreenCanvas!=='undefined'?new OffscreenCanvas(m.width,m.height):globalThis.document?.createElement('canvas'));
  if(!canvas)return null;if(canvas.width!==m.width||canvas.height!==m.height){canvas.width=m.width;canvas.height=m.height;}
  const c=canvas.getContext('2d');if(!c)return null;
  const lights={azimuth:Math.round((azimuth??m.lightAzimuth)/4)*4,elevation:Math.round((elevation??m.lightElevation)/3)*3,steps:Math.min(24,steps??m.raySteps),bias:bias??m.bias,darkness:Math.round((darkness??m.darkness)*100)/100,soft:true};
  const fixed=casters.filter(p=>!p.shadowDynamic),moving=casters.filter(p=>p.shadowDynamic);
- const key=JSON.stringify([originX,originY,lights,m.width,m.height,m.cellSize,m.ground,m.detail,m.back,fixed.map(p=>[p.x,p.y,p.shadowHeight,p.height,p.shadowShape,p.kind,p.radiusX,p.radiusY,p.radius,p.shadowLift])]);
+ const key=JSON.stringify([originX,originY,lights,m.width,m.height,m.cellSize,staticRevision??fixed.map(p=>[p.x,p.y,p.shadowHeight,p.height,p.shadowShape,p.kind,p.radiusX,p.radiusY,p.radius,p.shadowLift])]);
  let base=staticShadowFields.get(m);
+ if(base&&(base.ground!==m.ground||base.detail!==m.detail||base.back!==m.back))base=null;
  if(!base||base.key!==key){
   if(!base?.pending||base.pending.key!==key){
    const planes=shadowMapPlanes(m);stampCasters(planes,m,fixed,lights,originX,originY);
-   base??={key:null,planes,mask:new Uint8Array(m.width*m.height),lights};
+   base??={key:null,planes,mask:new Uint8Array(m.width*m.height),lights,ground:m.ground,detail:m.detail,back:m.back};
    base.pending={key,planes,mask:new Uint8Array(m.width*m.height),row:0,lights};
   }
   const pending=base.pending,deadline=performance.now()+budgetMs;
@@ -187,21 +200,15 @@ export function makeShadowCanvas(m,{azimuth,elevation,steps,bias,darkness,caster
    const cx=(p.x-originX+dx*lift*.42)/m.cellSize,cy=(p.y-originY+dy*lift*.42)/m.cellSize;
    const rx=Math.max(1,(p.radiusX||p.radius||16)*scale/m.cellSize),ry=Math.max(1,(p.radiusY||p.radius||12)*scale/m.cellSize);
    const height=(p.shadowHeight||p.height||56)*(1-ratio*.28);
-   for(let y=-Math.ceil(ry);y<=Math.ceil(ry);y++)for(let x=-Math.ceil(rx);x<=Math.ceil(rx);x++){
-    const strength=footprint(x/rx,y/ry,p.shadowShape||p.kind);if(strength<.08)continue;
-    const reach=Math.min(lights.steps,p.shadowShape==='actor'?6:8,height*strength/m.cellSize/slope),alpha=clamp(lights.darkness*255*(.25+strength*.35)*(1-ratio*.28));
-    for(let t=0;t<=reach;t++){
-     const px=Math.round(cx+x+dx*t),py=Math.round(cy+y+dy*t);
-     for(const [ox,oy,weight]of softShadowTaps){
-      const sx=px+ox,sy=py+oy;if(sx<0||sy<0||sx>=m.width||sy>=m.height)continue;
-      const i=sy*m.width+sx;mask[i]=Math.max(mask[i],Math.round(alpha*weight));
-     }
-    }
-   }
+   // Reuse a compact max-opacity sweep instead of evaluating the same
+   // footprint and five penumbra taps for every animal on every frame.
+   const ix=Math.floor(cx),iy=Math.floor(cy),fx=Math.round((cx-ix)*4)/4,fy=Math.round((cy-iy)*4)/4;
+   const kernel=softActorKernel({rx,ry,height:height/m.cellSize,shape:p.shadowShape||p.kind,dx,dy,slope,steps:lights.steps,darkness:lights.darkness,ratio,fx,fy});
+   for(let i=0;i<kernel.length;i+=3){const x=ix+kernel[i],y=iy+kernel[i+1];if(x<0||y<0||x>=m.width||y>=m.height)continue;const at=y*m.width+x;mask[at]=Math.max(mask[at],kernel[i+2]);}
   }
  }
  let pixels=shadowPixelBuffers.get(canvas);if(!pixels||pixels.width!==m.width||pixels.height!==m.height){pixels=c.createImageData(m.width,m.height);shadowPixelBuffers.set(canvas,pixels);}
- for(let i=0;i<mask.length;i++)pixels.data[i*4+3]=mask[i];
+ const rgba=new Uint32Array(pixels.data.buffer),tint=softActors?0x262b15:0;for(let i=0;i<mask.length;i++)rgba[i]=tint|(mask[i]<<24);
  c.putImageData(pixels,0,0);return canvas;
 }
 
@@ -247,8 +254,8 @@ export function drawRealtimeWorldShadows(ctx,scene,worldX,worldY,options={}){
  // Keep the sun angle quantized below, since that changes independently from
  // actor motion and is the expensive part of the cache churn.
  const casterStep=Math.max(.25,(maps.cellSize||12.5)/12);
- const casterKey=(options.casters||[]).map(c=>`${Math.round((c.x-worldX)/casterStep)},${Math.round((c.y-worldY)/casterStep)},${Math.round(c.shadowHeight||c.height||56)},${c.shadowShape||c.kind||''},${c.radiusX||c.radius||16},${c.radiusY||c.radius||12},${c.shadowLift||0}`).sort().join(';');
- const key=`${!!options.softActors}:${Math.round((options.azimuth??maps.lightAzimuth)/4)}:${Math.round((options.elevation??maps.lightElevation)/3)}:${Math.min(24,options.steps??maps.raySteps)}:${options.bias??maps.bias}:${maps.detail.length}:${maps.back.length}:${casterKey}`;
+ const casterKey=(options.staticRevision==null?(options.casters||[]):(options.casters||[]).filter(c=>c.shadowDynamic)).map(c=>`${Math.round((c.x-worldX)/casterStep)},${Math.round((c.y-worldY)/casterStep)},${Math.round(c.shadowHeight||c.height||56)},${c.shadowShape||c.kind||''},${c.radiusX||c.radius||16},${c.radiusY||c.radius||12},${c.shadowLift||0}`).sort().join(';');
+ const key=`${options.staticRevision??''}:${!!options.softActors}:${Math.round((options.azimuth??maps.lightAzimuth)/4)}:${Math.round((options.elevation??maps.lightElevation)/3)}:${Math.min(24,options.steps??maps.raySteps)}:${options.bias??maps.bias}:${maps.detail.length}:${maps.back.length}:${casterKey}`;
  const validation=validatedMaps.get(maps);
  let entry=canvasCache.get(maps);if(!entry||entry.key!==key||entry.validation!==validation||entry.pending){entry={key,validation,canvas:makeShadowCanvas(maps,{...options,darkness:1,canvas:entry?.canvas,originX:worldX,originY:worldY})};entry.pending=!!staticShadowFields.get(maps)?.pending;canvasCache.set(maps,entry);}
  if(!entry.canvas)return false;

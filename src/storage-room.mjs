@@ -1,5 +1,10 @@
-import {roomBlocked,ROOM_STATIONS} from './shops.mjs';
+import {locationMarker} from './location-designs.mjs';
+import {roomBlocked,ROOM_STATIONS,storageChestPoints} from './shops.mjs';
 import {tickRobotRepair,storageOwner,robotOnline,nearStorageRobot,openRobotIntroduction} from './storage-repair.mjs';
+export function nearbyStorageChest(p){
+  if(p.ui||p.roomJumpHeight>0||p.hp<=0)return -1;
+  return storageChestPoints().findIndex(c=>Math.hypot(c.x-p.roomX,c.y-14-p.roomY)<50);
+}
 
 // Room-local height avoids ticking expedition physics twice, and also works
 // in the lobby where the expedition clock is stopped. Floor coordinates stay
@@ -42,16 +47,17 @@ export function tickStorageRoom(game,p,input,dt,interact=false){
   if(p.roomJumpHeight>0)return;
   if(interact&&nearStorageRobot(p)&&openRobotIntroduction(game,p))return;
   if(tickRobotRepair(game,p,!!(input.interact||input.lobbyInteract||p.robotRepairPointer),dt))return;
-  if(Math.hypot(p.roomX-160,p.roomY-214)<18){game.leaveRoom(p);return;}
+  const exit=locationMarker('storage','exit',{x:160,y:214});
+  if(Math.hypot(p.roomX-exit.x,p.roomY-exit.y)<18){game.leaveRoom(p);return;}
   if(!interact)return;
-  if(p.roomY>192&&Math.abs(p.roomX-160)<40)game.leaveRoom(p);
+  if(Math.hypot(p.roomX-exit.x,p.roomY-exit.y)<22)game.leaveRoom(p);
   else if(Math.hypot(p.roomX-ROOM_STATIONS.robot.x,p.roomY-ROOM_STATIONS.robot.y)<35){
     if(robotOnline(storageOwner(game,p)))game.openShop(p,'robot');
     else game.message('SCRAP-9 is offline. Hold Interact nearby to repair it.');
   }
-  else if(Math.hypot(p.roomX-255,p.roomY-158)<35)game.openShop(p,'vending');
+  else if(Math.hypot(p.roomX-ROOM_STATIONS.vending.x,p.roomY-ROOM_STATIONS.vending.y)<35)game.openShop(p,'vending');
   else{
-    const n=[60,160,260].findIndex(x=>Math.hypot(x-p.roomX,80-p.roomY)<50);
+    const n=nearbyStorageChest(p);
     if(n>=0)game.openInventory(p,n);
   }
 }

@@ -22,8 +22,8 @@ test('lobby physical D-pad Up toggles storage and R dashes without left-shoulder
  pad.buttons[12].pressed=true;tick({[q.device]:lobbyPadInput(pad)});assert.equal(game.portals.filter(d=>d.owner===q.id).length,1);
  tick({[q.device]:lobbyPadInput(pad)});assert.equal(game.portals.length,1,'held Up opens only once');
  pad.buttons[12].pressed=false;tick({[q.device]:lobbyPadInput(pad)});pad.buttons[12].pressed=true;tick({[q.device]:lobbyPadInput(pad)});assert.equal(game.portals.length,0,'fresh Up closes outside storage');
- pad.buttons[12].pressed=false;pad.buttons[4].pressed=true;tick({[q.device]:lobbyPadInput(pad)});const a=lobby.practice.players.find(a=>a.id===q.id);assert.equal(a.dashTime||0,0);
- pad.buttons[4].pressed=false;tick({[q.device]:lobbyPadInput(pad)});pad.buttons[5].pressed=true;
+ pad.buttons[12].pressed=false;pad.buttons[6].pressed=true;tick({[q.device]:lobbyPadInput(pad)});const a=lobby.practice.players.find(a=>a.id===q.id);assert.equal(a.dashTime||0,0);
+ pad.buttons[6].pressed=false;tick({[q.device]:lobbyPadInput(pad)});pad.buttons[7].pressed=true;
  assert.equal(lobbyPadInput(pad).potion,false);tick({[q.device]:{...lobbyPadInput(pad),x:1}});assert.ok(a.dashTime>0);assert.ok(a.dodge>0);
 });
 test('Lobby portal opens on a fresh owner input, enters, and returns without moving expedition coordinates',()=>{

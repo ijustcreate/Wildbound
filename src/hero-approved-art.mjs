@@ -17,7 +17,7 @@ function pen(c,h,key){
 
 export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
  const handles=['eyeL','eyeR','earL','earR','nose','mouth'].map(n=>[visible(n),Math.round((p[n].x-p.head.x)*2),Math.round((p[n].y-p.head.y)*2)]);
- const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,d,skin,look.face,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
+ const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,d,skin,look.face,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
  if(r.cached)return r.flush();
  const shadow=mix(skin,'#83504b',.30),light=mix(skin,'#fff0d0',.20),blush=mix(skin,'#d87d78',.26);
  if(!front){
@@ -53,7 +53,7 @@ export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
   r(x-w/2,y+1.5,w,.5,blush);
  }
  if(visible('nose')){const q=p.nose;r(q.x-p.head.x-.25,q.y-p.head.y+.5,.5,.5,shadow);}
- if(visible('mouth')){const q=p.mouth;r(q.x-p.head.x-.5,Math.min(2.5,q.y-p.head.y),profile?.5:1,.5,'#925c55');}
+ if(visible('mouth')){const q=p.mouth;if(look.laughing){r(q.x-p.head.x-1,2,profile?1:2,1.5,ink);r(q.x-p.head.x-.5,3,1,.5,'#b47b74');}else r(q.x-p.head.x-.5,Math.min(2.5,q.y-p.head.y),profile?.5:1,.5,'#925c55');}
  const cheek=profile?[turn*2.5]:[-2.5,2.5];
  if(look.face==='freckles')for(const x of cheek){r(x-.5,1,.5,.5,shadow);r(x+.5,1.5,.5,.5,shadow);}
  if(look.face==='scar'){r(profile?turn*2:2,-.5,.5,1.5,mix(skin,'#9c5455',.5));r(profile?turn*2.5:2.5,1,.5,1,light);}

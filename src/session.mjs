@@ -41,7 +41,6 @@ export function restoreSession(saved) {
   // True tiger actors and explicit authored sprite/rig overrides are untouched.
   for(const e of g.enemies||[])if(e.kind==='lion'&&e.skin==='tiger'&&!e.sprite&&!e.rigOverride)e.skin='lion';
   g.forestLandscape=null;
-  restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
   if(g.house&&!g.house.temple)upgradeHouseFeatures(g.house);
   if (!saved.state.turnOrder) {
     g.turnOrder = g.players.map((p) => p.id);
@@ -55,6 +54,7 @@ export function restoreSession(saved) {
     g.phase === "won"&&!houseKeepsWorld(g)
       ? []
       : saved.state.scenery || generateWorld(g.seed).scenery;
+  if(g.phase!=='won'||houseKeepsWorld(g))restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
   for (const p of g.players) {
     const data = structuredClone(p);
     initHero(p);
@@ -67,6 +67,7 @@ export function restoreSession(saved) {
     migrateEquipment(p);
     p.previousInput = {};
     p.charge = 0;
+    delete p.swordStrike;delete p.swordFacing;p.swordHitPause=0;p.attack=0;
     p.ui = null;
     cancelRobotRepair(p);
     p.dashHeld = false;

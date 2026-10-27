@@ -83,7 +83,7 @@ export function initializeField(p) {
   return p.field;
 }
 export function protectedItem(p, type) {
-  return initializeField(p).favorites.includes(type);
+  return !!ITEMS[type]?.mountReservation||initializeField(p).favorites.includes(type);
 }
 export function category(type) {
   const i = ITEMS[type];
@@ -229,7 +229,7 @@ export function compareItem(p, type) {
   if (d.twoHanded) notes.push("Uses both hands");
   if (d.relic)
     notes.push(
-      "Bonus applies only while carried; storing removes " +
+      "Bonus applies in your backpack or carried Reliquary Bag; chest storage removes " +
         Object.entries(d)
           .filter(
             ([k, v]) =>

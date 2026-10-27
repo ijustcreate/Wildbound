@@ -100,9 +100,9 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
     if(def.style==='moon') r(0,-3,1,2,p.shine);
   } else if(kind==='shoulder_armor') {
     if(id==='alan_leaf_mantle'){
-      for(const [x,len] of [[-4,7],[-1,10],[2,8]]){
-        r(x,-3,5,2,'#1f3928');r(x+1,-2,4,3,x===-1?'#729853':'#3f713e');
-        for(let y=1;y<len;y++){const inset=Math.floor((y-1)/4);r(x+inset,y,Math.max(1,4-inset),1,'#254e30');r(x+inset+1,y,Math.max(1,2-inset),1,y%3?'#477b41':'#83a35c');}
+      for(const [x,len] of [[-2,3],[0,5],[2,3]]){
+        r(x,-2,3,2,'#1f3928');r(x,-1,2,2,x===0?'#729853':'#3f713e');
+        for(let y=1;y<len;y++){const inset=Math.floor(y/3);r(x+inset,y,Math.max(1,3-inset),1,'#254e30');r(x+inset+1,y,1,1,y===1?'#83a35c':'#477b41');}
       }
       return;
     }

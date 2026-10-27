@@ -1,15 +1,16 @@
 // Native Electron, isolated saves; mouse, menu actions, portraits and small-window QA.
 const {app,BrowserWindow}=require('electron');
 const fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..'),out=path.join(root,'test-output','npc-quests');
+const root=path.resolve(__dirname,'..'),base=process.env.WILDBOUND_VERIFY_APP||root,out=path.join(root,'test-output','npc-quests');
 fs.mkdirSync(out,{recursive:true});app.disableHardwareAcceleration();
 app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
 const timer=setTimeout(()=>app.exit(1),120000);
 app.whenReady().then(async()=>{
- const w=new BrowserWindow({show:false,width:1280,height:900,useContentSize:true}),errors=[];
+ const w=new BrowserWindow({show:false,width:1280,height:900,useContentSize:true,webPreferences:{offscreen:true}}),errors=[];
+ w.webContents.setAudioMuted(true);
  w.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});
  try{
-  await w.loadFile(path.join(root,'index.html'),{query:{tools:'1'}});
+  await w.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});
   const result=await w.webContents.executeJavaScript(`(async()=>{
    await window.wildboundBoot.ready;window.requestAnimationFrame=()=>0;document.getElementById('loading')?.remove();
    const [{Game,EVENTS},{HeroUI},{Assets},{Renderer},q,{Profiles},{definitionPack,applyDefinitions},{ITEMS}]=await Promise.all([
@@ -19,7 +20,7 @@ app.whenReady().then(async()=>{
    g.spawnEvent(EVENTS.findIndex(e=>e.type==='friendly_npc'));const npc=g.questNpcs[0];check(npc&&npc.faction==='ally','Event spawns protected friendly humanoid');
    Object.assign(p,{x:npc.x,y:npc.y+30});Object.assign(other,{x:npc.x+20,y:npc.y});q.openNpcDialogue(g,p);q.openNpcDialogue(g,other);
    const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=900;const r=new Renderer(canvas,assets);
-   const host=document.createElement('div');host.style='position:fixed;inset:0;z-index:99999;background:#26382e';document.body.append(host);const ui=new HeroUI(host);ui.draw(g,r);
+   document.getElementById('hero-overlays')?.removeAttribute('id');const host=document.createElement('div');host.id='hero-overlays';host.style='position:fixed;inset:0;z-index:99999;background:#26382e';document.body.append(host);const ui=new HeroUI(host);ui.draw(g,r);
    check(host.querySelectorAll('.npc-dialogue-portrait').length===4,'Two players each see player and NPC portraits');
    const panel=ui.panels.get(p.id),panel2=ui.panels.get(other.id),position=panel.style.left;
    check(panel.querySelector('.selected').textContent.includes('A'),'Xbox selected reply labels A');check(panel2.querySelector('.selected').textContent.includes('B'),'Switch selected reply labels B');

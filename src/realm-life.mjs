@@ -2,6 +2,7 @@ import {REALMS,realmHash,realmVoidBlocked,realmFootprint,realmTerrainAt,realmCon
 import {drawRealmSprite} from './realm-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
 import {drawMonarchFairyDragon} from './monarch-fairy-dragon.mjs';
+import {drawAxolotl} from './axolotl.mjs';
 import {seedMarshFireflies,tickMarshFirefly,firefliesAwake,drawMarshFirefly} from './swamp-fireflies.mjs';
 export const REALM_FAUNA={swamp:['bayou_frog','marsh_firefly','nutria'],caverns:['cave_cricket','blind_fish','olm'],shadow:['dusk_moth','veil_beetle','shadow_stag','monarch_fairy_dragon']};
 const colors={bayou_frog:['#3f6550','#9cac69'],marsh_firefly:['#596b48','#e8e69a'],nutria:['#71543e','#b9976a'],cave_cricket:['#6a6963','#babca4'],blind_fish:['#b7bbaa','#ede2cb'],olm:['#cf9fac','#f3d1d5'],dusk_moth:['#796584','#ceb5ce'],veil_beetle:['#4d5c71','#9ca6c1'],pale_hart:['#a6a4bc','#e2dfdf']};
@@ -105,6 +106,16 @@ export function makeFaunaSprites(){
  return out;
 }
 export const FAUNA_SPRITES=makeFaunaSprites();
+const olmArtChecks=new WeakMap();
+export function hasCustomOlmArt(library){
+ if(!library||library===FAUNA_SPRITES)return false;
+ return ['olm_limb',...Array.from({length:8},(_,i)=>'olm_body_'+i)].some(key=>{
+  const sprite=library[key],base=FAUNA_SPRITES[key];if(!sprite||sprite===base)return false;
+  const saved=olmArtChecks.get(sprite);if(saved&&saved.revision===sprite.revision)return saved.custom;
+  const custom=sprite.width!==base.width||sprite.height!==base.height||JSON.stringify(sprite.palette)!==JSON.stringify(base.palette)||JSON.stringify(sprite.pixels)!==JSON.stringify(base.pixels);
+  olmArtChecks.set(sprite,{revision:sprite.revision,custom});return custom;
+ });
+}
 function habitat(g,kind,x,y){
  const ox=g.realmState?.originX||0,oy=g.realmState?.originY||0;
  if(x<ox+48||y<oy+48||x>ox+1552||y>oy+1552||realmVoidBlocked(g,x,y,8)||Math.hypot(x-800,y-800)<195)return false;
@@ -148,7 +159,7 @@ function tickRegionLife(g,dt){
   let dx=a.homeX+Math.sin(t*.17)*60-a.x,dy=a.homeY+Math.cos(t*.23)*35-a.y;
   if(threat){dx=a.x-threat.x;dy=a.y-threat.y;}else if(large&&Math.sin(t*.24)>.2){a.moving=false;continue;}
   const length=Math.hypot(dx,dy)||1,step=Math.min(length,Math.min(dt,.1)*(threat?48:large?12:dragon?22:18));a.moving=false;
-  for(const [mx,my]of [[dx/length*step,dy/length*step],[dx/length*step,0],[0,dy/length*step]])if(habitat(g,a.kind,a.x+mx,a.y+my)){a.x+=mx;a.y+=my;a.faceX=dx/length;a.faceY=dy/length;a.moving=step>.1;break;}
+  for(const [mx,my]of [[dx/length*step,dy/length*step],[dx/length*step,0],[0,dy/length*step]])if(habitat(g,a.kind,a.x+mx,a.y+my)){a.x+=mx;a.y+=my;a.faceX=dx/length;a.faceY=dy/length;const travel=Math.hypot(mx,my);a.travelDistance=(a.travelDistance||0)+travel;a.moving=travel>.01;break;}
  }
 }
 export function drawRealmLife(c,g,layer='ground'){for(const ctx of realmContexts(g))drawRegionLife(c,ctx,layer);}
@@ -168,6 +179,9 @@ function drawRegionLife(c,g,layer){
   }
   if(a.kind==='monarch_fairy_dragon'){
    drawMonarchFairyDragon(c,{...a,state:a.fleeing?'flee':a.moving?'flutter':'idle'},g.time,size);c.restore();continue;
+  }
+  if(a.kind==='olm'&&!hasCustomOlmArt(library)){
+   drawAxolotl(c,a,g.time,size);c.restore();continue;
   }
   if(large)for(const [i,dx]of [-.25,-.14,.14,.25].entries()){c.save();c.translate(a.x+dx*size,a.y-6+(i<2?-size*.08:0));c.rotate(a.moving?Math.sin(g.time*10+i*Math.PI)*.3:0);drawRealmSprite(c,a.kind+'_limb',0,6,a.kind==='nutria'?13:14,library);c.restore();}
   drawRealmSprite(c,a.kind+'_body_'+view,a.x,a.y-bounce,size,library);c.restore();

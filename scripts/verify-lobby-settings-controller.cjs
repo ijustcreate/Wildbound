@@ -126,41 +126,21 @@ app.whenReady().then(async () => {
       ctx.playableLobby.open(p, 'board');
       ctx.game.openInventory(q); const otherUI = q.ui;
       const count = ctx.game.players.length, panelBefore = ctx.playableLobby.state.members.get(p.id).panel;
-      set(0, 9, 0, 5, 13); step(); verifyOpen(0, 'xbox');
-      assert(!p.ready && !q.ready && ctx.screen === 'lobby' && ctx.game.players.length === count,
-        'Lobby Start combined with accept never readies, starts or joins');
-      assert(ctx.playableLobby.state.members.get(p.id).panel === panelBefore && q.ui === otherUI,
-        'Settings preserves the opener’s board panel and another owner’s inventory');
-      for (let frame = 0; frame < 12; frame++) step();
-      assert(selectedTab() === 'display' && !p.ready && q.ui === otherUI, 'Held lobby opening input cannot navigate the board or inventory');
-      release(); press(1, 9, 1, 5, 13);
-      assert(dialog.open && q.ui === otherUI && selectedTab() === 'display', 'Second lobby owner cannot close or navigate first owner’s settings');
-      press(0, 5);
-      assert(selectedTab() === 'sound', 'Lobby opener can change the active settings tab');
-      set(1, 1); step();
-      set(0, 9, 0, 13); step();
-      for (let frame = 0; frame < 12; frame++) step();
-      assert(!dialog.open && !p.ready && ctx.game.players.length === count && ctx.screen === 'lobby',
-        'Held lobby closing input cannot reopen, ready, join or start a game');
-      assert(q.ui === otherUI, 'Ignored non-owner back stays consumed after the settings owner closes');
-      release();
-      press(0, 9); $('close-settings').focus(); set(0, 0); step();
-      for (let frame = 0; frame < 12; frame++) step();
-      assert(!dialog.open && !p.ready && ctx.playableLobby.state.members.get(p.id).panel === panelBefore,
-        'Holding owner accept after Done cannot ready or interact with the underlying lobby');
-      release();
-      ctx.playableLobby.state.members.get(p.id).focus = 0;
-      press(0, 0);
-      assert(p.ready, 'A fresh post-settings face press still readies at the board');
-      q.ui = null; p.ready = q.ready = true;
-      ctx.playableLobby.close(p); ctx.playableLobby.close(q);
-      ctx.playableLobby.state.countdown = .025;
-      set(0, 9); step();
-      for (let frame = 0; frame < 12; frame++) step();
-      assert(ctx.screen === 'lobby' && ctx.playableLobby.state.countdown === .025,
-        'Opening settings blocks an already-running expedition countdown');
-      p.ready = q.ready = false;
-      release(); press(0, 9);
+      set(0, 9, 0, 5, 13); step();
+      assert(ctx.paused && $('pause-dialog').open && !dialog.open, 'Selected lobby right menu opens Pause without activating board or dash');
+      assert(!p.ready && q.ui === otherUI && ctx.game.players.length === count, 'Lobby Pause preserves board selection and another inventory');
+      for(let n=0;n<12;n++)step();
+      assert(ctx.paused && $('pause-dialog').open, 'Holding right menu does not resume lobby');
+      release(); $('pause-settings').focus(); press(0,0); verifyOpen(0,'xbox');
+      press(1,9,1,5,13); assert(dialog.open && q.ui===otherUI,'Second controller cannot disturb lobby pause settings');
+      press(0,5); assert(selectedTab()==='sound','Pause settings owner can change tabs');
+      press(0,9); assert(!dialog.open && $('pause-dialog').open && ctx.paused,'Settings closes back to lobby Pause');
+      release(); press(0,9); assert(!ctx.paused && !$('pause-dialog').open,'Fresh right menu resumes lobby');
+      assert(ctx.playableLobby.state.members.get(p.id).panel===panelBefore && q.ui===otherUI,'Resume preserves both lobby panels');
+      q.ui=null;p.ready=q.ready=true;ctx.playableLobby.close(p);ctx.playableLobby.close(q);ctx.playableLobby.state.countdown=.025;
+      set(0,9);step();for(let n=0;n<12;n++)step();
+      assert(ctx.screen==='lobby'&&ctx.playableLobby.state.countdown===.025,'Lobby Pause blocks expedition countdown');
+      p.ready=q.ready=false;release();press(0,9);
 
       ctx.game = new ctx.Game(); ctx.wireGame();
       ctx.game.addPlayer('pad:0', 'Xbox QA'); ctx.game.addPlayer('pad:1', 'Switch QA');
@@ -217,7 +197,7 @@ app.whenReady().then(async () => {
       assert(ctx.game.players.length === 1 && ctx.game.players[0].device === 'pad:1', 'Desktop claim still retains an ordinary face-button join');
       release();
       delete window.desktop; delete document.hasFocus;
-      press(1, 9); verifyOpen(1, 'switch');
+      press(1, 9); if($('pause-dialog').open){$('pause-settings').focus();press(1,0);} verifyOpen(1, 'switch');
       press(1, 5); press(1, 5);
       dialog.querySelector('[data-settings-tab="sound"]').click();
       const volume=$('music-volume');volume.focus();const oldVolume=Number(volume.value);
@@ -267,7 +247,8 @@ app.whenReady().then(async () => {
         pads[1].buttons[button].pressed = true; ctx.inputFrame();
         pads[1].buttons[button].pressed = false; ctx.inputFrame();
       };
-      press(9); press(5); press(5);
+      if(document.getElementById('pause-dialog').open)document.getElementById('resume-button').click();
+      ctx.inputFrame();press(9); if(document.getElementById('pause-dialog').open){document.getElementById('pause-settings').focus();press(0);} press(5); press(5);
       if (!dialog.open || dialog.dataset.ownerDevice !== 'pad:1') throw Error('Keyboard cancellation left stale controller ownership');
       return true;
     })()`);

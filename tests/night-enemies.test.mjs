@@ -17,7 +17,7 @@ function setup(kind='hunter',x=100,y=100){
 const tick=(g,e,dt=.05,p=g.players[0])=>tickNightEnemy(g,e,p,dt);
 
 test('public contract, event restrictions and nullable targets',()=>{
-  assert.equal(NIGHT_EVENTS.length,10);
+  assert.equal(NIGHT_EVENTS.length,14);
   for(const event of NIGHT_EVENTS){const {g,e}=setup(event.kind);assert.equal(tick(g,e,.05,null),true);assert.ok(event.kind==='hunter'||event.environments.length);}
   assert.equal(NIGHT_EVENTS.find(e=>e.kind==='hunter').environments,undefined);
   assert.ok(NIGHT_EVENTS.find(e=>e.kind==='burrower').environments.includes('desert'));

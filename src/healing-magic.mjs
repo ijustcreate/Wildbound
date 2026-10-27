@@ -1,7 +1,7 @@
 import {ITEMS, stat} from './items.mjs';
 import {creatures} from './definitions.mjs';
 import {clearShot} from './navigation.mjs';
-import {wandTipWorld} from './player-motion.mjs';
+import {rangedLaunchOrigin,rangedRenderSize} from './ranged-launch.mjs';
 import {chargedProjectileRange} from './projectile-range.mjs';
 import {emitNoise} from './night-cycle.mjs';
 import {isCharmed} from './succubus-charm.mjs';
@@ -91,6 +91,7 @@ export function hitHealingBolt(g, bolt, target) {
 export function tickSpellHealing(g, dt) {
   if (!Number.isFinite(dt) || dt < 0) return;
   for (const target of actors(g)) {
+    if(target.nativeCryptActive&&target.room)continue;
     if (!target.healingOverTime) continue;
     if (!Array.isArray(target.healingOverTime)) {delete target.healingOverTime;continue;}
     const kept = [];
@@ -176,7 +177,7 @@ export function createRoomHealingBolt(g,p,charge=0,slot='hand1',options={}) {
 export function fireHealingSpell(g, p, charge = 0, slot = 'hand1') {
   const cast=healingCast(g,p,charge,slot);
   if (!cast) return false;
-  const tip=wandTipWorld(p,slot,g.time || 0), origin={x:tip.x,y:tip.y+16};
+  const origin=rangedLaunchOrigin(p,g.time||0,'magic',{slot,size:rangedRenderSize(g)});
   const aim=healingAim(g,p,origin);
   const bolt=makeHealingBolt(g,p,slot,origin,aim,cast);
   payHealingCast(g,p,cast);

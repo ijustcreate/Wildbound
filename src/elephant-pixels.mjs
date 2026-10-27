@@ -20,13 +20,14 @@ export function drawElephantPixels(c,model,pose,d){
  for(const side of ['L','R']){
   const hip='hip'+side,knee='knee'+side,rear='rearPaw'+side,shoulder='shoulder'+side,elbow='elbow'+side,front='frontPaw'+side;
   for(const [upper,mid,foot,label] of [[hip,knee,rear,'Rear'],[shoulder,elbow,front,'Front']]){
-   add(label+' leg '+side,foot,[upper,mid,foot],(p[upper].depth+p[foot].depth)/2,()=>{
+   add(label+' leg '+side,foot,[upper,mid,foot],p[foot].depth,()=>{
     taper(p[upper],p[mid],5,4,pal.outline,pal.body);
     taper(p[mid],p[foot],4,3,pal.outline,pal.shade);
     const f=p[foot],x=Math.round(f.x),y=Math.round(f.y);
     ellipse(c,x,y-1,6,3,pal.outline);ellipse(c,x,y-2,5,2,pal.shade);
     c.fillStyle=pal.light;for(const dx of [-4,0,4])c.fillRect(x+dx-1,y-1,2,1);
    });
+   if(queue.at(-1)?.id===label+' leg '+side)queue.at(-1).attachmentOrder={anchors:['Elephant body'],behind:p[foot].depth<(p.chest.depth+p.pelvis.depth)/2};
   }
  }
  const center=blend(pose.pelvis,pose.chest,.51);
@@ -41,13 +42,14 @@ export function drawElephantPixels(c,model,pose,d){
  // a broad upper shell and a narrow lower fold in every turn direction.
  for(const side of ['L','R']){
   const s=side==='L'?-1:1,n='ear'+side;
-  add('Elephant ear '+side,n,['head',n],p.head.depth+.2,()=>{
+  add('Elephant ear '+side,n,['head',n],p[n].depth,()=>{
    const e=p[n],h=p.head,away=Math.sign(e.x-h.x)||s;
    const point=(dx,dy)=>({x:e.x+away*dx,y:e.y+dy});
    pixelPolygon(c,[point(-5,-7),point(3,-10),point(9,-6),point(10,2),point(6,9),point(-1,10),point(-6,4)],pal.outline);
    pixelPolygon(c,[point(-3,-6),point(3,-8),point(7,-5),point(8,2),point(5,7),point(0,8),point(-4,3)],pal.face);
    line(point(-3,-2),point(1,5),2,pal.shade);
   });
+  if(queue.at(-1)?.id==='Elephant ear '+side)queue.at(-1).attachmentOrder={anchors:['Elephant head'],behind:p[n].depth<=p.head.depth+.5};
  }
  add('Elephant head','head',['head','neck'],p.head.depth+.6,()=>{
   pixelVolume(c,pose.head,10,9,9,d,{body:pal.body,shade:pal.shade,light:pal.light,outline:pal.outline});
@@ -55,7 +57,7 @@ export function drawElephantPixels(c,model,pose,d){
  });
  for(const side of ['L','R']){
   const n='eye'+side;
-  add('Elephant eye '+side,n,['head',n],p.head.depth+40,()=>{
+  add('Elephant eye '+side,n,['head',n],p.head.depth+.9,()=>{
    const x=Math.round(p[n].x),y=Math.round(p[n].y);
    c.fillStyle=pal.outline;c.fillRect(x-2,y-2,4,3);
    c.fillStyle=pal.eye;c.fillRect(x-1,y-1,2,2);

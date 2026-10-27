@@ -91,7 +91,8 @@
 }
 .npc-dialogue-person figcaption strong { font-size: clamp(12px, 1.8vw, 16px); }
 .npc-dialogue-person figcaption small { color: #675b42; font-size: 10px; }
-.npc-dialogue-body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.npc-dialogue-body { min-width: 0; display: block; }
+.npc-dialogue-body > * + * { margin-top: 10px; }
 .npc-dialogue-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .npc-dialogue-heading h2 { margin: 0; color: #1e493e; font-size: clamp(17px, 2.5vw, 25px); line-height: 1.05; }
 .npc-dialogue-stage { color: #755d37; font-size: 10px; white-space: nowrap; }
@@ -138,7 +139,8 @@
 }
 /* Keep recovered responsive layout and usable contrast at party sizes. */
 .hero-panel.npc-dialogue-session { box-sizing: border-box; }
-.hero-panel.npc-dialogue-session .npc-dialogue { overflow: auto; }
+.hero-panel.npc-dialogue-session .npc-dialogue { overflow: hidden; }
+.hero-panel.npc-dialogue-session .npc-dialogue-body { overflow: auto; padding: 4px; }
 .hero-panel.npc-dialogue-session button.npc-dialogue-choice { background: #4f9e79; border: 2px solid #285a47; color: #102b22; border-radius: 0; }
 .hero-panel.npc-dialogue-session button.npc-dialogue-choice.selected { background: #58ae83; box-shadow: 0 0 0 2px #f1d36e; }
 .hero-panel.npc-dialogue-session .npc-dialogue-choice-key, .hero-panel.npc-dialogue-session .npc-dialogue-choice-detail { color: #102b22; }
@@ -152,3 +154,14 @@
   border-radius: 0 !important;
 }
 
+@container npc-dialogue (max-width:260px) {
+  .hero-panel.npc-dialogue-session .npc-dialogue-heading h2 {font-size:15px;line-height:1.2;}
+  .npc-dialogue-person figcaption {min-height:22px;padding:3px;}
+  .npc-dialogue-person figcaption strong {font:700 10px/1.2 Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .npc-dialogue-person figcaption small {display:none;}
+  .hero-panel.npc-dialogue-session .npc-dialogue-text {font-size:12px;line-height:1.4;}
+  .hero-panel.npc-dialogue-session button.npc-dialogue-choice {grid-template-columns:minmax(18px,auto) minmax(0,1fr);padding:6px;gap:4px;}
+}
+
+
+.hero-panel.npc-dialogue-session nav.npc-dialogue-choices {height:auto;min-height:0;grid-auto-rows:min-content;align-items:stretch;align-content:start;}

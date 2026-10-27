@@ -4,7 +4,7 @@ import {pointLightVisibility} from './realtime-shadows.mjs';
 
 export function characterLightingFrame(game,room=null,{occluded=true}={}){
  const sources=lightSources(game,room);
- return {ambient:daylight(game),sources,field:occluded?worldLightField(game,sources,room):null,room,time:game.time||0};
+ return {sun:game.generatedEnvironment==='forest'?daylight(game)*(!game.weather?1:.45):0,ambient:daylight(game),sources,field:occluded?worldLightField(game,sources,room):null,room,time:game.time||0};
 }
 export function characterLightingAt(frame,actor,{lift=(actor.jumpHeight||0)+(actor.groundHeight||0),bodyHeight=22}={}){
  if(!frame)return null;
@@ -15,15 +15,19 @@ export function characterLightingAt(frame,actor,{lift=(actor.jumpHeight||0)+(act
   const strength=Math.max(0,1-distance/radius)**2*(source.intensity??1)*pointLightVisibility(frame.field,source,{x:actor.x,y:actor.y,z:pointHeight},`actor:${actor.id}`);
   return {...source,strength,dx:source.x-actor.x,dy:source.y-actor.y+pointHeight-sourceHeight};
  }).filter(source=>source.strength>.015).sort((a,b)=>b.strength-a.strength).slice(0,4);
- return {ambient:Math.max(0,Math.min(1,frame.ambient)),bodyHeight,lights};
+ return {sun:frame.sun||0,ambient:Math.max(0,Math.min(1,frame.ambient)),bodyHeight,lights};
 }
 // Alpha-clipped palette tint: keeps silhouettes and pixel edges intact, affects
 // hair, skin AND equipment, and never changes the unlit animation cache.
 let characterRim=null;
 export function shadeCharacterSurface(surface,lighting,{pixelsPerWorld=1}={}){
- if(!lighting?.lights.length)return;
+ if(!lighting||(!lighting.lights.length&&!lighting.sun))return;
  const c=surface.getContext('2d'),w=surface.width,h=surface.height;c.save();
  c.globalCompositeOperation='source-atop';
+ if(lighting.sun){
+  const sun=c.createLinearGradient(w*.25,h*.25,w*.65,h*.7);sun.addColorStop(0,'#ffe4a0');sun.addColorStop(.6,'#ffe4a000');sun.addColorStop(1,'#326856');
+  c.globalAlpha=lighting.sun*.13;c.fillStyle=sun;c.fillRect(0,0,w,h);
+ }
  // Scene night shading already supplies ambient darkness. Only add local
  // source color here, never a second blue night wash over each character.
  const cx=w/2,cy=h/2-(lighting.bodyHeight??22)*pixelsPerWorld,radius=24*pixelsPerWorld;

@@ -10,7 +10,7 @@ test('Board roll freezes the world, progresses the piece, reveals the event and 
  assert.equal(g.time,before.time);assert.equal(p.x,before.x);assert.equal(p.hp,before.hp);assert.equal(p.breath,before.breath);assert.equal(JSON.stringify(g.enemies),before.enemies);assert.ok(p.boardProgress>0);assert.equal(p.progress,0);
  while(!g.roll.resolved)g.update(.05,{});assert.equal(p.progress,8);assert.equal(g.eventOnBoard,true);const enemies=JSON.stringify(g.enemies);
  for(let i=0;i<70;i++)g.update(.05,{});assert.ok(g.roll);assert.equal(JSON.stringify(g.enemies),enemies);assert.equal(g.time,before.time);
- while(g.roll)g.update(.05,{});assert.equal(g.eventTime,0);assert.equal(g.time,before.time);g.update(.05,{});assert.ok(g.time>before.time);assert.ok(landing+BOARD_REVEAL_SECONDS>6);
+ while(g.roll)g.update(.05,{});assert.equal(!!p.boardJumpRelease,false);assert.equal(g.eventTime,0);assert.equal(g.time,before.time);g.update(.05,{});assert.ok(g.time>before.time);assert.ok(landing+BOARD_REVEAL_SECONDS>6);
 });
 test('One or two tumbling dice remain within the board surface',()=>{
  for(const dice of [[6],[2,5]])for(let t=0;t<5;t+=.01)for(let i=0;i<dice.length;i++){
@@ -19,3 +19,16 @@ test('One or two tumbling dice remain within the board surface',()=>{
  }
 });
 test('Dice finish flat and remain motionless on their rolled result',()=>{for(let seed=0;seed<1;seed+=.1)for(let i=0;i<2;i++){const r={dice:[2,6],tossSeed:seed,elapsed:1.6},a=boardDicePose(r,i);assert.equal(a.angle,0);assert.equal(a.value,r.dice[i]);r.elapsed=8;assert.deepEqual(boardDicePose(r,i),a);}});
+
+
+test('opening board and roll confirmation cannot turn a held confirm into jump or wing flight',()=>{
+ for(const wings of [false,true]){
+  const g=new Game(()=>.5),p=g.addPlayer('pad:0');g.start();g.scenery=[];g.terrain.fill('grass');g.blocked=()=>false;if(wings)p.equipment.shoulders='succubus_wings';
+  g.update(.02,{'pad:0':{jump:true,use:true}});assert.equal(p.jumpHeight||0,0);
+  g.openingBoard=false;g.update(.02,{'pad:0':{jump:true,use:true}});assert.equal(p.jumpHeight||0,0);
+  g.update(.02,{});g.update(.02,{'pad:0':{jump:true}});g.update(.02,{'pad:0':{jump:true}});assert.ok(p.jumpHeight>0);
+  Object.assign(p,{jumpHeight:0,jumpVelocity:0,wingHover:false,jumpHeld:false});g.update(.02,{});
+  assert.ok(g.hitTable(p));while(g.roll)g.update(.05,{'pad:0':{jump:true,use:true}});
+  g.update(.02,{'pad:0':{jump:true,use:true}});assert.equal(p.jumpHeight||0,0);assert.equal(!!p.wingHover,false);
+ }
+});

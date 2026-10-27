@@ -31,7 +31,7 @@ test('A winding-up lion completes its pounce onto furniture',()=>{
 test('Melee applies actual damage to the same immortal targets used by projectiles',()=>{
  const g=new LobbyPractice(),p=g.addPlayer('keyboard'),target=g.targets[0];
  Object.assign(p,{x:target.x,y:target.y+45,faceX:0,faceY:-1});p.equipment.hand1='sword';
- const hp=target.hp;g.attack(p,0);assert.ok(target.score>0);assert.equal(target.hp,hp);assert.equal(target.combatText[0].type,'physical');
+ const hp=target.hp;g.attack(p,0);for(let i=0;i<6;i++)g.update(.02,{});assert.ok(target.score>0);assert.equal(target.hp,hp);assert.equal(target.combatText[0].type,'physical');
 });
 test('Ghosts reset corpse state, cap at three, follow with animation, and attack nearby enemies',()=>{
  const g=world(),p=g.addPlayer('keyboard');Object.assign(p,{x:300,y:300});

@@ -25,10 +25,11 @@ app.whenReady().then(async()=>{
    pad.axes[1]=-1;for(let i=0;i<2;i++)step();assert(!v.speed,'Actual inputFrame stick up does not accelerate');
    button(0,true);pad.axes[0]=.7;for(let i=0;i<20;i++)step();assert(v.speed>50&&v.heading>0,'Actual bottom face gas drives and front steering turns');
    assert(!p.jumpHeight&&!p.dashTime&&!p.charge&&!p.bowAiming,'Driver cannot jump, dash or charge a weapon with pedals');
-   button(0,false);button(2,true);for(let i=0;i<30;i++)step();assert(v.speed===0,'Actual left face brake stops without reversing');
-   const heading=v.heading;for(let i=0;i<30;i++)step();assert(v.heading===heading,'Steering while parked does not rotate the car');
-   button(2,false);button(0,true);pad.axes[1]=1;for(let i=0;i<8;i++)step();assert(v.speed<0,'Down plus bottom face gas selects reverse');
-   button(0,false);button(2,true);for(let i=0;i<15;i++)step();assert(v.speed===0&&!p.attack,'Reverse brake stops with no weapon swing on release');
+   button(0,false);button(2,true);for(let i=0;i<45;i++)step();assert(v.speed<0,'Actual left face pedal brakes then accelerates backward');
+   button(0,true);const speed=Math.abs(v.speed);for(let i=0;i<30;i++)step();assert(Math.abs(v.speed)<speed,'Both pedals brake');
+   button(2,false);for(let i=0;i<45;i++)step();assert(v.speed>0,'Bottom face brakes reverse then drives forward');
+   button(0,false);button(2,true);pad.axes[1]=-1;for(let i=0;i<45;i++)step();assert(v.speed<0,'Reverse pedal is independent of stick direction');
+   button(0,true);for(let i=0;i<40;i++)step();assert(v.speed===0&&!p.attack,'Both pedals stop with no weapon swing');
    // A second controller family uses the same physical positions.
    pad.id='Nintendo Switch Pro Controller';button(2,false);button(0,true);pad.axes[1]=0;for(let i=0;i<20;i++)step();assert(v.speed>0,'Switch bottom face position also accelerates');
    const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=660;const c=canvas.getContext('2d');c.fillStyle='#486345';c.fillRect(0,0,1000,660);

@@ -10,7 +10,8 @@ export function sharedRoomGroups(game){
  }
  return [...groups.values()];
 }
-export function roomWindowLayout(groups,width,height){
+export function roomWindowLayout(groups,width,height,{full=false}={}){
+ if(full&&groups.length===1)return [{...groups[0],x:0,y:0,width,height,full:true}];
  const mx=Math.max(8,width*.12),my=Math.max(8,height*.1),gap=8,columns=groups.length>1?2:1,rows=Math.ceil(groups.length/columns);
  const w=(width-mx*2-gap*(columns-1))/columns,h=(height-my*2-gap*(rows-1))/Math.max(1,rows);
  return groups.map((group,i)=>({...group,x:mx+i%columns*(w+gap),y:my+Math.floor(i/columns)*(h+gap),width:w,height:h}));

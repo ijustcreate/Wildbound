@@ -35,9 +35,9 @@ export function rockSurface(p){
 export function bridgeAt(g,x,y){
   if(g?.phase==='won')return false;
   const tx=Math.floor(x/32),ty=Math.floor(y/32);
-  if(g?.mapMode==='boundless')return realmTerrainAt(g,tx,ty)==='bridge';
+  if(g?.mapMode==='boundless'){const tile=realmTerrainAt(g,tx,ty);return tile==='bridge'||tile==='wood'&&(g.generatedEnvironment||g.environment)==='beach';}
   if(tx<0||ty<0||tx>=50||ty>=50)return false;
-  return g?.terrain?.[ty*50+tx]==='bridge';
+  const tile=g?.terrain?.[ty*50+tx];return tile==='bridge'||tile==='wood'&&(g.generatedEnvironment||g.environment)==='beach';
 }
 export function terrainSupport(g,a,offset=0){
   let height=bridgeAt(g,a.x,a.y)&&!a.underBridge&&!a.swimming?10:0;

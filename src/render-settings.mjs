@@ -1,5 +1,5 @@
 export const PLAYER_RENDER_SIZE = 43;
-export const creatureRenderSize=kind=>kind==='elephant'?82:kind==='baby_spider'?27:
+export const creatureRenderSize=kind=>['skeleton','archer','skeleton_unarmed','frost_skeleton_mage','skeleton_wizard'].includes(kind)?PLAYER_RENDER_SIZE:kind==='elephant'?82:kind==='baby_spider'?27:
   ['golem','crocodile','lion','tiger','white_lion','rhino','dragon','zebra','carnivorous_flower'].includes(kind)?61:
   ['bat','wasp','bee','tsetse'].includes(kind)?34:47;
 export const LOBBY_WORLD_SCALE = 2;

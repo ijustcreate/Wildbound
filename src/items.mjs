@@ -1,4 +1,7 @@
+import {BONE_CARVER_ITEMS} from './bone-carver-items.mjs';
 import {SKILLS,skillScrollId} from './field-skills.mjs';
+import {CHRISTMAS_ITEMS,SANTA_EQUIPMENT} from './christmas-items.mjs';
+import {SKELETON_ARMOR_ITEMS} from './skeleton-equipment.mjs';
 import {critterContainer} from './critter-containers.mjs';
 export const SLOTS = [
   "head",
@@ -15,8 +18,9 @@ export const SLOTS = [
 ];
 export const ITEMS = {
   blank_explorer_costume:{name:'Blank explorer costume',base:'armor',slot:'chest',stack:1,armor:0,sockets:0,rarity:'common',artColor:'#858f90',color:'#858f90',blankExplorer:true,supplyOnly:true,devOnly:true,sellPrice:0,description:'A quiet grey explorer disguise with a subtle question mark. Used by unclaimed explorers. Developer-only costume; never found in normal loot.'},
-  car_key:{name:'Car key',stack:1,rarity:'common',color:'#e6c66f',description:'A brass key for the house car. A future hotwire skill can replace it.'},
-  car_engine_part:{name:'Replacement engine part',stack:1,rarity:'common',color:'#84939a',description:'A missing engine component. Use it beside an open hood to repair a vehicle.'},
+  ...BONE_CARVER_ITEMS,
+  car_key:{name:'Car key',stack:1,rarity:'common',color:'#e6c66f',description:'A keepsake brass car key. Vehicles can be driven without a key.'},
+  car_engine_part:{name:'Replacement engine part',stack:1,rarity:'common',color:'#84939a',description:'An optional engine spare. Vehicles are ready to drive without repairs.'},
   pumpkin:{name:'Pumpkin',stack:12,color:'#ed962f',material:true,sellPrice:1,description:'Picked from a cemetery pumpkin patch. Equip a knife in either hand to reveal Carve in your backpack.'},
   jack_o_lantern:{name:'Jack-o’-lantern',base:'hat',slot:'head',stack:1,armor:2,sockets:0,supplyOnly:true,color:'#ed962f',artColor:'#ed962f',style:'pumpkin',description:'A carved pumpkin helmet with flickering fiery eyes. Armor +2. Drop it to decorate the ground.'},
   unknown_mushroom:{name:'Strange mushroom',stack:999,rarity:'unique',color:'#c58bfa',sellPrice:0,description:'A mysterious mushroom found inside a question block in the TV world. Purple quality. Its purpose is unknown; no use yet.'},
@@ -45,7 +49,10 @@ export const ITEMS = {
   veil_shard:{name:'Veil shard',stack:99,color:'#b18ac8',material:true,sellPrice:9,description:'A dark crystal with a cold inner glow.'},
   raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'A piece of frozen ice. Melts after five minutes outside the ice level.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
-  relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Stored relics grant no passive bonuses.' },
+  flying_broom:{name:'Witch’s flying broom',stack:1,color:'#bd984f',rarity:'unique',mount:true,sellPrice:90,description:'Use outdoors to mount and fly. B / loot button: dismount and return the broom. A released captured pet can ride behind you.'},
+  mounted_broom:{name:'Broom · in flight',stack:1,color:'#78977a',mountReservation:true,supplyOnly:true,npcOnly:true,description:'Your broom is in flight. B / loot button returns it to this reserved slot.'},
+  witch_hat:{name:'Crooked witch hat',slot:'head',stack:1,armor:2,color:'#6d8051',rarity:'rare',style:'witch',description:'A wide green brim, crooked point and a brass buckle. Armor +2.'},
+  relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Picked-up relics go here first. Relics inside grant their passive bonuses while you carry this bag.' },
   crafting_bag: { name: 'Crafting Pouch', stack: 1, color: '#83bb92', bag: { slots: 1, category: 'crafting' }, description: 'One crafting supply slot. Holds one stack.' },
   relic_dust:{name:'Relic Dust',stack:999,color:'#c6b38d',material:true,sellPrice:1,description:'Salvaged from unwanted gear. Sell later; stacks to 999.'},
   magic_essence:{name:'Magic Essence',stack:999,color:'#77d9ec',material:true,sellPrice:2,description:'Salvaged from magical or uncommon gear. Stacks to 999.'},
@@ -1036,7 +1043,9 @@ for(const [id,name,base,slot,color,style,stats] of [
  ['banshee_legguards','Queen\u2019s legguards','pants','pants','#352c39','plated',{}],
  ['banshee_boots','Queen\u2019s armored boots','boots','feet','#352c39','tall',{}],
 ])ITEMS[id]={name,base,slot,artColor:color,color,style,stack:1,rarity:'unique',bansheeGear:true,...stats,...(BANSHEE_SET.includes(id)?{bossOnly:true,description:'Banshee set \u00b7 dropped by the Banshee Queen. 2 pieces: arrows have a 20% freeze chance (1.5s). 5 pieces: cosmetic icy footsteps.'}:{npcOnly:true,description:'Custom fitted armor worn by the Banshee Queen.'})};
+Object.assign(ITEMS,CHRISTMAS_ITEMS,SKELETON_ARMOR_ITEMS);
 export const GEAR_SETS={
+ santa:{name:'Christmas Spirit',groups:Object.values(SANTA_EQUIPMENT).map(id=>[id]),full:{icySteps:1,christmasSpirit:1},fullText:'Christmas Spirit: icy footprints and an occasional festive sparkle.'},
  alan:{name:'Jumanji Wilderness',groups:Object.values(ALAN_EQUIPMENT).map(id=>[id]),full:{jumanjiVines:1},
    fullText:'Jungle’s call: Jumanji jungle knife hits summon grasping vines every 12 seconds, holding a monster for 2 seconds and healing you for 8.'},
  reaper:{name:'Death',groups:REAPER_SET.map(id=>[id]),three:{deathSteps:1},full:{reaperDamage:20,reaperLifeSteal:.05},threeText:'Black soul particles follow your footsteps',fullText:"Reaper's Scythe: glowing blade, +20 damage and 5% life steal"},
@@ -1128,7 +1137,7 @@ export function itemStats(id) {
     i.magnet ? `Loot reach +${i.magnet}` : "",
     i.rootResist ? "Root resist" : "",
     i.poisonResist ? "Poison resist" : "",
-    i.relic ? "Passive while carried in backpack" : "",
+    i.relic ? "Passive in your backpack or carried Reliquary Bag" : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -1276,20 +1285,20 @@ export function unequip(p, slot) {
   return true;
 }
 export function transfer(from, to, index, slots = 24) {
+  if(ITEMS[from[index]?.type]?.mountReservation)return false;
   const i = from[index];
   if (!i || !give(to, i.type, i.qty, slots,i)) return false;
   clearSlot(from, index);
   return true;
 }
+export function carriedRelicStat(item,key){const def=ITEMS[item?.type];if(def?.relic)return (Number(def[key])||0)*(item.qty||1);if(item?.type==='relic_bag')return (item.contents||[]).reduce((n,relic)=>n+(ITEMS[relic?.type]?.relic?(Number(ITEMS[relic.type][key])||0)*(relic.qty||1):0),0);return 0;}
+export function relicBagBonuses(bag){if(bag?.type!=='relic_bag')return {};const totals={};for(const relic of bag.contents||[]){const def=ITEMS[relic?.type];if(!def?.relic)continue;for(const [key,value]of Object.entries(def))if((typeof value==='number'||typeof value==='boolean')&&!['relic','stack','tier','variant','sockets','sellPrice','price','value','artRevision'].includes(key)&&Number.isFinite(Number(value))&&value)totals[key]=(totals[key]||0)+Number(value)*(relic.qty||1);}return totals;}
 export function stat(p, key) {
   const equipped = Object.entries(p.equipment || {}).reduce(
     (n, [slot,t]) => n + gearStat(t,p.equipmentSockets?.[slot],key),
     0,
   );
-  const carriedRelics = (p.inventory || []).reduce((n, item) => {
-    const def = ITEMS[item?.type];
-    return n + (def?.relic ? (def[key] || 0) * (item.qty || 1) : 0);
-  }, 0);
+  const carriedRelics = (p.inventory || []).reduce((n,item)=>n+carriedRelicStat(item,key),0);
   return equipped + carriedRelics + setStat(p,key);
 }
 export function freshCharacter(id, name) {
@@ -1318,6 +1327,7 @@ export function freshCharacter(id, name) {
 }
 
 export function migrateEquipment(p) {
+  if(!p.broomMount)for(const item of p.inventory||[])if(item?.type==='mounted_broom')item.type='flying_broom';
   for(const list of [p.inventory,...(p.chests||[]),p.starterChest,p.robotStock,p.field?.overflow])migrateLegacySupplies(list);
   if(p.field){delete p.field.quiver;if(p.field.recipes)delete p.field.recipes.ice_arrow;}
   p.equipment ||= {};
@@ -1354,6 +1364,7 @@ export function splitStack(list, index, amount, slots = 24) {
   return true;
 }
 export function sellStack(p, index, stock = (p.robotStock ||= [])) {
+  if(ITEMS[p.inventory[index]?.type]?.mountReservation)return false;
   const item = p.inventory[index];
   if (!item || p.field?.favorites?.includes(item.type)) return false;
   if (!give(stock, item.type, item.qty, 120,item)) return false;

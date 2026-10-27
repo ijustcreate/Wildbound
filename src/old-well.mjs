@@ -1,5 +1,8 @@
+import {drawDungeonDecor} from './dungeon-decor.mjs';
+import {tickCryptWorld,upgradeCryptWorld} from './crypt-world.mjs';
 import {finishDiscovery,trialState} from './expedition-trials.mjs';
 import {locationClearing} from './location-clearing.mjs';
+import {applyDungeonDesign} from './location-designs.mjs';
 import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {OLD_WELL_EVENT} from './definitions.mjs';
 import {ITEMS, give, take, stat, itemKind} from './items.mjs';
@@ -14,7 +17,7 @@ import {drawRoomSpellEffects} from './room-spell-effects.mjs';
 import {UNDERGROUND_VIEW} from './underground-view.mjs';
 import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
 import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
-  wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance} from './mausoleum-crypt.mjs';
+  wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance,CRYPT_BOSS_KIND} from './mausoleum-crypt.mjs';
 
 export {OLD_WELL_EVENT};
 export const WELL_TITLE = 'The bottom of the well';
@@ -43,7 +46,7 @@ export function appendOldWellEvent(events) {
 }
 
 /** Plain JSON room state, carried by the same portal snapshots as the temple. */
-export function generateWellTunnels(seed = 0) {
+export function generateWellTunnels(seed = 0,{authored=true}={}) {
   const s = {version: 1, seed, width: 40, height: 28, tile: WELL_TILE,
     tiles: Array(40 * 28).fill(0), explored: [], enemies: [], bolts: [], drops: [],
     rooms: [
@@ -72,7 +75,7 @@ export function generateWellTunnels(seed = 0) {
   carve(11, 11 + hash(seed, 1, 1) % 2, 5, 3);
   carve(8, 11, 5, 3);
   const point = n => {
-    const p = center(s.rooms[n]); return {x: p.x * WELL_TILE + 8, y: p.y * WELL_TILE + 8};
+    const p = center(s.rooms[n]); return {x: p.x * (s.tile||WELL_TILE) + 8, y: p.y * (s.tile||WELL_TILE) + 8};
   };
   s.exit = point(0);
   s.chest = {...point(5), opened: false,
@@ -85,13 +88,14 @@ export function generateWellTunnels(seed = 0) {
       state: 'idle', cooldown: 0, attack: 0, step: 0, moving: false, faceX: 0, faceY: 1});
   }
   revealWell(s, s.exit.x, s.exit.y);
-  return s;
+  return authored?applyDungeonDesign(s,'old-well'):s;
 }
 
 export function wellTunnelBlocked(s, x, y, radius = 6) {
   if (!s || !Number.isFinite(x + y)) return true;
+  if((s.gates||[]).some(d=>!d.opened&&Math.abs(d.x-x)<(s.tile||16)*1.3+radius&&Math.abs(d.y-y)<(s.tile||16)*.25+radius))return true;
   for (const [dx, dy] of [[-radius, -radius], [radius, -radius], [-radius, radius], [radius, radius], [0, 0]]) {
-    const tx = Math.floor((x + dx) / WELL_TILE), ty = Math.floor((y + dy) / WELL_TILE);
+    const tx = Math.floor((x + dx) / (s.tile||WELL_TILE)), ty = Math.floor((y + dy) / (s.tile||WELL_TILE));
     if (tx < 0 || ty < 0 || tx >= s.width || ty >= s.height || !s.tiles[tileIndex(s, tx, ty)]) return true;
   }
   return false;
@@ -113,11 +117,11 @@ function tunnelSight(s, a, b) {
 }
 function revealWell(s, x, y) {
   const known = new Set(s.explored), source = {x, y};
-  for (let ty = Math.floor(y / WELL_TILE) - 6; ty <= Math.floor(y / WELL_TILE) + 6; ty++)
-    for (let tx = Math.floor(x / WELL_TILE) - 6; tx <= Math.floor(x / WELL_TILE) + 6; tx++) {
+  for (let ty = Math.floor(y / (s.tile||WELL_TILE)) - 6; ty <= Math.floor(y / (s.tile||WELL_TILE)) + 6; ty++)
+    for (let tx = Math.floor(x / (s.tile||WELL_TILE)) - 6; tx <= Math.floor(x / (s.tile||WELL_TILE)) + 6; tx++) {
       if (tx < 0 || ty < 0 || tx >= s.width || ty >= s.height) continue;
-      const dest = {x: tx * WELL_TILE + 8, y: ty * WELL_TILE + 8};
-      if (distance(source, dest) < 104 && tunnelSight(s, source, dest)) known.add(tileIndex(s, tx, ty));
+      const dest = {x: tx * (s.tile||WELL_TILE) + (s.tile||WELL_TILE)/2, y: ty * (s.tile||WELL_TILE) + (s.tile||WELL_TILE)/2};
+      if (distance(source, dest) < (s.theme==='mausoleum'?208:104) && tunnelSight(s, source, dest)) known.add(tileIndex(s, tx, ty));
     }
   // Visible floor edges expose their stone wall faces too.
   for (const index of [...known]) if (s.tiles[index]) {
@@ -202,8 +206,9 @@ export function ensureOldWells(g) {
     d.well ||= (d.mausoleum ? generateMausoleumCrypt : generateWellTunnels)(hash(g.seed, d.x, d.y));
     d.well.bolts ||= []; d.well.drops ||= []; d.well.explored ||= [];
     if (!d.well.explored.length) revealWell(d.well, d.well.exit.x, d.well.exit.y);
-    if (d.mausoleum) d.well.hazards ||= [];
+    if (d.mausoleum){d.well.hazards ||= [];upgradeCryptWorld(d.well,g.players.filter(p=>p.room===d.id));}
     for (const p of g.players.filter(p => p.room === d.id)) {
+      if(d.mausoleum)p.nativeCryptActive=true;
       p.wellReturn ||= {portalId: d.id, x: p.x, y: p.y, environment: d.sourceEnvironment};
       if (!arrivalGuarded.has(p)) {p.wellExitArmed = false; arrivalGuarded.add(p);}
       if (wellTunnelBlocked(d.well, p.roomX, p.roomY)) {
@@ -219,9 +224,11 @@ export function enterOldWell(g, p, d) {
   ensureOldWells(g);
   p.wellReturn = {portalId: d.id, x: p.x, y: p.y, environment: g.generatedEnvironment};
   const entry = wellArrival(d.well);
-  p.room = d.id; p.roomX = entry.x; p.roomY = entry.y;p.wellExitArmed=false;
+  p.nativeCryptActive=!!d.mausoleum;
+  p.room = d.id; p.roomX = entry.x; p.roomY = entry.y;p.wellExitArmed=false;if(d.mausoleum){p.cryptSafePosition={x:entry.x,y:entry.y};delete p.cryptPitFall;}
   arrivalGuarded.add(p); revealWell(d.well, entry.x, entry.y);
   p.roomMoving = false; p.roomStep = 0; p.charge = 0; p.ui = null;
+  Object.assign(p,{jumpHeight:0,jumpVelocity:0,dashTime:0,wingHover:false,attack:0});
   p.interactTime = 0; p.interactUsed = true; p.consumeInput = true;
   p.wellAttackCooldown = 0;
   for (const pet of [p.hunterPet, p.ritualPet].filter(a => a?.spiritGhost))
@@ -248,8 +255,10 @@ export function leaveOldWell(g, p) {
   const spot = candidates.find(a => surfaceClear(g, a.x, a.y, 10, d) &&
     Math.hypot(a.x - d.x, a.y - d.y) >= 36 && !oldWellBlocked(g, a.x, a.y, 10, d));
   if (!spot) {g.message?.(d.mausoleum ? 'The mausoleum stairs are obstructed above.' : 'The rope landing is obstructed. Clear the ground above before climbing.'); return false;}
+  delete p.nativeCryptActive;
   p.room = null; p.ui = null; p.x = spot.x; p.y = spot.y;
   p.roomMoving = false; p.charge = 0; p.consumeInput = true;
+  Object.assign(p,{jumpHeight:0,jumpVelocity:0,dashTime:0,wingHover:false,attack:0});
   p.interactTime = 0; p.interactUsed = true; p.invuln = Math.max(p.invuln || 0, 1.2);
   p.previousInput = {...p.previousInput, interact: true};
   if (d.mausoleum) p.previousInput.use = true;
@@ -330,6 +339,17 @@ export function oldWellRoomStep(g, p, input, dt) {
   if (p.hp <= 0) {leaveOldWell(g, p); return true;}
   if (p.ui) return true;
   const s = d.well, edge = key => input[key] && !p.previousInput?.[key];
+  if(d.mausoleum){
+    if(!input.interact&&!input.use)p.wellExitArmed=true;
+    revealWell(s,p.roomX,p.roomY);
+    if(edge('interact')||edge('use')){
+      if(p.wellExitArmed!==false&&distance(roomPoint(p),s.exit)<36){leaveOldWell(g,p);return true;}
+      const gate=(s.gates||[]).find(a=>distance(roomPoint(p),a)<(s.tile||16)*2);if(gate){const occupied=gate.opened&&(g.players||[]).some(q=>q.room===d.id&&Math.abs(q.roomX-gate.x)<(s.tile||16)*1.3+10&&Math.abs(q.roomY-gate.y)<(s.tile||16)*.25+10);if(occupied){g.message?.('Step clear of the doorway first.');return true;}gate.opened=!gate.opened;g.message?.(gate.opened?'Crypt door opened.':'Crypt door closed.');g.onSound?.('doorOpen',p);g.persist?.();}
+      else if(distance(roomPoint(p),s.chest)<38)lootOldWellChest(g,p);else wakeMausoleumBoss(g,p,d);
+    }
+    return true;
+  }
+
   if(!input.interact && (!d.mausoleum || !input.use))p.wellExitArmed=true;
   dt = clamp(Number(dt) || 0, 0, .2);
   p.wellAttackCooldown = Math.max(0, (p.wellAttackCooldown || 0) - dt);
@@ -366,8 +386,8 @@ export function oldWellRoomStep(g, p, input, dt) {
 }
 function tunnelWaypoint(s, from, to) {
   if (tunnelSight(s, from, to)) return to;
-  const start = tileIndex(s, Math.floor(from.x / WELL_TILE), Math.floor(from.y / WELL_TILE));
-  const goal = tileIndex(s, Math.floor(to.x / WELL_TILE), Math.floor(to.y / WELL_TILE));
+  const start = tileIndex(s, Math.floor(from.x / (s.tile||WELL_TILE)), Math.floor(from.y / (s.tile||WELL_TILE)));
+  const goal = tileIndex(s, Math.floor(to.x / (s.tile||WELL_TILE)), Math.floor(to.y / (s.tile||WELL_TILE)));
   const queue = [goal], previous = new Map([[goal, null]]);
   for (let i = 0; i < queue.length && !previous.has(start); i++) {
     const n = queue[i], x = n % s.width, y = Math.floor(n / s.width);
@@ -378,16 +398,23 @@ function tunnelWaypoint(s, from, to) {
     }
   }
   const next = previous.get(start);
-  return next == null ? from : {x: next % s.width * WELL_TILE + 8, y: Math.floor(next / s.width) * WELL_TILE + 8};
+  const tile=s.tile||WELL_TILE;
+  return next == null ? from : {x: next % s.width * tile + tile/2, y: Math.floor(next / s.width) * tile + tile/2};
 }
 /** One tick per game frame, independent of how many players have a room panel. */
-export function tickOldWells(g, dt) {
+export function tickOldWells(g, dt, inputs={}) {
   ensureOldWells(g); dt = clamp(Number(dt) || 0, 0, .2);
   for (const d of (g.portals || []).filter(d => d.oldWell)) {
     for (const p of g.players.filter(p => p.room === d.id && p.hp <= 0)) leaveOldWell(g, p);
     const occupants = g.players.filter(p => p.room === d.id && p.hp > 0);
     if (!occupants.length) continue;
     const s = d.well;
+    if(d.mausoleum){
+      tickCryptWorld(g,d,occupants,inputs,dt);
+      const all=s.enemies,boss=all.find(e=>e.kind===CRYPT_BOSS_KIND);
+      if(boss){s.enemies=[boss];try{tickMausoleumCrypt(g,d,occupants,dt,{move:moveInTunnels,sight:tunnelSight,waypoint:tunnelWaypoint,blocked:wellTunnelBlocked,leave:leaveOldWell});}finally{s.enemies=all;}}
+      continue;
+    }
     for (const b of s.bolts) {
       if (b.healing) b.damage = 0;
       b.life -= dt; b.age = (b.age || 0) + dt;
@@ -534,19 +561,21 @@ function drawCaveCreature(c, e, time) {
 export function wellRoomCamera(p, s, view=WELL_VIEW) {
   p=view.focus||p;
   const w=view.width/(view.zoom||1),h=(view.height-view.top-view.bottom)/(view.zoom||1);
-  return {x: Math.round(clamp(p.roomX - w/2, 0, Math.max(0,s.width * WELL_TILE-w))),
-    y: Math.round(clamp(p.roomY - h/2, 0, Math.max(0,s.height * WELL_TILE-h)))};
+  return {x: Math.round(clamp(p.roomX - w/2, 0, Math.max(0,s.width * (s.tile||WELL_TILE)-w))),
+    y: Math.round(clamp(p.roomY - h/2, 0, Math.max(0,s.height * (s.tile||WELL_TILE)-h)))};
 }
 export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
   const d = wellForPlayer(g, p); if (!d) return false;
-  const s = d.well, camera = wellRoomCamera(p, s,view), known = new Set(s.explored),{width:w,height:h,top,bottom,zoom=1}=view,worldW=w/zoom,worldH=(h-top-bottom)/zoom;
+  const s = d.well;
+  if(!d.mausoleum&&!view.editor){view={...view,zoom:(view.zoom||1)*2};const original=animator;animator=original&&{draw:(c,a,t,size)=>original.draw(c,a,t,size*.5)};}
+  const camera = wellRoomCamera(p, s,view), known = new Set(s.explored),{width:w,height:h,top,bottom,zoom=1}=view,worldW=w/zoom,worldH=(h-top-bottom)/zoom;
   if (d.mausoleum) return drawMausoleumRoom(c, g, p, d, camera, animator,view);
   c.save(); c.imageSmoothingEnabled = false;
   rect(c, 0, 0, w, h, '#101218');
   c.save(); c.beginPath(); c.rect(0, top, w, h-top-bottom); c.clip(); c.translate(0,top);c.scale(zoom,zoom);c.translate(-camera.x,-camera.y);
-  for (let ty = Math.floor(camera.y / WELL_TILE); ty <= Math.min(s.height - 1, Math.ceil((camera.y + worldH) / WELL_TILE)); ty++)
-    for (let tx = Math.floor(camera.x / WELL_TILE); tx <= Math.min(s.width - 1, Math.ceil((camera.x + worldW) / WELL_TILE)); tx++) {
-      const index = tileIndex(s, tx, ty), x = tx * WELL_TILE, y = ty * WELL_TILE, h = hash(s.seed, tx, ty);
+  for (let ty = Math.floor(camera.y / (s.tile||WELL_TILE)); ty <= Math.min(s.height - 1, Math.ceil((camera.y + worldH) / (s.tile||WELL_TILE))); ty++)
+    for (let tx = Math.floor(camera.x / (s.tile||WELL_TILE)); tx <= Math.min(s.width - 1, Math.ceil((camera.x + worldW) / (s.tile||WELL_TILE))); tx++) {
+      const index = tileIndex(s, tx, ty), x = tx * (s.tile||WELL_TILE), y = ty * (s.tile||WELL_TILE), h = hash(s.seed, tx, ty);
       if (!known.has(index) && distance({x: x + 8, y: y + 8}, roomPoint(p)) > 88) continue;
       if (s.tiles[index]) {
         rect(c, x, y, 16, 16, ['#343331', '#3c3a34', '#3d3832'][h % 3]);
@@ -560,7 +589,8 @@ export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
       }
     }
   // Roots, native crystals and silk in their respective chambers.
-  for (const r of s.rooms) {
+  if(s.decorations)drawDungeonDecor(c,[...s.decorations,...s.candles.map(p=>({...p,role:'light'}))],g.time||0);
+  else for (const r of s.rooms) {
     const x = r.x * 16 + 12, y = r.y * 16 + 8;
     for (let n = 0; n < 5; n++) {
       rect(c, x + n * 21, y, 2, 9 + n % 3 * 4, '#756047');

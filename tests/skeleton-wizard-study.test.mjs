@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {SKELETON_KINDS,defaultSkeletonMotion,skeletonMotions} from '../src/skeleton-motion.mjs';
 import {playerPose} from '../src/player-motion.mjs';
 
-test('wizard study uses the compact humanoid skeleton rig and an editable staff-cast clip',()=>{
+test('wizard study uses the regular player skeleton rig and an editable staff-cast clip',()=>{
  assert.ok(SKELETON_KINDS.includes('skeleton_wizard'));
  const model=defaultSkeletonMotion('skeleton_wizard');
- assert.equal(model.nativeSkeletonRevision,2);assert.equal(model.skeleton,true);
+ assert.equal(model.nativeSkeletonRevision,3);assert.equal(model.skeleton,true);
  assert.equal(model.clips.cast.loop,false);assert.equal(model.clips.cast.length,9);
  const start=playerPose({animationAction:'cast',playerFrame:0},0,model),raised=playerPose({animationAction:'cast',playerFrame:4},0,model);
  assert.ok(Math.hypot(...start.handR.map((v,i)=>v-raised.handR[i]))>5,'staff hand lifts during the cast');

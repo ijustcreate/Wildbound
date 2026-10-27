@@ -5,6 +5,18 @@ import {forestWind,restoreForestLandscape} from '../src/forest-landscape.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {Game} from '../src/core.mjs';
 
+test('older forest saves gain understory once without reviving cut grass or harvested rocks',()=>{
+ const g=new Game(()=>.5);g.seed=217;g.environment='forest';g.addPlayer('keyboard');g.start();g.openingBoard=false;
+ const grass=g.scenery.find(p=>p.kind==='tall_grass'),rock=g.scenery.find(p=>p.kind==='rock');grass.cut=true;grass.charred=true;rock.depleted=true;
+ const save=JSON.parse(JSON.stringify(saveSession(g)));save.state.forestLandscapeVersion=2;save.state.scenery=save.state.scenery.filter(p=>p.kind!=='forest_understory');
+ const restored=restoreSession(save);assert.equal(restored.forestLandscapeVersion,3);
+ const props=restored.scenery.filter(p=>p.kind==='forest_understory');assert.ok(props.length>10);
+ assert.ok(restored.scenery.find(p=>p.id===grass.id).cut);assert.ok(restored.scenery.find(p=>p.id===grass.id).charred);assert.ok(restored.scenery.find(p=>p.id===rock.id).depleted);
+ const removed=props[0].id;restored.scenery=restored.scenery.filter(p=>p.id!==removed);
+ const twice=restoreSession(JSON.parse(JSON.stringify(saveSession(restored))));assert.ok(!twice.scenery.some(p=>p.id===removed),'a subsequent reload respects explicit decoration removal');
+ assert.equal(twice.scenery.filter(p=>p.kind==='forest_understory').length,props.length-1);
+});
+
 test('Forest routes reach every destination and remain clear after all scenery is placed',()=>{
   for(const seed of [0,1,2,7,42,87,103,999,12345,987654]){
     const g=generateWorld(seed),plan=g.forestLandscape;

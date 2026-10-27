@@ -16,7 +16,7 @@ export function updateBowAimBlend(actor,input,dt){
  if(itemKind(actor.equipment?.hand1)!=='bow'){delete actor.bowAimBlend;delete actor.bowVisualAngle;return;}
  const angle=Math.atan2(-(actor.faceX||0),actor.faceY??1),previous=actor.bowVisualAngle??angle;
  const delta=Math.atan2(Math.sin(angle-previous),Math.cos(angle-previous));
- actor.bowVisualAngle=previous+delta*(1-Math.exp(-Math.max(0,dt)*22));
+ actor.bowVisualAngle=actor.bowAiming||actor.charge>0?angle:previous+delta*(1-Math.exp(-Math.max(0,dt)*22));
  const target=!actor.swimming&&!actor.sleeping&&actor.hp>0&&!!(actor.bowAiming||input.attack||actor.attack>0)?1:0;
  const current=actor.bowAimBlend??0;
  actor.bowAimBlend=current+(target-current)*(1-Math.exp(-Math.max(0,dt)*18));

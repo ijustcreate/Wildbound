@@ -19,6 +19,7 @@ const folder=path.join(root,'assets/sfx/encounters');fs.mkdirSync(folder,{recurs
 for(const entry of entries){
   const previous=preserved.get(entry.name);
   if(previous&&fs.existsSync(path.join(root,previous.file))){Object.assign(entry,previous);continue;}
+  if(onlyMissing&&fs.existsSync(path.join(folder,entry.id+'.wav')))entry.id='encounter-'+entry.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+hash(entry.name).toString(16);
   if(onlyMissing&&fs.existsSync(path.join(folder,entry.id+'.wav')))throw Error('Refusing to overwrite unrecognized existing cue '+entry.id);
   let seed=hash(entry.name);const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const boss=entry.role==='boss',length=boss?2.15:entry.role==='resolution'?2.35:1.05+random()*.5;

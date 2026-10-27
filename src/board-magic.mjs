@@ -1,7 +1,7 @@
 const masks=new Map();
 // Inner edge of the stone well in the 1516 x 1038 board artwork.
 // Keep a small inset so glow rectangles cannot paint over its rim.
-export const BOARD_WELL_CLIP=[[704,404],[819,404],[894,460],[894,566],[824,610],[704,610],[637,555],[637,463]]
+export const BOARD_WELL_CLIP=[[707,404],[820,404],[894,461],[894,542],[823,610],[706,610],[637,542],[637,462]]
   .map(([x,y])=>[x/1516*280-140,y/1038*192-96]);
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
 export function magicParticle(index,count,time,age,goal,settings){

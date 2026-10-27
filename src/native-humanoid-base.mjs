@@ -1,6 +1,8 @@
 import captain from './oathless-captain-data.mjs';
 import {breaststrokeNativePlayer,widenHumanoidStance} from './humanoid-chat-update.mjs';
 import {buildCombatPass} from './combat-animation.mjs';
+import {applyIK} from './ik.mjs';
+import {refineNativeSword} from './sword-feel.mjs';
 import {refineNativeLocomotion} from './native-locomotion.mjs';
 
 const copy=v=>structuredClone(v);
@@ -11,7 +13,7 @@ const length=a=>Math.hypot(...a);
 const canonical=v=>JSON.stringify(v,(_k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.entries(x).sort(([a],[b])=>a.localeCompare(b))):x);
 const same=(a,b)=>canonical(a)===canonical(b);
 const facial=new Set(['eyeL','eyeR','earL','earR','nose','mouth']);
-let combatShipping;
+let combatShipping,combatShippingLegacy;
 
 // Transfer parent-relative segment directions, then restore target lengths.
 // Output remains normal editable delta keys; no donor runtime is required.
@@ -65,7 +67,7 @@ export function upgradeNativeHumanoid(model,shipping){
  const result=upgradeNativeHumanoidBase(model,shipping);
  if(result.nativeHumanoidRevision!==1)return result;
  locomotionShipping??=upgradeNativeHumanoidBase(copy(shipping),shipping);
- return refineNativeLocomotion(result,locomotionShipping);
+ return refineNativeSword(refineNativeLocomotion(result,locomotionShipping),locomotionShipping);
 }
 function upgradeNativeHumanoidBase(model,shipping) {
   if(model.nativeHumanoidRevision===1)return widenHumanoidStance(refineNativeJump(breaststrokeNativePlayer(balanceLocomotionHead(model),same(model.clips.swim,retargetHumanoidClip(captain,model,captain.clips.swim))),false));
@@ -77,7 +79,10 @@ function upgradeNativeHumanoidBase(model,shipping) {
   if(!recognized)return model;
   const old=copy(model),target=copy(model);
   combatShipping??=buildCombatPass(shipping);
-  const shippingClip=(name,clip)=>same(clip,shipping.clips[name])||same(clip,combatShipping.clips[name]);
+  // Exact generation-4 shipping keys before the walking-plane IK correction.
+  // Recognize that known version, rather than treating its old knee poles as custom art.
+  combatShippingLegacy??=buildCombatPass(shipping,(m,p)=>applyIK(m,p,[],{walkingPlane:false}));
+  const shippingClip=(name,clip)=>same(clip,shipping.clips[name])||same(clip,combatShipping.clips[name])||same(clip,combatShippingLegacy.clips[name]);
   const points={};
   const visit=n=>{
     if(points[n])return points[n];

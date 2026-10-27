@@ -29,6 +29,10 @@
     <link rel="stylesheet" href="src/npc-dialogue-frame.css" />
     <link rel="stylesheet" href="src/worlds.css" />
     <link rel="stylesheet" href="src/play-hud.css" />
+    <link rel="stylesheet" href="src/camp-overlays.css" />
+    <link rel="stylesheet" href="src/camp-theme.css" />
+    <link rel="stylesheet" href="src/victory-celebration.css" />
+    <link rel="stylesheet" href="src/expedition-menu.css" />
     <link rel="stylesheet" href="src/lobby-entry.css" />
   </head>
   <body>
@@ -381,7 +385,11 @@
     <dialog id="pause-dialog" aria-label="Pause and game options">
       <div class="eyebrow" id="pause-eyebrow">TAKE A BREATH</div>
       <h2 id="pause-title">The jungle can wait.</h2>
+      <div class="pause-body">
       <p id="pause-text">Your expedition is paused.</p>
+      <button id="resume-button" class="primary full">Resume expedition</button>
+      <details class="pause-quick-options">
+      <summary>Sound and game options</summary>
       <div class="pause-options">
         <button id="pause-fullscreen" type="button">Toggle fullscreen</button>
         <button id="pause-pvp" type="button">PvP: off</button>
@@ -389,19 +397,19 @@
         <button id="pause-mute" type="button">Mute all audio</button>
         <div class="pause-volume-row"><button id="pause-music-down" type="button" aria-label="Lower music volume">Music −</button><output id="pause-music-value"></output><button id="pause-music-up" type="button" aria-label="Raise music volume">Music +</button></div>
         <div class="pause-volume-row"><button id="pause-sfx-down" type="button" aria-label="Lower sound effects volume">SFX −</button><output id="pause-sfx-value"></output><button id="pause-sfx-up" type="button" aria-label="Raise sound effects volume">SFX +</button></div>
-        <button id="pause-settings" type="button">More game options</button>
-        <button id="pause-dev" type="button">Dev cheat menu</button>
+      </div>
+      </details>
+      <div class="pause-secondary">
+        <button id="pause-settings" type="button">Settings</button>
+        <button id="pause-dev" type="button">Developer cheats</button>
+      </div>
+      <div class="pause-actions">
+        <button id="reassign-button" class="small-button full hidden">Use keyboard for disconnected player</button>
+        <button id="restart-button" class="small-button full">New expedition</button>
+        <button id="quit-button" class="text-button full">Landing screen</button>
       </div>
       <p class="pause-control-help">Start / +: resume · D-pad / stick: select · bottom face button: confirm</p>
-      <button id="resume-button" class="primary full">
-        BACK TO THE JUNGLE →</button
-      ><button id="reassign-button" class="small-button full hidden">
-        USE KEYBOARD FOR DISCONNECTED PLAYER</button
-      ><button id="restart-button" class="small-button full">
-        NEW EXPEDITION</button
-      ><button id="quit-button" class="text-button full">
-        Return to landing screen
-      </button>
+      </div>
     </dialog>
     <dialog id="defeat-dialog" aria-labelledby="defeat-title" aria-describedby="defeat-copy">
       <div class="defeat-kicker">EXPEDITION LOST</div>
@@ -455,6 +463,7 @@
       <div class="settings-panels">
         <section id="settings-display" class="settings-panel" role="tabpanel" data-settings-panel="display">
           <div class="panel-title">DISPLAY</div>
+          <details id="camp-session-actions" class="camp-session-actions" hidden><summary>Expedition actions</summary></details>
           <button id="fullscreen-button" class="camp-fullscreen" role="switch" aria-checked="false"><span class="switch-art" aria-hidden="true"></span>Toggle fullscreen</button>
           <div class="settings-display-columns">
             <section class="settings-option-card">

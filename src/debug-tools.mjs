@@ -18,6 +18,12 @@ export function installDebugTools(ctx) {
       g.purchaseVending(p,0);p.vendingOrders[0].ready=true;press(3);assert(!p.vendingOrders.length,'Top-face quick collect failed');
       g.purchaseVending(p,1);p.vendingOrders[0].ready=true;draw();press(13);
       panel=ctx.heroUI.panels.get(p.id);assert(panel.querySelector('.vending-tray button.selected'),'Final tray cursor missing');
+      g.purchaseVending(p,0);p.vendingOrders.forEach(o=>o.ready=true);draw();press(13);
+      assert(p.ui.vendingView==='collectAll'&&panel.querySelector('.vending-collect-all.selected'),'Collect all reachable below tray');
+      const paid=p.coins;press(0);assert(!p.vendingOrders.length&&p.coins===paid,'Collect all transfers paid orders without buying again');
+      press(12);assert(p.ui.vendingView==='catalog','Up from empty Collect all returns to products');
+      g.purchaseVending(p,1);p.vendingOrders[0].ready=true;p.ui.index=9;draw();press(13);
+      panel=ctx.heroUI.panels.get(p.id);
       const text=panel.textContent;assert(text.includes(family==='switch'?'B: buy / collect':'A: buy / collect'),'Wrong confirm prompt');
       window.vendingUIQA={g,p,panel,draw};return {family,checks:'Actual inputFrame D-pad rows, visible tray selection, confirm collection, quick collection, family labels'};
     }finally{if(original)Object.defineProperty(navigator,'getGamepads',original);else delete navigator.getGamepads;ctx.previousPads.clear();}
@@ -45,18 +51,18 @@ export function installDebugTools(ctx) {
       const stageRect=previewStage.getBoundingClientRect(),colorsRect=colorRows.getBoundingClientRect();
       if(stageRect.width<200||Math.abs((stageRect.top+stageRect.height/2)-(colorsRect.top+colorsRect.height/2))>8)throw Error('Creator preview is too small or color rows are not vertically centered');
       const fullPreview=a.querySelector('.creation-preview-stage canvas'),frontView=fullPreview.toDataURL();rotateButton.click();if(fullPreview.toDataURL()===frontView)throw Error('Creator rotate button did not change the preview direction');
-      const focusButtons=[...a.querySelectorAll('button')],skinIndex=focusButtons.findIndex(q=>q.dataset.label==='Skin'),hairColorIndex=focusButtons.findIndex(q=>q.dataset.label==='Hair color');
+      const focusButtons=[...a.querySelectorAll('button')].filter(q=>!q.closest('[hidden]')),skinIndex=focusButtons.findIndex(q=>q.dataset.label==='Skin'),hairColorIndex=focusButtons.findIndex(q=>q.dataset.label==='Hair color');
       const creatorState=lobby.state.members.get(heroes[0].id);
       creatorState.focus=skinIndex;a.creationNavigate({y:1});if(creatorState.focus!==hairColorIndex)throw Error('Creator down navigation did not follow the color column');
       creatorState.focus=skinIndex;a.creationNavigate({x:-1});if(focusButtons[creatorState.focus]!==rotateButton)throw Error('Creator left navigation did not follow the preview column');
       const row=(panel,label)=>[...panel.querySelectorAll('.creation-select-row')].find(q=>q.textContent.startsWith(label));
       row(b,'Hair style').click();
-      if(b.querySelector('.creation-carousel-count')?.textContent!=='2 / 19')throw Error('Hair carousel missing');
-      const c=b.querySelector('.creation-detail-preview'),before=c.toDataURL();
+      if(!b.querySelector('.creation-inline-controls:not([hidden]) .creation-carousel-count')?.textContent.endsWith('2 / 19'))throw Error('Hair carousel missing');
+      const c=b.querySelector('.creation-preview-stage canvas'),before=c.toDataURL();if(c.dataset.previewMode!=='hair'||b.querySelector('.creation-popup'))throw Error('Hair must zoom the existing stage without an overlay');
       b.querySelector('[aria-label="Next hair style"]').click();if(c.toDataURL()===before)throw Error('Hair preview did not update');
-      press(1,5);if(!b.querySelector('.creation-popup')||c.toDataURL()===before)throw Error('Preview rotation closed picker');
+      press(1,5);if(!b.querySelector('.creation-inline-controls:not([hidden])')||c.toDataURL()===before)throw Error('Preview rotation closed inline picker');
       a.querySelector('button').focus();const qBefore=JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook);press(1,13);if(JSON.stringify(lobby.state.members.get(heroes[0].id).creationLook)!==qBefore)throw Error('Other controller changed look');
-      press(1,1);row(b,'Face details').click();if(b.querySelector('.creation-carousel-count')?.textContent!=='1 / 9')throw Error('Face carousel missing');
+      press(1,1);row(b,'Face details').click();if(!b.querySelector('.creation-inline-controls:not([hidden]) .creation-carousel-count')?.textContent.endsWith('1 / 9'))throw Error('Face carousel missing');
       b.querySelector('[aria-label="Next face details"]').click();if(lobby.state.members.get(heroes[1].id).creationLook.face!=='freckles')throw Error('Face selection not applied');
       b.querySelector('[aria-label="Next face details"]').click();b.querySelector('[aria-label="Next face details"]').click();
       if(lobby.state.members.get(heroes[1].id).creationLook.face!=='glasses')throw Error('Glasses selection not applied');press(1,1);
@@ -84,20 +90,20 @@ export function installDebugTools(ctx) {
       for(const [i,hero] of [keyboard,p,q].entries()){hero.profileId='starter-controls-'+i;hero.inventory=[];Object.assign(lobby.state.members.get(hero.id),{spawned:true,panel:null,x:i?866:300,y:i?536:440});lobby.close(hero);}
       const step=()=>{lobby.update(.05,ctx.inputFrame());ctx.heroUI.draw(g,ctx.renderer);};
       const press=(pad,button)=>{pads[pad].buttons[button]={pressed:true,value:1};step();pads[pad].buttons[button]={pressed:false,value:0};step();};
-      step();press(0,0);if(p.ui?.storage!=='starter'||p.inventory.length||p.starterChest.filter(Boolean).length!==8)throw Error('Starter opening skipped UI or auto-looted');
+      step();press(0,0);if(p.ui?.storage!=='starter'||p.inventory.length||p.starterChest.filter(Boolean).length!==9)throw Error('Starter opening skipped UI or auto-looted');
       press(1,0);if(q.ui?.storage!=='starter'||q.starterChest===p.starterChest)throw Error('Starter stock not player-owned');
-      const panel=ctx.heroUI.panels.get(p.id);if(panel.querySelectorAll('[data-container="chest"] .item-icon').length!==8||panel.querySelectorAll('.storage-slots button').length!==48)throw Error('Starter gear or empty slots missing');
+      const panel=ctx.heroUI.panels.get(p.id);if(panel.querySelectorAll('[data-container="chest"] .item-icon').length!==9||panel.querySelectorAll('.storage-slots button').length!==48)throw Error('Starter gear or empty slots missing');
       if(!ctx.heroUI.panels.get(q.id).textContent.includes('B ·'))throw Error('Nintendo chest labels wrong');
       g.openInventory(keyboard);step();ctx.heroUI.panels.get(keyboard.id).querySelector('button').focus();press(0,15);if(p.ui.index!==1||q.ui.index!==0||keyboard.ui.index!==0)throw Error('Starter controller focus leaked');
-      press(0,0);if(!p.inventory.some(i=>i?.type==='starter_sword')||q.inventory.length||q.starterChest.filter(Boolean).length!==8)throw Error('Starter withdrawal affected another hero');
-      press(0,1);press(0,0);if(p.starterChest.filter(Boolean).length!==7)throw Error('Starter restocked on reopening');
+      press(0,0);if(!p.inventory.some(i=>i?.type==='starter_sword')||q.inventory.length||q.starterChest.filter(Boolean).length!==9)throw Error('Starter withdrawal affected another hero');
+      press(0,1);press(0,0);if(p.starterChest.filter(Boolean).length!==8)throw Error('Starter restocked on reopening');
       // Real storage buttons, including full-pack refusal and two-way metadata.
       keyboard.ui=null;q.ui=null;step();const a=ctx.heroUI.panels.get(p.id);
       p.inventory=[{type:'moon_blade',qty:1,sockets:['azure_bead']}];step();a.querySelector('[data-action="pack-slot-0"]').click();step();a.querySelector('[data-action="storage-transfer"]').click();step();
       const at=p.starterChest.findIndex(i=>i?.type==='moon_blade');if(at<0)throw Error('Starter deposit failed');a.querySelector('[data-action="chest-slot-'+at+'"]').click();step();a.querySelector('[data-action="storage-transfer"]').click();step();
       if(!p.inventory.some(i=>i?.sockets?.[0]==='azure_bead'))throw Error('Starter deposit lost sockets');
       p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:0');step();const stock=JSON.stringify(p.starterChest);a.querySelector('[data-action="storage-transfer"]').click();step();if(JSON.stringify(p.starterChest)!==stock||!p.ui.notice.includes('full'))throw Error('Full pack lost starter supplies');
-      p.inventory=[];g.inventoryAction(p,'lootAll');step();if(p.starterChest.some(Boolean))throw Error('Starter Withdraw all failed');g.start();if(p.starterChest.filter(Boolean).length!==8)throw Error('Next level failed to restock');
+      p.inventory=[];g.inventoryAction(p,'lootAll');step();if(p.starterChest.some(Boolean))throw Error('Starter Withdraw all failed');g.start();if(p.starterChest.filter(Boolean).length!==9)throw Error('Next level failed to restock');
       g.phase='lobby';g.openInventory(p,'starter');step();lobby.draw();
       window.starterVerification={g,lobby,p,q};
       return {checks:'Actual inputFrame: Xbox/Switch open without auto-loot, independent selection, withdrawal, reopen, mouse deposit/withdraw, sockets, full-pack safety and new-level restock',playerId:p.id};

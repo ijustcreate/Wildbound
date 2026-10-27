@@ -112,3 +112,19 @@
   .designer-dialog .ps-live-preview {grid-column:1/-1;}
   .designer-dialog.player-designer .ps-canvas { width:100%; }
 }
+
+/* Inline item artwork stays beside the selected runtime preview. */
+.designer-dialog .inline-pixel-editor{font-family:Arial,sans-serif;min-width:0;align-items:start}
+.designer-dialog .inline-pixel-editor aside{min-width:0;color:#dfebd4;font-size:12px}
+.designer-dialog .inline-pixel-editor button,.designer-dialog .inline-pixel-editor select,.designer-dialog .inline-pixel-editor input[type=color]{background:#244b3c;color:#e8eddc;border:1px solid #487466;border-radius:4px;padding:7px;font:inherit;cursor:pointer}
+.designer-dialog .inline-pixel-editor aside>button{width:100%}
+.designer-dialog .inline-pixel-editor button:focus-visible,.designer-dialog .item-sprite-list figure:focus-visible,.designer-dialog .item-turnaround:focus-visible{outline:2px solid #edcb7f;outline-offset:2px}
+.designer-dialog .inline-pixel-editor canvas{border:1px solid #426459;border-radius:5px;max-width:100%;height:auto}
+.designer-dialog .inline-pixel-editor input[type=range]{width:100%;accent-color:#93c79c}
+.designer-dialog .forest-editor{font:13px Arial,sans-serif;color:#cbded4}
+.designer-dialog .forest-editor fieldset{margin:12px 0;padding:10px;border:1px solid #395f51;border-radius:6px;background:#152f2a}
+.designer-dialog .forest-editor legend{color:#e5d69d;font-weight:bold;padding:0 5px}
+.designer-dialog .forest-editor input[type=range]{width:110px;accent-color:#91c59d}
+.designer-dialog .forest-editor>h2{grid-column:1/-1}
+.designer-dialog .location-object-list button{padding:5px 8px;text-align:left;font-size:12px}
+@media(max-width:700px){.designer-dialog .inline-pixel-editor{grid-template-columns:1fr!important}.designer-dialog .forest-editor{grid-template-columns:1fr!important}}

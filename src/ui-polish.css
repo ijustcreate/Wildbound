@@ -227,7 +227,7 @@ html,body,body * {scrollbar-width:none!important;scrollbar-gutter:auto!important
 *::-webkit-scrollbar {display:none!important;width:0!important;height:0!important;}
 
 
-#lobby.playable-lobby.lobby-exploring .party-heading,#lobby.playable-lobby.lobby-exploring .party-help{visibility:hidden;}
+#lobby.playable-lobby.lobby-exploring .party-heading,#lobby.playable-lobby.lobby-exploring .party-help{display:none;}
 
 /* Chest menu: independently sized containers and a footer outside the grids.
    Dedicated rules prevent inherited equipment-sheet/button sizes from leaking. */
@@ -356,3 +356,30 @@ html,body,body * {scrollbar-width:none!important;scrollbar-gutter:auto!important
 #field-kit-dialog .field-training-summary{margin:0;padding:10px 12px;border:1px solid #9d8657;border-radius:7px;background:#fff0c8;color:#344331;font-weight:700;}
 #field-kit-dialog .field-recipe-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));}
 @media(max-width:560px){#field-kit-dialog .field-bento-grid{grid-template-columns:1fr;}}
+
+/* Recipe and skill information floats above the stable card grid. */
+#field-kit-dialog article.field-bento-card:hover{transform:none;}
+#field-kit-dialog .field-card-tooltip[popover]{display:none;position:fixed;inset:auto;margin:0;box-sizing:border-box;width:min(350px,calc(100vw - 20px));max-height:calc(100dvh - 20px);overflow:auto;padding:14px;border:2px solid #b39353;border-radius:8px;background:#282117;color:#fff0ce;box-shadow:0 6px 24px #0009;}
+#field-kit-dialog .field-card-tooltip[popover]:not(:popover-open){display:none!important;}
+#field-kit-dialog .field-card-tooltip[popover]:popover-open{display:block!important;visibility:visible;opacity:1;}
+#field-kit-dialog .field-card-tooltip p{color:#fff0ce;}
+#field-kit-dialog .field-card-tooltip .ingredient-owned{color:#9fe0a9!important;}
+#field-kit-dialog .field-card-tooltip .ingredient-missing{color:#ffad96!important;}
+
+/* Map table: roomy artwork wells, aligned titles, and one compact mode switch. */
+.lobby-player-panel.map-menu{width:600px;gap:8px;}
+.lobby-player-panel.map-menu .map-choices{grid-auto-rows:minmax(58px,1fr);align-content:stretch;gap:8px;}
+.lobby-player-panel.map-menu .map-choices .map-choice{padding:0 10px 0 0;gap:12px;text-align:left;overflow:hidden;}
+.lobby-player-panel.map-menu .map-choices .map-choice-icon{width:58px!important;height:58px!important;flex:0 0 58px;align-self:stretch;object-fit:cover;border-right:2px solid #775733;}
+.lobby-player-panel.map-menu .map-choice strong{font:700 14px/1.2 system-ui;color:#30271b;}
+.lobby-player-panel.map-menu .map-choice small{display:none;}
+.lobby-player-panel.map-menu>.wildbound-mode-choice{margin:0;min-height:46px;}
+.lobby-player-panel.map-menu>.map-choice-all{min-height:46px;}
+.lobby-player-panel.map-menu .map-mode-toggle{display:flex;align-items:center;justify-content:flex-start;gap:14px;min-height:42px;}
+.lobby-player-panel.map-menu .map-mode-toggle small{display:none;}
+.lobby-player-panel.map-menu .map-mode-toggle i{width:42px;height:22px;flex:0 0 42px;}
+.lobby-player-panel.map-menu .map-mode-toggle i::after{width:16px;height:16px;top:2px;left:2px;}
+.lobby-player-panel.map-menu .map-mode-toggle[aria-pressed=true] i::after{left:22px;}
+.map-choice-tooltip[popover]{position:fixed;inset:auto;margin:0;box-sizing:border-box;width:min(320px,calc(100vw - 16px));padding:12px;border:1px solid #bc9752;border-radius:6px;background:#292117;color:#ffedc9;font:14px/1.4 Georgia,serif;box-shadow:0 5px 20px #0008;pointer-events:none;}
+@media(max-height:550px){.lobby-player-panel.map-menu .map-choices .map-choice-icon{width:40px!important;height:40px!important;flex-basis:40px;}.lobby-player-panel.map-menu .map-choices{grid-auto-rows:minmax(42px,1fr);}.lobby-player-panel.map-menu{gap:4px;}}
+

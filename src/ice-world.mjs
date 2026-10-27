@@ -1,3 +1,4 @@
+import {applyTreeFall} from './tree-fall.mjs';
 import {drawBiomeSprite} from './biome-sprites.mjs';
 import {dropIceRecipe} from './ice-crafting.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
@@ -61,7 +62,7 @@ export function drawSnowGround(c,g){if(!g.snowDepth)return;c.save();const depth=
 export function clipSnow(c,g,x,base,width,reach=300){const d=snowCoverDepth(g,x,base);if(d<.1)return;c.beginPath();c.rect(x-width/2,base-reach,width,reach-d);c.clip();}
 export function snowRim(c,g,x,base,width){const d=snowCoverDepth(g,x,base);if(d<.1)return;c.save();c.fillStyle='#dcecf0';c.beginPath();c.ellipse(x,base-d+2,width/2,Math.max(2,d*.38),0,0,Math.PI*2);c.fill();c.strokeStyle='#f7ffff';c.globalAlpha=.82;c.lineWidth=Math.max(1,Math.min(3,d*.12));c.beginPath();c.ellipse(x,base-d,width*.46,Math.max(1,d*.26),0,Math.PI*.08,Math.PI*.92);c.stroke();c.restore();}
 export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return false;
- const b=iceBase(p),scale=p.size/64;if(!p.falling&&!p.used&&['ice_spire','frost_shrub','frozen_log'].includes(p.kind)&&drawBiomeSprite(c,p.kind,b.x,b.y,p.size,p.kind==='ice_spire'?p.size*1.3:p.size))return true;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){c.rotate((p.fallDirection||1)*Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
+ const b=iceBase(p),scale=p.size/64;if(!p.falling&&!p.used&&['ice_spire','frost_shrub','frozen_log'].includes(p.kind)&&drawBiomeSprite(c,p.kind,b.x,b.y,p.size,p.kind==='ice_spire'?p.size*1.3:p.size))return true;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
  const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},poly=(points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};
  if(p.kind==='snow_tree'){
   r(-4,-35,8,35,'#665550');r(-2,-30,3,30,'#978172');

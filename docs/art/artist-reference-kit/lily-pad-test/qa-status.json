@@ -1,0 +1,133 @@
+{
+  "status": "user-rejected",
+  "purpose": "One original reference-only lily-pad study; no game integration.",
+  "artist": {
+    "name": "Wildbound Artist",
+    "role": "Pixel Artist",
+    "personaId": "b0edbefc-4705-4bd9-80dd-917a8777ddc4",
+    "injectedAuditMemoriesObserved": 4
+  },
+  "method": "Hand-authored native JS row silhouette and broad pixel clusters; no generative image tool.",
+  "contract": {
+    "canvas": [
+      32,
+      32
+    ],
+    "scale": "One source pixel per logical pixel; no antialiasing.",
+    "silhouette": "Flattened oval leaf with one open right-hand wedge.",
+    "light": "upper left",
+    "palette": [
+      "#314a35",
+      "#4c6640",
+      "#70864a",
+      "#9aab62"
+    ],
+    "pivot": [
+      16,
+      17
+    ],
+    "views": "Single static top/oblique reference view; eight-view set and rig attachment out of scope.",
+    "detail": "Notch only; no flower, texture, repeated primitive outlines or fine vein network."
+  },
+  "references": [
+    {
+      "threadId": "01a1502d-dbbe-79c0-9294-080dea87e5ac",
+      "timestampUTC": "2026-10-18T19:58:20.078Z",
+      "userQuote": "yes thats much better. use this look for the swamp, but make it a maze of connected islands with lots of shallow murky water and winding deep channels. keep everything editable and working with collision and cutting.",
+      "status": "approved visual direction",
+      "reference": "swamp-clearing-approved-direction.png",
+      "interpretation": "Irregular banks, winding murky channels, distinct cypress/mangrove silhouettes, readable player scale. Approval of look; topology then requested as connected islands."
+    },
+    {
+      "threadId": "01a150eb-d6a4-7493-ad27-ff99826efff6",
+      "timestampUTC": "2026-10-18T21:45:12.673Z",
+      "userQuote": "ferns looks  better lilly pad good. the grass is still not liek  being done as leik a shader..  i want liek way more grass that rund supper smooth. reatcts to the player and  and stuff. there should be the higher grass  that i can cut.. \n\nbut not using the sprites liek this.",
+      "status": "part-specific approval",
+      "reference": null,
+      "interpretation": "Fern improvement and lily pads praised; grass explicitly still failed. Do not extend this approval to grass."
+    }
+  ],
+  "borrowed": "Muted olive palette, broad flat clusters, restrained silhouette from retained approved swamp image. Earlier lily-pad praise is evidence of preference, not approval of this new sprite.",
+  "artifacts": {
+    "source": "draw-lily-pad.cjs",
+    "sprite": "lily-pad-32.png",
+    "preview": "lily-pad-preview-12x.png",
+    "previewScale": 12,
+    "previewSampling": "nearest-neighbor"
+  },
+  "checks": {
+    "spriteDimensions": [
+      32,
+      32
+    ],
+    "previewDimensions": [
+      384,
+      384
+    ],
+    "format": "PNG 8-bit RGBA",
+    "alphaCounts": {
+      "transparent": 705,
+      "opaque": 319,
+      "partialAlpha": 0
+    },
+    "opaquePalette": {
+      "#4c6640": 93,
+      "#314a35": 37,
+      "#70864a": 147,
+      "#9aab62": 42
+    },
+    "opaqueBounds": {
+      "left": 3,
+      "top": 8,
+      "right": 28,
+      "bottom": 24
+    },
+    "connectedOpaquePixels": 319,
+    "crcAndDiskRoundTrip": "passed",
+    "previewExactReplication": "passed"
+  },
+  "limitations": [
+    "New draft has no user aesthetic approval.",
+    "No runtime, lighting, water-scale, rig, animation or Electron integration verification."
+  ],
+  "scope": "Only this lily-pad-test directory is written. No gameplay, authored rigs, saves, builds, commit or push.",
+  "visualReview": {
+    "status": "user-rejected; existing runtime pads preferred",
+    "observations": [
+      "One connected stepped leaf silhouette and broad flat clusters.",
+      "Narrowed the initial overlarge bite to a shallow right-hand wedge.",
+      "Four restrained olive greens; no texture, dithering or interior primitive outlines."
+    ],
+    "acceptance": "Technical validity and self-review do not confer user aesthetic approval."
+  },
+  "recoveredPriorAssetEvidence": {
+    "originalReview": {
+      "path": "test-output/forest-landscape/vegetation-review.png",
+      "sha256": "2918fb36e3a13bef26720ce5ae42b13ba2285d67514f913f5d5588ca1a20e8b0",
+      "visuallyInspected": true,
+      "note": "Right-hand Lily pad panel shows native and enlarged flowering pad."
+    },
+    "historicalBranch": {
+      "path": "dist/1.2.39-2026-10-18T23-14-30-512Z/Wildbound-win32-x64/resources/app/src/forest.mjs",
+      "normalizedCharacters": 552,
+      "identicalIgnoringCRLF": true
+    },
+    "latestPackage": {
+      "path": "dist/1.2.76-2026-10-27T05-29-58-387Z/Wildbound-win32-x64/resources/app",
+      "exactFileMatches": {
+        "src/forest.mjs": true,
+        "src/realm-art.mjs": true,
+        "src/realm-layout.mjs": true
+      }
+    }
+  },
+  "priorAssetCorrection": "Existing forest and swamp lily artwork predates this standalone draft. The original forest vegetation review image was recovered; absence from evidence.json was not absence of an old asset.",
+  "userFeedback": {
+    "dateLocal": "2026-10-26",
+    "timezone": "America/Los_Angeles",
+    "quote": "theold ones are better as they are the correct pixel size/density to match the world they live in .the new one would look bad..",
+    "decision": "Keep existing forest and swamp lily pads. Reject the standalone draft because its pixel size/density does not match the world.",
+    "acceptanceRule": "Match effective in-world pixel density and intended world footprint using the actual existing runtime asset and neighboring scenery. Canvas dimensions alone do not establish matching density. Show a matched in-world before/after at native gameplay scale plus nearest-neighbor enlargement; do not judge only isolated enlarged sprites.",
+    "integration": "No replacement authorized. Existing game artwork remains unchanged."
+  }
+}

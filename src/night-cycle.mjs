@@ -38,12 +38,14 @@ export function carriedLight(p) {
   return equipped.sort((a, b) => b.radius - a.radius)[0] || null;
 }
 export function sightRadius(g, p, base = 280) {
-  const ambient = base * (0.16 + daylight(g) * 0.84);
+  const ambient = base * (0.52 + daylight(g) * 0.48);
   return Math.max(ambient, carriedLight(p)?.radius || 0) * (g.weather?.type === 'monsoon' ? 0.8 : 1);
 }
 export function lightSources(g,room=null) {
   const frameKey=`${g.time||0}:${g.sky?.elapsed||0}:${room||''}:${(g.players||[]).map(p=>[p.id,p.x,p.y,p.room,p.roomX,p.roomY,p.equipment?.hand1,p.equipment?.hand2,(p.inventory||[]).some(i=>i&&['torch','lantern'].includes(i.type)),p.controlPetPosition?.x,p.controlPetPosition?.y,p.controlMainLoadout?.equipment?.hand1,p.controlMainLoadout?.equipment?.hand2].join(',')).join(';')}:${(g.villageCampState?.fire?[g.villageCampState.fire.x,g.villageCampState.fire.y].join(','):'')}`;
-  const cached=sourceFrames.get(g);if(cached?.key===frameKey)return cached.sources;
+  const fireKey=[...(g.spells||[]).filter(b=>b.fire&&b.life>0),...(g.fireballs||[]).filter(b=>!b.ice&&!b.water&&b.life>0),...(g.effects||[]).filter(f=>f.particle==='cinder-trail'&&f.life>0)].map(f=>[f.x,f.y,f.life].join(',')).join(';');
+  const cacheKey=frameKey+':'+fireKey;
+  const cached=sourceFrames.get(g);if(cached?.key===cacheKey)return cached.sources;
   const sources = (g.players || []).filter(p => p.hp > 0 && (p.room||null)===room).flatMap(p => {
     const light = carriedLight(p);
     return light ? [{ x: room?p.roomX:p.x, y: room?p.roomY:p.y, ...light, owner:`actor:${p.id}`, room, height:30+(p.jumpHeight||0)+(p.groundHeight||0) }] : [];
@@ -62,16 +64,25 @@ export function lightSources(g,room=null) {
       if(portal.well?.exit)sources.push({...portal.well.exit,room,height:18,radius:80,intensity:.8,color:'#ffdb98'});
       for(const t of portal.well?.candles||[])sources.push({...t,room,height:18,radius:t.radius||80,intensity:.7,color:'#ffbc73'});
     }
-    sourceFrames.set(g,{key:frameKey,sources});return sources;
+    sourceFrames.set(g,{key:cacheKey,sources});return sources;
   }
   for (const f of g.firePatches || []) if (f.life > 0)
     sources.push({ x: f.x + 16, y: f.y + 16, height:12,radius: 90, intensity: 0.8, color: '#ffaf55' });
+  const flames=[...(g.spells||[]).filter(b=>b.fire&&b.life>0),...(g.fireballs||[]).filter(b=>!b.ice&&!b.water&&b.life>0)].filter(b=>!b.room).slice(0,12);
+  for(const b of flames)sources.push({x:b.x,y:b.y-12,height:18,radius:95,intensity:.85,color:'#ff9a48',owner:'fire:'+b.visualSeed});
+  const trailLights=[];
+  for(const p of g.scenery||[])if(p.kind==='tall_grass'&&p.grassFire>0&&trailLights.length<16){
+    const source={x:p.x,y:p.rootY??p.y+p.size*.4,height:9,radius:75,intensity:.65*Math.min(1,p.grassFire/.25),color:'#ff963f'};trailLights.push(source);sources.push(source);
+  }
+  for(const f of g.effects||[])if(f.particle==='cinder-trail'&&f.life>0&&!f.room&&trailLights.length<16&&!trailLights.some(s=>Math.hypot(s.x-f.x,s.y-f.y)<24)){
+    const source={x:f.x,y:f.y,height:9,radius:75,intensity:.65*Math.min(1,f.life/.5),color:'#ff963f'};trailLights.push(source);sources.push(source);
+  }
   for(const npc of g.questNpcs||[])if(Number.isFinite(npc.campX??npc.x)&&Number.isFinite(npc.campY??npc.y))
     sources.push({x:npc.campX??npc.x,y:(npc.campY??npc.y)+10,height:16,radius:150,intensity:.82,color:'#ffad4c'});
   if(g.villageCampState?.fire)sources.push({x:g.villageCampState.fire.x,y:g.villageCampState.fire.y,height:20,radius:150,intensity:.92,color:'#ffad4c',owner:`camp:${g.villageCampState.campId}`});
   for(const p of g.scenery||[])if(p.realm&&!p.depleted&&!p.falling&&['cave_crystal','amber_crystal','shadow_obsidian'].includes(p.kind))sources.push({x:p.x,y:p.rootY-18,height:22,radius:100,intensity:.55,color:p.kind==='amber_crystal'?'#e8bd78':p.kind==='shadow_obsidian'?'#b291d1':'#91d9d1'});
   sources.push(...houseLightSources(g));
-  sourceFrames.set(g,{key:frameKey,sources});return sources;
+  sourceFrames.set(g,{key:cacheKey,sources});return sources;
 }
 export function lightAt(g, point) {
   let light = daylight(g);
@@ -135,6 +146,17 @@ export function enemyVisibility(g, e) {
   if (e.flash > 0 || ['pounce', 'windup', 'charge'].includes(e.state)) return 0.9;
   return Math.max(0.055, Math.min(1, lightAt(g, e) * 1.5));
 }
+// Same radius as sight/fog, feathered before the boolean culling boundary.
+export function enemySightOpacity(g,e,base=280){
+ let alpha=0;
+ for(const p of g.players||[]){
+  if(p.room||p.hp<=0)continue;
+  const radius=sightRadius(g,p,base),distance=Math.hypot(e.x-p.x,e.y-p.y);
+  const t=Math.max(0,Math.min(1,(radius-distance)/(radius*.32)));
+  alpha=Math.max(alpha,t*t*(3-2*t));
+ }
+ return alpha;
+}
 
 export function lanternGlowStops(source,flicker=1){
  const color=/^#[\da-f]{6}$/i.test(source.color||'')?source.color:'#ffbd70';
@@ -155,13 +177,13 @@ export function drawNightLight(c, g, camera, w, h,room=null,{occluded=false}={})
     const fixtures=houseLightSources(g).filter(s=>s.houseFixture);
     if(fixtures.length&&g.generatedEnvironment==='house'&&typeof document!=='undefined'){
       nightMask||=document.createElement('canvas');if(nightMask.width!==w||nightMask.height!==h){nightMask.width=w;nightMask.height=h;}
-      const mask=nightMask.getContext('2d');mask.clearRect(0,0,w,h);mask.globalCompositeOperation='source-over';mask.fillStyle=`rgba(9,16,39,${dark*.43})`;mask.fillRect(0,0,w,h);
+      const mask=nightMask.getContext('2d');mask.clearRect(0,0,w,h);mask.globalCompositeOperation='source-over';mask.fillStyle=`rgba(9,16,39,${dark*.28})`;mask.fillRect(0,0,w,h);
       mask.globalCompositeOperation='destination-out';mask.save();mask.beginPath();
       for(const floor of g.house.floors||[])mask.rect(w/2+(floor.x-camera.x)*camera.zoom,h/2+(floor.y-camera.y)*camera.zoom,floor.w*camera.zoom,floor.h*camera.zoom);mask.clip();
       for(const s of fixtures){const x=w/2+(s.x-camera.x)*camera.zoom,y=h/2+(s.y-camera.y)*camera.zoom,r=s.radius*camera.zoom;
         const glow=mask.createRadialGradient(x,y,0,x,y,r);glow.addColorStop(0,'#000e');glow.addColorStop(.55,'#000a');glow.addColorStop(1,'#0000');mask.fillStyle=glow;mask.fillRect(x-r,y-r,r*2,r*2);}
       mask.restore();mask.globalCompositeOperation='source-over';c.drawImage(nightMask,0,0);
-    }else{c.fillStyle = `rgba(9,16,39,${dark * 0.43})`;c.fillRect(0, 0, w, h);}
+    }else{c.fillStyle = `rgba(9,16,39,${dark * 0.28})`;c.fillRect(0, 0, w, h);}
   }
   // Dynamic mode already composites height-tested light beneath scenery and
   // source-facing light/rims on surfaces. Never wash an unoccluded disc over it.

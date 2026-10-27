@@ -78,9 +78,30 @@ test('Lobby inventory equips the saved hero, blocks practice input, and cancels 
 test('Lobby camera fits the room and outer station labels at common viewport sizes',()=>{
   for(const [w,h] of [[1264,600],[1904,970],[784,470],[600,740]]){
     const camera=lobbyCamera(w,h);
-    for(const [x,y] of [[0,6],[1024,614],...LOBBY_OBJECTS.map(o=>[o.x,o.y+58])]){
+    for(const [x,y] of [[8,28],[1024,620],...LOBBY_OBJECTS.map(o=>[o.x,o.y+58])]){
       const sx=w/2+(x-camera.x)*camera.zoom,sy=h/2+(y-camera.y)*camera.zoom;
       assert.ok(sx>=-.001&&sx<=w+.001&&sy>=-.001&&sy<=h+.001);
     }
   }
+});
+
+
+test('shared ready confirmation and back consume jump until release for every player',()=>{
+ for(const wings of [false,true]){
+  const game=new Game(),p=game.addPlayer('pad:0');p.profileId='chosen';if(wings)p.equipment.shoulders='succubus_wings';
+  const lobby=Object.create(PlayableLobby.prototype);
+  Object.assign(lobby,{getGame:()=>game,state:new LobbyState(),practice:new LobbyPractice(),sync(){},draw(){},syncBoardReadyMenu(){},renderBoardReadyMenu(){},area:{querySelector:()=>({textContent:''})}});
+  lobby.state.sync(game.players);Object.assign(lobby.state.members.get(p.id),{spawned:true,panel:null,x:400,y:350});
+  lobby.update(.02,{});lobby.openBoardReadyMenu(p);
+  lobby.update(.02,{'pad:0':{jump:true,tvA:true,use:true}});
+  lobby.controller({index:0,buttons:[{pressed:true}],axes:[]},[]);
+  assert.equal(lobby.boardReadyMenuOpen,false);assert.equal(p.ready,true);
+  for(let i=0;i<8;i++)lobby.update(.02,{'pad:0':{jump:true,tvA:true,use:true}});
+  const actor=lobby.practice.players[0];assert.equal(actor.jumpHeight||0,0);assert.equal(!!actor.wingHover,false);
+  lobby.update(.02,{});lobby.update(.02,{'pad:0':{jump:true}});lobby.update(.02,{'pad:0':{jump:true}});
+  assert.ok(actor.jumpHeight>0,'A fresh jump still works');
+  Object.assign(actor,{jumpHeight:0,jumpVelocity:0,wingHover:false});lobby.update(.02,{});
+  lobby.openBoardReadyMenu(p);lobby.closeBoardReadyMenu();lobby.update(.02,{'pad:0':{jump:true,use:true}});
+  assert.equal(actor.jumpHeight||0,0);
+ }
 });

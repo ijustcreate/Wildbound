@@ -137,7 +137,7 @@ export function startHazard(g, event) {
         runDirection: dir,
         hp: event.hp || 130,
         maxHp: event.hp || 130,
-        speed: event.speed || 185,
+        speed: (event.squad || ['rhino'])[n % (event.squad?.length || 1)]==='elephant'?Math.min(96,event.speed||185):event.speed || 185,
         damage: event.damage || 20,
         state: "stampede",
         aggro: false,
@@ -363,13 +363,14 @@ export function tickHazards(g, dt) {
   for (const e of g.enemies)
     if ((e.stampeding || e.kind === "rhino") && !e.aggro && e.hp > 0) {
       const from={x:e.x,y:e.y};
-      e.x += e.runDirection * e.speed * dt;
+      const crossingSpeed=e.kind==='elephant'?Math.min(96,e.speed):e.speed;
+      e.x += e.runDirection * crossingSpeed * dt;
       e.y =
         e.lane -
         (e.lane > 700 && e.lane < 850
           ? Math.max(0, Math.sin(((e.x - 500) / 600) * Math.PI)) * 145
           : 0);
-      e.step += e.speed * dt * 0.13;
+      e.step += crossingSpeed * dt * 0.13;
       e.moving = true;
       stampedeDestruction(g,e,from);
       for (const p of g.players)
@@ -397,11 +398,11 @@ export function drawWeather(ctx, g, w, h) {
 }
 export function drawHazards(ctx, g) {
   for (const f of g.firePatches || []) {
-    ctx.fillStyle = "#9c3b2670";
+    ctx.fillStyle = f.color ? f.color+"50" : "#9c3b2670";
     ctx.fillRect(f.x, f.y, 32, 32);
-    ctx.fillStyle = Math.sin(g.time * 12 + f.x) > 0 ? "#ff9b3c" : "#f05b2d";
+    ctx.fillStyle = f.color || (Math.sin(g.time * 12 + f.x) > 0 ? "#ff9b3c" : "#f05b2d");
     ctx.fillRect(f.x + 7 + Math.floor((g.time * 9 + f.y) % 9), f.y + 12, 10, 8);
-    ctx.fillStyle = "#ffd45d";
+    ctx.fillStyle = f.color ? "#e9c5ff" : "#ffd45d";
     ctx.fillRect(f.x + 12, f.y + 8, 5, 9);
   }
   for (const b of g.fireballs || []) {

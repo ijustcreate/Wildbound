@@ -6,6 +6,7 @@ import {
   upgradePlayerMotion,
 } from "./player-motion.mjs";
 import {retargetHumanoidClip,completeHumanoidActions} from './native-humanoid-base.mjs';
+import {ensureSkeletonEquipment,SKELETON_COSTUME_KINDS} from './skeleton-equipment.mjs';
 let skeletonBase;
 function authorSkeletonWizardCast(model){
  const clip=model.clips.cast,joints=['shoulderR','elbowR','handR','shoulderL','elbowL','handL','chest','head'];
@@ -33,20 +34,32 @@ function authorLongAxeSwing(model){
  }
  model.clips.long_axe_swing=clip;
 }
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function compactSkeletonJoints(base){
+ const joints=structuredClone(base.joints);
+ for(const joint of Object.values(joints))joint.position=joint.position.map((v,i)=>v*(i===2?.68:.78));
+ for(const name of ['eyeL','eyeR','nose','mouth','earL','earR'])joints[name].position=joints.head.position.map((v,i)=>v+(base.joints[name].position[i]-base.joints.head.position[i])*[1.45,1.5,1.3][i]);
+ return joints;
+}
 export function upgradeSkeletonToNative(model){
- if(model.type==='krampus'||model.nativeSkeletonRevision===2)return model;
- const legacy=defaultPlayerMotion();
- const base=skeletonBase??=defaultNativePlayerMotion();
- if(JSON.stringify(model.joints)!==JSON.stringify(legacy.joints)&&!(model.nativeSkeletonRevision===1&&JSON.stringify(model.joints)===JSON.stringify(base.joints)))return model;
- const target=structuredClone(model);
- target.joints=structuredClone(base.joints);
- // Same hierarchy and action library, deliberately different creature anatomy:
- // compact body under a large skull, rather than a tall human painted bone-white.
- for(const joint of Object.values(target.joints))joint.position=joint.position.map((v,i)=>v*(i===2?.68:.78));
- for(const name of ['eyeL','eyeR','nose','mouth','earL','earR'])target.joints[name].position=target.joints.head.position.map((v,i)=>v+(base.joints[name].position[i]-base.joints.head.position[i])*[1.45,1.5,1.3][i]);
- target.clips=Object.fromEntries(Object.entries(model.clips).map(([name,clip])=>[name,retargetHumanoidClip(model,target,clip)]));
- completeHumanoidActions(target,base);target.nativeSkeletonRevision=2;
- target.nativeSkeletonSource={joints:structuredClone(model.joints),clips:structuredClone(model.clips)};
+ if(model.type==='krampus'||model.nativeSkeletonRevision===3)return model;
+ const legacy=defaultPlayerMotion(),base=skeletonBase??=defaultNativePlayerMotion();
+ const recognized=same(model.joints,legacy.joints)||same(model.joints,base.joints)||model.nativeSkeletonRevision===2&&same(model.joints,compactSkeletonJoints(base));
+ // Edited rest geometry is authored content; only known shipping rigs migrate.
+ if(!recognized)return model;
+ const target=structuredClone(model);target.joints=structuredClone(base.joints);
+ const original=model.nativeSkeletonSource||legacy;
+ target.clips=Object.fromEntries(Object.entries(model.clips).map(([name,clip])=>{
+  const prior=original.clips?.[name],hero=base.clips[name];
+  const generated=prior&&(same(clip,prior)||same(clip,retargetHumanoidClip(original,model,prior)))||hero&&same(clip,retargetHumanoidClip(base,model,hero));
+  // Normal locomotion uses the regular player keys. Edited attacks and casts
+  // are retargeted onto the same full-height bones instead of being discarded.
+  return [name,generated&&hero?structuredClone(hero):retargetHumanoidClip(model,target,clip)];
+ }));
+ completeHumanoidActions(target,base);target.nativeSkeletonRevision=3;
+ // Actual edited clips remain in target.clips. Do not duplicate the entire
+ // expanded player action library in provenance (six variants share it).
+ target.nativeSkeletonSource={revision:3,previousRevision:model.nativeSkeletonRevision||0,joints:structuredClone(model.joints)};
  return target;
 }
 export const SKELETON_KINDS = [
@@ -116,9 +129,11 @@ export function drawSkeleton(
           : kind === "skeleton"
             ? a.equipment?.hand1 === "lantern" ? { hand1: "lantern" } : { hand1: "sword" }
             : {};
-  const equipment={...gear,...a.equipment};
+  const costume=SKELETON_COSTUME_KINDS.includes(kind);
+  const dressed=costume?ensureSkeletonEquipment({...a,kind,equipment:a.equipment&&{...a.equipment},inventory:a.inventory&&[...a.inventory]}):a;
+  const equipment=costume?dressed.equipment:{...gear,...a.equipment};
   if(equipment.hand1==='skeleton_long_axe')equipment.hand2='occupied';
-  const actor = { ...a, equipment };
+  const actor = { ...a, equipment,skeletonCostume:costume,appearance:costume?{skin:'#d4a073',shirt:'#487663',pants:'#665479',shoes:'#493b2d',hair:'crop',hairColor:'#65472f',face:'classic',...a.appearance}:a.appearance };
   if (!a.animationAction) {
     if (a.flash > 0) {
       actor.hit = a.flash;

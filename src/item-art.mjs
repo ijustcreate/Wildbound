@@ -1,4 +1,8 @@
+import {drawCarvedBoneIcon,drawCarverCrown} from './bone-carver-art.mjs';
+import {drawBroomIcon,drawBroom,drawWitchHat} from './broom-art.mjs';
+import {paintSkeletonItem} from './skeleton-item-art.mjs';
 import {paintReaperItem} from './reaper-art.mjs';
+import {paintChristmasItem} from './christmas-art.mjs';
 import {paintGhostItem} from './ghost-art.mjs';
 import { ITEMS, itemKind } from "./items.mjs";
 import { mixGearColor, paintGearIcon } from './gear-art.mjs';
@@ -30,10 +34,12 @@ export function clearItemArtCache() { cache.clear(); }
 for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
+  const custom=ITEMS[type]?.artPixels;if(Array.isArray(custom)&&custom.length===576){custom.forEach((color,i)=>{if(typeof color==='string'&&/^#[0-9a-f]{6}$/i.test(color)){c.fillStyle=color;c.fillRect(i%24,Math.floor(i/24),1,1);}});return;}
   if(ITEMS[type]?.blankExplorer){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     r(8,2,8,7,'#414b4d');r(9,3,6,5,'#8b9596');r(5,9,14,8,'#414b4d');r(6,10,12,6,'#858f90');r(7,16,4,6,'#697476');r(13,16,4,6,'#697476');r(11,4,2,1,'#b7c0bf');r(12,5,1,1,'#b7c0bf');r(11,7,1,1,'#b7c0bf');return;
   }
+  if(paintSkeletonItem(c,type))return;
   if (type === 'skeleton_long_axe') {
     c.fillStyle = '#342d2d'; c.fillRect(9, 1, 6, 13);
     c.fillStyle = '#c5c5b8'; c.fillRect(10, 2, 4, 20); c.fillRect(9, 11, 6, 2);
@@ -74,6 +80,7 @@ export function paintItem(c, type) {
   if(type==='trial_letter'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(5,2,14,20,'#493f31');r(6,3,12,18,'#eddbad');r(9,6,6,1,'#786a53');r(8,9,8,1,'#786a53');r(8,12,7,1,'#786a53');r(10,16,4,3,'#a55742');return;}
   if(type==='mosquito_charm'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(10,2,4,3,'#d7a963');r(9,5,6,2,'#473a28');r(6,7,4,5,'#b8ce86');r(14,7,4,5,'#b8ce86');r(11,7,2,12,'#8b6336');r(10,9,4,3,'#e4bf75');r(7,13,3,1,'#473a28');r(14,13,3,1,'#473a28');r(12,18,1,4,'#e4bf75');return;}
   if(type==='dark_essence'){const r=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};r(8,5,8,14,'#372241');r(5,10,14,7,'#372241');r(9,6,6,13,'#795195');r(7,11,10,5,'#a269cb');r(10,8,3,5,'#d2adeb');r(11,2,2,3,'#a269cb');return;}
+  if(paintChristmasItem(c,type))return;
   if(paintReaperItem(c,type))return;
   if(paintGhostItem(c,type))return;
   if(paintPumpkinItem(c,type))return;
@@ -118,7 +125,12 @@ export function paintItem(c, type) {
     c.fillStyle=color;c.fillRect(x,y,1,1);
   }
 }
+function iconPart(c,paint,sx,sy,ox,oy){const pen={fillStyle:'',fillRect(x,y,w,h){const left=Math.max(0,Math.round(ox+x*sx)),top=Math.max(0,Math.round(oy+y*sy)),right=Math.min(24,Math.max(left+1,Math.round(ox+(x+w)*sx))),bottom=Math.min(24,Math.max(top+1,Math.round(oy+(y+h)*sy)));if(right>left&&bottom>top){c.fillStyle=this.fillStyle;c.fillRect(left,top,right-left,bottom-top);}}};paint(pen);}
 function paintItemBase(c, type) {
+  if(ITEMS[type]?.carvedAnimal){drawCarvedBoneIcon(c,ITEMS[type].carvedAnimal);return;}
+  if(type==='bone_carver_crown'){iconPart(c,p=>drawCarverCrown(p,{x:0,y:0},0),.8,.6,12,10);return;}
+  if(type==='flying_broom'||type==='mounted_broom'){iconPart(c,p=>drawBroom(p,{pelvis:{x:0,y:0}},6),.34,.9,14,10);if(type==='mounted_broom'){c.fillStyle='#6aa27f';c.fillRect(17,3,5,4);c.fillStyle='#dcebc9';c.fillRect(18,4,2,1);}return;}
+  if(type==='witch_hat'){iconPart(c,p=>drawWitchHat(p,{x:0,y:0},0),.8,.8,12,19);return;}
   if(type==='coffin_lid_shield') {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     // Narrow head, broad shoulders and a tapered foot: a coffin lid, not a kite.

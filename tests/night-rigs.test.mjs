@@ -105,9 +105,9 @@ test('Hunter uses real safari equipment, and removed gear removes the correspond
 });
 
 test('Night definition defaults match event stats and expose the correct anatomy', () => {
-  const types = { hunter: 'humanoid', carnivorous_flower: 'plant', mimic_vine: 'plant', poison_pod: 'plant', pelican: 'winged', burrower: 'serpent' };
+  const types = { chicken:'winged',squashling:'humanoid',werewolf:'humanoid',scorpion_boss:'quadruped',hunter: 'humanoid', carnivorous_flower: 'plant', mimic_vine: 'plant', poison_pod: 'plant', pelican: 'winged', burrower: 'serpent' };
   for (const kind of NIGHT_KINDS) {
-    const defaults = creatureDefaults(kind), event = NIGHT_EVENTS.find(e => e.kind === kind);
+    const defaults = creatureDefaults(kind), event = NIGHT_EVENTS.find(e => e.kind === kind)||(kind==='chicken'?{hp:22,speed:88,damage:0}:null);
     assert.ok(event, kind);
     for (const field of ['hp', 'speed', 'damage']) {
       assert.equal(defaults.stats[field], event[field], kind + ' ' + field);

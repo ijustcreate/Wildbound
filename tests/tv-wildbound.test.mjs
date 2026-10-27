@@ -66,7 +66,7 @@ test('2D treasure opens for its owner, stays shared across reopen/co-op, and mus
   assert.equal(pool.filter(Boolean).length,total,'opening does not also loot');game.inventoryAction(p,'tvReturn');assert.equal(mode.requestLobbyReturn,false);
   tick();tick({'pad:0':{use:true}});assert.equal(p.inventory.filter(Boolean).length,1);assert.equal(pool.filter(Boolean).length,total-1);
   tick();tick({'pad:0':{close:true}});tick();tick({'pad:1':{interact:true}});assert.equal(q.ui.storage,'tv-victory');assert.equal(game.storageFor(q),pool);
-  game.inventoryAction(q,'lootAll');assert.equal(pool.some(Boolean),false);assert.equal(q.inventory.filter(Boolean).length,total-1);assert.equal(returns,0);
+  game.inventoryAction(q,'lootAll');assert.equal(pool.some(Boolean),false);assert.equal(q.inventory.filter(Boolean).reduce((sum,item)=>sum+item.qty,0),total-1);assert.equal(returns,0);
   tick();tick({'pad:1':{use:true}});assert.equal(returns,1);assert.equal(p.ui,null);assert.equal(q.ui,null);
 });
 

@@ -15,6 +15,9 @@ import { jointAngle } from "./joint-angles.mjs";
 import { VILLAGERS, villagerById } from "./villager-data.mjs";
 import { ITEMS } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
+import {gearPalette,fittedGear,fittedShield,withBootPose} from './gear-art.mjs';
+import {wearableDetails,directionalHelmet} from './wearable-art.mjs';
+import {capeRows} from './cape-motion.mjs';
 const add = (a, b) => a.map((v, i) => v + b[i]),
   sub = (a, b) => a.map((v, i) => v - b[i]),
   mul = (a, s) => a.map((v) => v * s),
@@ -301,6 +304,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
           .padStart(2, "0"),
       )
       .join("");
+  const material=id=>{const g=gearPalette(id,a.field?.cosmetics?.dye);return{body:g.base,shade:g.dark,light:g.light,outline:g.ink};};
   const palette = (color) => ({
       body: color,
       shade: shade(color, 0.72),
@@ -308,8 +312,8 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
       outline: m.palette.outline,
     }),
     skin = palette(spec.skin),
-    shirt = palette(spec.shirt),
-    pants = palette(spec.pants),
+    shirt = a.equipment?.chest ? material(a.equipment.chest) : palette(spec.shirt),
+    pants = a.equipment?.pants ? material(a.equipment.pants) : palette(spec.pants),
     hair = palette(spec.hairColor),
     boots = palette(spec.id === "april" ? m.palette.boots || "#754936" : "#754936"),
     head = basis(sub(pose.earR, pose.earL), sub(pose.headUp, pose.head)),
@@ -580,7 +584,7 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
           n = Math.hypot(b.x - v.x, b.y - v.y) || 1,
           dx = (b.x - v.x) / n,
           dy = (b.y - v.y) / n,
-          fit = m.wearables?.[hand1]?.[d] || m.wearables?.sword?.[d];
+          fit = m.wearables?.[hand1]?.[d] || ((ITEMS[hand1]?.base === "sword" || hand1 === "sword") ? m.wearables?.sword?.[d] : null);
         c.save();
         c.translate(v.x + (fit?.x || 0), v.y + (fit?.y || 0));
         c.rotate(((fit?.rotation || 0) * Math.PI) / 180);
@@ -607,11 +611,32 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
             "#cda45b",
           );
           ellipse(c, -dx * 1.8, -dy * 1.8, 1.4, 1.4, "#754936");
-        } else drawItem(c, hand1, v.x, v.y, 15);
+        } else drawItem(c, hand1, 0, 0, 15);
         c.restore();
       },
       p.swordGrip.depth + 0.4,
     );
+  // Fitted native gear shares the villager's posed anchors and depth queue.
+  // Authored per-item wearable pixels continue to take precedence.
+  const gear=a.equipment||{},cosmetics=a.field?.cosmetics||{},back=d>=3&&d<=5;
+  const wear=(id,anchor,paint)=>{
+    const fit=m.wearables?.[id]?.[d];
+    if(!fit?.pixels?.some(Boolean))return paint();
+    c.save();c.translate(anchor.x+(fit.x||0),anchor.y+(fit.y||0));c.rotate((fit.rotation||0)*Math.PI/180);c.scale(fit.scale||1,fit.scale||1);
+    fit.pixels.forEach((color,i)=>{if(color){c.fillStyle=color;c.fillRect(i%16-8,Math.floor(i/16)-8,1,1);}});c.restore();
+  };
+  if(gear.cape)part('chest','Villager cape',['shoulderL','shoulderR','pelvis'],()=>wear(gear.cape,p.chest,()=>{
+    const top=mul(add(pose.shoulderL,pose.shoulderR),.5),rows=capeRows(top,pose.pelvis,a,t,ITEMS[gear.cape]?.style,{left:pose.shoulderL,right:pose.shoulderR}),pal=gearPalette(gear.cape,cosmetics.dye);
+    for(const row of rows)for(const seg of row.segments)limb(c,projectPoint(seg.left,d),projectPoint(seg.right,d),2,seg.hem?pal.trim:pal.base);
+  }),p.chest.depth+(back?3:-5));
+  for(const side of ['L','R']){
+    for(const [slot,bone,depth]of [['shoulders','shoulder'+side,.5],['gloves','hand'+side,.6],['feet','foot'+side,.6]])if(gear[slot])part(bone,'Villager '+slot+' '+side,[bone],()=>wear(gear[slot],p[bone],()=>slot==='feet'?withBootPose(c,p[bone],p['knee'+side],()=>fittedGear(c,gear[slot],p[bone],d,side,cosmetics.dye)):fittedGear(c,gear[slot],p[bone],d,side,cosmetics.dye)),p[bone].depth+depth);
+  }
+  if(gear.chest||gear.pants)part('chest','Villager armor details',['chest','pelvis','kneeL','kneeR'],()=>wearableDetails(c,p,{chest:gear.chest,pants:gear.pants},{skin:spec.skin},d,t,cosmetics),p.chest.depth+.6);
+  if(gear.head&&!cosmetics.hideHelmet)part('head','Villager headwear',['head'],()=>wear(gear.head,p.head,()=>directionalHelmet(c,gear.head,p.head,d,cosmetics)),p.head.depth+10);
+  if(gear.hand2&&gear.hand2!=='occupied')part('handL','Villager offhand',['handL'],()=>wear(gear.hand2,p.handL,()=>ITEMS[gear.hand2]?.base==='shield'||gear.hand2==='shield'?fittedShield(c,gear.hand2,p.handL,d,a.blocking,cosmetics.dye):drawItem(c,gear.hand2,p.handL.x,p.handL.y,15)),p.handL.depth+.8);
+  if(gear.neck&&!back)part('chest','Villager necklace',['chest'],()=>wear(gear.neck,p.chest,()=>{const pal=gearPalette(gear.neck,cosmetics.dye);limb(c,{x:p.chest.x-2,y:p.chest.y-2},{x:p.chest.x,y:p.chest.y+2},1,pal.trim);limb(c,{x:p.chest.x+2,y:p.chest.y-2},{x:p.chest.x,y:p.chest.y+2},1,pal.trim);c.fillStyle=pal.light;c.fillRect(Math.round(p.chest.x)-1,Math.round(p.chest.y)+2,2,2);}),p.chest.depth+.8);
+  if(gear.back)part('chest','Villager back gear',['chest'],()=>wear(gear.back,p.chest,()=>drawItem(c,gear.back,p.chest.x+(d===2?4:d===6?-4:0),p.chest.y+5,14)),p.chest.depth+(back?4:-4));
   paintLayers(q, m, d, c, p);
   return p;
 }

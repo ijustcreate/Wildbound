@@ -1,3 +1,4 @@
+import {InlinePixelEditor} from './inline-pixel-editor.mjs';
 import {VILLAGERS} from './villager-data.mjs';
 import {drawItem} from './item-art.mjs';
 import { ikChain, solveTwoBone } from './ik.mjs';
@@ -94,6 +95,7 @@ export class RigStudio {
       Object.fromEntries(fields.map((k) => [k, this[k]])),
     );
     this.subject = subject;
+    this.surface=null;
     this.scale = this.definition.scale || 7;
     Object.assign(
       this,
@@ -154,7 +156,7 @@ export class RigStudio {
     if(this.subject==='villager'){const label=document.createElement('label'),variant=document.createElement('select');label.textContent='Villager ';variant.className='ps-villager-variant';for(const v of VILLAGERS)variant.add(new Option(v.name,v.id));variant.value=this.villagerVariant||'april';variant.onchange=()=>{this.villagerVariant=variant.value;this.refresh();};label.append(variant);root.querySelector('.ps-toolbar').append(label);}
     picker.setAttribute("aria-label", "Rig subject");
     for (const [key, subject] of Object.entries(SUBJECTS))
-      picker.append(new Option(subject.name, key));
+      picker.append(new Option(subject.name || key.replaceAll("_", " "), key));
     picker.value = this.subject;
     picker.onchange = () => {
       this.setSubject(picker.value);
@@ -593,7 +595,7 @@ export class RigStudio {
   }
   refreshBoneSprites() {
     const root=this.$('.ps-bone-sprites');if(!root)return;
-    const sprites=boneSprites(this.model,this.direction,this.selected);
+    const sprites=boneSprites(this.model,this.direction,this.selected).slice().sort((a,b)=>{const empty=p=>!p.sprite.pixels.some(Boolean),rank=p=>empty(p)?3:p.id==='Head and headwear'?0:p.id==='Head shape'?1:2;return rank(a)-rank(b);});
     const key=JSON.stringify([this.subject,this.selected,this.direction,sprites.map(p=>p.id),this.model.boneSprites]);
     if(key===this.boneSpriteKey)return;this.boneSpriteKey=key;
     root.replaceChildren();
@@ -602,20 +604,17 @@ export class RigStudio {
     for(const part of sprites){
       const card=document.createElement('div'), canvas=document.createElement('canvas');canvas.width=part.sprite.width;canvas.height=part.sprite.height;canvas.className='bone-sprite-preview';
       const c=canvas.getContext('2d');part.sprite.pixels.forEach((n,i)=>{if(n){c.fillStyle=part.sprite.palette[n];c.fillRect(i%canvas.width,Math.floor(i/canvas.width),1,1);}});
-      const label=document.createElement('p');label.textContent=(part.id==='Head shape'?'Head shape · silhouette only':part.id)+' · '+DIRECTIONS[this.direction];card.append(label,canvas);
+      const label=document.createElement('p');label.textContent=(part.id==='Head shape'?'Skull shape':part.id==='Head and headwear'?'Face, front hair & headwear':part.id)+' · '+DIRECTIONS[this.direction]+(!part.sprite.pixels.some(Boolean)?' · no pixels in this view':'');card.append(label,canvas);
       if(part.id==='Head shape'){const note=document.createElement('p');note.textContent='Edit the skull outline and shading here; face features and hair stay on their own layers.';card.append(note);}
-      const edit=document.createElement('button');edit.textContent='Edit in sprite editor';edit.onclick=()=>{
-        this.playing=false;const model=this.model,direction=this.direction,id=part.id;
-        const current=boneSprites(model,direction,this.selected).find(p=>p.id===id)||part;
-        window.dispatchEvent(new CustomEvent('rig-sprite-edit',{detail:{name:this.subject+' · '+id+' · '+DIRECTIONS[direction],sprite:copy(current.sprite),apply:async(sprite)=>{
-          this.remember();model.boneSprites||={};model.boneSprites[id]||={};
-          const savedSprite={...sprite,x:current.sprite.x,y:current.sprite.y};
-          model.boneSprites[id][direction]=savedSprite;
-          this.definition.replace(model);saveRigSpriteOverride(this.subject,id,direction,savedSprite);this.boneSpriteKey=null;const message=await this.save();this.changed(message || 'Sprite saved to this bone and facing.');
-        }}}));
-      };card.append(edit);
+      const edit=document.createElement('button');edit.textContent='Edit pixels here';edit.disabled=!part.sprite.pixels.some(Boolean);edit.onclick=()=>this.openBonePixelEditor(part);
+card.append(edit);
       const reset=document.createElement('button');reset.textContent='Restore original';reset.onclick=async()=>{try{this.remember();if(this.model.boneSprites?.[part.id])delete this.model.boneSprites[part.id][this.direction];removeRigSpriteOverride(this.subject,part.id,this.direction);this.definition.replace(this.model);const message=await this.save();this.boneSpriteKey=null;this.changed(message || 'Original sprite restored.');}catch(error){this.message(error.message);}};card.append(reset);root.append(card);
     }
+  }
+  openBonePixelEditor(part){
+    this.playing=false;const model=this.model,direction=this.direction,subject=this.subject,id=part.id,current=boneSprites(model,direction,this.selected).find(p=>p.id===id)||part,root=this.$('.ps-bone-sprites');
+    this.root.querySelector('.rig-inline-pixels')?.remove();const panel=document.createElement('section');panel.className='rig-inline-pixels';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Rig part pixel editor');panel.style='position:fixed;inset:6vh 8vw;z-index:1000;padding:20px;background:#102a25;color:#eee5c8;border:2px solid #648675;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;gap:8px';const heading=document.createElement('h3');heading.textContent='EDIT '+(id==='Head and headwear'?'FACE, HAIR & HEADWEAR':id.toUpperCase())+' · '+DIRECTIONS[direction];panel.append(heading);const note=document.createElement('p');note.textContent='This is the live rig layer, not the standalone sprite library. Save applies only to this bone layer and facing.';panel.append(note);const surface=document.createElement('div');panel.append(surface);let draft=copy(current.sprite);this.bonePixelEditor=new InlinePixelEditor(surface,draft,{title:id+' · '+DIRECTIONS[direction],help:'Paint this rig part. Other layers and facings are preserved.',onChange:sprite=>{draft=copy(sprite);}});surface.style.cssText+=';overflow:auto;flex:1;min-height:0';const status=document.createElement('p');status.className='rig-pixel-save-status';panel.append(status);
+    const save=document.createElement('button');save.textContent='Save pixels to rig';save.onclick=async()=>{if(this.model!==model||this.subject!==subject){status.textContent='Return to this unit before saving.';return;}try{this.remember();model.boneSprites??={};model.boneSprites[id]??={};const sprite={...draft,x:current.sprite.x,y:current.sprite.y};model.boneSprites[id][direction]=sprite;this.definition.replace(model);saveRigSpriteOverride(subject,id,direction,sprite);const message=await this.save();panel.remove();this.bonePixelEditor=null;this.boneSpriteKey=null;this.changed(message||'Pixels saved on '+id+' · '+DIRECTIONS[direction]);}catch(error){status.textContent=error.message;}};const cancel=document.createElement('button');cancel.textContent='Cancel pixel edit';cancel.onclick=()=>{panel.remove();this.bonePixelEditor=null;};const actions=document.createElement('div');actions.style='display:flex;gap:12px;padding-top:10px;flex-shrink:0';actions.append(save,cancel);panel.append(actions);this.root.append(panel);panel.scrollIntoView({block:'nearest'});
   }
   changed(message = "Unsaved · preview updated") {
     if (this.subject === "rhino") invalidateRhinoFrames();
@@ -1163,14 +1162,14 @@ export class RigStudio {
       pose = this.pose(),
       actor = this.actor();
     const paint = (p, alpha = 1) => {
+      sc.resetTransform();sc.globalAlpha=1;sc.globalCompositeOperation="source-over";
       sc.clearRect(0, 0, this.surface.width, this.surface.height);
       sc.save();
       sc.scale(partDensity,partDensity);
       sc.translate(48, 64);
       captureLayers(this.model);
       try { this.definition.draw(sc, actor, this.frame/(this.model.clips[this.clip].fps||12), this.model, p); }
-      finally { releaseLayers(this.model); }
-      sc.restore();
+      finally { releaseLayers(this.model);sc.restore(); }
       c.globalAlpha = alpha;
       c.drawImage(
         this.surface,

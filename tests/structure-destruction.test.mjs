@@ -56,7 +56,7 @@ test('A window shatters in one hit and does not accept a second hit',()=>{
 });
 test('One sword strike shatters an overlapping window without also damaging its wall',()=>{
  const {g,p}=setup(),pane=wall({kind:'window'}),backing=wall();g.house.walls.push(backing,pane);
- g.attack(p);assert.equal(pane.sectionDamage[1].broken,true);assert.equal(backing.sectionDamage,undefined);
+ g.attack(p);for(let i=0;i<6;i++)g.update(.02,{});assert.equal(pane.sectionDamage[1].broken,true);assert.equal(backing.sectionDamage,undefined);
 });
 
 test('the final partial-width cell must break before the entire asset is destroyed', () => {
@@ -118,13 +118,13 @@ test('ordinary Game sword attacks create a local passable gap with solid neighbo
   const {g, p} = setup(), b = wall();
   g.house.walls.push(b);
   assert.equal(g.projectileBlocked(360, 340, 8), true);
-  g.attack(p);
+  g.attack(p);for(let i=0;i<6;i++)g.update(.02,{});
   assert.ok(b.sectionDamage?.[1]?.damage > 0, 'normal attack must reach structure damage');
   assert.equal(b.sectionDamage[1].broken, false);
   for (let n = 0; n < 20 && !b.sectionDamage[1].broken; n++) {
     p.attack = 0;
     g.time += 1;
-    g.attack(p);
+    g.attack(p);for(let i=0;i<6;i++)g.update(.02,{});
   }
   assert.equal(b.sectionDamage[1].broken, true);
   assert.equal(g.blocked(360, 340, 8, false, false, false, 0), false);

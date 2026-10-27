@@ -17,9 +17,9 @@ app.whenReady().then(async()=>{
    g.portal(p);const door=g.portals[0];p.x=door.x;p.y=door.y;g.enterRoom(p,door);ui.draw(g,assets);ui.draw(g,assets);
    const room=ui.panels.get(p.id),close=room.querySelector('[data-action=close]'),canvas=room.querySelector('canvas.room-view'),roomButtons=[...room.querySelectorAll(':scope > button:not([data-action=close])')];
    check(getComputedStyle(close).position==='absolute','Private storage close button is out of the content flow');
-   check(roomButtons.length===5&&roomButtons.every(b=>b.getBoundingClientRect().height<=38),'Private storage station buttons have compact fixed heights: '+room.className+' / '+roomButtons.map(b=>getComputedStyle(b).height).join(','));
-   check(canvas.getBoundingClientRect().height<=206&&canvas.getBoundingClientRect().height>=120,'Private storage preview uses a viewport-fitted height');
-   check(roomButtons.every(b=>b.getBoundingClientRect().bottom<=room.getBoundingClientRect().bottom+1),'Every private storage station button fits in its panel');
+   check(roomButtons.length===0,'Private storage uses in-room stations without bottom shortcut buttons');
+   check(canvas.getBoundingClientRect().height>=250,'Private storage gives available height to the live room');
+   check(Number(canvas.dataset.worldZoom)>0,'Private storage records its world-scale zoom');
    const roomReport={panel:rect(room),canvas:rect(canvas),buttons:roomButtons.map(rect)};
    room.remove();host.remove();
    const host2=document.createElement('div');host2.id='hero-overlays';host2.style.cssText='position:fixed!important;inset:0!important;z-index:99999';document.body.append(host2);

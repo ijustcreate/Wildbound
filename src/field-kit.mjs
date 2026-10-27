@@ -52,6 +52,7 @@ export class FieldKit {
     this.pose = "idle";
     this.dialog = node("dialog", null, "field-kit");
     this.dialog.id = "field-kit-dialog";
+    window.addEventListener('resize', () => this.placeCardTooltip?.());
     document.body.append(this.dialog);
     this.dialog.oncancel = (e) => {
       e.preventDefault();
@@ -94,6 +95,7 @@ export class FieldKit {
     this.dialog.querySelector("button")?.focus();
   }
   close() {
+    this.hideCardTooltip();
     this.dialog.close();
     this.onResume();
   }
@@ -139,6 +141,7 @@ export class FieldKit {
     return s;
   }
   render() {
+    this.hideCardTooltip();
     const focused = document.activeElement?.dataset.focus;
     const scroll = this.body?.scrollTop || 0;
     const g = this.game(),
@@ -192,6 +195,50 @@ export class FieldKit {
       [...this.dialog.querySelectorAll("[data-focus]")]
         .find((b) => b.dataset.focus === focused)
         ?.focus({ preventScroll: true });
+  }
+  hideCardTooltip() {
+    if (this.cardTooltip?.matches(':popover-open')) this.cardTooltip.hidePopover();
+    this.cardTooltip = null;
+    this.placeCardTooltip = null;
+  }
+  cardTooltipFor(card, head, detail, key) {
+    detail.classList.add('field-card-tooltip');
+    detail.id = `field-tooltip-${key}`;
+    detail.setAttribute('popover', 'manual');
+    detail.setAttribute('role', 'group');
+    detail.setAttribute('aria-label', `${head.textContent} details`);
+    head.removeAttribute('aria-expanded');
+    head.setAttribute('aria-describedby', detail.id);
+    head.dataset.focus = key;
+    let hovered = false;
+    const place = () => {
+      if (!detail.matches(':popover-open')) return;
+      const anchor = head.getBoundingClientRect(), box = detail.getBoundingClientRect();
+      const gap = 8, edge = 10;
+      const below = anchor.bottom + gap;
+      const top = below + box.height <= innerHeight - edge ? below : Math.max(edge, anchor.top - gap - box.height);
+      detail.style.left = `${Math.max(edge, Math.min(anchor.left, innerWidth - box.width - edge))}px`;
+      detail.style.top = `${top}px`;
+    };
+    const show = () => {
+      if (!this.dialog.open) return;
+      if (this.cardTooltip !== detail) this.hideCardTooltip();
+      this.cardTooltip = detail;
+      this.placeCardTooltip = place;
+      if (!detail.matches(':popover-open')) detail.showPopover();
+      place();
+    };
+    const leave = () => queueMicrotask(() => {
+      if (!hovered && !card.contains(document.activeElement) && this.cardTooltip === detail) this.hideCardTooltip();
+    });
+    // The top-layer popover stays outside the grid's layout and scrolling clip.
+    card.addEventListener('pointerenter', () => { hovered = true; show(); });
+    card.addEventListener('pointerleave', () => { hovered = false; leave(); });
+    card.addEventListener('focusin', show);
+    card.addEventListener('focusout', leave);
+    head.onclick = show;
+    this.body.addEventListener('scroll', place, { passive: true });
+    card.append(head, detail);
   }
   trail(g, p, f) {
     this.body.append(
@@ -530,8 +577,7 @@ export class FieldKit {
       }
       detail.append(requirements);
       const button=this.action(outputFits?'Craft':materialsAvailable?'Make backpack space':'Missing materials',()=>g.remoteAuthoritative?g.serverAction(p,'craft',r.id):craft(p,r.id),detail);button.disabled=!outputFits;button.classList.add('field-craft-action');
-      head.onclick=()=>{const selected=card.classList.toggle('is-selected');head.setAttribute('aria-expanded',String(selected));};
-      card.append(head,detail);recipeGrid.append(card);
+      this.cardTooltipFor(card,head,detail,`recipe:${r.id}`);recipeGrid.append(card);
     }
     this.body.append(recipeGrid);
     this.action("Deploy barricade · lasts 30 seconds", () => {
@@ -557,7 +603,7 @@ export class FieldKit {
     const rangerIcon=node('span','♧','field-skill-icon');rangerHead.append(rangerIcon,node('span','Ranger · Tame companion'),node('small',hasSetSkill(p,'tame_pet')?'Unlocked':'Requires Ranger set',hasSetSkill(p,'tame_pet')?'is-ready':'is-missing'));
     const rangerDetail=node('div',null,'field-expanded-detail');rangerDetail.append(node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.','field-expanded-copy'));
     const tame=this.action('Tame nearby animal',()=>{if(g.remoteAuthoritative)return g.serverAction(p,'tamePet');tamePet(g,p);return 'Use R / RB while near a wild animal.';},rangerDetail);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
-    if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},rangerDetail);ranger.classList.add('is-selected');rangerHead.onclick=()=>{const selected=ranger.classList.toggle('is-selected');rangerHead.setAttribute('aria-expanded',String(selected));};ranger.append(rangerHead,rangerDetail);skillGrid.append(ranger);
+    if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},rangerDetail);ranger.classList.remove('is-expanded');this.cardTooltipFor(ranger,rangerHead,rangerDetail,'skill:ranger');skillGrid.append(ranger);
     this.body.append(node("p", `Training points · ${trainingPoints(p)} available · Earn one per level. XP: ${p.xp || 0} · Level ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} XP to go.`, "field-training-summary"));
     const skillIcons={second_wind:'potion',long_jump:'boots',quick_revive:'potion',pack_mule:'crafting_bag',scavenger:'bone_shard',steady_hand:'arrow'};
     for (const s of SKILLS) {
@@ -570,8 +616,7 @@ export class FieldKit {
       const canTrain=unlocked&&rank<s.max&&trainingPoints(p)>=1;
       const button = this.action(!unlocked ? 'Find skill scroll' : rank >= s.max ? 'Mastered' : canTrain?'Train · 1 point':'Need 1 Training Point', () => trainSkill(p,s.id), detail);
       button.disabled = !canTrain;
-      head.onclick=()=>{const selected=card.classList.toggle('is-selected');head.setAttribute('aria-expanded',String(selected));};
-      card.append(head,detail);skillGrid.append(card);
+      this.cardTooltipFor(card,head,detail,`skill:${s.id}`);skillGrid.append(card);
     }
     this.body.append(skillGrid);
     this.body.append(node("p", "More possible skills: silent movement, stronger parries, faster gathering, better lantern range, and a once-per-round emergency dodge.", "subtle"));

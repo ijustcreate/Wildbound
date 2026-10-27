@@ -21,17 +21,28 @@ export const TV_SCENES=Object.freeze([
 ]);
 // The second course uses the same safe section seams, but its own jumps,
 // platforms, and enemy positions. The pipe rooms are separate bonus areas.
-export const TV_CAVERN_SCENES=Object.freeze(TV_SCENES.map((s,i)=>scene(
- `Underground ${i+1}`,
- s.gaps.map(c=>Math.max(6,Math.min(21,c+(i%2?1:-1)))),
- s.bricks.map(([c,y])=>[c,Math.max(40,Math.min(80,y+(i%3-1)*8))]),
- s.pipes.map(([c,h])=>[c,Math.max(32,h)]),
- s.enemies.map(c=>Math.max(6,Math.min(25,c+(i%2?-1:1)))),
- s.mushroom,
- i%2===0?'flower':'mushroom',
- [...s.specialEnemies, ...(i===2?[[14,'turtle']]:[])],
- 48+(i%3)*8
-)));
+const vault=(name,gaps,bricks,pipes,enemies,mushroom,pillars=[],ceilingGaps=[])=>Object.freeze({
+ ...scene(name,gaps,bricks,pipes,enemies,mushroom,'mushroom',enemies.slice(0,1).map(c=>[c,'turtle']),64),
+ pillars,ceiling:Array.from({length:28},(_,c)=>c).filter(c=>!ceilingGaps.includes(c)).map(c=>[c,16,16]),
+});
+// Authored underground rooms: dark negative space, masonry ceiling cutouts,
+// stepped blue block piles, elevated coin shelves and green pipe chambers.
+export const TV_CAVERN_SCENES=Object.freeze([
+ vault('Entry block chamber',[20,21],[[12,72],[13,72],[14,72],[15,72]],[[24,32]],[10,18],11,[[5,16],[6,32],[7,48],[8,32],[9,16]],[11,12,13,14,15]),
+ vault('Ceiling arcade',[],[[7,72],[8,72],[9,72],[17,64],[18,64]],[[23,48]],[12,21],5,[[15,16],[16,32]],[6,7,8,9,10]),
+ vault('Twin chasms',[9,10,18,19],[[7,80],[12,72],[13,72],[16,64],[21,80]],[[24,32]],[14,25],5,[[15,16]],[11,12,13]),
+ vault('Brick stair vault',[],[[12,64],[13,64],[14,64]],[[23,32]],[15,25],5,[[6,16],[7,32],[8,48],[9,64]],[6,7,8,9,10,11]),
+ vault('Green pipe hall',[],[[9,64],[10,64],[18,64]],[[6,32],[14,48],[23,32]],[11,20],8,[],[13,14,15]),
+ vault('Upper coin shelf',[12,13],[[6,72],[7,72],[8,72],[15,64],[16,64],[17,64],[18,64]],[[24,48]],[10,22],5,[],[14,15,16,17,18,19]),
+ vault('Masonry galleries',[],[[6,72],[7,72],[8,72],[9,72],[17,72],[18,72],[19,72],[20,72]],[[24,32]],[12,22],5,[],[16,17,18,19,20]),
+ vault('Long cavern leap',[11,12,13,14],[[7,72],[8,72],[17,72],[18,72]],[[23,32]],[6,21],5,[[9,16],[16,16]],[10,11,12,13,14,15]),
+ vault('Low pipe room',[],[[7,72],[8,72],[15,64],[16,64]],[[12,32],[24,48]],[10,21],5,[[18,16],[19,32]],[14,15,16]),
+ vault('Islands below the vault',[8,9,13,14,18,19],[[7,72],[11,64],[16,64],[21,72]],[[24,32]],[5,25],4,[],[10,11,12,15,16,17]),
+ vault('Low ceiling passage',[],[[6,64],[7,64],[8,64],[9,64],[16,72],[17,72],[18,72]],[[23,32]],[12,21],5,[],[6,7,8,9]),
+ vault('Block mountain',[],[[14,64],[15,64],[16,64]],[[22,48]],[6,25],5,[[8,16],[9,32],[10,48],[11,64],[12,48]],[8,9,10,11,12,13]),
+ vault('Broken masonry bridge',[10,11,12,17,18],[[8,72],[13,72],[14,72],[15,72],[20,72]],[[24,32]],[6,22],5,[],[12,13,14,15,16]),
+ vault('Exit pipe approach',[],[[7,64],[8,64],[9,64],[15,72],[16,72]],[[23,64]],[12,25],5,[[18,16],[19,32],[20,48]],[18,19,20,21,22,23]),
+]);
 export function tvSceneIndex(section,seed){
  if(section===0)return 0;
  // Seeded bags include each variation once, instead of repeating a fixed scene.

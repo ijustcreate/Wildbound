@@ -18,6 +18,7 @@ test('Guests can safely leave before an outside closure expires and owner reentr
 test('Portal swirl and square particles move with bounded deterministic geometry and collapse safely',()=>{
  const d={x:0,y:0,color:'#22bb99',closing:null},a=portalVisualSample(d,0),b=portalVisualSample(d,.5);
  assert.equal(a.particles.length,PORTAL_PARTICLE_COUNT);assert.equal(a.spiral.length,108);assert.equal(a.rim.length,64);assert.notDeepEqual(a.spiral,b.spiral);assert.notDeepEqual(a.particles,b.particles);
- for(const t of [0,.5,1e6,NaN])for(const c of [null,10,0,-1]){const v=portalVisualSample({...d,closing:c},t);for(const p of [...v.rim,...v.spiral,...v.particles])assert.ok(Number.isInteger(p.x)&&Number.isInteger(p.y)&&Math.abs(p.x)<30&&p.y>-60&&p.y<25);}
+ assert.ok(Math.min(...a.rim.map(p=>p.y))<=-68,'Portal reaches the requested character-height silhouette');
+ for(const t of [0,.5,1e6,NaN])for(const c of [null,10,0,-1]){const v=portalVisualSample({...d,closing:c},t);for(const p of [...v.rim,...v.spiral,...v.particles])assert.ok(Number.isInteger(p.x)&&Number.isInteger(p.y)&&Math.abs(p.x)<30&&p.y>-75&&p.y<25);}
  const calls=[],ctx={save(){},restore(){},translate(){},beginPath(){},ellipse(){},fill(){},fillRect(...r){calls.push(r);},fillText(s){calls.push(s);}};drawPortal(ctx,{...d,closing:7.4},1);assert.ok(calls.length<400);assert.ok(calls.includes('8s TO COLLAPSE'));assert.equal(ctx.shadowBlur,0);assert.equal(ctx.globalAlpha,1);
 });

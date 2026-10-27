@@ -1,4 +1,9 @@
 import {vegetationBlocked} from './house-surfaces.mjs';
+import {setTreeFallDirection,treeFallVector,applyTreeFall} from './tree-fall.mjs';
+import {vegetationWindStrength} from './vegetation-motion.mjs';
+import {drawJungleFern} from './fern-art.mjs';
+import {drawForestAsset} from './forest-props.mjs';
+import {meadowAllowed} from './pixel-meadow.mjs';
 import {realmTree,realmHarvestable,realmAsset,tickRealmHazards,realmTerrainAt} from './realm-world.mjs';
 import {swampSurface} from './swamp-terrain.mjs';
 import {drawRealmProp} from './realm-art.mjs';
@@ -98,7 +103,7 @@ export function harvest(g, p, damage, range, onHit) {
     s.maxHarvest ||= Math.round(s.size * 0.85);
     if (s.harvest >= s.maxHarvest) {
       s.falling = 0.001;
-      s.fallDirection = p.faceX < 0 ? -1 : 1;
+      setTreeFallDirection(s,b.x-p.x,b.y-p.y);
       s.logCount = Math.max(2, Math.round(s.size / 32));
       if (s.kind === "palm") s.coconuts ??= Math.floor(terrainHash(s.x, s.y) * 4);
     }
@@ -148,8 +153,8 @@ export function tickEnvironment(g, dt) {
         s.depleted = true;
         const b = propBase(s);
         g.dropLoot(
-          b.x + s.fallDirection * s.size * 0.35,
-          b.y,
+          b.x + treeFallVector(s).x * s.size * 0.35,
+          b.y + treeFallVector(s).y * s.size * 0.35,
           "log",
           s.logCount || 2,
           "Felled tree",
@@ -260,6 +265,11 @@ export function drawTracks(c, g) {
   }
 }
 export function drawProp(c, p, time,game={},renderOptions={}) {
+  // Boundless entrances and player-built floors can replace terrain after the
+  // decoration was generated. Reuse the live grass mask instead of painting
+  // mushrooms/reeds over the newly carved paving.
+  if(p.kind==='forest_understory'&&(vegetationBlocked(game,p.x,p.rootY??p.y,8)||game.forestLandscape&&!meadowAllowed(game,p.x,p.rootY??p.y,8)))return true;
+  if((game.generatedEnvironment||game.environment)==='forest'&&!p.depleted&&!p.destroyed&&drawForestAsset(c,p,time,game))return true;
   if(['short_grass','tall_grass','grass'].includes(p.kind)&&vegetationBlocked(game,p.x,p.rootY??p.y+p.size*.4,Math.max(6,(p.size||20)*.35)))return true;
   if(drawRealmProp(c,p,time,game,renderOptions))return true;
   if(renderOptions.shaderGrass&&p.kind==='tall_grass'&&!p.charred)return true;
@@ -267,11 +277,14 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
   if(drawGraveyardProp(c,p,time,game))return true;
   if(drawBiomeProp(c,p,time,game,renderOptions))return true;
   if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
-  if(p.procedural&&['tree','snow_tree','palm'].includes(p.kind)){
+  if(p.procedural&&['tree','snow_tree','palm','leafless_tree'].includes(p.kind)){
     if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game);
     if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
   }
-  if(p.kind==='bush'){drawBush(c,p,time,renderOptions);return true;}
+  if(p.kind==='bush'){drawBush(c,p,time,{...renderOptions,windStrength:vegetationWindStrength(game)});return true;}
+  if(p.procedural&&p.kind==='fern'&&(game.generatedEnvironment||game.environment)==='forest'){
+    c.save();const base=propBase(p);c.translate(base.x,base.y);c.scale(p.size/48,p.size/48);drawJungleFern(c,{...p,x:0,y:0},time,vegetationWindStrength(game));c.restore();return true;
+  }
   if(drawIceProp(c,p,time))return true;
   if (!p.procedural) return false;
   const base = propBase(p),
@@ -290,9 +303,7 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
     return true;
   }
   if (p.falling) {
-    c.rotate(
-      ((p.fallDirection || 1) * Math.min(1, p.falling / 1.1) * Math.PI) / 2,
-    );
+    applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);
     c.globalAlpha *= Math.max(0, 1 - Math.max(0, p.falling - 1) * 2);
   }
   const r = (x, y, w, h, color) => {

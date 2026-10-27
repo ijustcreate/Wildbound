@@ -60,7 +60,13 @@ export function naturalBoundlessTile(g,tx,ty){
  if(biome==='graveyard')return wet>.52?'mud':'grass';
  if(biome==='house')return 'grass';
  // Continue the original pair of forest rivers into negative and distant rows.
- for(const side of [0,1]){const center=(side?38:11)+Math.sin(ty*.19+seed*.013+side)*2,dx=Math.abs(mod(tx,50)-Math.round(center));if(dx<=1)return mod(ty-7,16)<3?'bridge':'water';if(dx<=2)return 'shallow';}
+ for(const side of [0,1]){
+  const region=Math.floor(tx/50),away=region?1:Math.max(0,Math.min(1,(Math.abs(ty-24.5)-24.5)/32));
+  const bend=(noise(ty/85,region*.47,seed+side*31)-.5)*8*away;
+  const center=region*50+(side?38:11)+Math.sin(ty*.19+seed*.013+side)*2+bend,dx=Math.abs(tx-Math.round(center)),crossing=mod(ty-7,16)<3;
+  // A deck spans both shallow banks and meets dry ground, not just the core.
+  if(dx<=2&&crossing)return 'bridge';if(dx<=1)return 'water';if(dx<=2)return 'shallow';
+ }
  return 'grass';
 }
 // Neighboring regions compute exactly the same shared edge portal, independent
@@ -137,7 +143,7 @@ export function* boundlessRegionPlanTask(g,cx,cy){
  c.plans.set(key,plan);return plan;
 }
 export function boundlessGeneratedTile(g,tx,ty){const p=boundlessRegionPlan(g,Math.floor(tx/50),Math.floor(ty/50));return p.terrain[mod(ty,50)*50+mod(tx,50)];}
-export function boundlessPavingAt(g,tx,ty){const c=cacheFor(g);c.paving||=makePaving(g.seed||0);return c.paving.cells[mod(ty,24)*24+mod(tx,24)];}
+export function boundlessPavingAt(g,tx,ty){if(boundlessMap(g)==='forest'){const v=hash(tx+(g.seed||0)*.13,ty+71),cluster=noise(tx/5,ty/5,(g.seed||0)+819);return cluster<.42||v<.45?0:v>.87?2:1;}const c=cacheFor(g);c.paving||=makePaving(g.seed||0);return c.paving.cells[mod(ty,24)*24+mod(tx,24)];}
 export function translateRegionProps(plan){
  const ox=plan.cx*REGION_SIZE+plan.featureOffset.x,oy=plan.cy*REGION_SIZE+plan.featureOffset.y,prefix=`boundless:${plan.cx}:${plan.cy}:`,props=[];
  const translateRect=r=>({...r,x:r.x+ox,y:r.y+oy});

@@ -189,6 +189,9 @@ app.whenReady().then(async () => {
   const houseDesignPath = path.join(app.getPath('userData'),'house-designs-v1.json');
   ipcMain.handle('house-designs-load',()=>store.read(houseDesignPath,'house'));
   ipcMain.handle('house-designs-save',(_e,data)=>store.write(houseDesignPath,data,'house'));
+  const locationDesignPath=path.join(app.getPath('userData'),'location-designs-v1.json');
+  ipcMain.handle('location-designs-load',()=>store.read(locationDesignPath,'locations'));
+  ipcMain.handle('location-designs-save',(_e,data)=>store.write(locationDesignPath,data,'locations'));
   const { RoomTransport } = require("./network.cjs");
   const room = new RoomTransport((data) => {
     if (!window.isDestroyed()) window.webContents.send("room-event", data);

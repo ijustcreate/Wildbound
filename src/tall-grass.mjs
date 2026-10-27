@@ -1,6 +1,14 @@
 import {vegetationBlocked} from './house-surfaces.mjs';
 import {forestHash,forestNoise,routeDistance,clearingDistance} from './forest-landscape.mjs';
 import {nearbyScenery} from './performance.mjs';
+import {spawnParticleEffect} from './particles.mjs';
+export function grassRootBurned(p,x,y){return (p.grassBurnMarks||[]).some(m=>Math.hypot(x-m.x,y-m.y)<m.radius);}
+export function drawGrassBurnMarks(c,p){
+ for(const m of p.grassBurnMarks||[])for(let i=0;i<12;i++){
+  const angle=forestHash(i,m.x+m.y)*Math.PI*2,r=Math.sqrt(forestHash(m.y,i))*m.radius;
+  c.fillStyle=i%3?'#393b2bee':'#17251eaa';c.fillRect(Math.round(m.x+Math.cos(angle)*r),Math.round(m.y+Math.sin(angle)*r*.7),2+i%2,1+i%2);
+ }
+}
 
 const grassKinds=new Set(['tall_grass','short_grass']);
 const palettes={
@@ -83,6 +91,7 @@ function playerBend(p,game){
 
 function drawGrassTuft(c,p,time,short,palette,game){
  if(p.cut&&!p.charred)return;
+ drawGrassBurnMarks(c,p);
  const seed=Number.isFinite(p.tuftSeed)?p.tuftSeed:Math.floor(forestHash(p.x,p.y)*0x7fffffff);
  const root=p.rootY??p.y+p.size*.4,scale=p.size/(short?32:80);
  const tick=Math.floor(time*8),phase=forestHash(seed,19)*Math.PI*2;
@@ -90,7 +99,7 @@ function drawGrassTuft(c,p,time,short,palette,game){
  const bend=playerBend(p,game);
  c.save();c.translate(Math.round(p.x),Math.round(root));c.scale(scale,scale);
  if(p.charred){
-  c.fillStyle='#17251eaa';c.fillRect(-37,1,74,7);c.fillStyle='#433d32';
+  c.fillStyle='#433d32';
   for(let i=0;i<24;i++){const ox=Math.floor(forestHash(seed,i)*72)-36;c.fillRect(ox,Math.floor(forestHash(i,seed)*7),2+Math.floor(forestHash(i+1,seed)*5),1+Math.floor(forestHash(seed+3,i)*2));}
   if(p.grassSizzle>0){for(let i=0;i<3;i++){const rise=(1-p.grassSizzle/.72)*9+i*2;c.fillStyle=i%2?'#ffab45':'#ffe08b';c.fillRect(-5+i*5+Math.floor(Math.sin(time*27+i+seed)*2),-rise,2,2);}}
   c.restore();return;
@@ -104,6 +113,7 @@ function drawGrassTuft(c,p,time,short,palette,game){
  const blades=short?7:76;
  for(let i=0;i<blades;i++){
   const u=forestHash(seed,i),center=Math.round((u-.5)*(short?27:72));
+  if(grassRootBurned(p,p.x+center*scale,root))continue;
   const h=short?4+Math.floor(forestHash(i,seed)*5):16+Math.floor(forestHash(seed,i+91)*25);
   const width=short?1+Math.floor(forestHash(seed+4,i)*2):2+Math.floor(forestHash(i+9,seed)*3);
   const sway=short?0:Math.round(wind*(1.4+u*3)+bend.x*4),shadeIndex=Math.min(3,Math.floor(forestHash(Math.floor(i/5),seed+31)*4));
@@ -131,12 +141,13 @@ export function drawGrassProp(c,p,time,environment,game){
  if(p.kind==='short_grass'||p.charred){
   drawGrassTuft(c,p,time,p.kind==='short_grass',grassPalette(p,environment),game);return true;
  }
- if(p.cut)return true;
+ if(p.cut){drawGrassTuft(c,{...p,cut:false,rootY:p.rootY??p.y+p.size*.4,size:p.size*.45},time,true,grassPalette(p,environment),game);return true;}
+ drawGrassBurnMarks(c,p);
  if(typeof document==='undefined'){
   c.save();c.translate(p.x,p.rootY??p.y+p.size*.4);c.scale(p.size/80,p.size/80);
   paintGrassPatch(c,p,grassPalette(p,environment));c.restore();return true;
  }
- const signature=[p.grassPalette,p.grassTint,p.grassShade,p.tuftSeed,environment].join('|');
+ const signature=[p.grassPalette,p.grassTint,p.grassShade,p.tuftSeed,environment,p.grassBurnRevision||0].join('|');
  let entry=grassSprites.get(p);
  if(!entry||entry.signature!==signature){
   const sprite=document.createElement('canvas');sprite.width=88;sprite.height=48;
@@ -161,6 +172,8 @@ function paintGrassPatch(c,p,palette){
  for(let row=0;row<2;row++)for(let blade=0;blade<13;blade++){
   const n=row*13+blade,root=-30+blade*4.8+Math.floor(forestHash(seed,n)*3);
   const base=-3+row*6+Math.floor(forestHash(n,seed+9)*3);
+  const scale=p.size/80;
+  if(grassRootBurned(p,p.x+root*scale,(p.rootY??p.y+p.size*.4)+base*scale))continue;
   const height=8+Math.floor(forestHash(seed+4,n)*12);
   const lean=(blade%2?-1:1)*(5+forestHash(seed+13,n)*6);
   for(let step=0;step<16;step++){
@@ -179,7 +192,20 @@ export function burnTallGrass(p,time=.6,depth=0){
  return true;
 }
 
-export function igniteTallGrassAt(g,x,y){
+export function igniteTallGrassAt(g,x,y,{trail=false}={}){
+ if(trail){
+  let changed=false;
+  for(const p of nearbyScenery(g.scenery||[],x,y,64)){
+   if(p.kind!=='tall_grass'||p.charred)continue;
+   const root=p.rootY??p.y+p.size*.4,s=p.size/80;
+   if(((x-p.x)/Math.max(10,40*s))**2+((y-root)/Math.max(8,13*s))**2>1.25)continue;
+   const marks=p.grassBurnMarks||=[];
+   if(marks.some(m=>Math.hypot(m.x-x,m.y-y)<6)||marks.length>=16)continue;
+   marks.push({x,y,radius:9});p.grassBurnRevision=(p.grassBurnRevision||0)+1;changed=true;
+  }
+  if(changed){spawnParticleEffect(g,'cinder-trail',x,y,Math.floor(x+y));g.grassBurnDirty=true;}
+  return changed;
+ }
  const target=nearbyScenery(g.scenery||[],x,y,64).filter(p=>p.kind==='tall_grass'&&!p.charred&&Math.hypot(p.x-x,(p.rootY??p.y+p.size*.4)-y)<Math.max(18,p.size*.55))
   .sort((a,b)=>Math.hypot(a.x-x,(a.rootY??a.y+a.size*.4)-y)-Math.hypot(b.x-x,(b.rootY??b.y+b.size*.4)-y))[0];
  const burned=burnTallGrass(target);if(burned)g.persist?.();return burned;
@@ -200,6 +226,7 @@ export function strikeTallGrass(g,p,range,{blade=false,fire=false}={}){
 }
 
 export function tickTallGrass(g,dt){
+ if(g.grassBurnDirty){g.grassBurnSaveIn=(g.grassBurnSaveIn||0)+dt;if(g.grassBurnSaveIn>=.3){g.grassBurnDirty=false;g.grassBurnSaveIn=0;g.persist?.();}}
  const patches=(g.scenery||[]).filter(p=>p.kind==='tall_grass'),active=patches.filter(p=>p.grassFire>0);let spread=false;
  for(const p of active){
   p.grassFire=Math.max(0,p.grassFire-dt);p.grassSizzle=Math.max(0,(p.grassSizzle||0)-dt);

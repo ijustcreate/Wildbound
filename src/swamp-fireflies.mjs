@@ -1,3 +1,5 @@
+import {perchReleasedCritter} from './broom-pets.mjs';
+import {drawFireflyRig} from './firefly-motion.mjs';
 // Small nocturnal wildlife, not another world-light/shadow system.
 import {realmTerrainAt,realmContexts,realmHash,realmVoidBlocked,realmFootprint} from './realm-world.mjs';
 import {timeOfDay,sightRadius} from './night-cycle.mjs';
@@ -34,6 +36,7 @@ export function seedMarshFireflies(g){
   s.fireflyHabitatVersion=1;
 }
 export function tickMarshFirefly(g,a,dt){
+  if(perchReleasedCritter(g,a))return;
   a.moving=false;if(!firefliesAwake(g))return;
   const t=(g.time||0)+(a.phase||0),owner=a.releasedOwner!=null?g.players?.find(p=>p.id===a.releasedOwner&&p.hp>0&&!p.room):null;
   const goal=owner&&marshFireflyHabitat(g,owner.x,owner.y)?owner:{x:a.homeX,y:a.homeY};
@@ -41,12 +44,7 @@ export function tickMarshFirefly(g,a,dt){
   const x=a.x+dx/len*step,y=a.y+dy/len*step;
   if(marshFireflyHabitat(g,x,y)){a.x=x;a.y=y;a.faceX=dx/len;a.faceY=dy/len;a.moving=step>.01;}
 }
-let halo;
-export function drawMarshFirefly(c,a,time=0){
-  if(!halo){halo=document.createElement('canvas');halo.width=halo.height=18;const p=halo.getContext('2d'),gradient=p.createRadialGradient(9,9,0,9,9,9);gradient.addColorStop(0,'#d9ed894f');gradient.addColorStop(.3,'#bdd96e25');gradient.addColorStop(1,'#bdd96e00');p.fillStyle=gradient;p.fillRect(0,0,18,18);}
-  const x=Math.round(a.x),y=Math.round(a.y-7+Math.sin(time*2+(a.phase||0))*2),pulse=.6+.4*Math.sin(time*2.5+(a.phase||0))**2;
-  c.save();c.globalAlpha*=pulse;c.drawImage(halo,x-9,y-9);c.fillStyle='#eff3af';c.fillRect(x,y,2,2);c.fillStyle='#78946b';c.fillRect(x-1,y-1,1,1);c.restore();
-}
+export function drawMarshFirefly(c,a,time=0){if(a.broomPerched)return;c.save();c.translate(Math.round(a.x),Math.round(a.y));drawFireflyRig(c,a,time);c.restore();}
 // Small emissive pixels survive the night tint without punching holes in fog.
 // This pass is camera/visibility culled and adds ZERO world-light sources.
 export function drawMarshFireflyGlows(c,g,camera,w,h){

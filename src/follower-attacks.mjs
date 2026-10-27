@@ -29,6 +29,9 @@ function hitTarget(game,follower,owner,target,damage=follower.damage||9){
 
 /** Start the creature's own attack instead of applying the player's weapon. */
 export function startFollowerAttack(game,owner,follower,charge=0){
+ // Humanoid archers use the same bow, inventory ammunition, charge and aimed
+ // projectile path as their owner. The creature melee branch consumes input.
+ if(follower.kind==='archer'&&itemKind(owner.equipment?.hand1)==='bow')return false;
  if(follower.hp<=0||follower.frozen>0||follower.cooldown>0)return true;
  const rawX=Number.isFinite(owner.faceX)?owner.faceX:(follower.faceX??0),rawY=Number.isFinite(owner.faceY)?owner.faceY:(follower.faceY??1),faceLength=Math.hypot(rawX,rawY)||1;
  const aimX=rawX/faceLength,aimY=rawY/faceLength;

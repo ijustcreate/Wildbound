@@ -1,3 +1,4 @@
+import {ForestEditor} from './forest-editor.mjs';
 import {START_AREAS,START_AREA_LABELS,eventStartingAreas} from './starting-area.mjs';
 import {NpcQuestEditor} from './npc-quest-editor.mjs';
 import {MYSTERY_EVENTS} from './mysteries.mjs';
@@ -298,15 +299,10 @@ export class Designer {
     }
     if(this.tab==='Environments'){this.realmEditor ||= new RealmEditor(this.assets);const root=element('section');this.dialog.append(root);this.realmEditor.mount(root);this.shell();return;}
     if(this.tab==='Board'){this.boardEditor ||= new BoardEditor(this.events);const root=element('section');this.dialog.append(root);this.boardEditor.mount(root);this.shell();return;}
-    if(this.tab==='Forest'){
-      const root=element('section');root.style.padding='20px';root.append(element('h2','Procedural forest'));
-      root.append(element('p','Trees use seeded trunk, branch and foliage layers. Seasons and leaf habits apply live; save to retain them on this device.'));
-      this.field(root,'Season',forestSettings,'season',{options:['auto','summer','autumn','winter'],change:()=>{this.render();return true;}});
-      for(const type of TREE_TYPES)this.field(root,type+' leaf habit',forestSettings,type,{options:['deciduous','evergreen'],change:()=>{this.render();return true;}});
-      this.button(root,'Save forest settings',()=>{saveForestSettings();});
-      const canvas=element('canvas');canvas.width=900;canvas.height=300;canvas.style.width='100%';canvas.style.maxWidth='900px';const c=canvas.getContext('2d');c.fillStyle='#344c40';c.fillRect(0,0,900,300);
-      for(let i=0;i<9;i++)drawForestTree(c,{kind:'tree',treeType:TREE_TYPES[Math.floor(i/3)],x:50+i*100,y:190,size:110,procedural:true},0,{});
-      root.append(canvas);this.dialog.append(root);this.shell();return;
+    if(this.tab==='Forest'){this.forestEditor ||= new ForestEditor();const root=element('section');this.dialog.append(root);this.forestEditor.mount(root);this.shell();return;}
+    if(this.tab==='Worlds'){
+      this.worldEditor ||= new WorldEditor({openQuests:()=>{this.tab='NPC & quests';this.render();}});
+      const root=element('section');this.dialog.append(root);this.worldEditor.mount(root);this.shell();return;
     }
     if(this.tab==='Worlds'){
       this.worldEditor ||= new WorldEditor({openQuests:()=>{this.tab='NPC & quests';this.render();}});
