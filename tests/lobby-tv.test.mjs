@@ -248,3 +248,16 @@ test('two-player camera advances smoothly without reversing or snapping on input
  const tv=new LobbyTelevision(42);tv.join('one');tv.join('two');tv.spawnEnemies=()=>{};let last=0;
  for(let i=0;i<160;i++){for(const [id,p]of tv.players)Object.assign(p,{x:tv.camera+(id==='one'?150:65)+i*.1,y:40,vy:0,invulnerable:10});tv.step(1/60,{one:{right:i%2===0},two:{right:i%2===1}});assert.ok(tv.camera>=last);assert.ok(tv.camera-last<9,'bounded camera displacement');last=tv.camera;}
 });
+
+test('level-two respawns stay in clear main-floor space beneath the roof',()=>{
+ const tv=new LobbyTelevision(42);tv.level=2;tv.join('one');const p=tv.players.get('one');tv.camera=112;tv.spawnPlayer(p);assert.ok(p.y>=72,'respawn below upper ceiling');assert.equal(tv.blocks(p.x,p.x+p.w).some(b=>p.x<b.x+b.w&&p.x+p.w>b.x&&p.y<b.y+b.h&&p.y+p.h>b.y),false);tv.die(p);tv.spawnEnemies=()=>{};for(let i=0;i<24;i++)tv.step(.05,{});assert.ok(p.alive);assert.ok(p.y>=72);
+});
+test('cavern roof blocks can be punched from below and stay broken',()=>{
+ const tv=new LobbyTelevision(42);tv.level=2;tv.join('one');const b=tv.blocks(0,448).find(b=>b.kind==='ceiling'),p=tv.players.get('one');Object.assign(p,{x:b.x+2,y:b.y+b.h+1,vy:-180,grounded:false});tv.move(p,.03,true);assert.ok(tv.broken.has(b.key));assert.equal(tv.blocks(b.x,b.x+16).some(o=>o.key===b.key),false);assert.equal(tv.particles.length,8);
+});
+test('ground enemies collide with cavern masonry from either side',()=>{
+ for(const direction of[-1,1]){const tv=new LobbyTelevision(42);tv.level=2;tv.join('one');tv.spawnEnemies=()=>{};const b=tv.blocks(0,448).find(b=>b.kind==='hill'),e={x:direction>0?b.x-15:b.x+b.w+2,y:b.y+3,w:13,h:12,vx:direction*60,vy:0,alive:true,kind:'goomba'};tv.enemies.set('wall-walker',e);for(let i=0;i<3;i++)tv.step(.05,{});assert.equal(Math.sign(e.vx),-direction);assert.ok(direction>0?e.x+e.w<=b.x:e.x>=b.x+b.w);}
+});
+test('sliding shells break side-hit bricks, roofs and individual masonry tiles, then ricochet',()=>{
+ for(const kind of['brick','ceiling','hill']){const tv=new LobbyTelevision(42);tv.level=2;tv.join('one');tv.spawnEnemies=()=>{};const b=tv.blocks(0,448).filter(b=>b.kind===kind).at(-1),shell={x:b.x+b.w+2,y:b.y+3,w:14,h:9,vx:-148,vy:0,alive:true,kind:'shell',safeTimer:0};tv.camera=Math.max(0,b.x-100);tv.enemies.set('breaker',shell);tv.step(.05,{});assert.ok(tv.broken.has(b.key),kind+' breaks');assert.ok(shell.vx>0,kind+' bounces');assert.equal(tv.blocks(b.x,b.x+16).some(o=>o.key===b.key),false);}
+});

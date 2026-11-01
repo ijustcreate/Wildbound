@@ -11,9 +11,9 @@ When no saved explorer is available, the chooser shows a grey question-mark char
 | Edition | Play |
 | --- | --- |
 | Version chooser | [Choose an adventure](https://ijustcreate.github.io/Wildbound/) |
-| Latest web build · 1.2.88 | [Play latest](https://ijustcreate.github.io/Wildbound/latest/) |
+| Latest web build · 1.2.89 | [Play latest](https://ijustcreate.github.io/Wildbound/latest/) |
 | Original web build · preserved project beginnings | [Play original](https://ijustcreate.github.io/Wildbound/original/) |
-| Permanent current snapshot | [Play 1.2.88](https://ijustcreate.github.io/Wildbound/releases/1.2.88/) |
+| Permanent current snapshot | [Play 1.2.89](https://ijustcreate.github.io/Wildbound/releases/1.2.89/) |
 | Previous modern snapshot | [Play 1.2.55](https://ijustcreate.github.io/Wildbound/releases/1.2.55/) |
 | Earlier archived update | [Play 1.0.74](https://ijustcreate.github.io/Wildbound/releases/1.0.74/) |
 

@@ -29,7 +29,7 @@
 #lobby .expedition-menu .expedition-starting{position:absolute;left:12%;width:77%;top:48.5%;height:35.5%;transition:opacity .2s,clip-path .35s;clip-path:inset(0);display:grid;grid-template-rows:12% minmax(0,1fr) 23%;gap:1.5%;}
 #lobby .expedition-menu.is-wildbound .expedition-starting{opacity:0;clip-path:inset(0 0 100%);pointer-events:none;}
 #lobby .expedition-menu h3.expedition-map-heading{margin:0 auto;width:63%;height:100%;display:flex;align-items:center;justify-content:center;background:url('../assets/ui/expedition/ribbon-v1.png') center/100% 100% no-repeat;font:700 4.4cqw Georgia;color:#2a170b!important;}
-#lobby .expedition-menu .expedition-map-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:2%;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d2a54c #493019;padding:1.5%;box-sizing:border-box;border:2px solid #7c481b;border-radius:5px;background:#ac662d22;}
+#lobby .expedition-menu .expedition-map-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:2%;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d2a54c #493019;padding:1.5%;box-sizing:border-box;border:2px solid #7c481b;border-radius:5px;background:#ac662d22;}
 #lobby .expedition-menu .expedition-map-list::-webkit-scrollbar{width:1.2cqw;height:1.2cqw}
 #lobby .expedition-menu .expedition-map-list::-webkit-scrollbar-track{background:#493019;border-radius:4px}
 #lobby .expedition-menu .expedition-map-list::-webkit-scrollbar-thumb{background:#d2a54c;border:1px solid #68421a;border-radius:4px}
@@ -49,3 +49,5 @@
 
 /* Expedition belongs to its player; keep the shared lobby visible and live. */
 #lobby .lobby-player-panel.expedition-menu{z-index:1;}
+
+#lobby .expedition-menu button.expedition-map{height:auto;aspect-ratio:1;align-self:center;max-height:100%;}

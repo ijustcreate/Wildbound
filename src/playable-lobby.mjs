@@ -358,8 +358,10 @@ export class PlayableLobby {
   setWildboundMode(enabled){
     const g=this.getGame();g.houseWorldsEnabled=enabled;localStorage.setItem('wildbound-mode',enabled?'on':'off');
     if(enabled){const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value='house';env.dispatchEvent(new Event('change'));mode.value='bounded';mode.dispatchEvent(new Event('change'));}
+    if(g.phase==='lobby'){g.environment=enabled?'house':document.getElementById('environment').value;g.generatedEnvironment=g.environment;g.mapMode=enabled?'bounded':document.getElementById('map-mode').value;}
     this.state.invalidate(g.players);
   }
+  mapPreviewEnvironment(){return [...this.nodes.values()].find(panel=>panel.classList.contains('expedition-menu'))?.dataset.mapPreview||(this.getGame().houseWorldsEnabled?'house':document.getElementById('environment').value);}
   refreshMapMenus(){for(const p of this.getGame().players)if(this.state.members.get(p.id)?.panel==='environment')this.renderPanel(p);}
   available(p){return this.profiles.data.heroes.filter(h=>!this.getGame().players.some(q=>q!==p&&q.profileId===h.id));}
   renderPanel(p){
@@ -418,7 +420,7 @@ export class PlayableLobby {
       button(p.ready?'Cancel readiness':'Ready',()=>{p.ready=!p.ready;this.close(p);});
       button('Not yet',()=>this.close(p));
     }else if(s.panel==='environment'){
-      buildExpeditionMenu({panel,member:s,game:this.getGame(),select:document.getElementById('environment'),mode:document.getElementById('map-mode'),details:MAP_DETAILS,tooltip:b=>this.mapTooltip(panel,b),drawIcon:(...args)=>this.drawMapIcon(...args),highlight:()=>{if(panel.isConnected)this.highlight(p);},close:()=>this.close(p),accept:draft=>{
+      buildExpeditionMenu({panel,member:s,game:this.getGame(),select:document.getElementById('environment'),mode:document.getElementById('map-mode'),onModeChange:enabled=>this.setWildboundMode(enabled),details:MAP_DETAILS,tooltip:b=>this.mapTooltip(panel,b),drawIcon:(...args)=>this.drawMapIcon(...args),highlight:()=>{if(panel.isConnected)this.highlight(p);},close:()=>this.close(p),accept:draft=>{
         this.setWildboundMode(draft.wild);
         const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value=draft.wild?'house':draft.map;mode.value=draft.boundless&&!draft.wild?'boundless':'bounded';
         for(const input of [env,mode])input.dispatchEvent(new Event('change'));
@@ -801,8 +803,7 @@ export class PlayableLobby {
       const o=entry.object;
       if(['board','starter-chest'].includes(o.id))drawLobbyCastShadow(c,o.x,o.y+12,112,22);
       if(o.id==='environment'){
-        const draftMap=[...this.nodes.values()].find(panel=>panel.classList.contains('expedition-menu'))?.dataset.mapPreview;
-        drawLobbyMapTable(c,o,draftMap||(this.getGame().houseWorldsEnabled?'house':document.getElementById('environment').value));
+        drawLobbyMapTable(c,o,this.mapPreviewEnvironment());
       }else if(o.id==='difficulty'){
         drawLobbyDifficultyTotem(c,o,document.getElementById('difficulty').value);
       }else if(o.id==='dice-count'){
@@ -818,7 +819,7 @@ export class PlayableLobby {
       }else if(o.id==='character-station'){
         drawLobbyExplorerStation(c,o);
       }else{
-        drawLobbyBoard(c,this.practice.time);
+        drawLobbyBoard(c,this.practice.time,this.mapPreviewEnvironment());
       }
       if(lobbyObjectNearby(o,this.getGame().players,this.state.members,this.television.controllers)){
         const y=lobbyLabelY(o);this.label(o.name,o.x,y,15,'#f4efdc',650);

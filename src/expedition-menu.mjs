@@ -1,8 +1,9 @@
 // Illustrated skins are generated from the user's Expedition reference.
 // Real controls own selection, focus and the transaction; artwork owns chrome.
-export function buildExpeditionMenu({panel,member,game,select,mode,drawIcon,accept,close,highlight,details,tooltip}){
+export function buildExpeditionMenu({panel,member,game,select,mode,drawIcon,accept,close,highlight,details,tooltip,onModeChange=()=>{}}){
  panel.replaceChildren();panel.classList.add('expedition-menu');panel.setAttribute('aria-label','Expedition · Choose Your Adventure');
  const draft=member.expeditionDraft||={wild:!!game.houseWorldsEnabled,boundless:mode.value==='boundless',map:select.value};
+ if(!draft.wild&&draft.map==='house'){draft.map='forest';select.value=draft.map;select.dispatchEvent(new Event('change',{bubbles:true}));}
  const node=(tag,cls,text,parent=panel)=>{const n=document.createElement(tag);n.className=cls;if(text)n.textContent=text;parent.append(n);return n;};
  for(const [kind,file]of [['unrolled','frame-unrolled-v1.png'],['rolled','frame-rolled-v2.png']]){const img=node('img','expedition-skin '+kind);img.src=new URL('../assets/ui/expedition/'+file,import.meta.url).href;img.alt='';img.draggable=false;}
  node('h2','expedition-heading','Choose Your Adventure');
@@ -12,15 +13,15 @@ export function buildExpeditionMenu({panel,member,game,select,mode,drawIcon,acce
  node('div','expedition-adventure-label','Adventure Mode');
  const icon=(button,id)=>{const c=node('canvas','expedition-icon',null,button);c.width=c.height=64;drawIcon(c.getContext('2d'),id,0,0,64);return c;};
  const copy=(button,title,desc)=>{const wrap=node('span','expedition-copy',null,button);node('strong','',title,wrap);if(desc)node('small','',desc,wrap);};
- const wild=btn('expedition-mode expedition-wild wildbound-mode-choice','Wildbound · A connected, evolving world',()=>{draft.wild=true;draft.boundless=false;update();});icon(wild,'forest');copy(wild,'Wildbound','A connected, evolving world');
- const classic=btn('expedition-mode expedition-classic','Classic · A single destination',()=>{draft.wild=false;update();});
+ const wild=btn('expedition-mode expedition-wild wildbound-mode-choice','Wildbound · A connected, evolving world',()=>{draft.wild=true;draft.boundless=false;onModeChange(true);update();});icon(wild,'forest');copy(wild,'Wildbound','A connected, evolving world');
+ const classic=btn('expedition-mode expedition-classic','Classic · A single destination',()=>{draft.wild=false;if(draft.map==='house')draft.map='forest';select.value=draft.map;select.dispatchEvent(new Event('change',{bubbles:true}));onModeChange(false);update();});
  const sign=node('img','expedition-sign',null,classic);sign.src=new URL('../assets/ui/expedition/classic-sign-v1.png',import.meta.url).href;sign.alt='';copy(classic,'Classic','A single destination');
  for(const b of [wild,classic])node('span','expedition-check','✓',b).setAttribute('aria-hidden','true');
- const toggle=btn('expedition-boundless map-mode-toggle','Boundless World',()=>{draft.boundless=!draft.boundless;if(draft.boundless)draft.wild=false;update();});toggle.setAttribute('role','switch');copy(toggle,'Boundless World','Explore without world boundaries.');node('i','expedition-switch',null,toggle).setAttribute('aria-hidden','true');const state=node('span','expedition-switch-state','Off',toggle);
+ const toggle=btn('expedition-boundless map-mode-toggle','Boundless World',()=>{draft.boundless=!draft.boundless;if(draft.boundless){draft.wild=false;if(draft.map==='house')draft.map='forest';select.value=draft.map;select.dispatchEvent(new Event('change',{bubbles:true}));onModeChange(false);}update();});toggle.setAttribute('role','switch');copy(toggle,'Boundless World','Explore without world boundaries.');node('i','expedition-switch',null,toggle).setAttribute('aria-hidden','true');const state=node('span','expedition-switch-state','Off',toggle);
  const starting=node('section','expedition-starting');starting.setAttribute('aria-label','Starting Map');node('h3','expedition-map-heading','Starting Map',starting);
  const list=node('div','expedition-map-list',null,starting);list.setAttribute('role','group');list.setAttribute('aria-label','Choose starting map');
  const preview=node('div','expedition-map-preview',null,starting),previewName=node('strong','expedition-map-name','',preview),previewDetail=node('span','expedition-map-detail','',preview);
- const options=[...select.options].sort((a,b)=>a.value==='random'?1:b.value==='random'?-1:0);
+ const options=[...select.options].filter(option=>option.value!=='house').sort((a,b)=>a.value==='random'?1:b.value==='random'?-1:0);
  const optionName=option=>option.value==='random'?'Random':option.text;
  const describe=option=>details?.[option.value]||(option.value==='random'?'Choose a surprise destination.':'Explore '+optionName(option)+'.');
  const revealMap=button=>{if(!button||!list.contains(button))return;const box=list.getBoundingClientRect(),row=button.getBoundingClientRect(),scale=list.offsetHeight?box.height/list.offsetHeight:1,top=box.top+(list.clientTop+3)*scale,bottom=box.top+(list.clientTop+list.clientHeight-3)*scale;if(row.bottom>bottom)list.scrollTop+=(row.bottom-bottom)/scale;else if(row.top<top)list.scrollTop-=(top-row.top)/scale;};

@@ -10,6 +10,7 @@ const COURSE_END=TV_SCENES_PER_LEVEL*TV_SECTION_TILES*TILE;
 const FLAG_X=COURSE_END+17*TILE,CASTLE_X=COURSE_END+23*TILE;
 const palette=['#e84a45','#4ac66c'];
 const FIREBALL_SPEED=155,DASH_SPEED=238,DASH_DURATION=.16,DASH_COOLDOWN=1.8;
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const overlap=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 function cavernBricks(g,x,y,w,h){
  g.fillStyle='#062e39';g.fillRect(x,y,w,h);
@@ -38,11 +39,14 @@ export class LobbyTelevision {
   leave(id,ground){const p=this.players.get(id);if(p&&this.controllers){const pad=this.controllers[p.slot];if(ground){pad.x=ground.x;pad.y=ground.y+8;}pad.owner=null;}this.players.delete(id);}
   reset(){for(const pad of this.controllers)pad.owner=null;this.players.clear();this.enemies.clear();this.fireballs=[];this.powerups.clear();this.broken.clear();this.released.clear();this.collected.clear();this.particles=[];this.camera=0;this.time=0;this.started=false;this.completed=false;this.score=0;this.coins=0;this.area='overworld';this.level=1;this.flagged.clear();this.finishTimer=0;this.stageNotice=0;this.returnState=null;this.pipeCooldown=0;}
   spawnPlayer(p){
-    const blocks=this.blocks(this.camera+16,this.camera+W-24);
-    const floor=blocks.find(b=>b.kind==='ground'&&b.x>=this.camera+20+p.slot*16)||blocks.find(b=>b.kind==='ground');
-    const x=floor?.x??this.camera+24;
-    const top=Math.min(GROUND,...blocks.filter(b=>x<b.x+b.w&&x+12>b.x).map(b=>b.y));
-    Object.assign(p,{x,y:top-p.h,vx:0,vy:0,alive:true,grounded:true,jumps:0,invulnerable:1});
+    const blocks=this.blocks(this.camera+8,this.camera+W-12),preferred=this.camera+32+p.slot*16;
+    // Choose a clear body rectangle on the play floor, never the minimum Y
+    // of every overlapping solid (which incorrectly selected cavern roofs).
+    const supports=blocks.filter(b=>b.kind==='ground').sort((a,b)=>Math.abs(a.x-preferred)-Math.abs(b.x-preferred));
+    let spawn=null;
+    for(const floor of supports){const body={x:clamp(floor.x+2,this.camera+4,this.camera+W-p.w-4),y:floor.y-p.h,w:p.w,h:p.h};if(!blocks.some(b=>overlap(body,b))){spawn=body;break;}}
+    if(!spawn)for(const floor of blocks.filter(b=>b.kind!=='ceiling'&&b.y>=GROUND-64).sort((a,b)=>b.y-a.y)){const body={x:floor.x+2,y:floor.y-p.h,w:p.w,h:p.h};if(body.x>=this.camera&&body.x+body.w<=this.camera+W&&!blocks.some(b=>overlap(body,b))){spawn=body;break;}}
+    Object.assign(p,{x:spawn?.x??preferred,y:spawn?.y??GROUND-p.h,vx:0,vy:0,alive:true,grounded:true,jumps:0,invulnerable:1,dashTime:0});
   }
   terrain(column){
     if(this.area==='underground')return 'ground';
@@ -78,7 +82,7 @@ export class LobbyTelevision {
       }
       if(c>5){
         const phase=c%TV_SECTION_TILES,scene=this.scene(Math.floor(c/TV_SECTION_TILES));
-        if(this.level===2){const roof=scene.ceiling?.find(([at])=>at===phase),pillar=scene.pillars?.find(([at])=>at===phase);if(roof)result.push({x:base,y:roof[1],w:TILE,h:roof[2],kind:'ceiling',key:'roof:'+c});if(pillar)result.push({x:base,y:GROUND-pillar[1],w:TILE,h:pillar[1],kind:'hill',key:'pillar:'+c});}
+        if(this.level===2){const roof=scene.ceiling?.find(([at])=>at===phase),pillar=scene.pillars?.find(([at])=>at===phase);if(roof)result.push({x:base,y:roof[1],w:TILE,h:roof[2],kind:'ceiling',key:'roof:'+c});if(pillar)for(let row=0;row<pillar[1]/TILE;row++)result.push({x:base,y:GROUND-(row+1)*TILE,w:TILE,h:TILE,kind:'hill',breakable:true,key:'pillar:'+c+':'+row});}
         const brick=scene.bricks.find(b=>b[0]===phase),pipe=scene.pipes.find(b=>b[0]===phase);
         if(brick&&!this.broken.has(c))result.push({x:base,y:brick[1],w:TILE,h:TILE,kind:'brick',key:c});
         if(phase===scene.mushroom)result.push({x:base,y:scene.questionY,w:TILE,h:TILE,kind:'question',key:`question:${Math.floor(c/TV_SECTION_TILES)}`,section:Math.floor(c/TV_SECTION_TILES)});
@@ -86,7 +90,7 @@ export class LobbyTelevision {
           result.push({x:base,y:GROUND-pipe[1],w:TILE,h:pipe[1],kind:'pipe',key:`p${c}`,entrance:true,coinWorld,coinCount:18+((section+index+(this.seed>>>1))%3)*6});}
       }
     }
-    return result;
+    return result.filter(b=>!this.broken.has(b.key));
   }
   spawnEnemies(){
     if(this.area==='underground')return;
@@ -201,7 +205,7 @@ export class LobbyTelevision {
         continue;
       }
       if(enemy.kind==='shell'){
-        const oldX=enemy.x,speed=enemy.vx;this.move(enemy,dt,false);
+        const oldX=enemy.x,speed=enemy.vx;this.move(enemy,dt,false,{breakSides:true});
         if(Math.abs(enemy.x-(oldX+speed*dt))>.01){enemy.vx=-speed;enemy.face=enemy.vx<0?-1:1;}
         if(enemy.y>H+24){enemy.alive=false;continue;}
         if(enemy.x<this.camera-20||enemy.x>this.camera+W+20){enemy.alive=false;continue;}
@@ -209,11 +213,8 @@ export class LobbyTelevision {
         for(const [id,p] of this.players)if(p.alive&&overlap(p,enemy)&&id!==enemy.kickedBy&&enemy.safeTimer<=0&&!p.invulnerable&&!p.dashInvulnerable)this.damagePlayer(p);
         enemy.safeTimer=Math.max(0,(enemy.safeTimer||0)-dt);continue;
       }
-      enemy.vy=Math.min(230,enemy.vy+460*dt);
-      const oldX=enemy.x;enemy.x+=enemy.vx*dt;
-      if(this.blocks(enemy.x,enemy.x+enemy.w).some(b=>b.kind==='pipe'&&overlap(enemy,b))){enemy.x=oldX;enemy.vx*=-1;}
-      const oldBottom=enemy.y+enemy.h;enemy.y+=enemy.vy*dt;
-      for(const b of this.blocks(enemy.x,enemy.x+enemy.w))if(overlap(enemy,b)&&oldBottom<=b.y+3&&enemy.vy>=0){enemy.y=b.y-enemy.h;enemy.vy=0;break;}
+      const oldX=enemy.x,speed=enemy.vx;this.move(enemy,dt,false);
+      if(Math.abs(enemy.x-(oldX+speed*dt))>.01){enemy.vx=-speed;enemy.face=enemy.vx<0?-1:1;}
       if(enemy.y>H+20)enemy.alive=false;
       for(const [id,p] of this.players)if(p.alive&&overlap(p,enemy)){
         if(p.vy>15&&p.y+p.h-enemy.y<10){if(enemy.kind==='turtle'){enemy.kind='shell';enemy.w=14;enemy.h=9;enemy.y+=3;enemy.vx=(p.face||1)*148;enemy.vy=0;enemy.kickedBy=id;enemy.safeTimer=.45;}else enemy.alive=false;p.vy=-125;this.score+=100;}
@@ -224,16 +225,17 @@ export class LobbyTelevision {
     if(this.area==='overworld'&&alive.length){const leader=Math.max(...alive.map(p=>p.x)),back=alive.reduce((a,b)=>a.x<b.x?a:b);const follow=this.flagged.size?Math.max(...[...this.players].filter(([id])=>this.flagged.has(id)).map(([,p])=>p.x))-145:Math.min(leader-100,back.x-24);const target=Math.min(COURSE_END+TV_SECTION_TILES*TILE-W,Math.max(this.camera,follow));if(alive.length===1||this.flagged.size||back.x>this.camera+32)this.camera+=Math.min(180*dt,(target-this.camera)*(1-Math.exp(-dt*12)));}
     for(const [key,e] of this.enemies)if(e.x<this.camera-180)this.enemies.delete(key);
   }
-  move(p,dt,breakBlocks){
+  move(p,dt,breakBlocks,{breakSides=false}={}){
     const oldX=p.x;p.x=Math.max(0,p.x+p.vx*dt);
     for(const b of this.blocks(Math.min(oldX,p.x),Math.max(oldX,p.x)+p.w))if(overlap(p,b)){
       if(p.vx>0)p.x=b.x-p.w;else if(p.vx<0)p.x=b.x+b.w;
+      if(breakSides&&(b.kind==='brick'||b.kind==='ceiling'||b.breakable))this.breakBrick(b);else if(breakSides&&b.kind==='question')this.released.add(b.section);
     }
     const oldTop=p.y,oldBottom=p.y+p.h;
     p.vy=Math.min(230,p.vy+460*dt);p.y+=p.vy*dt;p.grounded=false;
     for(const b of this.blocks(p.x,p.x+p.w))if(overlap(p,b)){
       if(p.vy>=0&&oldBottom<=b.y+3){p.y=b.y-p.h;p.vy=0;p.grounded=true;p.jumps=0;}
-      else if(p.vy<0&&oldTop>=b.y+b.h-3){p.y=b.y+b.h;p.vy=0;if(breakBlocks&&b.kind==='brick')this.breakBrick(b);else if(b.kind==='question')this.released.add(b.section);}
+      else if(p.vy<0&&oldTop>=b.y+b.h-3){p.y=b.y+b.h;p.vy=0;if(breakBlocks&&(b.kind==='brick'||b.kind==='ceiling'||b.breakable))this.breakBrick(b);else if(b.kind==='question')this.released.add(b.section);}
     }
   }
   damagePlayer(p){if(p.fire){p.fire=false;p.invulnerable=1.5;p.vy=-90;return;}if(p.powered){p.powered=false;p.x++;p.y+=4;p.w=12;p.h=16;p.invulnerable=1.5;p.vy=-90;}else this.die(p);}
