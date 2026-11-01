@@ -1,0 +1,42 @@
+{
+  "sourceUrl": "https://www.wowhead.com/npc=110393/observer#modelviewer",
+  "sourceNpc": "Observer (110393)",
+  "observedAt": "2026-10-11",
+  "observedAnimationLabels": [
+    "AttackUnarmed",
+    "ChannelCastDirected",
+    "CombatCritical",
+    "CombatWound",
+    "Death",
+    "DressingRoom",
+    "ReadySpellDirected",
+    "ReadySpellOmni",
+    "ReadyUnarmed",
+    "Run",
+    "SpellCastDirected",
+    "SpellCastOmni",
+    "Stand",
+    "Walk"
+  ],
+  "targetRig": "beholder",
+  "mapping": {
+    "Stand": "idle",
+    "Walk": "float",
+    "Run": "float",
+    "AttackUnarmed": "attack",
+    "ChannelCastDirected": "attack",
+    "ReadySpellDirected": "attack",
+    "ReadySpellOmni": "attack",
+    "SpellCastDirected": "attack",
+    "SpellCastOmni": "attack",
+    "CombatWound": "hurt",
+    "CombatCritical": "hurt",
+    "Death": "death",
+    "ReadyUnarmed": "idle"
+  },
+  "notes": [
+    "The Wildbound rig removes the donor's tentacle layout and uses six articulated eyestalks plus a central eye.",
+    "The model viewer animation list was verified, but a direct GLB/M2 export was not verified in the available viewer; clips are reauthored as native Wildbound pixel motion.",
+    "The Beholder eye-ray set is an original Wildbound adaptation inspired by the open D&D 5e-style eye-ray names and effects, not a copied rules implementation."
+  ]
+}
