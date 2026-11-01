@@ -1,6 +1,6 @@
 import {drawTenderCoal,coalClusters} from './train-coal.mjs';
 import {vehicleReflectionColors} from './car-art.mjs';
-import {TRAIN_PARTS,TRAIN_VIEWS,trainInterior,tenderLayout,trainDoorGeometry} from './train-design.mjs';
+import {TRAIN_PARTS,TRAIN_VIEWS,trainInterior,tenderLayout,trainDoorGeometry,trainSideDoorSpans} from './train-design.mjs';
 import {trainWorld} from './train-track.mjs';
 export const TRAIN_ART_SIZE={width:560,height:300,x:280,y:210};
 export const trainViewAngle=i=>Math.PI/2+i*Math.PI/4;
@@ -44,11 +44,11 @@ export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=f
 
   }else if(car.kind==='engine'){
    // Cab ends stay open at the footboards; doors match the boarding geometry.
-   for(const y of[-W/2+3,W/2-3]){p.wallBox(-L*.29,y,19,L*.34,6,18,P.body,true);p.wallBox(-L*.29,y,48,L*.34,5,5,P.lining);for(const x of[-L*.44,-L*.15])p.wallBox(x,y,36,6,6,28,P.body);p.windowPane(-L*.29,y,39,L*.24,10);}
+   for(const y of[-W/2+3,W/2-3]){const doorway=trainSideDoorSpans(car)[0],front=-L*.12,rear=doorway.max;p.wallBox((rear+front)/2,y,19,front-rear,6,18,P.body,true);p.wallBox((rear+front)/2,y,48,front-rear,5,5,P.lining);for(const x of[doorway.min-2,doorway.max+2,-L*.15])p.wallBox(x,y,36,4,6,28,P.body);p.windowPane((rear+front)/2,y,39,Math.max(12,front-rear-10),10);}
    p.wallBox(-L*.08,0,19,9,W-6,41,P.body,true);
   }else{
    const wallY=W/2-3;
-   for(const side of[-1,1]){p.wallBox(0,side*wallY,19,L-8,6,18,P.body,true);p.wallBox(0,side*wallY,57,L-7,6,7,P.body);for(let x=-L/2+31;x<L/2-20;x+=34){p.wallBox(x,side*wallY,37,4,6,20,P.body);p.windowPane(x+15,side*(wallY+.3),40,25,14);p.line([[x+3,side*(wallY+1),53],[x+22,side*(wallY+1),53]],'#d4e5ce',1.5);}p.line([[-L/2+8,side*(wallY+1),34],[L/2-8,side*(wallY+1),34]],P.lining,2);}
+   const doors=trainSideDoorSpans(car),middle=doors[1].min;for(const side of[-1,1]){p.wallBox(0,side*wallY,19,middle*2,6,18,P.body,true);p.wallBox(0,side*wallY,57,L-7,6,7,P.body);for(const end of[-1,1])p.wallBox(end*(L/2-4),side*wallY,19,6,6,38,P.body,true);for(let x=-middle+11;x<middle-27;x+=34){p.wallBox(x,side*wallY,37,4,6,20,P.body);p.windowPane(x+15,side*(wallY+.3),40,25,14);p.line([[x+3,side*(wallY+1),53],[x+22,side*(wallY+1),53]],'#d4e5ce',1.5);}p.line([[-middle,side*(wallY+1),34],[middle,side*(wallY+1),34]],P.lining,2);}
    // End wall door opening remains traversable between coaches.
    for(const x of[-L/2+4,L/2-4])for(const side of[-1,1])p.wallBox(x,side*(W/4+10),20,6,W/2-20,37,P.body,true);
   }

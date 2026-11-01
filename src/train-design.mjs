@@ -54,3 +54,8 @@ export function defaultRailwayScenery(){const out=[];for(let y=120;y<4300;y+=190
 export function tenderLayout(car){return{walkway:26,bunkerLength:Math.max(30,car.length-52),bunkerWidth:Math.max(28,car.width-52)};}
 
 export function trainDoorGeometry(o,open=false){return {...o,x:o.x+(open?o.w:0)};}
+
+// Exterior apertures shared by boarding, wall collision and the eight-view body art.
+export function trainSideDoorSpans(car){if(car.kind==='tender')return [];return (car.kind==='engine'?[-1]:[-1,1]).map(side=>({min:side<0?-car.length/2+7:car.length/2-38,max:side<0?-car.length/2+38:car.length/2-7}));}
+export function trainSideDoorway(car,x,radius=7){return trainSideDoorSpans(car).some(span=>x>=span.min+radius&&x<=span.max-radius);}
+export const trainSideWallHeight=car=>car.kind==='tender'?12:45;

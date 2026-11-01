@@ -1,3 +1,5 @@
+# Latest source: [1.2.93 train wall and whistle correction](history/2026-11-01-train-walls-whistle-1.2.93.md). Fixes premature exits and ordinary jumps/boarding through full-height walls; visible apertures and collision share geometry. Whistle is louder with wider outdoor range. Exact clean-source build/publication receipts are reported at delivery.
+
 # Latest source: [1.2.92 map generation and train traversal fixes](history/2026-11-01-mode-train-fixes-1.2.92.md). Repairs Wildbound House/Classic Forest generation, inventory camera carry, walk/jump exits, continuous gangways, sliding doors, compact prompts and larger naturally roaming station cats. Exact clean-source build/publication receipts are reported at delivery.
 
 # Latest source: [1.2.91 railway/world and inventory polish](history/2026-11-01-railway-world-polish-1.2.91.md). Includes the complete current train, forest/station, cocoa/clocks, jump preservation, 32-slot inventory, swimming/follower/collision and creature/campfire corrections. Exact clean-source build identities and final verification receipts are reported at delivery. Earlier entries below are historical.
