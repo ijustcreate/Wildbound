@@ -1,6 +1,6 @@
 import {drawTenderCoal,coalClusters} from './train-coal.mjs';
 import {vehicleReflectionColors} from './car-art.mjs';
-import {TRAIN_PARTS,TRAIN_VIEWS,trainInterior,tenderLayout} from './train-design.mjs';
+import {TRAIN_PARTS,TRAIN_VIEWS,trainInterior,tenderLayout,trainDoorGeometry} from './train-design.mjs';
 import {trainWorld} from './train-track.mjs';
 export const TRAIN_ART_SIZE={width:560,height:300,x:280,y:210};
 export const trainViewAngle=i=>Math.PI/2+i*Math.PI/4;
@@ -57,7 +57,7 @@ export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=f
   const cupIds=new Set(trainInterior(d,car).filter(q=>q.kind==='table').slice(0,2).map(q=>q.id)),objects=trainInterior(d,car).slice().sort((a,b)=>Math.sin(car.a)*(a.x-b.x)+Math.cos(car.a)*(a.y-b.y));
   for(const o of objects){const {x,y,w,h}=o;
    if(o.kind==='wall')p.wallBox(x,y,20,w,h,27,'#51433e',true);
-   if(o.kind==='door'){const open=doors[car.id+':'+o.id]??o.open;p.wallBox(x,y,20,open?4:w,h,25,open?'#a8865c':'#6f4d3c',true);if(!open)p.box(x+w*.3,y,34,3,4,3,P.lining);}
+   if(o.kind==='door'){const open=doors[car.id+':'+o.id]??o.open,panel=trainDoorGeometry(o,open);p.wallBox(panel.x,panel.y,20,w,h,25,'#6f4d3c',true);p.box(panel.x+w*.3,y,34,3,4,3,P.lining);}
    if(o.kind==='table'){p.box(x,y,20,4,4,11,'#544437');p.box(x,y,31,w,h,3,P.wood,true);if(car.kind==='compartments'&&cupIds.has(o.id)&&!cocoaTaken.has(car.id+':'+o.id)){const ring=(radius,z)=>Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return[x+Math.cos(a)*radius,y+Math.sin(a)*radius,z];});p.poly(ring(6,34.5),'#d9c49c',true);p.poly(ring(4.5,35),'#eee1bf');const low=ring(3.4,35),high=ring(3.8,41);for(let i=0;i<12;i++){const j=(i+1)%12;p.poly([low[i],low[j],high[j],high[i]],i<6?'#c1b18f':'#eee4c7');}p.poly(ring(3.8,41),'#fff2cf',true);p.poly(ring(2.8,41.5),'#754532');p.poly([[x-1.5,y-1,41.7],[x+.5,y-1,41.7],[x+1,y,41.7],[x-1,y+.4,41.7]],'#b27d50');const handle=Array.from({length:10},(_,i)=>{const a=i*Math.PI*2/9;return[x+4.7+Math.cos(a)*2.2,y,38+Math.sin(a)*2.5];});p.line(handle,'#f2e4c4',1.6);for(let i=0;i<2;i++){const drift=Math.sin(time*2+i)*1.5;p.line([[x-1+i*2,y,43],[x+drift-1+i*2,y,46],[x-drift+i*2,y,49]],'#d8e5d16a',1);}}}
 
    if(o.kind==='seat'){

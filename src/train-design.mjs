@@ -52,3 +52,5 @@ export function unpackTrainDesign(raw){const d=structuredClone(raw);for(const s 
 
 export function defaultRailwayScenery(){const out=[];for(let y=120;y<4300;y+=190)for(let x=110;x<6300;x+=180){const seed=Math.abs(Math.sin(x*7.32+y*2.17)),px=x+seed*100,py=y+Math.abs(Math.cos(x*3+y*7))*75;if(Math.abs(px-3200)<180||Math.abs(Math.hypot((px-3200)/2200,(py-2200)/1300)-1)<.12)continue;out.push({id:'rail-tree-'+out.length,kind:'tree',x:px,y:py,size:86+seed*38});}return out;}
 export function tenderLayout(car){return{walkway:26,bunkerLength:Math.max(30,car.length-52),bunkerWidth:Math.max(28,car.width-52)};}
+
+export function trainDoorGeometry(o,open=false){return {...o,x:o.x+(open?o.w:0)};}

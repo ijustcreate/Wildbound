@@ -20,3 +20,6 @@ export function sampleTrainTrail(t,distance){const segment=t.routeSegments?.find
 export function trainCars(t){let offset=0;return t.design.cars.map((def,index)=>{if(index)offset+=(t.design.cars[index-1].length+def.length)/2+20;const q=sampleTrainTrail(t,t.distance-offset),front=sampleTrainTrail(t,t.distance-offset+def.length*.32),rear=sampleTrainTrail(t,t.distance-offset-def.length*.32);return {...q,...def,index,a:Math.atan2(front.y-rear.y,front.x-rear.x),z:railElevation(t.design,q),front,rear};});}
 export function trainWorld(c,x,y,z=0){return{x:c.x+Math.cos(c.a)*x-Math.sin(c.a)*y,y:c.y+Math.sin(c.a)*x+Math.cos(c.a)*y,z:c.z+z};}
 export function trainLocal(c,p){const x=p.x-c.x,y=p.y-c.y;return{x:Math.cos(c.a)*x+Math.sin(c.a)*y,y:-Math.sin(c.a)*x+Math.cos(c.a)*y};}
+
+export function trainGangwayEnds(cars,ride){const g=ride.gangway,from=cars[ride.car],to=cars[g.to],sign=g.direction;return [trainWorld(from,sign*(from.length/2-14),ride.y),trainWorld(to,-sign*(to.length/2-14),ride.y)];}
+export function trainRiderWorld(cars,ride){if(!ride.gangway)return trainWorld(cars[ride.car],ride.x,ride.y);const [a,b]=trainGangwayEnds(cars,ride),t=Math.max(0,Math.min(1,ride.gangway.progress));return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t};}

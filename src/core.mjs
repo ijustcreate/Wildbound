@@ -840,7 +840,7 @@ export class Game {
     for(const player of this.players)player.vendingStock=vendingStock();
     restockStarterChests(this);
     this.mystery=null;this.rollCooldown=0;
-    if (this.generatedEnvironment !== this.environment) {
+    if (this.generatedEnvironment !== this.environment || this.environment==='house'&&!this.house || this.environment==='forest'&&!this.forestLandscape) {
       const env =
         resolveEnvironment(this.environment,this.seed);
       Object.assign(this, generateWorld(this.seed, env));

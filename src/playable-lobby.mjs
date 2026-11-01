@@ -358,7 +358,7 @@ export class PlayableLobby {
   setWildboundMode(enabled){
     const g=this.getGame();g.houseWorldsEnabled=enabled;localStorage.setItem('wildbound-mode',enabled?'on':'off');
     if(enabled){const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value='house';env.dispatchEvent(new Event('change'));mode.value='bounded';mode.dispatchEvent(new Event('change'));}
-    if(g.phase==='lobby'){g.environment=enabled?'house':document.getElementById('environment').value;g.generatedEnvironment=g.environment;g.mapMode=enabled?'bounded':document.getElementById('map-mode').value;}
+    if(g.phase==='lobby'){g.environment=enabled?'house':document.getElementById('environment').value;g.mapMode=enabled?'bounded':document.getElementById('map-mode').value;}
     this.state.invalidate(g.players);
   }
   mapPreviewEnvironment(){return [...this.nodes.values()].find(panel=>panel.classList.contains('expedition-menu'))?.dataset.mapPreview||(this.getGame().houseWorldsEnabled?'house':document.getElementById('environment').value);}
