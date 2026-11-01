@@ -1,3 +1,4 @@
+import {tickPlayerIce} from './frost-prison.mjs';
 import {tickBroomFlight,dismountBroom} from './broom-mount.mjs';
 import {tickWingFlight} from './wing-flight.mjs';
 import {tickGhosts} from './temple.mjs';
@@ -69,7 +70,7 @@ export function tickTrainTest(g,dt,inputs){
  if(t.driver&&!g.players.some(p=>p.id===t.driver&&p.trainRide?.driving)){t.driver=null;}
  for(const p of g.players){const old=t.previous.get(p.id)||{},input=trainPlayerInput(g,p,inputs,old),use=input.interact&&!old.interact,jump=input.jump&&!old.jump;t.previous.set(p.id,{...input});if(input.inventory&&!old.inventory){if(p.ui)p.ui=null;else g.openInventory?.(p);}
   if(p.trainRide){const ride=p.trainRide,car=cs[ride.car];if(car){p.trainVisualLift=20+car.z;const carried=trainRiderWorld(cs,ride);p.x=carried.x;p.y=carried.y;if(ride.seat){p.faceX=Math.cos(car.a+ride.facing);p.faceY=Math.sin(car.a+ride.facing);}}}
-  p.consumeInput=!!p.ui;const swordPause=g.tickPlayerCombatTimers?.(p,dt)||0;g.tickHeroVitals?.(p,dt);
+  p.consumeInput=!!p.ui;tickPlayerIce(p,dt);const swordPause=g.tickPlayerCombatTimers?.(p,dt)||0;g.tickHeroVitals?.(p,dt);
   if(p.ui){p.charge=0;for(const action of ['next','prev','down','up','panel','use','offhand','sockets','store','drop','dropOne','pick','split','close'])if(input[action]&&!old[action])g.inventoryAction?.(p,action);p.moving=false;continue;}
   let r=p.trainRide,c=r?cs[r.car]:null;const locomotionStep=p.step||0,motionStart=r?{car:r.car,x:r.x,y:r.y,gangway:!!r.gangway}:{x:p.x,y:p.y};let mx=clamp(input.x||0,-1,1),my=clamp(input.y||0,-1,1);const norm=Math.max(1,Math.hypot(mx,my));
   if(p.hp<=0){g.tickDownedPlayer?.(p,dt,inputs);p.moving=false;continue;}
