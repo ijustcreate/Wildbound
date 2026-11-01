@@ -9,7 +9,7 @@ export function buybackStack(p,owner,index){
   const price=sellValue(item.type)*item.qty;
   if((p.coins||0)<price)return 'Not enough gold to buy this stack back.';
   // transfer checks capacity before any mutation and preserves sockets/container contents.
-  if(!transfer(owner.robotStock,p.inventory,index,24))return 'Backpack full. Free a slot before buying back.';
+  if(!transfer(owner.robotStock,p.inventory,index,32))return 'Backpack full. Free a slot before buying back.';
   p.coins-=price;
   return 'Bought back '+ITEMS[item.type].name+' for '+price+' gold.';
 }

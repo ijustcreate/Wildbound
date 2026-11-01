@@ -39,5 +39,5 @@ test('buyback only exposes the original owner and unavailable trades do not lose
  const {g,p,q}=setup();g.merchant={x:p.x,y:p.y,stock:[{item:{type:'sword',qty:1},price:20,seller:q.profileId||q.id},{item:{type:'critter_net',qty:1},price:24}],revision:0};
  p.ui={shop:'merchant',panel:'buyback',index:0};assert.equal(merchantRows(g,p).length,0);const gold=p.coins;merchantAction(g,p,'use');assert.equal(p.coins,gold);assert.match(p.ui.notice,/Reserved/);
  merchantAction(g,p,'panel:stock');p.coins=0;merchantAction(g,p,'use');assert.equal(p.coins,0);assert.match(p.ui.notice,/gold/);
- p.coins=100;p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));merchantAction(g,p,'use');assert.equal(p.coins,100);assert.match(p.ui.notice,/free backpack/);
+ p.coins=100;p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));merchantAction(g,p,'use');assert.equal(p.coins,100);assert.match(p.ui.notice,/free backpack/);
 });

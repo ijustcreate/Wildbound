@@ -1,3 +1,4 @@
+import {drawHappySparkles} from './hot-chocolate.mjs';
 import {drawTrainTest} from './train-test.mjs';
 import './broom-passenger-art.mjs';
 import {drawDragonBreath} from './dragon-events.mjs';
@@ -681,7 +682,7 @@ export class Renderer {
       if(a.hunterPet===true&&!a.controlledBy){const owner=game.players.find(p=>p.id===a.owner);if(owner){ctx.save();if(a.spiritGhost){ctx.globalAlpha=.78;ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}if(a.ritualPet)this.animator.draw(ctx,a,game.time,43);else drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);ctx.restore();}continue;}
       const player = a.isPlayer,
         size = actorRenderSize(a);
-      if(a.kind==='slime'&&a.oozeTrail?.length){ctx.save();for(const [i,mark] of a.oozeTrail.entries()){const age=Math.max(0,game.time-(mark.time||game.time)),alpha=Math.max(0,.18*(1-age/7));if(alpha<=0)continue;ctx.globalAlpha=alpha;ctx.fillStyle=({forest:'#7ab84a',desert:'#d39445',ice:'#6dc5df',temple:'#54a777',beach:'#43c7bb',graveyard:'#9a7ccb',house:'#c4779b'})[a.slimeBiome]||'#7ab84a';ctx.beginPath();ctx.ellipse(mark.x,mark.y+3,5+i*.45,2.3,0,0,Math.PI*2);ctx.fill();}ctx.restore();}
+      if(a.kind==='slime'&&a.oozeTrail?.length){ctx.save();for(const [i,mark] of a.oozeTrail.entries()){const age=Math.max(0,game.time-(mark.time||game.time)),alpha=Math.max(0,.18*(1-age/7));if(alpha<=0)continue;ctx.globalAlpha=alpha;ctx.fillStyle=({forest:'#7ab84a',desert:'#d39445',ice:'#6dc5df',temple:'#54a777',beach:'#43c7bb',graveyard:'#9a7ccb',house:'#c4779b'})[a.slimeBiome]||'#7ab84a';ctx.beginPath();ctx.ellipse(mark.x,mark.y+3,12+i*.6,5.5,0,0,Math.PI*2);ctx.fill();}ctx.restore();}
       ctx.save();
       ctx.globalAlpha *= player || a.isGhostActor ? (a.isGhostActor ? .78 : 1) : enemySightOpacity(game,a,rules.visionRadius)*Math.min(enemyVisibility(game, a), nightEnemyOpacity(game, a));
       if(a.isGhostActor)ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';
@@ -969,6 +970,7 @@ export class Renderer {
       ctx.restore();
     }
     drawSuccubusEffects(ctx,game);
+    for(const player of game.players)if(!player.room)drawHappySparkles(ctx,player,game.time);
     if(this.shaderGrass)this.grassField.draw(ctx,game,this.camera,w,h,true);
     drawImpBombs(ctx,game);
     // Draw burn sparks after actors so the fire visibly clings to the target.

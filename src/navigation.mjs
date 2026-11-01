@@ -3,8 +3,8 @@ import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {creatures} from './definitions.mjs';
 import {startJump} from './jumping.mjs';
 import {furnitureHeight} from './house-design.mjs';
-export const collisionOffset=(g,e)=>e.kind==='slime'||e.kind==='shore_goblin'||e.kind==='anaconda'||e.kind==='dreadmane_lion'||e.kind==='oathless_captain'||e.kind==='grim_reaper'||e.kind==='succubus'||e.kind==='imp'||e.kind==='zombie'||e.kind==='ghost'||WILD_FAUNA_KINDS.includes(e.kind)?0:(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
-export const actorRadius=e=>e.kind==='dreadmane_lion'?14:e.kind==='anaconda'?16:e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
+export const collisionOffset=(g,e)=>!e.kind||e.villagerId||rigSubject(e.kind)?0:e.kind==='slime'||e.kind==='shore_goblin'||e.kind==='anaconda'||e.kind==='dreadmane_lion'||e.kind==='oathless_captain'||e.kind==='grim_reaper'||e.kind==='succubus'||e.kind==='imp'||e.kind==='zombie'||e.kind==='ghost'||WILD_FAUNA_KINDS.includes(e.kind)?0:(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
+export const actorRadius=e=>e.villagerId?10:e.kind==='dreadmane_lion'?14:e.kind==='anaconda'?16:e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
 export const usesDoors=e=>e.heroFollower===true||['shore_goblin','grim_reaper','oathless_captain','hunter','banshee_queen','succubus','imp','zombie','ghost','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
 export const flies=e=>e.flying===true||['pelican','bat','wasp','bee','tsetse','dragon','raven','crow','bird','dragonfly','fairy','grave_moth','butterfly'].includes(e.kind)||e.succubusFlightHeight>0||e.impFlightHeight>0;
 const swims=e=>e.heroFollower===true||['snake','anaconda','oathless_captain'].includes(e.kind)||e.villagerId==='april';
@@ -15,7 +15,7 @@ function gridFor(g,e){
  const endless=g.mapMode==='boundless',width=endless?64:50,height=width,ox=endless?Math.floor(e.x/256)*8-24:0,oy=endless?Math.floor(e.y/256)*8-24:0;
  const signature=(g.house?.doors||[]).map(d=>d.open?'1':'0').join('')+':'+(g.house?.walls||[]).map(w=>w.broken?'1':'0').join('')+':'+(g.house?.destructionRevision||0)+':'+Math.floor((g.time||0)/2)+':'+(g.boundlessSceneryRevision||0);
  let cache=caches.get(g);if(!cache||cache.house!==g.house||cache.signature!==signature){cache={house:g.house,signature,grids:new Map()};caches.set(g,cache);}
- const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),swimming=swims(e),jump=!!creatures[e.kind]?.behaviors.jump,key=[radius,door,flying,swimming,jump,ox,oy,width].join(':');
+ const radius=actorRadius(e),door=usesDoors(e),flying=flies(e),swimming=swims(e),jump=!!creatures[e.kind]?.behaviors.jump,key=[radius,door,flying,swimming,jump,collisionOffset(g,e),ox,oy,width].join(':');
  if(!cache.grids.has(key)){const grid=new Uint8Array(width*height);for(let y=0;y<height;y++)for(let x=0;x<width;x++)grid[y*width+x]=!g.blocked((x+ox)*32+16,(y+oy)*32+16,radius,flying,swimming,door,collisionOffset(g,e),jump?20:0);if(cache.grids.size>=16)cache.grids.delete(cache.grids.keys().next().value);cache.grids.set(key,grid);}
  return {grid:cache.grids.get(key),signature,width,height,ox,oy};
 }
@@ -30,7 +30,7 @@ export function findPath(g,e,target){
   if(heuristic(id)<heuristic(closest))closest=id;
   if(id===goal){found=id;break;}
   const x=id%width,y=Math.floor(id/width);
-  for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||ny<0||nx>=width||ny>=height)continue;const next=ny*width+nx;if(!grid[next]||closed[next])continue;const cost=costs[id]+1;if(cost<costs[next]){costs[next]=cost;parents[next]=id;open.push(next);}}
+  for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||ny<0||nx>=width||ny>=height)continue;const next=ny*width+nx;if(!grid[next]||closed[next])continue;if(e.villagerId&&Array.from({length:7},(_,i)=>(i+1)/8).some(t=>g.blocked((x+ox)*32+16+(nx-x)*32*t,(y+oy)*32+16+(ny-y)*32*t,actorRadius(e),false,true,false,0)))continue;const cost=costs[id]+1;if(cost<costs[next]){costs[next]=cost;parents[next]=id;open.push(next);}}
  }
  if(found<0&&(e.faction==='ally'||e.allyOwner!=null||e.hunterPet||e.ownerKey||e.pet)&&closest!==start)found=closest;
  if(found<0)return [];

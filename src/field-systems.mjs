@@ -96,6 +96,7 @@ export function category(type) {
         : "Supplies";
 }
 export function storageCapacity(g, p, list) {
+  if(list===p.inventory)return 32;
   return list === g.victoryRewards ||
     list === g.sharedStash ||
     list === p.starterChest ||
@@ -208,7 +209,7 @@ export function applyLoadout(g, p, index) {
       return "Loadout is incompatible; nothing changed.";
   }
   for (const item of actor.inventory.filter(Boolean))
-    if (!give(draft[0], item.type, item.qty,24,item))
+    if (!give(draft[0], item.type, item.qty,32,item))
       return "Backpack needs room for the unequipped gear; nothing changed.";
   containers.forEach((c, i) => c.list.splice(0, c.list.length, ...draft[i]));
   p.equipment = actor.equipment;

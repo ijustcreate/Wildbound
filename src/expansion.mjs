@@ -21,7 +21,7 @@ export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elev
  if((g.house?.walls||[]).some(w=>!(clearsFence&&w.kind==='fence')&&!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y+footOffset,r)))return true;
  if((g.house?.doors||[]).some(d=>!(clearsFence&&d.kind==='gate')&&!d.open&&!canOpenDoors&&sectionBlocked(d,x,y+footOffset,r)))return true;
  return (g.house?.furniture||[]).some(f=>{
-  if(f.destroyed||['rug','plant'].includes(f.kind))return false;
+  if(f.destroyed||(f.wallMounted||['rug','plant','wall_clock'].includes(f.kind)))return false;
   const height=furnitureHeight(f);
   if(height>0&&elevation>=height)return false;
   return sectionBlocked(f,x,y+footOffset,r)&&raisedSurfaceBlocked(f,x,y+footOffset,r,height>0&&!projectile?from:null,footOffset);

@@ -214,7 +214,7 @@ export function catchGraveyardCritter(g,p,range=78) {
   const copy=structuredClone(p.inventory || []);migrateLegacySupplies(copy);
   const container=consumeContainer(copy,'empty_jar');
   if(!container){g.message?.('You need an empty critter bottle or travel cage.');return true;}
-  if(!give(copy,type,1,24,{captureContainer:container})) {
+  if(!give(copy,type,1,32,{captureContainer:container})) {
     g.message?.('Make room for your new passenger. Nothing was consumed.');return true;
   }
   p.inventory=copy;

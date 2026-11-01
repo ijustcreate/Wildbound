@@ -6,6 +6,7 @@ import {markSkunkAttacked} from './skunk-state.mjs';
 export const DAMAGE_COLORS={physical:'#fff2cf',magic:'#c6a3ff',fire:'#ff9b57',ice:'#7ee5ff',poison:'#ade96e',spectral:'#7ebaff'};
 export function damageEnemy(target,amount,type='physical',context){
   if(!Number.isFinite(amount)||amount<=0)return;
+  const source=context?.p||context?.g?.players?.find(p=>p.id===context?.shot?.owner);if(source?.happyUntil>(context?.g?.time??Infinity))amount*=1.1;
   if(!target.practiceTarget){
     const dealt=Math.min(Math.max(0,target.hp),amount);if(!dealt)return 0;
     if(target.kind==='skunk')markSkunkAttacked(context?.g,target,context?.p||context?.shot||null);

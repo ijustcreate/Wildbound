@@ -4,7 +4,7 @@ import {Game} from '../src/core.mjs';
 import {SLOTS} from '../src/items.mjs';
 import {controllerButtonNames} from '../src/controls.mjs';
 import {inventoryToolbar} from '../src/inventory-toolbar.mjs';
-const setup=()=>{const g=new Game(()=>.5),p=g.addPlayer('pad:0');g.phase='play';p.inventory=Array(24).fill(null);g.openInventory(p);return {g,p};};
+const setup=()=>{const g=new Game(()=>.5),p=g.addPlayer('pad:0');g.phase='play';p.inventory=Array(32).fill(null);g.openInventory(p);return {g,p};};
 const toolbar=(g,p,family='xbox')=>inventoryToolbar(g,p,controllerButtonNames(family));
 test('empty slots retain all eight controls with an explanation instead of losing the toolbar',()=>{
  const {g,p}=setup(),empty=toolbar(g,p);assert.equal(empty.options.length,8);assert.ok(empty.options.every(o=>o.reason));

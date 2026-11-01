@@ -32,7 +32,7 @@ export function merchantPanel(panel,g,p,button,animator,controls){
   const art=el('div','','merchant-display');art.append(icon(item.type,112));detail.append(art,el('h3',def?.name||item.type),el('p',def?.description||itemStats(item.type)||'A useful find for the road ahead.','merchant-description'));
   const stats=def?.utility?'':itemStats(item.type);if(def?.description&&stats)detail.append(el('p',stats,'merchant-stats'));
   detail.append(el('p','In backpack: '+owned+' · '+(selling?'Selling':'Purchase')+' ×'+item.qty,'merchant-owned'));
-  const reason=selling?(protectedItem(p,item.type)?'Unlock this item in Field Kit first.':''):(p.coins||0)<price?'You need '+(price-(p.coins||0))+' more gold.':p.inventory.length>=24&&!p.inventory.some(i=>!i)?'Make one free backpack slot.':'';
+  const reason=selling?(protectedItem(p,item.type)?'Unlock this item in Field Kit first.':''):(p.coins||0)<price?'You need '+(price-(p.coins||0))+' more gold.':p.inventory.length>=32&&!p.inventory.some(i=>!i)?'Make one free backpack slot.':'';
   const action=button(verb+' · '+price+' gold','merchant-confirm',()=>merchantAction(g,p,'use'));action.className='merchant-confirm';action.disabled=!!reason;
   actions.append(action);if(reason)actions.append(el('p',reason,'merchant-reason'));
  }else detail.append(el('h3','A little room for adventure'),el('p','Choose an item to inspect it before you trade.'));

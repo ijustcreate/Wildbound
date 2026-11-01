@@ -28,11 +28,11 @@ test('each player can speak to Santa; only a real letter exchanges for a present
  npcDialogueAction(g,q,'santa:deliver');assert.ok(!q.inventory.some(i=>i?.type==='wrapped_present'));
  npcDialogueAction(g,p,'santa:deliver');assert.ok(p.inventory.some(i=>i?.type==='wrapped_present'));assert.ok(!p.inventory.some(i=>i?.type==='santa_letter'));
  npcDialogueAction(g,q,'santa:chocolate');npcDialogueAction(g,q,'santa:chocolate');assert.equal(q.inventory.find(i=>i.type==='christmas_chocolate').qty,1);
- p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));p.inventory[0]={type:'santa_letter',qty:2};npcDialogueAction(g,p,'santa:deliver');assert.equal(p.inventory[0].qty,1);assert.ok(g.loot.some(i=>i.type==='wrapped_present'));
+ p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));p.inventory[0]={type:'santa_letter',qty:2};npcDialogueAction(g,p,'santa:deliver');assert.equal(p.inventory[0].qty,1);assert.ok(g.loot.some(i=>i.type==='wrapped_present'));
  const before=p.inventory[0].qty;p.ui.ownerDevice='pad:1';npcDialogueAction(g,p,'santa:deliver');assert.equal(p.inventory[0].qty,before);
 });
 test('hold to unwrap is selection-safe, gives all three gifts and spills overflow without losing rewards',()=>{
- const {g,p}=setup();p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));p.inventory[0]={type:'wrapped_present',qty:1};p.ui={panel:'pack',index:0};
+ const {g,p}=setup();p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));p.inventory[0]={type:'wrapped_present',qty:1};p.ui={panel:'pack',index:0};
  const action=inventoryToolbar(g,p,Array(17).fill('A')).options.find(o=>o.id==='salvage-hold');assert.equal(action.label,'Unwrap');assert.equal(action.reason,'');
  for(let i=0;i<14;i++)tickSalvage(g,p,true,.1);assert.equal(p.inventory[0].type,'christmas_bell');assert.deepEqual(g.loot.filter(i=>['toy_train','christmas_chocolate'].includes(i.type)).map(i=>i.type).sort(),['christmas_chocolate','toy_train']);
  for(let i=0;i<14;i++)tickSalvage(g,p,true,.1);assert.equal(g.loot.filter(i=>i.type==='toy_train').length,1);

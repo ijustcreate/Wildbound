@@ -58,7 +58,7 @@ export function merchantAction(g,p,action){
    const entry=m.stock[u.index];if(!entry)return true;
    if(entry.seller&&entry.seller!==(p.profileId||p.id)){u.notice='Reserved for its original owner.';return true;}
    if((p.coins||0)<entry.price){u.notice='Not enough gold.';return true;}
-   const slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=24){u.notice='Make one free backpack slot.';return true;}
+   const slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=32){u.notice='Make one free backpack slot.';return true;}
    if(slot<0)p.inventory.push(structuredClone(entry.item));else p.inventory[slot]=structuredClone(entry.item);
    p.coins-=entry.price;if(entry.seller)m.stock.splice(u.index,1);u.index=Math.min(u.index,Math.max(0,m.stock.length-1));u.page=Math.floor(u.index/8);u.notice='“A fine trade. Try not to get eaten.”';
   }const remaining=merchantRows(g,p);if(!remaining.some(row=>row.index===u.index))u.index=remaining[Math.min(at,remaining.length-1)]?.index??0;

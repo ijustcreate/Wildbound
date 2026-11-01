@@ -268,7 +268,7 @@ test('April follower is clipped to the water surface while swimming',()=>{
  };
  const g={time:1,terrain:Array(2500).fill('water')},v={id:77,villagerId:'april',ownerKey:'owner',x:320,y:320,swimming:true,name:'April'};
  drawVillagerNpc(c,g,v,{draw(_ctx,actor){drawn.push(actor);}});
- assert.equal(drawn.length,1);assert.equal(drawn[0].y,v.y-12,'the swim pose rides just above the surface');
+ assert.equal(drawn.length,1);assert.ok(Math.abs(drawn[0].y-(v.y+20))<1,'native swimmer lowers the body to the waterline');
  assert.equal(calls.filter(call=>call==='clip').length,1,'the lower body is clipped below the waterline');
  assert.ok(calls.includes('April · Your friend'),'the follower label stays readable over the water');
  const dryCalls=[],dryCtx={...c,clip(){dryCalls.push('clip');},fillText(){}};

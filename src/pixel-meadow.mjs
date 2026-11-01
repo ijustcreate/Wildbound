@@ -1,7 +1,10 @@
+import {railwaySurface} from './railway-water.mjs';
+import {nearestTrainTrack} from './train-track.mjs';
 import {forestHash,forestNoise,routeDistance,clearingDistance,forestPavingAt} from './forest-landscape.mjs';
 import {boundlessRegionPlan,regionRouteDistance} from './boundless-generation.mjs';
 export const MEADOW_CHUNK=256;
 export function meadowTerrain(g,x,y){
+ if(g.trainTest)return x>=0&&y>=0&&x<g.trainTest.design.width&&y<g.trainTest.design.height?railwaySurface(g.trainTest.design,x,y):null;
  const tx=Math.floor(x/32),ty=Math.floor(y/32);
  if(tx>=0&&ty>=0&&tx<50&&ty<50)return g.terrain[ty*50+tx];
  if(g.mapMode!=='boundless')return null;
@@ -9,6 +12,8 @@ export function meadowTerrain(g,x,y){
  return p.terrain[((ty%50+50)%50)*50+(tx%50+50)%50];
 }
 export function meadowAllowed(g,x,y,margin=0){
+ if(g.trainTest){const t=g.trainTest,d=t.design;if(meadowTerrain(g,x,y)!=='grass')return false;const s=d.station;if(s&&(Math.abs(x-s.x)<s.w/2+44+margin&&Math.abs(y-s.y)<s.h/2+100+margin||Math.abs(x-s.platformX)<s.platformLength/2+20+margin&&Math.abs(y-s.platformY)<s.platformWidth/2+30+margin))return false;t.meadowMask??=new Map();const key=Math.floor(x/16)+':'+Math.floor(y/16);let distance=t.meadowMask.get(key);if(distance===undefined){distance=Math.min(...[t.route,...(t.otherRoutes||[])].map(r=>nearestTrainTrack(r,Math.floor(x/16)*16+8,Math.floor(y/16)*16+8).distance));t.meadowMask.set(key,distance);}return distance>d.gauge/2+26+margin;}
+
  if(meadowTerrain(g,x,y)!=='grass')return false;
  if(x>=0&&x<1600&&y>=0&&y<1600){
   if(routeDistance(g.forestLandscape,x,y)<29+margin||clearingDistance(x,y,g.seed)<.97||forestPavingAt(g.forestLandscape,x,y))return false;
@@ -20,6 +25,7 @@ export function meadowAllowed(g,x,y,margin=0){
  return true;
 }
 export function meadowTerrainKey(g,x,y){
+ if(g.trainTest)return [g.trainTest.design.width,g.trainTest.design.height,g.trainTest.design.river.x,g.trainTest.design.river.width,JSON.stringify(g.trainTest.design.station),x,y].join(':');
  let key='';const plans=new Map();
  for(let ty=y/32;ty<(y+256)/32;ty++)for(let tx=x/32;tx<(x+256)/32;tx++){
   let terrain=null;

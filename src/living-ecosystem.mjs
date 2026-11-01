@@ -285,7 +285,7 @@ export function catchCritter(g,p){
  const consume=list=>{for(const type of containers){if(take(list,type))return type;}for(const item of list||[])if(ITEMS[item?.type]?.bag&&item.contents){const found=consume(item.contents);if(found)return found;}return null;};
  const container=consume(copy);
  if(!container){g.message('You need an empty critter bottle/jar or travel cage in your backpack. Filled containers cannot be reused.');return true;}
- if(!give(copy,'caught_'+a.kind,1,24,{captureContainer:container})){g.message('Make space for your new passenger. Nothing was consumed.');return true;}
+ if(!give(copy,'caught_'+a.kind,1,32,{captureContainer:container})){g.message('Make space for your new passenger. Nothing was consumed.');return true;}
  p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught '+a.kind+'! Packed in your '+(container==='empty_jar'?'bottle.':'travel cage.'));g.persist?.();return true;
 }
 export function releaseCritter(g,p,index){

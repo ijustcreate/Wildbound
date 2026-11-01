@@ -32,7 +32,7 @@ test("Drag swaps hand weapons even with full pack, and unequip fails safely when
   const { p } = setup();
   p.equipment.hand1 = "sword";
   p.equipment.hand2 = "dagger";
-  p.inventory = Array.from({ length: 24 }, () => ({ type: "hat", qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: "hat", qty: 1 }));
   assert.ok(
     moveInventoryItem(
       p,

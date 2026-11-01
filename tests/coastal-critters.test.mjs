@@ -29,10 +29,10 @@ test('Net in either hand accepts bottles and cages for crabs/fish and records ac
 });
 test('Catch failures never consume containers or remove critters',()=>{
  const {g,p}=setup(),a=beside(g,p,'crab');p.inventory=[{type:'caught_bird',qty:1}];assert.ok(catchCritter(g,p));assert.ok(livingAnimals(g).some(b=>b.id===a.id));assert.equal(count(p,'caught_bird'),1);
- p.inventory=[{type:'critter_cage',qty:2},...Array.from({length:23},()=>({type:'hat',qty:1}))];const before=JSON.stringify(p.inventory);catchCritter(g,p);assert.equal(JSON.stringify(p.inventory),before);assert.ok(livingAnimals(g).some(b=>b.id===a.id));
+ p.inventory=[{type:'critter_cage',qty:2},...Array.from({length:31},()=>({type:'hat',qty:1}))];const before=JSON.stringify(p.inventory);catchCritter(g,p);assert.equal(JSON.stringify(p.inventory),before);assert.ok(livingAnimals(g).some(b=>b.id===a.id));
 });
 test('Last empty container supplies its own freed slot in a full backpack',()=>{
- const {g,p}=setup();beside(g,p,'crab');p.inventory=[{type:'critter_cage',qty:1},...Array.from({length:23},()=>({type:'hat',qty:1}))];catchCritter(g,p);assert.equal(count(p,'caught_crab'),1);assert.equal(p.inventory.filter(Boolean).length,24);
+ const {g,p}=setup();beside(g,p,'crab');p.inventory=[{type:'critter_cage',qty:1},...Array.from({length:31},()=>({type:'hat',qty:1}))];catchCritter(g,p);assert.equal(count(p,'caught_crab'),1);assert.equal(p.inventory.filter(Boolean).length,32);
 });
 test('Net recognizes historical bottle IDs and accessible bag contents',()=>{
  const {g,p}=setup();beside(g,p,'fish');p.inventory=[{type:'empty_bottle',qty:1}];catchCritter(g,p);assert.equal(count(p,'caught_fish'),1);

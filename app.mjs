@@ -1,3 +1,4 @@
+import {updateTrainAudio} from './src/train-audio.mjs';
 import {routeLootController} from './src/loot-controller.mjs';
 import {seatOpeningParty} from './src/opening-board.mjs';
 import {mountCampSettings,readCampInputSettings,shapeCampStick} from './src/settings-camp.mjs';
@@ -1020,7 +1021,7 @@ function transitionTrainScreen(next){
   show(next);paused=false;keys.clear();mouse.down=false;mouse.dash=false;pauseCheat.reset();fixedClock.reset();
   if(next==='lobby'){playableLobby?.sync();renderLobby();}else updateHud();
 }
-function enterTrainScreen(){if(!game.trainTest)return;game.trainTest.returnScreen??=screen;transitionTrainScreen('play');}
+function enterTrainScreen(){if(!game.trainTest)return;audio.unlock();game.trainTest.returnScreen??=screen;transitionTrainScreen('play');}
 function leaveTrainScreen(previousScreen){transitionTrainScreen(previousScreen==='lobby'?'lobby':'play');}
 function resume() {
   if (disconnected().length) {
@@ -1987,7 +1988,7 @@ function frame(now) {
   if (ready && screen === "lobby") {rooms.tick(game, dt, {});if(rooms.role!=='client')tickMeltingIce(game,dt,'lobby');}
   if(!audio.unlocked&&Array.from(navigator.getGamepads?.()||[]).some(p=>p?.buttons.some(b=>b.pressed)))startMusic();
   $('pvp-safe-indicator').hidden=screen!=='play'||game.pvp;
-  routeMusic(elapsed); audio.update(game,screen==="play"&&!paused);
+  routeMusic(elapsed); audio.update(game,screen==="play"&&!paused);updateTrainAudio(audio,game,screen==="play"&&!paused);
   if(metrics.enabled&&cpuStart)metrics.record('cpu',performance.now()-cpuStart);
   performanceOverlay.tick(now,{game,screen,paused,canvas:renderer?.canvas,memory:performance.memory,errors:diagnosticErrors});
   requestAnimationFrame(frame);

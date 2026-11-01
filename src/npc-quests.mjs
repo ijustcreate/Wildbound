@@ -163,7 +163,7 @@ export function npcDialogueAction(g,p,action){
     if(action?.startsWith('choice:'))action=view.choices[Number(action.slice(7))]?.action;
     if(action==='rescue:claim'&&!npc.rewardClaimed){
       const reward=npc.rescueReward||'potion',inventory=p.inventory||(p.inventory=[]);
-      if(give(inventory,reward,1,24)){u.notice=`Health potion added to ${p.name}’s backpack.`;}
+      if(give(inventory,reward,1,32)){u.notice=`Health potion added to ${p.name}’s backpack.`;}
       else {g.dropLoot?.(p.x+18,p.y+8,reward,1,'Explorer’s thanks',true);u.notice='Your backpack is full. The health potion was dropped beside the party.';}
       npc.rewardClaimed=true;npc.fleeAfterDialogue=true;u.node='rescue-thanks';u.index=0;g.onSound?.('loot',p);g.persist?.();return true;
     }
@@ -190,7 +190,7 @@ export function npcDialogueAction(g,p,action){
   }else if(action==='claim'){
     const a=s.active;if(!a||progress(p,a)<a.contract.objective.count||s.completed.some(c=>c.stageId===a.stageId))return true;
     if(!ITEMS[a.reward]){u.notice='The saved reward item is unavailable. Progress has been kept.';return true;}
-    let slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=24){u.notice='Free one backpack slot. Your reward will stay with me.';return true;}if(slot<0)slot=p.inventory.length;
+    let slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=32){u.notice='Free one backpack slot. Your reward will stay with me.';return true;}if(slot<0)slot=p.inventory.length;
     if(a.contract.objective.type==='collect'){let left=a.contract.objective.count;for(let n=0;n<p.inventory.length&&left>0;n++){const item=p.inventory[n];if(item?.type!==a.contract.objective.item)continue;const take=Math.min(left,item.qty||1);left-=take;item.qty=(item.qty||1)-take;if(item.qty<=0)p.inventory[n]=null;}}
     p.inventory[slot]={type:a.reward,qty:1};s.completed.push({stageId:a.stageId,branchId:a.branchId,reward:a.reward});s.lastRewardEncounter=s.encounters;s.active=null;
     u.node='quests';u.index=0;u.notice=`${ITEMS[a.reward].name} received. We’ll continue when our paths cross again.`;g.onSound?.('questUpdate',p);g.onSound?.('loot',p);g.persist?.();

@@ -1,11 +1,14 @@
+import {beachShore} from './beach-world.mjs';
 import {waterAt} from './environment.mjs';
 import {bridgeAt} from './terrain-support.mjs';
 export const BREATH_SECONDS=20;
-export function inDeepWater(g,p){return !p.room&&(waterAt(g,p.x,p.y)==='water'||(bridgeAt(g,p.x,p.y)&&(p.underBridge||p.swimming)));}
+export function waterBelowBridge(g,x,y){if(!bridgeAt(g,x,y))return waterAt(g,x,y);if((g.generatedEnvironment||g.environment)==='beach'){const shore=beachShore(x,g.seed||0);return y<shore-62?'water':y<shore+18?'shallow':'sand';}for(let ring=1;ring<=4;ring++){const kinds=[[ring*32,0],[-ring*32,0],[0,ring*32],[0,-ring*32]].map(([dx,dy])=>waterAt(g,x+dx,y+dy)).filter(kind=>!['bridge','floodbridge','wood'].includes(kind));if(!kinds.length)continue;if(kinds.includes('shallow'))return 'shallow';const wet=kinds.filter(k=>'water'===k).length;if(wet===kinds.length)return 'water';if(wet)return 'shallow';return kinds[0];}return 'shallow';}
+export function inDeepWater(g,p){return !p.room&&(bridgeAt(g,p.x,p.y)?!!(p.underBridge||p.swimming)&&waterBelowBridge(g,p.x,p.y)==='water':waterAt(g,p.x,p.y)==='water');}
 export function tickSwimming(g,p,input,dt){
  if(p.vehicleId){p.swimming=false;p.diveDepth=0;return;}
  const onBridge=bridgeAt(g,p.x,p.y);
- p.underBridge=onBridge&&!!(p.underBridge||p.swimming)&&!(p.jumpHeight>0);
+ const below=onBridge?waterBelowBridge(g,p.x,p.y):waterAt(g,p.x,p.y);p.underBridge=onBridge&&['water','shallow'].includes(below)&&!!(p.underBridge||p.swimming)&&!(p.jumpHeight>0);
+ if(p.underBridge)p.groundHeight=0;
  if(onBridge&&!p.underBridge&&!(p.jumpHeight>0))p.groundHeight=10;
  const deep=inDeepWater(g,p),airborne=(p.jumpHeight||0)>0||(p.groundHeight||0)>0;
  const wasSwimming=!!p.swimming;p.swimming=deep&&!airborne&&p.hp>0;
@@ -13,7 +16,7 @@ export function tickSwimming(g,p,input,dt){
  p.wasWaterAirborne=airborne;
  if(jumpWater){g.effects||=[];g.effects.push({particle:'jump-splash',x:p.x,y:p.y,life:1,duration:1,seed:p.id||0});g.onSound?.('splash',p);}
  p.breath=Number.isFinite(p.breath)?p.breath:BREATH_SECONDS;
- if(!jumpWater&&((p.swimming&&!wasSwimming)||(wasSwimming&&!p.swimming&&waterAt(g,p.x,p.y)==='shallow'&&!airborne))){
+ if(!jumpWater&&((p.swimming&&!wasSwimming)||(wasSwimming&&!p.swimming&&below==='shallow'&&!airborne))){
   g.effects||=[];g.effects.push({particle:'splash',x:p.x,y:p.y,life:.8,duration:.8,seed:p.id||0});
   g.onSound?.('splash',p);
  }

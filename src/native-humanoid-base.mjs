@@ -70,6 +70,7 @@ export function upgradeNativeHumanoid(model,shipping){
  return refineNativeSword(refineNativeLocomotion(result,locomotionShipping),locomotionShipping);
 }
 function upgradeNativeHumanoidBase(model,shipping) {
+  if(model.nativeHumanoidRevision===1)model=recoverPreservedBaseClips(model);
   if(model.nativeHumanoidRevision===1)return widenHumanoidStance(refineNativeJump(breaststrokeNativePlayer(balanceLocomotionHead(model),same(model.clips.swim,retargetHumanoidClip(captain,model,captain.clips.swim))),false));
   if(model.artGeneration!==3||model.skeleton||model.robot||model.type)return model;
   // Adopt the new base only for recognized player geometry. Custom rest rigs
@@ -107,7 +108,7 @@ function upgradeNativeHumanoidBase(model,shipping) {
   for(const [name,clip] of Object.entries(model.clips)){
     if(!shippingClip(name,clip)){
       preserved[name]=copy(clip);
-      if(!baseActions.has(name)){target.clips[name]=retargetHumanoidClip(old,target,clip);continue;}
+      target.clips[name]=retargetHumanoidClip(old,target,clip);continue;
     }
     const donor=captain.clips[DONOR_ACTIONS[name]];
     if(donor){
@@ -124,11 +125,24 @@ function upgradeNativeHumanoidBase(model,shipping) {
       target.clips[name]=transferred;
     }else target.clips[name]=retargetHumanoidClip(old,target,clip);
   }
-  target.nativeHumanoidRevision=1;
+  target.nativeHumanoidRevision=1;target.preservedBaseRecovery=1;
   target.name='Wildbound hero / Captain native base';
   target.nativeHumanoidSource={subject:'oathless_captain',revision:1,
     originalJoints:copy(old.joints),preservedClips:preserved,customClipsRetargeted:edited};
   return widenHumanoidStance(refineNativeJump(breaststrokeNativePlayer(balanceLocomotionHead(target),true),true));
+}
+
+// Recover edits retained by an older migration but mistakenly replaced in its live base clips.
+function recoverPreservedBaseClips(model){
+ if(model.preservedBaseRecovery===1||!model.nativeHumanoidSource)return model;
+ const target=copy(model),source={joints:model.nativeHumanoidSource.originalJoints},saved=model.nativeHumanoidSource.preservedClips||{};
+ const probe=copy(model);delete probe.nativeJumpRevision;delete probe.nativeHumanoidSource;refineNativeJump(probe,true);
+ for(const [name,clip]of Object.entries(saved)){
+  if(!baseActions.has(name)||!target.clips[name]||!source.joints)continue;
+  const current=target.clips[name],donor=captain.clips[DONOR_ACTIONS[name]],generated=donor&&retargetHumanoidClip(captain,target,donor);
+  if(same(current.keys,generated?.keys)||name.startsWith('jump')&&same(current.keys,probe.clips[name]?.keys)||name==='land'&&same(current.keys,probe.clips[name]?.keys))target.clips[name]=retargetHumanoidClip(source,target,clip);
+ }
+ target.preservedBaseRecovery=1;return target;
 }
 
 // Distinct push, tuck, extension and compression as ordinary editable keys.
@@ -151,7 +165,7 @@ function refineNativeJump(model,fresh){
  for(const [name,poses]of Object.entries(stages)){
   const clip=model.clips[name];if(!clip)continue;
   const donor=captain.clips[DONOR_ACTIONS[name]];
-  if(!fresh&&(!donor||!same(clip,retargetHumanoidClip(captain,model,donor))))continue;
+  if(model.nativeHumanoidSource?.preservedClips?.[name]||!fresh&&(!donor||!same(clip,retargetHumanoidClip(captain,model,donor))))continue;
   original[name]=copy(clip);
   clip.loop=false;clip.keys=poses.map((joints,i)=>({frame:Math.round(i*(clip.length-1)/(poses.length-1)),joints:copy(joints)}));
  }

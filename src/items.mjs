@@ -1,3 +1,4 @@
+export const BACKPACK_SLOTS=32;
 import {BONE_CARVER_ITEMS} from './bone-carver-items.mjs';
 import {SKILLS,skillScrollId} from './field-skills.mjs';
 import {CHRISTMAS_ITEMS,SANTA_EQUIPMENT} from './christmas-items.mjs';
@@ -1204,7 +1205,7 @@ export function migrateLegacySupplies(list){
 }
 const itemCaptureContainer=(type,item={})=>critterContainer(type,{captureContainer:item.captureContainer??ITEMS[type]?.captureContainer});
 const matchingStack=(item,type,metadata)=>item?.type===type&&(!type.startsWith('caught_')||itemCaptureContainer(type,item)===itemCaptureContainer(type,metadata));
-export function canGive(list, type, qty = 1, slots = 24, metadata = {}) {
+export function canGive(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {}) {
   qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   if (!ITEMS[type] || qty <= 0) return false;
   const max = socketCount(type)?1:ITEMS[type].stack || 1;
@@ -1213,7 +1214,7 @@ export function canGive(list, type, qty = 1, slots = 24, metadata = {}) {
     Math.max(0, slots - list.filter(Boolean).length) * max;
   return capacity >= qty;
 }
-export function give(list, type, qty = 1, slots = 24, metadata = {}) {
+export function give(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {}) {
   if (!canGive(list, type, qty, slots,metadata)) return false;
   qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   const max = socketCount(type)?1:ITEMS[type].stack || 1;
@@ -1276,7 +1277,7 @@ export function equip(p, index, preferred) {
     clear.add("hand2");
   }
   for (const s of clear) {
-    if (gear[s] && gear[s] !== "occupied" && !give(pack, gear[s],1,24,{sockets:socketGear[s]})) return false;
+    if (gear[s] && gear[s] !== "occupied" && !give(pack, gear[s],1,BACKPACK_SLOTS,{sockets:socketGear[s]})) return false;
     gear[s] = null;
     delete socketGear[s];
   }
@@ -1293,14 +1294,14 @@ export function unequip(p, slot) {
   if (!type) return false;
   if (type === "occupied") slot = "hand1";
   const id = p.equipment[slot];
-  if (!give(p.inventory, id,1,24,{sockets:p.equipmentSockets?.[slot]})) return false;
+  if (!give(p.inventory, id,1,BACKPACK_SLOTS,{sockets:p.equipmentSockets?.[slot]})) return false;
   if(p.equipmentSockets)delete p.equipmentSockets[slot];
   p.equipment[slot] = null;
   if (ITEMS[id].twoHanded) p.equipment.hand2 = null;
   refreshVitals(p);
   return true;
 }
-export function transfer(from, to, index, slots = 24) {
+export function transfer(from, to, index, slots = BACKPACK_SLOTS) {
   if(ITEMS[from[index]?.type]?.mountReservation)return false;
   const i = from[index];
   if (!i || !give(to, i.type, i.qty, slots,i)) return false;
@@ -1350,7 +1351,7 @@ export function migrateEquipment(p) {
   for (const slot of SLOTS) p.equipment[slot] ??= null;
   if (itemKind(p.equipment.cape) === "quiver") {
     if (!p.equipment.back) { p.equipment.back = p.equipment.cape; p.equipment.cape = null; }
-    else if (give(p.inventory ||= [], p.equipment.cape, 1, 24)) p.equipment.cape = null;
+    else if (give(p.inventory ||= [], p.equipment.cape, 1, BACKPACK_SLOTS)) p.equipment.cape = null;
   }
   if (itemKind(p.equipment.head) === "charm" && !p.equipment.neck) {
     p.equipment.neck = p.equipment.head;
@@ -1365,7 +1366,7 @@ export const sellValue = (type) =>
     : { stamina_potion: 5, potion: 3, trap: 2, arrow: 1, fruit: 1, meat: 1 }[
         type
       ] || 1);
-export function splitStack(list, index, amount, slots = 24) {
+export function splitStack(list, index, amount, slots = BACKPACK_SLOTS) {
   const item = list[index];
   if (!item || list.filter(Boolean).length >= slots || item.qty < 2)
     return false;
@@ -1446,7 +1447,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
         !dest ||
         !Number.isInteger(to.index) ||
         to.index < 0 ||
-        to.index >= (to.mode === "chest" ? capacity : 24)
+        to.index >= (to.mode === "chest" ? capacity : BACKPACK_SLOTS)
       )
         return false;
       const target = dest[to.index];
@@ -1475,7 +1476,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
       if (
         !Number.isInteger(to.index) ||
         to.index < 0 ||
-        to.index >= (to.mode === "chest" ? capacity : 24)
+        to.index >= (to.mode === "chest" ? capacity : BACKPACK_SLOTS)
       )
         return false;
       if (source === dest && from.index === to.index) return true;
@@ -1493,7 +1494,7 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
       }
     }
   }
-  if (actor.inventory.length > 24) return false;
+  if (actor.inventory.length > BACKPACK_SLOTS) return false;
   p.inventory = actor.inventory;
   p.equipment = actor.equipment;
   p.equipmentSockets=actor.equipmentSockets;refreshVitals(p);
@@ -1515,3 +1516,5 @@ ITEMS.halo={name:'Halo',base:'hat',slot:'head',healingHalo:true,
   color:RARITIES.rare,artColor:'#ffe8a0',style:'halo',
   description:'A floating ring of warm light: +25% outgoing and +25% incoming spell healing (multiplicative). Combine with a healing wand for three one-second healing ticks per hit, up to 3 stacks.'};
 
+
+ITEMS.hot_chocolate={name:'Hot chocolate',base:'potion',stack:10,rarity:'uncommon',color:'#b77a50',artColor:'#e7cba1',food:true,description:'Restore 35 health. Happy for 5 minutes: occasional golden sparkles and +10% damage. A warm treat from the train.'};

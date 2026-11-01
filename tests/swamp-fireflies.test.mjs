@@ -32,7 +32,7 @@ test('real Attack/net path catches into either container, preserves metadata and
 test('daytime catch and failed/full inventory transactions preserve wildlife and supplies',()=>{
   const {g,p}=setup(),a=beside(g,p);give(p.inventory,'empty_jar');g.sky.elapsed=20;assert.equal(catchMarshFirefly(g,p),false);assert.equal(count(p,'empty_jar'),1);
   g.sky.elapsed=320;p.inventory=[];assert.ok(catchMarshFirefly(g,p));assert.ok(flies(g).includes(a));
-  p.inventory=[{type:'empty_jar',qty:2},...Array.from({length:23},()=>({type:'hat',qty:1}))];const before=structuredClone(p.inventory);
+  p.inventory=[{type:'empty_jar',qty:2},...Array.from({length:31},()=>({type:'hat',qty:1}))];const before=structuredClone(p.inventory);
   assert.ok(catchMarshFirefly(g,p));assert.deepEqual(p.inventory,before);assert.ok(flies(g).includes(a));
   p.inventory=[{type:'crafting_bag',qty:1,contents:[{type:'empty_jar',qty:1}]}];assert.ok(catchMarshFirefly(g,p));assert.equal(count(p,'caught_marsh_firefly'),1);
 });

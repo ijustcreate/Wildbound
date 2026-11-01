@@ -53,7 +53,7 @@ test('socketed instances survive equip, swaps, chest transfers and drag',()=>{
  assert.ok(unequip(p,'hand2'));assert.equal(p.maxMana,115);assert.deepEqual(p.inventory.find(i=>i?.sockets?.includes('starheart')).sockets,['starheart']);
 });
 test('extraction with a full backpack is atomic and legacy gear has no gems',()=>{
- const p=hero();p.equipment.hand1='sword';p.equipmentSockets={hand1:['moon_prism']};p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));
+ const p=hero();p.equipment.hand1='sword';p.equipmentSockets={hand1:['moon_prism']};p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));
  const before=structuredClone(p);assert.equal(removeTrinket(p,{mode:'gear',slot:'hand1'},0),false);assert.deepEqual(p,before);
  p.inventory[4]=null;assert.ok(removeTrinket(p,{mode:'gear',slot:'hand1'},0));assert.equal(p.inventory[4].type,'moon_prism');
  const profile=new Profiles();const old=hero();old.level=3;profile.assign(p,old);assert.deepEqual(p.equipmentSockets,{});assert.equal(p.maxMana,112);

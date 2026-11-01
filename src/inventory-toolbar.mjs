@@ -12,7 +12,7 @@ export function inventoryToolbar(game,p,pad){
   const item=gear?{type,qty:1}:p.inventory[u.index],def=ITEMS[type];
   const keyboard=p.device==='keyboard',carrying=!!u.carry,empty='Select an item first.';
   const christmas=['santa_letter','wrapped_present','christmas_bell','christmas_chocolate','toy_train'].includes(type);
-  const canUse=def&&(christmas||def.mount||def.mountReservation||def.relic||def.slot||def.bag||def.recipe||type.startsWith('caught_')||['potion','stamina_potion','coconut','honeycomb','trap','trial_letter'].includes(type));
+  const canUse=def&&(christmas||def.mount||def.mountReservation||def.relic||def.slot||def.bag||def.recipe||type.startsWith('caught_')||['potion','stamina_potion','coconut','hot_chocolate','honeycomb','trap','trial_letter'].includes(type));
   const carving=pack&&!u.shop&&type==='pumpkin'&&hasCarvingKnife(p);
   const dropReason=!def?empty:!pack&&!gear?'Select an item in your bag or equipment.':!canDropInventoryItem(game,p)?'Items can only be dropped during an expedition.':protectedItem(p,type)?'Unlock this item in Field Kit first.':'';
   const option=(id,label,key,action,reason='')=>({id,label,key,action,reason:carrying&&id!=='move-item'?'Place or cancel the held item first.':reason});

@@ -25,7 +25,7 @@ function index(g){
   if(s&&s.walls===h.walls&&s.doors===h.doors&&s.furniture===h.furniture&&s.count===count)return s;
   s={walls:h.walls,doors:h.doors,furniture:h.furniture,count,buckets:new Map()};
   for(const group of ['walls','doors','furniture'])for(const b of h[group]||[]){
-    if(group==='furniture'&&['rug','plant'].includes(b.kind))continue;
+    if(group==='furniture'&&(b.wallMounted||['rug','plant','wall_clock'].includes(b.kind)))continue;
     // Keep editor libraries untouched: only the active level receives this metadata.
     b.destructionGroup=group;
     for(let y=Math.floor(b.y/CELL);y<=Math.floor((b.y+b.h)/CELL);y++)for(let x=Math.floor(b.x/CELL);x<=Math.floor((b.x+b.w)/CELL);x++){

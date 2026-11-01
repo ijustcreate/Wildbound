@@ -8,7 +8,7 @@ import {ITEMS,count} from '../src/items.mjs';
 import {pumpkinHeadgear} from '../src/pumpkin-art.mjs';
 import {drawGraveyardProp} from '../src/graveyard-art.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
-const setup=()=>{const g=new Game(()=>.5);g.environment='graveyard';const p=g.addPlayer('keyboard');g.start();g.openingBoard=false;g.enemies=[];p.inventory=Array(24).fill(null);return {g,p};};
+const setup=()=>{const g=new Game(()=>.5);g.environment='graveyard';const p=g.addPlayer('keyboard');g.start();g.openingBoard=false;g.enemies=[];p.inventory=Array(32).fill(null);return {g,p};};
 test('graveyard forest tree species and seed variants render stable distinct silhouettes',()=>{
  const signature=p=>{const pixels=[],ctx={fillStyle:'#000',save(){},restore(){},translate(){},rotate(){},scale(){},beginPath(){},rect(){},clip(){},fillRect(x,y,w,h){pixels.push([Math.round(x),Math.round(y),Math.round(w),Math.round(h),this.fillStyle]);}};drawGraveyardProp(ctx,p,0);return JSON.stringify(pixels);};
  const base={kind:'grave_forest_tree',graveyard:true,procedural:true,x:500,y:500,rootY:500,size:120,graveyardFootprint:{x:489,y:492,w:22,h:16}};
@@ -46,7 +46,7 @@ test('both side gates and the rear gate have real walkable gaps with solid posts
 });
 test('pumpkin picking is one-time, range checked and preserves crops when backpack is full',()=>{
  const {g,p}=setup(),c=g.scenery.find(s=>s.kind==='pumpkin_crop');assert.equal(g.scenery.filter(s=>s.kind==='pumpkin_crop').length,12);
- assert.equal(pickPumpkin(g,p),false);Object.assign(p,{x:c.x,y:c.y-14});p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));
+ assert.equal(pickPumpkin(g,p),false);Object.assign(p,{x:c.x,y:c.y-14});p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));
  assert.equal(pickPumpkin(g,p),true);assert.equal(c.picked,false);p.inventory[0]=null;assert.equal(pickPumpkin(g,p),true);
  assert.equal(c.picked,true);assert.equal(count(p,'pumpkin'),1);
  // Remaining plants are beyond reach; repeat cannot duplicate this crop.
@@ -61,7 +61,7 @@ test('Carve appears only for a backpack pumpkin with an equipped knife in either
  p.equipment={hand1:'dagger'};g.inventoryAction(p,'use');assert.equal(count(p,'pumpkin'),1);assert.equal(count(p,'jack_o_lantern'),1);assert.equal(p.equipment.hand1,'dagger');
 });
 test('carving is atomic at full capacity and single pumpkin can reuse its freed slot',()=>{
- const {g,p}=setup();g.openInventory(p);p.equipment.hand1='dagger';p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));p.inventory[0]={type:'pumpkin',qty:2};
+ const {g,p}=setup();g.openInventory(p);p.equipment.hand1='dagger';p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));p.inventory[0]={type:'pumpkin',qty:2};
  const before=structuredClone(p.inventory);assert.equal(carvePumpkin(g,p,0),false);assert.deepEqual(p.inventory,before);
  p.inventory[0].qty=1;assert.equal(carvePumpkin(g,p,0),true);assert.equal(count(p,'jack_o_lantern'),1);assert.equal(count(p,'pumpkin'),0);
  const idx=p.inventory.findIndex(i=>i?.type==='jack_o_lantern');p.ui.index=idx;g.inventoryAction(p,'equip');assert.equal(p.equipment.head,'jack_o_lantern');assert.equal(ITEMS.jack_o_lantern.armor,2);

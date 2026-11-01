@@ -183,6 +183,7 @@ function paintItemBase(c, type) {
     }
     return;
   }
+  if(type==='hot_chocolate'){const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};r(5,9,13,12,'#513b30');r(6,9,11,10,'#e8d8b6');r(7,9,9,3,'#70422e');r(8,10,7,1,'#b98053');r(17,10,5,8,'#d3bb91');r(18,12,2,4,'#513b30');r(6,20,13,2,'#9a7758');r(9,3,2,4,'#d4e4dc');r(12,1,2,5,'#fff0d0');r(8,12,2,5,'#fff1cd');return;}
   if(type==='honeycomb'){
     const rows=['0011100','0111110','1111111','1111111','0111110','0011100'];
     for(const [cx,cy]of [[3,3],[10,3],[17,3],[3,10],[10,10],[17,10]])

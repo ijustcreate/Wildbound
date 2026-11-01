@@ -1,3 +1,4 @@
+import {railwaySurface} from './railway-water.mjs';
 import {vegetationBlocked} from './house-surfaces.mjs';
 import {setTreeFallDirection,treeFallVector,applyTreeFall} from './tree-fall.mjs';
 import {vegetationWindStrength} from './vegetation-motion.mjs';
@@ -27,6 +28,7 @@ export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p)
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
 });
 export function waterAt(g, x, y) {
+  if(g.trainTest)return railwaySurface(g.trainTest.design,x,y);
   if (g.phase === "won"&&!houseKeepsWorld(g)) return "grass";
   const tx = Math.floor(x / 32),
     ty = Math.floor(y / 32);
@@ -177,7 +179,7 @@ export function tickEnvironment(g, dt) {
   }
   if(g.scenery.some(s=>s.falling>=1.5))g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
   for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
-    if(flies(a)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
+    if(a.kind==='slime'||flies(a)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if (
       a.room ||
       a.hp <= 0 ||

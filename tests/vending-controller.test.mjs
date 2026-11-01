@@ -54,7 +54,7 @@ test('Top-face shortcut collects once per fresh press, even when several orders 
 
 test('Full bag retains the exact paid order, gold and stock; retry is atomic and single-use',()=>{
   const {g,p,press,ready,saves}=setup(),order=ready(1);
-  p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));press({panel:true});
+  p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));press({panel:true});
   const before=JSON.stringify([p.inventory,p.vendingOrders,p.coins,p.vendingStock]),saved=saves();
   press({use:true});assert.equal(JSON.stringify([p.inventory,p.vendingOrders,p.coins,p.vendingStock]),before);
   assert.equal(saves(),saved);assert.match(p.ui.notice,/Backpack full/);assert.equal(p.ui.vendingOrderId,order.id);
@@ -64,8 +64,8 @@ test('Full bag retains the exact paid order, gold and stock; retry is atomic and
 
 test('Full occupied bag can collect into an existing non-full potion stack',()=>{
   const {p,press,ready}=setup();ready();
-  p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));p.inventory[4]={type:'potion',qty:1};
-  press({offhand:true});assert.equal(count(p,'potion'),2);assert.equal(p.vendingOrders.length,0);assert.equal(p.inventory.length,24);
+  p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));p.inventory[4]={type:'potion',qty:1};
+  press({offhand:true});assert.equal(count(p,'potion'),2);assert.equal(p.vendingOrders.length,0);assert.equal(p.inventory.length,32);
 });
 
 test('Not-ready, foreign-machine and stale explicit IDs never collect or fall back to another purchase',()=>{
@@ -138,5 +138,5 @@ test('Collect all is reachable below the tray and keeps uncollectable purchases 
  press({down:true});assert.equal(p.ui.vendingView,'tray');press({down:true});assert.equal(p.ui.vendingView,'collectAll');
  const gold=p.coins;press({use:true});assert.equal(p.vendingOrders.length,0);assert.equal(count(p,'potion'),1);assert.equal(count(p,'stamina_potion'),1);assert.equal(p.coins,gold);
  press({up:true});assert.equal(p.ui.vendingView,'catalog');
- ready(1);p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));g.inventoryAction(p,'collectAll');assert.equal(p.vendingOrders.length,1);assert.match(p.ui.notice,/Backpack full/);
+ ready(1);p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));g.inventoryAction(p,'collectAll');assert.equal(p.vendingOrders.length,1);assert.match(p.ui.notice,/Backpack full/);
 });

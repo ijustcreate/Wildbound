@@ -86,7 +86,7 @@ test('cage fallback preserves the exact used container on capture and release',(
 test('full/missing/unregistered catch failures are handled and atomic, including nested bags',()=>{
   const g=setup(),p=catcher(pick(g));const initial=structuredClone(p.inventory);
   assert.equal(catchGraveyardCritter(g,p),true);assert.deepEqual(p.inventory,initial);assert.equal(spawnSurfaceEcology(g).length,15);
-  p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));
+  p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));
   p.inventory[0]={type:'relic_bag',qty:1,contents:[{type:'empty_jar',qty:1}]};
   const before=structuredClone(p.inventory);assert.equal(catchGraveyardCritter(g,p),true);
   assert.deepEqual(p.inventory,before);assert.equal(spawnSurfaceEcology(g).length,15);
@@ -99,7 +99,7 @@ test('release is transactional, honors limits and returns true on full inventory
   let i=p.inventory.findIndex(i=>i.type==='caught_grave_moth');
   const captured=structuredClone(p.inventory);
   p.room='crypt';assert.equal(releaseGraveyardCritter(g,p,i),false);p.room=null;
-  p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));
+  p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));
   p.inventory[0]={...captured.find(i=>i.type==='caught_grave_moth'),qty:2};
   const full=structuredClone(p.inventory);p.ui={};assert.equal(releaseGraveyardCritter(g,p,0),true);
   assert.deepEqual(p.inventory,full);assert.match(p.ui.notice,/room/i);

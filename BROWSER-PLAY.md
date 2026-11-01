@@ -3,7 +3,7 @@
 - [Choose a version](https://ijustcreate.github.io/Wildbound/)
 - [Latest build](https://ijustcreate.github.io/Wildbound/latest/)
 - [Preserved original](https://ijustcreate.github.io/Wildbound/original/)
-- [Permanent 1.2.90 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.90/)
+- [Permanent 1.2.91 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.91/)
 - [Earlier 1.2.79 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.2.79/)
 - [Earlier 1.0.74 snapshot](https://ijustcreate.github.io/Wildbound/releases/1.0.74/)
 
@@ -32,4 +32,4 @@ Keep original/ and earlier releases/ unchanged. Do not publish local saves, cred
 
 For 1.2.79, the published edition reuses byte-equivalent media and shared rigs from the immutable 1.2.78 edition. Run node scripts/share-web-assets.cjs <pages-checkout> 1.2.79 1.2.78 after assembly to verify and share them. The standalone web build remains complete. Keep 1.2.78 assets intact; the Pages smoke accepts WILDBOUND_PAGES_DIR for an alternate checkout.
 
-Version 1.2.90 includes the dev railway, eight-view train parts and full railway workshop. Open the developer menu during an expedition to enter the train test map.
+Version 1.2.91 includes the dev railway, eight-view train parts and full railway workshop. Open the developer menu during an expedition to enter the train test map.

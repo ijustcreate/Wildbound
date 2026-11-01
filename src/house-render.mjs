@@ -1,3 +1,4 @@
+import {drawWallClock} from './wall-clock.mjs';
 import {drawTempleFixture} from './temple-fixtures.mjs';
 import {timeOfDay} from './night-cycle.mjs';
 import {drawRefinedFurniture,drawFurnitureContact} from './furniture-art.mjs';
@@ -43,6 +44,7 @@ function paintFurniture(c,f){
 }
 
 export function drawFurniture(c,f,g={}){
+ if(f.kind==='wall_clock'){drawWallClock(c,f.x+f.w/2,f.y+f.h/2,Math.min(f.w,f.h));return;}
  if(drawTempleFixture(c,f,g))return;
  drawFurnitureContact(c,f);paintFurniture(c,f);
  for(const item of visibleSurfaceItems(g,f))drawSurfaceProp(c,item,f.x+f.w*(item.u??.5),f.y+f.h*(item.v??.5)-8);

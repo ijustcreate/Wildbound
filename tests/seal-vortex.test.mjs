@@ -10,7 +10,7 @@ const context=()=>{const calls={};return new Proxy({calls},{get(target,key){if(k
 test('Call Wildbound has priority over nearby loose loot and arrows, even with a full inventory',()=>{
  for(const full of [false,true])for(const device of ['keyboard','pad:0']){
   const g=new Game(()=>.42),p=g.addPlayer(device);g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.enemies=[];Object.assign(p,{x:800,y:850,progress:48});
-  p.inventory=full?Array.from({length:24},()=>({type:'sword',qty:1})):[];
+  p.inventory=full?Array.from({length:32},()=>({type:'sword',qty:1})):[];
   const loot={id:999,x:p.x+5,y:p.y,type:'sword',qty:1,manualPickup:true};g.loot=[loot];
   let pickupAttempts=0;g.collect=()=>{pickupAttempts++;return false;};g.nearbyArrow=()=>({id:1000});
   for(let n=0;n<55&&g.phase==='play';n++)g.update(.05,{[device]:{interact:true}});

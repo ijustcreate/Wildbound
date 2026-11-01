@@ -21,7 +21,7 @@ test('Separate storage popup deposits, withdraws and handles empty contents with
 test('Storage popup respects locked stacks and full backpacks',()=>{
  const {g,p}=setup();p.ui.loot=true;p.ui.panel='pack';p.field.favorites=['trap'];const before=JSON.stringify(p.inventory);
  g.inventoryAction(p,'use');assert.equal(JSON.stringify(p.inventory),before);assert.match(p.ui.notice,/Unlock/);
- p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));p.chests[0]=[{type:'sword',qty:1}];g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'use');assert.equal(p.chests[0][0].type,'sword');assert.match(p.ui.notice,/full/);
+ p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));p.chests[0]=[{type:'sword',qty:1}];g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'use');assert.equal(p.chests[0][0].type,'sword');assert.match(p.ui.notice,/full/);
 });
 test("Chest transfers move stacks both ways through A/Enter and shoulder/Tab actions", () => {
   const { g, p } = setup();
@@ -42,10 +42,10 @@ test("Chest transfers move stacks both ways through A/Enter and shoulder/Tab act
   assert.equal(p.ui.index, 0);
 });
 test('Stacked chest navigation crosses directly between backpack and chest grids',()=>{
-  const {g,p}=setup();p.ui.loot=true;p.ui.panel='pack';p.ui.storageColumns=6;p.ui.index=23;
-  g.inventoryAction(p,'down');assert.equal(p.ui.panel,'chest');assert.equal(p.ui.index,5);
-  g.inventoryAction(p,'up');assert.equal(p.ui.panel,'pack');assert.equal(p.ui.index,23);
-  p.ui.panel='chest';p.ui.index=0;g.inventoryAction(p,'up');assert.equal(p.ui.panel,'pack');assert.equal(p.ui.index,18);
+  const {g,p}=setup();p.ui.loot=true;p.ui.panel='pack';p.ui.storageColumns=6;p.ui.index=31;
+  g.inventoryAction(p,'down');assert.equal(p.ui.panel,'chest');assert.equal(p.ui.index,1);
+  g.inventoryAction(p,'up');assert.equal(p.ui.panel,'pack');assert.equal(p.ui.index,31);
+  p.ui.panel='chest';p.ui.index=0;g.inventoryAction(p,'up');assert.equal(p.ui.panel,'pack');assert.equal(p.ui.index,30);
   g.inventoryAction(p,'down');assert.equal(p.ui.panel,'chest');assert.equal(p.ui.index,0);
 });
 test("X/R transfers in either direction and closing chest keeps inventory and room open", () => {
@@ -68,7 +68,7 @@ test("A full destination reports failure without moving or duplicating items", (
   g.inventoryAction(p, "store");
   assert.equal(JSON.stringify([p.inventory, p.chests]), before);
   assert.match(p.ui.notice, /Chest is full/);
-  p.inventory = Array.from({ length: 24 }, () => ({ type: "hat", qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: "hat", qty: 1 }));
   g.inventoryAction(p, "panel:chest");
   const second = JSON.stringify([p.inventory, p.chests]);
   g.inventoryAction(p, "use");

@@ -76,7 +76,7 @@ test("Stack splitting preserves totals, validates amounts and fails atomically w
     [6, 3],
   );
   assert.equal(splitStack(list, 0, 6), false);
-  while (list.length < 24) list.push({ type: "sword", qty: 1 });
+  while (list.length < 32) list.push({ type: "sword", qty: 1 });
   const before = JSON.stringify(list);
   assert.equal(splitStack(list, 0), false);
   assert.equal(JSON.stringify(list), before);
@@ -99,7 +99,7 @@ test("Robot sells selected stacks, vending buys without losing coins on failure"
   g.tickAdventure(1.7, {});
   g.inventoryAction(p, "collect");
   assert.equal(count(p, "potion"), 1);
-  p.inventory = Array.from({ length: 24 }, () => ({ type: "hat", qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: "hat", qty: 1 }));
   g.purchaseVending(p,0);
   assert.equal(p.coins,0);
   g.tickAdventure(1.7,{});

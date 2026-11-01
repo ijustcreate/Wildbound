@@ -20,7 +20,7 @@ function setup(){const g=new Game(()=>.5),p=g.addPlayer('keyboard'),q=g.addPlaye
 test('dev item inventory spawn targets only the opener, is atomic and survives a save',()=>{
  const {g,p,q}=setup();assert.equal(spawnDebugItem(g,q.id,'sword_of_a_thousand_truths',1).ok,true);
  assert.equal(count(p,'sword_of_a_thousand_truths'),0);assert.equal(count(q,'sword_of_a_thousand_truths'),1);
- q.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));const before=structuredClone(q.inventory);
+ q.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));const before=structuredClone(q.inventory);
  assert.equal(spawnDebugItem(g,q.id,'potion',3).ok,false);assert.deepEqual(q.inventory,before);
  q.inventory=[];assert.equal(spawnDebugItem(g,q.id,'arrow',999).ok,true);
  const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(count(restored.players[1],'arrow'),999);

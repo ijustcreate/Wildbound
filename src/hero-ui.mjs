@@ -414,10 +414,10 @@ export class HeroUI {
       const list=mode==='pack'?p.inventory:storage,deposit=mode==='pack',active=u.panel===mode;
       const section=el('section',null,'storage-container storage-sheet');section.classList.toggle('active',active);section.dataset.container=mode;
       const head=button(deposit?'Your backpack':'Chest contents','storage-'+mode,()=>switchTo(mode));
-      head.className='storage-container-heading';head.append(el('span',list.filter(Boolean).length+(!deposit&&['shared','starter'].includes(u.storage)?' items':' / 24'),'storage-capacity'));head.setAttribute('aria-pressed',String(active));section.append(head);
+      head.className='storage-container-heading';head.append(el('span',list.filter(Boolean).length+(!deposit&&['shared','starter'].includes(u.storage)?' items':deposit?' / 32':' / 24'),'storage-capacity'));head.setAttribute('aria-pressed',String(active));section.append(head);
       const grid=el('div',null,'storage-slots');grid.dataset.container=mode;
       const page=active?Math.floor(u.index/24):(u.storagePages?.[mode]||0);(u.storagePages||={})[mode]=page;
-      for(let index=page*24;index<page*24+24;index++){
+      for(let index=page*24;index<Math.min(page*24+24,deposit?32:Infinity);index++){
         const item=list[index],def=ITEMS[item?.type],b=button('',mode+'-slot-'+index,()=>switchTo(mode,index));
         b.dataset.index=index;b.dataset.mode=mode;b.dataset.rarity=def?.rarity||'common';
         b.classList.toggle('selected',active&&u.index===index);b.classList.toggle('empty-slot',!item);
@@ -438,8 +438,8 @@ export class HeroUI {
         const selectedItem=list[u.index],selectedDef=ITEMS[selectedItem?.type];
         section.append(el('p',selectedItem&&selectedDef?`${selectedDef.name}${selectedItem.qty>1?' ×'+selectedItem.qty:''} · ${selectedDef.description||'Reward item'}`:'Select a reward to see its details.','victory-item-detail'));
       }
-      if(list.length>24){
-        const pages=Math.ceil(list.length/24),nav=el('nav',null,'storage-pages');
+      if(deposit||list.length>24){
+        const pages=Math.ceil((deposit?32:list.length)/24),nav=el('nav',null,'storage-pages');
         const previous=button('‹','storage-page-'+mode+'-prev',()=>switchTo(mode,Math.max(0,page-1)*24));previous.disabled=page===0;
         const next=button('›','storage-page-'+mode+'-next',()=>switchTo(mode,Math.min(pages-1,page+1)*24));next.disabled=page>=pages-1;
         nav.append(previous,el('span',(page+1)+' / '+pages),next);section.append(nav);
@@ -585,7 +585,7 @@ export class HeroUI {
       }
       sheet.append(controls);
       if (mode === 'pack') {
-        sheet.querySelector('header').append(el('span', `${p.inventory.filter(Boolean).length} / 24`, 'pack-capacity'));
+        sheet.querySelector('header').append(el('span', `${p.inventory.filter(Boolean).length} / 32`, 'pack-capacity'));
       }
       const list = gear
         ? SLOTS.map((slot) => ({ slot, type: p.equipment[slot]==='occupied'?p.equipment.hand1:p.equipment[slot], qty: 1,sockets:p.equipmentSockets?.[slot]||[] }))
@@ -639,7 +639,7 @@ export class HeroUI {
       };
       if (!gear) dropTarget(grid, { mode, index: list.length });
       // Keep the familiar 8×4 visual inventory board. Backpack capacity is
-      // still shown separately (24); the final eight wells remain empty.
+      // shared with the gameplay backpack capacity (32).
       const pageSize = mode === 'chest' ? 24 : 32;
       const indices = Array.from({length:gear ? SLOTS.length : pageSize}, (_, i) => page * pageSize + i);
       for (const n of indices) {

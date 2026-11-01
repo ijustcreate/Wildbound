@@ -31,7 +31,7 @@ test("XP remains in collectible orbs, survives saving, ignores full bags and is 
   const loaded = restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
   const p = loaded.players[0],
     orb = loaded.xpOrbs[0];
-  p.inventory = Array.from({ length: 24 }, () => ({ type: "sword", qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: "sword", qty: 1 }));
   Object.assign(p, { x: orb.x, y: orb.y, hp: 0 });
   loaded.time = 1;
   assert.equal(loaded.collectXP(p, orb), false);
@@ -39,7 +39,7 @@ test("XP remains in collectible orbs, survives saving, ignores full bags and is 
   assert.equal(loaded.collectXP(p, orb), true);
   for(const other of [...loaded.xpOrbs]){p.x=other.x;p.y=other.y;loaded.collectXP(p,other);}
   assert.equal(loaded.xpOrbs.length, 0);
-  assert.equal(p.inventory.length, 24);
+  assert.equal(p.inventory.length, 32);
   assert.ok(loaded.players.every((p) => p.xp === 10));
   assert.equal(loaded.collectXP(p, orb), false);
   assert.ok(loaded.players.every((p) => p.xp === 10));

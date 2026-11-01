@@ -1,3 +1,4 @@
+import {tickSwimming} from "./swimming.mjs";
 import { VILLAGERS, VILLAGER_EVENT, villagerById } from "./villager-data.mjs";
 import { villagerMotion } from "./villager-motion.mjs";
 import { merchantSites } from "./traveling-merchant.mjs";
@@ -7,7 +8,7 @@ import { creatures } from "./definitions.mjs";
 import { snowAt } from "./ice-world.mjs";
 import { waterAt } from "./environment.mjs";
 import { drawCampfire } from "./campfire-art.mjs";
-import { drawWaterline } from "./swim-render.mjs";
+import { drawSwimmer } from "./swim-render.mjs";
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
   ownerKey = (p) => String(p.profileId || p.id);
 export { VILLAGER_EVENT };
@@ -368,7 +369,7 @@ export function tickVillagers(g, dt) {
       a.walking = speed <= 112;
       a.step = (a.step || 0) + Math.hypot(a.x - startX, a.y - startY) * .13;
     }
-    a.swimming=a.villagerId==='april'&&waterAt(g,a.x,a.y)==='water';
+    if(a.villagerId==='april')tickSwimming(g,a,{},dt);
     if (target && distance(a, target) < 59 && a.attackCooldown <= 0 &&
         clearShot(g, a, target)) {
       const reach = distance(a, target) || 1;
@@ -396,8 +397,8 @@ export function drawVillagerCampfire(c,g,fire){
 }
 export function drawVillagerNpc(c, g, v, animator) {
   const draw = actor => animator.draw(c, actor, g.time, 48);
-  if(v.villagerId==='april'&&v.swimming&&waterAt(g,v.x,v.y)==='water')
-    drawWaterline(c,v,g.time,draw,{shift:-12,radius:18});
+  if(v.villagerId==='april'&&v.swimming)
+    drawSwimmer(c,v,g.time,draw);
   else draw(v);
   c.save();
   c.textAlign = "center";

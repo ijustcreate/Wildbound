@@ -13,7 +13,7 @@ export function inventoryCategory(type) {
 // Display slots map back to stable saved indices; empty cells never hide items.
 export function tabIndices(list, tab) {
   const occupied = [], empty = [];
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 32; i++) {
     if (!list[i]) empty.push(i);
     else if (inventoryCategory(list[i].type) === tab) occupied.push(i);
   }
@@ -40,7 +40,7 @@ export function storeInBag(list, bag, index) {
 
 export function takeFromBag(bag, index, destination) {
   const item = bag?.contents?.[index];
-  if (!item || !give(destination, item.type, item.qty, 24, item)) return false;
+  if (!item || !give(destination, item.type, item.qty,32, item)) return false;
   clearSlot(bag.contents, index);
   return true;
 }
@@ -48,11 +48,11 @@ export function takeFromBag(bag, index, destination) {
 // Plan all destinations before committing: a full bag/backpack never loses loot.
 export function givePickup(p,item){
  const quantity=item?.qty??1;if(!Number.isFinite(quantity)||quantity<=0)return false;
- if(!ITEMS[item?.type]?.relic)return give(p.inventory,item.type,quantity,24,item);
+ if(!ITEMS[item?.type]?.relic)return give(p.inventory,item.type,quantity,32,item);
  let remaining=quantity;const plan=[];
  for(const bag of p.inventory){if(bag?.type!=='relic_bag'||!remaining)continue;const contents=structuredClone(bag.contents||[]),slots=ITEMS[bag.type].bag.slots;let low=0,high=remaining;while(low<high){const middle=Math.ceil((low+high)/2);if(canGive(contents,item.type,middle,slots,item))low=middle;else high=middle-1;}if(low){give(contents,item.type,low,slots,item);plan.push({bag,contents});remaining-=low;}}
- if(remaining&&!canGive(p.inventory,item.type,remaining,24,item))return false;
+ if(remaining&&!canGive(p.inventory,item.type,remaining,32,item))return false;
  for(const {bag,contents}of plan)bag.contents=contents;
- if(remaining)give(p.inventory,item.type,remaining,24,item);
+ if(remaining)give(p.inventory,item.type,remaining,32,item);
  return true;
 }

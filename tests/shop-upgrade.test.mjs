@@ -46,7 +46,7 @@ test("Paid vending order falls before collection; full backpack retains purchase
   assert.equal(count(p, "stamina_potion"), 0);
   assert.equal(g.collectVending(p), false);
   g.tickAdventure(1.7, {});
-  p.inventory = Array.from({ length: 24 }, () => ({ type: "sword", qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: "sword", qty: 1 }));
   assert.equal(g.collectVending(p), false);
   assert.equal(p.vendingOrders.length, 1);
   p.inventory = [];

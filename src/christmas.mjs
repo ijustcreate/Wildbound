@@ -35,7 +35,7 @@ export function santaDialogueView(g,p){
   choices:[...(letter?[{label:'Deliver the undelivered letter.',detail:'Receive a wrapped present.',action:'santa:deliver'}]:!given?[{label:'Thank you. I’d love some chocolate.',action:'santa:chocolate'}]:[]),{label:'Merry Christmas, Santa!',action:'close'}],notice:p.ui?.notice||''};
 }
 function grant(g,p,type,qty=1){
- if(give(p.inventory,type,qty,24))return 'backpack';
+ if(give(p.inventory,type,qty,32))return 'backpack';
  if(p.room==='temple-upper')dropTempleLoot(g,p,type,qty);
  else g.dropLoot(p.x+16,p.y+8,type,qty,'A Christmas gift',true);
  return 'ground';

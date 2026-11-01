@@ -203,7 +203,7 @@ test('Co-op shares tunnels and one chest while keeping separate entry/exit ancho
 test('Full backpacks leave chest loot available, and taking it cannot regenerate rewards', () => {
   const {g, p, d} = setup(); enterOldWell(g, p, d);
   Object.assign(p, {roomX: d.well.chest.x, roomY: d.well.chest.y});
-  p.inventory = Array.from({length: 24}, () => ({type: 'sword', qty: 1}));
+  p.inventory = Array.from({length: 32}, () => ({type: 'sword', qty: 1}));
   const before = JSON.stringify(d.well.chest.items); lootOldWellChest(g, p);
   assert.equal(JSON.stringify(d.well.chest.items), before); assert.equal(d.well.chest.opened, true);
   g.inventoryAction(p, 'use'); assert.match(p.ui.notice, /full/i);

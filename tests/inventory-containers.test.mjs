@@ -33,13 +33,13 @@ test('Crafting pouch has exactly one slot; failed moves are atomic', () => {
   const list=[]; give(list,'crafting_bag'); give(list,'relic_dust',10); give(list,'magic_essence',2);
   const bag=list[0]; assert.ok(storeInBag(list,bag,1));
   const before=structuredClone(list); assert.equal(storeInBag(list,bag,2),false); assert.deepEqual(list,before);
-  const full=Array.from({length:24},()=>({type:'sword',qty:1}));
+  const full=Array.from({length:32},()=>({type:'sword',qty:1}));
   assert.equal(takeFromBag(bag,0,full),false); assert.equal(bag.contents[0].qty,10);
 });
 
 test('All tabs share a finite backpack capacity', () => {
   const p=freshCharacter(1,'Tester');
-  p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));
+  p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));
   assert.equal(give(p.inventory,'potion'),false);
   assert.deepEqual(tabIndices(p.inventory,'other'),[]);
 });

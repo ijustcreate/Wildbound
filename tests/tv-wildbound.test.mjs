@@ -71,10 +71,10 @@ test('2D treasure opens for its owner, stays shared across reopen/co-op, and mus
 });
 
 test('Full backpacks cannot destroy 2D victory rewards or trigger an early lobby return',()=>{
-  const {game,heroes:[p],mode,tick}=playableTv();p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));mode.finish();tick();
+  const {game,heroes:[p],mode,tick}=playableTv();p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));mode.finish();tick();
   tick({'pad:0':{interact:true}});const before=structuredClone(mode.victoryRewards);
   game.inventoryAction(p,'lootAll');game.inventoryAction(p,'tvReturn');assert.deepEqual(mode.victoryRewards,before);assert.equal(mode.requestLobbyReturn,false);assert.match(p.ui.notice,/full|room/i);
-  game.inventoryAction(p,'close');game.openInventory(p);game.inventoryAction(p,'drop');assert.equal(p.inventory.filter(Boolean).length,23);
+  game.inventoryAction(p,'close');game.openInventory(p);game.inventoryAction(p,'drop');assert.equal(p.inventory.filter(Boolean).length,31);
   game.openInventory(p,'tv-victory');game.inventoryAction(p,'use');assert.equal(mode.victoryRewards.filter(Boolean).length,before.length-1);
 });
 

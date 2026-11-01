@@ -14,10 +14,10 @@ test('each guild skill needs its scroll before training and discovery survives a
     assert.equal(skillAvailable(p,s.id),false);
     const xp=p.xp;trainSkill(p,s.id);assert.equal(p.xp,xp);assert.equal(p.field.skills[s.id],undefined);
     // Discovery does not require an empty inventory slot.
-    p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));
+    p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));
     g.dropLoot(p.x,p.y,skillScrollId(s.id),1,'Test',true);
     const loot=g.loot.at(-1);Object.assign(loot,{x:p.x,y:p.y});
-    assert.equal(g.collect(p,loot),true);assert.equal(p.inventory.length,24);
+    assert.equal(g.collect(p,loot),true);assert.equal(p.inventory.length,32);
     assert.equal(g.collect(p,loot),false);assert.equal(skillAvailable(p,s.id),true);
     trainSkill(p,s.id);assert.equal(p.field.skills[s.id],1);assert.equal(p.xp,xp);
   }

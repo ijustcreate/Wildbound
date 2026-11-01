@@ -13,10 +13,9 @@ export function drawCampfire(c,x,y,time=0,seed=0){
   }
   c.save();c.translate(-2,2);c.rotate(-.22);pixel(c,-19,-2,38,6,'#38251e');pixel(c,-17,-2,34,3,'#9a5b32');pixel(c,-14,-1,7,2,'#c37c42');c.restore();
   c.save();c.translate(2,4);c.rotate(.2);pixel(c,-18,-2,36,6,'#30231f');pixel(c,-16,-2,32,3,'#765039');pixel(c,7,-1,7,2,'#b57542');c.restore();
-  pixel(c,-4,-16,8,19,'#4b2e22');pixel(c,-2,-20,4,8,'#8f4d2c');
-  drawParticleEffect(c,'campfire-smoke',0,-22,time,seed);
-  drawParticleEffect(c,'campfire-flame',0,-15,time,seed+17);
-  drawParticleEffect(c,'campfire-embers',0,-16,time,seed+39);
+  drawParticleEffect(c,'campfire-smoke',0,-8,time,seed);
+  drawParticleEffect(c,'campfire-flame',0,-1,time,seed+17);
+  drawParticleEffect(c,'campfire-embers',0,-2,time,seed+39);
   c.restore();
 }
 

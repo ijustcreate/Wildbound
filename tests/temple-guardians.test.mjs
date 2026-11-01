@@ -8,7 +8,7 @@ const setup=()=>{const g=new Game(()=>.4);g.environment='temple';const p=g.addPl
 const take=(g,p,action='use')=>{g.openInventory(p,'temple');p.ui.panel='chest';p.ui.index=0;g.inventoryAction(p,action);p.ui=null;};
 test('entering and reopening the ritual chest does not summon guardians; failed withdrawal stays dormant',()=>{
  const {g,p}=setup();for(let n=0;n<3;n++){g.openInventory(p,'temple');p.ui=null;}assert.equal(g.ghosts.length,0);assert.ok(!g.templeTigersSummoned);
- p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));take(g,p);assert.equal(g.templeChest[0].type,'ritual_dagger');assert.equal(g.ghosts.length,0);
+ p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));take(g,p);assert.equal(g.templeChest[0].type,'ritual_dagger');assert.equal(g.ghosts.length,0);
 });
 test('ordinary, bulk and drag withdrawals summon exactly two guardians once',()=>{
  for(const action of ['use','lootAll','drag']){const {g,p,q}=setup();g.openInventory(p,'temple');if(action==='drag')assert.ok(g.moveInventoryItem(p,{mode:'chest',index:0},{mode:'pack',index:5}));else take(g,p,action);

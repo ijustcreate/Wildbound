@@ -51,7 +51,7 @@ test('Stumps block grounded movement, support landing, and allow walking off',()
 test('Water depth transitions splash both ways and swimmers stay under bridge decks',()=>{
  const g=world(),p=g.addPlayer('keyboard');g.house=null;g.terrain[10*50+10]='water';g.terrain[10*50+11]='bridge';g.terrain[10*50+12]='shallow';
  Object.assign(p,{x:336,y:336});tickSwimming(g,p,{},.05);assert.ok(p.swimming);const splashes=()=>g.effects.filter(e=>e.particle==='splash').length;assert.equal(splashes(),1);
- p.x=368;tickSwimming(g,p,{},.05);assert.ok(p.swimming&&p.underBridge);assert.equal(supportHeight(g,p),0);
+ p.x=368;tickSwimming(g,p,{},.05);assert.ok(!p.swimming&&p.underBridge,'shallow water beneath the bridge is waded');assert.equal(supportHeight(g,p),0);
  p.x=400;tickSwimming(g,p,{},.05);assert.equal(p.swimming,false);assert.equal(splashes(),2);
  p.x=368;tickSwimming(g,p,{},.05);assert.equal(p.underBridge,false);assert.equal(p.groundHeight,10);
 });

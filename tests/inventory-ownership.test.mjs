@@ -25,8 +25,8 @@ test('native keyboard activation cannot click a controller-focused inventory but
 });
 test('gear drops work with a full backpack and retain sockets, including two-hand occupancy',()=>{
  for(const action of ['drop','store']){
- const {g,p}=setup();p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));p.equipment.hand1='moon_blade';p.equipmentSockets={hand1:['azure_bead']};p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');
- g.inventoryAction(p,action);assert.equal(p.equipment.hand1,null);assert.deepEqual(g.loot[0].sockets,['azure_bead']);assert.equal(g.loot[0].type,'moon_blade');assert.equal(p.inventory.length,24);
+ const {g,p}=setup();p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));p.equipment.hand1='moon_blade';p.equipmentSockets={hand1:['azure_bead']};p.ui.panel='gear';p.ui.index=SLOTS.indexOf('hand1');
+ g.inventoryAction(p,action);assert.equal(p.equipment.hand1,null);assert.deepEqual(g.loot[0].sockets,['azure_bead']);assert.equal(g.loot[0].type,'moon_blade');assert.equal(p.inventory.length,32);
  p.equipment.hand1='bow';p.equipment.hand2='occupied';p.ui.index=SLOTS.indexOf('hand2');g.inventoryAction(p,action);assert.equal(p.equipment.hand1,null);assert.equal(p.equipment.hand2,null);assert.equal(g.loot[1].type,'bow');
  }
 });

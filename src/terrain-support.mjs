@@ -29,6 +29,7 @@ export function stumpShape(p){
 export function rockSurface(p){
   if(p?.realm){const b=realmFootprint(p);return b&&b.height<999?b:null;}
   if(!p?.procedural||p.kind!=='rock'||p.falling||p.depleted)return null;
+  if(p.coastal){const size=p.size||64,base=p.rootY??p.y,w=size*2/3,depth=size*(p.beachCliff?.27:.22);return {x:p.x-w/2,y:base-depth,w,h:depth+size*.025,height:p.beachCliff?size*.7:size*.35};}
   const scale=(p.size||64)/64,w=Math.max(10,25-(p.chipped||0)*3)*scale;
   return {x:p.x-w/2,y:p.y-24*scale,w,h:20*scale,height:12*scale};
 }

@@ -1,3 +1,5 @@
+import {BACKPACK_SLOTS} from "./items.mjs";
+import {useHotChocolate} from './hot-chocolate.mjs';
 import {useBroom,dismountBroom} from './broom-mount.mjs';
 import {interactCreaturePackActor} from './creature-packs/index.mjs';
 import {initializeBoundlessWorld} from './boundless-world.mjs';
@@ -703,10 +705,10 @@ export const adventureMethods = {
       if(!reusable)u.panel='chest';
       const list=(u.panel==='pack'?p.inventory:this.storageFor(p))||[],occupied=list.map((item,index)=>item?index:-1).filter(index=>index>=0);
       if(['up','prev','down','next'].includes(action)){
-        if(reusable){const limit=Math.max(24,Math.ceil(list.length/24)*24),columns=u.storageColumns===6?6:4;
+        if(reusable){const limit=u.panel==='pack'?BACKPACK_SLOTS:Math.max(24,Math.ceil(list.length/24)*24),columns=u.storageColumns===6?6:4;
           const crossesDown=action==='down'&&u.panel==='pack'&&u.index>=limit-columns;
           const crossesUp=action==='up'&&u.panel==='chest'&&u.index<columns;
-          if(crossesDown||crossesUp){u.panel=crossesDown?'chest':'pack';const target=u.panel==='pack'?p.inventory:this.storageFor(p);u.index=crossesDown?u.index%columns:Math.max(0,Math.ceil(target.length/24)*24-columns+(u.index%columns));u.notice='';}
+          if(crossesDown||crossesUp){u.panel=crossesDown?'chest':'pack';const target=u.panel==='pack'?p.inventory:this.storageFor(p);u.index=crossesDown?u.index%columns:Math.min(BACKPACK_SLOTS-1,Math.floor((BACKPACK_SLOTS-1)/columns)*columns+(u.index%columns));u.notice='';}
           else {const step=action==='down'?columns:action==='up'?-columns:action==='next'?1:-1;u.index=!list.some(Boolean)?0:['up','down'].includes(action)?Math.max(0,Math.min(limit-1,u.index+step)):(u.index+step+limit)%limit;}}
         else if(['victory','tv-victory'].includes(u.storage)){const limit=Math.max(24,Math.ceil(list.length/24)*24),step=action==='down'?6:action==='up'?-6:action==='next'?1:-1;u.index=list.some(Boolean)?(u.index+step+limit)%limit:0;}
         else {const at=occupied.indexOf(u.index),step=['up','prev'].includes(action)?-1:1;u.index=occupied[(at<0?(step>0?0:occupied.length-1):(at+step+occupied.length)%occupied.length)]??0;}
@@ -927,7 +929,7 @@ export const adventureMethods = {
       u.index = Math.max(
         0,
         Math.min(
-          u.panel === "chest" ? Math.max(23, storage.length - 1) : 23,
+          u.panel === "chest" ? Math.max(23, storage.length - 1) : BACKPACK_SLOTS-1,
           Number(action.slice(7)) || 0,
         ),
       );
@@ -952,12 +954,12 @@ export const adventureMethods = {
             ? SLOTS.length
             : u.panel === "chest"
               ? Math.max(24, Math.ceil(storage.length / 24) * 24)
-              : 24,
+              : BACKPACK_SLOTS,
       stride = u.shop === "vending" || u.panel === "gear" ? 3 : 6;
     if(u.panel==='pack'&&!u.shop&&['next','prev','down','up'].includes(action)){
       const step=action==='next'?1:action==='prev'?-1:action==='down'?8:-8;
       if(action==='up'&&u.index<8){switchPanel('gear');u.index=SLOTS.indexOf('feet');}
-      else u.index=(u.index+step+24)%24;
+      else u.index=(u.index+step+BACKPACK_SLOTS)%BACKPACK_SLOTS;
     }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
       if(action==='down'&&SLOTS[u.index]==='feet'){switchPanel('pack');u.index=0;}
       else u.index=SLOTS.indexOf(equipmentNeighbor(SLOTS[u.index],action));
@@ -995,6 +997,7 @@ export const adventureMethods = {
         else if (item?.type === "stamina_potion") useStamina(p);
         else if (item?.type === "potion") this.usePotion(p);
         else if (item?.type === "coconut") this.useCoconut(p);
+        else if (item?.type === "hot_chocolate") useHotChocolate(this,p);
         else if (item?.type === "honeycomb") useHoneycomb(this,p);
         else if (item?.type === "trap" && !p.room) this.trap(p);
         else equip(p, u.index);

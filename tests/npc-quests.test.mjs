@@ -9,7 +9,7 @@ import {travelHouseWorlds} from '../src/house-worlds.mjs';
 import {LOBBY_OBJECTS} from '../src/playable-lobby.mjs';
 import {LOBBY_FURNITURE} from '../src/lobby-practice.mjs';
 
-function setup(){const g=new Game(()=>.31);g.environment='forest';const p=g.addPlayer('keyboard','Quest QA');g.start();g.openingBoard=false;p.inventory=Array(24).fill(null);const n=spawnQuestNpc(g);assert.ok(n);Object.assign(p,{x:n.x,y:n.y+30});assert.ok(openNpcDialogue(g,p));return {g,p,n};}
+function setup(){const g=new Game(()=>.31);g.environment='forest';const p=g.addPlayer('keyboard','Quest QA');g.start();g.openingBoard=false;p.inventory=Array(32).fill(null);const n=spawnQuestNpc(g);assert.ok(n);Object.assign(p,{x:n.x,y:n.y+30});assert.ok(openNpcDialogue(g,p));return {g,p,n};}
 function accept(g,p,branch=0){p.ui.node='quests';npcDialogueAction(g,p,'offer:'+branch);npcDialogueAction(g,p,'accept');assert.ok(npcQuestState(p).active);}
 function fulfill(g,p){const a=npcQuestState(p).active,o=a.contract.objective;if(o.type==='collect')p.inventory[0]={type:o.item,qty:o.count};else if(o.type==='visit'){Object.assign(p,a.target);tickNpcQuests(g,.1);const n=g.questNpcs[0];Object.assign(p,{x:n.x,y:n.y+30});openNpcDialogue(g,p);p.ui.node='quests';}else for(let i=0;i<o.count;i++)recordNpcQuestKill(g,{kind:o.kind,hp:0,killedBy:p.id});}
 
@@ -22,7 +22,7 @@ test('six gated stages award full real gear set through either branch',()=>{
  }assert.match(npcDialogueView(g,p).text,/full Keeper/);assert.equal(n.faction,'ally');assert.ok(n.unattackable);assert.ok(!g.enemies.includes(n));}
 });
 test('full backpack preserves ready quest and supplies until a slot is freed',()=>{
- const {g,p}=setup();accept(g,p);p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));p.inventory[0]={type:'stick',qty:3};npcDialogueAction(g,p,'claim');assert.ok(npcQuestState(p).active);assert.equal(p.inventory[0].qty,3);assert.match(p.ui.notice,/Free one/);
+ const {g,p}=setup();accept(g,p);p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));p.inventory[0]={type:'stick',qty:3};npcDialogueAction(g,p,'claim');assert.ok(npcQuestState(p).active);assert.equal(p.inventory[0].qty,3);assert.match(p.ui.notice,/Free one/);
  p.inventory[8]=null;npcDialogueAction(g,p,'claim');assert.equal(p.inventory[8].type,getNpcQuestConfig().stages[0].reward);assert.equal(p.inventory[0],null);assert.equal(npcQuestState(p).completed.length,1);
 });
 test('a ready quest can be turned in directly from the Keeper greeting with a controller reply',()=>{
@@ -31,7 +31,7 @@ test('a ready quest can be turned in directly from the Keeper greeting with a co
  npcDialogueAction(g,p,'use');assert.equal(npcQuestState(p).active,null);assert.ok(p.inventory.some(i=>i?.type===a.reward));
 });
 test('different devices cannot share dialogue ownership or quest progress',()=>{
- const {g,p,n}=setup(),q=g.addPlayer('pad:0','Second');q.inventory=Array(24).fill(null);Object.assign(q,{x:n.x+20,y:n.y});assert.ok(openNpcDialogue(g,q));accept(g,p);accept(g,q,1);assert.equal(npcQuestState(p).active.contract.objective.item,'stick');assert.equal(npcQuestState(q).active.contract.objective.item,'stone');
+ const {g,p,n}=setup(),q=g.addPlayer('pad:0','Second');q.inventory=Array(32).fill(null);Object.assign(q,{x:n.x+20,y:n.y});assert.ok(openNpcDialogue(g,q));accept(g,p);accept(g,q,1);assert.equal(npcQuestState(p).active.contract.objective.item,'stick');assert.equal(npcQuestState(q).active.contract.objective.item,'stone');
  p.ui.ownerDevice='pad:0';npcDialogueAction(g,p,'next');assert.equal(p.ui,null);assert.ok(q.ui);assert.equal(npcQuestState(q).active.progress,0);
 });
 test('accepted contracts and progress survive session restore and edits',()=>{
@@ -52,11 +52,11 @@ test('starter chest visible position and collision move together into table row'
 });
 test('quest gear travels without losing displaced ordinary gear or reviving relinquished rewards',()=>{
  const source={inventory:[{type:'keeper_band',qty:1}],equipment:{head:'keeper_crown'},equipmentSockets:{head:['azure_bead']},chests:[],field:{overflow:[]}};
- const target={inventory:Array.from({length:24},()=>({type:'potion',qty:1})),equipment:{head:'hat'},equipmentSockets:{},chests:[[{type:'keeper_robes',qty:1}]],field:{overflow:[]}};
- preserveQuestGear(source,target);assert.equal(target.equipment.head,'keeper_crown');assert.deepEqual(target.equipmentSockets.head,['azure_bead']);assert.equal(target.chests[0][0],null);assert.deepEqual(target.field.overflow.map(i=>i.type),['keeper_band','hat']);assert.equal(target.inventory.length,24);
+ const target={inventory:Array.from({length:32},()=>({type:'potion',qty:1})),equipment:{head:'hat'},equipmentSockets:{},chests:[[{type:'keeper_robes',qty:1}]],field:{overflow:[]}};
+ preserveQuestGear(source,target);assert.equal(target.equipment.head,'keeper_crown');assert.deepEqual(target.equipmentSockets.head,['azure_bead']);assert.equal(target.chests[0][0],null);assert.deepEqual(target.field.overflow.map(i=>i.type),['keeper_band','hat']);assert.equal(target.inventory.length,32);
 });
 test('rescued explorer thanks the party, drops a reward for a full backpack, then flees and despawns off-screen',()=>{
- const g=new Game(()=>.5),p=g.addPlayer('keyboard','Rescuer');g.start();g.openingBoard=false;p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard','Rescuer');g.start();g.openingBoard=false;p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));
  const objective={id:'rescue-test',kind:'rescue',x:p.x+20,y:p.y};const waiting=ensureRescueExplorer(g,objective);assert.ok(waiting);assert.equal(openNpcDialogue(g,p),false,'a stranded explorer is not interactable before rescue');
  const npc=completeRescueExplorer(g,objective);Object.assign(p,{x:npc.x+24,y:npc.y});assert.equal(openNpcDialogue(g,p),true);assert.match(npcDialogueView(g,p).text,/found me/);
  npcDialogueAction(g,p,'rescue:claim');assert.ok(g.loot.some(item=>item.type==='potion'),'a full inventory drops the promised reward near the party');assert.equal(npc.rewardClaimed,true);

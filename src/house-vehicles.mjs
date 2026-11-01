@@ -66,6 +66,7 @@ export function vehicleMotion(g,p,input,dt){
  // reconstruct the body center: the rear follows the steered front wheels.
  const wheelBase=v.wheelBase||((v.h||144)*.58),oldHeading=v.heading;
  const travel=(oldSpeed+v.speed)*.5*Math.cos(v.wheelAngle)*dt;
+ v.wheelRotation=(v.wheelRotation||0)+travel/12;
  const turn=travel/wheelBase*Math.tan(v.wheelAngle),mid=oldHeading+turn*.5;
  v.heading=oldHeading+turn;v.steer=steer;v.moving=Math.abs(v.speed)>5;v.wet=shallow;
  if(Math.abs(v.speed)>125&&Math.abs(steer)>.72&&(v.skidSoundCooldown||0)<=0){g.onSound?.('vehicleSkid',v);v.skidSoundCooldown=.62;}

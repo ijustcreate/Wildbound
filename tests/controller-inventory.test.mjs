@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';
 import {controllerButtonNames} from '../src/controls.mjs';
 
-test('One backpack reaches all 24 stable slots and ignores old categories',()=>{
+test('One backpack reaches all 32 stable slots and ignores old categories',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('pad:0');g.phase='play';g.openInventory(p);
  p.inventory=[{type:'sword',qty:1},{type:'stone',qty:1},{type:'potion',qty:1}];
  p.ui.tab='crafting';p.ui.index=0;
- const seen=new Set();for(let i=0;i<24;i++){seen.add(p.ui.index);g.inventoryAction(p,'next');}
- assert.equal(seen.size,24);assert.equal(p.ui.index,0);assert.equal(p.ui.tab,undefined);
+ const seen=new Set();for(let i=0;i<32;i++){seen.add(p.ui.index);g.inventoryAction(p,'next');}
+ assert.equal(seen.size,32);assert.equal(p.ui.index,0);assert.equal(p.ui.tab,undefined);
  g.inventoryAction(p,'down');assert.equal(p.ui.index,8);
  g.inventoryAction(p,'up');assert.equal(p.ui.index,0);
  g.inventoryAction(p,'up');assert.equal(p.ui.panel,'gear');

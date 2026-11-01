@@ -253,7 +253,7 @@ test('Co-op retains separate world coordinates and return anchors with shared ex
 
 test('Full inventory keeps lantern in its real chest, and depletion persists across leave/reenter/reload', () => {
   const {g, p, d} = setup(); enterOldWell(g, p, d); place(p, d.well.chest);
-  p.inventory = Array.from({length: 24}, () => ({type: 'sword', qty: 1}));
+  p.inventory = Array.from({length: 32}, () => ({type: 'sword', qty: 1}));
   lootOldWellChest(g, p); g.inventoryAction(p, 'use'); assert.match(p.ui.notice, /full/i);
   assert.deepEqual(d.well.chest.items.map(i=>i.type), ['lantern','flying_broom','witch_hat']);
   p.inventory[0] = null; g.inventoryAction(p, 'use'); assert.ok(!d.well.chest.items.some(i=>i?.type==='lantern')); p.ui = null;
@@ -355,7 +355,7 @@ test('Main-defined flame sword ignites only landed room melee, persists its burn
 
 test('Real boss kill drops exactly shield and sword once; full bag, co-op pickup and JSON reload never duplicate or lose rewards', () => {
   const state = setup(); const {g, p, d} = state; enterOldWell(g, p, d); wake(state); const e = bossFor(d);
-  p.inventory = Array.from({length: 24}, () => ({type: 'sword', qty: 1}));
+  p.inventory = Array.from({length: 32}, () => ({type: 'sword', qty: 1}));
   p.equipment.hand1 = 'sword'; place(p, e, 0, 26); p.faceX = 0; p.faceY = -1;
   e.hp=12;press(g,p);press(g,p,{attack:true});press(g,p);for(let i=0;i<5;i++)press(g,p);
   assert.equal(e.hp, 0); assert.ok(['death','defeated'].includes(e.state)); assert.equal(d.well.coffin.defeated, true);

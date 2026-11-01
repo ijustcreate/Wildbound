@@ -183,7 +183,7 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   if(prop.graveyard)return false;
   if(prop.coastal){
     if(prop.falling||prop.depleted||!prop.beachFootprint)return false;
-    const [w,d]=prop.beachFootprint,base=prop.rootY??prop.y;
+    let [w,d]=prop.beachFootprint;const base=prop.rootY??prop.y;if(prop.kind==='rock'){w=Math.max(w,prop.size/3);d=Math.max(d,prop.size*(prop.beachCliff?.27:.22));}
     return Math.hypot(x-Math.max(prop.x-w,Math.min(x,prop.x+w)),y-Math.max(base-d,Math.min(y,base)))<radius;
   }
   if(prop.kind==='forest_ruin')return Math.hypot(x-Math.max(prop.x-prop.width/2,Math.min(x,prop.x+prop.width/2)),y-Math.max(prop.y-prop.depth,Math.min(y,prop.y)))<radius;

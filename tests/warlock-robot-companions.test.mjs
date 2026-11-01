@@ -40,7 +40,7 @@ test('compact victory loot navigation matches its six-column slot grid',()=>{
   g.inventoryAction(p,'down');assert.equal(p.ui.index,6);g.inventoryAction(p,'up');assert.equal(p.ui.index,0);g.inventoryAction(p,'prev');assert.equal(p.ui.index,23);const before=structuredClone(g.victoryRewards);g.inventoryAction(p,'use');assert.deepEqual(g.victoryRewards,before);
 });
 test('robot buyback is atomic, retains sockets and bags, and never duplicates a purchase',()=>{
-  const {g,p}=setup();p.coins=100;p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));const item={type:'necromancer_wand',qty:1,sockets:['azure_bead']},owner={robotStock:[structuredClone(item)]},snapshot=JSON.stringify([p.inventory,owner.robotStock,p.coins]);
+  const {g,p}=setup();p.coins=100;p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));const item={type:'necromancer_wand',qty:1,sockets:['azure_bead']},owner={robotStock:[structuredClone(item)]},snapshot=JSON.stringify([p.inventory,owner.robotStock,p.coins]);
   assert.match(buybackStack(p,owner,0),/Backpack full/);assert.equal(JSON.stringify([p.inventory,owner.robotStock,p.coins]),snapshot);
   p.inventory[2]=null;p.coins=0;assert.match(buybackStack(p,owner,0),/Not enough/);assert.deepEqual(owner.robotStock[0],item);
   p.coins=100;assert.match(buybackStack(p,owner,0),/Bought back/);assert.deepEqual(p.inventory[2],item);assert.equal(p.coins,100-sellValue(item.type));const coins=p.coins;buybackStack(p,owner,0);assert.equal(p.coins,coins);

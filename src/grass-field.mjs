@@ -148,7 +148,7 @@ export class GrassFieldRenderer{
    }
    this.visibleBatches=[];this.instances=0;
    for(let cy=Math.floor((camera.y-halfY)/256);cy<=Math.floor((camera.y+halfY)/256);cy++)for(let cx=Math.floor((camera.x-halfX)/256);cx<=Math.floor((camera.x+halfX)/256);cx++){
-    const x=cx*256,y=cy*256;if(g.mapMode!=='boundless'&&(x>=1600||y>=1600||x+256<=0||y+256<=0))continue;
+    const x=cx*256,y=cy*256;if(g.mapMode!=='boundless'&&(x>=(g.trainTest?.design.width||1600)||y>=(g.trainTest?.design.height||1600)||x+256<=0||y+256<=0))continue;
     const key=cx+','+cy,local=patches.filter(p=>Math.abs(p.x-x-128)<180&&Math.abs((p.rootY??p.y)-y-128)<160);
     const terrainKey=meadowTerrainKey(g,x,y),geometryKey=local.map(p=>[slot(p),p.x,p.y,p.rootY,p.size,p.tuftSeed,p.grassShade,p.grassBurnRevision||0].join(',')).join(';');
     let entry=this.chunks.get(key);

@@ -49,7 +49,7 @@ test('crypt boss gear uses normal sword/shield slots, effective stats, tooltips 
 test('offhand/full-pack swaps retain displaced equipment and sockets atomically', () => {
   const p = hero(); p.equipment = { hand1: 'crypt_flame_sword', hand2: 'coffin_lid_shield' };
   p.equipmentSockets = { hand1: ['azure_bead'], hand2: ['starheart'] };
-  p.inventory = Array.from({ length: 24 }, () => ({ type: 'sword', qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: 'sword', qty: 1 }));
   const before = structuredClone(p);
   assert.equal(unequip(p, 'hand2'), false); assert.deepEqual(p, before);
   p.inventory[0] = { type: 'bow', qty: 1 }; const bowBefore = structuredClone(p);

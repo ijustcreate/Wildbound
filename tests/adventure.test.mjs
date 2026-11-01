@@ -58,14 +58,14 @@ test("Bow occupies both hands and swapping shield returns bow without duplicatio
 });
 test("Full inventory transfer fails atomically", () => {
   const from = [{ type: "sword", qty: 1 }],
-    to = Array.from({ length: 24 }, () => ({ type: "sword", qty: 1 }));
+    to = Array.from({ length: 32 }, () => ({ type: "sword", qty: 1 }));
   assert.equal(transfer(from, to, 0), false);
   assert.equal(from.length, 1);
-  assert.equal(to.length, 24);
+  assert.equal(to.length, 32);
 });
 test("Repeated full-inventory pickup attempts use a throttled notice and no error sound", () => {
   const { g, p } = setup();
-  p.inventory = Array.from({ length: 24 }, () => ({ type: "sword", qty: 1 }));
+  p.inventory = Array.from({ length: 32 }, () => ({ type: "sword", qty: 1 }));
   g.dropLoot(p.x, p.y, "fruit");
   let sounds = 0;
   g.onSound = () => sounds++;

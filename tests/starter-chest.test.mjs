@@ -27,8 +27,8 @@ test('regular starter chest withdraws and deposits, retaining equipment sockets 
 });
 test('starter chest empty slots, four-column navigation, full packs and favorites are safe',()=>{
   const {g,p}=setup();g.openInventory(p,'starter');g.inventoryAction(p,'down');assert.equal(p.ui.index,4);g.inventoryAction(p,'prev');assert.equal(p.ui.index,3);
-  p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));const before=JSON.stringify(p.starterChest);g.inventoryAction(p,'use');assert.equal(JSON.stringify(p.starterChest),before);assert.match(p.ui.notice,/full/);
-  g.inventoryAction(p,'panel:pack');p.field.favorites=['hat'];g.inventoryAction(p,'use');assert.match(p.ui.notice,/Unlock/);assert.equal(p.inventory.length,24);
+  p.inventory=Array.from({length:32},()=>({type:'hat',qty:1}));const before=JSON.stringify(p.starterChest);g.inventoryAction(p,'use');assert.equal(JSON.stringify(p.starterChest),before);assert.match(p.ui.notice,/full/);
+  g.inventoryAction(p,'panel:pack');p.field.favorites=['hat'];g.inventoryAction(p,'use');assert.match(p.ui.notice,/Unlock/);assert.equal(p.inventory.length,32);
   g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:23');g.inventoryAction(p,'use');assert.equal(JSON.stringify(p.starterChest),before);
 });
 test('each player owns finite starter stock, with no free refill on close, reopen or session restore',()=>{

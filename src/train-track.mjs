@@ -1,3 +1,4 @@
+import {railwayWaterDepth} from './railway-water.mjs';
 // Closed, editable Catmull-Rom routes with distance lookup, elevation and bridge queries.
 export function buildTrainRoute(design,routeId=design.activeRoute){
  const r=design.routes.find(r=>r.id===routeId);if(!r)throw Error('Missing railway route.');const nodes=r.nodes.map(id=>design.nodes.find(n=>n.id===id));if(nodes.some(n=>!n))throw Error('Route refers to a missing track point.');
@@ -13,7 +14,7 @@ export function buildTrainRoute(design,routeId=design.activeRoute){
 }
 export function sampleTrainRoute(route,distance){const s=((distance%route.length)+route.length)%route.length,p=route.points;let lo=0,hi=p.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(p[m].s<=s)lo=m;else hi=m;}const a=p[lo],b=p[hi],t=(s-a.s)/(b.s-a.s);return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,a:Math.atan2(b.y-a.y,b.x-a.x),edge:a.edge,s};}
 export function nearestTrainTrack(route,x,y){let best={distance:Infinity};for(let i=1;i<route.points.length;i++){const a=route.points[i-1],b=route.points[i],dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy))),px=a.x+dx*t,py=a.y+dy*t,distance=Math.hypot(x-px,y-py);if(distance<best.distance)best={distance,x:px,y:py,s:a.s+(b.s-a.s)*t,z:a.z+(b.z-a.z)*t,edge:a.edge,a:Math.atan2(dy,dx)};}return best;}
-export function railwayWater(d,x){return Math.abs(x-d.river.x)<d.river.width/2;}
+export function railwayWater(d,x,y){return railwayWaterDepth(d,x,y);}
 export function railElevation(d,q){const edge=d.river.width/2+120-Math.abs(q.x-d.river.x),ramp=Math.max(0,Math.min(1,edge/120));return q.z+10*ramp*ramp*(3-2*ramp);}
 export function sampleTrainTrail(t,distance){const segment=t.routeSegments?.findLast(s=>s.at<=distance)||t.routeSegments?.[0];return sampleTrainRoute(segment?.route||t.route,distance+(segment?.offset||0));}
 export function trainCars(t){let offset=0;return t.design.cars.map((def,index)=>{if(index)offset+=(t.design.cars[index-1].length+def.length)/2+20;const q=sampleTrainTrail(t,t.distance-offset),front=sampleTrainTrail(t,t.distance-offset+def.length*.32),rear=sampleTrainTrail(t,t.distance-offset-def.length*.32);return {...q,...def,index,a:Math.atan2(front.y-rear.y,front.x-rear.x),z:railElevation(t.design,q),front,rear};});}

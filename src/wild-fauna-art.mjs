@@ -6,7 +6,7 @@ const deerPal={body:'#b88352',shade:'#78503c',light:'#dfb37a',outline:'#48382f'}
 // Articulated anatomical pixel volumes: legs/tail/head move independently,
 // eight true facings, with a stable foot origin. No rotating overhead sprite.
 export function drawWildFauna(c,e,time,size=47){
- if(e.kind==='pig'||e.kind==='pig_spotted')return drawPig(c,e,time,size);
+ if(e.kind==='pig'||e.kind==='pig_spotted')return drawPig(c,e,time,size*.7);
  const deer=DEER_KINDS.includes(e.kind),shadowStag=e.kind==='shadow_stag',scorpion=e.kind==='scorpion',pal=scorpion?shell:shadowStag?shadowPal:deer?deerPal:fur,d=facingIndex(e.faceX,e.faceY),frozen=e.frozen>0||e.state==='snared',moving=e.moving&&!frozen;
  const t=frozen?0:(e.step||time*3),stride=moving?Math.sin(t*1.3)*4:0,bob=frozen?0:moving?Math.abs(Math.sin(t*1.3))*1.5:Math.sin(time*1.6)*.35,parts=[];
  c.save();c.translate(Math.round(e.x),Math.round(e.y));const s=size/47*(e.kind==='baby_deer'?.64:scorpion?.82:deer?1.18:1);c.scale(s,s);c.imageSmoothingEnabled=false;

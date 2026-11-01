@@ -69,7 +69,7 @@ export function catchMarshFirefly(g,p){
   const match=choices.filter(({a})=>Math.hypot(a.x-p.x,a.y-p.y)<46&&(a.x-p.x)*(p.faceX||0)+(a.y-p.y)*(p.faceY||0)>=-8).sort((a,b)=>Math.hypot(a.a.x-p.x,a.a.y-p.y)-Math.hypot(b.a.x-p.x,b.a.y-p.y))[0];if(!match)return false;
   const copy=structuredClone(p.inventory||[]);migrateLegacySupplies(copy);const container=consumeContainer(copy);
   if(!container){g.message?.('You need an empty critter bottle/jar or travel cage.');return true;}
-  if(!give(copy,'caught_marsh_firefly',1,24,{captureContainer:container})){g.message?.('Make room for your firefly. Nothing was consumed.');return true;}
+  if(!give(copy,'caught_marsh_firefly',1,32,{captureContainer:container})){g.message?.('Make room for your firefly. Nothing was consumed.');return true;}
   p.inventory=copy;const {a,s}=match;s.caughtFireflies||=[];if(a.releasedOwner==null&&!s.caughtFireflies.includes(a.id))s.caughtFireflies.push(a.id);s.animals=s.animals.filter(b=>b!==a);
   p.attack=p.attackDuration=.34;p.attackClip='punch';g.message?.('Caught a marsh firefly!');g.persist?.();return true;
 }
