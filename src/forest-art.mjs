@@ -15,6 +15,19 @@ const groundCache = new WeakMap();
 export const hasForestLandscape = g => !!g.forestLandscape && (g.generatedEnvironment || g.environment || 'forest') === 'forest';
 const grassColors = ['#365744', '#426344', '#557346', '#668348', '#7e944e', '#94a358'];
 
+export function forestGroundTone(plan,x,y){
+      const large = noise(x / 235, y / 235, plan.seed);
+      const detail = noise(x / 45, y / 45, plan.seed + 23);
+      const clear = clearingDistance(x, y, plan.seed);
+      const light = Math.max(0, 1 - clear) * .28;
+      const n = large * .75 + detail * .25 + light;
+      const path = routeDistance(plan, x, y), edge = 23 + noise(x / 70, y / 70, plan.seed) * 16;
+      let color = grassColors[Math.min(5, Math.floor(n * 6))];
+      if (path < edge || clear < .92) color = ['#89975d', '#929d64', '#9ca56d'][Math.min(2, Math.floor(detail * 3))];
+      if (path < edge - 10 && clear > 1) color = ['#8a9270', '#969b78', '#a4a481'][Math.min(2, Math.floor(detail * 3))];
+ return color;
+}
+
 function paving(c, plan, cx, cy, rx, ry, seed) {
   const cells = plan.paving.cells;
   for (let y = -12; y < 12; y++) for (let x = -12; x < 12; x++) {

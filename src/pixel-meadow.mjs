@@ -1,3 +1,4 @@
+import {WILD_LANDS_STOPS,wildLandsGround} from './wild-lands-world.mjs';
 import {railwaySurface} from './railway-water.mjs';
 import {nearestTrainTrack} from './train-track.mjs';
 import {forestHash,forestNoise,routeDistance,clearingDistance,forestPavingAt} from './forest-landscape.mjs';
@@ -12,7 +13,7 @@ export function meadowTerrain(g,x,y){
  return p.terrain[((ty%50+50)%50)*50+(tx%50+50)%50];
 }
 export function meadowAllowed(g,x,y,margin=0){
- if(g.trainTest){const t=g.trainTest,d=t.design;if(meadowTerrain(g,x,y)!=='grass')return false;const s=d.station;if(s&&(Math.abs(x-s.x)<s.w/2+44+margin&&Math.abs(y-s.y)<s.h/2+100+margin||Math.abs(x-s.platformX)<s.platformLength/2+20+margin&&Math.abs(y-s.platformY)<s.platformWidth/2+30+margin))return false;t.meadowMask??=new Map();const key=Math.floor(x/16)+':'+Math.floor(y/16);let distance=t.meadowMask.get(key);if(distance===undefined){distance=Math.min(...[t.route,...(t.otherRoutes||[])].map(r=>nearestTrainTrack(r,Math.floor(x/16)*16+8,Math.floor(y/16)*16+8).distance));t.meadowMask.set(key,distance);}return distance>d.gauge/2+26+margin;}
+ if(g.trainTest){const t=g.trainTest,d=t.design;if(d.wildLands&&(WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-x,s.y-y)<550)||!['forest','jungle','house'].includes(wildLandsGround(d,x,y))||d.activeRoom))return false;if(meadowTerrain(g,x,y)!=='grass')return false;const s=d.station;if(s&&(Math.abs(x-s.x)<s.w/2+44+margin&&Math.abs(y-s.y)<s.h/2+100+margin||Math.abs(x-s.platformX)<s.platformLength/2+20+margin&&Math.abs(y-s.platformY)<s.platformWidth/2+30+margin))return false;t.meadowMask??=new Map();const key=Math.floor(x/16)+':'+Math.floor(y/16);let distance=t.meadowMask.get(key);if(distance===undefined){distance=Math.min(...[t.route,...(t.otherRoutes||[])].map(r=>nearestTrainTrack(r,Math.floor(x/16)*16+8,Math.floor(y/16)*16+8).distance));t.meadowMask.set(key,distance);}return distance>d.gauge/2+26+margin;}
 
  if(meadowTerrain(g,x,y)!=='grass')return false;
  if(x>=0&&x<1600&&y>=0&&y<1600){

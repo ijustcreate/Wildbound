@@ -1,3 +1,5 @@
+import {enterWildLands} from './wild-lands.mjs';
+import {WILD_LANDS_STOPS,WILD_LANDS_GATES,wildLandsTravel} from './wild-lands-world.mjs';
 import {enterTrainTest,leaveTrainTest,openTrainEditor,requestTrainRoute} from './train-test.mjs';
 import {ITEMS,give as giveItem} from './items.mjs';
 import {spawnEventTestBoard} from './event-test-board.mjs';
@@ -38,9 +40,13 @@ export function createGameDebug({getGame,events,items,metrics,onPerformanceChang
     root.append(el('p','Live FPS, frame spikes, update/draw costs, scene counts and available JS memory. Profiling is session-only.'));
    }
    const train=el('button','Test train level');train.dataset.debug='train-test';train.onclick=()=>{const result=enterTrainTest(getGame());say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(train);
+   const wild=el('button','Enter The Wild Lands');wild.dataset.debug='wild-lands';wild.onclick=()=>{const result=enterWildLands(getGame());say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(wild);
+   const destinations=el('select');destinations.ariaLabel='Wild Lands destination';destinations.dataset.debug='wild-destination';for(const stop of [...WILD_LANDS_STOPS,...WILD_LANDS_GATES])destinations.add(new Option(stop.name,stop.id));root.append(destinations);
+   const travel=el('button','Travel to Wild Lands destination');travel.dataset.debug='wild-travel';travel.onclick=()=>{const result=wildLandsTravel(getGame(),destinations.value);say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(travel);
+   const overview=el('button','Wild Lands: toggle world overview');overview.dataset.debug='wild-overview';overview.onclick=()=>{const t=getGame().trainTest;if(!t?.design.wildLands){say({ok:false,message:'Enter The Wild Lands first.'});return;}t.wildLandsOverview=!t.wildLandsOverview;root.remove();onTrainEnter();};root.append(overview);
    const railRouteLabel=el('label','Next train route at shared junction'),railRoute=el('select');railRoute.ariaLabel='Next train route';railRoute.onfocus=()=>{const t=getGame().trainTest;railRoute.replaceChildren();if(t)for(const r of t.design.routes)railRoute.add(new Option(r.name,r.id,false,r.id===(t.pendingRoute||t.design.activeRoute)));};railRoute.onchange=()=>say(requestTrainRoute(getGame(),railRoute.value));railRouteLabel.append(railRoute);root.append(railRouteLabel);
-   const workshop=el('button','Train / track workshop');workshop.onclick=()=>openTrainEditor(getGame(),root);root.append(workshop);
-   const trainReturn=el('button','Return from train test');trainReturn.dataset.debug='train-return';trainReturn.onclick=()=>{const previousScreen=getGame().trainTest?.returnScreen;leaveTrainTest(getGame());root.remove();onTrainReturn(previousScreen);};root.append(trainReturn);
+   const workshop=el('button','Train / track workshop');workshop.onclick=()=>getGame().trainTest?.design.wildLands?say({ok:false,message:'Return from The Wild Lands before editing your saved railway.'}):openTrainEditor(getGame(),root);root.append(workshop);
+   const trainReturn=el('button','Return from dev world / train test');trainReturn.dataset.debug='train-return';trainReturn.onclick=()=>{const previousScreen=getGame().trainTest?.returnScreen;leaveTrainTest(getGame());root.remove();onTrainReturn(previousScreen);};root.append(trainReturn);
    target=el('p',null,'debug-target');root.append(target);
    const eventLabel=el('label','Event'),event=el('select');event.dataset.debug='event';
    events.forEach((e,i)=>{const o=el('option',`${i+1}: ${e.name||e.kind||e.type}`);o.value=i;event.append(o);});eventLabel.append(event);root.append(eventLabel);

@@ -267,6 +267,212 @@ export class Renderer {
         h / this.camera.zoom / 2,
     };
   }
+  drawCombatGround(game,w,h){const ctx=this.ctx;
+    for (const p of game.pickups)
+      this.assets.draw(ctx, "fruit", p.x, p.y + Math.sin(this.age * 4) * 2, 26);
+    for (const t of game.traps) {
+      if (!this.visible(t, w, h, 90)) continue;
+      if (t.variant && t.variant !== "snare") {
+        ctx.strokeStyle = {
+          slow: "#81c386",
+          lure: "#d9b66e",
+          interrupt: "#b8b2fa",
+        }[t.variant];
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.variant === "slow" ? 85 : 30, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      this.animator.draw(
+        ctx,
+        {
+          ...t,
+          kind: "trap",
+          age: game.time - (t.placedAt ?? game.time - 1),
+          faceX: 0,
+          faceY: 1,
+        },
+        game.time,
+        38,
+      );
+      ctx.strokeStyle = "#d3c87e";
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.ellipse(t.x, t.y + 6, 23, 13, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const e of game.enemies)
+      if ((e.state === "windup"||e.kind==='golem'&&(e.state==='rocklift'||e.controlledAttack?.phase==='windup')) && !e.night && !['anaconda','shore_goblin'].includes(e.kind)) {
+        ctx.fillStyle = "#e96b5140";
+        ctx.strokeStyle = "#ff9470";
+        ctx.lineWidth = 1;
+        if (e.kind === "golem" || e.kind === "vine") {
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.kind === "golem" ? 95 : 120, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.save();
+          ctx.translate(e.x, e.y);
+          ctx.rotate(Math.atan2(e.dy, e.dx));
+          ctx.fillRect(0, -13, 165, 26);
+          ctx.strokeRect(0, -13, 165, 26);
+          ctx.restore();
+        }
+      }
+    for (const b of game.barricades || []) {
+      drawItem(ctx, "barricade", b.x, b.y - 6, 42);
+    }
+    if (game.ping && game.ping.until > game.time) {
+      ctx.strokeStyle = game.ping.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(
+        game.ping.x,
+        game.ping.y,
+        20 + Math.sin(game.time * 5) * 5,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+    }
+  }
+  drawWorldLoot(game,w,h){const ctx=this.ctx;
+    for (const orb of game.xpOrbs || []) {
+      if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;
+      const y = orb.y - 5 - (orb.z||0) + Math.sin(game.time * 3 + orb.id) * 1.2;
+      const size=orb.amount>4?3:2;
+      if(orb.attracted){ctx.strokeStyle='#80e5ef77';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(orb.x,y);ctx.lineTo(orb.x-(orb.vx||0)*.035,y-(orb.vy||0)*.035);ctx.stroke();}
+      ellipse(ctx, orb.x, orb.y + 3, size+1, 1, "#071b2377");
+      ellipse(ctx, orb.x, y, size+3, size+3, "#53b4ef33");
+      ellipse(ctx, orb.x, y, size, size, "#647adc");
+      ellipse(ctx, orb.x, y, size-1, size-1, "#83d8f0");
+      ctx.fillStyle = "#e0ffff";
+      ctx.fillRect(Math.round(orb.x - 1), Math.round(y - 2), 2, 2);
+    }
+    const selectedLoot = new Set(
+      game.players
+        .filter((p) => !p.room && !p.ui && p.hp > 0)
+        .map((p) => game.nearbyLoot(p)),
+    );
+    for (const l of game.loot) {
+      if (!this.visible(l, w, h, 40)) continue;
+      if (!canSee(game, l)) continue;
+      if(l.quicksandHidden)continue;
+      const lootY=l.y+(l.quicksandSink||0);
+      ctx.fillStyle = "#07100d88";
+      ctx.beginPath();
+      ctx.ellipse(l.x, lootY + (l.embedded?1:6), l.embedded?3:9, l.embedded?1.5:4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const selected = selectedLoot.has(l);
+      if (selected) {
+        ctx.strokeStyle = "#f0d79d";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(l.x, lootY + 6, 12, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (l.embedded && l.type === "arrow") {
+        drawEmbeddedArrow(ctx,{...l,y:lootY},game.time,this.showLootDetails);
+      } else {
+        if (ITEMS[l.type]?.gmOnly) drawParticleEffect(ctx,'pink-sparkle',l.x,lootY-8,game.time,l.id);
+        const fall=l.salvageBorn===undefined?0:Math.max(0,1-(game.time-l.salvageBorn)/.55);
+        if(l.type==='jack_o_lantern')drawPumpkin(ctx,l.x,lootY-3-Math.sin(fall*Math.PI/2)*24,{carved:true,time:game.time});
+        else drawItem(ctx, l.type, l.x, lootY + (l.type==='log'?6:-3) - Math.sin(fall*Math.PI/2)*24, 24);
+      }
+      if (ITEMS[l.type]?.slot) {
+        ctx.fillStyle = ITEMS[l.type].color;
+        ctx.fillRect(l.x - 8, lootY + 9, 16, 1);
+      }
+      if (l.qty > 1) {
+        ctx.font = "bold 6px monospace";
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#101e18";
+        ctx.fillRect(l.x + 2, lootY + 5, 12, 8);
+        ctx.fillStyle = "#f0e6c5";
+        ctx.fillText(l.qty, l.x + 13, lootY + 11);
+      }
+    }
+    for (const b of game.baits) {
+      ctx.fillStyle = "#dc9880";
+      ctx.fillRect(b.x - 4, b.y - 3, 8, 6);
+    }
+  }
+  drawCombatProjectiles(game,w,h){const ctx=this.ctx;
+    for (const bolt of game.spells || []) {
+      if (this.visible(bolt,w,h,80) && canSee(game,bolt)) drawMagicBolt(ctx,bolt);
+    }
+    for(const b of game.boomerangs||[])if(this.visible(b,w,h,80)&&canSee(game,b))drawBoomerang(ctx,b,game.time);
+    for (const a of game.arrows) {
+      if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
+      drawArrowTrail(ctx,a,game.time);
+      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time,this.showLootDetails);continue;}
+      ctx.save();
+      ctx.translate(a.x, a.y - (a.z || 0));
+      ctx.rotate(a.rock||a.ice?(a.angle??Math.atan2(a.vy,a.vx)):arrowVisualAngle(a));
+      if (a.rock) {
+        ctx.fillStyle = "#45564e";
+        ctx.beginPath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#9ca89a";
+        ctx.fillRect(-4, -5, 6, 3);
+      } else if (a.ice) {
+        ctx.fillStyle = "#8fe9ff";
+        ctx.beginPath();
+        ctx.moveTo(0, -7);
+        ctx.lineTo(5, 0);
+        ctx.lineTo(0, 7);
+        ctx.lineTo(-5, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#e5fcff";
+        ctx.fillRect(-1, -3, 2, 6);
+      } else {
+        drawFlyingArrow(ctx,a,game.time);
+      }
+      if (a.rock) {
+        ctx.fillStyle = "#839187";
+        ctx.fillRect(-7, 4, 3, 2);
+        ctx.fillRect(3, -5, 2, 2);
+      }
+      ctx.restore();
+    }
+  }
+  drawCombatEffects(game){const ctx=this.ctx;
+    for (const fx of game.effects) {
+      if(fx.room)continue;
+      ctx.globalAlpha = Math.min(1, fx.life * 2);
+      ctx.fillStyle = fx.color;
+      ctx.strokeStyle = fx.color;
+      if(fx.skunkCloud){
+        const alpha=Math.max(0,Math.min(.26,.26*(fx.life/(fx.total||12))));
+        ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=fx.color;ctx.strokeStyle='#d4ed9a';
+        ctx.beginPath();ctx.ellipse(fx.x,fx.y,fx.radius*.92,fx.radius*.48,0,0,Math.PI*2);ctx.fill();
+        for(let i=0;i<7;i++){
+          const seed=(Number(fx.seed)||0)*.713+i*2.39996323;
+          const x=fx.x+Math.cos(seed)*fx.radius*.62,y=fx.y+Math.sin(seed)*fx.radius*.3;
+          const r=3+(i%3)*2;ctx.globalAlpha=alpha*.75;ctx.beginPath();ctx.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);ctx.fill();
+          if(i%2===0){ctx.globalAlpha=alpha*.8;ctx.beginPath();ctx.arc(Math.round(x),Math.round(y),r+1,0,Math.PI*2);ctx.stroke();}
+        }
+        ctx.restore();
+      }else if(fx.dragonBreath){drawDragonBreath(ctx,fx);
+      }else if(fx.swordImpact){paintSwordImpact(ctx,fx);
+      }else if(fx.magicBolt){drawMagicBurst(ctx,fx);
+      }else if(fx.particle){drawParticleEffect(ctx,fx.particle,fx.x,fx.y,Math.max(0,fx.duration-fx.life),Number(fx.seed)||0);
+      } else if (fx.text) {
+        ctx.textAlign = "center";
+        ctx.font = "bold 7px monospace";
+        ctx.fillText(fx.text, fx.x, fx.y - (1 - fx.life) * 17);
+      } else {
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.radius * (1 - fx.life), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
   draw(game, dt, {sealCapture=false}={}) {
     if(game.trainTest){drawTrainTest(this,game,dt);return;}
     if(game.worldTravel&&!sealCapture){drawWorldTravel(this,game,dt);return;}
@@ -399,104 +605,8 @@ export class Renderer {
     drawConstructHazardProjectiles(ctx,game);
     for(const npc of game.questNpcs||[]) if(!npc.rescueExplorer&&!npc.santa&&this.visible(npc,w,h,120)){drawCampfire(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10,game.time,npc.id);drawCampfireLabel(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10);}
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
-    for (const orb of game.xpOrbs || []) {
-      if (!this.visible(orb, w, h, 24) || !canSee(game, orb)) continue;
-      const y = orb.y - 5 - (orb.z||0) + Math.sin(game.time * 3 + orb.id) * 1.2;
-      const size=orb.amount>4?3:2;
-      if(orb.attracted){ctx.strokeStyle='#80e5ef77';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(orb.x,y);ctx.lineTo(orb.x-(orb.vx||0)*.035,y-(orb.vy||0)*.035);ctx.stroke();}
-      ellipse(ctx, orb.x, orb.y + 3, size+1, 1, "#071b2377");
-      ellipse(ctx, orb.x, y, size+3, size+3, "#53b4ef33");
-      ellipse(ctx, orb.x, y, size, size, "#647adc");
-      ellipse(ctx, orb.x, y, size-1, size-1, "#83d8f0");
-      ctx.fillStyle = "#e0ffff";
-      ctx.fillRect(Math.round(orb.x - 1), Math.round(y - 2), 2, 2);
-    }
-    const selectedLoot = new Set(
-      game.players
-        .filter((p) => !p.room && !p.ui && p.hp > 0)
-        .map((p) => game.nearbyLoot(p)),
-    );
-    for (const l of game.loot) {
-      if (!this.visible(l, w, h, 40)) continue;
-      if (!canSee(game, l)) continue;
-      if(l.quicksandHidden)continue;
-      const lootY=l.y+(l.quicksandSink||0);
-      ctx.fillStyle = "#07100d88";
-      ctx.beginPath();
-      ctx.ellipse(l.x, lootY + (l.embedded?1:6), l.embedded?3:9, l.embedded?1.5:4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      const selected = selectedLoot.has(l);
-      if (selected) {
-        ctx.strokeStyle = "#f0d79d";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(l.x, lootY + 6, 12, 6, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      if (l.embedded && l.type === "arrow") {
-        drawEmbeddedArrow(ctx,{...l,y:lootY},game.time,this.showLootDetails);
-      } else {
-        if (ITEMS[l.type]?.gmOnly) drawParticleEffect(ctx,'pink-sparkle',l.x,lootY-8,game.time,l.id);
-        const fall=l.salvageBorn===undefined?0:Math.max(0,1-(game.time-l.salvageBorn)/.55);
-        if(l.type==='jack_o_lantern')drawPumpkin(ctx,l.x,lootY-3-Math.sin(fall*Math.PI/2)*24,{carved:true,time:game.time});
-        else drawItem(ctx, l.type, l.x, lootY + (l.type==='log'?6:-3) - Math.sin(fall*Math.PI/2)*24, 24);
-      }
-      if (ITEMS[l.type]?.slot) {
-        ctx.fillStyle = ITEMS[l.type].color;
-        ctx.fillRect(l.x - 8, lootY + 9, 16, 1);
-      }
-      if (l.qty > 1) {
-        ctx.font = "bold 6px monospace";
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#101e18";
-        ctx.fillRect(l.x + 2, lootY + 5, 12, 8);
-        ctx.fillStyle = "#f0e6c5";
-        ctx.fillText(l.qty, l.x + 13, lootY + 11);
-      }
-    }
-    for (const b of game.baits) {
-      ctx.fillStyle = "#dc9880";
-      ctx.fillRect(b.x - 4, b.y - 3, 8, 6);
-    }
-    for (const bolt of game.spells || []) {
-      if (this.visible(bolt,w,h,80) && canSee(game,bolt)) drawMagicBolt(ctx,bolt);
-    }
-    for(const b of game.boomerangs||[])if(this.visible(b,w,h,80)&&canSee(game,b))drawBoomerang(ctx,b,game.time);
-    for (const a of game.arrows) {
-      if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
-      drawArrowTrail(ctx,a,game.time);
-      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time,this.showLootDetails);continue;}
-      ctx.save();
-      ctx.translate(a.x, a.y - (a.z || 0));
-      ctx.rotate(a.rock||a.ice?(a.angle??Math.atan2(a.vy,a.vx)):arrowVisualAngle(a));
-      if (a.rock) {
-        ctx.fillStyle = "#45564e";
-        ctx.beginPath();
-        ctx.arc(0, 0, 9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#9ca89a";
-        ctx.fillRect(-4, -5, 6, 3);
-      } else if (a.ice) {
-        ctx.fillStyle = "#8fe9ff";
-        ctx.beginPath();
-        ctx.moveTo(0, -7);
-        ctx.lineTo(5, 0);
-        ctx.lineTo(0, 7);
-        ctx.lineTo(-5, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#e5fcff";
-        ctx.fillRect(-1, -3, 2, 6);
-      } else {
-        drawFlyingArrow(ctx,a,game.time);
-      }
-      if (a.rock) {
-        ctx.fillStyle = "#839187";
-        ctx.fillRect(-7, 4, 3, 2);
-        ctx.fillRect(3, -5, 2, 2);
-      }
-      ctx.restore();
-    }
+    this.drawWorldLoot(game,w,h);
+    this.drawCombatProjectiles(game,w,h);
     if(game.portals?.some(d=>d.oldWell))drawOldWells(ctx,game);
     for (const d of game.portals) {
       if(d.temple||d.oldWell)continue;
@@ -520,75 +630,7 @@ export class Renderer {
         if(this.dynamicShadows)this.worldLights.drawProp(ctx,d,paint,this.animator.lighting);else paint(ctx);
         drawTreeWeb(ctx,d);ctx.restore();snowRim(ctx,game,d.x,base.y,d.size*.5);
       }
-    for (const p of game.pickups)
-      this.assets.draw(ctx, "fruit", p.x, p.y + Math.sin(this.age * 4) * 2, 26);
-    for (const t of game.traps) {
-      if (!this.visible(t, w, h, 90)) continue;
-      if (t.variant && t.variant !== "snare") {
-        ctx.strokeStyle = {
-          slow: "#81c386",
-          lure: "#d9b66e",
-          interrupt: "#b8b2fa",
-        }[t.variant];
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, t.variant === "slow" ? 85 : 30, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      this.animator.draw(
-        ctx,
-        {
-          ...t,
-          kind: "trap",
-          age: game.time - (t.placedAt ?? game.time - 1),
-          faceX: 0,
-          faceY: 1,
-        },
-        game.time,
-        38,
-      );
-      ctx.strokeStyle = "#d3c87e";
-      ctx.setLineDash([3, 4]);
-      ctx.beginPath();
-      ctx.ellipse(t.x, t.y + 6, 23, 13, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    for (const e of game.enemies)
-      if ((e.state === "windup"||e.kind==='golem'&&(e.state==='rocklift'||e.controlledAttack?.phase==='windup')) && !e.night && !['anaconda','shore_goblin'].includes(e.kind)) {
-        ctx.fillStyle = "#e96b5140";
-        ctx.strokeStyle = "#ff9470";
-        ctx.lineWidth = 1;
-        if (e.kind === "golem" || e.kind === "vine") {
-          ctx.beginPath();
-          ctx.arc(e.x, e.y, e.kind === "golem" ? 95 : 120, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        } else {
-          ctx.save();
-          ctx.translate(e.x, e.y);
-          ctx.rotate(Math.atan2(e.dy, e.dx));
-          ctx.fillRect(0, -13, 165, 26);
-          ctx.strokeRect(0, -13, 165, 26);
-          ctx.restore();
-        }
-      }
-    for (const b of game.barricades || []) {
-      drawItem(ctx, "barricade", b.x, b.y - 6, 42);
-    }
-    if (game.ping && game.ping.until > game.time) {
-      ctx.strokeStyle = game.ping.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(
-        game.ping.x,
-        game.ping.y,
-        20 + Math.sin(game.time * 5) * 5,
-        0,
-        Math.PI * 2,
-      );
-      ctx.stroke();
-    }
+    this.drawCombatGround(game,w,h);
     drawIceHints(ctx,game);
     drawFieldWorld(ctx, game);
     if(!sealCapture)this.boardBase(ctx, game);
@@ -995,37 +1037,7 @@ export class Renderer {
         f.smoke ? 4 : 5,
       );
     }
-    for (const fx of game.effects) {
-      if(fx.room)continue;
-      ctx.globalAlpha = Math.min(1, fx.life * 2);
-      ctx.fillStyle = fx.color;
-      ctx.strokeStyle = fx.color;
-      if(fx.skunkCloud){
-        const alpha=Math.max(0,Math.min(.26,.26*(fx.life/(fx.total||12))));
-        ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=fx.color;ctx.strokeStyle='#d4ed9a';
-        ctx.beginPath();ctx.ellipse(fx.x,fx.y,fx.radius*.92,fx.radius*.48,0,0,Math.PI*2);ctx.fill();
-        for(let i=0;i<7;i++){
-          const seed=(Number(fx.seed)||0)*.713+i*2.39996323;
-          const x=fx.x+Math.cos(seed)*fx.radius*.62,y=fx.y+Math.sin(seed)*fx.radius*.3;
-          const r=3+(i%3)*2;ctx.globalAlpha=alpha*.75;ctx.beginPath();ctx.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);ctx.fill();
-          if(i%2===0){ctx.globalAlpha=alpha*.8;ctx.beginPath();ctx.arc(Math.round(x),Math.round(y),r+1,0,Math.PI*2);ctx.stroke();}
-        }
-        ctx.restore();
-      }else if(fx.dragonBreath){drawDragonBreath(ctx,fx);
-      }else if(fx.swordImpact){paintSwordImpact(ctx,fx);
-      }else if(fx.magicBolt){drawMagicBurst(ctx,fx);
-      }else if(fx.particle){drawParticleEffect(ctx,fx.particle,fx.x,fx.y,Math.max(0,fx.duration-fx.life),Number(fx.seed)||0);
-      } else if (fx.text) {
-        ctx.textAlign = "center";
-        ctx.font = "bold 7px monospace";
-        ctx.fillText(fx.text, fx.x, fx.y - (1 - fx.life) * 17);
-      } else {
-        ctx.beginPath();
-        ctx.arc(fx.x, fx.y, fx.radius * (1 - fx.life), 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
+    this.drawCombatEffects(game);
     drawRain(ctx, game, this.camera, w, h);
     drawWetDrips(ctx,game);
     drawFallingLeaves(ctx,game,p=>this.visible(p,w,h,160));

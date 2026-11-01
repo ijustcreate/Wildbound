@@ -26,7 +26,11 @@ test('house starts players and first lion indoors, other encounters outdoors; do
  assert.equal(g.projectileBlocked(480,600),true);
 });
 test('controller attack does not open a door; Interact does',()=>{
- const g=game('house'),p=g.players[0];p.device='pad:0';const d=g.house.doors[0];Object.assign(p,{x:d.x+d.w/2,y:d.y-40});
+ const g=game('house'),p=g.players[0];
+ // A randomly placed supply chest can consume Interact before the door.
+ // This test isolates controller-to-door input, not competing interactions.
+ g.supplyChests=[];
+ p.device='pad:0';const d=g.house.doors[0];Object.assign(p,{x:d.x+d.w/2,y:d.y-40});
  g.update(.05,{'pad:0':{attack:true}});assert.equal(d.open,false);
  g.update(.05,{'pad:0':{attack:false}});g.update(.05,{'pad:0':{interact:true}});assert.equal(d.open,true);
 });

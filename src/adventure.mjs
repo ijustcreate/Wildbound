@@ -1069,24 +1069,7 @@ export const adventureMethods = {
         if(edge('inventory'))this.openInventory(p);
         oldWellRoomStep(this,p,i,dt);p.previousInput={...i};p.consumeInput=true;continue;
       }
-      p.staminaBoost = Math.max(0, (p.staminaBoost || 0) - dt);
-      p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
-      p.necromancerCooldown = Math.max(0, (p.necromancerCooldown || 0) - dt);
-      for (const order of p.vendingOrders || []) {
-        if (!order.ready) {
-          order.elapsed += dt;
-          if (order.elapsed >= 1.6) {
-            order.ready = true;
-            this.persist();
-          }
-        }
-      }
-      refreshVitals(p);
-      if(p.hp>0)p.hp=Math.min(p.maxHp,p.hp+dt*stat(p,'hpRegen'));
-      p.mana = Math.min(
-        p.maxMana,
-        (p.mana ?? p.maxMana) + (p.hp > 0 ? dt * (8+stat(p,'manaRegen')) : 0),
-      );
+      this.tickHeroVitals(p,dt);
       if (!p.room && !p.ui && p.hp > 0 && !isCharmed(p)) {
         for (const door of this.portals) {
           if(door.autoEnter===false||door.oldWell)continue;
@@ -1188,26 +1171,7 @@ export const adventureMethods = {
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
         if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
-        if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui){
-          p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
-          const controlled=controlledFollower(this,p);
-          const feline=FELINE_CONTROL_KINDS.has(controlled?.kind);
-          p.pounceAimActive=!!(feline&&p.bowAiming);
-          if(feline&&p.pounceAimActive){
-            const n=Math.hypot(p.faceX||0,p.faceY||0)||1,range=55+Math.min(1,p.charge/1.2)*125;
-            p.pounceAim={x:p.x+(p.faceX||0)/n*range,y:p.y+(p.faceY||0)/n*range,range};
-          }else p.pounceAim=null;
-          if(controlled?.kind==='golem'&&p.charge>=.52){
-            controlled.state='rocklift';controlled.animationAction=null;controlled.moving=false;
-            controlled.rockGrabCharge=Math.max(0,Math.min(1,(p.charge-.52)/.68));
-            controlled.poseTime=controlled.rockGrabCharge;controlled.motionDuration=.8;controlled.timer=.8;
-          }else if(['imp','fire_elemental','water_elemental'].includes(controlled?.kind)&&p.bowAiming){controlled.moving=false;if(['fire_elemental','water_elemental'].includes(controlled.kind))controlled.fireballsAttack=.08;}
-        }
-        if (!i.attack && old.attack && p.charge&&!p.swimming) {
-          this.attack(p, p.charge);
-          p.charge = 0;
-          p.pounceAimActive=false;p.pounceAim=null;
-        }
+        this.tickWeaponInput(p,i,old,dt);
         const l = this.nearbyLoot(p), embeddedArrow = this.nearbyArrow(p);
         if (!(sealPriority&&i.interact) && edge("loot") && embeddedArrow) this.collectArrow(p, embeddedArrow);
         if (!(sealPriority&&i.interact) && edge("loot") && l) this.collect(p, l);
@@ -1234,19 +1198,7 @@ export const adventureMethods = {
           p.interactTime = 0;
           p.interactUsed = false;
         }
-        for (const orb of [...this.xpOrbs]) this.collectXP(p, orb);
-        for (const l of [...this.loot])
-          if (
-            !(sealPriority&&i.interact) &&
-            !l.manualPickup &&
-            l.type !== "potion" &&
-            l.type !== "stamina_potion" &&
-            ITEMS[l.type].stack &&
-            dist(p, l) < 25 + stat(p, "magnet")
-          ) {
-            if (ITEMS[l.type].relic||canGive(p.inventory, l.type, l.qty)) this.collect(p, l);
-            else this.inventoryFullNotice(p, l.id ?? l.type);
-          }
+        this.tickAutomaticLoot(p,sealPriority&&i.interact);
         const sight =
           sightRadius(this, p, rules.visionRadius);
         for (
@@ -1270,6 +1222,67 @@ export const adventureMethods = {
         p.previousInput.interact = false;
       }
     }
+    this.tickProjectiles(dt);
+  },
+  tickHeroVitals(p,dt){
+      p.staminaBoost = Math.max(0, (p.staminaBoost || 0) - dt);
+      p.salvageFinish=Math.max(0,(p.salvageFinish||0)-dt);
+      p.necromancerCooldown = Math.max(0, (p.necromancerCooldown || 0) - dt);
+      for (const order of p.vendingOrders || []) {
+        if (!order.ready) {
+          order.elapsed += dt;
+          if (order.elapsed >= 1.6) {
+            order.ready = true;
+            this.persist();
+          }
+        }
+      }
+      refreshVitals(p);
+      if(p.hp>0)p.hp=Math.min(p.maxHp,p.hp+dt*stat(p,'hpRegen'));
+      p.mana = Math.min(
+        p.maxMana,
+        (p.mana ?? p.maxMana) + (p.hp > 0 ? dt * (8+stat(p,'manaRegen')) : 0),
+      );
+  },
+  tickAutomaticLoot(p,blocked=false){
+        for (const orb of [...this.xpOrbs]) this.collectXP(p, orb);
+        for (const l of [...this.loot])
+          if (
+            !blocked &&
+            !l.manualPickup &&
+            l.type !== "potion" &&
+            l.type !== "stamina_potion" &&
+            ITEMS[l.type].stack &&
+            dist(p, l) < 25 + stat(p, "magnet")
+          ) {
+            if (ITEMS[l.type].relic||canGive(p.inventory, l.type, l.qty)) this.collect(p, l);
+            else this.inventoryFullNotice(p, l.id ?? l.type);
+          }
+  },
+  tickWorldLoot(dt){tickXPOrbs(this,dt);},
+  tickWeaponInput(p,i,old,dt){
+        if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui){
+          p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
+          const controlled=controlledFollower(this,p);
+          const feline=FELINE_CONTROL_KINDS.has(controlled?.kind);
+          p.pounceAimActive=!!(feline&&p.bowAiming);
+          if(feline&&p.pounceAimActive){
+            const n=Math.hypot(p.faceX||0,p.faceY||0)||1,range=55+Math.min(1,p.charge/1.2)*125;
+            p.pounceAim={x:p.x+(p.faceX||0)/n*range,y:p.y+(p.faceY||0)/n*range,range};
+          }else p.pounceAim=null;
+          if(controlled?.kind==='golem'&&p.charge>=.52){
+            controlled.state='rocklift';controlled.animationAction=null;controlled.moving=false;
+            controlled.rockGrabCharge=Math.max(0,Math.min(1,(p.charge-.52)/.68));
+            controlled.poseTime=controlled.rockGrabCharge;controlled.motionDuration=.8;controlled.timer=.8;
+          }else if(['imp','fire_elemental','water_elemental'].includes(controlled?.kind)&&p.bowAiming){controlled.moving=false;if(['fire_elemental','water_elemental'].includes(controlled.kind))controlled.fireballsAttack=.08;}
+        }
+        if (!i.attack && old.attack && p.charge&&!p.swimming) {
+          this.attack(p, p.charge);
+          p.charge = 0;
+          p.pounceAimActive=false;p.pounceAim=null;
+        }
+  },
+  tickProjectiles(dt){
     this.spells ||= [];
     for (const bolt of this.spells) {
       bolt.age=(bolt.age||0)+dt;
@@ -1387,8 +1400,8 @@ export const adventureMethods = {
           a.z <= 0 ||
           a.x < 10 ||
           a.y < 10 ||
-          a.x > 1590 ||
-          a.y > 1590 ||
+          a.x > (this.trainTest?.design.width||1600)-10 ||
+          a.y > (this.trainTest?.design.height||1600)-10 ||
           this.projectileBlocked(a.x, a.y, 1,true)
         ) {
           a.angle=arrowVisualAngle(a);

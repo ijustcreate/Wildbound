@@ -1,0 +1,49 @@
+const {app,BrowserWindow}=require('electron'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),base=process.env.WILDBOUND_VERIFY_APP||root,out=path.join(root,'test-output/wild-lands-review');
+fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));app.disableHardwareAcceleration();app.commandLine.appendSwitch('mute-audio');
+app.whenReady().then(async()=>{
+ const w=new BrowserWindow({show:false,width:1440,height:960,webPreferences:{backgroundThrottling:false}});w.webContents.setAudioMuted(true);const errors=[];
+ w.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});
+ try{
+  await w.loadURL('about:blank');w.webContents.debugger.attach('1.3');await w.webContents.debugger.sendCommand('Debugger.enable');await w.webContents.debugger.sendCommand('Debugger.setBreakpointByUrl',{urlRegex:'src/debug-tools\\.mjs$',lineNumber:3,condition:'(window.qaContext=ctx,false)'});
+  await w.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});const run=s=>w.webContents.executeJavaScript(s);await run('wildboundBoot.ready');
+  const result=await run(`(async()=>{
+   const ctx=qaContext,raf=requestAnimationFrame;window.requestAnimationFrame=()=>0;await new Promise(r=>setTimeout(r,60));
+   const {createGameDebug}=await import('./src/game-debug.mjs'),world=await import('./src/wild-lands-world.mjs'),train=await import('./src/train-test.mjs'),track=await import('./src/train-track.mjs'),{railwaySurface}=await import('./src/railway-water.mjs');
+   const g=ctx.game;g.players=[];g.addPlayer('keyboard','Wild Lands explorer');g.addPlayer('pad:0','Companion');const original=g.players,phase=g.phase,now=g.time,sky=JSON.stringify(g.sky),persist=g.persist,originalLoot=g.loot,originalHouse=g.house;
+   ctx.renderer=new ctx.Renderer(document.getElementById('game-canvas'),ctx.assets);ctx.show('play');const checks=[],pictures={},ok=(v,m)=>{if(!v)throw Error(m);checks.push(m);};
+   const host=document.createElement('div');document.body.append(host);createGameDebug({getGame:()=>g,events:[],items:{},onTrainEnter:()=>{}}).open(host,original[0].id);host.querySelector('[data-debug="wild-lands"]').click();
+   const t=g.trainTest,d=t.design,p=g.players[0];ok(d.wildLands&&d.width===16000&&d.height===9600,'Real dev-menu entry starts separate large world');ok(g.players!==original&&g.players.length===2,'Party isolated without changing original explorers');ok(g.loot!==originalLoot&&(originalHouse===null||g.house!==originalHouse),'Loot and house data isolated');g.dropLoot(2000,2000,'fruit',1);ok(!originalLoot.some(l=>l.x===2000&&l.y===2000),'Dev drops do not mutate original loot');ok(d.routes.length===1&&d.wildStops.length===8,'One circuit and eight stations');ok(track.trainCars(t).length===4,'Native locomotive, tender and two coaches');
+   const paint=name=>{ctx.renderer.trainScene=null;ctx.renderer.draw(g,.05);pictures[name]=document.getElementById('game-canvas').toDataURL();};
+   const exerciseGameplay=async label=>{const actor=g.players[0],t=g.trainTest,{give}=await import('./src/items.mjs');train.spawnOutside(g);actor.equipment={...actor.equipment,hand1:'sword',hand2:null};Object.assign(actor,{faceX:1,faceY:0,consumeInput:false});const enemy={id:9801,kind:'lion',x:actor.x+40,y:actor.y,hp:1000,maxHp:1000,speed:0,damage:0,frozen:100,state:'hunt',cooldown:99,faceX:-1,faceY:0};g.enemies=[enemy];
+    g.update(.02,{keyboard:{attack:true}});ok(actor.charge>0,label+' charges actual attack input');g.update(.02,{keyboard:{}});ok(actor.attack>0,label+' releases native weapon attack');paint(label+'-attack');for(let i=0;i<10;i++)g.update(.02,{});ok(enemy.hp<1000,label+' resolves normal timed sword damage');g.enemies=[];for(let i=0;i<40;i++)g.update(.02,{});
+    g.update(.02,{keyboard:{inventory:true}});ok(actor.ui,label+' opens normal inventory');g.update(.02,{});g.update(.02,{keyboard:{inventory:true}});ok(!actor.ui,label+' closes inventory');g.update(.02,{keyboard:{x:1,dodge:true}});ok(actor.dashTime>0,label+' native dash works after inventory');paint(label+'-dash');for(let i=0;i<60;i++)g.update(.02,{});
+    actor.equipment.hand1='bow';give(actor.inventory,'arrow',8);g.update(.02,{keyboard:{attack:true}});g.update(.02,{keyboard:{}});ok(g.arrows.some(a=>!a.stuck),label+' fires real bow projectile');paint(label+'-bow');const a=g.arrows[0],x=a.x;g.update(.02,{});ok(a.x>x&&!a.stuck,label+' projectile flies beyond Classic bounds');g.arrows=[];
+    const c=track.trainCars(t)[2];actor.trainRide={car:2,x:0,y:0};Object.assign(actor,track.trainWorld(c,0,0));actor.swimming=false;actor.attack=0;actor.equipment.hand1='sword';g.update(.02,{keyboard:{attack:true}});g.update(.02,{});ok(actor.attack>0,label+' weapon works aboard carriage');paint(label+'-onboard-attack');train.spawnOutside(g);
+   };
+   await exerciseGameplay('wild-gameplay');
+   paint('arrival');
+   for(const stop of d.wildStops){ok(world.wildLandsTravel(g,stop.id).ok,'Travel to '+stop.name);paint(stop.id);const x=p.x;for(let i=0;i<10;i++)g.update(.05,{keyboard:{x:1}});ok(p.x>x,'Walk at '+stop.name);ok(track.nearestTrainTrack(t.route,stop.x,stop.y).distance<1,'Station touches rail: '+stop.name);}
+   for(const [name,x,y]of [['jungle-grove',4200,2700],['cemetery-ground',3500,6100],['forest-grove',5200,4200]]){Object.assign(p,{x,y});Object.assign(g.players[1],{x:x+35,y});paint(name);}
+   t.wildLandsOverview=true;paint('overview');t.wildLandsOverview=false;
+   for(const gate of world.WILD_LANDS_GATES){world.wildLandsTravel(g,gate.id);Object.assign(p,{x:gate.x,y:gate.y+40});g.update(.02,{keyboard:{}});g.update(.02,{keyboard:{interact:true}});ok(d.activeRoom===gate.id,'Interact enters '+gate.name);paint(gate.id);ok(g.players.every(q=>q.x>6500&&q.x<9500&&q.y>3900&&q.y<5900),'Whole party enters together');Object.assign(p,{x:8000,y:5600});g.update(.02,{keyboard:{}});g.update(.02,{keyboard:{interact:true}});ok(!d.activeRoom&&p.x===gate.x,'Return from '+gate.name);}
+   world.wildLandsTravel(g,'east');p.x=10600+Math.sin(4500/1250)*570;p.y=4500;train.updateTrainWater(t,p);ok(p.swimming,'River supports native swimming');
+   train.spawnOutside(g);let c=track.trainCars(t)[2];Object.assign(p,track.trainWorld(c,-c.length/2+17,c.width/2+10));p.jumpHeight=30;train.tryBoardTrain(g,p);ok(p.trainRide?.car===2,'Native jump boarding works');t.engine=true;t.throttle=.8;const distance=t.distance;for(let i=0;i<120;i++)g.update(.05,{});ok(t.distance>distance&&p.trainRide,'Train moves and carries riders');paint('train');
+   for(let i=0;i<80;i++){t.distance=t.route.length*i/80;const cars=track.trainCars(t);ok(cars.every(c=>Number.isFinite(c.x+c.y+c.a)),'Finite train pose '+i);}
+   ok((t.wildFloorChunks?.size||0)<=80&&(t.wildPropChunks?.size||0)<=128,'Bounded floor and prop caches');
+   train.leaveTrainTest(g);ok(g.players===original&&g.phase===phase&&g.time===now&&JSON.stringify(g.sky)===sky&&g.persist===persist&&g.loot===originalLoot&&g.house===originalHouse,'Return restores original expedition and persistence');
+   train.enterTrainTest(g);await exerciseGameplay('railway-gameplay');train.leaveTrainTest(g);
+   host.remove();document.getElementById('pause-dialog').showModal();document.getElementById('pause-dev').click();document.querySelector('[data-debug="wild-lands"]').click();ctx.updateHud();ok(document.getElementById('round-label').textContent==='THE WILD LANDS','Real application transition updates HUD');ok(!document.getElementById('pause-dialog').open,'Real entry closes pause dialog');paint('real-menu-entry');
+   train.leaveTrainTest(g);return {checks,pictures};
+  })()`);
+  await run("import('./src/wild-lands.mjs').then(m=>m.enterWildLands(qaContext.game))");
+  for(const [width,height]of [[800,600],[1440,960]]){
+   w.setContentSize(width,height);let size;
+   for(let attempt=0;attempt<50;attempt++){await new Promise(r=>setTimeout(r,100));size=await run('({w:innerWidth,h:innerHeight})');if(size.w===width&&size.h===height)break;}
+   await run('qaContext.renderer.draw(qaContext.game,.05)');if(size.w!==width||size.h!==height)throw Error('Native window sizing failed '+JSON.stringify(size));result.checks.push('Native '+width+'x'+height+' window renders');
+  }
+  await run("import('./src/train-test.mjs').then(m=>m.leaveTrainTest(qaContext.game))");
+  for(const [name,data]of Object.entries(result.pictures))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(data.split(',')[1],'base64'));
+  if(errors.length)throw Error(errors.join('\n'));fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({checks:result.checks,errors,muted:true,base},null,2));console.log(result.checks.length+' checks passed; '+out);w.destroy();app.quit();
+ }catch(e){console.error(e.stack);fs.writeFileSync(path.join(out,'failure.txt'),e.stack+'\n'+errors.join('\n'));w.destroy();app.exit(1);}
+});

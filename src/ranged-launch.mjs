@@ -6,5 +6,5 @@ export function rangedLaunchOrigin(actor,time,kind,{slot='hand1',size=PLAYER_REN
  const ready=kind==='bow'?{...actor,attack:0,charge,bowAiming:true}:actor;
  const tip=kind==='bow'?bowHandleWorld(ready,time,undefined,size):kind==='boomerang'?heldItemWorld({...actor,attack:0,bowAiming:true},slot,time,undefined,size):wandTipWorld(ready,slot,time,undefined,size);
  const z=kind==='bow'?18:16;
- return {x:tip.x,y:tip.y+z,z};
+ return {x:tip.x,y:tip.y+z,z:z+(actor.trainVisualLift||0)};
 }

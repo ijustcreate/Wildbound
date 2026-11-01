@@ -795,7 +795,7 @@ function renderRoster() {
 function updateHud() {
   $('board-button').hidden=!!game.trainTest;
   if(game.trainTest){
-    const t=game.trainTest;$('round-label').textContent='DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';$('game-hint').textContent='Jump + interact at a raised side door · Dev menu: railway workshop or return to expedition';
+    const t=game.trainTest;$('round-label').textContent=t.design.wildLands?'THE WILD LANDS':'DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';$('game-hint').textContent='Jump + interact at a raised side door · Dev menu: railway workshop or return to expedition';
     for(const id of ['event-card','dice-result','game-toast'])$(id)?.classList.add('hidden');renderRoster();return;
   }
   game.controlLabels = controlLabels(mapping);

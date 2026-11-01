@@ -1,3 +1,4 @@
+import {trainWorldBlocked,moveTrainRider} from './train-test.mjs';
 import {tickTrainTest} from './train-test.mjs';
 import {BONE_CARVER_EVENT,spawnBoneCarver} from './bone-carver.mjs';
 import {tickBroomFlight} from './broom-mount.mjs';
@@ -661,6 +662,7 @@ export class Game {
     ensureNightCycle(this);
   }
   blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false, from = null) {
+    if(this.trainTest)return trainWorldBlocked(this,x,y,radius,flying,ignoreWater,elevation,projectile,from);
     if(!flying&&oldWellBlocked(this,x,y,radius,from))return true;
     if(!flying&&victoryChestBlocked(this,x,y,radius,elevation,from))return true;
     if(!flying&&!projectile&&supplyChestBlocked(this,x,y,radius,elevation,from))return true;
@@ -712,6 +714,7 @@ export class Game {
     );
   }
   projectileBlocked(x, y, radius = 1, impact = false) {
+    if(this.trainTest)return trainWorldBlocked(this,x,y,radius,false,true,0,true);
     if(impact&&breakWindow(this,x,y,radius))return true;
     // Airborne shots cross water but still hit scenery, the board and map edges.
     return (
@@ -723,10 +726,11 @@ export class Game {
     );
   }
   moveActor(actor, dx, dy, flying = false) {
+    if(this.trainTest&&actor.trainRide)return moveTrainRider(this,actor,dx,dy);
     const collider=this.players.includes(actor)?controlledFollower(this,actor)||actor:actor;
     if(stationaryCreature(collider)){actor.moving=false;actor.slideX=actor.slideY=0;return 0;}
     flying ||= flies(collider);
-    const groundedForTerrain=!flying&&!actor.broomMount&&!actor.wingHover&&!(actor.jumpHeight>0)&&!(actor.groundHeight>0);
+    const groundedForTerrain=!flying&&!actor.trainRide&&!actor.trainDeck&&!actor.broomMount&&!actor.wingHover&&!(actor.jumpHeight>0)&&!(actor.groundHeight>0);
     if(groundedForTerrain&&this.generatedEnvironment==='ice'){const snow=1-snowAt(this,actor.x,actor.y)*.45;dx*=snow;dy*=snow;}
     if(groundedForTerrain&&webSlow(this,actor)){dx*=.45;dy*=.45;}
     if (actor.field === undefined && actor.slowUntil > this.time) {
@@ -1150,7 +1154,7 @@ export class Game {
     e.summonCooldown = 7.5; e.summonPulse = .8; this.onSound('magic', e); return true;
   }
   canHitBoard(p) {
-    if(isCharmed(p))return false;
+    if(this.trainTest||isCharmed(p))return false;
     const dx =
       Math.max(
         CENTER - TABLE.halfWidth,
@@ -1432,8 +1436,8 @@ export class Game {
       }
       this.configureCreature(e, false);
       if(enemyGroup.manualOverride)Object.assign(e,unitStats,{maxHp:unitStats.hp});
-      const realmOrigin=this.mapMode==='boundless'&&REALMS.includes(this.generatedEnvironment)?this.players.find(p=>p.hp>0&&!p.room):null;
-      const preferred=realmOrigin?realmSafeSpawn(this,{x:realmOrigin.x+Math.cos(a)*280,y:realmOrigin.y+Math.sin(a)*280}):spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned);
+      const realmOrigin=this.trainTest?this.players.find(p=>p.hp>0&&!p.room):this.mapMode==='boundless'&&REALMS.includes(this.generatedEnvironment)?this.players.find(p=>p.hp>0&&!p.room):null;
+      const preferred=this.trainTest?this.trainEncounterSpot(realmOrigin,a):realmOrigin?realmSafeSpawn(this,{x:realmOrigin.x+Math.cos(a)*280,y:realmOrigin.y+Math.sin(a)*280}):spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned);
       if(!preferred)continue;
       const spawn=realmOrigin?preferred:force?preferred:requiredSpawnSpot(this,e.kind,preferred)||(test?preferred:null);
       if(!spawn)continue;Object.assign(e,spawn);
@@ -1505,77 +1509,29 @@ export class Game {
     this.onSound("trap");
     return true;
   }
-  update(dt, inputs = {}) {
-    if(tickTrainTest(this,dt,inputs))return;
-    if(tickHouseWorldTravel(this,dt,inputs))return;
-    if (this.phase === "sealing") {
-      this.sealTime += Math.min(dt, 0.05);
-      this.time += Math.min(dt, 0.05);
-      if (this.sealTime >= rules.sealDuration) this.completeVictory();
-      return;
-    }
-    if (!["play", "won"].includes(this.phase)) return;
-    dt = Math.min(dt, 0.05);
-    tickChestCritters(this,dt);
-    this.rollCooldown=Math.max(0,(this.rollCooldown||0)-dt);
-    if(tickBoardSequence(this,dt,inputs))return;
-    tickCharmStatuses(this,dt);
-    inputs=charmInputs(this,inputs);
-    tickNightCycle(this, dt);
-    ensureTemple(this);
-    this.tickAdventure(dt, inputs);
-    tickNpcQuests(this,dt);tickVillagers(this,dt);tickChristmas(this,dt);
-    if(this.roll)return;
-    tickGhosts(this,dt);
-    tickHunterPets(this,dt,inputs);
-    tickField(this, dt, inputs);
-    tickHazards(this, dt);
-    tickQuicksandLoot(this,dt);
-    tickTrials(this,dt);
-    tickImpHazards(this,dt);
-    tickEnvironment(this, dt);
-    tickGraveyard(this,dt);awakenCemeteryPumpkins(this);tickSurfaceEcology(this,dt);
-    tickMystery(this);
-    tickNightEquipment(this, dt);
-    tickNightEnemyHazards(this, dt);
-    rewardNightHunts(this);
-    updateLivingEcosystem(this, dt);
-    updateBoundlessWorld(this,dt);
-    tickLocalWorld(this,dt);
-    if(!this.localWorld)seedWildFauna(this);
-    if (this.phase === "sealing") return;
-    this.bloom = Math.min(3, (this.bloom || 0) + dt);
-    this.time += dt;
-    this.tableShake = Math.max(0, this.tableShake - dt);
-    this.eventTime = Math.max(0, this.eventTime - dt);
-    for(const vehicle of this.house?.vehicles||[])tickVehicleEffects(this,vehicle,dt);
-    if (this.event?.chain?.some((action, index) => action.trigger === "delay" && !this.eventActionRun?.has(index))) {
-      this.event.chainRuntime = (this.event.chainRuntime || 0) + dt;
-      this.runEventActions("delay");
-    }
-    if (this.reveal) {
-      this.reveal.life -= dt;
-      if (this.reveal.life <= 0) this.reveal = null;
-    }
-    for (const p of this.players) {
-      if(p.nativeCryptActive&&p.room)continue;
-      for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade){p.energyBladeIdle=(p.energyBladeIdle||0)+dt;if(p.energyBladeIdle>=10)p.energyBladeActive=false;else if(p.energyBladeActive!==false)p.energyBladeActive=true;}
-      const activeVehicle=houseVehicleForPlayer(this,p), passenger=activeVehicle&&vehicleDriver(this,activeVehicle)!==p;
-      let rawInput=inputs[p.device]||{};
-      if(this.openingBoard&&rawInput.jump)p.boardJumpRelease=true;
-      if(p.boardJumpRelease){if(!rawInput.jump)delete p.boardJumpRelease;else rawInput={...rawInput,jump:false};}
-      const input=p.broomMount?{...rawInput,jump:false,dodge:false,block:false,attack:false,trap:false,controlCycle:false}:activeVehicle?{...rawInput,jump:false,dodge:false,block:passenger&&rawInput.block,controlCycle:false,trap:false}:rawInput;
-      if (input.controlCycle && !p.ui && !p.room && p.hp > 0) cycleFollowerControl(this,p);
-      const controlled = controlledFollower(this,p);
-      const jumpActor=controlled||p;
-      if(jumpActor.jumpHeld&&!input.jump)releaseJump(jumpActor);
-      if(controlled)for(const key of ['jumpHeight','groundHeight','jumpVelocity','jumpAge','landTime'])p[key]=controlled[key]||0;
-      tickPlayerIce(p,dt);
-      if(!activeVehicle){
-        if(!controlled&&!tickBroomFlight(this,p,dt)&&!tickWingFlight(this,p,input,dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
-        tickQuicksand(this,p,input,dt);
-        if(controlled)tickControlledWater(this,p,controlled,input,dt);else tickSwimming(this,p,input,dt);
-      }
+  trainEncounterSpot(origin,angle){
+    if(!origin)return null;for(let i=0;i<48;i++){const a=angle+i*.41,r=220+(i%5)*35,x=origin.x+Math.cos(a)*r,y=origin.y+Math.sin(a)*r;if(!this.blocked(x,y,20))return {x,y};}return null;
+  }
+  tickDownedPlayer(p,dt,inputs){
+        let helper = this.players.find(
+          (q) =>
+            q.hp > 0 &&
+            distance(p, q) < 65 &&
+            (inputs[q.device] || {}).interact,
+        );
+        if(helper)helper.reviveAnimation=.15;
+        p.revive = helper ? p.revive + dt : Math.max(0, p.revive - dt);
+        if (helper?.field?.skills?.quick_revive || p.revive >= 1.6) {
+          if (helper) record(helper, "rescues");
+          p.hp = 55;
+          p.getUpTime=.4;
+          p.revive = 0;
+          p.invuln = 2;
+          this.onSound("heal");
+          this.message(p.name + " is back on their feet.");
+        }
+  }
+  tickPlayerCombatTimers(p,dt){
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
@@ -1599,63 +1555,16 @@ export class Game {
       p.invuln = Math.max(0, p.invuln - dt);
       p.trapCooldown = Math.max(0, p.trapCooldown - dt);
       p.hit = Math.max(0, p.hit - dt);
-      if(isCharmed(p)){tickCharmedPlayer(this,p,dt);continue;}
-      const chargeAimFollower=controlled&&(['golem','imp','fire_elemental','water_elemental'].includes(controlled.kind)||FELINE_CONTROL_KINDS.has(controlled.kind));
-      p.bowAiming = Boolean(input.block && (hasAimWeapon(p)||chargeAimFollower) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !p.frozen && !this.openingBoard);
-      p.holdingPosition=Boolean(input.holdPosition && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !p.frozen && !this.openingBoard);
-      if(p.bowAiming||p.holdingPosition){if(p.bowAiming)p.blocking=false;p.dashTime=0;p.dashRecovery=0;p.dashGhosts=[];p.slideX=p.slideY=0;}
-      if(p.room||p.ui||p.consumeInput||p.hp<=0||p.stun>0||p.frozen>0||p.sleeping>0){delete p.swordStrike;delete p.swordFacing;}
-      if (p.room || p.ui || p.consumeInput || p.stun > 0 || p.frozen > 0) {
-        p.moving = false;p.slideX=p.slideY=0;
-        continue;
+    return swordPause;
+  }
+  tickMeleeContact(p){
+      if(p.swordStrike){
+        if(p.hp<=0||p.room||p.ui||p.stun>0||p.frozen>0||p.dashTime>0||p.swimming||p.swordStrike.hand1!==p.equipment.hand1||p.swordStrike.hand2!==p.equipment.hand2){delete p.swordStrike;delete p.swordFacing;}
+        else if(1-p.attack/(p.attackDuration||.34)>=swordTiming(p.attackClip).contact){const strike=p.swordStrike;delete p.swordStrike;this.resolveMelee(p,strike.charge,strike.combo);}
       }
-      if (p.sleeping > 0) {
-        p.moving = false;
-        p.slideX = p.slideY = 0;
-        continue;
-      }
-      if (p.hp <= 0) {
-        let helper = this.players.find(
-          (q) =>
-            q.hp > 0 &&
-            distance(p, q) < 65 &&
-            (inputs[q.device] || {}).interact,
-        );
-        if(helper)helper.reviveAnimation=.15;
-        p.revive = helper ? p.revive + dt : Math.max(0, p.revive - dt);
-        if (helper?.field?.skills?.quick_revive || p.revive >= 1.6) {
-          if (helper) record(helper, "rescues");
-          p.hp = 55;
-          p.getUpTime=.4;
-          p.revive = 0;
-          p.invuln = 2;
-          this.onSound("heal");
-          this.message(p.name + " is back on their feet.");
-        }
-        continue;
-      }
-      let mx = input.x || 0,
-        my = input.y || 0;
-      const len = Math.hypot(mx, my);
-      const controlledCat=controlled&&FELINE_CONTROL_KINDS.has(controlled.kind);
-      const activePounce=controlled?.controlledAttack?.phase==='pounce';
-      if(len>0){
-        const wasRunning=p.movementGait==='run';
-        p.movementGait=len >= (controlledCat?(wasRunning ? .45 : .5):(wasRunning ? 0.68 : 0.75)) ? 'run' : 'walk';
-        p.walking=p.movementGait==='walk';
-      }else{p.movementGait='idle';p.walking=false;}
-      if (len > 1) {
-        mx /= len;
-        my /= len;
-      }
-      if(activePounce){mx=0;my=0;p.moving=false;p.walking=false;}
-      if(this.openingBoard)faceOpeningBoard(p);else updateAimFacing(p, input);
-      if(p.swordFacing&&p.attack>0){p.faceX=p.swordFacing.x;p.faceY=p.swordFacing.y;}
-      const canJump=!controlled||(!stationaryCreature(controlled)&&!flies(controlled)&&!controlled.wingHover);
-      if(!this.openingBoard&&canJump&&input.jump&&!jumpActor.jumpHeld&&!jumpActor.wingHover)startJump(jumpActor);
-      jumpActor.jumpHeld=!!input.jump;
-      if(controlled)p.jumpHeld=false;
-      if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
+  }
+  playerDashMotion(p,input,dt,mx,my,controlled=null){
+      const len=Math.hypot(mx,my);
       if (!this.openingBoard && !stationaryCreature(controlled) && !p.bowAiming && !p.holdingPosition && input.dodge && !p.dashHeld && p.dodge === 0) {
         p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
@@ -1677,52 +1586,9 @@ export class Game {
         mx = p.dashX;
         my = p.dashY;
       }
-      if(passenger){p.moving=false;p.walking=false;}
-      else if (p.bowAiming||p.holdingPosition) {p.moving=false;p.walking=false;}
-      else if (!this.openingBoard) {
-        const oldX=p.x,oldY=p.y,motion=p.vehicleId?vehicleMotion(this,p,input,dt):((!controlled||controlledCat)&&!p.dashTime&&!p.dashRecovery?jumpMotion(p,mx,my,speed*(controlledCat?1.15:1),dt):null)||iceMotion(this,p,mx,my,speed,dt);
-        const swordProgress=1-(p.attack||0)/(p.attackDuration||.34),swordDistance=p.swordFacing&&!p.dashTime&&!p.dashRecovery&&!p.swimming&&!(p.jumpHeight>0)?swordStep(p.attackClip,p.swordPrevious,swordProgress):0;
-        const control=p.swordFacing&&p.attack>0?(swordPause>0?0:swordProgress<.48?.48:.85):1;
-        this.moveActor(p,motion.dx*control+(p.swordFacing?.x||0)*swordDistance,motion.dy*control+(p.swordFacing?.y||0)*swordDistance);
-        if(Math.hypot(p.x-oldX,p.y-oldY)>1&&p.energyBladeActive){
-          p.energyBladeTrailCooldown=(p.energyBladeTrailCooldown||0)-dt;
-          if(p.energyBladeTrailCooldown<=0){
-            const blade=Object.values(p.equipment||{}).map(id=>ITEMS[id]).find(item=>item?.energyBlade);
-            const trail={red:'blade-trail-red',blue:'blade-trail-blue',green:'blade-trail-green'}[blade?.id?.replace('energy_blade_','')]||({ '#ff263f':'blade-trail-red','#238dff':'blade-trail-blue','#31dc58':'blade-trail-green'}[blade?.bladeColor]||'blade-trail-blue');
-            this.effects.push({particle:trail,x:oldX,y:oldY-12,life:.38,duration:.38,seed:p.id||0});p.energyBladeTrailCooldown=.075;
-          }
-        }
-        if(p.vehicleId){syncHouseVehicle(this,p);hitVehicleTree(this,p,oldX,oldY);resolveVehicleImpact(this,p,oldX,oldY);}
-        if(Math.abs(p.x-oldX)<.01)p.slideX=0;if(Math.abs(p.y-oldY)<.01)p.slideY=0;
-        if(p.dashTime>0){
-          p.dashGhostTimer=(p.dashGhostTimer||0)-dt;
-          if(p.dashGhostTimer<=0){
-            p.dashGhosts.push({x:p.x,y:p.y,faceX:p.faceX,faceY:p.faceY,age:0,dashTime:p.dashTime,dashAnimationDuration:p.dashAnimationDuration,walking:false,moving:true});
-            if(p.dashGhosts.length>4)p.dashGhosts.shift();
-            p.dashGhostTimer=.055;
-          }
-        }
-      }
-      else p.moving = false;
-      if(p.swordStrike){
-        if(p.hp<=0||p.room||p.ui||p.stun>0||p.frozen>0||p.dashTime>0||p.swimming||p.swordStrike.hand1!==p.equipment.hand1||p.swordStrike.hand2!==p.equipment.hand2){delete p.swordStrike;delete p.swordFacing;}
-        else if(1-p.attack/(p.attackDuration||.34)>=swordTiming(p.attackClip).contact){const strike=p.swordStrike;delete p.swordStrike;this.resolveMelee(p,strike.charge,strike.combo);}
-      }
-      syncControlledFollower(this,p,dt);
-      if(controlled){const pouncing=controlled.controlledAttack?.phase==='pounce';tickFollowerAttack(this,controlled,dt);if(pouncing){p.x=controlled.x;p.y=controlled.y;}}
-      // April is outside `enemies`; advance her jump in the player update.
-      if(controlled?.villagerId==='april'&&this.villageFollowers?.includes(controlled)){
-        tickJump(controlled,dt,this,collisionOffset(this,controlled));
-      }
-      if (!this.openingBoard && input.trap) this.trap(p);
-      for (const fruit of this.pickups) {
-        if (!fruit.used && distance(p, fruit) < 28) {
-          fruit.used = give(p.inventory, "fruit");
-          if (fruit.used) this.onSound("heal");
-          else this.inventoryFullNotice(p, "fruit");
-        }
-      }
-    }
+    return {x:mx,y:my,speed};
+  }
+  tickCombatActors(dt){
     const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet),...(this.villageFollowers||[]),...this.enemies.filter(e=>e.holidayReindeer)].filter((p) => p.hp > 0 && !p.room);
     tickSkunkClouds(this, dt, damageEnemy);
     for (const e of this.enemies) {
@@ -1761,7 +1627,7 @@ export class Game {
         beh = cfg?.behaviors || {};
       const aiKind = cfg?.aiKind || e.kind;
       if (cfg?.faction === "neutral") continue;
-      if(this.mapMode!=='boundless'){e.x = clamp(e.x, 24, WORLD - 24);e.y = clamp(e.y, 24, WORLD - 24);}
+      if(!this.trainTest&&this.mapMode!=='boundless'){e.x = clamp(e.x, 24, WORLD - 24);e.y = clamp(e.y, 24, WORLD - 24);}
       e.flash = Math.max(0, e.flash - dt);
       e.summonPulse = Math.max(0, (e.summonPulse || 0) - dt);
       if (e.maxMana) e.mana = Math.min(e.maxMana, (e.mana ?? e.maxMana) + dt * (e.manaRegen ?? 5));
@@ -2418,6 +2284,163 @@ export class Game {
       e.hp > 0 || (e.wasSnared ? e.state === "snared" && false : (e.deathTimer || 0) < 3.5),
     );
     tickCharmStatuses(this,0); // Owner death/friendship breaks the spell this frame.
+  }
+  update(dt, inputs = {}) {
+    if(tickTrainTest(this,dt,inputs))return;
+    if(tickHouseWorldTravel(this,dt,inputs))return;
+    if (this.phase === "sealing") {
+      this.sealTime += Math.min(dt, 0.05);
+      this.time += Math.min(dt, 0.05);
+      if (this.sealTime >= rules.sealDuration) this.completeVictory();
+      return;
+    }
+    if (!["play", "won"].includes(this.phase)) return;
+    dt = Math.min(dt, 0.05);
+    tickChestCritters(this,dt);
+    this.rollCooldown=Math.max(0,(this.rollCooldown||0)-dt);
+    if(tickBoardSequence(this,dt,inputs))return;
+    tickCharmStatuses(this,dt);
+    inputs=charmInputs(this,inputs);
+    tickNightCycle(this, dt);
+    ensureTemple(this);
+    this.tickAdventure(dt, inputs);
+    tickNpcQuests(this,dt);tickVillagers(this,dt);tickChristmas(this,dt);
+    if(this.roll)return;
+    tickGhosts(this,dt);
+    tickHunterPets(this,dt,inputs);
+    tickField(this, dt, inputs);
+    tickHazards(this, dt);
+    tickQuicksandLoot(this,dt);
+    tickTrials(this,dt);
+    tickImpHazards(this,dt);
+    tickEnvironment(this, dt);
+    tickGraveyard(this,dt);awakenCemeteryPumpkins(this);tickSurfaceEcology(this,dt);
+    tickMystery(this);
+    tickNightEquipment(this, dt);
+    tickNightEnemyHazards(this, dt);
+    rewardNightHunts(this);
+    updateLivingEcosystem(this, dt);
+    updateBoundlessWorld(this,dt);
+    tickLocalWorld(this,dt);
+    if(!this.localWorld)seedWildFauna(this);
+    if (this.phase === "sealing") return;
+    this.bloom = Math.min(3, (this.bloom || 0) + dt);
+    this.time += dt;
+    this.tableShake = Math.max(0, this.tableShake - dt);
+    this.eventTime = Math.max(0, this.eventTime - dt);
+    for(const vehicle of this.house?.vehicles||[])tickVehicleEffects(this,vehicle,dt);
+    if (this.event?.chain?.some((action, index) => action.trigger === "delay" && !this.eventActionRun?.has(index))) {
+      this.event.chainRuntime = (this.event.chainRuntime || 0) + dt;
+      this.runEventActions("delay");
+    }
+    if (this.reveal) {
+      this.reveal.life -= dt;
+      if (this.reveal.life <= 0) this.reveal = null;
+    }
+    for (const p of this.players) {
+      if(p.nativeCryptActive&&p.room)continue;
+      for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade){p.energyBladeIdle=(p.energyBladeIdle||0)+dt;if(p.energyBladeIdle>=10)p.energyBladeActive=false;else if(p.energyBladeActive!==false)p.energyBladeActive=true;}
+      const activeVehicle=houseVehicleForPlayer(this,p), passenger=activeVehicle&&vehicleDriver(this,activeVehicle)!==p;
+      let rawInput=inputs[p.device]||{};
+      if(this.openingBoard&&rawInput.jump)p.boardJumpRelease=true;
+      if(p.boardJumpRelease){if(!rawInput.jump)delete p.boardJumpRelease;else rawInput={...rawInput,jump:false};}
+      const input=p.broomMount?{...rawInput,jump:false,dodge:false,block:false,attack:false,trap:false,controlCycle:false}:activeVehicle?{...rawInput,jump:false,dodge:false,block:passenger&&rawInput.block,controlCycle:false,trap:false}:rawInput;
+      if (input.controlCycle && !p.ui && !p.room && p.hp > 0) cycleFollowerControl(this,p);
+      const controlled = controlledFollower(this,p);
+      const jumpActor=controlled||p;
+      if(jumpActor.jumpHeld&&!input.jump)releaseJump(jumpActor);
+      if(controlled)for(const key of ['jumpHeight','groundHeight','jumpVelocity','jumpAge','landTime'])p[key]=controlled[key]||0;
+      tickPlayerIce(p,dt);
+      if(!activeVehicle){
+        if(!controlled&&!tickBroomFlight(this,p,dt)&&!tickWingFlight(this,p,input,dt,collisionOffset(this,p)))tickJump(p,dt,this,collisionOffset(this,p));
+        tickQuicksand(this,p,input,dt);
+        if(controlled)tickControlledWater(this,p,controlled,input,dt);else tickSwimming(this,p,input,dt);
+      }
+      const swordPause=this.tickPlayerCombatTimers(p,dt);
+      if(isCharmed(p)){tickCharmedPlayer(this,p,dt);continue;}
+      const chargeAimFollower=controlled&&(['golem','imp','fire_elemental','water_elemental'].includes(controlled.kind)||FELINE_CONTROL_KINDS.has(controlled.kind));
+      p.bowAiming = Boolean(input.block && (hasAimWeapon(p)||chargeAimFollower) && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !p.frozen && !this.openingBoard);
+      p.holdingPosition=Boolean(input.holdPosition && p.hp>0 && !p.room && !p.ui && !p.consumeInput && !p.swimming && !p.sleeping && !p.stun && !p.frozen && !this.openingBoard);
+      if(p.bowAiming||p.holdingPosition){if(p.bowAiming)p.blocking=false;p.dashTime=0;p.dashRecovery=0;p.dashGhosts=[];p.slideX=p.slideY=0;}
+      if(p.room||p.ui||p.consumeInput||p.hp<=0||p.stun>0||p.frozen>0||p.sleeping>0){delete p.swordStrike;delete p.swordFacing;}
+      if (p.room || p.ui || p.consumeInput || p.stun > 0 || p.frozen > 0) {
+        p.moving = false;p.slideX=p.slideY=0;
+        continue;
+      }
+      if (p.sleeping > 0) {
+        p.moving = false;
+        p.slideX = p.slideY = 0;
+        continue;
+      }
+      if (p.hp <= 0) {this.tickDownedPlayer(p,dt,inputs);continue;}
+      let mx = input.x || 0,
+        my = input.y || 0;
+      const len = Math.hypot(mx, my);
+      const controlledCat=controlled&&FELINE_CONTROL_KINDS.has(controlled.kind);
+      const activePounce=controlled?.controlledAttack?.phase==='pounce';
+      if(len>0){
+        const wasRunning=p.movementGait==='run';
+        p.movementGait=len >= (controlledCat?(wasRunning ? .45 : .5):(wasRunning ? 0.68 : 0.75)) ? 'run' : 'walk';
+        p.walking=p.movementGait==='walk';
+      }else{p.movementGait='idle';p.walking=false;}
+      if (len > 1) {
+        mx /= len;
+        my /= len;
+      }
+      if(activePounce){mx=0;my=0;p.moving=false;p.walking=false;}
+      if(this.openingBoard)faceOpeningBoard(p);else updateAimFacing(p, input);
+      if(p.swordFacing&&p.attack>0){p.faceX=p.swordFacing.x;p.faceY=p.swordFacing.y;}
+      const canJump=!controlled||(!stationaryCreature(controlled)&&!flies(controlled)&&!controlled.wingHover);
+      if(!this.openingBoard&&canJump&&input.jump&&!jumpActor.jumpHeld&&!jumpActor.wingHover)startJump(jumpActor);
+      jumpActor.jumpHeld=!!input.jump;
+      if(controlled)p.jumpHeld=false;
+      if(p.jumpHeight>0){p.swimming=false;p.diveDepth=0;}
+      const dashMotion=this.playerDashMotion(p,input,dt,mx,my,controlled);
+      const speed=dashMotion.speed;mx=dashMotion.x;my=dashMotion.y;
+      if(passenger){p.moving=false;p.walking=false;}
+      else if (p.bowAiming||p.holdingPosition) {p.moving=false;p.walking=false;}
+      else if (!this.openingBoard) {
+        const oldX=p.x,oldY=p.y,motion=p.vehicleId?vehicleMotion(this,p,input,dt):((!controlled||controlledCat)&&!p.dashTime&&!p.dashRecovery?jumpMotion(p,mx,my,speed*(controlledCat?1.15:1),dt):null)||iceMotion(this,p,mx,my,speed,dt);
+        const swordProgress=1-(p.attack||0)/(p.attackDuration||.34),swordDistance=p.swordFacing&&!p.dashTime&&!p.dashRecovery&&!p.swimming&&!(p.jumpHeight>0)?swordStep(p.attackClip,p.swordPrevious,swordProgress):0;
+        const control=p.swordFacing&&p.attack>0?(swordPause>0?0:swordProgress<.48?.48:.85):1;
+        this.moveActor(p,motion.dx*control+(p.swordFacing?.x||0)*swordDistance,motion.dy*control+(p.swordFacing?.y||0)*swordDistance);
+        if(Math.hypot(p.x-oldX,p.y-oldY)>1&&p.energyBladeActive){
+          p.energyBladeTrailCooldown=(p.energyBladeTrailCooldown||0)-dt;
+          if(p.energyBladeTrailCooldown<=0){
+            const blade=Object.values(p.equipment||{}).map(id=>ITEMS[id]).find(item=>item?.energyBlade);
+            const trail={red:'blade-trail-red',blue:'blade-trail-blue',green:'blade-trail-green'}[blade?.id?.replace('energy_blade_','')]||({ '#ff263f':'blade-trail-red','#238dff':'blade-trail-blue','#31dc58':'blade-trail-green'}[blade?.bladeColor]||'blade-trail-blue');
+            this.effects.push({particle:trail,x:oldX,y:oldY-12,life:.38,duration:.38,seed:p.id||0});p.energyBladeTrailCooldown=.075;
+          }
+        }
+        if(p.vehicleId){syncHouseVehicle(this,p);hitVehicleTree(this,p,oldX,oldY);resolveVehicleImpact(this,p,oldX,oldY);}
+        if(Math.abs(p.x-oldX)<.01)p.slideX=0;if(Math.abs(p.y-oldY)<.01)p.slideY=0;
+        if(p.dashTime>0){
+          p.dashGhostTimer=(p.dashGhostTimer||0)-dt;
+          if(p.dashGhostTimer<=0){
+            p.dashGhosts.push({x:p.x,y:p.y,faceX:p.faceX,faceY:p.faceY,age:0,dashTime:p.dashTime,dashAnimationDuration:p.dashAnimationDuration,walking:false,moving:true});
+            if(p.dashGhosts.length>4)p.dashGhosts.shift();
+            p.dashGhostTimer=.055;
+          }
+        }
+      }
+      else p.moving = false;
+      this.tickMeleeContact(p);
+      syncControlledFollower(this,p,dt);
+      if(controlled){const pouncing=controlled.controlledAttack?.phase==='pounce';tickFollowerAttack(this,controlled,dt);if(pouncing){p.x=controlled.x;p.y=controlled.y;}}
+      // April is outside `enemies`; advance her jump in the player update.
+      if(controlled?.villagerId==='april'&&this.villageFollowers?.includes(controlled)){
+        tickJump(controlled,dt,this,collisionOffset(this,controlled));
+      }
+      if (!this.openingBoard && input.trap) this.trap(p);
+      for (const fruit of this.pickups) {
+        if (!fruit.used && distance(p, fruit) < 28) {
+          fruit.used = give(p.inventory, "fruit");
+          if (fruit.used) this.onSound("heal");
+          else this.inventoryFullNotice(p, "fruit");
+        }
+      }
+    }
+    this.tickCombatActors(dt);
     // An encounter card is an active warning, not a permanent banner. Once
     // its creatures are gone, close it immediately so the tip cannot claim
     // that the party is still fighting that creature type.

@@ -3,7 +3,7 @@ import {waterAt} from './environment.mjs';
 import {bridgeAt} from './terrain-support.mjs';
 export const BREATH_SECONDS=20;
 export function waterBelowBridge(g,x,y){if(!bridgeAt(g,x,y))return waterAt(g,x,y);if((g.generatedEnvironment||g.environment)==='beach'){const shore=beachShore(x,g.seed||0);return y<shore-62?'water':y<shore+18?'shallow':'sand';}for(let ring=1;ring<=4;ring++){const kinds=[[ring*32,0],[-ring*32,0],[0,ring*32],[0,-ring*32]].map(([dx,dy])=>waterAt(g,x+dx,y+dy)).filter(kind=>!['bridge','floodbridge','wood'].includes(kind));if(!kinds.length)continue;if(kinds.includes('shallow'))return 'shallow';const wet=kinds.filter(k=>'water'===k).length;if(wet===kinds.length)return 'water';if(wet)return 'shallow';return kinds[0];}return 'shallow';}
-export function inDeepWater(g,p){return !p.room&&(bridgeAt(g,p.x,p.y)?!!(p.underBridge||p.swimming)&&waterBelowBridge(g,p.x,p.y)==='water':waterAt(g,p.x,p.y)==='water');}
+export function inDeepWater(g,p){if(g.trainTest)return !p.trainRide&&!!p.swimming;return !p.room&&(bridgeAt(g,p.x,p.y)?!!(p.underBridge||p.swimming)&&waterBelowBridge(g,p.x,p.y)==='water':waterAt(g,p.x,p.y)==='water');}
 export function tickSwimming(g,p,input,dt){
  if(p.vehicleId){p.swimming=false;p.diveDepth=0;return;}
  const onBridge=bridgeAt(g,p.x,p.y);
@@ -15,11 +15,14 @@ export function tickSwimming(g,p,input,dt){
  const jumpWater=!airborne&&p.landTime>0&&!!p.wasWaterAirborne&&['water','shallow'].includes(waterAt(g,p.x,p.y));
  p.wasWaterAirborne=airborne;
  if(jumpWater){g.effects||=[];g.effects.push({particle:'jump-splash',x:p.x,y:p.y,life:1,duration:1,seed:p.id||0});g.onSound?.('splash',p);}
- p.breath=Number.isFinite(p.breath)?p.breath:BREATH_SECONDS;
  if(!jumpWater&&((p.swimming&&!wasSwimming)||(wasSwimming&&!p.swimming&&below==='shallow'&&!airborne))){
   g.effects||=[];g.effects.push({particle:'splash',x:p.x,y:p.y,life:.8,duration:.8,seed:p.id||0});
   g.onSound?.('splash',p);
  }
+ tickSwimBreath(g,p,input,dt);
+}
+export function tickSwimBreath(g,p,input,dt){
+ p.breath=Number.isFinite(p.breath)?p.breath:BREATH_SECONDS;
  if(p.swimming){
   p.groundHeight=0;p.charge=0;p.attack=0;delete p.queuedAttack;
   const dive=!!input.attack&&!p.ui&&!p.consumeInput;
