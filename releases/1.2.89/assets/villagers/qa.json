@@ -1,0 +1,26 @@
+{
+  "poses": 7144,
+  "clips": 36,
+  "joints": 34,
+  "valid": true,
+  "independentParts": true,
+  "studio": true,
+  "game": {
+    "event": true,
+    "compactCamp": true,
+    "threeChoices": true,
+    "sevenStories": true,
+    "mouseDialogue": true,
+    "portraits": true,
+    "recruited": true
+  },
+  "lifecycle": {
+    "gameFollow": true,
+    "walkFrames": true,
+    "combat": true,
+    "saveRestore": true,
+    "finishedGameCleanup": true,
+    "ownerDeath": true
+  },
+  "errors": []
+}

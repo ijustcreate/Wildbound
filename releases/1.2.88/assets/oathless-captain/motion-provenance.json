@@ -1,0 +1,516 @@
+{
+  "reference": "https://www.wowhead.com/npc=49877/captain-lancy-revshon#modelviewer",
+  "npcId": 49877,
+  "displayId": 36758,
+  "characterId": 2,
+  "modelFileId": 1000764,
+  "skeletonFileId": 2137789,
+  "sourceBones": 203,
+  "sourceAnimations": 410,
+  "importedAnimations": 31,
+  "sourceSha256": "1adabc63eb5ad95df8ba90f4828dc8d6fff89f3528acdfaf2bff62fba5045b96",
+  "skeletonSha256": "bacd46c2c08a4580361f47315a960de71a3ec296adf661c7cc88338e0b5bcf94",
+  "scale": 18,
+  "axes": "WoW X forward,Y left,Z up -> Wildbound -Y,X,Z",
+  "rootMotion": "Remove horizontal bone-0 displacement once. Preserve vertical movement.",
+  "boneMap": {
+    "pelvis": [
+      2,
+      ""
+    ],
+    "spine": [
+      9,
+      "pelvis"
+    ],
+    "chest": [
+      16,
+      "spine"
+    ],
+    "neck": [
+      32,
+      "chest"
+    ],
+    "head": [
+      42,
+      "neck",
+      [
+        -0.025,
+        0,
+        1.78
+      ]
+    ],
+    "shoulderL": [
+      29,
+      "chest"
+    ],
+    "elbowL": [
+      37,
+      "shoulderL"
+    ],
+    "handL": [
+      43,
+      "elbowL"
+    ],
+    "shoulderR": [
+      30,
+      "chest"
+    ],
+    "elbowR": [
+      39,
+      "shoulderR"
+    ],
+    "handR": [
+      49,
+      "elbowR"
+    ],
+    "hipL": [
+      8,
+      "pelvis"
+    ],
+    "kneeL": [
+      14,
+      "hipL"
+    ],
+    "footL": [
+      28,
+      "kneeL"
+    ],
+    "toeL": [
+      34,
+      "footL"
+    ],
+    "hipR": [
+      6,
+      "pelvis"
+    ],
+    "kneeR": [
+      13,
+      "hipR"
+    ],
+    "footR": [
+      27,
+      "kneeR"
+    ],
+    "toeR": [
+      33,
+      "footR"
+    ],
+    "swordGrip": [
+      193,
+      "handR",
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "swordTip": [
+      193,
+      "swordGrip",
+      [
+        0.78,
+        0,
+        0
+      ]
+    ],
+    "shieldGrip": [
+      188,
+      "handL",
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "shieldTop": [
+      188,
+      "shieldGrip",
+      [
+        0,
+        0,
+        0.38
+      ]
+    ],
+    "eyeL": [
+      42,
+      "head",
+      [
+        0.23,
+        0.125,
+        1.82
+      ]
+    ],
+    "eyeR": [
+      42,
+      "head",
+      [
+        0.23,
+        -0.125,
+        1.82
+      ]
+    ],
+    "earL": [
+      42,
+      "head",
+      [
+        -0.02,
+        0.285,
+        1.78
+      ]
+    ],
+    "earR": [
+      42,
+      "head",
+      [
+        -0.02,
+        -0.285,
+        1.78
+      ]
+    ],
+    "nose": [
+      42,
+      "head",
+      [
+        0.285,
+        0,
+        1.69
+      ]
+    ],
+    "mouth": [
+      42,
+      "head",
+      [
+        0.24,
+        0,
+        1.59
+      ]
+    ],
+    "hair": [
+      42,
+      "head",
+      [
+        -0.13,
+        0,
+        1.845
+      ]
+    ],
+    "headUp": [
+      42,
+      "head",
+      [
+        -0.025,
+        0,
+        2.08
+      ]
+    ],
+    "headFront": [
+      42,
+      "head",
+      [
+        0.275,
+        0,
+        1.78
+      ]
+    ],
+    "tabard": [
+      4,
+      "pelvis"
+    ],
+    "tabardEnd": [
+      17,
+      "tabard"
+    ]
+  },
+  "clips": {
+    "idle": {
+      "source": "Stand",
+      "sequence": 0,
+      "animationId": 0,
+      "variant": 0,
+      "duration": 6.667,
+      "alias": false,
+      "resolvedSequence": 0
+    },
+    "walk": {
+      "source": "Walk",
+      "sequence": 1,
+      "animationId": 4,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 1
+    },
+    "run": {
+      "source": "Run",
+      "sequence": 2,
+      "animationId": 5,
+      "variant": 0,
+      "duration": 0.666,
+      "alias": false,
+      "resolvedSequence": 2
+    },
+    "guard": {
+      "source": "Ready2H",
+      "sequence": 6,
+      "animationId": 27,
+      "variant": 0,
+      "duration": 1.333,
+      "alias": false,
+      "resolvedSequence": 6
+    },
+    "hurt": {
+      "source": "CombatWound",
+      "sequence": 7,
+      "animationId": 9,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 7
+    },
+    "slash": {
+      "source": "Attack1H",
+      "sequence": 8,
+      "animationId": 17,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 8
+    },
+    "parry": {
+      "source": "Parry1H",
+      "sequence": 9,
+      "animationId": 21,
+      "variant": 0,
+      "duration": 0.867,
+      "alias": false,
+      "resolvedSequence": 9
+    },
+    "block": {
+      "source": "ShieldBlock",
+      "sequence": 32,
+      "animationId": 24,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 32
+    },
+    "death": {
+      "source": "Death",
+      "sequence": 34,
+      "animationId": 1,
+      "variant": 0,
+      "duration": 2,
+      "alias": false,
+      "resolvedSequence": 34
+    },
+    "thrust": {
+      "source": "Attack1HPierce",
+      "sequence": 46,
+      "animationId": 85,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 46
+    },
+    "dodge": {
+      "source": "Dodge",
+      "sequence": 29,
+      "animationId": 30,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 29
+    },
+    "strafe_left": {
+      "source": "ShuffleLeft",
+      "sequence": 52,
+      "animationId": 11,
+      "variant": 0,
+      "duration": 0.5,
+      "alias": false,
+      "resolvedSequence": 52
+    },
+    "strafe_right": {
+      "source": "ShuffleRight",
+      "sequence": 53,
+      "animationId": 12,
+      "variant": 0,
+      "duration": 0.5,
+      "alias": false,
+      "resolvedSequence": 53
+    },
+    "salute": {
+      "source": "EmoteSalute",
+      "sequence": 86,
+      "animationId": 113,
+      "variant": 0,
+      "duration": 2,
+      "alias": false,
+      "resolvedSequence": 86
+    },
+    "jump": {
+      "source": "Jump",
+      "sequence": 88,
+      "animationId": 38,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 88
+    },
+    "jump_start": {
+      "source": "JumpStart",
+      "sequence": 90,
+      "animationId": 37,
+      "variant": 0,
+      "duration": 0.833,
+      "alias": false,
+      "resolvedSequence": 90
+    },
+    "land": {
+      "source": "JumpEnd",
+      "sequence": 91,
+      "animationId": 39,
+      "variant": 0,
+      "duration": 1.133,
+      "alias": false,
+      "resolvedSequence": 91
+    },
+    "kneel_down": {
+      "source": "KneelStart",
+      "sequence": 57,
+      "animationId": 114,
+      "variant": 0,
+      "duration": 1.333,
+      "alias": false,
+      "resolvedSequence": 57
+    },
+    "kneel_up": {
+      "source": "KneelEnd",
+      "sequence": 59,
+      "animationId": 116,
+      "variant": 0,
+      "duration": 1.333,
+      "alias": false,
+      "resolvedSequence": 59
+    },
+    "kneel": {
+      "source": "KneelLoop",
+      "sequence": 95,
+      "animationId": 115,
+      "variant": 0,
+      "duration": 2,
+      "alias": false,
+      "resolvedSequence": 95
+    },
+    "battle_cry": {
+      "source": "BattleRoar",
+      "sequence": 102,
+      "animationId": 55,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 102
+    },
+    "swim": {
+      "source": "Swim",
+      "sequence": 116,
+      "animationId": 42,
+      "variant": 0,
+      "duration": 1.333,
+      "alias": false,
+      "resolvedSequence": 116
+    },
+    "swim_idle": {
+      "source": "SwimIdle",
+      "sequence": 30,
+      "animationId": 41,
+      "variant": 0,
+      "duration": 2,
+      "alias": false,
+      "resolvedSequence": 30
+    },
+    "swim_left": {
+      "source": "SwimLeft",
+      "sequence": 134,
+      "animationId": 43,
+      "variant": 0,
+      "duration": 1.334,
+      "alias": false,
+      "resolvedSequence": 134
+    },
+    "swim_right": {
+      "source": "SwimRight",
+      "sequence": 135,
+      "animationId": 44,
+      "variant": 0,
+      "duration": 1.333,
+      "alias": false,
+      "resolvedSequence": 135
+    },
+    "walk_backwards": {
+      "source": "Walkbackwards",
+      "sequence": 142,
+      "animationId": 13,
+      "variant": 0,
+      "duration": 1,
+      "alias": false,
+      "resolvedSequence": 142
+    },
+    "talk": {
+      "source": "EmoteTalk",
+      "sequence": 138,
+      "animationId": 60,
+      "variant": 0,
+      "duration": 2.8,
+      "alias": false,
+      "resolvedSequence": 138
+    },
+    "heavy_slash": {
+      "source": "CombatAbility1H01",
+      "sequence": 224,
+      "animationId": 818,
+      "variant": 0,
+      "duration": 0.966,
+      "alias": false,
+      "resolvedSequence": 224
+    },
+    "charge_end": {
+      "source": "CombatChargeEnd",
+      "sequence": 238,
+      "animationId": 820,
+      "variant": 0,
+      "duration": 0.667,
+      "alias": false,
+      "resolvedSequence": 238
+    },
+    "charge": {
+      "source": "CombatChargeLoop",
+      "sequence": 239,
+      "animationId": 816,
+      "variant": 0,
+      "duration": 0.466,
+      "alias": false,
+      "resolvedSequence": 239
+    },
+    "shield_bash": {
+      "source": "CombatShieldBash",
+      "sequence": 259,
+      "animationId": 992,
+      "variant": 0,
+      "duration": 0.766,
+      "alias": false,
+      "resolvedSequence": 259
+    }
+  },
+  "externalAnimations": [
+    {
+      "id": 1000780,
+      "sha256": "8ce13a0142dcc1996620234ad74054f1cf76c2b035dc61704d652e356134d5f9"
+    },
+    {
+      "id": 1000789,
+      "sha256": "570bb12fc0916b093301da77898a7edd43b1f47ddcd2d173ebd674e703181fee"
+    }
+  ],
+  "rights": "Blizzard animation donor; original native Wildbound pixels. No source mesh or textures bundled."
+}

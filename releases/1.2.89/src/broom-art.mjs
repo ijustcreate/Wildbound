@@ -1,0 +1,20 @@
+export const BROOM_SEAT_DROP=2,BROOM_PITCH=.08,BROOM_GRIP_FORWARD=9;
+const ink='#252e29',wood='#936335',light='#c29453',straw='#bd8a3f';
+const pixel=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));};
+function line(c,a,b,width,color){const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)));for(let n=0;n<=steps;n++)pixel(c,a.x+(b.x-a.x)*n/steps-width/2,a.y+(b.y-a.y)*n/steps-width/2,width,width,color);}
+export function broomPoint(d,forward,z=0){const a=d*Math.PI/4;return {x:-Math.sin(a)*forward,y:Math.cos(a)*forward*.52-z-forward*BROOM_PITCH};}
+function polygon(c,points,color){const left=Math.floor(Math.min(...points.map(p=>p.x))),right=Math.ceil(Math.max(...points.map(p=>p.x))),top=Math.floor(Math.min(...points.map(p=>p.y))),bottom=Math.ceil(Math.max(...points.map(p=>p.y)));for(let y=top;y<=bottom;y++)for(let x=left;x<=right;x++){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)inside=!inside;}if(inside)pixel(c,x,y,1,1,color);}}
+export function drawBroom(c,p,d){const z=p.pelvis.y+BROOM_SEAT_DROP,point=n=>{const q=broomPoint(d,n);return{x:p.pelvis.x+q.x,y:z+q.y};},front=point(22),rear=point(-23),brush=point(-34);line(c,rear,front,4,ink);line(c,rear,front,2,wood);line(c,{x:rear.x,y:rear.y-1},{x:front.x,y:front.y-1},1,light);const side={x:Math.cos(d*Math.PI/4),y:Math.sin(d*Math.PI/4)*.52};const rim=(p,w,sign)=>({x:p.x+side.x*w*sign,y:p.y+side.y*w*sign});polygon(c,[rim(rear,3,-1),rim(brush,7,-1),rim(brush,7,1),rim(rear,3,1)],ink);polygon(c,[rim(rear,2,-1),rim(brush,6,-1),rim(brush,6,1),rim(rear,2,1)],straw);polygon(c,[rear,rim(brush,5,-1),brush],'#d6a353');for(const n of [-3,2])line(c,rear,rim(brush,Math.abs(n),Math.sign(n)),1,'#967036');line(c,{x:rear.x-side.x*3,y:rear.y-side.y*3},{x:rear.x+side.x*3,y:rear.y+side.y*3},3,'#5d4731');}
+// Eight resolved silhouettes: the crown folds toward the back of the facing.
+const witchViews=[
+ {brim:[[-11,-5],[-7,-8],[6,-8],[11,-5],[7,-3],[-7,-3]],crown:[[-6,-7],[-4,-13],[0,-21],[3,-17],[3,-13],[6,-7]],light:[[-4,-8],[-2,-13],[0,-18],[0,-12],[3,-8]],buckle:[-1,-8]},
+ {brim:[[-12,-5],[-8,-8],[3,-8],[12,-4],[8,-2],[-8,-3]],crown:[[-5,-7],[-3,-13],[4,-18],[10,-18],[5,-14],[3,-9],[6,-6]],light:[[-3,-8],[-1,-12],[4,-16],[7,-17],[2,-12],[1,-8]],buckle:[-3,-8]},
+ {brim:[[-12,-5],[-7,-7],[6,-7],[12,-4],[7,-2],[-8,-3]],crown:[[-6,-6],[-3,-13],[5,-19],[11,-18],[7,-14],[4,-8],[6,-6]],light:[[-4,-7],[-1,-12],[5,-17],[7,-17],[3,-12],[2,-7]],buckle:[-5,-7]},
+ {brim:[[-10,-8],[-3,-11],[7,-10],[12,-7],[5,-2],[-6,-3]],crown:[[-6,-8],[-6,-12],[0,-15],[9,-14],[13,-13],[6,-10],[3,-7]],light:[[-4,-9],[-3,-12],[1,-13],[8,-13],[3,-11],[1,-8]]},
+ {brim:[[-10,-6],[-5,-9],[6,-9],[11,-6],[7,-2],[-6,-2]],crown:[[-6,-8],[-3,-15],[-1,-21],[2,-17],[3,-12],[6,-8]],light:[[-4,-8],[-2,-14],[-1,-17],[0,-12],[3,-8]]},
+ {brim:[[-12,-7],[-7,-10],[3,-10],[10,-7],[6,-3],[-5,-3]],crown:[[-6,-7],[-5,-10],[-11,-14],[-12,-16],[-4,-16],[3,-12],[6,-8]],light:[[-3,-8],[-4,-11],[-8,-14],[-4,-14],[1,-11],[3,-8]]},
+ {brim:[[-12,-4],[-6,-7],[7,-7],[12,-5],[8,-3],[-7,-2]],crown:[[-6,-6],[-4,-8],[-7,-14],[-11,-18],[-5,-19],[3,-13],[6,-6]],light:[[-2,-7],[-3,-12],[-7,-17],[-5,-17],[1,-12],[4,-7]],buckle:[3,-7]},
+ {brim:[[-12,-4],[-3,-8],[8,-8],[12,-5],[8,-3],[-8,-2]],crown:[[-6,-6],[-3,-9],[-5,-14],[-10,-18],[-4,-18],[3,-13],[5,-7]],light:[[-1,-8],[-2,-12],[-7,-17],[-4,-16],[1,-12],[3,-8]],buckle:[2,-8]}
+];
+export function drawWitchHat(c,h,d){const v=witchViews[d],paint=(points,col)=>polygon(c,points.map(([x,y])=>({x:Math.round(h.x)+Math.round(x),y:Math.round(h.y)+Math.round(y)})),col);paint(v.brim,ink);paint(v.brim.map(([x,y])=>[x*.85,-5+(y+5)*.65]),'#647747');paint(v.crown,ink);paint(v.crown.map(([x,y])=>[x*.8,-7+(y+7)*.85]),'#3c523b');paint(v.light,'#5f784a');pixel(c,h.x-5,h.y-8,11,2,'#243a2d');if(v.buckle){pixel(c,h.x+v.buckle[0],h.y+v.buckle[1],3,2,'#b8a15d');pixel(c,h.x+v.buckle[0]+1,h.y+v.buckle[1],1,1,'#43503a');}return true;}
+export function drawBroomIcon(c){drawBroom(c,{pelvis:{x:12,y:13}},6);}

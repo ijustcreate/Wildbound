@@ -1,0 +1,118 @@
+{
+  "sourceWidth": 1254,
+  "sourceHeight": 1254,
+  "sprites": {
+    "spark": {
+      "x": 0,
+      "y": 0,
+      "width": 313,
+      "height": 313,
+      "output": 128
+    },
+    "streak": {
+      "x": 313,
+      "y": 0,
+      "width": 314,
+      "height": 313,
+      "output": 128
+    },
+    "smoke": {
+      "x": 627,
+      "y": 0,
+      "width": 313,
+      "height": 313,
+      "output": 128
+    },
+    "flame": {
+      "x": 940,
+      "y": 0,
+      "width": 314,
+      "height": 313,
+      "output": 128
+    },
+    "leaf": {
+      "x": 0,
+      "y": 313,
+      "width": 313,
+      "height": 314,
+      "output": 128
+    },
+    "lightning": {
+      "x": 313,
+      "y": 313,
+      "width": 314,
+      "height": 314,
+      "output": 128
+    },
+    "ring": {
+      "x": 627,
+      "y": 313,
+      "width": 313,
+      "height": 314,
+      "output": 128
+    },
+    "rune": {
+      "x": 940,
+      "y": 313,
+      "width": 314,
+      "height": 314,
+      "output": 128
+    },
+    "heart": {
+      "x": 0,
+      "y": 627,
+      "width": 313,
+      "height": 313,
+      "output": 128
+    },
+    "ghost": {
+      "x": 313,
+      "y": 627,
+      "width": 314,
+      "height": 313,
+      "output": 128
+    },
+    "splat": {
+      "x": 627,
+      "y": 627,
+      "width": 313,
+      "height": 313,
+      "output": 128
+    },
+    "droplet": {
+      "x": 940,
+      "y": 627,
+      "width": 314,
+      "height": 313,
+      "output": 128
+    },
+    "crescent": {
+      "x": 0,
+      "y": 940,
+      "width": 313,
+      "height": 314,
+      "output": 128
+    },
+    "orb": {
+      "x": 313,
+      "y": 940,
+      "width": 314,
+      "height": 314,
+      "output": 128
+    },
+    "burst": {
+      "x": 627,
+      "y": 940,
+      "width": 313,
+      "height": 314,
+      "output": 128
+    },
+    "swirl": {
+      "x": 940,
+      "y": 940,
+      "width": 314,
+      "height": 314,
+      "output": 128
+    }
+  }
+}
