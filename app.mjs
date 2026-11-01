@@ -128,13 +128,13 @@ function pressPauseCheat(device='keyboard'){
   if(pauseCheat.press(pauseCheatActive())){
     const owner=game.players.find(p=>p.device===device);
     if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
-    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
     gameDebug.open($('pause-dialog'));
   }
 }
 function feedDebugCode(token,device='keyboard'){
   if(trackDebugCode(token)){
-    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
+    gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
     pause(undefined,device);
     gameDebug.open($('pause-dialog'));
   }
@@ -1011,6 +1011,17 @@ function pause(reason,device) {
   }
   openSettings(device||'keyboard',true);
 }
+function transitionTrainScreen(next){
+  for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+  delete $('settings-dialog').dataset.pauseMenu;
+  document.querySelectorAll('.game-debug-console').forEach(el=>el.remove());
+  if(next==='play'&&!renderer)renderer=new Renderer($('game-canvas'),assets);
+  if(renderer)renderer.trainScene=null;
+  show(next);paused=false;keys.clear();mouse.down=false;mouse.dash=false;pauseCheat.reset();fixedClock.reset();
+  if(next==='lobby'){playableLobby?.sync();renderLobby();}else updateHud();
+}
+function enterTrainScreen(){if(!game.trainTest)return;game.trainTest.returnScreen??=screen;transitionTrainScreen('play');}
+function leaveTrainScreen(previousScreen){transitionTrainScreen(previousScreen==='lobby'?'lobby':'play');}
 function resume() {
   if (disconnected().length) {
     $("pause-text").textContent =
@@ -1074,7 +1085,7 @@ for(const sign of ['down','up']){
  $('pause-sfx-'+sign).onclick=()=>{audio.set('sfx',audio.settings.sfx+(sign==='up'?.1:-.1));$('sfx-volume').value=audio.settings.sfx;refreshPauseOptions();};
 }
 $('pause-settings').onclick=()=>$('settings-button').click();
-$('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});const host=$('settings-dialog').open?$('settings-dialog'):$('pause-dialog');host.dataset.debugOwnerId=$('pause-dialog').dataset.debugOwnerId||'';gameDebug.open(host);};
+$('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});const host=$('settings-dialog').open?$('settings-dialog'):$('pause-dialog');host.dataset.debugOwnerId=$('pause-dialog').dataset.debugOwnerId||'';gameDebug.open(host);};
 $("board-button").onclick = () => (boardPinned = !boardPinned);
 $("close-board").onclick = () => {
   if(game.roll)return;
