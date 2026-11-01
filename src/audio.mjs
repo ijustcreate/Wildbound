@@ -9,6 +9,7 @@ export const AMBIENT_TRACKS={forest:'forest_ambient',desert:'desert_ambient',ice
 export const AUDIO_LIMITS=Object.freeze({voices:24,cache:96,cooldowns:128,variants:96});
 function boundedSet(map,key,value,limit){map.delete(key);map.set(key,value);while(map.size>limit)map.delete(map.keys().next().value);}
 export function footstepMaterial(game,p){
+ if(game.trainTest&&p.swimming)return 'water';
  if(p.trainRide)return 'wood';
  if(p.room)return p.room==='temple-upper'||game.portals?.find(d=>d.id===p.room)?.oldWell?'stone':'wood';
  const ground=waterAt(game,p.x,p.y),biome=game.generatedEnvironment||game.environment;

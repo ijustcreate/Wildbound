@@ -12,6 +12,7 @@ The railway is a developer destination. It does not appear in the ordinary map c
 - Use the central end gangways to cross between carriages. Walk around the tender's coal pile to reach the locomotive cab.
 - Interact at the brass cab console to start or stop the engine. Up/down adjusts throttle while operating it. Attack whistles once the train moves. Jump releases the controls while holding the steam setting. One explorer operates the controls at a time.
 - To exit, approach a side footboard at a carriage end and interact. Players jump down from the train, including while it moves.
+- The river supports swimming. Swim into a bridge from the river to pass below its deck, rails and moving train. Walking onto the bridge from its bank follows the deck. Swimmers stay at river height and cannot jump/board through the bridge floor.
 - Each occupied carriage fades its roof independently. All riders retain their local position while their carriage follows the route.
 
 ## Editing

@@ -1,3 +1,4 @@
+import {drawSwimmer} from './swim-render.mjs';
 import {drawTrainCar} from './train-art.mjs';
 import {trainCars,trainWorld,sampleTrainRoute,railwayWater,railElevation,nearestTrainTrack} from './train-track.mjs';
 import {trainPrompt} from './train-test.mjs';
@@ -28,10 +29,11 @@ export function drawTrainTest(renderer,g,dt){
  for(let x=Math.floor(bounds.left/48)*48;x<bounds.right+48;x+=48)for(let y=Math.floor(bounds.top/48)*48;y<bounds.bottom+48;y+=48){const seed=Math.abs(Math.sin(x*.15+y*.32));ctx.fillStyle=seed>.5?'#66874c':'#426742';ctx.fillRect(x+seed*20,y+seed*29,2,5);ctx.fillRect(x+seed*20+3,y+seed*29+2,2,2);if(seed>.95){ctx.fillStyle='#c4b26a';ctx.fillRect(x+12,y+18,3,3);}}
  ctx.fillStyle='#8c986b';ctx.fillRect(d.river.x-d.river.width/2-10,0,d.river.width+20,d.height);ctx.fillStyle='#367f91';ctx.fillRect(d.river.x-d.river.width/2,0,d.river.width,d.height);
  for(let y=Math.floor(bounds.top/21)*21;y<bounds.bottom+21;y+=21){ctx.fillStyle=y%2?'#599a9f':'#418b99';const drift=Math.sin(t.time+y*.15)*8;ctx.fillRect(d.river.x-d.river.width/2+15+drift,y,d.river.width*.28,2);ctx.fillRect(d.river.x+drift,y+7,d.river.width*.29,2);}
+ for(const p of party.filter(p=>p.swimming&&!p.trainRide))drawSwimmer(ctx,p,g.time,actor=>renderer.animator.draw(ctx,actor,g.time,PLAYER_RENDER_SIZE));
  drawRailwayTrack(ctx,d,t.route,bounds);
  // Display other saved branches as real rails; only the selected itinerary drives the train.
  for(const route of t.otherRoutes||[])drawRailwayTrack(ctx,d,route,bounds);
- const objects=[...trees(t).filter(q=>visible(q)).map(tree=>({depth:tree.y,tree})),...cs.filter(q=>visible(q,450)).map(car=>({depth:car.y+Math.abs(Math.cos(car.a))*car.width/2,car})),...party.filter(p=>!p.trainRide).map(player=>({depth:player.y,player}))].sort((a,b)=>a.depth-b.depth);
+ const objects=[...trees(t).filter(q=>visible(q)).map(tree=>({depth:tree.y,tree})),...cs.filter(q=>visible(q,450)).map(car=>({depth:car.y+Math.abs(Math.cos(car.a))*car.width/2,car})),...party.filter(p=>!p.trainRide&&!p.swimming).map(player=>({depth:player.y,player}))].sort((a,b)=>a.depth-b.depth);
  for(const o of objects){if(o.tree){drawProp(ctx,o.tree,t.time,{...g,generatedEnvironment:'forest',environment:'forest'},{dynamicShadows:false});continue;}if(o.player){renderer.animator.draw(ctx,{...o.player,y:o.player.y-(o.player.trainGround||0)},g.time,PLAYER_RENDER_SIZE);continue;}const car=o.car;ctx.fillStyle='#172b2b44';ctx.beginPath();ctx.ellipse(car.x+5,car.y+7,Math.abs(Math.cos(car.a))*car.length/2+Math.abs(Math.sin(car.a))*car.width/2,Math.abs(Math.sin(car.a))*car.length/2+Math.abs(Math.cos(car.a))*car.width/2,0,0,Math.PI*2);ctx.fill();
   drawTrainCar(ctx,d,car,{time:t.time,distance:t.distance,engine:t.engine,doors:t.doors,roofAlpha:t.roof[car.id]??1},()=>{for(const p of party.filter(p=>p.trainRide?.car===car.index)){const r=p.trainRide,q=trainWorld({...car,x:0,y:0,z:0},r.x,r.y),actor={...p,x:q.x,y:q.y-20,animationAction:r.seat?'train_sit':undefined};renderer.animator.draw(ctx,actor,g.time,PLAYER_RENDER_SIZE);}});
  }
