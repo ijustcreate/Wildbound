@@ -1,0 +1,134 @@
+/* Marlow's ledger: one wood frame, parchment pages, and native item art. */
+.hero-panel.merchant-session {
+ container:merchant / size; padding:18px!important; gap:0!important;
+ border:7px solid #493222!important; border-radius:5px;
+ background:linear-gradient(110deg,#f1e5c4,#e1cca0)!important;color:#352c21;
+ box-shadow:inset 0 0 0 1px #b8944f,inset 0 0 24px #976f3020,0 12px 32px #0008;
+}
+.hero-panel.merchant-session::before {content:'';position:absolute;inset:0;pointer-events:none;border:1px solid #c8a865;border-radius:1px;background:linear-gradient(#c6a257,#c6a257) left top/16px 3px no-repeat,linear-gradient(#c6a257,#c6a257) right bottom/16px 3px no-repeat;}
+.hero-panel.merchant-session > button[data-action="close"] {z-index:2;top:4px;right:4px;width:24px;height:24px;min-height:0;border:0!important;background:#493222!important;color:#f1dfac!important;font:20px/1 Georgia!important;box-shadow:none!important;}
+.hero-panel.merchant-session > button[data-action="close"]::after {content:none!important;}
+.hero-panel.merchant-session .merchant-ledger button {border-image:none!important;}
+.merchant-ledger {display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;gap:14px;flex:1;min-height:0;min-width:0;font:14px/1.4 system-ui;}
+.merchant-ledger :is(h2,h3,p){margin:0;}
+.merchant-intro {display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:12px;align-items:center;padding-right:30px;}
+.merchant-portrait {width:72px;height:72px;border:2px solid #b18b48;border-radius:50%;background:#283f31;}
+.merchant-greeting small {font:700 9px/1.3 system-ui;letter-spacing:.13em;color:#756443;}
+.merchant-greeting .merchant-owner {display:block!important;font:600 11px/1.2 system-ui;letter-spacing:0;color:#66523a;}
+.merchant-greeting h2 {font:26px/1.1 Georgia,serif!important;color:#273c2b!important;}
+.merchant-greeting p {font:italic 12px/1.4 Georgia,serif;color:#63513a;margin-top:6px;}
+.merchant-gold {text-align:right;align-self:center;max-width:105px;overflow-wrap:anywhere;}
+.merchant-gold strong {display:block;font:700 24px/1.1 Georgia;color:#72551d;}
+.merchant-gold small {font:700 9px/1.3 system-ui;color:#675638;}
+.merchant-tabs {display:flex;gap:6px;padding-bottom:10px;border-bottom:1px solid #b49a67;}
+.hero-panel.merchant-session .merchant-tabs button {flex:1;border:0!important;border-radius:3px;padding:8px 4px!important;background:transparent!important;color:#3e5138!important;box-shadow:none!important;font:700 14px/1.2 system-ui!important;outline:0;}
+.hero-panel.merchant-session .merchant-tabs button[aria-pressed="true"] {background:#304b38!important;color:#f5e7bb!important;}
+.merchant-body {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;min-height:0;min-width:0;}
+.merchant-list {overflow:auto;min-height:0;min-width:0;overscroll-behavior:contain;}
+.hero-panel.merchant-session .merchant-row {display:grid;grid-template-columns:8px 44px minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;margin:0;padding:10px 4px!important;border:0!important;border-bottom:1px solid #bba37488!important;border-radius:0;box-shadow:none!important;outline:none!important;background:transparent!important;color:#352c21!important;text-align:left;font:13px/1.25 system-ui!important;min-height:70px;}
+.hero-panel.merchant-session .merchant-row.selected {background:#f7e4a7!important;box-shadow:inset 3px 0 #ab812f!important;}
+.merchant-marker {color:#8c6424;font-size:15px;}
+.merchant-row .merchant-icon {width:44px;height:44px;}
+.merchant-row-name {min-width:0;overflow-wrap:anywhere;}
+.merchant-row-name strong {font-weight:650;}
+.merchant-row-name small {display:block;color:#76654c;font-size:10px;margin-top:4px;}
+.merchant-inline-detail {display:none;}
+.merchant-price {font-weight:700;color:#76571d;white-space:nowrap;}
+.merchant-row.unaffordable .merchant-price {color:#994634;}
+.merchant-detail {min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;border-left:1px solid #b49a6766;padding-left:18px;display:flex;flex-direction:column;gap:10px;}
+.merchant-display {display:grid;place-items:center;min-height:126px;background:radial-gradient(ellipse,#fffae4aa,transparent 72%);}
+.merchant-display .merchant-icon {width:112px;height:112px;}
+.merchant-detail h3 {font:22px/1.15 Georgia!important;color:#34432e!important;}
+.merchant-description {color:#544734;font-size:13px;}
+.merchant-stats,.merchant-owned {font-size:11px;color:#6c593d;}
+.merchant-owned {padding-top:6px;border-top:1px solid #b49a6744;}
+.merchant-actions {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:4px 18px;}
+.merchant-actions>* {grid-column:2;}
+.hero-panel.merchant-session .merchant-confirm {flex:none;border:1px solid #977331!important;border-bottom:3px solid #7b5929!important;background:linear-gradient(#e7c578,#c69b4e)!important;color:#342714!important;box-shadow:none!important;outline:none;font:700 15px/1.25 system-ui!important;padding:12px 6px!important;margin-top:auto;transition:transform 120ms;}
+.hero-panel.merchant-session .merchant-confirm:active {transform:translateY(1px) scale(.98);}
+.hero-panel.merchant-session .merchant-confirm:disabled {opacity:1;color:#74644b!important;background:#d2c3a4!important;border-color:#b3a180!important;}
+.hero-panel.merchant-session .merchant-ledger button:focus-visible {outline:2px solid #947032!important;outline-offset:-2px!important;}
+.merchant-reason {font-size:11px;color:#873d2d;}
+.merchant-empty {padding:16px 8px;color:#756145;font-style:italic;}
+.merchant-status {border-top:1px solid #b49a67;padding-top:10px;color:#4f5438;min-height:1.4em;font-size:12px;}
+.merchant-controls {font:11px/1.5 system-ui;color:#5c5039;}
+@container merchant (max-width:440px) {
+ .merchant-ledger {gap:9px;font-size:12px;}
+ .merchant-intro {grid-template-columns:48px minmax(0,1fr) auto;gap:7px;}
+ .merchant-portrait {width:48px;height:48px;}
+ .merchant-greeting h2 {font-size:20px!important;}
+ .merchant-greeting p {font-size:11px;}
+ .merchant-gold strong {font-size:20px;}
+ .merchant-body {gap:10px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+ .merchant-detail {padding-left:10px;gap:7px;}
+ .hero-panel.merchant-session .merchant-row {grid-template-columns:5px 30px minmax(0,1fr);gap:4px;font-size:11px!important;padding:7px 3px!important;min-height:62px;}
+ .merchant-row .merchant-icon {width:30px;height:30px;grid-row:1/3;grid-column:2;}
+ .merchant-row-name {grid-column:3;}
+ .merchant-price {grid-column:3;font-size:11px;}
+ .merchant-row-name small {display:none;}
+ .merchant-detail h3 {font-size:18px!important;}
+ .merchant-display {min-height:76px;}
+ .merchant-display .merchant-icon {width:76px;height:76px;}
+ .merchant-description {font-size:12px;}
+}
+@container merchant (max-height:400px) {
+ .merchant-ledger {gap:6px;}
+ .merchant-greeting p,.merchant-greeting>small {display:none;}
+ .merchant-intro {grid-template-columns:36px minmax(0,1fr) auto;}
+ .merchant-portrait {width:36px;height:36px;}
+ .merchant-greeting h2 {font-size:20px!important;}
+ .merchant-tabs {padding-bottom:5px;}
+ .merchant-display {min-height:48px;}
+ .merchant-display .merchant-icon {width:48px;height:48px;}
+ .merchant-status {padding-top:5px;font-size:11px;}
+ .merchant-controls {font-size:10px;}
+ .merchant-detail {gap:6px;}
+}
+@container merchant (max-width:260px) {
+ .merchant-ledger {gap:5px;}
+ .merchant-greeting h2 {font-size:17px!important;}
+ .merchant-greeting p,.merchant-greeting>small {display:none;}
+ .merchant-intro {grid-template-columns:36px minmax(0,1fr);}
+ .merchant-gold {grid-column:1/-1;display:flex;gap:6px;max-width:none;align-items:center;text-align:left;}
+ .merchant-gold strong {font-size:17px;}
+ .merchant-body {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(60px,.7fr) minmax(70px,1fr);}
+ .merchant-detail {padding-left:0;border-left:0;border-top:1px solid #b49a67;padding-top:6px;}
+ .merchant-display {display:none;}
+ .hero-panel.merchant-session .merchant-tabs button {font-size:10px!important;padding:5px 1px!important;white-space:normal;overflow-wrap:normal;}
+ .merchant-tabs {gap:2px;padding-bottom:5px;}
+ .merchant-status {font-size:10px;}
+ .merchant-controls {font-size:9px;}
+ .merchant-actions {grid-template-columns:minmax(0,1fr);gap:3px;}
+ .merchant-actions>* {grid-column:1;}
+ .hero-panel.merchant-session .merchant-confirm {padding:7px 3px!important;font-size:12px!important;}
+}
+/* At shared-screen sizes, read details in the selected row rather than
+   compressing two separate columns into every player's shop. */
+.hero-panel.merchant-session.party-panel {padding:12px!important;}
+@container merchant (max-width:450px) or (max-height:440px) {
+ .merchant-ledger {gap:6px;}
+ .merchant-intro {grid-template-columns:38px minmax(0,1fr) auto;gap:8px;padding-right:30px;}
+ .merchant-portrait {width:38px;height:38px;}
+ .merchant-greeting h2 {font-size:19px!important;}
+ .merchant-greeting p,.merchant-greeting>small {display:none;}
+ .merchant-gold {display:block;grid-column:auto;max-width:80px;}
+ .merchant-gold strong {font-size:19px;}
+ .merchant-gold small {font-size:10px;}
+ .merchant-tabs {gap:5px;padding-bottom:6px;}
+ .hero-panel.merchant-session .merchant-tabs button {font-size:13px!important;padding:7px 2px!important;white-space:nowrap;}
+ .merchant-body {display:block;overflow:hidden;}
+ .merchant-list {height:100%;}
+ .merchant-detail {display:none;}
+ .hero-panel.merchant-session .merchant-row {grid-template-columns:8px 36px minmax(0,1fr) auto;gap:5px;padding:8px 5px!important;font-size:13px!important;min-height:54px;}
+ .merchant-row .merchant-icon {width:36px;height:36px;grid-column:2;grid-row:1;}
+ .merchant-row-name {grid-column:3;}
+ .merchant-price {grid-column:4;font-size:12px;}
+ .merchant-inline-detail {display:flex;flex-direction:column;gap:8px;grid-column:2/-1;font:400 13px/1.45 system-ui;color:#574831;padding:2px 2px 3px 0;}
+ .merchant-inline-detail small {font-size:12px;color:#6a5738;}
+ .merchant-actions {grid-template-columns:minmax(0,1fr);gap:3px;}
+ .merchant-actions>* {grid-column:1;}
+ .hero-panel.merchant-session .merchant-confirm {font-size:14px!important;padding:8px!important;margin:0;}
+ .merchant-status {font-size:12px;padding-top:5px;}
+ .merchant-status.is-idle {display:none;}
+ .merchant-controls {font-size:11px;line-height:1.5;}
+}

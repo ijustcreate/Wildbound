@@ -1,0 +1,984 @@
+{
+  "cell": 64,
+  "columns": 13,
+  "icons": {
+    "dark_essence": {
+      "x": 8,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "starter_boomerang": {
+      "x": 72,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "boomerang": {
+      "x": 136,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "moon_boomerang": {
+      "x": 200,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "sun_boomerang": {
+      "x": 264,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "critter_net": {
+      "x": 328,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "empty_jar": {
+      "x": 392,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "critter_cage": {
+      "x": 456,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "caught_frog": {
+      "x": 520,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "caught_dragonfly": {
+      "x": 584,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "caught_fairy": {
+      "x": 648,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "caught_bird": {
+      "x": 712,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "caught_white_mouse": {
+      "x": 776,
+      "y": 8,
+      "width": 48,
+      "height": 48
+    },
+    "caught_scavenger": {
+      "x": 8,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "ice_arrow": {
+      "x": 72,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "ice_arrow_recipe": {
+      "x": 136,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "raw_ice": {
+      "x": 200,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "armor_bag": {
+      "x": 264,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "relic_bag": {
+      "x": 328,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "crafting_bag": {
+      "x": 392,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "relic_dust": {
+      "x": 456,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "magic_essence": {
+      "x": 520,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "legendary_essence": {
+      "x": 584,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "lantern": {
+      "x": 648,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "torch": {
+      "x": 712,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "rifle": {
+      "x": 776,
+      "y": 72,
+      "width": 48,
+      "height": 48
+    },
+    "cartridge": {
+      "x": 8,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "ritual_dagger": {
+      "x": 72,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "barricade": {
+      "x": 136,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "stick": {
+      "x": 200,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "log": {
+      "x": 264,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "stone": {
+      "x": 328,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "bone_shard": {
+      "x": 392,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "golem_core": {
+      "x": 456,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "web_silk": {
+      "x": 520,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "beast_fang": {
+      "x": 584,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "frost_berry": {
+      "x": 648,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "jade_scarab": {
+      "x": 712,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "lions_eye": {
+      "x": 776,
+      "y": 136,
+      "width": 48,
+      "height": 48
+    },
+    "river_stone": {
+      "x": 8,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "ash_reliquary": {
+      "x": 72,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "warden_totem": {
+      "x": 136,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "sun_dial": {
+      "x": 200,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "moon_reliquary": {
+      "x": 264,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "amber_reliquary": {
+      "x": 328,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "trap": {
+      "x": 392,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "stamina_potion": {
+      "x": 456,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "potion": {
+      "x": 520,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "arrow": {
+      "x": 584,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "starter_arrow": {
+      "x": 648,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "fruit": {
+      "x": 712,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "coconut": {
+      "x": 776,
+      "y": 200,
+      "width": 48,
+      "height": 48
+    },
+    "meat": {
+      "x": 8,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "sword": {
+      "x": 72,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "starter_sword": {
+      "x": 136,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "dagger": {
+      "x": 200,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "starter_dagger": {
+      "x": 264,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "shield": {
+      "x": 328,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "starter_shield": {
+      "x": 392,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "bow": {
+      "x": 456,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "starter_bow": {
+      "x": 520,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "hat": {
+      "x": 584,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "santa_hat": {
+      "x": 648,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "krampus_whip": {
+      "x": 712,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "shoulder_armor": {
+      "x": 776,
+      "y": 264,
+      "width": 48,
+      "height": 48
+    },
+    "armor": {
+      "x": 8,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "gloves": {
+      "x": 72,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "pants": {
+      "x": 136,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "boots": {
+      "x": 200,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "cape": {
+      "x": 264,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "wand": {
+      "x": 328,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "staff": {
+      "x": 392,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "starter_wand": {
+      "x": 456,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "necromancer_wand": {
+      "x": 520,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "necromancer_dagger": {
+      "x": 584,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "friendship_wand": {
+      "x": 648,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "sword_of_a_thousand_truths": {
+      "x": 712,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "fire_wand": {
+      "x": 776,
+      "y": 328,
+      "width": 48,
+      "height": 48
+    },
+    "ice_wand": {
+      "x": 8,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "charm": {
+      "x": 72,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "mystery_score": {
+      "x": 136,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "gallery_medallion": {
+      "x": 200,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "phantom_charm": {
+      "x": 264,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "miners_keepsake": {
+      "x": 328,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "tattered_cape": {
+      "x": 392,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "short_cape": {
+      "x": 456,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "pointed_cape": {
+      "x": 520,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "cinder_wand": {
+      "x": 584,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "storm_wand": {
+      "x": 648,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "violet_wand": {
+      "x": 712,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "sun_wand": {
+      "x": 776,
+      "y": 392,
+      "width": 48,
+      "height": 48
+    },
+    "moss_cape": {
+      "x": 8,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "night_cape": {
+      "x": 72,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "dawn_cape": {
+      "x": 136,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "linen_cap": {
+      "x": 200,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "leather_hood": {
+      "x": 264,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "moon_circlet": {
+      "x": 328,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "horned_helm": {
+      "x": 392,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "iron_coif": {
+      "x": 456,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "jungle_mask": {
+      "x": 520,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "moon_helm": {
+      "x": 584,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "sun_crown": {
+      "x": 648,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "fern_pauldron": {
+      "x": 712,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "moon_shoulders": {
+      "x": 776,
+      "y": 456,
+      "width": 48,
+      "height": 48
+    },
+    "sun_shoulders": {
+      "x": 8,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "linen_shirt": {
+      "x": 72,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "hunter_coat": {
+      "x": 136,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "sun_plate": {
+      "x": 200,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "ember_robe": {
+      "x": 264,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "cloth_wraps": {
+      "x": 328,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "iron_gauntlets": {
+      "x": 392,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "thorn_fists": {
+      "x": 456,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "sun_grips": {
+      "x": 520,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "linen_pants": {
+      "x": 584,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_pants": {
+      "x": 648,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "scale_pants": {
+      "x": 712,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "ash_greaves": {
+      "x": 776,
+      "y": 520,
+      "width": 48,
+      "height": 48
+    },
+    "sandals": {
+      "x": 8,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_boots": {
+      "x": 72,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "moon_steps": {
+      "x": 136,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "volcano_boots": {
+      "x": 200,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "iron_sword": {
+      "x": 264,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "moon_blade": {
+      "x": 328,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "sun_blade": {
+      "x": 392,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "bone_dagger": {
+      "x": 456,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "thorn_dagger": {
+      "x": 520,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "star_dagger": {
+      "x": 584,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "iron_shield": {
+      "x": 648,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "moon_shield": {
+      "x": 712,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "sun_shield": {
+      "x": 776,
+      "y": 584,
+      "width": 48,
+      "height": 48
+    },
+    "hunter_bow": {
+      "x": 8,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "moon_bow": {
+      "x": 72,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "sun_bow": {
+      "x": 136,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "safari_hat": {
+      "x": 200,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "safari_shoulders": {
+      "x": 264,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "safari_vest": {
+      "x": 328,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "safari_gloves": {
+      "x": 392,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "safari_pants": {
+      "x": 456,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "safari_boots": {
+      "x": 520,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_hood": {
+      "x": 584,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_jacket": {
+      "x": 648,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_bracers": {
+      "x": 712,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_trailboots": {
+      "x": 776,
+      "y": 648,
+      "width": 48,
+      "height": 48
+    },
+    "ranger_quiver": {
+      "x": 8,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "leather_quiver": {
+      "x": 72,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "starter_quiver": {
+      "x": 136,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "fern_pendant": {
+      "x": 200,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "sunstone_pendant": {
+      "x": 264,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "snowflake_pendant": {
+      "x": 328,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "hearth_pendant": {
+      "x": 392,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "jade_pendant": {
+      "x": 456,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "azure_bead": {
+      "x": 520,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "moon_prism": {
+      "x": 584,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "starheart": {
+      "x": 648,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "mana_rune": {
+      "x": 712,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "void_sigil": {
+      "x": 776,
+      "y": 712,
+      "width": 48,
+      "height": 48
+    },
+    "astral_heart": {
+      "x": 8,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    },
+    "skill_scroll_second_wind": {
+      "x": 72,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    },
+    "skill_scroll_long_jump": {
+      "x": 136,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    },
+    "skill_scroll_quick_revive": {
+      "x": 200,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    },
+    "skill_scroll_pack_mule": {
+      "x": 264,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    },
+    "skill_scroll_scavenger": {
+      "x": 328,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    },
+    "skill_scroll_steady_hand": {
+      "x": 392,
+      "y": 776,
+      "width": 48,
+      "height": 48
+    }
+  }
+}
