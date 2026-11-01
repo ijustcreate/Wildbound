@@ -129,6 +129,7 @@ export function trainWorldBlocked(g,x,y,radius=7,flying=false,ignoreWater=false,
  const t=g.trainTest,d=t.design;if(x<radius||y<radius||x>d.width-radius||y>d.height-radius)return true;
  if(from?.trainRide){const c=trainCars(t)[from.trainRide.car],q=trainLocal(c,{x,y});return trainInteriorBlocked(t,c,q.x,q.y,null,height);}
  if(!projectile&&from&&!from.trainRide&&!(from.underBridge||from.swimming))for(const c of trainCars(t)){const q=trainLocal(c,{x,y});if(Math.abs(q.x)<c.length/2+radius&&Math.abs(q.y)<c.width/2+radius&&!doorAt(c,q)&&height+(from.trainGround||0)<20+c.z)return true;}
+ if(projectile)for(const c of trainCars(t)){const q=trainLocal(c,{x,y});if(Math.abs(q.x)>c.length/2+radius||Math.abs(q.y)>c.width/2+radius)continue;if(Math.abs(q.y)>c.width/2-5-radius&&!trainSideDoorway(c,q.x)||Math.abs(q.x)>c.length/2-5-radius&&Math.abs(q.y)>12)return true;if(c.kind==='engine'&&q.x>-c.length*.07&&Math.abs(q.y)<c.width/2-16)return true;for(const item of trainInterior(d,c)){const o=item.kind==='door'?trainDoorGeometry(item,t.doors[c.id+':'+item.id]??item.open):item;if(!['wall','door','console','firebox','table'].includes(o.kind))continue;if(Math.abs(q.x-o.x)<o.w/2+radius&&Math.abs(q.y-o.y)<o.h/2+radius)return true;}}
  if(flying)return false;
  if(!ignoreWater&&railwaySurface(d,x,y)==='water')return true;
  return !!(d.wildLands&&wildLandsBlocked(d,x,y)||stationBlocked(d,x,y)||railwayForestBlocked(t,x,y));
