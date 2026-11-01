@@ -18,6 +18,7 @@ app.whenReady().then(async()=>{
   const helpers=`window.c=window.entryCtx;window.pads=[];Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});window.tick=()=>{const inputs=c.inputFrame();c.playableLobby.update(.016,inputs);return inputs;};window.reset=()=>{pads=[];c.newLobby();c.previousPads.clear();tick();};`;
   await js(helpers+'reset();void 0;');
   assert(await js(`!document.querySelector('.lobby-landing').hidden&&c.game.players.length===0`),'New party starts on title artwork');
+  assert(await js(`(()=>{const prompt=document.querySelector('.landing-join');return prompt.textContent.includes('Keyboard')&&prompt.textContent.includes('Controller')&&!/mouse/i.test(prompt.textContent)&&prompt.getAttribute('aria-label')==='Press a keyboard key or controller button to start Wildbound';})()`),'Intro prompt names keyboard/controller only');
   for(const [width,height]of [[1440,900],[1920,1080],[800,600],[640,420]]){
    w.setContentSize(width,height);await pause();
    const layout=await js(`(()=>{const r=document.querySelector('.lobby-world').getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,iw:innerWidth,ih:innerHeight,buttons:[...document.querySelectorAll('#party-menu button')].filter(b=>b.getBoundingClientRect().height).map(b=>b.textContent),heading:getComputedStyle(document.querySelector('.party-heading')).display,help:getComputedStyle(document.querySelector('.party-help')).display,overflow:document.documentElement.scrollHeight>innerHeight};})()`);
@@ -36,21 +37,26 @@ app.whenReady().then(async()=>{
   await js('reset()');await pause();
   w.webContents.sendInputEvent({type:'mouseDown',button:'left',clickCount:1,...point});w.webContents.sendInputEvent({type:'mouseUp',button:'left',clickCount:1,...point});await pause();
   const mouse=await js(`({count:c.game.players.length,panel:c.playableLobby.state.members.get(c.game.players[0]?.id)?.panel,landing:document.querySelector('.lobby-landing').hidden})`);
-  assert(mouse.count===1&&mouse.panel==='choose','Mouse click joins without clicking through to New character '+JSON.stringify(mouse));
+  assert(mouse.count===0&&!mouse.landing,'Mouse click leaves the title screen unchanged '+JSON.stringify(mouse));
   await js('reset()');await js(`document.querySelector('.lobby-landing').dispatchEvent(new PointerEvent('pointermove',{bubbles:true,movementX:5,movementY:0}))`);
-  assert(await js(`c.game.players.length===1`),'Mouse movement opens explorer selection');
+  assert(await js(`c.game.players.length===0`),'Mouse movement does not dismiss title artwork');
+  await js(`document.querySelector('.lobby-landing').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1,button:0}))`);
+  await js(`document.querySelector('.lobby-landing').dispatchEvent(new MouseEvent('click',{bubbles:true,button:0}))`);
+  assert(await js(`c.game.players.length===0`),'Mouse click does not dismiss title artwork');
   await js('reset()');await js(`document.querySelector('.lobby-landing').dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:10,cancelable:true}))`);
-  assert(await js(`c.game.players.length===1`),'Mouse wheel opens explorer selection');
+  assert(await js(`c.game.players.length===0`),'Mouse wheel does not dismiss title artwork');
   await js('reset();c.profiles.create("Saved explorer")');
   for(const gesture of ['face','start','back','trigger','left-stick','right-stick']){
    const data=await js(`(()=>{reset();const p={id:'Xbox Wireless Controller',index:0,mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))};pads=[p];tick();
     const kind=${JSON.stringify(gesture)};if(kind==='left-stick')p.axes[0]=.8;else if(kind==='right-stick')p.axes[3]=-.8;else if(kind==='trigger')p.buttons[6].value=.7;else p.buttons[{face:0,start:9,back:8}[kind]].pressed=true;
     tick();tick();tick();const hero=c.game.players[0],state=c.playableLobby.state.members.get(hero?.id);const result={count:c.game.players.length,device:hero?.device,family:hero?.controllerFamily,panel:state?.panel,selected:!!state?.spawned,settings:document.getElementById('settings-dialog').open};
     p.axes.fill(0);for(const b of p.buttons){b.pressed=false;b.value=0;}tick();return result;})()`);
-   assert(data.count===1&&data.device==='pad:0'&&data.panel==='choose'&&!data.selected&&!data.settings,'Controller '+gesture+' joins and consumes held gesture');
+   const shouldJoin=!['left-stick','right-stick'].includes(gesture);
+   assert(data.count===(shouldJoin?1:0)&&(!shouldJoin||data.device==='pad:0'&&data.panel==='choose'&&!data.selected&&!data.settings),'Controller '+gesture+(shouldJoin?' button':' analog movement')+(shouldJoin?' joins and consumes held gesture':' does not dismiss title artwork'));
   }
-  await js(`pads[0].buttons[13].pressed=true;tick();pads[0].buttons[13].pressed=false;tick();pads[0].buttons[0].pressed=true;tick();pads[0].buttons[0].pressed=false;tick();`);
-  assert(await js(`!!c.game.players[0].profileId&&c.playableLobby.state.members.get(c.game.players[0].id).spawned`),'Fresh controller press selects saved explorer after release');
+  await js(`pads[0].buttons[0].pressed=true;tick();pads[0].buttons[0].pressed=false;tick();pads[0].buttons[13].pressed=true;tick();pads[0].buttons[13].pressed=false;tick();pads[0].buttons[0].pressed=true;tick();pads[0].buttons[0].pressed=false;tick();`);
+  const savedController=await js(`({profileId:c.game.players[0]?.profileId,spawned:c.playableLobby.state.members.get(c.game.players[0]?.id)?.spawned,panel:c.playableLobby.state.members.get(c.game.players[0]?.id)?.panel,heroes:c.profiles.data.heroes.length})`);
+  assert(!!savedController.profileId&&savedController.spawned,'Fresh controller press selects saved explorer after release '+JSON.stringify(savedController));
   await capture('selected-explorer');
   await js(`pads.push({id:'Nintendo Switch Pro Controller',index:1,mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))});pads[1].buttons[0].pressed=true;tick();pads[1].buttons[0].pressed=false;tick();`);
   assert(await js(`c.game.players.length===2&&c.game.players[1].controllerFamily==='switch'&&c.playableLobby.state.members.get(c.game.players[1].id).panel==='choose'`),'Second controller joins its own explorer panel');

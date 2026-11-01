@@ -301,11 +301,11 @@ export function detailedLimb(c,a,b,width,color){
   c.save();c.imageSmoothingEnabled=false;c.translate(a.x,a.y);c.rotate(-Math.atan2(b.x-a.x,b.y-a.y));c.drawImage(entry.image,-(width+1)/2,-width/2-.5,entry.image.width/4,entry.image.height/4);c.restore();return true;
 }
 
-export function detailedTorso(c,p,d,color,skin,back){
+export function detailedTorso(c,p,d,color,skin,back,plain=false){
   if(!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
   const dx=p.pelvis.x-p.chest.x,dy=p.pelvis.y-p.chest.y,len=Math.max(3,Math.round(Math.hypot(dx,dy)*4)/4);
   const width=d===2||d===6?5:d%2?5.8:6.4,material=c.__humanoidMaterials?.get(color)??0;
-  const key=['torso',len,width,color,skin,back,material].join(':');let entry=details.get(key);
+  const key=['torso',len,width,color,skin,back,plain,material].join(':');let entry=details.get(key);
   if(!entry){
     const out=canvas(60,Math.ceil((len+5)*4)),pen=out.getContext('2d'),base=rgb(color),m=materialSample(material),ink='#302b2b';
     const r=(x,y,w,h,fill)=>{pen.fillStyle=fill;pen.fillRect(Math.round((x+7.5)*4),Math.round((y+2.5)*4),Math.max(1,Math.round(w*4)),Math.max(1,Math.round(h*4)));};
@@ -313,13 +313,13 @@ export function detailedTorso(c,p,d,color,skin,back){
       const t=Math.max(0,Math.min(1,y/len)),half=y<0?width-1.3+(y+2)*.55:width-(width-3.75)*(t*.65+t*t*.35);
       for(let x=-width;x<=width;x+=.25){
         if(Math.abs(x)>half)continue;
-        const edge=Math.abs(x)>half-.5||y>len+.5;
+        const edge=Math.abs(x)>half-.5||!plain&&y>len+.5;
         const tx=Math.min(m?.width-1||0,Math.floor((x+width)/(width*2)*(m?.width||1))),ty=Math.floor((y+2)/(len+4)*(m?.height||1));
         const v=x<-width*.55?16:x>width*.55?-23:0;
         r(x,y,.25,.25,edge?ink:'#'+base.map(n=>clamp(n+v).toString(16).padStart(2,'0')).join(''));
       }
     }
-    if(!back){
+    if(!back&&!plain){
       // Broad folded collar and cloth planes. Keep the shirt's own hue instead
       // of putting the same pale trim and tiny gold buttons on every character.
       for(let y=-1.75;y<1.5;y+=.25){const half=Math.max(.2,1.6-(y+1.75)*.42);r(-half,y,half*2,.25,skin);}

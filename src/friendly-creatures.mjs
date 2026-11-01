@@ -46,7 +46,10 @@ function tickFriendly(g,e,dt,cfg){
  const goal=target||owner;
  if(!goal)return;
  const d=distance(e,goal),stop=target?38:65;
- if(d>stop&&beh.hunt&&!stationaryCreature(e)){
+ // Owned creatures follow even when their wild species is non-hunting (for
+ // example fox kits, penguins and other peaceful wildlife). Only pursue a
+ // separate target when that species has its hunt behavior.
+ if(d>stop&&((owned&&!target)||beh.hunt)&&!stationaryCreature(e)){
   const oldX=e.x,oldY=e.y;
   if(!flies(e)&&(g.house||(e.followRouteUntil||0)>(g.time||0)))navigateEnemy(g,e,goal,dt);
   else {const step=Math.min(d-stop,(e.speed||60)*dt),moved=g.moveActor(e,(goal.x-e.x)/(d||1)*step,(goal.y-e.y)/(d||1)*step,flies(e));if(!flies(e)&&moved<step*.3)e.followRouteUntil=(g.time||0)+1.5;}

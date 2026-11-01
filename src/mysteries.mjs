@@ -34,7 +34,7 @@ export function tickMystery(g){
 export function interactMystery(g,p){
  const m=g.mystery,o=m?.object;if(!o||m.done||p.room||p.hp<=0||Math.hypot(p.x-o.x,p.y-o.y)>62)return false;
  if(m.stage===1){advanceMystery(g);return true;}
- m.done=true;m.object=null;finishDiscovery(g,m.name);g.dropLoot(o.x,o.y,m.config.reward,Math.max(1,Math.min(99,Number(m.config.qty)||1)),m.name+' reward',true);g.message('Mystery solved! '+ITEMS[m.config.reward].name+' awaits beside the board.');g.onSound('win');g.persist();return true;
+ m.done=true;m.object=null;finishDiscovery(g,m.name);g.dropLoot(o.x,o.y,m.config.reward,Math.max(1,Math.min(99,Number(m.config.qty)||1)),m.name+' reward',true);g.message('Mystery solved! '+ITEMS[m.config.reward].name+' awaits beside the board.');g.onSound('discovery');g.persist();return true;
 }
 export function drawMysteryWorld(c,g){
  const o=g.mystery?.object;if(!o||g.mystery.done)return;c.save();c.fillStyle='#372b22';c.fillRect(o.x-14,o.y-15,28,20);c.strokeStyle='#d8be77';c.strokeRect(o.x-14,o.y-15,28,20);c.font='bold 15px monospace';c.textAlign='center';c.fillStyle='#f4dfa2';if(o.item)drawItem(c,o.item,o.x,o.y-5,24);else c.fillText('?',o.x,o.y);c.font='9px sans-serif';c.fillText(o.name,o.x,o.y-23);if(g.players.some(p=>!p.room&&Math.hypot(p.x-o.x,p.y-o.y)<62))c.fillText('Interact · investigate',o.x,o.y+20);c.restore();

@@ -104,7 +104,8 @@ test("All events have working spawns, including mixed squads", () => {
       if(EVENTS[i].mystery.goal==='recover')assert.ok(g.mystery.object);
       continue;
     }
-    assert.equal(g.enemies.length, EVENTS[i].count+(EVENTS[i].spiderNest?3:0)+(EVENTS[i].beeHive?1:0),EVENTS[i].name);
+    const eventCount=EVENTS[i].enemies?.reduce((sum,member)=>sum+Math.max(0,Number(member.count)||0),0)??EVENTS[i].count;
+    assert.equal(g.enemies.length, eventCount+(EVENTS[i].spiderNest?3:0)+(EVENTS[i].beeHive?1:0),EVENTS[i].name);
     if(EVENTS[i].spiderNest)g.enemies=g.enemies.filter(e=>e.kind!=='spider_egg');
     if(EVENTS[i].beeHive){
       const hive=g.enemies.find(e=>e.kind==='bee_hive');
@@ -112,7 +113,8 @@ test("All events have working spawns, including mixed squads", () => {
       assert.ok(g.enemies.filter(e=>e.kind==='bee').every(e=>e.hiveId===hive.id));
       g.enemies=g.enemies.filter(e=>e.kind!=='bee_hive');
     }
-    assert.ok(g.enemies.every((e) => e.hp > 0 && (EVENTS[i].squad ? EVENTS[i].squad.includes(e.kind) : EVENTS[i].mixedSkeletons ? ["skeleton","archer"].includes(e.kind) : EVENTS[i].wizardEscort ? ["skeleton_wizard","skeleton"].includes(e.kind) : e.kind === EVENTS[i].kind)));
+    const eventKinds=EVENTS[i].enemies?new Set(EVENTS[i].enemies.map(member=>member.kind)):null;
+    assert.ok(g.enemies.every((e) => e.hp > 0 && (eventKinds ? eventKinds.has(e.kind) : EVENTS[i].squad ? EVENTS[i].squad.includes(e.kind) : EVENTS[i].mixedSkeletons ? ["skeleton","archer"].includes(e.kind) : EVENTS[i].wizardEscort ? ["skeleton_wizard","skeleton"].includes(e.kind) : e.kind === EVENTS[i].kind)));
   }
 });
 test("Traps capture creatures and remove them after a delay", () => {

@@ -262,7 +262,7 @@ export function leaveOldWell(g, p) {
   p.interactTime = 0; p.interactUsed = true; p.invuln = Math.max(p.invuln || 0, 1.2);
   p.previousInput = {...p.previousInput, interact: true};
   if (d.mausoleum) p.previousInput.use = true;
-  delete p.wellReturn; delete p.wellAttackCooldown;delete p.wellExitArmed;
+  delete p.wellReturn; delete p.wellAttackCooldown;delete p.wellExitArmed;g.onSound?.('portal',p);
   arrivalGuarded.delete(p);
   d.entryReady = d.entryReady.filter(id => id !== p.id); d.closing = null;
   for (const pet of [p.hunterPet, p.ritualPet].filter(a => a?.spiritGhost))

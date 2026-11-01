@@ -3,11 +3,12 @@ import {nearbyGhost} from './ghost-fear.mjs';
 import {ITEMS,stat,itemKind} from './items.mjs';
 import {clearShot} from './navigation.mjs';
 import {BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
+import {waterAt} from './environment.mjs';
 import {PEACEFUL_FAUNA_KINDS,WILD_FAUNA_KINDS,WILD_FAUNA_LIMIT} from './wild-fauna-data.mjs';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export function holdsThreateningWeapon(p){return ['hand1','hand2'].some(slot=>{const id=p.equipment?.[slot];return id!=='occupied'&&!!ITEMS[id]&&(ITEMS[id].damage>0||['bow','gun','rifle','wand','staff','torch','whip'].includes(itemKind(id)));});}
-const species=env=>['forest','temple'].includes(env)?['mother_deer','stag','baby_deer','mother_deer','baby_deer','pig','pig_spotted','fox','chicken','chicken']:env==='house'?['chicken','chicken','chicken']:env==='beach'?['pig','pig_spotted']:env==='desert'?['scorpion','scorpion','scorpion','scorpion']:env==='ice'?['arctic_fox','arctic_fox','arctic_fox']:[];
+const species=env=>['forest','temple'].includes(env)?['mother_deer','stag','baby_deer','mother_deer','baby_deer','pig','pig_spotted','fox','chicken','chicken']:env==='house'?['chicken','chicken','chicken']:env==='beach'?['pig','pig_spotted']:env==='desert'?['scorpion','scorpion','scorpion','scorpion']:env==='ice'?['arctic_fox','arctic_fox','penguin','penguin','penguin']:[];
 /** Lazy generation on first exploration keeps the board's opening clear.
  * Seeded once per expedition, saved with normal actors. No respawn timer,
  * hidden per-frame population growth or dependence on rendering/camera depth.
@@ -31,10 +32,16 @@ export function seedWildFauna(g,force=false){
    const y=nearby?family.y+Math.sin(i*2+n)*38:80+hash(g.seed+n+i*149,91)*1440;
    const clearance=g.mapMode==='boundless'&&!PEACEFUL_FAUNA_KINDS.includes(kind)?BOUNDLESS_SAFE_RADIUS+36:420;
    if(distance({x,y},{x:800,y:800})<clearance||g.house?.floors?.some(r=>x>=r.x-35&&x<r.x+r.w+35&&y>=r.y-35&&y<r.y+r.h+35)||g.blocked(x,y,14,false,false,false,0))continue;
+   if(kind==='penguin'){
+    const shore=waterAt(g,x,y),adjacent=[[32,0],[-32,0],[0,32],[0,-32]].some(([dx,dy])=>['water','shallow','ice'].includes(waterAt(g,x+dx,y+dy)));
+    // Ice-level lakes are frozen terrain, not `water`; keep penguins on the
+    // snowy bank next to that ice so they gather at the shoreline, not on land inland.
+    if(g.generatedEnvironment==='ice'?(shore!=='snow'||!adjacent):!adjacent)continue;
+   }
    if(g.enemies.some(e=>e.hp>0&&distance(e,{x,y})<26))continue;spot={x,y};break;
   }
   if(!spot)continue;
-  const cfg=creatures[kind],e={...spot,id:g.nextId++,kind,skin:kind,wildlife:true,faction:cfg.faction,hp:cfg.stats.hp,maxHp:cfg.stats.hp,speed:cfg.stats.speed,damage:cfg.stats.damage,state:'graze',timer:0,cooldown:1,flash:0,frozen:0,attack:0,step:0,moving:false,faceX:0,faceY:1,homeX:spot.x,homeY:spot.y,wildLastHp:cfg.stats.hp,wanderIn:0};
+  const cfg=creatures[kind],e={...spot,id:g.nextId++,kind,skin:kind,wildlife:true,faction:cfg.faction,hp:cfg.stats.hp,maxHp:cfg.stats.hp,speed:cfg.stats.speed,damage:cfg.stats.damage,state:'graze',timer:0,cooldown:1,flash:0,frozen:0,attack:0,step:0,moving:false,faceX:0,faceY:1,homeX:spot.x,homeY:spot.y,wildLastHp:cfg.stats.hp,wanderIn:0,swimCapable:kind==='penguin'};
   if(kind==='mother_deer'){mother=e;family=spot;}
   if(kind==='baby_deer')e.motherId=mother?.id;
   g.configureCreature(e,false);if(kind==='fox')e.faction='neutral';g.enemies.push(e);g.wildFaunaState.ids.push(e.id);count++;

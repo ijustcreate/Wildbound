@@ -1327,10 +1327,12 @@ function drawBeholder(c, actor, time, model, pose, d) {
   const faceVisible=model.type==='lesser_beholder'||!(d>=3&&d<=5),eyeWidth=model.type==='lesser_beholder'?7:d===2||d===6?2.8:d===1||d===7?5.6:7;
   const ray=()=>{
     const fx=actor.faceX??0,fy=actor.faceY??1,len=Math.hypot(fx,fy)||1,dx=fx/len,dy=fy/len;
-    c.save();c.globalAlpha=.8;c.strokeStyle=pal.detail;c.lineWidth=5;
-    c.beginPath();c.moveTo(eye.x,eye.y);c.lineTo(eye.x+dx*58,eye.y+dy*58);c.stroke();
-    c.globalAlpha=1;c.strokeStyle='#c15cff';c.lineWidth=2;
-    c.beginPath();c.moveTo(eye.x,eye.y);c.lineTo(eye.x+dx*58,eye.y+dy*58);c.stroke();c.restore();
+    const warning={disintegrate:'#b7ff74',fear:'#df78ff',sleep:'#7ccfff',petrify:'#ffd46b',slow:'#a6a3ff',death:'#ff5269'}[actor.beholderRayType]||'#fff0b0';
+    const range=Math.min(58,Math.hypot(actor.targetX-eye.x,actor.targetY-eye.y)||58);
+    c.save();c.globalAlpha=.72;c.strokeStyle=warning;c.lineWidth=7;
+    c.setLineDash([5,4]);c.beginPath();c.moveTo(eye.x,eye.y);c.lineTo(eye.x+dx*range,eye.y+dy*range);c.stroke();
+    c.setLineDash([]);c.globalAlpha=1;c.strokeStyle='#fff4d4';c.lineWidth=2;
+    c.beginPath();c.moveTo(eye.x,eye.y);c.lineTo(eye.x+dx*range,eye.y+dy*range);c.stroke();c.restore();
   };
   if(beam)add(body.depth+(faceVisible?100:-100),ray,'Eye ray',['eye']);
   for(let i=0;i<7;i++){

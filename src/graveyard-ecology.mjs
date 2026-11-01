@@ -123,10 +123,11 @@ export function tickGraveyardCritter(g,a,dt,time=0,target=null) {
   const cat=a.kind==='graveyard_cat';
   if(cat) {
     if(a.flee){fleeGraveyardCat(g,a,dt);return true;}
+    const owner=a.bondedOwner!=null?(g.players||[]).find(p=>p.id===a.bondedOwner&&p.hp>0&&!p.room):null;
+    if(owner&&a.companionActive){a.idle='walk';target={x:owner.x-22,y:owner.y+22};}
+    else target=null;
     // Mostly seated or curled up when no player has frightened it.
-    const cycle=(time+a.phase*3)%24;
-    a.idle=cycle<12?'sit':cycle<20?'sleep':'walk';
-    if(a.idle!=='walk')return true;
+    if(!owner||!a.companionActive){const cycle=(time+a.phase*3)%24;a.idle=cycle<12?'sit':cycle<20?'sleep':'walk';if(a.idle!=='walk')return true;}
   }
   const owner=a.releasedOwner!=null?(g.players||[]).find(p=>p.id===a.releasedOwner&&p.hp>0&&!p.room):null;
   target=owner?{x:owner.x-18,y:owner.y+22}:target;
@@ -167,7 +168,28 @@ export function drawGraveyardEcology(ctx,g,layer='ground') {
     if(Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(a.x-800,a.y-800)>g.bloom*430)continue;
     drawGraveyardCritter(ctx,a,s.time);
   }
+  if(layer==='ground')drawGraveyardCatPrompt(ctx,g,s.animals);
   return true;
+}
+
+function drawGraveyardCatPrompt(c,g,animals){
+  const p=(g.players||[]).filter(p=>p.hp>0&&!p.room&&!p.ui).sort((a,b)=>0)[0];if(!p)return;
+  const cat=animals.filter(a=>a.kind==='graveyard_cat'&&!a.flee&&Math.hypot(a.x-p.x,a.y-p.y)<68).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];if(!cat)return;
+  const fish=(p.inventory||[]).some(i=>i?.type==='caught_fish');const label=cat.bondedOwner===p.id?(cat.companionActive?'Gravemyst follows':'Interact · Pet'):cat.offerPlayer===p.id&&fish?'Interact · Offer Treat':fish?'Interact · Pet  ·  Offer Treat':'Interact · Pet';
+  c.save();c.font='bold 9px sans-serif';c.textAlign='center';const w=c.measureText(label).width+14;c.fillStyle='#17201de8';c.fillRect(cat.x-w/2,cat.y-35,w,17);c.strokeStyle='#c7b37d';c.lineWidth=1;c.strokeRect(cat.x-w/2,cat.y-35,w,17);c.fillStyle='#f0e3c2';c.fillText(label,cat.x,cat.y-23);c.restore();
+}
+
+export function interactGraveyardCat(g,p){
+ if(!active(g)||g.phase!=='play'||g.paused||!p||p.hp<=0||p.room||p.ui)return false;
+ const cat=spawnSurfaceEcology(g).filter(a=>a.kind==='graveyard_cat'&&!a.flee&&Math.hypot(a.x-p.x,a.y-p.y)<68).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];if(!cat)return false;
+ const fishIndex=(p.inventory||[]).findIndex(i=>i?.type==='caught_fish');
+ if(cat.bondedOwner===p.id){cat.companionActive=!cat.companionActive;cat.idle=cat.companionActive?'walk':'sit';g.message?.(cat.companionActive?"Gravemyst's Idol answers. The cat pads after you.":'The cat curls up beside you.');g.persist?.();return true;}
+ if(fishIndex>=0&&cat.offerPlayer===p.id){
+   if((p.inventory||[]).some(i=>i?.type==='gravemysts_idol')){g.message?.("You already carry Gravemyst's Idol.");return true;}
+   if(!give(p.inventory,'gravemysts_idol',1)){g.message?.('Make room in your backpack first.');return true;}
+   take(p.inventory,'caught_fish',1);cat.bondedOwner=p.id;cat.companionActive=false;delete cat.offerPlayer;cat.idle='sit';g.message?.("The cat accepts the fish. Gravemyst's Idol settles into your backpack.");g.uiRevision=(g.uiRevision||0)+1;g.persist?.();return true;
+ }
+ cat.offerPlayer=fishIndex>=0?p.id:null;g.message?.(fishIndex>=0?'The cat leans into your hand. Interact again to offer your bottled fish.':'The cat leans into your hand and purrs.');return true;
 }
 
 const hasNet=p=>[p?.equipment?.hand1,p?.equipment?.hand2].includes('critter_net');

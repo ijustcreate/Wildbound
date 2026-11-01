@@ -1,3 +1,4 @@
+import {enterTrainTest,leaveTrainTest,openTrainEditor,requestTrainRoute} from './train-test.mjs';
 import {ITEMS,give as giveItem} from './items.mjs';
 import {spawnEventTestBoard} from './event-test-board.mjs';
 
@@ -36,6 +37,10 @@ export function createGameDebug({getGame,events,items,metrics,onPerformanceChang
     const reset=el('button','Reset performance samples');reset.dataset.debug='performance-reset';reset.onclick=()=>metrics.reset();root.append(reset);
     root.append(el('p','Live FPS, frame spikes, update/draw costs, scene counts and available JS memory. Profiling is session-only.'));
    }
+   const train=el('button','Test train level');train.dataset.debug='train-test';train.onclick=()=>say(enterTrainTest(getGame()));root.append(train);
+   const railRouteLabel=el('label','Next train route at shared junction'),railRoute=el('select');railRoute.ariaLabel='Next train route';railRoute.onfocus=()=>{const t=getGame().trainTest;railRoute.replaceChildren();if(t)for(const r of t.design.routes)railRoute.add(new Option(r.name,r.id,false,r.id===(t.pendingRoute||t.design.activeRoute)));};railRoute.onchange=()=>say(requestTrainRoute(getGame(),railRoute.value));railRouteLabel.append(railRoute);root.append(railRouteLabel);
+   const workshop=el('button','Train / track workshop');workshop.onclick=()=>openTrainEditor(getGame(),root);root.append(workshop);
+   const trainReturn=el('button','Return from train test');trainReturn.onclick=()=>{leaveTrainTest(getGame());say({ok:true,message:'Returned to expedition.'});};root.append(trainReturn);
    target=el('p',null,'debug-target');root.append(target);
    const eventLabel=el('label','Event'),event=el('select');event.dataset.debug='event';
    events.forEach((e,i)=>{const o=el('option',`${i+1}: ${e.name||e.kind||e.type}`);o.value=i;event.append(o);});eventLabel.append(event);root.append(eventLabel);

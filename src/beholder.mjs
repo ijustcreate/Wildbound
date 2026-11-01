@@ -23,6 +23,7 @@ export const BEHOLDER_EVENT = Object.freeze({
   speed: 34,
   damage: 34,
   weight: 1,
+  rangedRange: 230,
   paletteVariant: 'classic',
   verse: 'A hundred pupils open in the dark.\nThe watcher has chosen you.',
   tip: 'Keep moving, interrupt the eye beam, and do not let the watcher corner the party.',
@@ -36,6 +37,7 @@ export const LESSER_BEHOLDER_EVENT = Object.freeze({
   speed: 42,
   damage: 16,
   weight: 4,
+  rangedRange: 210,
   paletteVariant: 'swamp',
   verse: 'Small eyes blink between the stones.\nThe lesser watchers drift closer.',
   tip: 'The eyestalks charge one ray at a time. Split them up and keep your distance.',
@@ -48,8 +50,8 @@ export function tickBeholder(g, e, p, dt, stats = {}) {
   e.recovery = Math.max(0, (e.recovery || 0) - dt);
   if (e.recovery > 0) { e.moving = false; return; }
   const d = Math.hypot(p.x - e.x, p.y - e.y) || 1;
-  e.faceX = (p.x - e.x) / d;
-  e.faceY = (p.y - e.y) / d;
+  if(e.beholderRayTime>0){e.faceX=e.beholderAimX??e.faceX;e.faceY=e.beholderAimY??e.faceY;}
+  else {e.faceX = (p.x - e.x) / d;e.faceY = (p.y - e.y) / d;}
   e.beholderCooldown = Math.max(0, (e.beholderCooldown ?? .8) - dt);
   const rayWasActive = e.beholderRayTime > 0;
   e.beholderRayTime = Math.max(0, (e.beholderRayTime || 0) - dt);
@@ -64,12 +66,12 @@ export function tickBeholder(g, e, p, dt, stats = {}) {
     return;
   }
   e.beholderRayResolved = false;
-  if (d > (stats.rangedRange || 330)) {
+  if (d > (stats.rangedRange || 230)) {
     e.moving = true;
     g.moveActor(e, e.faceX * e.speed * dt, e.faceY * e.speed * dt);
     return;
   }
-  if (d < 190) {
+  if (d < 145) {
     e.moving = true;
     g.moveActor(e, -e.faceX * e.speed * dt, -e.faceY * e.speed * dt);
     return;
@@ -78,7 +80,8 @@ export function tickBeholder(g, e, p, dt, stats = {}) {
   if (e.beholderCooldown <= 0 && clearShot(g, e, p)) {
     e.beholderRayType = RAYS[(e.beholderRayIndex || 0) % RAYS.length];
     e.beholderRayIndex = (e.beholderRayIndex || 0) + 1;
-    e.beholderRayTime = stats.rayWindup || .58;
+    e.beholderAimX=e.faceX;e.beholderAimY=e.faceY;
+    e.beholderRayTime = stats.rayWindup || .78;
     e.attack = e.beholderRayTime;
     e.beholderCooldown = stats.rangedCooldown || 2.8;
   }

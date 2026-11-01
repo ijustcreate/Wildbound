@@ -49,6 +49,20 @@ export function paintItem(c, type) {
     c.fillStyle = '#59433a'; c.fillRect(10, 20, 4, 2); c.fillRect(9, 22, 6, 1);
     return;
   }
+  if (type === 'umbral_bow') {
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    // Compact 24px inventory sprite based on the supplied dark, magenta bow.
+    // The asymmetric recurves stay legible without smoothing or glow blur.
+    const outline='#211d2a',shadow='#462442',magenta='#d93bcf',pink='#f06be4',lilac='#bd74d1';
+    r(7,1,3,2,outline);r(8,3,2,4,outline);r(9,7,2,4,outline);
+    r(10,11,3,3,outline);r(9,14,2,4,outline);r(8,18,2,4,outline);r(7,22,4,1,outline);
+    r(8,3,1,5,shadow);r(9,8,1,4,shadow);r(10,12,2,2,shadow);r(9,15,1,4,shadow);r(8,19,1,4,shadow);
+    for(const [x,y,w,h] of [[10,4,3,3],[11,8,3,3],[8,15,3,3],[7,19,3,3]])r(x,y,w,h,magenta);
+    r(11,4,1,2,pink);r(12,8,1,2,pink);r(9,15,1,2,pink);r(8,19,1,2,pink);
+    r(8,2,1,1,lilac);r(12,11,1,2,lilac);r(7,22,1,1,lilac);
+    r(9,3,1,18,outline);r(10,11,2,1,'#6a3b6d');
+    return;
+  }
   if(['cave_crystal_shard','veil_shard'].includes(type)){const veil=type==='veil_shard';c.fillStyle=veil?'#34273f':'#244b50';c.fillRect(7,5,10,15);c.fillRect(10,2,5,20);c.fillStyle=veil?'#9f78b8':'#73bdb9';c.fillRect(8,7,5,12);c.fillRect(11,3,3,16);c.fillStyle=veil?'#d4b5e2':'#caeade';c.fillRect(9,8,2,8);c.fillRect(12,4,1,5);if(veil){c.fillStyle='#211e34';c.fillRect(12,12,4,2);c.fillRect(10,14,3,2);}else{c.fillStyle='#4f949e';c.fillRect(3,13,4,8);c.fillStyle='#a6e5d9';c.fillRect(4,12,2,7);}return;}
 
   if(type==='car_key'){
@@ -127,6 +141,9 @@ export function paintItem(c, type) {
 }
 function iconPart(c,paint,sx,sy,ox,oy){const pen={fillStyle:'',fillRect(x,y,w,h){const left=Math.max(0,Math.round(ox+x*sx)),top=Math.max(0,Math.round(oy+y*sy)),right=Math.min(24,Math.max(left+1,Math.round(ox+(x+w)*sx))),bottom=Math.min(24,Math.max(top+1,Math.round(oy+(y+h)*sy)));if(right>left&&bottom>top){c.fillStyle=this.fillStyle;c.fillRect(left,top,right-left,bottom-top);}}};paint(pen);}
 function paintItemBase(c, type) {
+  if(type==='gravemysts_idol'){
+    c.fillStyle='#342b3c';c.fillRect(6,7,12,13);c.fillRect(5,4,5,6);c.fillRect(14,4,5,6);c.fillStyle='#837496';c.fillRect(7,8,10,10);c.fillStyle='#c7bad2';c.fillRect(7,5,2,3);c.fillRect(15,5,2,3);c.fillRect(9,11,2,2);c.fillRect(14,11,2,2);c.fillStyle='#e5c4bc';c.fillRect(11,14,2,1);c.fillRect(9,17,6,2);c.fillStyle='#cba766';c.fillRect(3,20,18,2);c.fillRect(5,22,14,1);return;
+  }
   if(ITEMS[type]?.carvedAnimal){drawCarvedBoneIcon(c,ITEMS[type].carvedAnimal);return;}
   if(type==='bone_carver_crown'){iconPart(c,p=>drawCarverCrown(p,{x:0,y:0},0),.8,.6,12,10);return;}
   if(type==='flying_broom'||type==='mounted_broom'){iconPart(c,p=>drawBroom(p,{pelvis:{x:0,y:0}},6),.34,.9,14,10);if(type==='mounted_broom'){c.fillStyle='#6aa27f';c.fillRect(17,3,5,4);c.fillStyle='#dcebc9';c.fillRect(18,4,2,1);}return;}
@@ -229,6 +246,7 @@ function paintItemBase(c, type) {
   if(type==='moon_prism'){for(let y=3;y<22;y++){const w=Math.max(1,7-Math.abs(y-12)*.7)|0;r(12-w,y,w*2+1,1,y<12?'#a8a0ee':'#625baf');}r(11,5,2,12,'#e0dbff');return;}
   if(type==='starheart'){r(10,2,4,20,'#5cb9a0');r(2,10,20,4,'#5cb9a0');r(6,6,12,12,'#5cb9a0');r(8,8,8,8,'#a2f3d4');r(10,6,3,10,'#efffea');r(6,10,11,3,'#efffea');return;}
   if(type==='ritual_dagger'){r(11,2,3,12,'#91efcf');r(9,5,2,7,'#3e9b89');r(8,13,9,3,'#ddb457');r(11,16,3,5,'#78563f');r(10,20,5,2,'#eabf5c');return;}
+  if(ITEMS[type]?.energyBlade){const blade=ITEMS[type].bladeColor;r(10,16,4,6,'#80603b');r(7,18,10,3,'#d7b264');r(11,1,3,17,blade);r(12,1,1,17,'#f4ffff');if(type==='energy_blade_red'){r(5,18,2,2,blade);r(17,18,2,2,blade);}else if(type==='energy_blade_blue'){r(7,16,2,2,blade);r(15,16,2,2,blade);r(10,15,6,2,blade);}else{r(6,19,2,2,blade);r(16,19,2,2,blade);r(9,15,8,2,blade);}for(const [x,y] of [[7,5],[17,9],[8,13]])r(x,y,2,2,blade);return;}
   if(type==='necromancer_dagger'){r(11,1,3,11,'#b36de0');r(9,4,2,9,'#6e3f9d');r(8,12,9,3,'#8fd3bd');r(11,15,3,7,'#352541');r(9,20,7,2,'#cf8cff');r(6,7,3,2,'#cf8cff');return;}
   if(type==='friendship_wand'){r(11,3,3,17,'#ff8fc8');r(7,2,11,4,'#ffb4df');r(5,4,4,4,'#ffb4df');r(15,4,4,4,'#ffb4df');r(10,7,5,5,'#fff0ff');return;}
   if(type==='sword_of_a_thousand_truths'){r(10,1,5,15,'#fff0ff');r(7,5,11,4,'#ff8fc8');r(10,15,5,7,'#8e5ad4');r(7,20,11,3,'#ffb4df');return;}

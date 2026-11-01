@@ -101,7 +101,7 @@ test('First actual rolls now honor variety instead of forcing the same lion or t
 
 test('Every biome covers its daytime roster, preserves optional boss pacing and restores its coverage through JSON saves',()=>{
  for(const env of ['forest','temple','desert','ice','house','beach']){
-  const g=make(env),expected=EVENTS.filter(e=>e.type!=='santa'&&(e.weight??10)>0&&eventAvailable(g,e)),seen=new Set();
+  const g=make(env),expected=EVENTS.filter(e=>!e.devOnly&&e.type!=='santa'&&(e.weight??10)>0&&eventAvailable(g,e)),seen=new Set();
   let lastBoss=-99;
   for(let i=0;i<expected.length+25&&seen.size<expected.length;i++){
    const index=draw(g,EVENTS,eventAvailable),e=EVENTS[index];

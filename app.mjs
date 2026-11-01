@@ -190,6 +190,7 @@ document.addEventListener('focusin',e=>{if(e.target.matches('button,input,select
 document.addEventListener('click',e=>{if(e.target.closest('button'))audio.play('click');});
 document.addEventListener('change',()=>audio.play('click'));
 function sound(type,actor){audio.play(type,actor);}
+window.wildboundSound=sound;
 function routeMusic(dt=.016){
  const active=screen==='play',television=screen==='lobby'&&playableLobby?.television?.players.size>0;
  const tv=screen==='lobby'&&(playableLobby?.tvWildbound||(television?playableLobby.television:null));
@@ -224,6 +225,7 @@ window.addEventListener('wildbound-location-applied',e=>{
 });
 function wireGame() {
   game.onSound = sound;
+  game.trainAudio = audio;
   game.onVictoryBoard = () => openNextGamePrompt();
   game.mapping = mapping;
   game.pvp=localStorage.getItem("wildbound-pvp")==="on";
@@ -247,7 +249,7 @@ let pendingSession = null,
   sessionSaving = false,
   lastSessionBody = "";
 async function persistSession() {
-  if (rooms.role === "client" || !game.players.length || game.phase === "lobby")
+  if (game.trainTest || rooms.role === "client" || !game.players.length || game.phase === "lobby")
     return;
   if(game.localWorld)return persistLocalGame(game);
   const body = JSON.stringify(saveSession(game));
@@ -790,6 +792,11 @@ function renderRoster() {
   });
 }
 function updateHud() {
+  $('board-button').hidden=!!game.trainTest;
+  if(game.trainTest){
+    const t=game.trainTest;$('round-label').textContent='DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';$('game-hint').textContent='Jump + interact at a raised side door · Dev menu: railway workshop or return to expedition';
+    for(const id of ['event-card','dice-result','game-toast'])$(id)?.classList.add('hidden');renderRoster();return;
+  }
   game.controlLabels = controlLabels(mapping);
   const p = game.current;
   $("round-label").textContent = "ROUND " + String(game.round).padStart(2, "0");
@@ -1923,7 +1930,7 @@ function frame(now) {
       );
       fieldKit.tick(now / 1000);
       const boardVisible =
-        boardPinned || !!game.roll;
+        !game.trainTest&&(boardPinned || !!game.roll);
       if(game.roll){boardPinned=false;$('event-card').classList.add('hidden');}
       $("board-panel").classList.toggle("hidden", !boardVisible);
       $("board-panel").classList.toggle('board-sequence',!!game.roll);
@@ -2009,7 +2016,7 @@ try {
   });
   playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
   playableLobby.showLootDetails=()=>lootDetailsVisible;
-  lobbyLanding=new LobbyLanding({area:playableLobby.area,available:()=>screen==='lobby'&&game.players.length===0,join:(device,pad)=>{const player=game.addPlayer(device);if(!player)return null;if(pad){player.controllerFamily=controllerFamily(pad);player.controllerName=CONTROLLER_NAMES[player.controllerFamily];}renderLobby();playableLobby.sync();sound('heal');return player;}});
+  lobbyLanding=new LobbyLanding({area:playableLobby.area,available:()=>screen==='lobby'&&game.players.length===0,join:(device,pad)=>{const player=game.addPlayer(device);if(!player)return null;if(pad){player.controllerFamily=controllerFamily(pad);player.controllerName=CONTROLLER_NAMES[player.controllerFamily];}renderLobby();playableLobby.sync();sound('join');return player;}});
   ready = true;
   if(window.desktop?.testMode)window.wildboundWorldsTest={
     inspect:()=>({ready,screen,world:game.localWorld?.id,errors:[...diagnosticErrors]}),

@@ -54,7 +54,8 @@ export function drawBoardScene(c,game,time,options,trail,point){
   const warning=options.previewWarning??(center?'':resolved?game.event.tip:'');
   const age=options.previewAge??(game.roll?.resolved?Math.max(0,game.roll.elapsed-game.roll.landingAt):center?10:(game.eventTime||0));
   drawBoardMagic(c,time,settings,{title,warning,age});
-  drawEntryStone(c);
+  // The entry tile was detached over the well rim in several map artworks;
+  // the inner loop already meets the seal and remains walkable without it.
   if(settings.showPath){c.font='3px system-ui';c.textAlign='center';for(const [i,p]of trail.entries()){c.fillStyle='#0c211ccc';c.fillRect(p.x-2,p.y-2,4,4);c.fillStyle='#ffffff';c.fillText(String(i),p.x,p.y+1);}}
   const pawns=(game.players||[]).map((p,i)=>{const progress=p.boardProgress??p.progress??0,v=Math.max(0,Math.min(48,progress)),q=point(v),next=point(Math.min(48,v+.1)),prev=point(Math.max(0,v-.1));
     const occupants=game.players.filter(other=>Math.abs((other.boardProgress??other.progress??0)-v)<1e-6),crowded=Number.isInteger(v)&&occupants.length>1,slot=occupants.indexOf(p);

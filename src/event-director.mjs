@@ -48,6 +48,7 @@ export function selectEvent(g,events,available){
  const last=s.recent.at(-1),recentNames=new Set(s.recent.slice(-6).map(e=>e.name));
  let eligible=events.flatMap((event,index)=>{
   if(!available(g,event)||!(event.weight??10)||event.weight<0)return [];
+  if(event.devOnly)return [];
   if(event.type==='santa'&&(g.questNpcs||[]).some(n=>n.santa))return [];
   if(event.type==='old_well'&&(g.portals||[]).some(d=>d.oldWell))return [];
   if(event.type==='mausoleum'&&(g.portals||[]).some(d=>d.mausoleum&&d.oldWell))return [];

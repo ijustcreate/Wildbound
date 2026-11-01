@@ -1,3 +1,4 @@
+import {drawCemeteryTree} from './cemetery-tree-art.mjs';
 import {drawHoneyCat} from './honey-cat.mjs';
 import {boundlessTerrainAt} from './boundless-world.mjs';
 import {applyTreeFall} from './tree-fall.mjs';
@@ -11,8 +12,8 @@ const line=(c,x1,y1,x2,y2,color,width=2)=> {
   for(let n=0;n<=steps;n++)pixel(c,x1+(x2-x1)*n/steps,y1+(y2-y1)*n/steps,width,width,color);
 };
 const visibleRect=(r,b)=>r.x+r.w>=b.sx*32 && r.x<=b.ex*32 && r.y+r.h>=b.sy*32 && r.y<=b.ey*32;
-const palettes={grass:['#354b43','#3d5549','#465e4d','#50654f'],mud:['#3a3938','#45443d','#504c42','#5b574a'],
-  path:['#5b5b55','#64645c','#707069','#7b7a70']};
+const palettes={grass:['#172630','#1b2b35','#20313b','#253842'],mud:['#202a32','#27323a','#303b42','#39444a'],
+  path:['#3d4d59','#42525e','#475763','#4c5c68']};
 function drawPlot(c,plot,seed) {
   const {x,y,w,h}=plot;
   pixel(c,x-2,y-1,w+4,h+3,'#293730');pixel(c,x,y,w,h,'#716e5c');
@@ -58,11 +59,11 @@ export function drawGraveyardGround(c,g,bounds) {
     for(let n=0;n<12;n++) {
       const r=graveyardHash(seed,tx*17+n,ty*23),px=x+Math.floor(r*28),py=y+Math.floor(graveyardHash(seed,ty*13+n,tx)*29);
       if(kind==='path') {
-        pixel(c,px,py,3+n%4,1,n%3?'#929084':'#464d48');
-        if(n%4===0)pixel(c,px+1,py-1,2,1,'#acaa95');
+        pixel(c,px,py,3+n%4,1,n%3?'#64747c':'#344652');
+        if(n%4===0)pixel(c,px+1,py-1,2,1,'#829094');
       } else {
-        pixel(c,px,py,3+n%3,2,n%3?colors[n%4]:'#617254');
-        if(n%4===0){pixel(c,px+1,py-3,1,4,'#81906b');pixel(c,px-1,py-1,4,1,'#69825e');}
+        pixel(c,px,py,3+n%3,2,n%3?colors[n%4]:'#354952');
+        if(n%4===0){pixel(c,px+1,py-3,1,4,'#475a60');pixel(c,px-1,py-1,4,1,'#334b53');}
         if(n===3)pixel(c,px,py,3,1,'#9d8060');
       }
     }
@@ -180,68 +181,7 @@ function mausoleum(c,p,time) {
   ivy(c,-w/2+6,-7,70,p.x);ivy(c,w/2-5,-3,42,p.y);
   candle(c,-35,-5,time,p.x);candle(c,33,-5,time,p.y);
 }
-function tree(c,p,forest=false) {
-  const h=p.size || 120,v=((p.variant||0)%5+5)%5,type=p.treeType||'oak';
-  pixel(c,-18,-2,37,6,'#23332d');
-  // Five distinct, seeded silhouettes make the cemetery canopy read as
-  // individual trees at gameplay zoom, while the root/contact footprint stays put.
-  const midX=[-3,-12,4,1,-5][v],midY=[-.35,-.28,-.43,-.38,-.32][v];
-  const crownX=[8,-14,3,0,-7][v],crownY=[-.70,-.64,-.72,-.66,-.73][v];
-  line(c,-7,0,midX,h*midY,'#28322f',10);
-  line(c,midX,h*midY,crownX,h*crownY,'#28322f',8);
-  if(v===2){
-    line(c,crownX,h*crownY,-h*.12,-h*.88,'#28322f',5);
-    line(c,-h*.12,-h*.88,-h*.22,-h,'#28322f',3);
-    line(c,crownX,h*crownY,h*.23,-h*.87,'#28322f',4);
-  } else if(v===3) {
-    line(c,crownX,h*crownY,-h*.30,-h*.83,'#28322f',4);
-    line(c,-h*.30,-h*.83,-h*.34,-h*.63,'#465044',2);
-    line(c,crownX,h*crownY,h*.31,-h*.88,'#28322f',4);
-    line(c,h*.31,-h*.88,h*.38,-h*.68,'#465044',2);
-  } else {
-    line(c,crownX,h*crownY,v===1?h*.27:-h*.22,-h*.98,'#28322f',4);
-    line(c,crownX,h*crownY,v===1?-h*.30:h*.25,-h*.88,'#28322f',4);
-  }
-  line(c,-5,0,-1,-h*.4,'#586052',3);line(c,midX,h*midY,crownX+3,h*(crownY-.06),'#6c7060',2);
-  for(const side of [-1,1])line(c,-3,0,side*(18+v%3*3),3,'#465447',3);
-  const branches=v===1?[[.48,-.49,.10,-.77,6],[.70,-.64,.42,-.73,3],[.31,-.52,.20,-.90,3]]:
-    v===4?[[-.35,-.47,-.76,-.65,5],[.23,-.62,.62,-.77,4],[-.76,-.65,-.82,-.82,2],[.62,-.77,.76,-.93,2]]:
-    [[-.44,-.47,-.72,-.70,5],[.39,-.51,.69,-.69,5],[-.72,-.70,-.84,-.88,3],[.69,-.69,.84,-.89,3]];
-  // Each tuple is a branch segment (x1,y1,x2,y2), not a height plus
-  // three offsets. The old interpretation put every right branch below ground.
-  for(const [index,[x1,y1,x2,y2,w]] of branches.entries()){
-    const along=Math.max(0,Math.min(1,(-y1+midY)/Math.max(.1,midY-crownY))),originX=midX+(crownX-midX)*along;
-    if(Math.abs(x1)<.55||!branches.some((b,i)=>i<index&&b[2]===x1&&b[3]===y1)){
-      const bendX=(originX+x1*h)*.5;
-      line(c,originX,h*(y1+.13),bendX,h*(y1+.045),'#2b3530',w);
-      line(c,bendX,h*(y1+.045),x1*h,h*y1,'#2b3530',Math.max(1,w-1));
-    }
-    line(c,x1*h,y1*h,x2*h,y2*h,'#2b3530',Math.max(1,w-1));
-    line(c,x1*h,y1*h,x2*h,y2*h,'#465044',Math.max(1,w-3));
-  }
-  ivy(c,-6,-1,26,p.x);
-  if(forest) {
-    const palette={oak:['#263c33','#36503d','#52664a'],birch:['#394a3e','#58644c','#8c956d'],pine:['#203a34','#2b5140','#426b4b'],deadwood:['#26302d','#3d493c','#596050'],willow:['#294337','#3c5a42','#62714d']}[type]||['#263c33','#2b4438','#36503d'];
-    const count=type==='deadwood'?4:type==='birch'?11:type==='pine'?13:type==='willow'?12:16;
-    for(let n=0;n<count;n++) {
-      let x,y,w,hh;
-      if(type==='pine'){
-        const tier=n%4,side=Math.floor(n/4)-1;
-        x=side*h*(.10+tier*.045);y=-h*(.38+tier*.15);w=h*(.26-tier*.035);hh=8+tier%3*3;
-      } else if(type==='birch'){
-        x=(graveyardHash(p.x,n,p.y)-.5)*h*.40;y=-h*(.45+graveyardHash(p.y,n,p.x)*.49);w=12+n%3*4;hh=8+n%2*3;
-      } else if(type==='willow'){
-        const side=n%2?1:-1,branch=Math.floor(n/2);
-        x=side*h*(.18+branch%3*.055);y=-h*(.63+branch%4*.075);w=14+n%3*3;hh=13+n%4*4;
-      } else {
-        x=-h*.36+graveyardHash(p.x,n,p.y)*h*.72;y=-h+graveyardHash(p.y,n,p.x)*h*.56;w=18+n%4*3;hh=8+n%3*3;
-      }
-      pixel(c,x,y,w,hh,palette[n%palette.length]);
-      if(type!=='deadwood')pixel(c,x+3,y,Math.max(3,w*.42),2,palette[(n+1)%palette.length]);
-    }
-    if(type==='willow')for(const side of [-1,1])for(let n=0;n<3;n++)line(c,side*h*(.24+n*.09),-h*.65,side*h*(.27+n*.09),-h*(.36+n*.025),'#294337',2);
-  } else if(v===2){pixel(c,1,-h*.6,4,7,'#182a26');pixel(c,-1,-h*.59,2,2,'#838676');}
-}
+const tree=drawCemeteryTree;
 
 function leaflessStump(c) {
   for(const side of [-1,1]) {

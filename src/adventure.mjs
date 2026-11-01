@@ -1,4 +1,5 @@
 import {useBroom,dismountBroom} from './broom-mount.mjs';
+import {interactCreaturePackActor} from './creature-packs/index.mjs';
 import {initializeBoundlessWorld} from './boundless-world.mjs';
 import {encounterCue} from './encounter-cues.mjs';
 import {weaponHitContext} from './dark-essence.mjs';
@@ -15,7 +16,7 @@ import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
 import {returnHouseForVictory,resetHouseWorlds} from './house-worlds.mjs';
 import {closeMausoleumEntrances} from './mausoleum-crypt.mjs';
 import {dropRavenLoot,spawnRavenFlock} from './raven.mjs';
-import {spawnSurfaceEcology,releaseGraveyardCritter} from './graveyard-ecology.mjs';
+import {spawnSurfaceEcology,releaseGraveyardCritter,interactGraveyardCat} from './graveyard-ecology.mjs';
 import {dropHiveHoney,useHoneycomb} from './honeycomb.mjs';
 import {enterOldWell,leaveOldWell,interactOldWell,oldWellRoomStep,tickOldWells,wellForPlayer} from './old-well.mjs';
 import {robotShopAction} from './robot-shop.mjs';
@@ -954,8 +955,8 @@ export const adventureMethods = {
               : 24,
       stride = u.shop === "vending" || u.panel === "gear" ? 3 : 6;
     if(u.panel==='pack'&&!u.shop&&['next','prev','down','up'].includes(action)){
-      const step=action==='next'?1:action==='prev'?-1:action==='down'?6:-6;
-      if(action==='up'&&u.index<6){switchPanel('gear');u.index=SLOTS.indexOf('feet');}
+      const step=action==='next'?1:action==='prev'?-1:action==='down'?8:-8;
+      if(action==='up'&&u.index<8){switchPanel('gear');u.index=SLOTS.indexOf('feet');}
       else u.index=(u.index+step+24)%24;
     }else if(u.panel==='gear'&&['next','prev','down','up'].includes(action)){
       if(action==='down'&&SLOTS[u.index]==='feet'){switchPanel('pack');u.index=0;}
@@ -972,14 +973,19 @@ export const adventureMethods = {
     }
     if (action === "use" || action === "equip") {
       const selectedList = u.panel === 'chest' ? storage : p.inventory;
+      const item = p.inventory[u.index];
       if(action==='use'&&u.panel==='pack'&&!storage&&tryInstallVehiclePart(this,p,u.index))return;
       if (u.panel !== 'gear' && ITEMS[selectedList?.[u.index]?.type]?.bag) {
         u.bag = { mode: u.panel, index: u.index }; return;
       }
       if (u.panel === "gear") unequip(p, SLOTS[u.index % SLOTS.length]);
       else if (storage && action === "use") moveItem();
+      else if(item?.type==='gravemysts_idol'){
+        const cat=spawnSurfaceEcology(this).find(a=>a.kind==='graveyard_cat'&&a.bondedOwner===p.id);
+        if(cat){cat.companionActive=!cat.companionActive;cat.idle=cat.companionActive?'walk':'sit';u.notice=cat.companionActive?"Gravemyst's cat follows you.":'Gravemyst’s cat settles down.';this.persist?.();}
+        else u.notice='Find Gravemyst’s cat in the Graveyard first.';
+      }
       else {
-        const item = p.inventory[u.index];
         if(item?.type?.startsWith('caught_')){
           if(['caught_grave_moth','caught_crypt_beetle'].includes(item.type)){
             if(!releaseGraveyardCritter(this,p,u.index))u.notice='Release this cemetery critter on open graveyard ground.';
@@ -1175,7 +1181,7 @@ export const adventureMethods = {
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
         if(!sealPriority&&!this.openingBoard&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
         if (!sealPriority && !this.openingBoard && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
-          const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||interactOldWell(this,p)||openMerchant(this,p)||openHouseChest(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
+          const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||(edge('interact')&&interactCreaturePackActor(this,p))||interactGraveyardCat(this,p)||interactOldWell(this,p)||openMerchant(this,p)||openHouseChest(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
         if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
@@ -1211,7 +1217,7 @@ export const adventureMethods = {
         } else {
           if (!sealPriority && old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if(interactHouseVehicle(this,p)||toggleGarageDoor(this,p)||openHouseChest(this,p)||openNpcDialogue(this,p)||interactToyTrain(this,p)||interactMystery(this,p)||interactHouseSurface(this,p)||toggleWorldLight(this,p)){}
+            if(interactHouseVehicle(this,p)||toggleGarageDoor(this,p)||openHouseChest(this,p)||openNpcDialogue(this,p)||interactGraveyardCat(this,p)||interactToyTrain(this,p)||interactMystery(this,p)||interactHouseSurface(this,p)||toggleWorldLight(this,p)){}
             else if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)||pickPumpkin(this,p)) {}
@@ -1420,6 +1426,7 @@ export const adventureMethods = {
     const owner = this.shopOwner(p);
     if (!owner || p.hp <= 0 || p.ui?.shop !== "vending" || p.ui.ownerDevice !== p.device || !this.players.includes(p) || this.players.filter(q => q.device === p.device).length !== 1) return false;
     p.ui.notice = purchaseVending(p, owner, index);
+    this.onSound(p.ui.notice==='Dispensing… collect your item from the tray.'?'purchase':'menuError',p);
     this.persist();
     return true;
   },
@@ -1439,7 +1446,7 @@ export const adventureMethods = {
         : order
           ? "Backpack full — your purchase stays in the tray."
           : "Your item is still dispensing.";
-    if (ok) this.persist();
+    if (ok) {this.onSound('loot',p);this.persist();}else if(order)this.onSound('menuError',p);
     return !!ok;
   },
   openShop(p, shop) {
@@ -1585,6 +1592,10 @@ export const adventureMethods = {
       if (this.random() < 0.1) this.dropLoot(...args);
     };
     const cfg = creatures[e.kind], difficulty = cfg?.stats?.hp || e.maxHp || 20;
+    if (e.kind === 'necromancer') {
+      const worn=[...new Set(Object.values(e.equipment||{}))].filter(type=>type&&type!=='occupied'&&ITEMS[type]?.warlockGear);
+      for(const [i,type] of worn.entries())this.dropLoot(e.x+(i%3-1)*20,e.y+Math.floor(i/3)*20,type,1,'Warlock equipment',true);
+    }
     if (e.kind === 'necromancer') {
       const settings = {...(cfg.necromancerLoot || {}), ...(e.necromancerLoot || {})};
       const pieces = Array.isArray(settings.pieces) ? settings.pieces.filter(type => ITEMS[type]) : [];

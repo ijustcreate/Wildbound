@@ -186,14 +186,14 @@ export function npcDialogueAction(g,p,action){
     const stage=currentStage(p,config),branch=stage?.branches[u.offerBranch];if(!branch||s.active||s.lastRewardEncounter===s.encounters)return true;
     if(!ITEMS[stage.reward]){u.notice='This quest reward is not configured yet.';return true;}
     s.active={stageId:stage.id,branchId:branch.id,contract:clone(branch),reward:stage.reward,progress:0,acceptedAt:g.time||0};
-    establishObjective(g,p,npc);u.node='quests';u.index=0;u.notice='Quest accepted. Your choice is recorded in your character journal.';g.message?.(`${p.name}: ${branch.title} accepted.`);g.persist?.();
+    establishObjective(g,p,npc);u.node='quests';u.index=0;u.notice='Quest accepted. Your choice is recorded in your character journal.';g.message?.(`${p.name}: ${branch.title} accepted.`);g.onSound?.('questAccept',p);g.persist?.();
   }else if(action==='claim'){
     const a=s.active;if(!a||progress(p,a)<a.contract.objective.count||s.completed.some(c=>c.stageId===a.stageId))return true;
     if(!ITEMS[a.reward]){u.notice='The saved reward item is unavailable. Progress has been kept.';return true;}
     let slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=24){u.notice='Free one backpack slot. Your reward will stay with me.';return true;}if(slot<0)slot=p.inventory.length;
     if(a.contract.objective.type==='collect'){let left=a.contract.objective.count;for(let n=0;n<p.inventory.length&&left>0;n++){const item=p.inventory[n];if(item?.type!==a.contract.objective.item)continue;const take=Math.min(left,item.qty||1);left-=take;item.qty=(item.qty||1)-take;if(item.qty<=0)p.inventory[n]=null;}}
     p.inventory[slot]={type:a.reward,qty:1};s.completed.push({stageId:a.stageId,branchId:a.branchId,reward:a.reward});s.lastRewardEncounter=s.encounters;s.active=null;
-    u.node='quests';u.index=0;u.notice=`${ITEMS[a.reward].name} received. We’ll continue when our paths cross again.`;g.onSound?.('loot',p);g.persist?.();
+    u.node='quests';u.index=0;u.notice=`${ITEMS[a.reward].name} received. We’ll continue when our paths cross again.`;g.onSound?.('questUpdate',p);g.onSound?.('loot',p);g.persist?.();
   }else if(action==='route'){if(s.active?.target)g.reveal={...s.active.target,life:6};u.notice=s.active?.contract.objective.type==='collect'?'Gather the supplies listed in your quest, then bring them back.':'Follow the teal quest marker. Your party can help with this task.';}
   return true;
 }

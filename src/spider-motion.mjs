@@ -2,6 +2,7 @@ import {poseAt,projectPoint,facingIndex} from './player-motion.mjs';
 import {pixelLine,pixelVolume} from './pixel-shapes.mjs';
 import {paintLayers} from './render-order.mjs';
 import {applyWowCreatureMotion,upgradeWowCreatureMotion} from './wow-creature-transfer.mjs';
+import {BOUNCER_WOW_MOTION} from './bouncer-wow-motion-data.mjs';
 
 const sides=['L','R'],TAU=Math.PI*2;
 const key=(m,frame,changes={})=>({frame,joints:Object.fromEntries(Object.keys(m.joints).map(n=>[n,changes[n]||[0,0,0]]))});
@@ -54,6 +55,12 @@ export function defaultSpiderMotion(kind='spider') {
   m.artGeneration=3;
   m.name='Black spider / transferred eight-leg motion';
   applyWowCreatureMotion(m,'spider');
+ }
+ if(kind==='jumping_spider'){
+  m.artGeneration=3;
+  m.name='Bouncer / native pounce over Bouncer Wowhead locomotion';
+  Object.assign(m.clips,structuredClone(BOUNCER_WOW_MOTION.clips));
+  m.motionSource={kind:'wowhead-bone-transfer',displayId:BOUNCER_WOW_MOTION.provenance.displayId,npc:BOUNCER_WOW_MOTION.provenance.npc};
  }
  return m;
 }

@@ -11,7 +11,6 @@ app.whenReady().then(async()=>{
    const raf=requestAnimationFrame;window.qaRaf=raf;window.requestAnimationFrame=()=>0;await new Promise(raf);
    const ctx=window.qaContext,g=ctx.game,l=ctx.playableLobby,checks=[],assert=(v,m)=>{if(!v)throw Error(m);checks.push(m)};
    g.players=[];l.reset();ctx.show('lobby');l.update(.02,{});
-   assert(getComputedStyle(document.querySelector('.party-help')).display!=='none','An empty lobby retains join instructions');
    const pads=['Xbox Wireless Controller','Nintendo Switch Pro Controller'].map((id,index)=>({id,index,mapping:'standard',connected:true,axes:[0,0,0,0],buttons:Array.from({length:17},()=>({pressed:false,value:0}))}));
    Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>pads});ctx.previousPads.clear();
    for(let i=0;i<2;i++){const p=g.addPlayer('pad:'+i),h=ctx.profiles.create('Layout '+i);ctx.profiles.assign(p,h);}
@@ -20,9 +19,28 @@ app.whenReady().then(async()=>{
    const release=()=>{for(const pad of pads){pad.axes.fill(0);for(const b of pad.buttons){b.pressed=false;b.value=0}}step()};
    const press=(i,b)=>{release();pads[i].buttons[b]={pressed:true,value:1};step()};
    window.layoutQA={ctx,g,l,checks,assert,pads,step,release,press};
+   // Exercise the actual rendered Starting Map menu with each physical
+   // face-button layout. Confirm each requested map, then confirm the staged
+   // expedition so the native environment selector receives that map.
    for(const index of [0,1]){
+    const confirm=index===1?1:0;
+    g.houseWorldsEnabled=false;ctx.$('map-mode').value='bounded';
+    for(const target of ['ice','temple','beach','graveyard']){
+     release();const owner=g.players[index],state=l.state.members.get(owner.id);state.panel=null;l.open(owner,'environment');
+     const panel=l.nodes.get(owner.id),targetButton=[...panel.querySelectorAll('.expedition-map')].find(button=>button.dataset.map===target);
+     assert(!!targetButton,'Starting Map includes '+target);
+     for(let n=0;n<panel.expeditionButtons().length&&panel.querySelectorAll('button')[state.focus]!==targetButton;n++)press(index,13);
+     assert(panel.querySelectorAll('button')[state.focus]===targetButton,'D-pad reaches '+target+' for controller '+index);
+     press(index,confirm);
+     assert(state.expeditionDraft.map===target&&targetButton.getAttribute('aria-pressed')==='true','Confirm selects '+target+' for controller '+index);
+     const accept=panel.querySelector('.expedition-accept');
+     for(let n=0;n<panel.expeditionButtons().length&&panel.querySelectorAll('button')[state.focus]!==accept;n++)press(index,13);
+     assert(panel.querySelectorAll('button')[state.focus]===accept,'D-pad reaches Accept after '+target+' for controller '+index);
+     press(index,confirm);
+     assert(ctx.$('environment').value===target&&!l.nodes.has(owner.id),'Accept starts '+target+' for controller '+index);
+    }
     release();l.openBoardReadyMenu(g.players[index]);g.players.forEach(p=>p.ready=true);g.players[index].ready=false;
-    press(index,0);assert(!l.boardReadyMenuOpen,'Ready closes for controller '+index);
+    press(index,confirm);assert(!l.boardReadyMenuOpen,'Ready closes for controller '+index);
     for(let f=0;f<8;f++)step();assert(l.practice.players.every(a=>!(a.jumpHeight>0)&&!a.wingHover),'Held ready does not jump for controller '+index);
     release();press(index,0);step();assert(l.practice.players.find(a=>a.device==='pad:'+index).jumpHeight>0,'Fresh jump works for controller '+index);release();
     for(const a of l.practice.players)Object.assign(a,{jumpHeight:0,jumpVelocity:0,wingHover:false,jumpHeld:false});

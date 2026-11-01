@@ -40,6 +40,7 @@ export function drawGhostGloves(c,h,d,side){
 }
 export function drawGhostMist(c,p,time,actor={}){
  const phase=actor.frozen>0?0:time*3+(Number(actor.id)||0),b=p.pelvis;
+ if(actor.happinessDevourer){for(let n=0;n<12;n++){const a=phase*.3+n*Math.PI/6,r=9+(n%3)*3;rect(c,b.x+Math.cos(a)*r,b.y+Math.sin(a)*r+7,2,2,n%3===0?'#e4faff':n%2?'#7bd6ff':'#477fae');}}
  for(let strand=0;strand<3;strand++){
   let last={x:b.x+(strand-1)*3,y:b.y+3};
   for(let n=1;n<10;n++){

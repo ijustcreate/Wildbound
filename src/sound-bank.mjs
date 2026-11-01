@@ -14,10 +14,49 @@ export const CUES={
  harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),level:ui('confirmation_003'),
  grass:impact('footstep_grass',.13),wood:impact('footstep_wood',.13),snow:impact('footstep_snow',.13),sand:impact('footstep_carpet',.13),water:rpg('footstep08,footstep09',.12),slide:ui('scratch_001'),
  wind:{files:['assets/sfx/ambience/wind.wav'],bus:'ambience',gain:.15},rain:{files:['assets/sfx/ambience/rain.ogg'],bus:'ambience',gain:.18},forest_ambient:{files:['assets/sfx/ambience/forest_ambient_20s_loop.wav'],bus:'ambience',gain:.10},
+ desert_ambient:{files:['assets/sfx/ambience/desert-wind-06.mp3'],bus:'ambience',gain:.075,maxDuration:8},
+ ice_ambient:{files:['assets/sfx/ambience/blizzard-wind-04.wav'],bus:'ambience',gain:.11},
+ beach_ambient:{files:['assets/sfx/ambience/beach_waves_01.flac','assets/sfx/ambience/beach_waves_02.flac'],bus:'ambience',gain:.08},
+ swamp_ambient:{files:['assets/sfx/ambience/swamp.ogg'],bus:'ambience',gain:.09},
+ cave_ambient:{files:['assets/sfx/ambience/dungeon_ambient_1_0.ogg'],bus:'ambience',gain:.08},
+ temple_ambient:{files:['assets/sfx/ambience/dungeon_ambient_1_0.ogg'],bus:'ambience',gain:.055,rate:.92,lowpass:2200},
+ house_ambient:{files:['assets/sfx/ambience/room-tone-54.wav'],bus:'ambience',gain:.055},
+ graveyard_ambient:{files:['assets/sfx/ambience/horror-wind-whisper-38.wav'],bus:'ambience',gain:.055,maxDuration:6},
+ shadow_ambient:{files:['assets/sfx/ambience/night-ambience-01.wav'],bus:'ambience',gain:.07},
  jump:rpg('cloth1,cloth2',.13),land:impact('impactSoft_medium',.21),splash:rpg('footstep08,footstep09',.24),
  stone:impact('footstep_concrete',.11),mud:rpg('footstep08,footstep09',.10),
   repair:impact('impactMetal_light',.13),repairDone:ui('confirmation_003'),engineStart:impact('impactMetal_heavy',.22),engineRun:impact('impactMetal_light',.08),carHit:impact('impactMetal_heavy',.28),death:impact('impactSoft_heavy',.3),
 };
+// Explicit action aliases let custom controller/canvas UI share the same polished
+// UI bus as DOM controls without silently dropping the game's generic `ui` calls.
+CUES.ui=CUES.click;
+CUES.confirm=ui('confirmation_001,confirmation_002');
+CUES.cancel=CUES.back;
+CUES.menuError=CUES.error;
+CUES.flight={files:['assets/sfx/dragon2/flap.ogg'],bus:'sfx',gain:.12,rate:.72,maxDuration:.65,group:'movement',priority:25,polyphony:2,cooldown:260,distance:420};
+CUES.broomFlight={files:files('rpg','cloth3,cloth4'),bus:'sfx',gain:.08,rate:.62,maxDuration:.32,group:'movement',priority:24,polyphony:2,cooldown:520,distance:420};
+CUES.vault=CUES.jump;
+CUES.climb=rpg('cloth1,cloth2',.16);
+CUES.mount=rpg('cloth1,cloth2',.18);
+CUES.dismount=CUES.land;
+CUES.craftStart=impact('impactMetal_light',.18);
+CUES.craftComplete=ui('confirmation_003,confirmation_004');
+CUES.purchase=rpg('handleCoins,handleCoins2',.2);
+CUES.sell=rpg('handleCoins,handleCoins2',.16);
+CUES.questAccept=ui('confirmation_002,confirmation_003');
+CUES.questUpdate=ui('select_001,select_002');
+CUES.discovery=ui('maximize_005,bong_001');
+CUES.checkpoint=CUES.portal;
+CUES.puzzleSwitch=ui('click_001,click_002');
+CUES.puzzleSolved=ui('confirmation_004');
+CUES.puzzleFailed=CUES.error;
+CUES.buildPlace=impact('impactWood_light',.18);
+CUES.buildRemove=impact('impactWood_medium',.2);
+CUES.buildRotate=ui('click_001,click_002');
+CUES.buildPaint=ui('click_001,click_002');
+CUES.vehicleSkid=rpg('footstep08,footstep09',.18);
+CUES.bossPhase=ui('bong_001');
+CUES.rescue=CUES.win;
 // Mix policy is separate from the recorded source selection. No new asset downloads.
 for(const name of ['grass','wood','snow','sand','water','stone','mud','stalkerStep'])Object.assign(CUES[name],{group:'footstep',priority:15,polyphony:4,cooldown:190,distance:300,maxDuration:.45});
 for(const name of ['attack','bow','magic','rifle'])Object.assign(CUES[name],{bus:'sfx',group:'weapon',priority:65,polyphony:6,cooldown:100,spatial:true,distance:650});

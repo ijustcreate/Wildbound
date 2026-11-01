@@ -18,8 +18,20 @@ export function companionVisualActor(actor,model){
     const action=actor.kind==='bat'?'dive':'bite',clip=model?.clips?.[action];
     if(clip)return {...actor,animationAction:action,playerFrame:Math.max(0,1-actor.attack/.34)*(clip.length-1),poseTime:undefined,animationProgress:undefined};
   }
+  // Controlled rigs should pose from the action the owner is performing. A
+  // jump/swim action must beat their previous AI locomotion state.
+  const clips=model?.clips;
+  const actionBusy=actor.controlledAttack||actor.attack>0||actor.hit>0||actor.flash>0||actor.frozen>0||actor.animationAction;
+  if(actor.hp>0&&!actionBusy&&actor.jumpHeight>0&&clips?.jump){
+    const playerFrame=Number.isFinite(actor.jumpAge)?Math.max(0,Math.min(clips.jump.length-1,actor.jumpAge*clips.jump.fps)):undefined;
+    return {...actor,animationAction:'jump',playerFrame,poseTime:undefined,animationProgress:undefined};
+  }
+  if(actor.hp>0&&!actionBusy&&actor.swimming){
+    const action=actor.diveDepth>.12&&clips?.dive?'dive':clips?.swim?'swim':null;
+    if(action)return {...actor,animationAction:action,playerFrame:undefined,poseTime:undefined,animationProgress:undefined};
+  }
   if(!(actor.faction==='ally'||actor.hunterPet===true)||!actor.moving||actor.hp<=0||actor.hit>0||actor.flash>0||actor.attack>0||actor.frozen>0||actor.state==='snared'||actor.jumpHeight>0||actor.summonPulse>0||actor.healEffect>0||actor.animationAction)return actor;
-  const clips=model?.clips;if(!clips)return actor;
+  if(!clips)return actor;
   const preferred=['bat','pelican','dragon'].includes(actor.kind)?['fly','run','walk']:actor.kind==='snake'?['slither','walk','run']:(actor.locomotionSpeed??actor.speed??90)<=170?['walk','run','stalk']:['run','walk','stalk'];
   const action=preferred.find(name=>clips[name]);if(!action)return actor;
   const clip=clips[action],stride=actor.kind==='beetle'?(action==='walk'?54:70):action==='walk'?70:100;

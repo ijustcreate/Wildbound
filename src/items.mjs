@@ -17,6 +17,9 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  energy_blade_red:{name:'Red energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#ff3949',artColor:'#ff263f',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#ff263f',lightSource:{radius:190,intensity:.72,color:'#ff263f'},description:'A humming red energy sword. Burns targets and casts a red glow; the blade powers down after ten seconds without an attack.'},
+  energy_blade_blue:{name:'Blue energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#43bfff',artColor:'#238dff',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#238dff',lightSource:{radius:190,intensity:.72,color:'#238dff'},description:'A humming blue energy sword. Burns targets and casts a blue glow; the blade powers down after ten seconds without an attack.'},
+  energy_blade_green:{name:'Green energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#69f26c',artColor:'#31dc58',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#31dc58',lightSource:{radius:190,intensity:.72,color:'#31dc58'},description:'A humming green energy sword. Burns targets and casts a green glow; the blade powers down after ten seconds without an attack.'},
   blank_explorer_costume:{name:'Blank explorer costume',base:'armor',slot:'chest',stack:1,armor:0,sockets:0,rarity:'common',artColor:'#858f90',color:'#858f90',blankExplorer:true,supplyOnly:true,devOnly:true,sellPrice:0,description:'A quiet grey explorer disguise with a subtle question mark. Used by unclaimed explorers. Developer-only costume; never found in normal loot.'},
   ...BONE_CARVER_ITEMS,
   car_key:{name:'Car key',stack:1,rarity:'common',color:'#e6c66f',description:'A keepsake brass car key. Vehicles can be driven without a key.'},
@@ -43,6 +46,7 @@ export const ITEMS = {
   caught_scavenger:{name:'Critter in a cage',stack:1,color:'#9b886f',sellPrice:7},
   caught_crab:{name:'Captured shore crab',stack:1,color:'#e69b65',sellPrice:8,description:'A tiny sideways-scuttling beach passenger.'},
   caught_fish:{name:'Captured reef fish',stack:1,color:'#76d9df',sellPrice:8,description:'A bright reef fish. Release near deep water.'},
+  gravemysts_idol:{name:"Gravemyst's Idol",base:'trinket',trinket:true,stack:1,rarity:'rare',color:'#bbb5d3',artColor:'#82719d',sellPrice:0,description:'A little cat idol. Use it to call your peaceful graveyard companion.'},
   caught_grave_moth:{name:'Grave moth',stack:1,captureContainer:'empty_jar',color:'#c6b3a1',sellPrice:7,description:'A soft-winged crypt visitor, carried in a critter bottle.'},
   caught_crypt_beetle:{name:'Crypt beetle',stack:1,captureContainer:'empty_jar',color:'#877b9b',sellPrice:8,description:'An iron-dark beetle from the crypt, carried in a critter bottle.'},
   cave_crystal_shard:{name:'Cave crystal',stack:99,color:'#8ed9d1',material:true,sellPrice:7,description:'A luminous mineral mined from Hollowdeep geodes.'},
@@ -370,6 +374,18 @@ export const ITEMS = {
     damage: 18,
     color: "#d9b77c",
     description: "Uses both hands. Hold attack to draw, release to shoot.",
+  },
+  umbral_bow: {
+    base: "bow",
+    name: "Violet Wisp Bow",
+    slot: "hand1",
+    twoHanded: true,
+    damage: 29,
+    rarity: "rare",
+    artColor: "#d744d2",
+    color: "#a77ac4",
+    style: "umbra",
+    description: "A dark recurved bow bound with vivid violet-magenta limbs. Hold to draw; release to fire an arrow.",
   },
   starter_bow: {
     base: "bow",

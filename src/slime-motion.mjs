@@ -67,7 +67,8 @@ function drawSparkle(c,x,y,color,size=2) {
   if(size>2)c.fillRect(Math.round(x+size),Math.round(y+1),1,Math.max(1,size-2));
 }
 export function drawSlime(c, actor, time, model=slimeMotion, suppliedPose=null) {
-  const action=slimeAction(actor), d=facingIndex(actor.faceX,actor.faceY), pose=suppliedPose||poseAt(model,action,slimeFrame(actor,time,model));
+  const action=slimeAction(actor), d=facingIndex(actor.faceX,actor.faceY), pose=structuredClone(suppliedPose||poseAt(model,action,slimeFrame(actor,time,model)));
+  if(actor.moving&&['walk','run'].includes(action)){const wobble=Math.sin((actor.step||time*10)*.72)*1.8;for(const key of ['core','crest','rimL','rimR','gelL','gelR'])if(pose[key])pose[key][0]+=wobble;}
   const p=Object.fromEntries(Object.entries(pose).map(([name,v])=>[name,projectPoint(v,d)]));
   const biome=SLIME_BIOMES.includes(actor.slimeBiome)?actor.slimeBiome:'forest';
   const pal={...palettes[biome]};

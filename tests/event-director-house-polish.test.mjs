@@ -45,8 +45,10 @@ test('Every encounter uses its own author stats; squad, edited species and expli
  const definitions={lion:{edited:true,stats:{hp:155,speed:61,damage:19}}};assert.equal(eventUnitStats(pool[0],null,'lion',definitions).hp,155);assert.equal(eventUnitStats(pool[0],{manualOverride:true,hp:90},'lion',definitions).hp,90);
 });
 test('Default event roster has unique save keys, two-line flavor and actionable tips without generic placeholder copy',()=>{
- assert.equal(EVENTS.length,106);assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
- for(const e of EVENTS){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
+ const original=EVENTS.slice(0,106),added=EVENTS.slice(106);
+ assert.equal(original.length,106);assert.equal(added.length,39);assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
+ for(const e of original){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
+ for(const e of added){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}
 });
 test('Native House architecture is read-only, balanced and honors saved open doors and floor bounds',()=>{
  const h=defaultHouse(),saved=structuredClone(h),calls=[];let balance=0;

@@ -1,3 +1,4 @@
+import {tickTrainTest} from './train-test.mjs';
 import {BONE_CARVER_EVENT,spawnBoneCarver} from './bone-carver.mjs';
 import {tickBroomFlight} from './broom-mount.mjs';
 import {vehicleRollsOver} from './vehicle-ground.mjs';
@@ -114,6 +115,8 @@ import {healingAdventureMethods} from './healing-magic.mjs';
 import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
 import {categorizeEvents} from './event-zones.mjs';
 import {SLIME_EVENTS} from './slime-events.mjs';
+import {CREATURE_PACK_EVENTS, initializeCreaturePackEvent, tickCreaturePackActor} from './creature-packs/index.mjs';
+import {tickSkunkClouds} from './skunk-behavior.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
   WORLD = TILE * MAP_SIZE,
@@ -457,6 +460,7 @@ EVENTS.push(structuredClone(VILLAGER_EVENT));
 EVENTS.push(structuredClone(BREATHER_EVENT));
 EVENTS.push(structuredClone(SHORE_GOBLIN_EVENT));
 EVENTS.push(structuredClone(GHOST_EVENT));
+EVENTS.push({name:'Happiness Devourer',kind:'ghost',count:1,hp:190,speed:58,damage:18,weight:6,zoneWeights:{desert:0},happinessDevourer:true,verse:'A smile goes still beneath the frost.\nA colder shadow counts what you have lost.',tip:'Keep moving when the cold gathers around the Happiness Devourer.'});
 EVENTS.push(...SLIME_EVENTS.map(e=>structuredClone(e)));
 EVENTS.push(structuredClone(BEHOLDER_EVENT));
 EVENTS.push(structuredClone(LESSER_BEHOLDER_EVENT));
@@ -544,6 +548,8 @@ EVENTS.push(...REALM_EVENTS.map(e=>structuredClone(e)));
 EVENTS.push(structuredClone(SANTA_EVENT),structuredClone(BONE_CARVER_EVENT));
 EVENTS.push(...DRAGON_EVENTS.map(e=>structuredClone(e)));
 EVENTS.push(...NIGHT_EVENTS.filter(e=>['fox','squashling','scorpion_boss','werewolf'].includes(e.kind)));
+// These event cards are appended so saved event indices keep their meaning.
+EVENTS.push(...CREATURE_PACK_EVENTS.map(event=>structuredClone(event)));
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {
@@ -720,19 +726,20 @@ export class Game {
     const collider=this.players.includes(actor)?controlledFollower(this,actor)||actor:actor;
     if(stationaryCreature(collider)){actor.moving=false;actor.slideX=actor.slideY=0;return 0;}
     flying ||= flies(collider);
-    if(!flying&&this.generatedEnvironment==='ice'){const snow=1-snowAt(this,actor.x,actor.y)*.45;dx*=snow;dy*=snow;}
-    if(webSlow(this,actor)){dx*=.45;dy*=.45;}
+    const groundedForTerrain=!flying&&!actor.broomMount&&!actor.wingHover&&!(actor.jumpHeight>0)&&!(actor.groundHeight>0);
+    if(groundedForTerrain&&this.generatedEnvironment==='ice'){const snow=1-snowAt(this,actor.x,actor.y)*.45;dx*=snow;dy*=snow;}
+    if(groundedForTerrain&&webSlow(this,actor)){dx*=.45;dy*=.45;}
     if (actor.field === undefined && actor.slowUntil > this.time) {
       dx *= 0.45;
       dy *= 0.45;
     }
     const ground = waterAt(this, actor.x, actor.y + collisionOffset(this,collider));
     const canSwim=this.players.includes(actor)||actor.heroFollower===true||['snake','anaconda','oathless_captain'].includes(actor.kind)||actor.villagerId==='april';
-    if(canSwim&&!flying&&ground==='water'&&!(actor.jumpHeight>0)){dx*=.58;dy*=.58;}
-    if (!flying && !actor.broomMount && isQuicksand(ground)) {
+    if(canSwim&&groundedForTerrain&&ground==='water'){dx*=.58;dy*=.58;}
+    if (groundedForTerrain && isQuicksand(ground)) {
       dx *= 0.32;
       dy *= 0.32;
-    } else if (!flying && !actor.broomMount && isShallow(ground)) {
+    } else if (groundedForTerrain && isShallow(ground)) {
       dx *= ground==='mud'?.85:.55;
       dy *= ground==='mud'?.85:.55;
     }
@@ -750,7 +757,7 @@ export class Game {
     }
     const moved = Math.hypot(actor.x - oldX, actor.y - oldY);
     if (!this.players.includes(actor)) {
-    if (!flying && isQuicksand(waterAt(this, actor.x, actor.y + collisionOffset(this,actor))))
+    if (groundedForTerrain && isQuicksand(waterAt(this, actor.x, actor.y + collisionOffset(this,actor))))
       actor.sink =
         moved < 0.01
           ? Math.min(16, (actor.sink || 0) + 7 * 0.016)
@@ -760,6 +767,7 @@ export class Game {
     actor.moving = moved > 0.01;
     if(['snake','anaconda','oathless_captain'].includes(actor.kind)||actor.villagerId==='april')actor.swimming=waterAt(this,actor.x,actor.y)==='water';
     actor.step = (actor.step || 0) + moved * 0.13;
+    if(actor.kind==='slime'&&moved>.01){actor.oozeTrailDistance=(actor.oozeTrailDistance||0)+moved;if(actor.oozeTrailDistance>=11){actor.oozeTrailDistance=0;actor.oozeTrail||=[];actor.oozeTrail.push({x:oldX,y:oldY,time:this.time});if(actor.oozeTrail.length>8)actor.oozeTrail.shift();}}
     if (this.players.includes(actor)) movementNoise(this, actor, moved);
     if(actor.kind==='anaconda'&&moved)updateAnacondaBody(this,actor);
     return moved;
@@ -855,6 +863,7 @@ export class Game {
     return true;
   }
   get current() {
+    if(this.trainTest)return this.players[0]||null;
     if(!this.roll)skipFinishedBoardTurns(this);
     if(!this.roll&&this.players.length&&this.players.every(p=>p.progress>=FINISH))return null;
     return this.roll
@@ -960,6 +969,7 @@ export class Game {
     if(follower&&startFollowerAttack(this,p,follower,charge))return true;
     if(!isCharmed(p)&&(catchMarshFirefly(this,p)||catchGraveyardCritter(this,p)||catchCritter(this,p)))return true;
     if(inDeepWater(this,p)&&!(p.jumpHeight>0)){p.charge=0;return false;}
+    for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade){p.energyBladeIdle=0;p.energyBladeActive=true;}
     if(!isCharmed(p))startleGraveyardCats(this,p);
     if(throwBoomerang(this,p))return true;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
@@ -1073,6 +1083,7 @@ export class Game {
           this.effects.push({x:e.x,y:e.y-25,text:'JUNGLE’S CALL',color:'#8fcf70',life:1.2});
         }
         for(const slot of ['hand1','hand2'])flamingMeleeHit(this,p,e,slot);
+        for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade&&livingDamage>0){e.burning=Math.max(e.burning||0,2.5);this.effects.push({x:e.x,y:e.y-15,particle:'blade-spark',color:ITEMS[p.equipment[slot]].bladeColor,life:.38});}
         applyTorchHit(this,p,e);
         e.flash = 0.13;
         if(p.swordFacing){
@@ -1402,12 +1413,13 @@ export class Game {
         e.slimeVariant=i%3;
       }
       if(spawnedKind==='beholder'||spawnedKind==='lesser_beholder')e.beholderPalette=beholderPaletteFor(this.event.paletteVariant||(spawnedKind==='beholder'?'classic':'swamp'));
+      if(spawnedKind==='ghost'&&this.event.happinessDevourer){e.happinessDevourer=true;e.appearance={skin:'#26394e',shirt:'#3e5975',pants:'#17283e',shoes:'#111b2d',hair:'none',eyeColor:'#b8efff',build:'slim'};}
       if(spawnedKind==='banshee_queen')initializeBansheeQueen(e);
       if(spawnedKind==='succubus')initializeSuccubus(e);
       if(spawnedKind==='imp')initializeImp(e);
       if(spawnedKind==='zombie')initializeZombie(e,member);
       if (spawnedKind === 'necromancer') {
-        e.equipment = {hand1:'staff'}; e.maxMana = 120; e.mana = 120; e.summonCooldown = 2;
+        e.equipment = {head:'warlock_hood',neck:'warlock_sigil',shoulders:'warlock_mantle',chest:'warlock_robe',gloves:'warlock_gloves',pants:'warlock_trousers',feet:'warlock_boots',cape:'warlock_cape',hand1:'staff'}; e.maxMana = 120; e.mana = 120; e.summonCooldown = 2;
         e.summonKinds = ['skeleton','skeleton_unarmed','skeleton_wizard','skeleton_caster'];
       }
       if(spawnedKind==='grim_reaper')initializeReaper(e);
@@ -1447,9 +1459,23 @@ export class Game {
     }
     for(const e of this.enemies.filter(e=>e.group===group&&e.kind==="wolf"))wolfPack(this,e);
     startNightEvent(this,this.event,this.enemies.filter(e=>e.group===group));
+    if(first)initializeCreaturePackEvent(this,this.event,this.enemies.filter(e=>e.group===group));
     for(const e of this.enemies)if(e.group===group&&e.kind==='carnivorous_flower'&&e.plantVariant===undefined)e.plantVariant=e.id%3===0?'orchid':'maw';
     if(this.event.spiderNest&&first)spiderNest(this,first,group);
     if(beeEvent(this.event))startBeeHive(this,group,this.enemies.filter(e=>e.group===group&&['bee','wasp'].includes(e.kind)));
+    // Pack hooks can arrange linked groups after the ordinary per-actor spawn
+    // checks above. Revalidate their final positions so a cave tentacle (or
+    // another event member) cannot be offset into a void tile by that setup.
+    if(this.mapMode==='boundless'&&REALMS.includes(this.generatedEnvironment)){
+      const groupActors=this.enemies.filter(e=>e.group===group);
+      for(const actor of groupActors){
+        const safe=realmSafeSpawn(this,actor);
+        if(safe)Object.assign(actor,safe);
+        else this.enemies.splice(this.enemies.indexOf(actor),1);
+      }
+      this.eventSpawnCount=this.enemies.filter(e=>e.group===group).length;
+      if(first&&!this.enemies.includes(first))first=this.enemies.find(e=>e.group===group)||null;
+    }
     if (!first) return false;
     if(!test)beginTrial(this,this.event,this.enemies.filter(e=>e.group===group));
     this.reveal = { x: first.x, y: first.y, life: 4 };
@@ -1480,6 +1506,7 @@ export class Game {
     return true;
   }
   update(dt, inputs = {}) {
+    if(tickTrainTest(this,dt,inputs))return;
     if(tickHouseWorldTravel(this,dt,inputs))return;
     if (this.phase === "sealing") {
       this.sealTime += Math.min(dt, 0.05);
@@ -1532,6 +1559,7 @@ export class Game {
     }
     for (const p of this.players) {
       if(p.nativeCryptActive&&p.room)continue;
+      for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade){p.energyBladeIdle=(p.energyBladeIdle||0)+dt;if(p.energyBladeIdle>=10)p.energyBladeActive=false;else if(p.energyBladeActive!==false)p.energyBladeActive=true;}
       const activeVehicle=houseVehicleForPlayer(this,p), passenger=activeVehicle&&vehicleDriver(this,activeVehicle)!==p;
       let rawInput=inputs[p.device]||{};
       if(this.openingBoard&&rawInput.jump)p.boardJumpRelease=true;
@@ -1656,6 +1684,14 @@ export class Game {
         const swordProgress=1-(p.attack||0)/(p.attackDuration||.34),swordDistance=p.swordFacing&&!p.dashTime&&!p.dashRecovery&&!p.swimming&&!(p.jumpHeight>0)?swordStep(p.attackClip,p.swordPrevious,swordProgress):0;
         const control=p.swordFacing&&p.attack>0?(swordPause>0?0:swordProgress<.48?.48:.85):1;
         this.moveActor(p,motion.dx*control+(p.swordFacing?.x||0)*swordDistance,motion.dy*control+(p.swordFacing?.y||0)*swordDistance);
+        if(Math.hypot(p.x-oldX,p.y-oldY)>1&&p.energyBladeActive){
+          p.energyBladeTrailCooldown=(p.energyBladeTrailCooldown||0)-dt;
+          if(p.energyBladeTrailCooldown<=0){
+            const blade=Object.values(p.equipment||{}).map(id=>ITEMS[id]).find(item=>item?.energyBlade);
+            const trail={red:'blade-trail-red',blue:'blade-trail-blue',green:'blade-trail-green'}[blade?.id?.replace('energy_blade_','')]||({ '#ff263f':'blade-trail-red','#238dff':'blade-trail-blue','#31dc58':'blade-trail-green'}[blade?.bladeColor]||'blade-trail-blue');
+            this.effects.push({particle:trail,x:oldX,y:oldY-12,life:.38,duration:.38,seed:p.id||0});p.energyBladeTrailCooldown=.075;
+          }
+        }
         if(p.vehicleId){syncHouseVehicle(this,p);hitVehicleTree(this,p,oldX,oldY);resolveVehicleImpact(this,p,oldX,oldY);}
         if(Math.abs(p.x-oldX)<.01)p.slideX=0;if(Math.abs(p.y-oldY)<.01)p.slideY=0;
         if(p.dashTime>0){
@@ -1688,6 +1724,7 @@ export class Game {
       }
     }
     const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet),...(this.villageFollowers||[]),...this.enemies.filter(e=>e.holidayReindeer)].filter((p) => p.hp > 0 && !p.room);
+    tickSkunkClouds(this, dt, damageEnemy);
     for (const e of this.enemies) {
       if(e.cryptBoss)continue;
       if(e.swordHitPause>0){e.swordHitPause=Math.max(0,e.swordHitPause-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.moving=false;continue;}
@@ -1695,6 +1732,7 @@ export class Game {
       if(e.graveEmergence)continue;
       if(e.hp>0&&tickRaven(this,e,dt))continue;
       const alive = targets.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p)));
+      if(e.hp>0&&!e.frozen&&!e.stun&&tickCreaturePackActor(this,e,dt,alive))continue;
       if(e.hp>0&&e.kind==='bee_hive'){tickBeeHive(this,e,dt);continue;}
       if(e.hp>0&&e.kind==='bee'&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickBee(this,e,dt,alive);continue;}
       if(e.hp>0&&WILD_FAUNA_KINDS.includes(e.kind)&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickJump(e,dt,this,0);tickWildFauna(this,e,dt,alive);continue;}
@@ -1767,7 +1805,7 @@ export class Game {
       if(e.kind==='dreadmane_lion'){tickDreadmaneLion(this,e,alive,dt,cfg?.stats,beh);continue;}
       if(e.kind==='zombie'){tickZombie(this,e,alive,dt,cfg?.stats,beh);continue;}
       if(unitStartingArea(e.kind)==='any'){const safe=realmSafeSpawn(this,e);if(!safe)continue;Object.assign(e,safe);}
-      if(e.kind==='ghost'){tickGhost(this,e,alive,dt,cfg?.stats,beh);continue;}
+      if(e.kind==='ghost'){if(e.happinessDevourer){e.coldPulse=(e.coldPulse||0)+dt;if(e.coldPulse>=.4){e.coldPulse=0;for(const target of alive)if(distance(e,target)<92)target.slowUntil=Math.max(target.slowUntil||0,this.time+.55);this.effects.push({x:e.x,y:e.y-14,particle:'cold-mist',color:'#9ddfff',life:.5});}}tickGhost(this,e,alive,dt,cfg?.stats,beh);continue;}
       if(e.kind==='anaconda'){tickAnaconda(this,e,alive,dt,cfg?.stats,cfg?.behaviors);continue;}
       if(e.kind === "wolf"){tickWolf(this,e,alive,dt);continue;}
       const nearest = alive.reduce(

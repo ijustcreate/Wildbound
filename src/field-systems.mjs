@@ -353,6 +353,7 @@ export function tickField(g, dt, inputs) {
     if (!o.done && o.progress >= o.target) {
       o.done = true;
       if(o.kind==='rescue')completeRescueExplorer(g,o);
+      if(o.kind==='rescue')g.onSound?.('rescue',o);
       for (const p of g.players) {
         p.coins = (p.coins || 0) + 10;
         record(p, "objectives");

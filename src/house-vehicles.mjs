@@ -68,6 +68,8 @@ export function vehicleMotion(g,p,input,dt){
  const travel=(oldSpeed+v.speed)*.5*Math.cos(v.wheelAngle)*dt;
  const turn=travel/wheelBase*Math.tan(v.wheelAngle),mid=oldHeading+turn*.5;
  v.heading=oldHeading+turn;v.steer=steer;v.moving=Math.abs(v.speed)>5;v.wet=shallow;
+ if(Math.abs(v.speed)>125&&Math.abs(steer)>.72&&(v.skidSoundCooldown||0)<=0){g.onSound?.('vehicleSkid',v);v.skidSoundCooldown=.62;}
+ v.skidSoundCooldown=Math.max(0,(v.skidSoundCooldown||0)-dt);
  return {dx:Math.sin(mid)*travel+(Math.sin(v.heading)-Math.sin(oldHeading))*wheelBase*.5,
   dy:-Math.cos(mid)*travel-(Math.cos(v.heading)-Math.cos(oldHeading))*wheelBase*.5};
 }

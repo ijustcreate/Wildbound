@@ -1,6 +1,9 @@
+import {drawTrainTest} from './train-test.mjs';
 import './broom-passenger-art.mjs';
 import {drawDragonBreath} from './dragon-events.mjs';
 import {drawForestSunlight} from './forest-sunlight.mjs';
+import {CemeteryFogRenderer} from './cemetery-fog.mjs';
+import {SwampMistRenderer} from './swamp-mist.mjs';
 import {swordLoadout,paintSwordImpact} from './sword-feel.mjs';
 import {drawBoundlessGrass,drawBoundlessRoutes} from './boundless-art.mjs';
 import {scenePropCasters} from './scene-casters.mjs';
@@ -196,6 +199,28 @@ function drawMosquito(ctx, a, time) {
   }
   ctx.restore();
 }
+const CONSTRUCT_PROJECTILE_STYLE={
+  fireball:{color:'#ff7433',light:'#ffe071',pixels:[[0,0,6,6],[5,-2,4,4],[-5,2,4,4],[-8,0,3,2]]},
+  pageVolley:{color:'#f4dba0',light:'#fff1c6',pixels:[[-5,-5,8,10],[1,-4,6,8],[4,-2,4,4]]},
+  psionicPulse:{color:'#c875ed',light:'#f3caff',pixels:[[0,0,4,4],[-7,-4,3,3],[5,-7,3,3],[7,4,3,3],[-5,7,3,3]]},
+  heartBolt:{color:'#ff83b3',light:'#ffe2ef',pixels:[[-6,-5,4,4],[2,-5,4,4],[-8,-1,14,4],[-6,3,10,3],[-3,6,4,3]]},
+  arcBolt:{color:'#7be5dc',light:'#d8fff5',pixels:[[0,-7,4,4],[-4,-3,4,4],[0,-3,4,7],[4,-3,4,4],[0,4,4,4]]},
+  shardBurst:{color:'#8de8ff',light:'#efffff',pixels:[[0,-8,4,6],[-4,-2,4,5],[0,-2,4,9],[4,-2,4,5],[0,7,4,5]]},
+};
+
+/** Render construct-pack shots over the shared hazard pass with per-kind pixel silhouettes. */
+export function drawConstructHazardProjectiles(ctx,game){
+  for(const shot of game.fireballs||[]){
+    const style=CONSTRUCT_PROJECTILE_STYLE[shot.constructKind];if(!style)continue;
+    ctx.save();ctx.translate(Math.round(shot.x),Math.round(shot.y));ctx.rotate(Math.atan2(shot.vy||0,shot.vx||1));
+    for(const [index,[x,y,w,h]] of style.pixels.entries()){
+      ctx.fillStyle=index===0||index===style.pixels.length-1?style.light:style.color;
+      ctx.fillRect(x,y,w,h);
+    }
+    ctx.restore();
+  }
+}
+
 export class Renderer {
   constructor(canvas, assets) {
     this.canvas = canvas;
@@ -242,6 +267,7 @@ export class Renderer {
     };
   }
   draw(game, dt, {sealCapture=false}={}) {
+    if(game.trainTest){drawTrainTest(this,game,dt);return;}
     if(game.worldTravel&&!sealCapture){drawWorldTravel(this,game,dt);return;}
     if(!sealCapture)warmWorldTravelArt(this,game);
     if(!sealCapture&&this.worldTravelArt)clearWorldTravelArt(this);
@@ -317,6 +343,15 @@ export class Renderer {
     this.shaderGrass=this.grassField.draw(ctx,game,this.camera,w,h);
     drawForestGround(ctx,game,p=>this.visible(p,w,h,160)&&(!this.lod||Math.abs(Math.floor(p.x+p.y))%(this.lod===1?2:4)===0),{dynamicShadows:this.dynamicShadows,shaderGrass:this.shaderGrass});
     drawForestSunlight(ctx,game,{left:this.camera.x-w/(2*this.camera.zoom),right:this.camera.x+w/(2*this.camera.zoom),top:this.camera.y-h/(2*this.camera.zoom),bottom:this.camera.y+h/(2*this.camera.zoom)},daylight(game)*(game.weather?.type==='monsoon'?.35:1));
+    if(game.generatedEnvironment==='graveyard'){
+      this.cemeteryFog ||= new CemeteryFogRenderer();
+      this.cemeteryFog.prepare(game,this.camera,w,h,this.animator.lighting);
+      this.cemeteryFog.draw(ctx,this.camera,w,h,false,true);
+    }else if(game.generatedEnvironment==='swamp'){
+      this.swampMist ||= new SwampMistRenderer();
+      this.swampMist.prepare(game,game.time);
+      this.swampMist.draw(ctx,this.camera,w,h,false,true);
+    }
     if(this.dynamicShadows){
       const cameraLeft=this.camera.x-w/(2*this.camera.zoom),cameraTop=this.camera.y-h/(2*this.camera.zoom);
       const minX=Math.floor(cameraLeft/1600),minY=Math.floor(cameraTop/1600),maxX=Math.floor((cameraLeft+w/this.camera.zoom)/1600),maxY=Math.floor((cameraTop+h/this.camera.zoom)/1600);
@@ -360,6 +395,7 @@ export class Renderer {
     drawRealmEvent(ctx,game);
     drawRealmLife(ctx,game,'ground');
     drawHazards(ctx, game);
+    drawConstructHazardProjectiles(ctx,game);
     for(const npc of game.questNpcs||[]) if(!npc.rescueExplorer&&!npc.santa&&this.visible(npc,w,h,120)){drawCampfire(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10,game.time,npc.id);drawCampfireLabel(ctx,npc.campX??npc.x,(npc.campY??npc.y)+10);}
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
     for (const orb of game.xpOrbs || []) {
@@ -645,6 +681,7 @@ export class Renderer {
       if(a.hunterPet===true&&!a.controlledBy){const owner=game.players.find(p=>p.id===a.owner);if(owner){ctx.save();if(a.spiritGhost){ctx.globalAlpha=.78;ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';}if(a.ritualPet)this.animator.draw(ctx,a,game.time,43);else drawHunterPet(ctx,a,owner,game.time,a.kind==='bat'?34:43);ctx.restore();}continue;}
       const player = a.isPlayer,
         size = actorRenderSize(a);
+      if(a.kind==='slime'&&a.oozeTrail?.length){ctx.save();for(const [i,mark] of a.oozeTrail.entries()){const age=Math.max(0,game.time-(mark.time||game.time)),alpha=Math.max(0,.18*(1-age/7));if(alpha<=0)continue;ctx.globalAlpha=alpha;ctx.fillStyle=({forest:'#7ab84a',desert:'#d39445',ice:'#6dc5df',temple:'#54a777',beach:'#43c7bb',graveyard:'#9a7ccb',house:'#c4779b'})[a.slimeBiome]||'#7ab84a';ctx.beginPath();ctx.ellipse(mark.x,mark.y+3,5+i*.45,2.3,0,0,Math.PI*2);ctx.fill();}ctx.restore();}
       ctx.save();
       ctx.globalAlpha *= player || a.isGhostActor ? (a.isGhostActor ? .78 : 1) : enemySightOpacity(game,a,rules.visionRadius)*Math.min(enemyVisibility(game, a), nightEnemyOpacity(game, a));
       if(a.isGhostActor)ctx.filter='sepia(.6) hue-rotate(155deg) saturate(1.7)';
@@ -961,7 +998,18 @@ export class Renderer {
       ctx.globalAlpha = Math.min(1, fx.life * 2);
       ctx.fillStyle = fx.color;
       ctx.strokeStyle = fx.color;
-      if(fx.dragonBreath){drawDragonBreath(ctx,fx);
+      if(fx.skunkCloud){
+        const alpha=Math.max(0,Math.min(.26,.26*(fx.life/(fx.total||12))));
+        ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=fx.color;ctx.strokeStyle='#d4ed9a';
+        ctx.beginPath();ctx.ellipse(fx.x,fx.y,fx.radius*.92,fx.radius*.48,0,0,Math.PI*2);ctx.fill();
+        for(let i=0;i<7;i++){
+          const seed=(Number(fx.seed)||0)*.713+i*2.39996323;
+          const x=fx.x+Math.cos(seed)*fx.radius*.62,y=fx.y+Math.sin(seed)*fx.radius*.3;
+          const r=3+(i%3)*2;ctx.globalAlpha=alpha*.75;ctx.beginPath();ctx.arc(Math.round(x),Math.round(y),r,0,Math.PI*2);ctx.fill();
+          if(i%2===0){ctx.globalAlpha=alpha*.8;ctx.beginPath();ctx.arc(Math.round(x),Math.round(y),r+1,0,Math.PI*2);ctx.stroke();}
+        }
+        ctx.restore();
+      }else if(fx.dragonBreath){drawDragonBreath(ctx,fx);
       }else if(fx.swordImpact){paintSwordImpact(ctx,fx);
       }else if(fx.magicBolt){drawMagicBurst(ctx,fx);
       }else if(fx.particle){drawParticleEffect(ctx,fx.particle,fx.x,fx.y,Math.max(0,fx.duration-fx.life),Number(fx.seed)||0);
@@ -983,6 +1031,9 @@ export class Renderer {
     drawMysteryWorld(ctx,game);
     drawHouseLights(ctx,game);
     ctx.restore();
+    // Air veil stays below exploration darkness and every HUD/menu element.
+    if(game.generatedEnvironment==='graveyard')this.cemeteryFog?.draw(ctx,this.camera,w,h,true);
+    if(game.generatedEnvironment==='swamp')this.swampMist?.draw(ctx,this.camera,w,h,true);
     if(!sealCapture)this.rememberSealScene(game,w,h);
     if(!sealCapture){
       // On restoring directly into a room there may be no last surface frame.

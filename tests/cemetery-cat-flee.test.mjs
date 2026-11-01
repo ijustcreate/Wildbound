@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';
 import {graveyardWorld} from '../src/graveyard-world.mjs';
-import {spawnSurfaceEcology,startleGraveyardCats,tickSurfaceEcology,graveyardHabitat} from '../src/graveyard-ecology.mjs';
+import {spawnSurfaceEcology,startleGraveyardCats,tickSurfaceEcology,graveyardHabitat,interactGraveyardCat} from '../src/graveyard-ecology.mjs';
 
 function setup(seed=75){
   const g={...graveyardWorld(seed),generatedEnvironment:'graveyard',phase:'play',players:[],enemies:[]};
@@ -20,6 +20,14 @@ test('approaching cats does not frighten them; an aimed attack wakes and sends t
   assert.equal(cat.catchable,false);assert.equal(cat.faction,'neutral');assert.equal(g.enemies.length,0);
   for(let i=0;i<25;i++)tickSurfaceEcology(g,.1);
   assert.equal(cat.flee,undefined);assert.ok(Math.hypot(cat.homeX-800,cat.homeY-1400)>100);
+});
+
+test('a sitting Graveyard cat accepts bottled fish for Gravemyst’s Idol and follows peacefully when activated',()=>{
+ const {g,cat,p}=setup();p.inventory=[];
+ assert.equal(interactGraveyardCat(g,p),true);assert.equal(cat.bondedOwner,undefined);
+ p.inventory.push({type:'caught_fish',qty:1});assert.equal(interactGraveyardCat(g,p),true);assert.equal(cat.bondedOwner,undefined);
+ assert.equal(interactGraveyardCat(g,p),true);assert.equal(cat.bondedOwner,p.id);assert.equal(p.inventory.some(i=>i?.type==='gravemysts_idol'),true);assert.equal(p.inventory.some(i=>i?.type==='caught_fish'),false);
+ assert.equal(interactGraveyardCat(g,p),true);assert.equal(cat.companionActive,true);tickSurfaceEcology(g,.5);assert.equal(cat.idle,'walk');assert.equal(cat.faction,'neutral');assert.equal(g.enemies.length,0);
 });
 
 test('attack direction, distance, actor state and solid obstacles gate the response',()=>{

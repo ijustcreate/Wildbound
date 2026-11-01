@@ -71,6 +71,7 @@ import {safariHunterMotion,defaultSafariHunterMotion,replaceSafariHunterMotion,d
 import {alanMotion,defaultAlanMotion,replaceAlanMotion,drawAlan} from './alan-motion.mjs';
 import {villagerMotion,defaultVillagerMotion,replaceVillagerMotion,drawVillager} from './villager-motion.mjs';
 import {slimeMotion,defaultSlimeMotion,replaceSlimeMotion,drawSlime} from './slime-motion.mjs';
+import { CREATURE_PACK_SUBJECTS } from './creature-packs/index.mjs';
 export const RIG_SUBJECTS = {
  graveyard_cat:{name:'Cemetery cat / Honey rig',data:honeyCatMotion,defaults:defaultHoneyCat,replace:replaceHoneyCat,draw:drawHoneyCat,sprite:'graveyard_cat',selected:'head',palette:Object.keys(honeyCatMotion.palette),shapeKeys:Object.keys(honeyCatMotion.shape),tracks:['head','tailTip','frontPawL','rearPawR'],clip:'walk',scale:6},
  marsh_firefly:{name:'Marsh fireflies / drifting lights',data:fireflyMotion,defaults:defaultFireflyMotion,replace:replaceFireflyMotion,draw:drawFireflyRig,sprite:'marsh_firefly',selected:'lightA',palette:Object.keys(fireflyMotion.palette),shapeKeys:Object.keys(fireflyMotion.shape),tracks:['lightA','lightB','lightC'],clip:'fly',scale:6},
@@ -297,5 +298,9 @@ RIG_SUBJECTS.coatless_captain={...RIG_SUBJECTS.boatless_captain,name:"Coatless C
 RIG_SUBJECTS.april={...RIG_SUBJECTS.boatless_captain,name:"April / controller humanoid",sprite:"april"};
 RIG_SUBJECTS.captain={...RIG_SUBJECTS.boatless_captain,name:"Captain / controller humanoid",sprite:"captain"};
 RIG_SUBJECTS.lesser_beholder={...RIG_SUBJECTS.beholder,name:'Lesser beholder / shared beholder rig',sprite:'lesser_beholder'};
+for (const [kind, subject] of Object.entries(CREATURE_PACK_SUBJECTS)) {
+  if (Object.hasOwn(RIG_SUBJECTS, kind)) throw new Error(`Creature pack rig subject already exists: ${kind}`);
+  RIG_SUBJECTS[kind] = subject;
+}
 export const rigSubject = (name) =>
   RIG_SUBJECTS[name?.startsWith("explorer") ? "player" : name==='baby_spider'?'spider':name==='tsetse'?'tsetse':name];

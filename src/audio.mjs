@@ -5,10 +5,11 @@ import {CUES,creatureCue,SOUND_FILES} from './sound-bank.mjs';
 import {audioDistance,audioPosition,sameAudioRoom} from './adaptive-music-threat.mjs';
 import {isUndergroundRoom,createUndergroundReverb} from './underground-audio.mjs';
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
-export const AMBIENT_TRACKS={forest:'forest_ambient',desert:null,ice:null,house:null,temple:null};
+export const AMBIENT_TRACKS={forest:'forest_ambient',desert:'desert_ambient',ice:'ice_ambient',house:'house_ambient',temple:'temple_ambient',graveyard:'graveyard_ambient',beach:'beach_ambient',swamp:'swamp_ambient',caverns:'cave_ambient',shadow:'shadow_ambient'};
 export const AUDIO_LIMITS=Object.freeze({voices:24,cache:96,cooldowns:128,variants:96});
 function boundedSet(map,key,value,limit){map.delete(key);map.set(key,value);while(map.size>limit)map.delete(map.keys().next().value);}
 export function footstepMaterial(game,p){
+ if(p.trainRide)return 'wood';
  if(p.room)return p.room==='temple-upper'||game.portals?.find(d=>d.id===p.room)?.oldWell?'stone':'wood';
  const ground=waterAt(game,p.x,p.y),biome=game.generatedEnvironment||game.environment;
  if(['water','shallow','floodbridge'].includes(ground))return 'water';
@@ -119,7 +120,7 @@ export class GameAudio {
   if(!raw||serial!==this.ambientSerial||!this.enabled||!this.settings.ambience)return;
   const overlap=Math.min(raw.sampleRate,Math.floor(raw.length/4)),length=raw.length-overlap,b=this.ctx.createBuffer(raw.numberOfChannels,length,raw.sampleRate);
   for(let c=0;c<b.numberOfChannels;c++){const a=raw.getChannelData(c),out=b.getChannelData(c);out.set(a.subarray(0,length));for(let i=0;i<overlap;i++){const f=i/overlap;out[i]=a[i]*f+a[length+i]*(1-f);}}
-  const s=this.ctx.createBufferSource(),g=this.ctx.createGain();s.buffer=b;s.loop=true;s.connect(g);g.connect(this.buses.ambience);g.gain.value=0;g.gain.setTargetAtTime(cue.gain,this.ctx.currentTime,.6);s.onended=()=>{if(this.ambientRetired?.s===s)this.ambientRetired=null;s.disconnect();g.disconnect();};s.start();this.ambientSource={s,g};
+  const s=this.ctx.createBufferSource(),g=this.ctx.createGain(),filter=cue.lowpass?this.ctx.createBiquadFilter():null;s.buffer=b;s.loop=true;s.playbackRate.value=cue.rate||1;s.connect(filter||g);if(filter){filter.type='lowpass';filter.frequency.value=cue.lowpass;filter.connect(g);}g.connect(this.buses.ambience);g.gain.value=0;g.gain.setTargetAtTime(cue.gain,this.ctx.currentTime,.6);s.onended=()=>{if(this.ambientRetired?.s===s)this.ambientRetired=null;s.disconnect();filter?.disconnect();g.disconnect();};s.start();this.ambientSource={s,g};
  }
  update(game,active){
   if(!this.unlocked)return;
@@ -129,14 +130,16 @@ export class GameAudio {
   }
   this.listeners=(game.players||[]).filter(p=>p.hp>0);this.listener=this.listeners[0];
   for(const s of this.voices){const info=this.voiceInfo.get(s);if(info?.actor&&this.spatial(info.cue,info.actor).attenuation<=.002)this.stopVoice(s);}
-  const biome=game.generatedEnvironment||game.environment||'forest';
+  const biome=game.trainTest?'forest':game.generatedEnvironment||game.environment||'forest';
   const ambientCue=['monsoon','thunderstorm'].includes(game.weather?.type)?'rain':(AMBIENT_TRACKS[biome]||'wind');
-  this.ambient(active&&!['won','lost','lobby'].includes(game.phase)&&this.listeners.some(p=>!p.room)?ambientCue:null);
+  const inLobby=game.phase==='lobby',inRooms=this.listeners.length&&this.listeners.every(p=>p.room);
+  const roomAmbient=biome==='temple'?'temple_ambient':this.listeners.some(p=>isUndergroundRoom(game,p.room))?'cave_ambient':'house_ambient';
+  this.ambient(inLobby?'house_ambient':active&&!['won','lost'].includes(game.phase)&&this.listeners.length?(inRooms?roomAmbient:ambientCue):null);
   const thunder=active&&game.phase==='play'&&game.weather?.type==='thunderstorm'&&this.listeners.some(p=>!p.room)?game.seed+':'+Math.floor(game.time/9):null;
   if(thunder&&thunder!==this.thunderCycle&&this.voices.size+this.pending.size<AUDIO_LIMITS.voices)playThunder(this);this.thunderCycle=thunder;
   if(!active&&this.wasActive)this.cancelPending();this.wasActive=active;
   if(!active&&game.phase!=='lobby')return;
-  for(const e of active?game.enemies||[]:[]){
+  for(const e of active&&!game.trainTest?game.enemies||[]:[]){
    const old=this.previous.get(e);
    if(e.hp>0&&!e.practiceTarget){if(!old)this.play(creatureCue(e.kind,'spawn'),e);else{
     if(old.kind!==e.kind)this.play('hatch',e);
@@ -146,11 +149,11 @@ export class GameAudio {
    this.previous.set(e,{kind:e.kind,attack:e.attack||0,state:e.state,hp:e.hp});
   }
   for(const p of game.players||[]){
-   const old=this.playerState.get(p),pos=audioPosition(p),air=(p.jumpHeight||0)>0;
+    const old=this.playerState.get(p),pos=audioPosition(p),air=(p.jumpHeight||0)>0,flying=!!(p.wingHover||p.broomMount),now=performance.now();let flightAt=old?.flightAt||now;
    let distance=old?.distance||0;
    if(old){
     if(sameAudioRoom(old,p)&&p.hp>0){
-     const moved=Math.hypot(pos.x-old.x,pos.y-old.y);
+     const moved=p.trainRide?(old.trainCar===p.trainRide.car?Math.hypot(p.trainRide.x-old.trainX,p.trainRide.y-old.trainY):0):Math.hypot(pos.x-old.x,pos.y-old.y);
      if(!air&&!old.air&&moved<80)distance+=moved;
      if(distance>=30){this.play(footstepMaterial(game,p),p);distance%=30;}
      if(air&&!old.air&&(p.jumpVelocity||0)>0)this.play('jump',p);
@@ -164,9 +167,10 @@ export class GameAudio {
     if(JSON.stringify(p.equipment)!==old.gear)this.play('equip',p);
     if(p.hp<=0&&old.hp>0)this.play('death',p);
     if(p.robotRepaired&&!old.robotRepaired)this.play('repairDone',p);
+    if(flying&&now-flightAt>(p.broomMount?760:520)){this.play(p.broomMount?'broomFlight':'flight',p);flightAt=now;}
    }
    if(p.robotRepair?.progress>0)this.play('repair',p);
-   this.playerState.set(p,{x:pos.x,y:pos.y,room:p.room||null,air,distance,level:p.level,hp:p.hp,ui:!!p.ui,inventory:p.ui?JSON.stringify(p.inventory):null,burning:p.burning||0,slow:p.slow||0,gear:JSON.stringify(p.equipment),robotRepaired:!!p.robotRepaired});
+   this.playerState.set(p,{trainCar:p.trainRide?.car,trainX:p.trainRide?.x,trainY:p.trainRide?.y,x:pos.x,y:pos.y,room:p.room||null,air,distance,level:p.level,hp:p.hp,ui:!!p.ui,inventory:p.ui?JSON.stringify(p.inventory):null,burning:p.burning||0,slow:p.slow||0,gear:JSON.stringify(p.equipment),robotRepaired:!!p.robotRepaired,flying,flightAt:flying?flightAt:0});
   }
  }
 }

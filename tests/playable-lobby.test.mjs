@@ -12,6 +12,25 @@ test('Switch Pro controllers use Nintendo face-button labels',()=>{
   assert.deepEqual([controllerButtonNames(pad)[0],controllerButtonNames(pad)[1]],['B','A']);
 });
 
+test('Expedition menu Confirm and Back follow physical Xbox and Nintendo face buttons',()=>{
+  for(const [id,confirm,back] of [
+    ['Xbox Wireless Controller',0,1],
+    ['Nintendo Co., Ltd. Pro Controller (057e/2009)',1,0],
+  ]){
+    const game=new Game(),p=game.addPlayer('pad:0'),lobby=Object.create(PlayableLobby.prototype),actions=[];
+    lobby.getGame=()=>game;lobby.state=new LobbyState();lobby.state.sync(game.players);
+    lobby.nodes=new Map([[p.id,{dataset:{ownerDevice:p.device},updateControllerFamily(){},expeditionNavigate:action=>actions.push(action)}]]);
+    const s=lobby.state.members.get(p.id);s.panel='environment';
+    const pad={id,index:0,axes:[0,0],buttons:Array.from({length:16},()=>({pressed:false}))};
+    pad.buttons[confirm].pressed=true;lobby.controller(pad,[]);
+    assert.equal(actions.at(-1).accept,true,`${controllerFamily(pad)} A confirms the selected map`);
+    assert.equal(actions.at(-1).back,false);
+    pad.buttons[confirm].pressed=false;pad.buttons[back].pressed=true;lobby.controller(pad,[]);
+    assert.equal(actions.at(-1).back,true,`${controllerFamily(pad)} B backs out of the map menu`);
+    assert.equal(actions.at(-1).accept,false);
+  }
+});
+
 test('Lobby footsteps match gameplay distance and stop advancing against room boundaries',()=>{
   const s={x:300,y:300,step:0};moveLobbyCharacter(s,{x:1,y:0},88/180);
   assert.ok(Math.abs(s.step-88*.13)<1e-8);

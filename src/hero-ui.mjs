@@ -638,7 +638,10 @@ export class HeroUI {
         };
       };
       if (!gear) dropTarget(grid, { mode, index: list.length });
-      const indices = Array.from({length:gear ? SLOTS.length : 24}, (_, i) => page * 24 + i);
+      // Keep the familiar 8×4 visual inventory board. Backpack capacity is
+      // still shown separately (24); the final eight wells remain empty.
+      const pageSize = mode === 'chest' ? 24 : 32;
+      const indices = Array.from({length:gear ? SLOTS.length : pageSize}, (_, i) => page * pageSize + i);
       for (const n of indices) {
         const item = list[n],
           displayItem = gear && item?.type === 'occupied' ? {...item,type:p.equipment.hand1} : item,
@@ -724,7 +727,7 @@ export class HeroUI {
         dropTarget(b, gear ? { mode, slot: item.slot } : { mode, index: n });
         grid.append(b);
       }
-      if (mode === 'pack') for (let n = indices.length; n < 24; n++) {
+      if (mode === 'pack') for (let n = indices.length; n < 32; n++) {
         const b = el('button', '', 'reserved-slot'); b.disabled = true;
         b.setAttribute('aria-label', 'Space occupied in another tab'); grid.append(b);
       }

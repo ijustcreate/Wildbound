@@ -8,6 +8,9 @@ import {drawAnaconda} from './anaconda-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {companionVisualActor} from './companion-locomotion.mjs';
+import {creaturePackVisualActor} from './creature-pack-animation-routing.mjs';
+export const usesLegacyWildFaunaArt = actor =>
+  WILD_FAUNA_KINDS.includes(actor?.kind) && actor.kind !== 'chicken' && actor.kind !== 'penguin';
 import {beastMotions,beastMotionRevisions} from './beast-motion.mjs';
 import {beetleAction,beetleFrame} from './beetle-motion.mjs';
 import {drawBee,drawBeeHive} from './bee-art.mjs';
@@ -107,13 +110,13 @@ export class Animator {
   drawActor(ctx, actor, time, size = 48,lighting=null) {
     if(drawRaven(ctx,actor,time,size))return;
     if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
-    if(WILD_FAUNA_KINDS.includes(actor.kind)&&actor.kind!=="chicken"){drawWildFauna(ctx,actor,time,size);return;}
+    if(usesLegacyWildFaunaArt(actor)){drawWildFauna(ctx,actor,time,size);return;}
     if(actor.kind==='bee'){drawBee(ctx,actor,time,size);return;}
     if(actor.kind==='tsetse'){drawTsetse(ctx,actor,time,size);return;}
     if(actor.kind==='bee_hive'){drawBeeHive(ctx,actor,time,size);return;}
     if(actor.kind==='gorilla'){drawGorilla(ctx,actor,time);return;}
     if(actor.kind==='spider_egg'){
-      ctx.save();ctx.translate(actor.x,actor.y);ctx.fillStyle='#afa8bf';ctx.beginPath();ctx.ellipse(0,0,12,15,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f0e8e7';ctx.lineWidth=2;
+      const jiggle=Math.sin((actor.eggPhase||0)*2.1)*1.8*(Math.sin((actor.eggPhase||0)*.31)>.92?1:.12);ctx.save();ctx.translate(actor.x+jiggle,actor.y);ctx.rotate(jiggle*.018);ctx.fillStyle='#afa8bf';ctx.beginPath();ctx.ellipse(0,0,12,15,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f0e8e7';ctx.lineWidth=2;
       for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(-10,i*4);ctx.lineTo(10,-i*3);ctx.stroke();}
       ctx.fillStyle='#fff4ca';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(Math.max(0,Math.ceil(actor.hatchIn))+'s',0,-20);ctx.restore();return;
     }
@@ -121,6 +124,7 @@ export class Animator {
       rig = actor.rigOverride || creatures[nameKey]?.rig;
     const explicitPose=actor.animationAction||Number.isFinite(actor.playerFrame)||Number.isFinite(actor.poseTime)||Number.isFinite(actor.animationProgress);
     actor=companionVisualActor(actor,rigSubject(nameKey)?.data);
+    actor=creaturePackVisualActor(actor);
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
     if (rigSubject(nameKey)) {

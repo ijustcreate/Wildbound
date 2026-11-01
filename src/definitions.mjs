@@ -21,6 +21,7 @@ import {zombieMotion,validateZombieMotion,replaceZombieMotion} from './zombie-mo
 import {ghostMotion,validateGhostMotion,replaceGhostMotion} from './ghost-motion.mjs';
 import {GHOST_DROPS} from './items.mjs';
 import {WILD_FAUNA_DEFAULTS,DEER_KINDS,PEACEFUL_FAUNA_KINDS} from './wild-fauna-data.mjs';
+import {CREATURE_PACK_DEFAULTS, CREATURE_PACK_EVENTS} from './creature-packs/index.mjs';
 import { NIGHT_KINDS, nightMotions, validateNightMotion, replaceNightMotion } from './night-rigs.mjs';
 import {
   beastMotions,
@@ -339,8 +340,8 @@ Object.assign(creatures.banshee_queen.stats,{hp:340,speed:44,damage:24,windup:.8
 Object.assign(creatures.banshee_queen.behaviors,{ranged:true,melee:false,loot:true,dash:true,frostShot:true});
 creatures.banshee_queen.lootDrops=BANSHEE_SET.map(item=>({item,qty:1,chance:100}));
 for (const [kind, stats] of [
-  ['beholder', {hp:520,speed:34,damage:34,detection:620,rangedRange:340,rangedCooldown:2.8,rayWindup:.58}],
-  ['lesser_beholder', {hp:145,speed:42,damage:16,detection:520,rangedRange:300,rangedCooldown:3.2,rayWindup:.68}],
+  ['beholder', {hp:520,speed:34,damage:34,detection:420,rangedRange:230,rangedCooldown:2.8,rayWindup:.78}],
+  ['lesser_beholder', {hp:145,speed:42,damage:16,detection:340,rangedRange:210,rangedCooldown:3.2,rayWindup:.85}],
 ]) {
   creatures[kind] = creatureDefaults(kind);
   creatures[kind].name = kind === 'beholder' ? 'Beholder' : 'Lesser beholder';
@@ -842,9 +843,21 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
         'shore_goblin',
         'slime',
         'beholder','lesser_beholder','burrower','santa','bone_carver',
-        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.type==='mystery'||['graveyard','swamp','caverns','shadow'].includes(e.environment)||['beholder','lesser_beholder','burrower','slime','fox','dragon','squashling','scorpion_boss','werewolf'].includes(e.kind))&&!d.events.some(old=>old.name===e.name),
+        ].includes(e.kind) && !d.events.some((old) => old.kind === e.kind && (e.kind!=='thunderstorm'||old.environment===e.environment)) || (e.name==='Happiness Devourer'||e.type==='mystery'||['graveyard','swamp','caverns','shadow'].includes(e.environment)||['beholder','lesser_beholder','burrower','slime','fox','dragon','squashling','scorpion_boss','werewolf'].includes(e.kind))&&!d.events.some(old=>old.name===e.name),
     );
-    events.splice(0, events.length, ...importedEvents, ...added);
+    // Older saved definition packs predate native creature-pack events. Keep
+    // their authored event list and modifications, then append only native
+    // pack cards that are missing from that older save.
+    const retainedNames = new Set([...importedEvents, ...added].map(event => event.name));
+    const missingPackNames = new Set(CREATURE_PACK_EVENTS
+      .filter(event => !retainedNames.has(event.name))
+      .map(event => event.name));
+    // Preserve the current runtime ordering for every newly added card. Pack
+    // events can be interleaved with other native additions, so append them
+    // from the original roster rather than as a separate trailing block.
+    const additions = events.filter(event =>
+      added.some(item => item.name === event.name) || missingPackNames.has(event.name));
+    events.splice(0, events.length, ...importedEvents, ...additions);
   }
   for(const event of events)if(event.kind==="monkey"||event.kind==="gorilla")event.environment="temple";
   for (const [k, v] of Object.entries(d.items || {}))
@@ -856,6 +869,23 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
       };
   if (Object.hasOwn(d, 'npcQuests')) replaceNpcQuestConfig(d.npcQuests);
 }
+// Keep creature-pack defaults in the ordinary definition registry so the
+// runtime, saves, and Studio all see one shared configurable creature entry.
+for (const [kind, descriptor] of Object.entries(CREATURE_PACK_DEFAULTS)) {
+  const base = creatureDefaults(descriptor.baseKind || 'skeleton');
+  const current = creatures[kind];
+  creatures[kind] = {
+    ...base,
+    ...descriptor,
+    ...(current || {}),
+    name: descriptor.name || current?.name || kind,
+    aiKind: descriptor.aiKind || current?.aiKind || descriptor.baseKind || kind,
+    rig: structuredClone(current?.rig || descriptor.rig || base.rig),
+    stats: {...base.stats, ...current?.stats, ...descriptor.stats},
+    behaviors: {...base.behaviors, ...current?.behaviors, ...descriptor.behaviors},
+  };
+}
+
 export function definitionPack(events, items) {
   if (!validateNpcQuestConfig(npcQuestConfig)) throw Error('Invalid NPC quest configuration');
   return {

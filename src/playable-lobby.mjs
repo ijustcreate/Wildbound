@@ -249,7 +249,7 @@ export class PlayableLobby {
       s.inventoryRelease=true;this.state.invalidate(this.getGame().players);return;
     }
     if(panel==='environment')delete s.expeditionDraft;
-    s.panel=panel;s.focus=0;this.renderPanel(p);
+    s.panel=panel;s.focus=0;this.renderPanel(p);this.sound?.('ui');
   }
   openCharacterStation(p){
     const s=this.state.members.get(p.id);if(!s||p.ui)return;
@@ -257,7 +257,7 @@ export class PlayableLobby {
     s.panel='choose';s.focus=0;s.choice=index>=0?index:0;s.characterHold=0;
     p.ready=false;this.state.countdown=null;this.renderPanel(p);this.sound?.('ui');
   }
-  close(p){const s=this.state.members.get(p.id);delete s.expeditionDraft;s.panel=null;s.panelInputRelease=true;s.practiceClosing=true;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);this.panelLayoutKey=null;this.positionPanels();}
+  close(p){const s=this.state.members.get(p.id);delete s.expeditionDraft;s.panel=null;s.panelInputRelease=true;s.practiceClosing=true;this.nodes.get(p.id)?.remove();this.nodes.delete(p.id);this.panelLayoutKey=null;this.positionPanels();this.sound?.('close');}
   isPlayingTelevision(device){const player=this.getGame().players.find(p=>p.device===device);return !!player&&!!this.television?.players.has(player.id);}
   openBoardReadyMenu(player){
     if(player)player.ready=false;
@@ -357,7 +357,7 @@ export class PlayableLobby {
   }
   setWildboundMode(enabled){
     const g=this.getGame();g.houseWorldsEnabled=enabled;localStorage.setItem('wildbound-mode',enabled?'on':'off');
-    if(enabled){const mode=document.getElementById('map-mode');mode.value='bounded';mode.dispatchEvent(new Event('change'));}
+    if(enabled){const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value='house';env.dispatchEvent(new Event('change'));mode.value='bounded';mode.dispatchEvent(new Event('change'));}
     this.state.invalidate(g.players);
   }
   refreshMapMenus(){for(const p of this.getGame().players)if(this.state.members.get(p.id)?.panel==='environment')this.renderPanel(p);}
@@ -420,7 +420,7 @@ export class PlayableLobby {
     }else if(s.panel==='environment'){
       buildExpeditionMenu({panel,member:s,game:this.getGame(),select:document.getElementById('environment'),mode:document.getElementById('map-mode'),details:MAP_DETAILS,tooltip:b=>this.mapTooltip(panel,b),drawIcon:(...args)=>this.drawMapIcon(...args),highlight:()=>{if(panel.isConnected)this.highlight(p);},close:()=>this.close(p),accept:draft=>{
         this.setWildboundMode(draft.wild);
-        const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value=draft.map;mode.value=draft.boundless&&!draft.wild?'boundless':'bounded';
+        const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value=draft.wild?'house':draft.map;mode.value=draft.boundless&&!draft.wild?'boundless':'bounded';
         for(const input of [env,mode])input.dispatchEvent(new Event('change'));
         this.close(p);this.refreshMapMenus();this.sync();
       }});
@@ -490,7 +490,7 @@ export class PlayableLobby {
     let tip=panel.querySelector('.map-choice-tooltip');
     if(!button?.dataset.mapDetail){if(tip?.matches(':popover-open'))tip.hidePopover();return;}
     if(!tip){tip=document.createElement('div');tip.className='map-choice-tooltip';tip.setAttribute('popover','manual');tip.setAttribute('role','tooltip');tip.id='map-tooltip-'+panel.dataset.ownerDevice;panel.append(tip);}
-    tip.textContent=button.dataset.mapDetail;button.setAttribute('aria-describedby',tip.id);
+    tip.replaceChildren();const name=document.createElement('strong'),detail=document.createElement('span');name.textContent=button.dataset.mapName||'Map';detail.textContent=button.dataset.mapDetail;tip.append(name,detail);button.setAttribute('aria-describedby',tip.id);
     if(!tip.matches(':popover-open'))tip.showPopover();
     const r=button.getBoundingClientRect(),box=tip.getBoundingClientRect();
     tip.style.left=Math.max(8,Math.min(innerWidth-box.width-8,r.left))+'px';
@@ -502,7 +502,7 @@ export class PlayableLobby {
     // Reveal the owner's current choice without scrolling or moving another
     // player's panel. Native scrollbar chrome is hidden throughout the UI.
     const selected=buttons[s.focus];
-    if(s.panel==='environment')this.mapTooltip(panel,selected);
+    if(s.panel==='environment'&&!panel?.classList.contains('expedition-menu'))this.mapTooltip(panel,selected);
     const scroller=selected?.closest('.map-choices')||panel;
     if(selected&&scroller.scrollHeight>scroller.clientHeight){
       const box=scroller.getBoundingClientRect(),choice=selected.getBoundingClientRect();
@@ -517,7 +517,7 @@ export class PlayableLobby {
     if(device!==p.device||panel.dataset.ownerDevice!==device)return;
     if(panel.expeditionNavigate){panel.expeditionNavigate({x,y,accept,back});return;}
     if(panel.creationNavigate){panel.creationNavigate({x,y,accept,back,adjust,rotate});return;}
-    if(back){if(s.panel==='confirm-delete'||s.panel==='create'){s.panel='choose';s.focus=0;this.renderPanel(p);}else this.close(p);return;}
+    if(back){this.sound?.('cancel');if(s.panel==='confirm-delete'||s.panel==='create'){s.panel='choose';s.focus=0;this.renderPanel(p);}else this.close(p);return;}
     const buttons=[...panel.querySelectorAll('button')];
     if(x&&s.panel==='choose'&&buttons[s.focus]?.dataset.cycle){s.choice+=x;this.renderPanel(p);return;}
     if(x||y){
@@ -525,7 +525,7 @@ export class PlayableLobby {
         const next=spatialMenuNeighbor(buttons,buttons[s.focus],x,y);
         s.focus=Math.max(0,buttons.indexOf(next));
       }else s.focus=(s.focus+(y||x)+buttons.length)%buttons.length;
-      this.highlight(p);
+      const oldFocus=s.focus;this.highlight(p);if(s.focus!==oldFocus)this.sound?.('focus');
     }
     if(accept)buttons[s.focus]?.click();
   }
@@ -560,12 +560,16 @@ export class PlayableLobby {
   controller(pad,previous){
     const p=this.getGame().players.find(p=>p.device==='pad:'+pad.index);if(!p)return;
     const s=this.state.members.get(p.id);if(!s)return;
+    // Standard Gamepad button indices follow physical positions. On a
+    // Nintendo pad, index 1 is the right-side A button and index 0 is the
+    // bottom B button; the other families use index 0 for Confirm.
+    const switchPad=controllerFamily(pad)==='switch',confirmButton=switchPad?1:0,backButton=switchPad?0:1;
     if(this.boardReadyMenuOpen){
-      if(pad.buttons[0]?.pressed&&!previous[0])this.toggleBoardPlayerReady(p);
-      else if(pad.buttons[1]?.pressed&&!previous[1])this.closeBoardReadyMenu();
+      if(pad.buttons[confirmButton]?.pressed&&!previous[confirmButton])this.toggleBoardPlayerReady(p);
+      else if(pad.buttons[backButton]?.pressed&&!previous[backButton])this.closeBoardReadyMenu();
       return;
     }
-    if(!s.panel&&!s.spawned&&pad.buttons[0]?.pressed&&!previous[0]){s.panel='choose';s.focus=0;this.renderPanel(p);return;}
+    if(!s.panel&&!s.spawned&&pad.buttons[confirmButton]?.pressed&&!previous[confirmButton]){s.panel='choose';s.focus=0;this.renderPanel(p);return;}
     this.nodes.get(p.id)?.updateControllerFamily?.(controllerFamily(pad));
     if(s.panel)s.held.lobbyInteract=!!pad.buttons[3]?.pressed;
     const x=Math.abs(pad.axes[0]||0)>.6?Math.sign(pad.axes[0]):0,y=Math.abs(pad.axes[1]||0)>.6?Math.sign(pad.axes[1]):0;
@@ -573,9 +577,9 @@ export class PlayableLobby {
     const dx=pad.buttons[14]?.pressed?-1:pad.buttons[15]?.pressed?1:x,dy=pad.buttons[12]?.pressed?-1:pad.buttons[13]?.pressed?1:y;
     if(s.panel==='create'){
       if(dx||dy){if(repeat||dx!==s.creationDX||dy!==s.creationDY){this.navigate(p,{x:dx,y:dy});s.nextCreationMove=performance.now()+(dx!==s.creationDX||dy!==s.creationDY?300:65);}}
-      this.navigate(p,{accept:pad.buttons[0]?.pressed&&!previous[0],back:pad.buttons[1]?.pressed&&!previous[1],adjust:pad.buttons[2]?.pressed&&!previous[2],rotate:pad.buttons[4]?.pressed&&!previous[4]?-1:pad.buttons[5]?.pressed&&!previous[5]?1:0});
+      this.navigate(p,{accept:pad.buttons[confirmButton]?.pressed&&!previous[confirmButton],back:pad.buttons[backButton]?.pressed&&!previous[backButton],adjust:pad.buttons[2]?.pressed&&!previous[2],rotate:pad.buttons[4]?.pressed&&!previous[4]?-1:pad.buttons[5]?.pressed&&!previous[5]?1:0});
       s.creationDX=dx;s.creationDY=dy;
-    }else if(s.panel)this.navigate(p,{x:pad.buttons[14]?.pressed&&!previous[14]?-1:pad.buttons[15]?.pressed&&!previous[15]?1:x!==s.axisX?x:0,y:pad.buttons[12]?.pressed&&!previous[12]?-1:pad.buttons[13]?.pressed&&!previous[13]?1:y!==s.axisY?y:0,accept:pad.buttons[0]?.pressed&&!previous[0],back:pad.buttons[1]?.pressed&&!previous[1]});
+    }else if(s.panel)this.navigate(p,{x:pad.buttons[14]?.pressed&&!previous[14]?-1:pad.buttons[15]?.pressed&&!previous[15]?1:x!==s.axisX?x:0,y:pad.buttons[12]?.pressed&&!previous[12]?-1:pad.buttons[13]?.pressed&&!previous[13]?1:y!==s.axisY?y:0,accept:pad.buttons[confirmButton]?.pressed&&!previous[confirmButton],back:pad.buttons[backButton]?.pressed&&!previous[backButton]});
     s.axisX=x;s.axisY=y;
   }
   update(dt,inputs,blocked=false){
@@ -797,7 +801,8 @@ export class PlayableLobby {
       const o=entry.object;
       if(['board','starter-chest'].includes(o.id))drawLobbyCastShadow(c,o.x,o.y+12,112,22);
       if(o.id==='environment'){
-        drawLobbyMapTable(c,o,document.getElementById('environment').value);
+        const draftMap=[...this.nodes.values()].find(panel=>panel.classList.contains('expedition-menu'))?.dataset.mapPreview;
+        drawLobbyMapTable(c,o,draftMap||(this.getGame().houseWorldsEnabled?'house':document.getElementById('environment').value));
       }else if(o.id==='difficulty'){
         drawLobbyDifficultyTotem(c,o,document.getElementById('difficulty').value);
       }else if(o.id==='dice-count'){

@@ -1,3 +1,4 @@
+import {addTrainSeat} from './train-clips.mjs';
 import {drawCarverClaws} from './carver-claw-shader.mjs';
 import {drawCarverVest,drawCarverMantle,drawCarverDress} from './bone-carver-art.mjs';
 import {addBroomRide} from './broom-clips.mjs';
@@ -329,11 +330,11 @@ export function upgradePlayerMotion(input) {
 // The new base is an explicit project migration. Generic import/validation
 // continues to preserve legacy keys and non-player humanoid variants.
 export function upgradePlayerToNative(input){
-  const next=upgradeNativeHumanoid(upgradePlayerMotion(input),buildHeroGeneration(defaultPlayerMotion()));if(!input.clips?.broom_ride){delete next.clips.broom_ride;addBroomRide(next);}return next;
+  const next=upgradeNativeHumanoid(upgradePlayerMotion(input),buildHeroGeneration(defaultPlayerMotion()));if(!input.clips?.broom_ride){delete next.clips.broom_ride;addBroomRide(next);}return addTrainSeat(next);
 }
 export function defaultNativePlayerMotion(){
   const shipping=buildHeroGeneration(defaultPlayerMotion());
-  const next=upgradeNativeHumanoid(structuredClone(shipping),shipping);delete next.clips.broom_ride;return addBroomRide(next);
+  const next=upgradeNativeHumanoid(structuredClone(shipping),shipping);delete next.clips.broom_ride;return addTrainSeat(addBroomRide(next));
 }
 // Keep the compatibility template neutral: enemy variants clone it during
 // module initialization. The saved player is upgraded when project rigs load.
@@ -1188,6 +1189,7 @@ export function drawPlayer(
               const v=projectPoint([side==='R'?3:-3,weapon==='sword'?13:7,weapon==='sword'?6:3],visualDirection??d);
               tip={x:hand.x+v.x,y:hand.y+v.y};
             }
+            if(ITEMS[weaponId]?.energyBlade&&actor.energyBladeActive===false)tip={x:hand.x,y:hand.y};
             if(style==='long_axe'&&attack){
               const t=equipmentPose.frame/(model.clips[equipmentPose.action]?.length-1||1),angle=-.6+Math.sin(t*Math.PI)*1.25;
               tip={x:hand.x+Math.sin(angle)*22*Math.cos(d*Math.PI/4),y:hand.y-Math.cos(angle)*22};
@@ -1267,6 +1269,7 @@ export function drawPlayer(
             pixel(guard.x-1,guard.y-1,1,1,material.shine);
             pixel(hand.x-ux*2,hand.y-uy*2,1,1,material.trim);
             pixel(hand.x-ux*3-1,hand.y-uy*3,2,1,material.trim);
+            if(ITEMS[weaponId]?.energyBlade&&actor.energyBladeActive!==false){const color=ITEMS[weaponId].bladeColor;c.save();c.globalCompositeOperation='lighter';c.shadowColor=color;c.shadowBlur=9;limb(c,guard,tip,5,color);limb(c,guard,tip,2,'#f4ffff');c.restore();for(let n=0;n<3;n++)pixel(tip.x+Math.sin(time*9+n*2)*2,tip.y+Math.cos(time*8+n*2)*2,1,1,color);}
             }
             }
           }
@@ -1634,6 +1637,12 @@ export function drawPlayer(
           const curve=(a,b)=>{
             const control={x:mid.x+(a.x-mid.x)*.72,y:mid.y+(a.y-mid.y)*.18};
             let last=a;
+            if(style==='umbra'){
+              for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};limb(c,last,next,3.3,'#211d2a');last=next;}
+              last=a;for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};limb(c,last,next,2.1,'#6a2c73');last=next;}
+              last=a;for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};limb(c,last,next,1.2,'#d744d2');last=next;}
+              return;
+            }
             for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};
               limb(c,last,next,3,material.ink);last=next;}
             last=a;for(let i=1;i<=8;i++){const t=i/8,u=1-t,next={x:u*u*a.x+2*u*t*control.x+t*t*b.x,y:u*u*a.y+2*u*t*control.y+t*t*b.y};limb(c,last,next,1.5,material.light);last=next;}
@@ -1642,9 +1651,14 @@ export function drawPlayer(
           const aimLength=Math.hypot(actor.faceX||0,actor.faceY||0)||1,aimX=(actor.faceX||0)/aimLength,aimY=(actor.faceY||0)/aimLength;
           const nock={x:hand.x-aimX*6,y:hand.y-aimY*6};
           const stringHand=aimed?nock:model.combatRevision===4?{x:(top.x+bottom.x)/2,y:(top.y+bottom.y)/2}:p.handR;
-          limb(c, top, stringHand, 0.7, "#dfd8b4");
-          limb(c, stringHand, bottom, 0.7, "#dfd8b4");
-          limb(c,{x:mid.x,y:mid.y-2},{x:mid.x,y:mid.y+2},2,material.leather);
+          const bowString=style==='umbra'?'#37233d':'#dfd8b4';
+          limb(c, top, stringHand, 0.7, bowString);
+          limb(c, stringHand, bottom, 0.7, bowString);
+          limb(c,{x:mid.x,y:mid.y-2},{x:mid.x,y:mid.y+2},2,style==='umbra'?'#302235':material.leather);
+          if(style==='umbra'){
+            limb(c,{x:mid.x,y:mid.y-1},{x:mid.x,y:mid.y+1},1,'#bf55c8');
+            pixel(mid.x-1,mid.y-1,1,1,'#f06be4');
+          }
           if(style==='winged'||style==='recurve') {
             limb(c,top,{x:top.x+facing*3,y:top.y-2},2,material.light);
             limb(c,bottom,{x:bottom.x+facing*3,y:bottom.y+2},2,material.light);
@@ -1734,6 +1748,7 @@ export function drawPlayer(
   }
   try{paintLayers(drawQueue, model, d, c, p,itemKind(gear.hand1)==='bow',legacyItemSprites);}
   finally{c.__humanoidDetail=previousDetail;c.__humanoidMaterials=previousMaterials;}
+  if(blankExplorer)drawHeroTorso(c,p,d,ITEMS[gear.chest]?.artColor||'#858f90',pal.head,back,true);
   if (!human) wearableDetails(c, p, {}, look, d, time, cosmetics);
   if(salvaging){
     if(actor.salvageHold?.type&&!actor.salvageHold.latched)drawItem(c,actor.salvageHold.type,(p.handL.x+p.handR.x)/2,(p.handL.y+p.handR.y)/2,10);

@@ -1,0 +1,11 @@
+Superseded by [the completed dev railway build](2026-10-31-train-system-1.2.88.md). This note records the earlier unfinished prototype.
+
+# Train sandbox — October 31, 2026 — unfinished development draft
+
+Source baseline: d2720a4da60b468884b350e422ae7ab875c31f61, Wildbound_worlds. Existing modified source preserved. No commit, push, package, or shortcut update.
+
+Added src/train-test.mjs and hooks in core, render, game-debug. Dev menu: Test train level, Train / track workshop, Return from train test. Dedicated 6400x4400 map with river, oval distance-sampled track, bridge decks, engine and two coaches. Raised-door jump boarding, movement inside coaches, native sit clip, start/stop, throttle, moving whistle, procedural chuff, transparent occupied roofs and draft motion effects. Test session suppresses game.persist; return restores original position, room, vehicle, phase and persistence method. Workshop stores local parameters under wildbound-train-design-v1.
+
+Muted isolated Electron harness scripts/verify-train-test.cjs checks route samples/seam, outside spawn, jump boarding gate, engine/throttle, workshop availability and return restoration. Renderer ran without console errors. Capture test-output/train-review/train.png is a canvas preview; it does not prove normal screen/menu operation, physical controllers or co-op. Repeated route samples are numerical coverage, not separate gameplay behaviors. No packaged build created.
+
+OUTSTANDING: artwork is an early procedural top-down draft, not the requested deliberately authored eight-facing art; freeform smart track building/switches/elevation and shared editor integration; editable interior geometry and part artwork; carriage collision/compartment doors; continuous passage between coupled cars; multiplayer camera; complete restoration of transient actor state; robust lifecycle handling when replacing game during test; mixer bus integration (prototype reads saved mixer levels); detailed steam/coal/wheel effects; full native UI/playtest and packaging. Current workshop changes oval dimensions, carriage dimensions, paint and maximum speed only. Bridge crossings are specific to this oval and river. Do not describe this prototype as AAA or complete.

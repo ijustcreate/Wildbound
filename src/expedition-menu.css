@@ -26,15 +26,22 @@
 #lobby .expedition-menu .expedition-boundless i::after{content:'';position:absolute;left:.4cqw;top:.3cqw;width:4cqw;height:4cqw;border-radius:50%;background:#ffe3a0;box-shadow:1px 1px 2px #0008;transition:left .15s;}
 #lobby .expedition-menu .expedition-boundless[aria-checked=true] i{background:#28673a}#lobby .expedition-menu .expedition-boundless[aria-checked=true] i::after{left:5cqw}
 #lobby .expedition-menu .expedition-switch-state{font:3cqw Georgia;}
-#lobby .expedition-menu .expedition-starting{position:absolute;left:15%;width:72%;top:48.5%;height:34%;transition:opacity .2s,clip-path .35s;clip-path:inset(0);}
+#lobby .expedition-menu .expedition-starting{position:absolute;left:12%;width:77%;top:48.5%;height:35.5%;transition:opacity .2s,clip-path .35s;clip-path:inset(0);display:grid;grid-template-rows:12% minmax(0,1fr) 23%;gap:1.5%;}
 #lobby .expedition-menu.is-wildbound .expedition-starting{opacity:0;clip-path:inset(0 0 100%);pointer-events:none;}
-#lobby .expedition-menu h3.expedition-map-heading{margin:0 auto 2%;width:63%;height:12%;display:flex;align-items:center;justify-content:center;background:url('../assets/ui/expedition/ribbon-v1.png') center/100% 100% no-repeat;font:700 4.4cqw Georgia;color:#2a170b!important;}
-#lobby .expedition-menu .expedition-map-list{display:flex;flex-direction:column;gap:2%;height:85%;overflow-y:auto;overscroll-behavior:contain;padding:2%;box-sizing:border-box;border:2px solid #7c481b;background:#ac662d22;scrollbar-width:thin!important;scrollbar-color:#714617 #e7ba66;}
-#lobby .expedition-menu .expedition-map-list::-webkit-scrollbar{display:block!important;width:7px!important}#lobby .expedition-menu .expedition-map-list::-webkit-scrollbar-thumb{background:#5a3e20;border:1px solid #b78c38;border-radius:3px;}
-#lobby .expedition-menu button.expedition-map{position:relative;flex:0 0 19%;min-height:19%;width:100%;padding:1% 4%;display:flex;align-items:center;gap:6%;text-align:left;overflow:visible;background:url('../assets/ui/expedition/map-row-v1.png') center/100% 100% no-repeat!important;color:#fff3d5!important;font-size:3.6cqw;}
-#lobby .expedition-menu button.expedition-map strong{font:700 3.5cqw Georgia;color:inherit;}
-#lobby .expedition-menu .expedition-map .expedition-icon{height:90%!important;width:auto!important;flex:0 0 auto;}
-#lobby .expedition-menu .expedition-map[aria-pressed=true]{box-shadow:inset 0 0 0 2px #ffda61,0 0 7px #ffbd23!important;border-radius:5px!important;}
+#lobby .expedition-menu h3.expedition-map-heading{margin:0 auto;width:63%;height:100%;display:flex;align-items:center;justify-content:center;background:url('../assets/ui/expedition/ribbon-v1.png') center/100% 100% no-repeat;font:700 4.4cqw Georgia;color:#2a170b!important;}
+#lobby .expedition-menu .expedition-map-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:2%;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d2a54c #493019;padding:1.5%;box-sizing:border-box;border:2px solid #7c481b;border-radius:5px;background:#ac662d22;}
+#lobby .expedition-menu .expedition-map-list::-webkit-scrollbar{width:1.2cqw;height:1.2cqw}
+#lobby .expedition-menu .expedition-map-list::-webkit-scrollbar-track{background:#493019;border-radius:4px}
+#lobby .expedition-menu .expedition-map-list::-webkit-scrollbar-thumb{background:#d2a54c;border:1px solid #68421a;border-radius:4px}
+#lobby .expedition-menu button.expedition-map{position:relative;inset:auto;width:100%;height:100%;min-width:0;min-height:0;padding:2%;display:grid;place-items:stretch;overflow:hidden;border:1px solid #80592a!important;border-radius:5px!important;background:#1b2925!important;box-shadow:inset 0 0 0 1px #f7e5b522,0 2px 2px #1d100a;}
+#lobby .expedition-menu .expedition-map .expedition-icon{display:block;width:100%!important;height:100%!important;max-width:none;max-height:none;aspect-ratio:1;object-fit:cover;image-rendering:pixelated;}
+#lobby .expedition-menu .expedition-map .expedition-copy{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap;}
+#lobby .expedition-menu .expedition-map-selected{position:absolute;display:none;place-items:center;top:4%;right:4%;width:24%;aspect-ratio:1;border-radius:50%;background:#17603b;color:#fff4c4;font:700 3.3cqw/1 Georgia;box-shadow:0 1px 3px #301e0b;}
+#lobby .expedition-menu .expedition-map[aria-pressed=true]{filter:brightness(1.1);box-shadow:inset 0 0 0 3px #ffda61,0 0 8px #ffbd23!important;border-color:#ffda61!important;border-radius:5px!important;}
+#lobby .expedition-menu .expedition-map[aria-pressed=true] .expedition-map-selected{display:grid;}
+#lobby .expedition-menu .expedition-map-preview{display:flex;flex-direction:column;justify-content:center;min-height:0;padding:1.5% 4%;border:1px solid #9b7135;border-radius:5px;background:#2c2114;color:#fff0c8;line-height:1.08;overflow:hidden;}
+#lobby .expedition-menu .expedition-map-name{font:700 3.7cqw Georgia;color:#fff2d2;}
+#lobby .expedition-menu .expedition-map-detail{margin-top:.5cqw;font:2.8cqw/1.1 Georgia;color:#f1d9a7;}
 #lobby .expedition-menu button.expedition-accept{left:22%;top:89.1%;width:57%;height:7.8%;font:700 6cqw Georgia;color:#fff1d1!important;background:url('../assets/ui/expedition/accept-v1.png') center/100% 100% no-repeat!important;text-shadow:1px 2px #12351d;transition:top .36s ease;}
 #lobby .expedition-menu.is-wildbound .expedition-accept{top:51.5%;}
 #lobby .expedition-menu>.lobby-error{position:absolute;top:97%;left:12%;width:76%;font-size:3cqw;}

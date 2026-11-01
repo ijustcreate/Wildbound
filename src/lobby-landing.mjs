@@ -1,7 +1,7 @@
-// A title-screen gesture joins exactly one device; it never also chooses a hero.
+// A keyboard key or controller button joins exactly one device; pointer motion,
+// clicks, wheel input and analog drift never dismiss the title screen.
 export function landingPadActive(pad) {
-  return pad.buttons.some(button => button.pressed || button.value > .5) ||
-    pad.axes.some(axis => Math.abs(axis) > .35);
+  return pad.buttons.some(button => button.pressed || button.value > .5);
 }
 
 export class LobbyLanding {
@@ -11,34 +11,16 @@ export class LobbyLanding {
     this.node = document.createElement('section');
     this.node.className = 'lobby-landing';
     this.node.setAttribute('aria-label', 'Welcome to Wildbound');
-    this.node.innerHTML = `<div class="landing-scene"><img src="assets/wildbound-landing-v1.png" alt="Wildbound: two explorers around an open magical board, with a lion and skeleton warriors in the jungle."><button class="landing-join" type="button"><span>Press anything to join</span><small>Keyboard · Mouse · Controller</small></button></div>`;
+    this.node.innerHTML = `<div class="landing-scene"><img src="assets/wildbound-landing-v1.png" alt="Wildbound: two explorers around an open magical board, with a lion and skeleton warriors in the jungle."><div class="landing-join" role="note" aria-label="Press a keyboard key or controller button to start Wildbound"><span>Press any key or controller button to start</span><small>Keyboard · Controller</small></div></div>`;
     area.append(this.node);
     this.lastResize=-Infinity;
     window.addEventListener('resize',()=>{this.lastResize=performance.now();});
-    const pointer = event => {
-      if (!this.active || !this.node.contains(event.target)) return;
-      if (event.type === 'pointermove' && !event.movementX && !event.movementY) return;
-      // Dragging the native window border may move content beneath the cursor.
-      if (event.type === 'pointermove' && performance.now()-this.lastResize<200) return;
-      if (!this.activate('keyboard')) return;
-      this.swallowClickUntil = event.type === 'pointerdown' ? performance.now() + 1000 : 0;
-      event.preventDefault();event.stopImmediatePropagation();
-    };
-    for (const type of ['pointerdown', 'pointermove', 'wheel']) area.addEventListener(type, pointer, {capture:true, passive:false});
-    area.addEventListener('click', event => {
-      if (performance.now() < this.swallowClickUntil) {
-        this.swallowClickUntil = 0;event.preventDefault();event.stopImmediatePropagation();
-      } else if (this.active && this.node.contains(event.target)) {
-        this.activate('keyboard');event.preventDefault();event.stopImmediatePropagation();
-      }
-    }, true);
     this.sync();
   }
   get active() { return this.available() && !document.querySelector('dialog[open]'); }
   sync() {
-    const hidden = !this.available(), entering = this.node.hidden && !hidden;
+    const hidden = !this.available();
     this.node.hidden = hidden;
-    if (entering) this.node.querySelector('button').focus({preventScroll:true});
   }
   activate(device, pad) {
     if (!this.active) return false;

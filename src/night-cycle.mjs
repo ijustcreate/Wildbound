@@ -29,7 +29,7 @@ export function daylight(g) {
   return (t - 450) / 30;
 }
 export function carriedLight(p) {
-  const equipped=['hand1', 'hand2'].map(slot => ITEMS[p.equipment?.[slot]]?.lightSource)
+  const equipped=['hand1', 'hand2'].map(slot => {const item=ITEMS[p.equipment?.[slot]];return item?.energyBlade&&p.energyBladeActive===false?null:item?.lightSource;})
     .filter(Boolean).map(light=>({...light,radius:280,inventoryLight:true}));
   // Merely carrying a lantern or torch improves visibility; combat effects are
   // deliberately checked against equipment slots in night-equipment.mjs.
@@ -42,7 +42,7 @@ export function sightRadius(g, p, base = 280) {
   return Math.max(ambient, carriedLight(p)?.radius || 0) * (g.weather?.type === 'monsoon' ? 0.8 : 1);
 }
 export function lightSources(g,room=null) {
-  const frameKey=`${g.time||0}:${g.sky?.elapsed||0}:${room||''}:${(g.players||[]).map(p=>[p.id,p.x,p.y,p.room,p.roomX,p.roomY,p.equipment?.hand1,p.equipment?.hand2,(p.inventory||[]).some(i=>i&&['torch','lantern'].includes(i.type)),p.controlPetPosition?.x,p.controlPetPosition?.y,p.controlMainLoadout?.equipment?.hand1,p.controlMainLoadout?.equipment?.hand2].join(',')).join(';')}:${(g.villageCampState?.fire?[g.villageCampState.fire.x,g.villageCampState.fire.y].join(','):'')}`;
+  const frameKey=`${g.time||0}:${g.sky?.elapsed||0}:${room||''}:${(g.players||[]).map(p=>[p.id,p.x,p.y,p.room,p.roomX,p.roomY,p.equipment?.hand1,p.equipment?.hand2,p.energyBladeActive,(p.inventory||[]).some(i=>i&&['torch','lantern'].includes(i.type)),p.controlPetPosition?.x,p.controlPetPosition?.y,p.controlMainLoadout?.equipment?.hand1,p.controlMainLoadout?.equipment?.hand2].join(',')).join(';')}:${(g.villageCampState?.fire?[g.villageCampState.fire.x,g.villageCampState.fire.y].join(','):'')}`;
   const fireKey=[...(g.spells||[]).filter(b=>b.fire&&b.life>0),...(g.fireballs||[]).filter(b=>!b.ice&&!b.water&&b.life>0),...(g.effects||[]).filter(f=>f.particle==='cinder-trail'&&f.life>0)].map(f=>[f.x,f.y,f.life].join(',')).join(';');
   const cacheKey=frameKey+':'+fireKey;
   const cached=sourceFrames.get(g);if(cached?.key===cacheKey)return cached.sources;

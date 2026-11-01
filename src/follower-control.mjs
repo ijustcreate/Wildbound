@@ -157,6 +157,15 @@ export function syncControlledFollower(game, player, dt = 1 / 60) {
   follower.moving = player.moving;
   follower.walking = player.walking;
   follower.step = player.step;
+  if(!follower.controlledAttack){
+    // Pack AI may have left a run/windup clip on the follower before control
+    // changed hands. Clear it so the renderer derives idle/walk/run from the
+    // owner's live input and measured gait.
+    follower.animationAction=null;
+    follower.poseTime=null;
+    delete follower.playerFrame;
+    delete follower.animationProgress;
+  }
   if (follower.villagerId === 'april' && !follower.controlledAttack) {
     if (follower.jumpHeight > 0) {
       follower.animationAction = 'jump';

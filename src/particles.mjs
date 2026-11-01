@@ -6,6 +6,9 @@ export {loadParticleSprites,particleSpriteStatus} from './particle-sprites.mjs';
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
 export const DEFAULT_EFFECTS={
+  'blade-trail-red':{name:'Red energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#fff1ed',end:'#ff263f'},
+  'blade-trail-blue':{name:'Blue energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#e9fbff',end:'#238dff'},
+  'blade-trail-green':{name:'Green energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#f1ffed',end:'#31dc58'},
   'cinder-trail':{name:'Cinder · ground fire trail',count:7,life:1.4,speedX:0,speedY:-14,spread:6,gravity:-3,size:2,orbit:2,shape:'square',blend:'lighter',start:'#ffe69b',end:'#e34d22'},
   'portal-runes':{name:'Storage portal · flowing energy',description:'Short wisps curl around the aperture and fade into its dark center.',count:28,life:2.8,speedX:0,speedY:-5,spread:4,gravity:0,size:1,orbit:20,shape:'square',motion:'portal',blend:'lighter',start:'#b5f3dc',end:'#386a79',loop:true},
   ...CARTOON_EFFECTS,

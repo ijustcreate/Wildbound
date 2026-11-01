@@ -11,6 +11,7 @@ const copy={
  'A low sweep':['Two pale wings skim leaf and stone.\nThe wind does not belong to you alone.','Let the low-flying pelicans pass. Only provoked birds turn to fight.'],
  'The sleeping sickness':['Five dark needles ride the breeze.\nA drowsy hush steals through the trees.','Interrupt the flies’ charge-up before they strike. Rescue a sleeping ally.'],
  'The purple warlock':['A purple crown, a staff of bone.\nFour guards may answer for their own.','Interrupt healing and summons. The warlock can keep at most four summoned guards alive.'],
+ 'Happiness Devourer':['A smile goes still beneath the frost.\nA colder shadow counts what you have lost.','Keep moving when the cold gathers around the Happiness Devourer.'],
  'Stripes in the sanctum':['Two amber shadows cross the stair.\nThe ruined temple is their lair.','Keep both tigers in view. Dodge their crouched pounces and punish recovery.'],
  'Keeper of the jade stair':['A heavy hand, a jade-worn stair.\nThree restless thieves attend the heir.','Clear the three monkeys, dodge the gorilla’s marked slam, then strike between attacks.'],
 };

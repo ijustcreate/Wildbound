@@ -4,6 +4,18 @@ import {paintLayers} from './render-order.mjs';
 export function drawWerewolfPixels(c,model,pose,d){
  const p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)])),q=[],pal=model.palette,fur={body:pal.body,shade:pal.shade,light:pal.light,outline:pal.outline};
  const add=(id,bone,fn,depth=p[bone].depth)=>{if(model.visibility[bone]?.[d]!==false)q.push({id,bone,bones:[bone],depth,fn});};
+ if(p.tailBase&&p.tailMid&&p.tailTip){
+  add('Werewolf tail root','tailBase',()=>{
+   pixelLine(c,p.pelvis,p.tailBase,pal.outline,6);pixelLine(c,p.pelvis,p.tailBase,pal.shade,4);
+  },p.tailBase.depth-.2);
+  add('Werewolf tail middle','tailMid',()=>{
+   pixelLine(c,p.tailBase,p.tailMid,pal.outline,5);pixelLine(c,p.tailBase,p.tailMid,pal.body,3.5);
+  },p.tailMid.depth-.1);
+  add('Werewolf tail tip','tailTip',()=>{
+   pixelLine(c,p.tailMid,p.tailTip,pal.outline,4);pixelLine(c,p.tailMid,p.tailTip,pal.shade,2.5);
+   const tip=pose.tailTip;pixelVolume(c,tip,1.8,2.5,1.8,d,fur);
+  },p.tailTip.depth);
+ }
  for(const side of['L','R']){
   add('Werewolf leg '+side,'foot'+side,()=>{pixelLine(c,p['hip'+side],p['knee'+side],pal.outline,7);pixelLine(c,p['hip'+side],p['knee'+side],pal.body,5);pixelLine(c,p['knee'+side],p['foot'+side],pal.shade,4);pixelVolume(c,pose['foot'+side],3,4,2,d,fur);const foot=p['foot'+side];for(let i=-1;i<=1;i++){c.fillStyle=pal.face;c.fillRect(Math.round(foot.x+i*2),Math.round(foot.y)+1,1,2);}});
   add('Werewolf arm '+side,'hand'+side,()=>{pixelLine(c,p['shoulder'+side],p['elbow'+side],pal.outline,8);pixelLine(c,p['shoulder'+side],p['elbow'+side],pal.body,6);pixelLine(c,p['elbow'+side],p['hand'+side],pal.shade,5);pixelVolume(c,pose['hand'+side],3.3,3,3.5,d,fur);const h=pose['hand'+side];for(let i=-1;i<=1;i++){const end=projectPoint([h[0]+i*2,h[1]+3,h[2]-5],d);pixelLine(c,p['hand'+side],end,pal.outline,2);pixelLine(c,{x:end.x,y:end.y-1},end,pal.face,1);}});

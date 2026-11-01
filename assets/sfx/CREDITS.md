@@ -11,6 +11,10 @@ These sound libraries are CC0. Music is separate and is not covered by these lic
 - fvcalderan Tiny Creatures: https://opengameart.org/content/tiny-creatures-sounds
 - Luke.RUSTLTD Wind1: https://opengameart.org/content/wind1
 - OveMelaa Rain: https://opengameart.org/content/rain-ambient-not-loopable-2-versions-available
+- LokiF Swamp Environment Audio (swamp loop): https://opengameart.org/content/swamp-environment-audio
+- JaggedStone Loopable Dungeon Ambience: https://opengameart.org/content/loopable-dungeon-ambience
+- jasinski / qubodup Beach Ocean Waves (two loops): https://opengameart.org/content/beach-ocean-waves
+- SFXMint AI-generated CC0 ambience: Desert Wind 06, Steady Winter Blizzard Wind 04, Quiet Interior Room Tone 54, Night Ambience 01, and Cold Drafty Whisper-Like Wind 38: https://sfxmint.com/license
 
 License: https://creativecommons.org/publicdomain/zero/1.0/
 

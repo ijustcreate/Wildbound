@@ -1,0 +1,92 @@
+{
+  "title": "Eldritch creature pack — native Wildbound pixel art",
+  "columns": 3,
+  "cellSize": [
+    224,
+    116
+  ],
+  "facings": [
+    "S",
+    "SW",
+    "W",
+    "NW",
+    "N",
+    "NE",
+    "E",
+    "SE"
+  ],
+  "rows": [
+    {
+      "kind": "arcane_eye",
+      "label": "Arcane Eye / eyestalk aberration",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "kind": "great_owl",
+      "label": "Great Owl / gliding predator",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "kind": "butterfly_dragon",
+      "label": "Blinky / butterfly dragon",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "kind": "evil_hand",
+      "label": "Clinging Remains / crawling hand",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "kind": "eye_tentacle",
+      "label": "Corrupted Eye Tentacle / rooted aberration",
+      "x": 1,
+      "y": 1
+    },
+    {
+      "kind": "jade_tentacle",
+      "label": "Jade Tentacle / linked stalk",
+      "x": 2,
+      "y": 1
+    },
+    {
+      "kind": "flying_raptor",
+      "label": "Flying Raptor / winged hunter",
+      "x": 0,
+      "y": 2
+    },
+    {
+      "kind": "archangel",
+      "label": "Archangel / winged guardian",
+      "x": 1,
+      "y": 2
+    },
+    {
+      "kind": "watcher",
+      "label": "Watcher / small floating sentry",
+      "x": 2,
+      "y": 2
+    },
+    {
+      "kind": "cave_monster",
+      "label": "Cave Monster / six-limbed crawler",
+      "x": 0,
+      "y": 3
+    },
+    {
+      "kind": "tree_ent",
+      "label": "Tree Ent / walking elder",
+      "x": 1,
+      "y": 3
+    },
+    {
+      "kind": "spore",
+      "label": "Brilliant Spore / drifting fungus",
+      "x": 2,
+      "y": 3
+    }
+  ]
+}

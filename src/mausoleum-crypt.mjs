@@ -162,6 +162,7 @@ export function wakeMausoleumBoss(g, p, d = (g.portals || []).find(d => d.mausol
   if (!boss || boss.state !== 'dormant' || s.coffin.awakened || s.coffin.defeated) return false;
   s.coffin.awakened = true; s.coffin.opened = true;
   boss.state = 'rising'; boss.timer = 2; boss.rise = 0; boss.cooldown = .8;
+  g.onSound?.('bossPhase',boss);
   g.message?.('The Coffin Warden rises! Watch its blade and the bone volley.');
   g.onSound?.('doorOpen', p); g.persist?.();
   return true;
@@ -262,6 +263,7 @@ export function tickMausoleumCrypt(g, d, occupants, dt, helpers) {
     e.cooldown = Math.max(0, (e.cooldown || 0) - dt); e.moving = false;
     if (e.hp <= 0 || e.state === 'dormant') continue;
     const boss = e.kind === CRYPT_BOSS_KIND,ghost=e.kind==='ghost';
+    if(boss){const phase=e.hp<=e.maxHp*.25?2:e.hp<=e.maxHp*.5?1:0;if(e.audioPhase==null)e.audioPhase=phase;else if(phase>e.audioPhase){e.audioPhase=phase;g.onSound?.('bossPhase',e);}}
     if(ghost){e.frozen=Math.max(0,(e.frozen||0)-dt);if(e.frozen>0){if(e.state==='windup'){e.state='hunt';e.timer=0;e.attack=0;}continue;}}
     if (e.state === 'rising') {
       e.timer = Math.max(0, e.timer - dt); e.rise = 1 - e.timer / 2;

@@ -2,8 +2,8 @@ import {gearPalette} from './gear-art.mjs';
 import {detailedTorso} from './humanoid-hd.mjs';
 
 // Skin the torso in its own frame so a bent or fallen body keeps its volume.
-export function drawHeroTorso(c,p,d,color,skin,back){
-  if(detailedTorso(c,p,d,color,skin,back))return;
+export function drawHeroTorso(c,p,d,color,skin,back,plain=false){
+  if(detailedTorso(c,p,d,color,skin,back,plain))return;
   const top=p.chest,bottom=p.pelvis,dx=bottom.x-top.x,dy=bottom.y-top.y;
   const length=Math.max(3,Math.hypot(dx,dy));
   const width=d===2||d===6?5:d%2?5.8:6.4,mat=gearPalette(null,color);
@@ -14,14 +14,14 @@ export function drawHeroTorso(c,p,d,color,skin,back){
     for(let x=Math.ceil(-half);x<=Math.floor(half);x++){
       let shade=x===Math.ceil(-half)||x===Math.floor(half)||y===Math.ceil(length)+1?mat.ink:
         x>half-2?mat.dark:x<-half+2?mat.light:mat.base;
-      if(!back&&Math.abs(x)<=1&&y<length-2)shade=y<2?skin:y<length*.55?'#d1bd88':mat.dark;
-      if(!back&&Math.abs(x)>=3&&Math.abs(x)<=4&&y>=3&&y<=5)shade=y===3?mat.trim:mat.dark;
-      if(!back&&y===0&&Math.abs(x)>=2&&Math.abs(x)<=4)shade=mat.light;
+      if(!plain&&!back&&Math.abs(x)<=1&&y<length-2)shade=y<2?skin:y<length*.55?'#d1bd88':mat.dark;
+      if(!plain&&!back&&Math.abs(x)>=3&&Math.abs(x)<=4&&y>=3&&y<=5)shade=y===3?mat.trim:mat.dark;
+      if(!plain&&!back&&y===0&&Math.abs(x)>=2&&Math.abs(x)<=4)shade=mat.light;
       // A one-pixel neckline separates exposed skin from the tunic in every facing.
       const collarHalf=d===2||d===6?1:2;
       if(back&&y===-1&&Math.abs(x)<=collarHalf)shade=mat.ink;
       if(!back&&((y>=-1&&y<=0&&Math.abs(x)===collarHalf)||(y===1&&Math.abs(x)<collarHalf)))shade=mat.ink;
-      if(y>=length-1&&Math.abs(x)<half-1)shade=!back&&Math.abs(x)<1?mat.trim:mat.leather;
+      if(!plain&&y>=length-1&&Math.abs(x)<half-1)shade=!back&&Math.abs(x)<1?mat.trim:mat.leather;
       c.fillStyle=shade;c.fillRect(Math.round(top.x+x),Math.round(top.y+y),1,1);
     }
   }

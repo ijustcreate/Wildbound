@@ -63,7 +63,7 @@ export function maintainSpiderWebs(g, dt = 0) {
 function layWebEgg(g, adult, web) {
   const angle = Math.atan2(adult.y - web.y, adult.x - web.x) + Math.PI * 0.35;
   const x = web.x + Math.cos(angle) * (web.radius - 14), y = web.y + Math.sin(angle) * (web.radius - 14);
-  g.enemies.push({id:g.nextId++,group:adult.group,kind:'spider_egg',hatchSprite:adult.kind,x,y,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
+  g.enemies.push({id:g.nextId++,group:adult.group,kind:'spider_egg',hatchSprite:adult.kind,x,y,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0,eggPhase:adult.id*.71});
   adult.webEggCooldown = 45;
   g.message('A spider lays an egg at the web edge.');
 }
@@ -92,12 +92,13 @@ export function spiderNest(g,anchor,group){
   for(let i=0;i<3;i++){
     let spot={x:anchor.x+Math.cos(i*2.1)*42,y:anchor.y+Math.sin(i*2.1)*42};
     if(g.blocked(spot.x,spot.y)||(g.house&&insideHouse(spot.x,spot.y,g.house)))spot={x:anchor.x,y:anchor.y};
-    g.enemies.push({id:g.nextId++,group,kind:'spider_egg',hatchSprite:anchor.kind==='tarantula'?'tarantula':'spider',...spot,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0});
+    g.enemies.push({id:g.nextId++,group,kind:'spider_egg',hatchSprite:anchor.kind==='tarantula'?'tarantula':'spider',...spot,hp:24,maxHp:24,speed:0,damage:0,hatchIn:20,faceX:0,faceY:1,state:'idle',cooldown:0,eggPhase:i*1.73});
   }
 }
 const lineClear=(g,a,b)=>{const n=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/12);for(let i=1;i<n;i++)if(structureBlocked(g,a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,2))return false;return true;};
 export function tickSpider(g,e,dt,visiblePlayers=g.players){
   if(e.kind==='spider_egg'){
+    e.eggPhase=(e.eggPhase||0)+dt;
     e.hatchIn-=dt;
     if(e.hatchIn<=0){const tar=e.hatchSprite==='tarantula';Object.assign(e,{kind:'baby_spider',sprite:tar?'tarantula':'spider',hp:tar?38:28,maxHp:tar?38:28,speed:tar?72:95,damage:tar?7:5,state:'hunt',timer:0,cooldown:.8,step:0});g.message('Spider eggs are hatching!');}
     return true;
@@ -142,9 +143,10 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
 }
 export function drawExpansion(c,g,visible=()=>true,{floorOnly=false,structuresOnly=false,lightPaint=null}={}){
  if(!structuresOnly){
-  for(const w of g.webs||[]){c.save();c.translate(w.x,w.y);c.strokeStyle='#dae6de80';c.lineWidth=1;
-    for(let ring=1;ring<=5;ring++){c.beginPath();for(let j=0;j<=12;j++){const a=j*Math.PI/6,r=w.radius*ring/5;j?c.lineTo(Math.cos(a)*r,Math.sin(a)*r*.65):c.moveTo(Math.cos(a)*r,Math.sin(a)*r*.65);}c.stroke();}
-    for(let j=0;j<12;j++){const a=j*Math.PI/6;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*w.radius,Math.sin(a)*w.radius*.65);c.stroke();}c.restore();
+  for(const w of g.webs||[]){c.save();c.translate(w.x,w.y);c.scale(1,.66);
+    const gradient=c.createRadialGradient(0,0,8,0,0,w.radius);gradient.addColorStop(0,'#a9bdad12');gradient.addColorStop(.7,'#d3ddd51a');gradient.addColorStop(1,'#e7e6d526');c.fillStyle=gradient;c.beginPath();c.arc(0,0,w.radius,0,Math.PI*2);c.fill();
+    for(let ring=1;ring<=7;ring++){c.beginPath();const radius=w.radius*ring/7;for(let j=0;j<=72;j++){const a=j*Math.PI/36,warp=1+Math.sin(a*5+ring*.8)*.025,r=radius*warp;j?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.strokeStyle=ring%2?'#dce6d755':'#aebfb04a';c.lineWidth=ring===7?1.5:.85;c.stroke();}
+    for(let j=0;j<20;j++){const a=j*Math.PI/10;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*w.radius,Math.sin(a)*w.radius);c.strokeStyle='#e5e9df55';c.lineWidth=.8;c.stroke();}c.restore();
   }
   if(!g.house)return;
   if(g.generatedEnvironment==='house')drawHouseFloor(c,g.house);
@@ -161,4 +163,4 @@ export function drawExpansion(c,g,visible=()=>true,{floorOnly=false,structuresOn
     if(g.players.some(p=>!p.room&&Math.hypot(p.x-d.x-d.w/2,p.y-d.y)<65)){c.fillStyle='#fff3c5';c.font='9px sans-serif';c.textAlign='center';c.fillText(d.open?'Interact: close':'Interact: open',d.x+d.w/2,d.y-8);}}
 
 }
-export function drawTreeWeb(c,p){if(!p.webbed)return;c.save();c.strokeStyle='#f0f0dfbb';c.lineWidth=1;c.beginPath();for(let i=0;i<6;i++){c.moveTo(p.x-p.size*.3,p.y-p.size*.25+i*5);c.lineTo(p.x+p.size*.3,p.y-p.size*.1-i*4);}c.stroke();c.restore();}
+export function drawTreeWeb(c,p){if(!p.webbed)return;c.save();c.strokeStyle='#dbe6dbaa';c.lineWidth=1;c.beginPath();const top=p.y-p.size*.65,bottom=p.y+p.size*.38,left=p.x-p.size*.38,right=p.x+p.size*.38;for(let i=0;i<8;i++){const t=i/7;c.moveTo(left+(right-left)*t,top);c.lineTo(left+(right-left)*(1-t),bottom);}for(let i=1;i<6;i++){const t=i/6,y=top+(bottom-top)*t;c.beginPath();c.ellipse(p.x,y,p.size*(.16+t*.28),p.size*.035,0,0,Math.PI*2);c.stroke();}c.restore();}

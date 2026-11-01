@@ -576,7 +576,7 @@ export class FieldKit {
         requirements.append(node('li',`${ITEMS[type]?.name||type} · ${have}/${qty}`,have>=qty?'ingredient-owned':'ingredient-missing'));
       }
       detail.append(requirements);
-      const button=this.action(outputFits?'Craft':materialsAvailable?'Make backpack space':'Missing materials',()=>g.remoteAuthoritative?g.serverAction(p,'craft',r.id):craft(p,r.id),detail);button.disabled=!outputFits;button.classList.add('field-craft-action');
+      const button=this.action(outputFits?'Craft':materialsAvailable?'Make backpack space':'Missing materials',async()=>{g.onSound?.('craftStart',p);const result=g.remoteAuthoritative?await g.serverAction(p,'craft',r.id):craft(p,r.id);if(typeof result==='string'&&result.endsWith(' crafted.'))g.onSound?.('craftComplete',p);else if(result)g.onSound?.('menuError',p);return result;},detail);button.disabled=!outputFits;button.classList.add('field-craft-action');
       this.cardTooltipFor(card,head,detail,`recipe:${r.id}`);recipeGrid.append(card);
     }
     this.body.append(recipeGrid);
@@ -593,6 +593,7 @@ export class FieldKit {
         return "Find clear ground in front of you.";
       if (!take(p.inventory, "barricade")) return "Craft a barricade first.";
       (g.barricades ||= []).push({ x, y, life: 30 });
+      g.onSound?.('buildPlace',p);
       return "Barricade placed.";
     });
   }

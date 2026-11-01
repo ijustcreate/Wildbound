@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Wildlife renderer preview</title>
+<style>
+  html,body{margin:0;background:#102d24;color:#e3d2a5;font:12px system-ui}
+  canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+</style>
+<canvas id="sheet"></canvas>
+<script type="module">
+  import { CREATURE_PACK } from '../../src/creature-packs/wildlife.mjs';
+  const canvas=document.querySelector('#sheet'),ctx=canvas.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
+  const kinds=Object.keys(CREATURE_PACK.subjects),labels=['S','SW','W','NW','N','NE','E','SE'];
+  const cellW=76,cellH=90,pad=12,titleH=22,rowGap=8;
+  canvas.width=pad*2+cellW*8;
+  canvas.height=pad+kinds.length*(cellH+titleH+rowGap);
+  ctx.fillStyle='#102d24';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillStyle='#9ed6b8';
+  labels.forEach((v,i)=>ctx.fillText(v,pad+i*cellW+cellW/2,pad+11));
+  for(let row=0;row<kinds.length;row++){
+    const kind=kinds[row],subject=CREATURE_PACK.subjects[kind],model=subject.defaults();
+    ctx.textAlign='left';ctx.font='600 11px system-ui';ctx.fillStyle='#e3d2a5';
+    ctx.fillText(subject.name,pad,pad+titleH+row*(cellH+titleH+rowGap)-5);
+    for(let facing=0;facing<8;facing++){
+      const tile=document.createElement('canvas');tile.width=cellW;tile.height=cellH;
+      const pen=tile.getContext('2d');pen.imageSmoothingEnabled=false;
+      const angle=facing*Math.PI/4;
+      pen.save();pen.translate(cellW/2,cellH*.68);pen.scale(2,2);
+      subject.draw(pen,{x:0,y:0,faceX:Math.sin(angle),faceY:-Math.cos(angle),state:'idle',moving:false,id:1},0,model);
+      pen.restore();
+      const x=pad+facing*cellW,y=pad+titleH+row*(cellH+titleH+rowGap);
+      ctx.drawImage(tile,x,y);
+    }
+  }
+  window.previewReady=true;
+</script>

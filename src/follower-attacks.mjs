@@ -74,6 +74,7 @@ export function startFollowerAttack(game,owner,follower,charge=0){
  const bird=controllableBird(follower),windup=follower.kind==='bat' ? .18 : bird ? .24 : .16;
  let nativeAction='attack';
  if(follower.kind==='imp')nativeAction='attack';
+ if(follower.kind==='werewolf')nativeAction='pounce';
  if(captainRig(follower)){
   follower.captainCombo=(follower.captainCombo||0)+1;
   nativeAction=follower.villagerId==='april'?'jump_slash':follower.captainCombo%2?'slash':'thrust';

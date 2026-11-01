@@ -126,6 +126,7 @@ export class Profiles {
     if(this.error){const error=this.error;this.data=before;throw Error('Could not save deletion: '+error);}
   }
   capture(g) {
+    if(g.trainTest)return;
     for (const p of g.players) {
       let h = this.data.heroes.find((h) => h.id === p.profileId);
       if (!h) continue; // New local heroes must pass the name dialog first.

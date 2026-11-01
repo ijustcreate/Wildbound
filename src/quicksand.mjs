@@ -18,7 +18,8 @@ export function tickQuicksandLoot(g,dt){
  return changed;
 }
 export function tickQuicksand(g,p,input,dt){
- const sand=!p.room&&waterAt(g,p.x,p.y)==='quicksand'&&!(p.groundHeight>0);
+ const airborne=p.broomMount||p.wingHover||(p.jumpHeight||0)>0||(p.groundHeight||0)>0;
+ const sand=!p.room&&!airborne&&waterAt(g,p.x,p.y)==='quicksand';
  let depth=p.sink||0;
  if(p.hp<=0||!sand)depth=Math.max(0,depth-60*dt);
  else if(p.jumpHeight>0)depth=Math.max(0,depth-65*dt);

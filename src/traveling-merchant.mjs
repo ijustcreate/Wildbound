@@ -62,7 +62,7 @@ export function merchantAction(g,p,action){
    if(slot<0)p.inventory.push(structuredClone(entry.item));else p.inventory[slot]=structuredClone(entry.item);
    p.coins-=entry.price;if(entry.seller)m.stock.splice(u.index,1);u.index=Math.min(u.index,Math.max(0,m.stock.length-1));u.page=Math.floor(u.index/8);u.notice='“A fine trade. Try not to get eaten.”';
   }const remaining=merchantRows(g,p);if(!remaining.some(row=>row.index===u.index))u.index=remaining[Math.min(at,remaining.length-1)]?.index??0;
-  u.tradeSerial=(u.tradeSerial||0)+1;m.revision++;g.uiRevision=(g.uiRevision||0)+1;g.persist?.();
+  u.tradeSerial=(u.tradeSerial||0)+1;m.revision++;g.uiRevision=(g.uiRevision||0)+1;g.onSound?.(u.panel==='pack'?'sell':'purchase',p);g.persist?.();
  }return true;
 }
 export function marlowVisual(m){return {...m,sprite:'player',kind:'player',hp:100,equipment:MARLOW_EQUIPMENT,

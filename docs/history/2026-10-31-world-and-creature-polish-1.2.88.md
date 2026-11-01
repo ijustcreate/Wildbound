@@ -1,0 +1,7 @@
+# World, creature, and menu polish 1.2.88
+
+Normal-profile desktop package: `dist/1.2.88-2026-11-01T05-37-30-247Z/Wildbound-win32-x64`. Built from modified source at `d2720a4da60b468884b350e422ae7ab875c31f61` (UTC 2026-11-01T05:38:05.496Z). Desktop shortcut `Wildbound Worlds (1.2.88).lnk` targets `Play Wildbound.cmd` with no arguments. No commit or push.
+
+Classic map selection is an image gallery with selected-card check, hover title/description, and lower preview panel. Inventory controller Down follows the eight-column grid. Selecting Wildbound updates the lobby environment and map-table preview. Graveyard cats accept a bottled fish after the player interacts to pet and then offers the treat; the reward is Gravemyst's Idol, which summons the peaceful cat follower. The board's detached entry stone is removed. Squashling back views layer the pumpkin head over its body. Slimes leave a short, faint biome-colored trail and wobble more while moving. Spider webs now use irregular layered ground webs and tree draping; spider eggs occasionally jiggle. Existing warlock gear drops, beholder telegraphs/range adjustments, Happiness Devourer event, and red/blue/green energy blades are included in source.
+
+Verification: full serial suite 1,696 passed; 514 runtime files syntax checked; muted Electron Classic/Wildbound selector review passed 32 checks; `Play Wildbound.cmd --check` selected the 1.2.88 executable; desktop shortcut target verified. No manual user gameplay or physical-controller test performed.
