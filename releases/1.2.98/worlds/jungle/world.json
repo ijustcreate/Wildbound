@@ -1,0 +1,1 @@
+{"version":1,"id":"jungle","name":"Jungle","environment":"temple","description":"A lush temple ecosystem with deer, pigs and tigers, using the existing jungle artwork.","prey":["mother_deer","pig"],"predators":["tiger"],"food":0.95,"water":0.85,"factions":["Temple Wardens"],"quests":[{"id":"jungle-surveyor","name":"Explore five jungle regions","target":5}]}
