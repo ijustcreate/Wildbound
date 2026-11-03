@@ -1,3 +1,5 @@
+# Latest source: [Charged sword dash and blade sparkle](history/2026-11-03-sword-charge-dash.md). Hold attack plus hold/aim for a growing ground lane, release to dash and swipe; native held-out sword with traveling blade sparkles. Verification and delivery receipts are in the linked note.
+
 # Latest source: [PixelFX library and storage portals](history/2026-11-03-pixelfx-integration.md). All 244 effects in the Particles editor, native palettes/parameters and playback controls, and the requested purple Portal on storage entrances/returns. Final desktop verification receipts are in the linked note.
 
 # Latest source: [1.2.98 Mossroot Coliseum TV arena](history/2026-11-03-tv-arena-1.2.98.md). Rebuilt bounded side-view ruins, central board waves, three paired travel tubes, hearths and native editable eight-direction Bramblecap/Mossback rigs. Final desktop receipts are recorded in the linked note.

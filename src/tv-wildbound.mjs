@@ -28,7 +28,7 @@ export class TvWildbound {
     this.scenes=TV_WILDBOUND_SCENE_TEMPLATES.map((s,index)=>({...s,start:index*TV_WILDBOUND_SCENE_WIDTH,index}));
     Object.assign(this,createArenaLevel());this.solids=arenaSolids(this);this.enemyRoster=[...ARENA_ENEMIES];
     this.wave=0;this.waveQueue=[];this.defeated=0;this.sunseeds=0;this.enemySerial=0;
-    this.players=new Map(party.map((hero,i)=>{const spawn=this.playerSpawns[0];return [hero.id,{id:hero.id,hero:{...hero,appearance:{...DEFAULT_APPEARANCE,...hero.appearance}},x:spawn.x+(i%4)*36,y:spawn.y,vx:0,vy:0,face:1,grounded:true,jumpHeld:false,attackHeld:false,dashHeld:false,dashTime:0,dashCooldown:0,dashDirection:1,attackTime:0,invulnerable:2,hp:3,step:0,checkpoint:spawn.x,checkpointY:spawn.y,tubeCooldown:0}];}));
+    this.players=new Map(party.map((hero,i)=>{const spawn=this.playerSpawns[0];return [hero.id,{id:hero.id,hero:{...hero,appearance:{...DEFAULT_APPEARANCE,...hero.appearance}},x:spawn.x+(i%4)*64,y:spawn.y,vx:0,vy:0,face:1,grounded:true,jumpHeld:false,attackHeld:false,dashHeld:false,dashTime:0,dashCooldown:0,dashDirection:1,attackTime:0,invulnerable:2,hp:3,step:0,checkpoint:spawn.x,checkpointY:spawn.y,tubeCooldown:0}];}));
     this.camera=TV_BOARD_X-VIEW_W/2;this.enemies=[];
   }
   random(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed/4294967296;}
@@ -246,7 +246,7 @@ export class TvWildbound {
       c.save();c.translate(TV_WILDBOUND_WIDTH-205,FLOOR-15);c.scale(1.6,1.6);c.translate(-800,-919);drawVictoryChest(c,chest);c.restore();
     }
     c.restore();
-    c.fillStyle='#102c2ce8';c.fillRect(viewLeft,0,viewWidth,56);c.fillStyle='#f5e8c0';c.textAlign='left';c.font='bold 24px Georgia';c.fillText('MOSSROOT COLISEUM',viewLeft+22,34);c.textAlign='center';c.fillStyle='#d3c694';c.font='10px system-ui';c.fillText(this.sceneAt(this.camera+VIEW_W/2).name.toUpperCase(),viewLeft+viewWidth/2,49);c.textAlign='left';c.fillStyle='#f5e8c0';c.font='bold 17px system-ui';c.fillText(`BOARD ${this.progress}/${TV_WILDBOUND_GOAL}`,viewLeft+viewWidth-180,34);
+    c.fillStyle='#102c2ce8';c.fillRect(viewLeft,0,viewWidth,56);c.textAlign='center';c.fillStyle='#f5e8c0';c.font='bold 20px Georgia';c.fillText('MOSSROOT COLISEUM',VIEW_W/2,25,Math.max(200,viewWidth-500));c.fillStyle='#d3c694';c.font='11px system-ui';c.fillText(`BOARD ${this.progress}/${TV_WILDBOUND_GOAL} · ${this.sceneAt(this.camera+VIEW_W/2).name.toUpperCase()}`,VIEW_W/2,45);c.textAlign='left';
     c.fillStyle='#102c2ce8';c.fillRect(viewLeft,510,viewWidth,30);c.fillStyle='#e5d5a9';c.font='15px system-ui';c.font='12px system-ui';c.fillText(this.message,viewLeft+20,530,viewWidth-40);
     this.drawArenaMap(c,viewLeft,viewWidth);
     if(this.rollFlash>0){c.fillStyle='#f4dc96';c.textAlign='center';c.font='bold 55px Georgia';c.fillText(`+${this.lastRoll}`,VIEW_W/2,153);}
@@ -257,7 +257,7 @@ export class TvWildbound {
   }
   drawLandscape(c,left=0,width=VIEW_W){c.imageSmoothingEnabled=false;drawArenaBackdrop(c,this.camera,left,width,this.time);}
   drawArenaMap(c,left,width){
-    const w=Math.min(280,width*.35),x=left+width-w-20,y=65;c.fillStyle='#0f2425dd';c.fillRect(x-7,y-5,w+14,36);
+    const w=Math.min(280,width*.35),x=VIEW_W/2-w/2,y=65;c.fillStyle='#0f2425dd';c.fillRect(x-7,y-5,w+14,36);
     c.fillStyle='#668875';c.fillRect(x,y+18,w,2);
     for(const tube of this.tubes){c.fillStyle='#6bbb8a';c.fillRect(x+tube.x/TV_WILDBOUND_WIDTH*w,y+tube.y/437*18,3,4);}
     c.fillStyle='#f4d283';c.fillRect(x+w/2-2,y+14,4,6);
