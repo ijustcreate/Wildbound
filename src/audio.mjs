@@ -30,7 +30,7 @@ export class GameAudio {
  constructor(){
   this.settings={master:.8,sfx:.8,ui:.65,ambience:.45,night:false};
   try{const saved=JSON.parse(localStorage.getItem('wildbound-mixer')||'{}');for(const k of Object.keys(this.settings))if(k in saved)this.settings[k]=k==='night'?!!saved[k]:clamp(saved[k]);}catch{}
-  this.cache=new Map();this.last=new Map();this.variants=new Map();this.actorLast=new WeakMap();this.voices=new Set();this.voiceInfo=new WeakMap();this.pending=new Set();this.previous=new WeakMap();this.playerState=new WeakMap();this.listeners=[];this.enabled=true;this.unlocked=false;this.epoch=0;
+  this.cache=new Map();this.last=new Map();this.variants=new Map();this.actorLast=new WeakMap();this.voices=new Set();this.voiceInfo=new WeakMap();this.pending=new Set();this.previous=new WeakMap();this.playerState=new WeakMap();this.listeners=[];this.engineLoops=new Map();this.enabled=true;this.unlocked=false;this.epoch=0;
  }
  unlock(){
   if(!this.ctx){this.ctx=new AudioContext();this.master=this.ctx.createGain();this.compressor=this.ctx.createDynamicsCompressor();this.master.connect(this.compressor);this.compressor.connect(this.ctx.destination);this.buses={};for(const b of ['sfx','ui','ambience']){this.buses[b]=this.ctx.createGain();this.buses[b].connect(this.master);}this.apply();}
@@ -67,6 +67,17 @@ export class GameAudio {
   return {attenuation:(1-falloff)**2,pan:Math.max(-.8,Math.min(.8,(a.x-p.x)/450))};
  }
  stopVoice(source){try{source.stop();}catch{}this.voices.delete(source);}
+ updateVehicleEngines(game,active){
+  const live=new Set();
+  if(active&&this.enabled&&this.settings.master&&this.settings.sfx)for(const v of game.house?.vehicles||[])if(v.engineOn&&!v.submerging&&Math.abs(v.sink||0)<.8){
+   live.add(v);let loop=this.engineLoops.get(v);
+   if(!loop){const ctx=this.ctx,low=ctx.createOscillator(),high=ctx.createOscillator(),filter=ctx.createBiquadFilter(),gain=ctx.createGain(),pan=ctx.createStereoPanner();low.type='sawtooth';high.type='triangle';filter.type='lowpass';low.connect(filter);high.connect(filter);filter.connect(gain);gain.connect(pan);pan.connect(this.buses.sfx);low.start();high.start();gain.gain.value=0;loop={low,high,filter,gain,pan};this.engineLoops.set(v,loop);}
+   const speed=Math.min(1,Math.abs(v.speed||0)/(v.maxSpeed||280)),throttle=Math.max(0,Math.min(1,v.throttle||0)),rpm=48+speed*82+throttle*48,t=this.ctx.currentTime;
+   loop.low.frequency.setTargetAtTime(rpm,t,.12);loop.high.frequency.setTargetAtTime(rpm*2.03,t,.12);loop.filter.frequency.setTargetAtTime(240+speed*650+throttle*520,t,.15);
+   const pos=this.spatial({distance:560},v);loop.pan.pan.setTargetAtTime(pos.pan,t,.2);loop.gain.gain.setTargetAtTime((.014+speed*.022+throttle*.015)*pos.attenuation,t,.18);
+  }
+  for(const [v,l]of this.engineLoops)if(!live.has(v)){const t=this.ctx.currentTime;l.gain.gain.setTargetAtTime(0,t,.08);try{l.low.stop(t+.4);l.high.stop(t+.4);}catch{}setTimeout(()=>{l.low.disconnect();l.high.disconnect();l.filter.disconnect();l.gain.disconnect();l.pan.disconnect();},500);this.engineLoops.delete(v);}
+ }
  reserve(token){
   const all=[...this.pending,...[...this.voices].map(source=>this.voiceInfo.get(source)||{source,priority:10,group:'weather',at:0})];
   const group=all.filter(v=>v.group===token.group),same=all.filter(v=>v.key===token.key&&v.actor===token.actor);
@@ -130,6 +141,7 @@ export class GameAudio {
    for(const s of this.voices)if(this.voiceInfo.get(s)?.group!=='ui')this.stopVoice(s);
   }
   this.listeners=(game.players||[]).filter(p=>p.hp>0);this.listener=this.listeners[0];
+  this.updateVehicleEngines(game,active&&game.phase==='play');
   for(const s of this.voices){const info=this.voiceInfo.get(s);if(info?.actor&&this.spatial(info.cue,info.actor).attenuation<=.002)this.stopVoice(s);}
   const biome=game.trainTest?'forest':game.generatedEnvironment||game.environment||'forest';
   const ambientCue=['monsoon','thunderstorm'].includes(game.weather?.type)?'rain':(AMBIENT_TRACKS[biome]||'wind');

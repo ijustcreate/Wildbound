@@ -6,7 +6,7 @@ import {playerMotion,replacePlayerMotion,upgradePlayerToNative,defaultNativePlay
 import {oathlessCaptainMotion} from './oathless-captain-motion.mjs';
 import {villagerMotion} from './villager-motion.mjs';
 
-const RIG_KEYS = ['player', 'warlock', 'grim_reaper', 'safari_hunter', 'alan', 'banshee', 'succubus', 'imp', 'zombie', 'ghost', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'murk_wolf', 'dreadmane_lion', 'slime', 'shore_goblin', 'oathless_captain', 'villager', 'bat', 'rhino', 'creatureMotions', 'beastMotions', 'nightMotions','graveyard_cat','marsh_firefly'];
+const RIG_KEYS = ['arenaRigs','player', 'warlock', 'grim_reaper', 'safari_hunter', 'alan', 'banshee', 'succubus', 'imp', 'zombie', 'ghost', 'alligator', 'skeletonMotions', 'lion', 'tiger', 'wolf', 'murk_wolf', 'dreadmane_lion', 'slime', 'shore_goblin', 'oathless_captain', 'villager', 'bat', 'rhino', 'creatureMotions', 'beastMotions', 'nightMotions','graveyard_cat','marsh_firefly'];
 export function rigPack(events, items) {
   const definitions = definitionPack(events, items);
   return structuredClone(Object.fromEntries([['version', 1], ...RIG_KEYS.map(key => [key, definitions[key]])]));
@@ -30,7 +30,7 @@ export async function loadProjectRigs(events, items) {
     // Shared project data wins over this computer's old local sprite overrides.
     for (const [key, current] of Object.entries(definitionPack(events, items))) {
       if (!RIG_KEYS.includes(key) || !data[key]) continue;
-      const pairs = key.endsWith('Motions') ? Object.entries(current).map(([kind, model]) => [model, data[key][kind]]) : [[current, data[key]]];
+      const pairs = (key.endsWith('Motions')||key==='arenaRigs') ? Object.entries(current).map(([kind, model]) => [model, data[key][kind]]) : [[current, data[key]]];
       for (const [model, saved] of pairs) if (saved) {
         for (const field of ['boneSprites', 'renderOrder', 'jointAngles', 'wearables']) {
           if (!Object.hasOwn(saved, field)) delete model[field];

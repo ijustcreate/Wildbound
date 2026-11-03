@@ -607,7 +607,7 @@ export class PlayableLobby {
         if(!hero.ui&&!['inventory','use','close','interact','lobbyInteract','attack','tvA','tvX','block','salvage'].some(key=>input[key]))s.inventoryRelease=false;
         // TV jump and attack are distinct. The normal game's bottom-face attack
         // binding must not leak into the TV's bottom-face jump binding.
-        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,jump:!!input.tvA,dash:!!input.dodge,attack:!!input.tvX||(hero.device==='keyboard'&&!!input.attack),run:!!input.block,loot:!!input.interact,paused:blocked||!!hero.ui||!!s.inventoryRelease||!!hero.lobbyDisconnected};
+        commands[id]={left:!!input.tvLeft,right:!!input.tvRight,down:!!input.tvDown,up:!!input.tvUp,jump:!!input.tvA,dash:!!input.dodge,attack:!!input.tvX||(hero.device==='keyboard'&&!!input.attack),run:!!input.block,loot:!!input.interact,paused:blocked||!!hero.ui||!!s.inventoryRelease||!!hero.lobbyDisconnected};
         if(!blocked&&!hero.lobbyDisconnected&&this.tvWildbound.won&&!hero.ui&&!s.inventoryRelease&&(edge('lobbyInteract')||edge('interact'))){
           if(this.tvWildbound.victoryRewards.some(Boolean))game.openInventory(hero,'tv-victory');
           else {this.returnFromTv();return;}
@@ -701,14 +701,13 @@ export class PlayableLobby {
     if(this.television?.completed){
       const party=players.filter(p=>this.television.players.has(p.id));
       restockStarterChests(this.getGame());
-      // Keep each trip reproducible, but don't replay the same scene order on
-      // every visit to the TV. The TV seed stays the base for this lobby.
+      // Arena geometry is authored; each visit gets a fresh dice/spawn seed.
       this.tvWorldRun=(this.tvWorldRun||0)+1;
       const worldSeed=(this.television.seed+Math.imul(this.tvWorldRun,0x9e3779b9))>>>0;
       this.tvWildbound=new TvWildbound(party,worldSeed);
       this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
-      const help=this.root?.querySelector('.party-help');if(help)help.textContent='TV WORLD · D-pad / arrows: move · bottom face / Z: double jump · R / Dodge / Space / RMB: directional dash (cooldown) · Down: crouch / marked pipes enter coin room · left face / F or X: attack / flower fireball · I / Back: inventory · E / top face: collect items; after 48 spaces interact at center to call WILDBOUND (far gate is optional) · strike the board to roll';
+      const help=this.root?.querySelector('.party-help');if(help)help.textContent='MOSSROOT COLISEUM · Left/right: move · bottom face / Z: jump · Dodge: dash · left face / F or X: strike · E / top face: linked tubes, hearths & dropped items · I / Back: inventory · Strike the central board to roll and summon enemies; at 48 spaces, interact there to call WILDBOUND.';
     }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){

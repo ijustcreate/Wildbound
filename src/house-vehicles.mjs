@@ -49,7 +49,7 @@ export function vehicleMotion(g,p,input,dt){
  const both=pad&&gas>0&&brake>0;
  const power=pad?Math.abs(gas-brake):reversing?brake:gas,targetSign=reversing?-1:1;
  const opposing=power>0&&v.speed*targetSign<0;
- v.braking=both||opposing||(!pad&&reversing&&v.speed>0);
+ v.braking=both||opposing||(!pad&&reversing&&v.speed>0);v.throttle=power>0&&!v.braking?power:0;
  const oldSpeed=v.speed;
  if(both||opposing){
   const strength=both?Math.max(gas,brake):power;
@@ -81,13 +81,12 @@ export function vehicleColliderBlocked(g,p,x,y){
 }
 export function hitVehicleTree(g,p,oldX,oldY){
  const v=houseVehicleForPlayer(g,p),speed=Math.abs(v?.speed||0);if(!v||speed<14||v.effects?.hitCooldown>0)return false;
- const a=v.heading||0,c=Math.cos(a),s=Math.sin(a),tree=(g.scenery||[]).find(t=>{
-  if(t.falling||t.fallen||t.depleted||!['tree','snow_tree','palm','leafless_tree','grave_forest_tree'].includes(t.kind))return false;
-  const b=propBase(t),dx=b.x-v.x,dy=b.y-v.y,r=Math.max(8,(t.size||64)*.1);
-  return Math.abs(c*dx+s*dy)<(v.w||96)*.5+r+6&&Math.abs(-s*dx+c*dy)<(v.h||144)*.5+r+6;
- });if(!tree)return false;
+ const a=v.heading||0,c=Math.cos(a),s=Math.sin(a),collides=t=>{const b=propBase(t),dx=b.x-v.x,dy=b.y-v.y,r=Math.max(8,(t.size||64)*.1);return Math.abs(c*dx+s*dy)<(v.w||96)*.5+r+6&&Math.abs(-s*dx+c*dy)<(v.h||144)*.5+r+6;};
+ const tree=(g.scenery||[]).find(t=>!t.falling&&!t.fallen&&!t.depleted&&['tree','snow_tree','palm','leafless_tree','grave_forest_tree'].includes(t.kind)&&collides(t));
+ const rock=tree?null:(g.scenery||[]).find(t=>['rock','ice_rock','ice_spire'].includes(t.kind)&&!t.depleted&&collides(t));if(!tree&&!rock)return false;
  const sign=Math.sign(v.speed)||1,dx=p.x-oldX||s*sign,dy=p.y-oldY||-c*sign;
- if(speed>110){tree.falling=.001;setTreeFallDirection(tree,dx,dy);tree.harvest=tree.maxHarvest||Math.round(tree.size*.85);tree.logCount=Math.max(2,Math.round(tree.size/32));tree.hitAt=g.time;}
+ if(tree&&speed>110){tree.falling=.001;setTreeFallDirection(tree,dx,dy);tree.harvest=tree.maxHarvest||Math.round(tree.size*.85);tree.logCount=Math.max(2,Math.round(tree.size/32));tree.hitAt=g.time;g.onSound?.('treeBreak',tree);}
+ if(rock){rock.chunks??=Math.max(2,Math.round((rock.size||48)/16));const pieces=Math.min(rock.chunks,Math.max(1,Math.floor(speed/65)));rock.chunks-=pieces;rock.chipped=(rock.chipped||0)+pieces;rock.harvest=0;rock.hitAt=g.time;if(rock.chunks<=0)rock.depleted=true;g.dropLoot?.(rock.x,rock.y+12,['ice_rock','ice_spire'].includes(rock.kind)?'raw_ice':'stone',pieces,'Smashed by car',true);g.onSound?.('rockBreak',rock);g.persist?.();}
  v.effects??={tracks:[],splashes:[],hitCooldown:0};v.effects.hitCooldown=.45;v.damage=(v.damage||0)+speed*.025;v.speed*=-.12;g.onSound?.('carHit',v);return true;
 }
 export function syncHouseVehicle(g,p){const v=houseVehicleForPlayer(g,p);if(!v)return;v.x=p.x;v.y=p.y;v.moving=Math.abs(v.speed||0)>5;p.faceX=Math.sin(v.heading||0);p.faceY=-Math.cos(v.heading||0);v.occupants={...occupiedSeats(v)};}
@@ -106,7 +105,7 @@ export function tickVehicleEffects(g,v,dt){
   v.seats={};v.occupants={};v.occupiedBy=null;g.message?.('The car has gone under. Swim to safety!');v.ridersEjected=true;
   }
  }
- v.effects??={tracks:[],splashes:[],hitCooldown:0};v.effects.hitCooldown=Math.max(0,v.effects.hitCooldown-dt);v.effects.structureCooldown=Math.max(0,(v.effects.structureCooldown||0)-dt);v.engineStart=Math.max(0,(v.engineStart||0)-dt);if(v.engineOn){v.engineSoundTimer=(v.engineSoundTimer||0)-dt;if(v.engineSoundTimer<=0&&Math.abs(v.speed||0)>2){v.engineSoundTimer=.7;g.onSound?.('engineRun',v);}}if(!v.submerging)v.sink=Math.max(0,(v.sink||0)-dt*.35);if(v.submerging&&v.sink<1){v.effects.sinkRipple=(v.effects.sinkRipple||0)-dt;if(v.effects.sinkRipple<=0){v.effects.sinkRipple=.3;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}const rear=(side)=>{const a=v.heading||0,lx=side*(v.w||96)*.47,ly=(v.h||144)*.28;return {x:v.x+Math.cos(a)*lx-Math.sin(a)*ly,y:v.y+(Math.sin(a)*lx+Math.cos(a)*ly)*.72};};const wheels=[rear(-1),rear(1)];v.effects.trackTimer=(v.effects.trackTimer||0)-dt;if(Math.abs(v.speed||0)>8&&!v.wet&&!v.submerging&&v.effects.trackTimer<=0){v.effects.trackTimer=.06;for(let i=0;i<2;i++){const now=wheels[i],old=v.effects.lastWheels?.[i];if(old&&distance(old,now)>1&&distance(old,now)<90)v.effects.tracks.push({x:old.x,y:old.y,x2:now.x,y2:now.y,angle:v.heading||0,life:6,skid:Math.abs(v.steer||0)>.55});}v.effects.lastWheels=wheels;}else if(Math.abs(v.speed||0)<=8||v.wet||v.submerging)v.effects.lastWheels=wheels;if(v.wet&&Math.abs(v.speed||0)>12){v.effects.splashTimer=(v.effects.splashTimer||0)-dt;if(v.effects.splashTimer<=0){v.effects.splashTimer=.12;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}for(const t of v.effects.tracks)t.life-=dt;v.effects.tracks=v.effects.tracks.filter(t=>t.life>0).slice(-480);tickVehicleWaterParticles(v,dt);for(const s of v.effects.splashes)s.life-=dt;v.effects.splashes=v.effects.splashes.filter(s=>s.life>0).slice(-60);}
+ v.effects??={tracks:[],splashes:[],hitCooldown:0};v.effects.hitCooldown=Math.max(0,v.effects.hitCooldown-dt);v.effects.structureCooldown=Math.max(0,(v.effects.structureCooldown||0)-dt);v.engineStart=Math.max(0,(v.engineStart||0)-dt);if(!v.submerging)v.sink=Math.max(0,(v.sink||0)-dt*.35);if(v.submerging&&v.sink<1){v.effects.sinkRipple=(v.effects.sinkRipple||0)-dt;if(v.effects.sinkRipple<=0){v.effects.sinkRipple=.3;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}const rear=(side)=>{const a=v.heading||0,lx=side*(v.w||96)*.47,ly=(v.h||144)*.28;return {x:v.x+Math.cos(a)*lx-Math.sin(a)*ly,y:v.y+(Math.sin(a)*lx+Math.cos(a)*ly)*.72};};const wheels=[rear(-1),rear(1)];v.effects.trackTimer=(v.effects.trackTimer||0)-dt;if(Math.abs(v.speed||0)>8&&!v.wet&&!v.submerging&&v.effects.trackTimer<=0){v.effects.trackTimer=.06;for(let i=0;i<2;i++){const now=wheels[i],old=v.effects.lastWheels?.[i];if(old&&distance(old,now)>1&&distance(old,now)<90)v.effects.tracks.push({x:old.x,y:old.y,x2:now.x,y2:now.y,angle:v.heading||0,life:6,skid:Math.abs(v.steer||0)>.55});}v.effects.lastWheels=wheels;}else if(Math.abs(v.speed||0)<=8||v.wet||v.submerging)v.effects.lastWheels=wheels;if(v.wet&&Math.abs(v.speed||0)>12){v.effects.splashTimer=(v.effects.splashTimer||0)-dt;if(v.effects.splashTimer<=0){v.effects.splashTimer=.12;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}for(const t of v.effects.tracks)t.life-=dt;v.effects.tracks=v.effects.tracks.filter(t=>t.life>0).slice(-480);tickVehicleWaterParticles(v,dt);for(const s of v.effects.splashes)s.life-=dt;v.effects.splashes=v.effects.splashes.filter(s=>s.life>0).slice(-60);}
 export function vehicleBumper(v,sign=Math.sign(v.speed)||1){
  const fx=Math.sin(v.heading||0)*sign,fy=-Math.cos(v.heading||0)*sign;
  return {x:v.x+fx*(v.h||144)*.5,y:v.y+fy*(v.h||144)*.5,faceX:fx,faceY:fy};

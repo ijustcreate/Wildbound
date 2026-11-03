@@ -58,20 +58,29 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
     const canvas=document.createElement('canvas');canvas.width=200;canvas.height=200;canvas.className='creation-wheel';canvas.setAttribute('aria-label','Color spectrum. Arrow keys move the pointer; Enter chooses.');box.append(canvas);
     const c=canvas.getContext('2d'),base=c.createImageData(200,200);
     const paint=()=>{
-      for(let y=0;y<200;y++)for(let x=0;x<200;x++) {const dx=(x-100)/96,dy=(y-100)/96,i=(y*200+x)*4;if(Math.hypot(dx,dy)>1)continue;const color=wheelColor(dx,dy,point.value);base.data[i]=parseInt(color.slice(1,3),16);base.data[i+1]=parseInt(color.slice(3,5),16);base.data[i+2]=parseInt(color.slice(5,7),16);base.data[i+3]=255;}
+      for(let y=0;y<200;y++)for(let x=0;x<200;x++) {const dx=(x-100)/96,dy=(y-100)/96,i=(y*200+x)*4;if(Math.hypot(dx,dy)>1)continue;const color=wheelColor(dx,dy,1);base.data[i]=parseInt(color.slice(1,3),16);base.data[i+1]=parseInt(color.slice(3,5),16);base.data[i+2]=parseInt(color.slice(5,7),16);base.data[i+3]=255;}
       c.putImageData(base,0,0);c.beginPath();c.arc(100+point.x*96,100+point.y*96,5,0,Math.PI*2);c.lineWidth=4;c.strokeStyle='#172b27';c.stroke();c.lineWidth=2;c.strokeStyle='#ffffff';c.stroke();
+      slider.value=String(Math.round(point.value*100));brightnessValue.textContent=slider.value+'%';
+      slider.style.background='linear-gradient(to right, #000, '+wheelColor(point.x,point.y,1)+')';
       choose.style.setProperty('--swatch',wheelColor(point.x,point.y,point.value));
       previewColor(key,wheelColor(point.x,point.y,point.value));
     };
     const move=(x,y)=>{const length=Math.max(1,Math.hypot(x,y));point.x=x/length;point.y=y/length;paint();};
     canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);const r=canvas.getBoundingClientRect();move(((e.clientX-r.left)/r.width*200-100)/96,((e.clientY-r.top)/r.height*200-100)/96);};
     canvas.onpointermove=e=>{if(canvas.hasPointerCapture(e.pointerId))canvas.onpointerdown(e);};
-    const brightness=add('Brightness',()=>{wheel.adjusting=!wheel.adjusting;brightness.textContent=wheel.adjusting?'‹ Brightness ›':'Brightness';},box);
+    const brightnessRow=document.createElement('div');brightnessRow.className='creation-brightness';box.append(brightnessRow);
+    const brightness=add('Brightness',()=>{wheel.adjusting=!wheel.adjusting;brightness.setAttribute('aria-pressed',String(wheel.adjusting));},brightnessRow);brightness.setAttribute('aria-pressed','false');
+    const brightnessValue=document.createElement('output');brightnessRow.append(brightnessValue);
+    const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='100';slider.step='1';slider.setAttribute('aria-label','Color brightness');brightnessRow.append(slider);
+    slider.oninput=()=>{point.value=Number(slider.value)/100;paint();};
+    slider.onfocus=()=>{wheel.adjusting=true;brightness.setAttribute('aria-pressed','true');};
+    slider.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();choose.click();}};
     const choose=add('Choose color',()=>{previewColor(key,wheelColor(point.x,point.y,point.value));close({commit:true});},box);choose.className='creation-color-row';
     const chip=document.createElement('i');choose.append(chip);
     add('Back to palette',()=>showPalette(key,source),box);
     const hint=document.createElement('p');hint.dataset.creationHelp='wheel';box.append(hint);updateLabels();
-    wheel={adjusting:false,move:(x,y)=>{if(wheel.adjusting){point.value=Math.max(0,Math.min(1,point.value+(x||-y)*.05));paint();}else move(point.x+x*.06,point.y+y*.06);},accept:()=>{if(wheel.adjusting){wheel.adjusting=false;brightness.textContent='Brightness';}else choose.click();},back:()=>showPalette(key,source)};
+    wheel={adjusting:false,move:(x,y)=>{if(wheel.adjusting){point.value=Math.max(0,Math.min(1,point.value+(x||-y)*.05));paint();}else move(point.x+x*.06,point.y+y*.06);},accept:()=>{if(wheel.adjusting){wheel.adjusting=false;brightness.setAttribute('aria-pressed','false');choose.focus({preventScroll:true});}else choose.click();},back:()=>showPalette(key,source)};
+    choose.onfocus=()=>{wheel.adjusting=false;brightness.setAttribute('aria-pressed','false');};
     paint();choose.focus({preventScroll:true});
   };
   const showPalette=(key,source)=>{
@@ -127,7 +136,7 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
   };
   panel.addEventListener('focusin',e=>{const index=buttons().indexOf(e.target);if(index>=0){if(popup)popupFocus=index;else s.focus=index;highlight();}});
   // Trap Tab within this player's pop-up without blocking other controllers.
-  panel.addEventListener('keydown',e=>{if(popup&&e.key==='Tab'){e.preventDefault();const list=buttons(),index=list.indexOf(document.activeElement);list[(index+(e.shiftKey?-1:1)+list.length)%list.length]?.focus();}});
+  panel.addEventListener('keydown',e=>{if(popup&&e.key==='Tab'){e.preventDefault();const list=[...popup.querySelectorAll('button,input[type=range]')],index=list.indexOf(document.activeElement);list[(index+(e.shiftKey?-1:1)+list.length)%list.length]?.focus();}});
   updateLabels();refresh();
   const sizeObserver=typeof ResizeObserver==='function'?new ResizeObserver(positionColorPopup):null;sizeObserver?.observe(previewRow);sizeObserver?.observe(panel);
   let lastPreview=-Infinity;

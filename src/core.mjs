@@ -5,7 +5,7 @@ import {tickBroomFlight} from './broom-mount.mjs';
 import {vehicleRollsOver} from './vehicle-ground.mjs';
 import {awakenCemeteryPumpkins} from './squashling-awakening.mjs';
 import {DRAGON_EVENTS,dragonBreath} from './dragon-events.mjs';
-import {swordLoadout,swordTiming,swordStep} from './sword-feel.mjs';
+import {swordLoadout,swordTiming,swordStep,swordChargeReach,swordChargeWidth,tickSwordDash} from './sword-feel.mjs';
 import {REALMS,realmVoidBlocked,realmSafeSpawn,realmEventContext} from './realm-world.mjs';
 import {REALM_EVENTS,startRealmEvent,seedRealmLife} from './realm-life.mjs';
 import {SHORE_GOBLIN_EVENT,tickShoreGoblin} from './shore-goblin-ai.mjs';
@@ -53,6 +53,7 @@ import {IMP_EVENT,initializeImp,tickImp,tickImpHazards} from './imps.mjs';
 import {ZOMBIE_EVENT,initializeZombie,tickZombie} from './zombies.mjs';
 import {isCharmed,clearCharm,tickCharmStatuses,charmInputs,tickCharmedPlayer,charmCanTarget,playerCombatTargets} from './succubus-charm.mjs';
 import {seedWildFauna,tickWildFauna} from './wild-fauna.mjs';
+import {throwHeldChicken} from './chicken-carry.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {initializeAnaconda,updateAnacondaBody,anacondaBlocks} from './anaconda-body.mjs';
 import {stumpShape,rockSurface,raisedSurfaceBlocked,supplyChestBlocked} from './terrain-support.mjs';
@@ -79,7 +80,7 @@ import {separateActorBodies} from './enemy-separation.mjs';
 import { initializeField, record, tickField } from "./field-systems.mjs";
 import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
-import {damageStructureMelee} from './structure-destruction.mjs';
+import {damageStructureMelee,damageSupplyChestMelee} from './structure-destruction.mjs';
 import {VILLAGER_EVENT,spawnVillagerCamp,tickVillagers} from './villagers.mjs';
 import {NPC_QUEST_EVENT} from './npc-quest-data.mjs';
 import {spawnQuestNpc,tickNpcQuests,recordNpcQuestKill} from './npc-quests.mjs';
@@ -101,7 +102,7 @@ import { TABLE, footprintHit, crossesTable, generateWorld } from "./world.mjs";
 import { initAdventure, initHero, adventureMethods } from "./adventure.mjs";
 import { ITEMS, stat, give, itemKind, hasSetSkill, refreshVitals } from "./items.mjs";
 import { rules, creatures } from "./definitions.mjs";
-import { meleeProfile, meleeCanHit } from './melee-geometry.mjs';
+import { meleeProfile, meleeCanHit, meleeBodyRadius } from './melee-geometry.mjs';
 import {GRAVEYARD_EVENTS,GHOST_EVENT,cemeteryEvent} from './graveyard-events.mjs';
 import {strikeTallGrass} from './tall-grass.mjs';
 import {graveyardBlocked,harvestGravestone,tickGraveyard,GRAVE_EMERGENCE_SECONDS} from './graveyard-world.mjs';
@@ -738,7 +739,7 @@ export class Game {
       dy *= 0.45;
     }
     const ground = waterAt(this, actor.x, actor.y + collisionOffset(this,collider));
-    const canSwim=this.players.includes(actor)||actor.heroFollower===true||['snake','anaconda','oathless_captain'].includes(actor.kind)||actor.villagerId==='april';
+    const canSwim=this.players.includes(actor)||actor.heroFollower===true||['snake','anaconda','oathless_captain','river_otter'].includes(actor.kind)||actor.villagerId==='april';
     if(canSwim&&groundedForTerrain&&ground==='water'){dx*=.58;dy*=.58;}
     if (groundedForTerrain && isQuicksand(ground)) {
       dx *= 0.32;
@@ -769,7 +770,7 @@ export class Game {
     else actor.sink = Math.max(0, (actor.sink || 0) - 0.2);
     }
     actor.moving = moved > 0.01;
-    if(['snake','anaconda','oathless_captain'].includes(actor.kind)||actor.villagerId==='april')actor.swimming=waterAt(this,actor.x,actor.y)==='water';
+    if(['snake','anaconda','oathless_captain','river_otter'].includes(actor.kind)||actor.villagerId==='april')actor.swimming=waterAt(this,actor.x,actor.y)==='water';
     actor.step = (actor.step || 0) + moved * 0.13;
     if(actor.kind==='slime'&&moved>.01){actor.oozeTrailDistance=(actor.oozeTrailDistance||0)+moved;if(actor.oozeTrailDistance>=11){actor.oozeTrailDistance=0;actor.oozeTrail||=[];actor.oozeTrail.push({x:oldX,y:oldY,time:this.time});if(actor.oozeTrail.length>8)actor.oozeTrail.shift();}}
     if (this.players.includes(actor)) movementNoise(this, actor, moved);
@@ -960,6 +961,7 @@ export class Game {
   attack(p, charge = 0) {
     if(p.frozen>0)return false;
     if(this.worldTravel)return false;
+    if(p.heldChickenId)return throwHeldChicken(this,p);
     // Test-board hits consume the attack, including at the normal table's edge.
     if(canHitEventTestBoard(this,p))return hitEventTestBoard(this,p,EVENTS);
     if(this.openingBoard&&this.generatedEnvironment!=='lobby'&&Math.hypot(p.x-800,p.y-800)<100&&this.phase==='play'&&p.hp>0&&!p.ui&&!p.room){
@@ -977,7 +979,7 @@ export class Game {
     if(!isCharmed(p))startleGraveyardCats(this,p);
     if(throwBoomerang(this,p))return true;
     if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
-    delete p.swordStrike;delete p.swordFacing;
+    delete p.swordStrike;delete p.swordFacing;delete p.swordDash;
     // Utility items do no melee damage; rifles have their own aimed shot and reload.
     if(tryEquipmentAttack(this,p,charge)){
       if(this.canHitBoard(p)){this.tableShake=.2;this.hitTable(p);}
@@ -1015,6 +1017,11 @@ export class Game {
     if(swordLoadout(p)){
       if(combo.duration===.34)p.attack=p.attackDuration=.30;
       else if(combo.duration===.55)p.attack=p.attackDuration=.46;
+      if(p.swordDashRequested){
+        const n=Math.hypot(p.faceX,p.faceY)||1;p.faceX/=n;p.faceY/=n;
+        p.attackClip='swipe_big';p.attack=p.attackDuration=.46;p.spin=0;
+        p.swordDash={originX:p.x,originY:p.y,x:p.faceX,y:p.faceY,length:swordChargeReach(charge),travelled:0,hits:new Set(),hand1:p.equipment.hand1,hand2:p.equipment.hand2};
+      }
       p.swordStrike={charge,combo:{...combo},hand1:p.equipment.hand1,hand2:p.equipment.hand2};
       p.swordFacing={x:p.faceX,y:p.faceY};p.swordHitPause=0;p.swordPrevious=0;
       return true;
@@ -1034,18 +1041,21 @@ export class Game {
     const handItems=[p.equipment.hand1,p.equipment.hand2].filter(Boolean);
     const blade=handItems.some(id=>['sword','dagger','scythe'].includes(itemKind(id)));
     const flame=handItems.some(id=>ITEMS[id]?.fire||ITEMS[id]?.meleeBurn);
-    const grassHit=strikeTallGrass(this,p,melee.range,{blade,fire:flame});
+    const grassHit=!p.swordDash&&strikeTallGrass(this,p,melee.range,{blade,fire:flame});
     if(grassHit)this.persist();
     const spin =
-      charge > 0.6 &&
+      !p.swordDash && charge > 0.6 &&
       [p.equipment.hand1, p.equipment.hand2].some(
         (id) => itemKind(id) === "sword",
       );
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
+    let stickHit=!!grassHit;
+    if(!p.swordDash){
     const toyHit=!isCharmed(p)&&hitToyTrain(this,p,spin?96:melee.range);
-    const structureHit=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword')&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin);
-    let stickHit=grassHit||!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
+    const structureWeapon=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword');
+    const structureHit=!isCharmed(p)&&(damageSupplyChestMelee(this,p,damage,spin?96:melee.range,spin)||structureWeapon&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin));
+    stickHit=grassHit||!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
     if(structureHit||toyHit){stickHit=true;this.persist();}
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
@@ -1054,7 +1064,13 @@ export class Game {
       const x=Math.max(pane.x,Math.min(p.x,pane.x+pane.w)),y=Math.max(pane.y,Math.min(p.y,pane.y+pane.h)),dx=x-p.x,dy=y-p.y,d=Math.hypot(dx,dy);
       if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35)){stickHit=true;breakWindow(this,x,y,2);}
     }
+    }
     for (const e of playerCombatTargets(this,p)) {
+      if(p.swordDash){
+        const dash=p.swordDash,dx=e.x-p.x,dy=e.y-p.y,along=dx*dash.x+dy*dash.y,across=Math.abs(dx*dash.y-dy*dash.x);
+        const lane=(e.x-dash.originX)*dash.x+(e.y-dash.originY)*dash.y;
+        if(dash.hits.has(e)||lane<0||lane>dash.length||along < -4||along>meleeBodyRadius(e)+10||across>swordChargeWidth/2)continue;
+      }
       let struckSection=null;
       const dx = e.x - p.x,
         dy = e.y - p.y,
@@ -1065,6 +1081,7 @@ export class Game {
           if(visible&&e.kind==='anaconda')struckSection=point;return visible;
         })
       ) {
+        if(p.swordDash)p.swordDash.hits.add(e);
         stickHit=true;
         if(this.players.includes(e)){this.hurt(e,damage,p);continue;}
         e.killedBy=p.id;e.ritualKill=[p.equipment.hand1,p.equipment.hand2].includes('ritual_dagger');
@@ -1532,6 +1549,9 @@ export class Game {
         }
   }
   tickPlayerCombatTimers(p,dt){
+      if(p.swordDash&&(p.hp<=0||p.ui||p.room||p.consumeInput||p.stun||p.frozen||p.sleeping||p.swimming||p.dashTime||!p.swordStrike||p.swordDash.hand1!==p.equipment.hand1||p.swordDash.hand2!==p.equipment.hand2)){
+        delete p.swordDash;delete p.swordStrike;delete p.swordFacing;p.charge=0;p.swordChargeAim=false;
+      }
       p.deathTime=p.hp<=0?(p.deathTime||0)+dt:0;p.getUpTime=Math.max(0,(p.getUpTime||0)-dt);
       p.sleeping = Math.max(0, (p.sleeping || 0) - dt);
       p.interactAnimation=Math.max(0,(p.interactAnimation||0)-dt);p.reviveAnimation=Math.max(0,(p.reviveAnimation||0)-dt);
@@ -1542,7 +1562,7 @@ export class Game {
       p.swordPrevious=1-(p.attack||0)/(p.attackDuration||.34);
       p.attack = Math.max(0, p.attack - (dt-swordPause));
       if(!p.attack&&!p.swordStrike)delete p.swordFacing;
-      if(p.swordStrike&&p.attack===0){const strike=p.swordStrike;delete p.swordStrike;if(p.hp>0&&!p.room&&!p.ui&&!p.consumeInput&&!p.stun&&!p.frozen&&!p.sleeping&&!p.dashTime&&!p.swimming&&strike.hand1===p.equipment.hand1&&strike.hand2===p.equipment.hand2)this.resolveMelee(p,strike.charge,strike.combo);}
+      if(p.swordStrike&&p.attack===0&&!p.swordDash){const strike=p.swordStrike;delete p.swordStrike;if(p.hp>0&&!p.room&&!p.ui&&!p.consumeInput&&!p.stun&&!p.frozen&&!p.sleeping&&!p.dashTime&&!p.swimming&&strike.hand1===p.equipment.hand1&&strike.hand2===p.equipment.hand2)this.resolveMelee(p,strike.charge,strike.combo);}
       if(p.queuedAttack&&p.attack===0){const queued=p.queuedAttack;delete p.queuedAttack;if(queued.until>=this.time&&!p.room&&!p.ui&&p.hp>0)this.attack(p,queued.charge);}
       p.spin = Math.max(0, (p.spin || 0) - dt);
       p.stun = Math.max(0, (p.stun || 0) - dt);
@@ -1558,6 +1578,7 @@ export class Game {
     return swordPause;
   }
   tickMeleeContact(p){
+      if(p.swordDash){tickSwordDash(this,p);return;}
       if(p.swordStrike){
         if(p.hp<=0||p.room||p.ui||p.stun>0||p.frozen>0||p.dashTime>0||p.swimming||p.swordStrike.hand1!==p.equipment.hand1||p.swordStrike.hand2!==p.equipment.hand2){delete p.swordStrike;delete p.swordFacing;}
         else if(1-p.attack/(p.attackDuration||.34)>=swordTiming(p.attackClip).contact){const strike=p.swordStrike;delete p.swordStrike;this.resolveMelee(p,strike.charge,strike.combo);}
@@ -2398,7 +2419,7 @@ export class Game {
       const dashMotion=this.playerDashMotion(p,input,dt,mx,my,controlled);
       const speed=dashMotion.speed;mx=dashMotion.x;my=dashMotion.y;
       if(passenger){p.moving=false;p.walking=false;}
-      else if (p.bowAiming||p.holdingPosition) {p.moving=false;p.walking=false;}
+      else if (p.bowAiming||p.holdingPosition||p.swordChargeAim||p.swordDash) {p.moving=false;p.walking=false;}
       else if (!this.openingBoard) {
         const oldX=p.x,oldY=p.y,motion=p.vehicleId?vehicleMotion(this,p,input,dt):((!controlled||controlledCat)&&!p.dashTime&&!p.dashRecovery?jumpMotion(p,mx,my,speed*(controlledCat?1.15:1),dt):null)||iceMotion(this,p,mx,my,speed,dt);
         const swordProgress=1-(p.attack||0)/(p.attackDuration||.34),swordDistance=p.swordFacing&&!p.dashTime&&!p.dashRecovery&&!p.swimming&&!(p.jumpHeight>0)?swordStep(p.attackClip,p.swordPrevious,swordProgress):0;

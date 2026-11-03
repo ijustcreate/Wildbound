@@ -1,0 +1,12 @@
+{
+  "status": "Draft concept references; user aesthetic approval remains pending.",
+  "tool": "Built-in imagegen",
+  "common": "Use case: stylized-concept. Asset type: draft reference sheet for editable native pixel art, not final game sprites. {SUBJECT} Style: chunky carefully clustered pixel art, dark warm outlines, 4-tone material ramps, cream highlights, forest emerald and amber accents. Neutral warm gray background, clean separated studies, no gradients or microtexture. These are concept references for a fantasy jungle platform arena. Include only the described subject.",
+  "subjects": {
+    "bramblecap": "An original Wildbound mushroom-footed enemy called Bramblecap: broad chestnut mushroom cap with two tiny cream spots, heavy slanted eyebrows, cream stem face, two broad root feet. No arms. Expressive woodland creature, recognizable at 32 pixels. Show front, front three-quarter, side, rear three-quarter, back and a walk/stomp pose.",
+    "mossback": "An original Wildbound turtle enemy called Mossback: low emerald domed shell, broad three amber shell plates, small ochre head with beak, stout ochre feet, short tail, small fern sprout on shell. Show front, front three-quarter, side, rear three-quarter, back, plus withdrawn shell and sliding-shell pose.",
+    "ruins-kit": "A modular moss-covered forest-ruin platform kit for a side-view Wildbound arena: stone turf platform, corner tower, broken arch, hanging vine, torch, wooden bridge, foreground fern. Each isolated piece clearly separated, each shown straight side-on. Large readable stone clusters and limited moss, not noisy texture.",
+    "board": "A central Wildbound board altar for a side-view platform game: wide wooden game board on two carved stone legs, cream winding board path with amber spaces, one central glowing die rune. Straight side-on, hero-size comparison silhouette, tiny hit flash and rune activation studies. Game board must read clearly from distance.",
+    "tube": "A paired travel tube for Wildbound forest ruins: squat emerald copper tube with heavy flared lip, warm metal shadow, tiny amber A rune on front, moss at base. Straight side-on, isolated top opening, activation ring and emerging creature studies. Simple crisp silhouette."
+  }
+}

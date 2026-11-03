@@ -9,7 +9,7 @@ import {REALM_SPRITES} from '../src/realm-art.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 test('bayou has a branching island network, broad shallows, deep channels and no tiled road grid',()=>{
  for(const seed of [1,42,75,917]){const w=realmWorld(seed,'swamp',{authored:false}),count=k=>w.terrain.filter(t=>t===k).length;
-  assert.ok(w.realmState.chambers.length>=14);assert.ok(count('shallow')>600);assert.ok(count('water')>250);assert.ok(count('marsh_grass')>200);assert.equal(count('bridge'),0);
+  assert.ok(w.realmState.chambers.length>=14);assert.ok(count('shallow')>600);assert.ok(count('water')>250);assert.ok(count('marsh_grass')>200);assert.ok(count('bridge')>0&&count('bridge')<=9,'only three short plank crossings');
   const degree=w.realmState.chambers.map((_,i)=>w.realmState.links.filter(l=>l.includes(i)).length);assert.ok(degree.some(d=>d===1));assert.ok(degree.some(d=>d>=3));
  }
 });

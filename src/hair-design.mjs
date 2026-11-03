@@ -163,9 +163,6 @@ export function drawFacialHair(c,h,look,d,scale=1){
  }
  const p=hairPalette(look.facialHairColor||look.hairColor),profile=d===2||d===6,turn=d<4?-1:1;
  const shape=(pts,tone='base')=>polygon(c,h,pts.map(([x,y])=>[x+(profile?turn*.7:0),y]),p[tone],scale);
- if(['moustache','goatee','shortbeard','fullbeard'].includes(style)){
-  shape([[-2.5,1.6],[-.5,1.2],[0,1.7],[.5,1.2],[2.5,1.6],[3,2.7],[1,2.5],[0,2],[-1,2.5],[-3,2.7]],'shade');
- }
  if(style==='sideburns'||style==='shortbeard'||style==='fullbeard')for(const s of [-1,1])shape([[s*4.5,-.2],[s*3.5,.2],[s*3.5,3.5],[s*4.5,3]],'shade');
  if(['shortbeard','fullbeard','goatee'].includes(style)){
   const w=style==='goatee'?1.6:3.8,b=style==='fullbeard'?7:5;
@@ -173,5 +170,10 @@ export function drawFacialHair(c,h,look,d,scale=1){
   shape([[-w+.5,3],[-1,3.6],[1,3.6],[w-.5,3],[w-1,4.5],[.5,b-.5],[-.5,b-.5],[-w+1,4.5]],'base');
   shape([[-w+.7,3.5],[-1,4],[-.5,b-1],[-1,b-1],[-w+1,4.5]],'light');
  }
- if(style==='stubble')for(const [x,y]of [[-3,2],[-2,3],[-1,4],[1,4],[2,3],[3,2]])shape([[x,y],[x+.5,y],[x+.5,y+.5],[x,y+.5]],'shade');
+ // Moustache sits below the nose, after the beard so its lip opening stays clear.
+ if(['moustache','goatee','shortbeard','fullbeard'].includes(style)){
+  shape([[-2.5,2],[-.7,1.9],[0,2.2],[.7,1.9],[2.5,2],[2.7,2.7],[.7,2.6],[0,2.4],[-.7,2.6],[-2.7,2.7]],'shade');
+ }
+ // Stubble is a connected skin tint, painted under the facial features by the head.
+
 }

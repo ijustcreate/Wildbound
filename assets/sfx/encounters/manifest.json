@@ -4565,6 +4565,47 @@
     "source": "Original deterministic synthesis; no external samples"
   },
   {
+    "id": "encounter-river-otter-encounter-3eb929a6",
+    "name": "River otter encounter",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-river-otter-encounter-3eb929a6.wav",
+    "duration": 1.1821121692890302,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.43,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.229,
+        "duration": 0.301,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.438,
+        "duration": 0.355,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.542,
+        "duration": 0.414,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.691,
+        "duration": 0.167,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
     "id": "encounter-115",
     "name": "Jammer / triceratops encounter",
     "role": "ordinary",

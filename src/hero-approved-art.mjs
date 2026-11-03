@@ -1,4 +1,5 @@
 // Approved compact hero faces and hair, fitted to the existing editable rig.
+import {facialHairStyle} from './hair-design.mjs';
 import {hairDrawing,NATIVE_HAIR_REVISION} from './hero-hair-native.mjs';
 
 const mix=(a,b,t)=>'#'+a.slice(1).match(/../g).map((v,i)=>Math.round(parseInt(v,16)*(1-t)+parseInt(b.slice(1+i*2,3+i*2),16)*t).toString(16).padStart(2,'0')).join('');
@@ -17,7 +18,7 @@ function pen(c,h,key){
 
 export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
  const handles=['eyeL','eyeR','earL','earR','nose','mouth'].map(n=>[visible(n),Math.round((p[n].x-p.head.x)*2),Math.round((p[n].y-p.head.y)*2)]);
- const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,d,skin,look.face,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
+ const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,d,skin,look.face,look.facialHair,look.facialHairColor,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
  if(r.cached)return r.flush();
  const shadow=mix(skin,'#83504b',.30),light=mix(skin,'#fff0d0',.20),blush=mix(skin,'#d87d78',.26);
  if(!front){
@@ -25,7 +26,9 @@ export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
   const widths=[3,4,4.5,5,5,5,5,5,5,5,5,4.5,4.5,4,3.5,2.5,1.5];
   widths.forEach((half,i)=>{
    const w=half*(profile?.86:1),y=-4.5+i*.5;
-   r(-w,y,w*2,.5,ink);r(-w+.5,y,Math.max(.5,w*2-1),.5,skin);
+   const stubble=!back&&facialHairStyle(look)==='stubble'&&y>=1.5;
+   const tone=stubble?mix(skin,look.facialHairColor||look.hairColor||'#593923',.18):skin;
+   r(-w,y,w*2,.5,y>=1.5?shadow:ink);r(-w+.5,y,Math.max(.5,w*2-1),.5,tone);
    if(i>2&&i<10){r(-w+.5,y,1,.5,light);r(w-1,y,.5,.5,shadow);}
   });
   return r.flush();
@@ -41,6 +44,14 @@ export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
   }else{r(x-.5,dy+(covered?.5:-.5),1,covered?1:1.5,shadow);r(x-.5,dy+(covered?.5:-.5),.5,1,skin);}
  }
  if(back||parts==='ears')return r.flush();
+ // The scar crosses the brow and cheek behind the eye rather than covering it.
+ if(look.face==='scar'){
+  const eye=p[d===2?'eyeL':'eyeR'],x=eye.x-p.head.x,y=eye.y-p.head.y;
+  r(x+.5,y-2.5,1,1.5,mix(skin,'#9c5455',.68));
+  r(x,y-2.5,.5,1,light);
+  r(x+.5,y+1,1,2.5,mix(skin,'#9c5455',.68));
+  r(x+1.5,y+1.5,.5,1,light);
+ }
  for(const name of ['eyeL','eyeR'])if(visible(name)){
   const q=p[name],far=(d===1&&name==='eyeL')||(d===7&&name==='eyeR');
   const diagonal=d===1||d===7;
@@ -56,7 +67,7 @@ export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
  if(visible('mouth')){const q=p.mouth;if(look.laughing){r(q.x-p.head.x-1,2,profile?1:2,1.5,ink);r(q.x-p.head.x-.5,3,1,.5,'#b47b74');}else r(q.x-p.head.x-.5,Math.min(2.5,q.y-p.head.y),profile?.5:1,.5,'#925c55');}
  const cheek=profile?[turn*2.5]:[-2.5,2.5];
  if(look.face==='freckles')for(const x of cheek){r(x-.5,1,.5,.5,shadow);r(x+.5,1.5,.5,.5,shadow);}
- if(look.face==='scar'){r(profile?turn*2:2,-.5,.5,1.5,mix(skin,'#9c5455',.5));r(profile?turn*2.5:2.5,1,.5,1,light);}
+
  if(look.face==='warpaint')for(const x of cheek)r(x-.5,1.5,1.5,.5,'#436880');
 
  return r.flush();

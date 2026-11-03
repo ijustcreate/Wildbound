@@ -111,15 +111,15 @@ test('2D board rolls on a fresh hit and remains isolated from the normal game',(
   for(let i=0;i<90;i++)mode.step(.05,{one:{attack:false}});
   mode.step(.016,{one:{attack:true}});
   assert.ok(mode.progress>progress);
-  assert.deepEqual(new Set(mode.enemies.map(e=>e.kind)),new Set(['goomba','skeleton','skeleton_unarmed','archer','lion','tiger','bat']));
+  assert.deepEqual(new Set(mode.enemyRoster),new Set(['bramblecap','mossback']));assert.ok(mode.waveQueue.length>0);
   assert.equal(hero.progress,undefined);
 });
 
-test('2D movement scrolls, goombas stomp, and the exit requires board progress',()=>{
+test('2D movement scrolls, Bramblecaps stomp, and the exit requires board progress',()=>{
   const mode=new TvWildbound([{id:'one',name:'Scout'}],12),p=mode.players.get('one');
   for(let i=0;i<57;i++)mode.step(.05);
-  const goomba=mode.enemies.find(e=>e.kind==='goomba');
-  Object.assign(p,{x:goomba.x,y:goomba.y-31,vy:250,grounded:false,invulnerable:0});
+  const goomba=mode.spawnAt({x:1400,y:437,face:1},'bramblecap');goomba.emerging=0;
+  Object.assign(p,{x:goomba.x,y:goomba.y-goomba.h-7,vy:250,grounded:false,invulnerable:0});
   mode.step(.03);assert.equal(goomba.alive,false);assert.ok(p.vy<0);
   Object.assign(p,{x:1700,y:437,vy:0});mode.step(.016,{one:{right:true}});assert.ok(mode.camera>0);
   Object.assign(p,{x:TV_WILDBOUND_WIDTH-101,y:437,vy:0});mode.step(.05,{one:{right:true}});
@@ -134,29 +134,15 @@ test('final board progress can call WILDBOUND at the center without reaching the
  assert.equal(mode.won,true);assert.match(mode.message,/Scout calls WILDBOUND/);assert.ok(p.x<TV_WILDBOUND_WIDTH-100,'the player remains at the center board');
 });
 
-test('side-view archer fires, cats chase, and bats swoop through the player lane',()=>{
-  const mode=new TvWildbound([{id:'one',name:'Scout'}],5),p=mode.players.get('one');
-  for(let i=0;i<57;i++)mode.step(.05);
-  const archer=mode.enemies.find(e=>e.kind==='archer');
-  Object.assign(p,{x:archer.x-100,y:437,invulnerable:10});mode.camera=archer.x-350;archer.cooldown=0;
-  mode.step(.016);assert.equal(mode.projectiles.length,1);assert.ok(mode.projectiles[0].vx<0);
-  const lion=mode.enemies.find(e=>e.kind==='lion');
-  Object.assign(p,{x:lion.x-90,y:437});const before=lion.x;
-  mode.step(.05);assert.ok(lion.x<before,'lion turns and charges toward the player');
-  const bat=mode.enemies.find(e=>e.kind==='bat');
-  const heights=[];for(let i=0;i<90;i++){mode.step(.05);heights.push(bat.y);}
-  assert.ok(Math.max(...heights)>390,'bat reaches the grounded player lane');
-});
-
-test('TV Wildbound builds a seed-shuffled course from reusable scene templates',()=>{
- const a=new TvWildbound([],42),b=new TvWildbound([],42),other=new TvWildbound([],43);
+test('TV arena has authored routes, only its chosen enemies, and starts calm',()=>{
+ const a=new TvWildbound([],42),b=new TvWildbound([],43);
+ assert.deepEqual(a.platforms,b.platforms);assert.deepEqual(a.tubes,b.tubes);
+ assert.equal(a.enemies.length,0);assert.equal(a.waveQueue.length,0);
  assert.equal(a.scenes.length,TV_WILDBOUND_SCENE_TEMPLATES.length);
- assert.deepEqual(a.scenes.map(s=>s.name),b.scenes.map(s=>s.name),'same seed repeats the scene order');
- assert.notDeepEqual(a.scenes.map(s=>s.name),other.scenes.map(s=>s.name),'new seed changes the course');
- assert.equal(new Set(a.scenes.map(s=>s.name)).size,a.scenes.length,'each course uses every template once');
- assert.equal(a.blocks.length,a.scenes.reduce((n,s)=>n+s.blocks.length,0));
+ assert.ok(a.platforms.some(s=>s.style==='bridge'));
+ assert.ok(a.enemySpawns.some(s=>s.y<437)&&a.enemySpawns.some(s=>s.y===437));
+ assert.equal(TV_BOARD_X,TV_WILDBOUND_WIDTH/2);
  for(const block of a.blocks)assert.ok(block.x>=0&&block.x<TV_WILDBOUND_WIDTH&&block.y<437);
- assert.ok(a.enemies.some(e=>e.kind==='archer')&&a.enemies.some(e=>e.kind==='tiger'));
 });
 
 test('TV Wildbound dodge triggers a directional burst with a cooldown',()=>{
@@ -201,7 +187,7 @@ test('lobby switches to the TV world without starting or mutating its regular ga
   const firstScenes=lobby.tvWildbound.scenes.map(scene=>scene.name);
   lobby.tvWildbound=null;
   lobby.update(.016,{});
-  assert.notDeepEqual(lobby.tvWildbound.scenes.map(scene=>scene.name),firstScenes,'a second visit should shuffle the scene order');
+  assert.deepEqual(lobby.tvWildbound.scenes.map(scene=>scene.name),firstScenes,'authored arena keeps its routes on repeat visits');assert.equal(lobby.tvWildbound.wave,0);
   assert.equal(game.phase,'lobby');assert.equal(game.players[0],hero);
   assert.equal(hero.progress,0);
 });

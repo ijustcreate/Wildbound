@@ -8,6 +8,7 @@ const gaitActions=Object.freeze({
   triceratops:{idle:'wowhead-idle',walk:'wowhead-walk',run:'wowhead-run',attack:'wowhead-attack'},
   sheep:{walk:'walk',run:'run',idle:'freeze'},
   skunk:{walk:'amble',run:'scurry',idle:'freeze',attack:'attack'},
+  river_otter:{idle:'idle',walk:'walk',run:'run',swim:'swim'},
   squirrel:{walk:'walk',run:'scamper',idle:'freeze',leap:'leap'},
   baby_triceratops:{walk:'quick-walk',run:'short-charge'},
   turkey:{walk:'strut',run:'flap-run',idle:'idle',attack:'flap-attack'},

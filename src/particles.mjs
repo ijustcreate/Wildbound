@@ -2,6 +2,7 @@ import {CARTOON_EFFECTS,FX_STYLES} from './cartoon-fx-presets.mjs';
 import {drawCartoonFX} from './cartoon-fx-render.mjs';
 import {PIXEL_EFFECTS} from './pixel-fx-presets.mjs';
 import {drawPixelFX} from './pixel-fx-render.mjs';
+import {PIXELFX_EFFECTS,validPixelEffect,drawPixelFx,pixelFxExtent} from './pixelfx-runtime.mjs';
 export {loadParticleSprites,particleSpriteStatus} from './particle-sprites.mjs';
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
@@ -13,6 +14,8 @@ export const DEFAULT_EFFECTS={
   'portal-runes':{name:'Storage portal · flowing energy',description:'Short wisps curl around the aperture and fade into its dark center.',count:28,life:2.8,speedX:0,speedY:-5,spread:4,gravity:0,size:1,orbit:20,shape:'square',motion:'portal',blend:'lighter',start:'#b5f3dc',end:'#386a79',loop:true},
   ...CARTOON_EFFECTS,
   ...PIXEL_EFFECTS,
+  ...PIXELFX_EFFECTS,
+  'storage-portal':{...PIXELFX_EFFECTS['pfx-arcane-portal'],name:'Storage portal · PixelFX',pxScale:1.2},
   'arrow-splash':{name:'Arrow water impact',count:7,life:.4,speedX:0,speedY:-22,spread:12,gravity:95,size:2,orbit:3,shape:'square',blend:'source-over',start:'#e3fffa',end:'#4da8c1'},
   'rock-fragments':{name:'Rock projectile fragments',count:12,life:.42,speedX:0,speedY:-38,spread:32,gravity:110,size:3,orbit:3,shape:'square',blend:'source-over',start:'#b6b3a5',end:'#47544c'},
   'salvage-hands':{name:'Salvage hand sparks',count:6,life:.45,speedX:0,speedY:-5,spread:4,gravity:2,size:1,orbit:2,shape:'square',blend:'lighter',start:'#e7f8de',end:'#7dcdd8'},
@@ -31,8 +34,8 @@ export const DEFAULT_EFFECTS={
   rain:{name:'Rain study (preview only)',count:160,life:.8,speedX:-28,speedY:230,spread:500,gravity:0,size:1,orbit:0,shape:'streak',blend:'source-over',start:'#abcbd8',end:'#608fa8'},
   knockout:{name:'Knocked-out stars',count:7,life:2,speedX:0,speedY:-12,spread:3,gravity:0,size:3,orbit:15,shape:'star',blend:'source-over',start:'#fff5ba',end:'#d6ad5b'},
 };
-export const LIMITS={count:[1,400,1],life:[.1,8,.1],speedX:[-300,300,1],speedY:[-300,300,1],spread:[0,600,1],gravity:[-150,150,1],size:[1,16,.5],orbit:[0,100,1]};
-export function validEffect(v){return !!v&&typeof v.name==='string'&&v.name.trim().length>0&&v.name.length<=60&&Object.entries(LIMITS).every(([k,[a,b]])=>Number.isFinite(v[k])&&v[k]>=a&&v[k]<=b)&&(v.count%1===0)&&['square','star','streak','sprite'].includes(v.shape)&&(!v.fx||FX_STYLES.includes(v.fx))&&(v.shape!=='sprite'||FX_STYLES.includes(v.fx))&&(v.loop===undefined||typeof v.loop==='boolean')&&(!v.description||(typeof v.description==='string'&&v.description.length<=400))&&['source-over','lighter'].includes(v.blend)&&/^#[0-9a-f]{6}$/i.test(v.start)&&/^#[0-9a-f]{6}$/i.test(v.end);}
+export const LIMITS={count:[1,400,1],life:[.1,30,.1],speedX:[-300,300,1],speedY:[-300,300,1],spread:[0,600,1],gravity:[-150,150,1],size:[1,16,.5],orbit:[0,100,1],pxScale:[.1,4,.05],pxAngle:[-360,360,1]};
+export function validEffect(v){return !!v&&typeof v.name==='string'&&v.name.trim().length>0&&v.name.length<=60&&Object.entries(LIMITS).filter(([k])=>!k.startsWith('px')).every(([k,[a,b]])=>Number.isFinite(v[k])&&v[k]>=a&&v[k]<=b)&&(!v.pixelfx||validPixelEffect(v))&&(v.count%1===0)&&['square','star','streak','sprite'].includes(v.shape)&&(!v.fx||FX_STYLES.includes(v.fx))&&(v.shape!=='sprite'||FX_STYLES.includes(v.fx))&&(v.loop===undefined||typeof v.loop==='boolean')&&(!v.description||(typeof v.description==='string'&&v.description.length<=400))&&['source-over','lighter'].includes(v.blend)&&/^#[0-9a-f]{6}$/i.test(v.start)&&/^#[0-9a-f]{6}$/i.test(v.end);}
 export const effects=structuredClone(DEFAULT_EFFECTS);
 try{const data=JSON.parse(globalThis.localStorage?.getItem(PARTICLE_KEY)||'{}');for(const [id,v]of Object.entries(data))if(/^[a-z0-9_-]{1,60}$/.test(id)&&validEffect(v))effects[id]=v;}catch{}
 export function saveEffect(id,value){if(!/^[a-z0-9_-]{1,60}$/.test(id)||!validEffect(value))throw Error('Invalid effect settings');const next={...effects,[id]:structuredClone(value)};globalThis.localStorage?.setItem(PARTICLE_KEY,JSON.stringify(next));effects[id]=next[id];}
@@ -60,8 +63,8 @@ export function portalParticleSamples(effect,time,seed=0){
  });
 }
 const frames=new WeakMap(),palettes=new WeakMap();
-export function beginParticleFrame(c,{budget=768,maxEmitters=48,quality=1,reducedMotion=false}={}){
- const state={budget:Math.max(0,Math.min(2000,budget|0)),maxEmitters:Math.max(0,Math.min(100,maxEmitters|0)),quality:Math.max(.2,Math.min(1,quality)),reducedMotion:!!reducedMotion,draws:0,emitters:0,culled:0};frames.set(c,state);return state;
+export function beginParticleFrame(c,{budget=768,maxEmitters=48,maxPixelFx=12,quality=1,reducedMotion=false}={}){
+ const state={budget:Math.max(0,Math.min(2000,budget|0)),maxEmitters:Math.max(0,Math.min(100,maxEmitters|0)),quality:Math.max(.2,Math.min(1,quality)),reducedMotion:!!reducedMotion,maxPixelFx:Math.max(0,Math.min(24,maxPixelFx|0)),pixelFxEmitters:0,draws:0,emitters:0,culled:0};frames.set(c,state);return state;
 }
 export const particleFrameStats=c=>({...frames.get(c)});
 export function drawParticleEffect(c,id,x,y,time,seed=0){
@@ -69,8 +72,10 @@ export function drawParticleEffect(c,id,x,y,time,seed=0){
  if(effect.loop&&Number.isFinite(time)&&time>=0)time%=effect.life;
  const frame=frames.get(c);if(frame&&(frame.emitters>=frame.maxEmitters||frame.draws>=frame.budget))return;
  // World-to-screen culling before allocating, preparing colors or transforming.
- if(c.getTransform&&c.canvas){const m=c.getTransform(),sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f,extent=(effect.spread+effect.orbit+Math.abs(effect.speedY)*effect.life+Math.abs(effect.gravity)*effect.life**2+180)*Math.max(Math.hypot(m.a,m.b),Math.hypot(m.c,m.d));if(sx+extent<0||sy+extent<0||sx-extent>c.canvas.width||sy-extent>c.canvas.height){if(frame)frame.culled++;return;}}
+ if(c.getTransform&&c.canvas){const m=c.getTransform(),sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f,extent=(effect.pixelfx?pixelFxExtent(effect):effect.spread+effect.orbit+Math.abs(effect.speedY)*effect.life+Math.abs(effect.gravity)*effect.life**2+180)*Math.max(Math.hypot(m.a,m.b),Math.hypot(m.c,m.d));if(sx+extent<0||sy+extent<0||sx-extent>c.canvas.width||sy-extent>c.canvas.height){if(frame)frame.culled++;return;}}
+ if(effect.pixelfx&&frame&&frame.pixelFxEmitters>=frame.maxPixelFx)return;
  if(frame)frame.emitters++;
+ if(effect.pixelfx){if(frame){frame.draws++;frame.pixelFxEmitters++;}c.save();c.translate(x,y);c.globalCompositeOperation=effect.blend;if(frame?.reducedMotion){c.globalAlpha*=.55;time=effect.life*.45;}drawPixelFx(c,effect,time,seed,frame?.quality??1);c.restore();return;}
  const alpha=c.globalAlpha??1;c.save();c.translate(x,y);c.globalCompositeOperation=frame?.reducedMotion?'source-over':effect.blend;
  const spend=()=>{if(frame){if(frame.draws>=frame.budget)return false;frame.draws++;}return true;};
  if(effect.fx&&effect.shape==='sprite'){

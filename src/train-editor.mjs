@@ -9,7 +9,7 @@ const el=(tag,text)=>Object.assign(document.createElement(tag),text?{textContent
 export class TrainEditor{
  constructor({game=null,embedded=false}={}){this.game=game;this.embedded=embedded;this.design=readTrainDraft()||clone(game?.trainTest?.design||readTrainDesign());this.undo=[];this.redo=[];this.tab='Track';this.view=0;this.carIndex=2;this.part='body';this.snap=32;this.selected=null;this.mapZoom=1;this.pan={x:0,y:0};}
  snapshot(){this.undo.push(JSON.stringify(this.design));if(this.undo.length>24)this.undo.shift();this.redo=[];}
- changed(){try{preserveTrainDraft(this.design);this.message('Draft recovered locally · Save & use applies your changes.');}catch(e){this.message('Draft could not be stored: '+e.message);}this.refreshPreview();}
+ changed(){this.design.trackRevision=(this.design.trackRevision||0)+1;try{preserveTrainDraft(this.design);this.message('Draft recovered locally · Save & use applies your changes.');}catch(e){this.message('Draft could not be stored: '+e.message);}this.refreshPreview();}
  message(text){if(this.status)this.status.textContent=text;}
  action(label,fn,parent=this.toolbar){const b=el('button',label);b.type='button';b.onclick=async()=>{try{await fn();}catch(e){this.message(e.message);}};parent.append(b);return b;}
  async mount(root){this.root=root;root.replaceChildren();root.className='house-builder railway-editor';root.style.cssText=this.embedded?'position:fixed;inset:3vh 2vw;z-index:1200;background:#e7d8a7;color:#302e24;padding:12px;overflow:auto;border:5px solid #705337;box-shadow:0 10px 40px #0009;box-sizing:border-box':'padding:12px;box-sizing:border-box';

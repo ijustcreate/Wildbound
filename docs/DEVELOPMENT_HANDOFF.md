@@ -1,3 +1,15 @@
+# Latest source: [PixelFX library and storage portals](history/2026-11-03-pixelfx-integration.md). All 244 effects in the Particles editor, native palettes/parameters and playback controls, and the requested purple Portal on storage entrances/returns. Final desktop verification receipts are in the linked note.
+
+# Latest source: [1.2.98 Mossroot Coliseum TV arena](history/2026-11-03-tv-arena-1.2.98.md). Rebuilt bounded side-view ruins, central board waves, three paired travel tubes, hearths and native editable eight-direction Bramblecap/Mossback rigs. Final desktop receipts are recorded in the linked note.
+
+# Latest source: [1.2.98 train, native-world and station integration](history/2026-11-03-train-native-worlds-1.2.98.md). Eight-view visibility, caboose, impact damage, native biome assets, destructible stations and pixel-art props. Verification and delivery receipts are in the linked note.
+
+# Latest source: [Character creator and base animation corrections](history/2026-11-03-character-creator-animation.md). Visible brightness slider; clean front/back shirt and face shading; diagonal cuffs, facial details and continuous native jump with level shoes. Final build receipts are in the linked note.
+
+# Latest source: [1.2.97 Bayou Marsh artwork](history/2026-11-03-bayou-art-1.2.97.md). Thirteen requested terrain, water, vegetation, tree, ruin, crossing and atmosphere upgrades in the playable bayou. Preserves authored layouts and existing saves. Final desktop receipts are recorded in the linked note.
+
+# Latest source: [1.2.96 Wild Lands sketch and exploration polish](history/2026-11-01-wild-lands-sketch-polish-1.2.96.md). Traced coast/biome shapes, southwest-bending river and bayou branches, footbridges, ten discovery/supply sites and cached map/train rendering. Desktop verification receipts are reported at delivery.
+
 # Latest source: [1.2.95 gameplay and wide-view rendering](history/2026-11-01-gameplay-performance-1.2.95.md). Shared normal combat/dash/projectiles/loot/companions in both dev worlds; bounded distant rendering, native forest ground and eight furnished stations. The larger world content remains a dev prototype. Exact clean-source build/publication receipts are reported at delivery.
 
 # Latest source: [1.2.94 The Wild Lands](history/2026-11-01-wild-lands-1.2.94.md). Separate large dev exploration world based on the approved sketch, eight stations on one circuit, native train travel, rivers/swimming, cave and shadow access, and safe return to the original expedition. Packaged verification receipts are reported at delivery.

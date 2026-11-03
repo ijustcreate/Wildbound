@@ -22,6 +22,7 @@ import {ghostMotion,validateGhostMotion,replaceGhostMotion} from './ghost-motion
 import {GHOST_DROPS} from './items.mjs';
 import {WILD_FAUNA_DEFAULTS,DEER_KINDS,PEACEFUL_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {CREATURE_PACK_DEFAULTS, CREATURE_PACK_EVENTS} from './creature-packs/index.mjs';
+import {ARENA_SUBJECTS,arenaRigPack,replaceArenaRig} from './tv-arena-creatures.mjs';
 import { NIGHT_KINDS, nightMotions, validateNightMotion, replaceNightMotion } from './night-rigs.mjs';
 import {
   beastMotions,
@@ -766,11 +767,13 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if (d.slime) replaceSlimeMotion(d.slime);
   if (d.bat) replaceBatMotion(d.bat);
   if (d.rhino) replaceRhinoMotion(d.rhino);
+  for(const [kind,model] of Object.entries(d.arenaRigs||{}))replaceArenaRig(kind,model);
   for (const [kind, model] of Object.entries(d.creatureMotions || {}))
     replaceCreatureMotion(kind, model);
   for (const [kind, model] of Object.entries(d.nightMotions || {}))
     replaceNightMotion(kind, model);
   const savedSpriteModels = {
+    ...Object.fromEntries(Object.entries(ARENA_SUBJECTS).map(([k,s])=>[k,s.data])),
     imp:impMotion,
     zombie:zombieMotion,
     ghost:ghostMotion,
@@ -890,6 +893,7 @@ export function definitionPack(events, items) {
   if (!validateNpcQuestConfig(npcQuestConfig)) throw Error('Invalid NPC quest configuration');
   return {
     version: 1,
+    arenaRigs: arenaRigPack(),
     npcQuests: structuredClone(npcQuestConfig),
     creatures,
     rules,

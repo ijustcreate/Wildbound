@@ -12,7 +12,7 @@ export function startJump(a){
  if(a.hp<=0||a.jumpHeight>0||a.state==='snared'||a.rooted>0||a.stun>0)return false;
  const jumpRank = a.field?.skills?.long_jump || 0;
  if(!a.kind&&!a.groundHeight)a.trackImpulse={x:a.x,y:a.y,kind:'takeoff'};
- a.jumpHeight=(a.groundHeight||0)+.01;a.jumpLaunchHeight=a.jumpHeight;a.groundHeight=0;a.jumpVelocity=(a.jumpImpulse||125)*(1+jumpRank*.15);a.jumpLaunchVelocity=a.jumpVelocity;a.jumpAge=0;a.jumpHoldTime=0;a.jumpCut=false;a.jumpReleaseBlend=0;a.jumpFallAge=0;a.jumpPeakHeight=a.jumpHeight;a.jumpMoveInitialized=false;
+ a.jumpHeight=(a.groundHeight||0)+.01;a.jumpLaunchHeight=a.jumpHeight;a.groundHeight=0;a.jumpVelocity=(a.jumpImpulse||125)*(1+jumpRank*.15)*(a.heldChickenId ? .72 : 1);a.jumpLaunchVelocity=a.jumpVelocity;a.jumpAge=0;a.jumpHoldTime=0;a.jumpCut=false;a.jumpReleaseBlend=0;a.jumpFallAge=0;a.jumpPeakHeight=a.jumpHeight;a.jumpMoveInitialized=false;
  // Retained as telemetry for UI/debugging; startJump deliberately does not
  // consult it, so landing is the only gameplay gate.
  delete a.jumpAirStartVelocity;
@@ -57,7 +57,7 @@ export function tickJump(a,dt,g=null,offset=0){
 export function jumpMotion(a,mx,my,speed,dt){
  const vx=mx*speed,vy=my*speed;
  if(a.jumpHeight>0&&!a.wingHover){
-  const reach=1.15;
+  const reach=1.15*(a.heldChickenId ? .78 : 1);
   if(!a.jumpMoveInitialized){
    const moving=Math.hypot(a.jumpGroundVX||0,a.jumpGroundVY||0)>1;
    a.jumpAirVX=(moving?a.jumpGroundVX:vx)*reach;a.jumpAirVY=(moving?a.jumpGroundVY:vy)*reach;a.jumpMoveInitialized=true;

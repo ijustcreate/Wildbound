@@ -5,7 +5,7 @@ import {drawDragonBreath} from './dragon-events.mjs';
 import {drawForestSunlight} from './forest-sunlight.mjs';
 import {CemeteryFogRenderer} from './cemetery-fog.mjs';
 import {SwampMistRenderer} from './swamp-mist.mjs';
-import {swordLoadout,paintSwordImpact} from './sword-feel.mjs';
+import {swordLoadout,paintSwordImpact,paintSwordCharge} from './sword-feel.mjs';
 import {drawBoundlessGrass,drawBoundlessRoutes} from './boundless-art.mjs';
 import {scenePropCasters} from './scene-casters.mjs';
 import {nearbyScenery} from './performance.mjs';
@@ -556,7 +556,7 @@ export class Renderer {
       this.cemeteryFog.draw(ctx,this.camera,w,h,false,true);
     }else if(game.generatedEnvironment==='swamp'){
       this.swampMist ||= new SwampMistRenderer();
-      this.swampMist.prepare(game,game.time);
+      this.swampMist.prepare(game,game.time,this.camera,w,h);
       this.swampMist.draw(ctx,this.camera,w,h,false,true);
     }
     if(this.dynamicShadows){
@@ -596,6 +596,7 @@ export class Renderer {
     drawBansheeSteps(ctx,game);drawDeathSteps(ctx,game);
     drawImpGround(ctx,game);
     drawZombieTells(ctx,game);
+    for(const p of game.players)paintSwordCharge(ctx,p,game.time);
 
     drawLivingEcosystem(ctx, game, 'ground');
     drawGraveyardEcology(ctx,game,'ground');
@@ -652,6 +653,7 @@ export class Renderer {
     const queued=new Set(actors.map(a=>a.id).filter(Boolean));
     for(const follower of game.followers||[])if(!sealCapture&&!follower.room&&!queued.has(follower.id)&&this.visible(follower,w,h,180)){const shown=controlledPresentation(follower);actors.push({...shown,drawDepth:terrainActorDepth(game,shown,boardActorDepth(game,shown))});}
     for (const e of game.enemies){
+      if(e.kind==='chicken'&&e.carriedBy)continue;
       // Long bodies need individual depth entries: roots and jumping heroes
       // can pass between coils, even when the snake's head is off-camera.
       if(e.kind==='anaconda'){
@@ -664,6 +666,12 @@ export class Renderer {
           drawDepth: terrainActorDepth(game,actor,boardActorDepth(game,actor,actor.y + (rigSubject(e.kind)||WILD_FAUNA_KINDS.includes(e.kind) ? 0 : 14))),
         });
       }
+    }
+    for(const p of game.players)if(!sealCapture&&p.heldChickenId&&!p.room){
+      const chicken=game.enemies.find(e=>e.id===p.heldChickenId&&e.kind==='chicken'&&e.hp>0);
+      if(!chicken)continue;
+      const lift=(p.jumpHeight||0)+(p.groundHeight||0),depth=terrainActorDepth(game,p,boardActorDepth(game,p));
+      actors.push({...chicken,x:p.x,y:p.y-50-lift,jumpHeight:0,groundHeight:0,room:null,moving:false,state:'carried',carriedFlap:p.jumpHeight>0&&p.jumpVelocity<0,drawDepth:depth+.5});
     }
     for (const d of this.decor)
       if (
@@ -731,7 +739,7 @@ export class Renderer {
       const contact=actorContact(game,a,size,player||!!rigSubject(a.kind)||WILD_FAUNA_KINDS.includes(a.kind));
       const floating=waterAt(game,a.x,a.y)==='water'&&!(a.jumpHeight>0)&&!(a.groundHeight>0);
       const snowShadow=snowShadowFactor(game,a.x,a.y);
-      if(!this.dynamicShadows){
+      if(!a.carriedBy&&!this.dynamicShadows){
         ctx.fillStyle = `rgba(9,28,22,${a.swimming||floating?0:contact.alpha*snowShadow*(1-Math.min(1,(a.sink||0)/48))})`;
         ctx.beginPath();ctx.ellipse(contact.x,contact.y,contact.rx,contact.ry,0,0,Math.PI*2);ctx.fill();
       }

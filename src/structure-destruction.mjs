@@ -17,6 +17,9 @@ const rectDistance=(r,x,y)=>Math.hypot(x-clamp(x,r.x,r.x+r.w),y-clamp(y,r.y,r.y+
 const material=(g,b)=>b.kind==='window'?'glass':b.kind==='fence'||b.destructionGroup==='doors'||b.destructionGroup==='furniture'?'wood':g.house?.temple?'stone':'plaster';
 const toughness=(g,b)=>({glass:1,wood:100,plaster:200,stone:200})[material(g,b)];
 const crackThreshold=(g,b)=>b.kind==='window'?Infinity:['fence','gate'].includes(b.kind)||['furniture','doors'].includes(b.destructionGroup)?40:60;
+const debrisPalette=b=>b.kind==='window'?['#95c8ca','#c9e4d8','#759da2']:b.kind==='bed'?['#527b60','#7d9b69','#895f3c','#6b4a31']:b.kind==='plant'?['#3f8752','#78a354','#895f3c','#65462f']:b.kind==='sofa'?['#49766d','#89a28a','#895f3c','#6b4a31']:b.kind==='bookcase'?['#d6b874','#8e5143','#617d71','#895f3c']:b.kind==='chest'?['#895d38','#bc8b53','#d6b36d','#68472e']:['#895f3c','#6b4a31','#a77d4d'];
+function addDebris(b,r,n){b.debris||=[];const palette=debrisPalette(b);for(let i=0;i<5;i++){const seed=(Math.imul((n+1)*71+i*113,1103515245)+Math.round((b.x+b.y)*31))>>>0;b.debris.push({x:r.x+(seed%Math.max(1,r.w)),y:r.y+r.h+(seed>>>8)%13,color:palette[(seed>>>16)%palette.length],w:2+seed%4,h:1+(seed>>>4)%3});}if(b.debris.length>80)b.debris.splice(0,b.debris.length-80);}
+function dropContents(g,b,x,y){if(b.breakLootDropped)return;b.breakLootDropped=true;b.opened=true;for(const item of b.loot||[]){let qty=0;for(let i=0;i<(item.qty||1);i++)if(g.random()<.6)qty++;if(qty)g.dropLoot(x,y,item.type,qty,b.chestId||'Broken chest',true);}b.loot=[];g.onSound?.('woodBreak',{x,y});}
 function state(g){let s=visuals.get(g);if(!s||s.house!==g.house){s={house:g.house,particles:[],soundAt:-Infinity,shatterAt:-Infinity,saveAt:-Infinity};visuals.set(g,s);}return s;}
 function index(g){
   const h=g.house;if(!h)return null;
@@ -25,7 +28,7 @@ function index(g){
   if(s&&s.walls===h.walls&&s.doors===h.doors&&s.furniture===h.furniture&&s.count===count)return s;
   s={walls:h.walls,doors:h.doors,furniture:h.furniture,count,buckets:new Map()};
   for(const group of ['walls','doors','furniture'])for(const b of h[group]||[]){
-    if(group==='furniture'&&(b.wallMounted||['rug','plant','wall_clock'].includes(b.kind)))continue;
+    if(group==='furniture'&&(b.kind==='rug'||(b.wallMounted&&b.kind!=='wall_clock')))continue;
     // Keep editor libraries untouched: only the active level receives this metadata.
     b.destructionGroup=group;
     for(let y=Math.floor(b.y/CELL);y<=Math.floor((b.y+b.h)/CELL);y++)for(let x=Math.floor(b.x/CELL);x<=Math.floor((b.x+b.w)/CELL);x++){
@@ -63,7 +66,7 @@ function burst(g,r,b,dx,dy,broken){
       age:0,life:.55+(seed%40)/100,size:2+seed%3,color:colors[n%3],dust:n%4===0});
   }
   const now=g.time||0,shatter=broken&&m==='glass';
-  if(now-(shatter?s.shatterAt:s.soundAt)>.09){g.onSound?.(shatter?'glassBreak':broken?(m==='stone'?'mine':'fall'):'hit',{x:r.x+r.w/2,y:r.y+r.h/2});if(shatter)s.shatterAt=now;else s.soundAt=now;}
+  if(now-(shatter?s.shatterAt:s.soundAt)>.09){g.onSound?.(shatter?'glassBreak':broken?'wallBreak':'hit',{x:r.x+r.w/2,y:r.y+r.h/2});if(shatter)s.shatterAt=now;else s.soundAt=now;}
 }
 function damageCell(g,b,n,damage,dx=0,dy=0){
   b.sectionDamage||={};const old=b.sectionDamage[n];if(old?.broken)return false;
@@ -72,6 +75,7 @@ function damageCell(g,b,n,damage,dx=0,dy=0){
   state(g).dirty=true;
   if(broken){g.house.destructionRevision=(g.house.destructionRevision||0)+1;
     if(Object.values(b.sectionDamage).filter(s=>s.broken).length===cols(b)*rows(b))b.destroyed=true;
+    addDebris(b,at(b,n),n);if(b.kind==='chest'&&b.destroyed)dropContents(g,b,b.x+b.w/2,b.y+b.h+12);
     if(b.kind==='window')b.broken=true;
     if(b.kind==='mailbox'&&!b.santaLetterDropped){b.santaLetterDropped=true;g.dropLoot?.(b.x+b.w/2,b.y+b.h+10,'santa_letter',1,'Undelivered mailbox letter',true);}
   }
@@ -90,6 +94,10 @@ export function damageStructureMelee(g,p,damage,range,spin=false){
     if(clear&&(!best||d<best.d||Math.abs(d-best.d)<.01&&b.kind==='window'&&best.b.kind!=='window'))best={b,...cell,d};
   }
   return !!best&&damageCell(g,best.b,best.n,best.b.kind==='window'?toughness(g,best.b):20,p.faceX||0,p.faceY||0);
+}
+export function damageSupplyChestMelee(g,p,damage,range,spin=false){
+ if(!(damage>0))return false;const chest=(g.supplyChests||[]).filter(c=>!c.opened&&!c.broken&&Math.hypot(c.x-p.x,c.y-p.y)<range+22).filter(c=>{const dx=c.x-p.x,dy=c.y-p.y,d=Math.hypot(dx,dy);return spin||d<1||(dx*(p.faceX||0)+dy*(p.faceY||0))/d>.35;}).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];if(!chest)return false;
+ chest.breakDamage=(chest.breakDamage||0)+damage;g.onSound?.('hit',chest);if(chest.breakDamage<45)return true;chest.broken=true;chest.opened=true;for(const [type,qty]of [['empty_jar',1],['potion',chest.potions||1],...(chest.reward?[[chest.reward,1]]:[])]){let count=0;for(let i=0;i<qty;i++)if(g.random()<.6)count++;if(count)g.dropLoot(chest.x+((g.random()-.5)*20),chest.y+20,type,count,chest.name,true);}chest.debris=Array.from({length:9},(_,i)=>{const palette=['#895d38','#bc8b53','#d6b36d','#68472e'],seed=(Math.imul(i+1,1103515245)+Math.round(chest.x*23+chest.y))>>>0;return {x:chest.x-12+seed%25,y:chest.y+14+(seed>>>8)%9,color:palette[(seed>>>16)%palette.length],w:2+seed%4,h:1+(seed>>>5)%3};});g.onSound?.('wallBreak',chest);g.persist?.();return true;
 }
 // A bumper damages only the exposed cells it actually spans. Kinetic damage
 // scales with speed; sample each lane once so wide cars open a usable gap.
@@ -177,10 +185,10 @@ export function drawBreakable(c,g,b,painter,style='default'){
   // Huge editor rectangles use one clipped draw instead of allocating giant
   // surfaces. Normal assets share a globally bounded LRU of paired rasters.
   if(typeof document==='undefined'||(b.w+16)*(b.h+64)>512*1024){
-    if(!b.sectionDamage){painter(c,b);return;}c.save();c.beginPath();
+    if(!b.sectionDamage){painter(c,b);drawDebris(c,b);return;}c.save();c.beginPath();
     for(let n=0;n<cols(b)*rows(b);n++){const r=at(b,n);if(!b.sectionDamage[n]?.broken)c.rect(r.x,r.y,r.w,r.h);}
     c.clip();painter(c,b);c.restore();
-    for(const [n,record]of Object.entries(b.sectionDamage))paintDamage(c,g,b,Number(n),record);return;
+    for(const [n,record]of Object.entries(b.sectionDamage))paintDamage(c,g,b,Number(n),record);drawDebris(c,b);return;
   }
   let cache=rasters.get(b);
   const key=style+':'+(b.kind==='window'&&!b.sectionDamage?!!b.broken:false);
@@ -205,8 +213,9 @@ export function drawBreakable(c,g,b,painter,style='default'){
     }
     cache.revision=b.destructionRevision;
   }
-  c.drawImage(cache.canvas,b.x-8,b.y-48);
+  c.drawImage(cache.canvas,b.x-8,b.y-48);drawDebris(c,b);
 }
+function drawDebris(c,b){if(!b.debris?.length)return;c.save();for(const p of b.debris){c.fillStyle=p.color;c.fillRect(Math.round(p.x),Math.round(p.y),p.w,p.h);}c.restore();}
 export function drawDestruction(c,g,visible=()=>true){
   if(!visuals.has(g))return;const s=state(g);if(!s.particles.length)return;c.save();
   for(const p of s.particles){if(!visible(p))continue;c.globalAlpha=Math.min(1,(p.life-p.age)*3)*(p.dust?.35:1);c.fillStyle=p.color;

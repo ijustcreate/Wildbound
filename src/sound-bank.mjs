@@ -11,7 +11,7 @@ export const CUES={
  attack:rpg('knifeSlice,knifeSlice2'),bow:rpg('cloth1,cloth2'),magic:ui('glass_001,glass_002'),hit:impact('impactPunch_medium'),shield:impact('impactMetal_medium'),hurt:impact('impactPunch_heavy'),
  roll:impact('impactWood_light'),event:ui('bong_001'),trap:rpg('metalLatch'),heal:ui('glass_003'),defeat:impact('impactSoft_heavy'),dodge:rpg('cloth3,cloth4'),dashWhoosh:{files:files('rpg','cloth3,cloth4'),gain:.18,rate:.62,maxDuration:.32,bus:'sfx',priority:52,group:'movement',polyphony:4,cooldown:140,distance:620},win:ui('confirmation_004'),lose:ui('error_008'),
  loot:rpg('handleCoins,handleCoins2'),drop:rpg('dropLeather'),equip:rpg('beltHandle1,beltHandle2'),inventory:rpg('bookOpen'),close:rpg('bookClose'),doorOpen:rpg('doorOpen_1,doorOpen_2'),doorClose:rpg('doorClose_1,doorClose_2'),
- harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),level:ui('confirmation_003'),
+ harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),wallBreak:impact('impactWood_heavy',.34),treeBreak:impact('impactWood_heavy',.42),rockBreak:impact('impactMining',.4),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),level:ui('confirmation_003'),
  grass:impact('footstep_grass',.13),wood:impact('footstep_wood',.13),snow:impact('footstep_snow',.13),sand:impact('footstep_carpet',.13),water:rpg('footstep08,footstep09',.12),slide:ui('scratch_001'),
  wind:{files:['assets/sfx/ambience/wind.wav'],bus:'ambience',gain:.15},rain:{files:['assets/sfx/ambience/rain.ogg'],bus:'ambience',gain:.18},forest_ambient:{files:['assets/sfx/ambience/forest_ambient_20s_loop.wav'],bus:'ambience',gain:.10},
  desert_ambient:{files:['assets/sfx/ambience/desert-wind-06.mp3'],bus:'ambience',gain:.075,maxDuration:8},
@@ -25,7 +25,7 @@ export const CUES={
  shadow_ambient:{files:['assets/sfx/ambience/night-ambience-01.wav'],bus:'ambience',gain:.07},
  jump:rpg('cloth1,cloth2',.13),land:impact('impactSoft_medium',.21),splash:rpg('footstep08,footstep09',.24),
  stone:impact('footstep_concrete',.11),mud:rpg('footstep08,footstep09',.10),
-  repair:impact('impactMetal_light',.13),repairDone:ui('confirmation_003'),engineStart:impact('impactMetal_heavy',.22),engineRun:impact('impactMetal_light',.08),carHit:impact('impactMetal_heavy',.28),death:impact('impactSoft_heavy',.3),
+ repair:impact('impactMetal_light',.13),repairDone:ui('confirmation_003'),engineStart:impact('impactMetal_heavy',.22),engineRun:impact('impactMetal_light',.08),carHit:impact('impactMetal_heavy',.28),death:impact('impactSoft_heavy',.3),
 };
 // Explicit action aliases let custom controller/canvas UI share the same polished
 // UI bus as DOM controls without silently dropping the game's generic `ui` calls.

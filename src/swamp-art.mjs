@@ -73,12 +73,19 @@ function bridge(c){
  for(const x of [left-2,right+2]){rect(c,x,y-11,3,10,'#494936');rect(c,x,y-12,3,2,'#b2a079');rect(c,x,y+3,3,9,'#514c37');rect(c,x,y+2,3,2,'#b2a079');}
 }
 function foliage(c,clusters,seed,type){
-  const ramp=type==='cypress'?['#263f35','#3d5d40','#65824b','#9ca567']:['#203e33','#345c3e','#5c8749','#9caf68'];
- // Merge silhouette first; internal masses are lit clusters, not separately outlined ovals.
- for(const [x,y,rx,ry]of clusters){cluster(c,x,y,rx,ry,ramp[0],seed+x);for(let j=0;j<13;j++){const a=j*Math.PI*2/13;cluster(c,x+Math.cos(a)*rx*.88,y+Math.sin(a)*ry*.85,2+hash(j,seed)*3,2+hash(seed,j)*3,ramp[0],seed+j);}}
- for(const [x,y,rx,ry]of clusters){cluster(c,x-1,y-2,rx-2,ry-2,ramp[1],seed+x);
-  cluster(c,x-rx*.15,y-ry*.28,rx*.72,ry*.58,ramp[2],seed+x+4);
-  for(let i=0;i<37;i++){const dx=(hash(seed+x,i)-.5)*rx*1.8,dy=(hash(i,seed+y)-.5)*ry*1.6;if(dx*dx/(rx*rx)+dy*dy/(ry*ry)>.85)continue;const col=dy<0&&i%4===0?ramp[3]:i%3?ramp[2]:ramp[1];rect(c,x+dx,y+dy,3+hash(i,seed)*4,2,col);rect(c,x+dx+2,y+dy-2,3,3,col);}
+ const ramp=type==='cypress'?['#203d33','#34583b','#597c43','#8f9e5e']:['#1b3c32','#2e593e','#53804a','#91a863'];
+ // Angular drooping branch sprays merge into a single silhouette, with lit upper planes.
+ const edge=[[-1,-.25],[-.87,-.65],[-.55,-.74],[-.39,-1],[-.04,-.91],[.24,-1],[.48,-.77],[.77,-.68],[.8,-.4],[1,-.15],[.88,.15],[1,.34],[.66,.5],[.5,.84],[.2,.7],[-.04,1],[-.3,.73],[-.6,.82],[-.67,.5],[-1,.35],[-.86,.06]];
+ const spray=[[-9,-2],[-6,-4],[-5,-7],[-1,-5],[2,-6],[4,-3],[8,-2],[7,1],[10,3],[5,4],[2,7],[-1,4],[-5,5],[-6,2],[-10,1]];
+ for(const [x,y,rx,ry]of clusters)poly(c,edge.map(([a,b])=>[x+a*rx,y+b*ry]),ramp[0]);
+ for(const [x,y,rx,ry]of clusters){
+  poly(c,edge.map(([a,b])=>[x-1+a*(rx-2),y-2+b*(ry-2)]),ramp[1]);
+  for(const [j,[u,v,scale]]of [[-.45,-.3,1],[-.02,-.51,1.1],[.43,-.24,.9],[-.45,.15,.85],[.03,.08,1.1],[.4,.3,.7],[-.15,.5,.75]].entries()){
+   const xx=x+u*rx+(hash(seed+x,j)-.5)*3,yy=y+v*ry,sz=rx/22*scale;
+   poly(c,spray.map(([a,b])=>[xx+a*sz,yy+b*sz]),ramp[2]);
+   if(j<4)poly(c,spray.map(([a,b])=>[xx-2+a*sz*.54,yy-3+b*sz*.47]),ramp[3]);
+   if(j%2===0){rect(c,xx-3,yy+3,4,2,ramp[1]);rect(c,xx+3,yy,3,2,ramp[1]);}
+  }
  }
 }
 export function swampTreeStructure(type,seed){
@@ -110,6 +117,10 @@ export function drawSwampStudyTree(c,p,time=0){
   trunk([[-13,1],[-5,-12],[-4,-43],[-6,-68],[-2,-77],[0,-51],[4,-19],[10,0],[3,-3],[-1,-17],[-4,-1]],'#7c7152');
   trunk([[-8,0],[-3,-17],[-3,-55],[-1,-48],[0,-19],[-4,-3]],'#a39466');
   line(c,2,-14,3,-45,2,'#514e3b');
+  for(const [x,yy]of [[-3,-28],[1,-54],[-2,-66]]){line(c,x,yy-4,x-1,yy,1,'#504e3b');line(c,x-1,yy,x+1,yy+4,1,'#504e3b');}
+  if(seed%3===0){poly(c,[[-2,-24],[-3,-31],[-1,-36],[2,-32],[2,-24]],'#233b31');rect(c,-2,-25,4,1,'#a08d5f');}
+  for(const [x,yy]of [[-22,3],[21,2],[-12,5]]){line(c,x,yy,x*.5,-8,3,'#414938');line(c,x,yy-1,x*.5,-9,1,'#9b8c5e');}
+
   for(const [x,y,b]of plan?plan.clusters.map(([x,y])=>[x,y,-Math.min(65,-y*.65)]):[[-27,-56,-37],[25,-65,-43],[-15,-82,-59],[17,-90,-67]]){line(c,0,b,x*.58,y+4,4,'#444a36');line(c,x*.58,y+4,x,y,2,'#817654');}
   foliage(c,plan?.clusters||[[-23,-58,18,13],[20,-70,20,15],[-12,-84,18,18],[7,-99,15,17],[-2,-112,8,9]],seed,p.type);
  }else{
@@ -122,7 +133,11 @@ export function drawSwampStudyTree(c,p,time=0){
  }
  // Separate moss curtains preserve openings around the trunk and between crowns.
  const moss=swampMossCurtains(p.type,seed,p.varied);
- if(p.part!=='body')for(const [x,y,h]of moss){const sway=Math.round(Math.sin(time+x)*.7);line(c,x,y,x+sway,y+h,2,'#718268');line(c,x+2,y+1,x+sway+2,y+h-4,1,'#94a080');line(c,x-1,y+4,x-2+sway,y+h-3,1,'#4a6651');}
+ if(p.part!=='body')for(const [x,y,h]of moss){const sway=Math.round(Math.sin(time+x)*.7);
+  poly(c,[[x-2,y],[x+3,y+1],[x+2,y+5],[x+3+sway,y+h*.55],[x+1+sway,y+h],[x,y+h-5],[x-2+sway,y+h-2],[x-3,y+6]],'#4a6651');
+  poly(c,[[x-1,y],[x+2,y],[x+1,y+5],[x+1+sway,y+h-4],[x,y+h-7],[x-1+sway,y+h-1],[x-1,y+8],[x-2,y+4]],'#718268');
+  line(c,x,y+1,x,y+Math.floor(h*.42),1,'#94a080');rect(c,x+1,y+7,1,2,'#a5ad82');
+ }
  c.restore();
 }
 function fallenLog(c){c.save();c.translate(124,235);poly(c,[[-25,0],[22,-12],[29,-8],[-20,7]],'#344133');poly(c,[[-23,0],[22,-10],[26,-8],[-20,4]],'#7c7150');line(c,-17,0,19,-9,2,'#a18c5e');line(c,-11,-3,-16,-11,3,'#615c43');cluster(c,25,-8,4,4,'#ad976a',4);rect(c,24,-9,2,3,'#625640');for(let i=0;i<5;i++)rect(c,-17+i*6,-2-i,5,2,'#637f48');c.restore();}

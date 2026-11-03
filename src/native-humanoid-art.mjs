@@ -33,8 +33,9 @@ function volume(c,origin,axes,radii,d,palette){
   const p=projectPoint(origin,d);c.save();c.imageSmoothingEnabled=false;
   c.drawImage(image,Math.round(p.x)-48,Math.round(p.y)-48);c.restore();
 }
-function segment(c,a,b,width,d,color,right,join=true){
+function segment(c,a,b,width,d,color,right,join=true,soft=false){
   const p=projectPoint(a,d),q=projectPoint(b,d),mat=material(color,join);
+  if(soft)mat.outline=mat.body;
   const length=Math.hypot(q.x-p.x,q.y-p.y)||1,nx=-(q.y-p.y)/length,ny=(q.x-p.x)/length;
   const shape=(radius,taper=1)=>[{x:p.x+nx*radius,y:p.y+ny*radius},{x:q.x+nx*radius*taper,y:q.y+ny*radius*taper},{x:q.x-nx*radius*taper,y:q.y-ny*radius*taper},{x:p.x-nx*radius,y:p.y-ny*radius}];
   pixelPolygon(c,shape(width/2+.4,.8),mat.outline);
@@ -48,7 +49,7 @@ export function drawNativeArm(c,points,side,d,shirt,skin,part='all'){
   const right=unit(sub(points.shoulderR,points.shoulderL));
   if(part!=='lower'){
     segment(c,shoulder,elbow,3.7,d,skin,right);
-    segment(c,shoulder,mix(shoulder,elbow,.58),4.4,d,shirt,right);
+    segment(c,shoulder,mix(shoulder,elbow,.58),4.4,d,shirt,right,true,true);
   }
   if(part!=='upper'){
     segment(c,elbow,hand,3.1,d,skin,right);
@@ -72,6 +73,8 @@ export function drawNativeTorso(c,points,d,color,skin){
   segment(c,points.chest,mix(points.chest,points.head,.64),3.8,d,skin,right);
   const breadth=Math.hypot(...sub(points.shoulderR,points.shoulderL))/2;
   const chest=projectPoint(points.chest,d),pelvis=projectPoint(points.pelvis,d),mat=material(color);
+  // Cloth planes define the silhouette without a black chest/underarm band.
+  mat.outline=mat.body;
   const half=(d===2||d===6)?3.3:(d===0||d===4)?breadth+1:breadth+.3;
   const shoulderStep=(d===2||d===6)?0:1;
   const rearLift=d>=3&&d<=5?2:0;

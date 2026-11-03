@@ -41,6 +41,18 @@ function compactSkeletonJoints(base){
  for(const name of ['eyeL','eyeR','nose','mouth','earL','earR'])joints[name].position=joints.head.position.map((v,i)=>v+(base.joints[name].position[i]-base.joints.head.position[i])*[1.45,1.5,1.3][i]);
  return joints;
 }
+function authorSkeletonLocomotion(model){
+ if(model.skeletonGaitRevision===1)return model;
+ for(const action of ['walk','run'])for(const key of model.clips[action]?.keys||[])for(const side of ['L','R']){
+  const hip='hip'+side,knee='knee'+side,foot='foot'+side;
+  const hipY=model.joints[hip].position[1]+(key.joints[hip]?.[1]||0),footY=model.joints[foot].position[1]+(key.joints[foot]?.[1]||0),current=key.joints[knee]||[0,0,0];
+  // Keep the knee ahead of the hip-to-ankle line as each foot swings. The
+  // inherited player gait held the knees nearly fixed, which reversed the
+  // apparent bend on skeletons moving in oblique directions.
+  key.joints[knee]=[current[0],hipY+(footY-hipY)*.42+1.9-model.joints[knee].position[1],current[2]];
+ }
+ model.skeletonGaitRevision=1;return model;
+}
 export function upgradeSkeletonToNative(model){
  if(model.type==='krampus'||model.nativeSkeletonRevision===3)return model;
  const legacy=defaultPlayerMotion(),base=skeletonBase??=defaultNativePlayerMotion();
@@ -90,7 +102,7 @@ export function defaultSkeletonMotion(kind = "skeleton") {
     head: "#a33b3b", headShade: "#632b31", body: "#8a3038", bodyShade: "#4b2630",
     arms: "#a64040", armShade: "#642b32", legs: "#473746", legShade: "#2d2938", outline: "#241d29",
   });
-  const model=upgradeSkeletonToNative(m);
+  const model=authorSkeletonLocomotion(upgradeSkeletonToNative(m));
   if(kind==='skeleton_wizard')authorSkeletonWizardCast(model);
   authorLongAxeSwing(model);
   return model;
@@ -102,7 +114,7 @@ export const validateSkeletonMotion = (kind, m) =>
   m?.type === kind && m.skeleton === true && validatePlayerMotion(m);
 export function replaceSkeletonMotion(kind, m) {
   if (!validateSkeletonMotion(kind, m)) throw Error("Invalid skeleton rig");
-  const next=upgradeSkeletonToNative(upgradePlayerMotion(m));
+ const next=authorSkeletonLocomotion(upgradeSkeletonToNative(upgradePlayerMotion(m)));
   if(!next.clips.long_axe_swing)authorLongAxeSwing(next);
   for(const field of ['nativeSkeletonRevision','nativeSkeletonSource'])if(!Object.hasOwn(next,field))delete skeletonMotions[kind][field];
   Object.assign(skeletonMotions[kind], next);

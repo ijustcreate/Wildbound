@@ -107,6 +107,7 @@ export function harvest(g, p, damage, range, onHit) {
       s.falling = 0.001;
       setTreeFallDirection(s,b.x-p.x,b.y-p.y);
       s.logCount = Math.max(2, Math.round(s.size / 32));
+      g.onSound?.('treeBreak',s);
       if (s.kind === "palm") s.coconuts ??= Math.floor(terrainHash(s.x, s.y) * 4);
     }
   } else {
@@ -148,36 +149,7 @@ export function tickEnvironment(g, dt) {
   g.environmentParticles = g.environmentParticles.filter(
     (f) => (f.life -= dt) > 0,
   );
-  for (const s of g.scenery)
-    if (s.falling) {
-      s.falling += dt;
-      if (s.falling >= 1.2 && !s.depleted) {
-        s.depleted = true;
-        const b = propBase(s);
-        g.dropLoot(
-          b.x + treeFallVector(s).x * s.size * 0.35,
-          b.y + treeFallVector(s).y * s.size * 0.35,
-          "log",
-          s.logCount || 2,
-          "Felled tree",
-        );
-        g.loot.at(-1).manualPickup = true;
-        if (s.kind === "palm" && s.coconuts > 0) {
-          g.dropLoot(b.x + s.fallDirection * 12, b.y - 8, "coconut", s.coconuts, "Felled palm", true);
-        }
-        g.persist();
-      }
-    }
-  for (const s of g.scenery) {
-    if (s.falling >= 1.5 && (realmTree(s)||["tree", "leafless_tree", "grave_forest_tree", "snow_tree", "palm"].includes(s.kind))) {
-      // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
-      s.fallen = true;
-      s.falling = 0;
-      s.rootY = propBase(s).y;
-      s.harvest = 0;
-    }
-  }
-  if(g.scenery.some(s=>s.falling>=1.5))g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
+  tickSceneryFalls(g,dt);
   for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
     if(a.kind==='slime'||flies(a)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if (
@@ -271,9 +243,15 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
   // decoration was generated. Reuse the live grass mask instead of painting
   // mushrooms/reeds over the newly carved paving.
   if(p.kind==='forest_understory'&&(vegetationBlocked(game,p.x,p.rootY??p.y,8)||game.forestLandscape&&!meadowAllowed(game,p.x,p.rootY??p.y,8)))return true;
-  if((game.generatedEnvironment||game.environment)==='forest'&&!p.depleted&&!p.destroyed&&drawForestAsset(c,p,time,game))return true;
+  // Forest resources use the existing faceted realm rock sprites; the old
+  // woodland limestone silhouettes looked pale and marker-like at play scale.
+  if(p.kind!=='rock'&&(game.generatedEnvironment||game.environment)==='forest'&&!p.depleted&&!p.destroyed&&drawForestAsset(c,p,time,game))return true;
   if(['short_grass','tall_grass','grass'].includes(p.kind)&&vegetationBlocked(game,p.x,p.rootY??p.y+p.size*.4,Math.max(6,(p.size||20)*.35)))return true;
   if(drawRealmProp(c,p,time,game,renderOptions))return true;
+  if(p.kind==='rock'&&p.procedural&&!p.depleted&&!p.destroyed&&(game.generatedEnvironment||game.environment)==='forest'){
+    const rockKind=terrainHash(p.x,p.y)>.55?'peat_boulder':'limestone_shelf';
+    if(drawRealmProp(c,{...p,kind:rockKind,realm:true},time,game,renderOptions))return true;
+  }
   if(renderOptions.shaderGrass&&p.kind==='tall_grass'&&!p.charred)return true;
   if(drawGrassProp(c,p,time,game.generatedEnvironment||game.environment,game))return true;
   if(drawGraveyardProp(c,p,time,game))return true;
@@ -394,4 +372,37 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
     );
   }
   return true;
+}
+
+export function tickSceneryFalls(g,dt){
+  for (const s of g.scenery)
+    if (s.falling) {
+      s.falling += dt;
+      if (s.falling >= 1.2 && !s.depleted) {
+        s.depleted = true;
+        const b = propBase(s);
+        g.dropLoot(
+          b.x + treeFallVector(s).x * s.size * 0.35,
+          b.y + treeFallVector(s).y * s.size * 0.35,
+          "log",
+          s.logCount || 2,
+          "Felled tree",
+        );
+        g.loot.at(-1).manualPickup = true;
+        if (s.kind === "palm" && s.coconuts > 0) {
+          g.dropLoot(b.x + s.fallDirection * 12, b.y - 8, "coconut", s.coconuts, "Felled palm", true);
+        }
+        g.persist();
+      }
+    }
+  for (const s of g.scenery) {
+    if (s.falling >= 1.5 && (realmTree(s)||["tree", "leafless_tree", "grave_forest_tree", "snow_tree", "palm"].includes(s.kind))) {
+      // Keep the root/stump as a grounded prop. Only the trunk and canopy fall.
+      s.fallen = true;
+      s.falling = 0;
+      s.rootY = propBase(s).y;
+      s.harvest = 0;
+    }
+  }
+  if(g.scenery.some(s=>s.falling>=1.5))g.scenery = g.scenery.filter((s) => !(s.falling >= 1.5));
 }

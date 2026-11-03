@@ -10,6 +10,10 @@ export function damageEnemy(target,amount,type='physical',context){
   if(!target.practiceTarget){
     const dealt=Math.min(Math.max(0,target.hp),amount);if(!dealt)return 0;
     if(target.kind==='skunk')markSkunkAttacked(context?.g,target,context?.p||context?.shot||null);
+    if(target.kind==='chicken'&&!target.carriedBy&&target.hp>amount){
+      const source=context?.p||context?.shot;target.state='flee';target.timer=0;target.calmPlacement=false;
+      target.fleeTime=Math.max(target.fleeTime||0,3.2);target.fleeFromX=source?.x??target.x-(target.faceX||0)*32;target.fleeFromY=source?.y??target.y-(target.faceY||1)*32;
+    }
     interruptShoreGoblin(target);interruptReaper(target);if(target.kind==='ghost'){interruptGhost(target);if(target.state==='windup'){target.state='recover';target.timer=.4;target.cooldown=.5;}}target.hp=Math.max(0,target.hp-amount);target.flash=.18;
     if(context)consumeLifeSteal(context.g,context.p,target,dealt,context.shot);
     return dealt;

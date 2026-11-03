@@ -293,7 +293,19 @@ export function drawNightRig(c, actor, time, model = nightMotions[actor.sprite] 
   if(kind==='pelican'&&model.pelicanRavenRevision===1)return drawPelicanPixels(c,model,pose,d);
   if(kind==='werewolf')return drawWerewolfPixels(c,model,pose,d);
   if(kind==='scorpion_boss')return drawScorpionBossPixels(c,model,pose,d);
-  if(kind==='chicken')return drawChickenPixels(c,model,pose,d);
+  if(kind==='chicken'){
+    if(actor.carriedFlap){
+      const wingPose=Object.fromEntries(Object.entries(pose).map(([name,value])=>[name,Array.isArray(value)?value.slice():value]));
+      const flap=(Math.sin(time*34+(actor.id||0))*.5+.5);
+      for(const side of ['L','R']){
+        if(wingPose['elbow'+side])wingPose['elbow'+side][2]+=2+flap*3;
+        if(wingPose['hand'+side])wingPose['hand'+side][2]+=3+flap*5;
+        if(wingPose['wingTip'+side])wingPose['wingTip'+side][2]+=4+flap*8;
+      }
+      return drawChickenPixels(c,model,wingPose,d);
+    }
+    return drawChickenPixels(c,model,pose,d);
+  }
   if(kind==='squashling')return drawSquashlingPixels(c,model,pose,d,time);
   if(kind==='fox')return drawFoxPixels(c,model,pose,d);
   const p = Object.fromEntries(Object.entries(pose).map(([n, v]) => [n, projectPoint(v, d)]));

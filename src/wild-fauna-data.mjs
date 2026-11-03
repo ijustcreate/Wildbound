@@ -1,6 +1,6 @@
 export const DEER_KINDS=Object.freeze(['mother_deer','stag','baby_deer','shadow_stag']);
 export const PIG_KINDS=Object.freeze(['pig','pig_spotted']);
-export const PEACEFUL_FAUNA_KINDS=Object.freeze([...DEER_KINDS,...PIG_KINDS,'chicken','penguin']);
+export const PEACEFUL_FAUNA_KINDS=Object.freeze([...DEER_KINDS,...PIG_KINDS,'chicken','penguin','river_otter']);
 export const WILD_FAUNA_KINDS=Object.freeze([...PEACEFUL_FAUNA_KINDS,'scorpion','arctic_fox']);
 export const WILD_FAUNA_LIMIT=10;
 export const WILD_FAUNA_DEFAULTS=Object.freeze({
@@ -14,4 +14,5 @@ export const WILD_FAUNA_DEFAULTS=Object.freeze({
  scorpion:{name:'Desert scorpion',hp:34,speed:38,damage:10,faction:'enemy'},
  arctic_fox:{name:'Arctic fox',hp:42,speed:86,damage:8,faction:'enemy'},
  penguin:{name:'Ice penguin',hp:38,speed:56,damage:0,faction:'neutral'},
+ river_otter:{name:'River otter',hp:44,speed:82,damage:0,faction:'neutral'},
 });

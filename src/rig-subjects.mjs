@@ -72,7 +72,9 @@ import {alanMotion,defaultAlanMotion,replaceAlanMotion,drawAlan} from './alan-mo
 import {villagerMotion,defaultVillagerMotion,replaceVillagerMotion,drawVillager} from './villager-motion.mjs';
 import {slimeMotion,defaultSlimeMotion,replaceSlimeMotion,drawSlime} from './slime-motion.mjs';
 import { CREATURE_PACK_SUBJECTS } from './creature-packs/index.mjs';
+import {ARENA_SUBJECTS} from './tv-arena-creatures.mjs';
 export const RIG_SUBJECTS = {
+  ...ARENA_SUBJECTS,
  graveyard_cat:{name:'Cemetery cat / Honey rig',data:honeyCatMotion,defaults:defaultHoneyCat,replace:replaceHoneyCat,draw:drawHoneyCat,sprite:'graveyard_cat',selected:'head',palette:Object.keys(honeyCatMotion.palette),shapeKeys:Object.keys(honeyCatMotion.shape),tracks:['head','tailTip','frontPawL','rearPawR'],clip:'walk',scale:6},
  marsh_firefly:{name:'Marsh fireflies / drifting lights',data:fireflyMotion,defaults:defaultFireflyMotion,replace:replaceFireflyMotion,draw:drawFireflyRig,sprite:'marsh_firefly',selected:'lightA',palette:Object.keys(fireflyMotion.palette),shapeKeys:Object.keys(fireflyMotion.shape),tracks:['lightA','lightB','lightC'],clip:'fly',scale:6},
   ghost:{name:'Ghost / spectral humanoid',data:ghostMotion,defaults:defaultGhostMotion,replace:replaceGhostMotion,draw:drawGhost,sprite:'ghost',selected:'head',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'claw',scale:5},

@@ -4,6 +4,7 @@ import {buildCombatPass} from './combat-animation.mjs';
 import {applyIK} from './ik.mjs';
 import {refineNativeSword} from './sword-feel.mjs';
 import {refineNativeLocomotion} from './native-locomotion.mjs';
+import {refineNativeJumpPolish,isSharedBaseJump} from './native-jump-polish.mjs';
 
 const copy=v=>structuredClone(v);
 const add=(a,b)=>a.map((v,i)=>v+b[i]);
@@ -67,7 +68,16 @@ export function upgradeNativeHumanoid(model,shipping){
  const result=upgradeNativeHumanoidBase(model,shipping);
  if(result.nativeHumanoidRevision!==1)return result;
  locomotionShipping??=upgradeNativeHumanoidBase(copy(shipping),shipping);
- return refineNativeSword(refineNativeLocomotion(result,locomotionShipping),locomotionShipping);
+ const shared={},original=result.nativeHumanoidSource;
+ if(original?.originalJoints)for(const [name,clip]of Object.entries(original.preservedClips||{})){
+  if(isSharedBaseJump(name,clip)){
+   const joints=result.relaxedStanceSource||result.joints;
+   const expected=retargetHumanoidClip({joints:original.originalJoints},{joints},clip);
+   for(const key of expected.keys)for(const [n,v]of Object.entries(key.joints))key.joints[n]=v.map((x,i)=>x+joints[n].position[i]-result.joints[n].position[i]);
+   shared[name]=expected;
+  }
+ }
+ return refineNativeJumpPolish(refineNativeSword(refineNativeLocomotion(result,locomotionShipping),locomotionShipping),locomotionShipping,shared);
 }
 function upgradeNativeHumanoidBase(model,shipping) {
   if(model.nativeHumanoidRevision===1)model=recoverPreservedBaseClips(model);

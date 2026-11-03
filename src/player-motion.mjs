@@ -3,7 +3,7 @@ import {drawCarverClaws} from './carver-claw-shader.mjs';
 import {drawCarverVest,drawCarverMantle,drawCarverDress} from './bone-carver-art.mjs';
 import {addBroomRide} from './broom-clips.mjs';
 import {drawBroom} from './broom-art.mjs';
-import {swordBladeTime,paintSwordRibbon,swordLoadout} from './sword-feel.mjs';
+import {swordBladeTime,paintSwordRibbon,swordLoadout,swordCharging,paintSwordChargeSpark} from './sword-feel.mjs';
 import {addReaperClips} from './reaper-clips.mjs';
 import {addSantaLaugh} from './christmas-clips.mjs';
 import {drawSantaCoat} from './christmas-art.mjs';
@@ -419,7 +419,7 @@ export function replacePlayerMotion(m) {
   if (!validatePlayerMotion(m))
     throw Error("Invalid player rig or animation clips. Nothing imported.");
   const next=upgradePlayerMotion(m);
-  for(const field of ['nativeHumanoidRevision','nativeHumanoidSource','headBalanceRevision','nativeJumpRevision','nativeJumpSource','relaxedStanceRevision','relaxedStanceSource','breaststrokeRevision','breaststrokeSource','locomotionRevision','locomotionSource','nativeSwordRevision','nativeSwordSource'])if(!Object.hasOwn(next,field))delete playerMotion[field];
+  for(const field of ['nativeHumanoidRevision','nativeHumanoidSource','headBalanceRevision','nativeJumpRevision','nativeJumpSource','jumpPolishRevision','jumpPolishSource','relaxedStanceRevision','relaxedStanceSource','breaststrokeRevision','breaststrokeSource','locomotionRevision','locomotionSource','nativeSwordRevision','nativeSwordSource'])if(!Object.hasOwn(next,field))delete playerMotion[field];
   Object.assign(playerMotion,next);
 }
 export function facingIndex(x = 0, y = 1) {
@@ -546,7 +546,7 @@ export function playerAction(actor) {
   if (actor.foundUnique > 0) return "found_unique";
   if (actor.pickupTime > 0) return "pickup";
   if (actor.gatherTime > 0) return actor.gatherAction || "mine";
-  if (actor.carryingItem) return "carry";
+  if (actor.carryingItem||actor.heldChickenId) return "carry";
   if (actor.parry > 0) return "parry";
   if(actor.hp<=0)return 'death';
   if(actor.sleeping > 0)return 'sleep';
@@ -559,6 +559,7 @@ export function playerAction(actor) {
   if(actor.reviveAnimation>0)return 'revive';
   if(actor.interactAnimation>0)return 'interact';
   if (actor.dashTime > 0) return "dash";
+  if(swordCharging(actor))return "idle";
   if (actor.blocking) return "block";
   if (
     ["bow", "rifle", "boomerang"].includes(itemKind(actor.equipment?.hand1)) &&
@@ -644,6 +645,12 @@ export function playerPose(actor,time,model=playerMotion){
   if(model.nativeSwordRevision===1&&SWING_ACTIONS.includes(action)&&swordLoadout(actor)&&itemKind(actor.equipment?.hand2)==='sword'&&(itemKind(actor.equipment?.hand1)!=='sword'||action==='swipe_two')){
     const hand=[...pose.handR],elbow=[...pose.elbowR];pose.handL=[-hand[0],hand[1],hand[2]];pose.elbowL=[-elbow[0],elbow[1],elbow[2]];
     pose.handR=[5,4,22];pose.elbowR=[7,1,22];applyIK(model,pose);
+  }
+  if(swordCharging(actor)){
+    for(const [slot,side,sign]of [['hand1','R',1],['hand2','L',-1]])if(itemKind(actor.equipment?.[slot])==='sword'){
+      pose['hand'+side]=[sign*8,-5,18];pose['elbow'+side]=[sign*8,0,22];
+    }
+    applyIK(model,pose);
   }
   if(itemKind(actor.equipment?.hand1)==='bow'&&['draw','ranged'].includes(action)){
     pose.handL[0]-=2.5;applyIK(model,pose);
@@ -805,6 +812,9 @@ export function drawPlayer(
   const humanHead=human&&!boneHead;
   const sculpted=human&&model.artGeneration===3;
   const native=human&&(model.nativeHumanoidRevision===1||actor.skeletonCostume);
+  // Compact artwork has a shorter chin than the old head oval. Seat the whole
+  // face/hair group on the collar without altering editable joints or eye offsets.
+  if(native)for(const name of ['head','eyeL','eyeR','earL','earR','nose','mouth'])p[name].y+=1;
   const headDirection=human&&Number.isFinite(actor.locomotionHeadDirection)?((Math.round(actor.locomotionHeadDirection)%8)+8)%8:d;
   const nativeSkeleton=model.skeleton&&!actor.skeletonCostume&&model.nativeSkeletonRevision>=1;
   if(sculpted){stabilizeSculptedEyes(p,restModel,d);alignWorkKnees(p,playerAction(actor));}
@@ -1034,6 +1044,11 @@ export function drawPlayer(
           pixel(toe.x - 1, toe.y - 1, 2, 1, "#b39874");
           pixel(toe.x - 2, toe.y + 1, 4, 1, "#302b2b");
         }
+        if(native&&!boneLegs&&!ITEMS[gear.pants]?.spectralLegs){
+          // Carry the trouser cuff into the shoe's own ankle frame. In diagonal
+          // views the wide shoe outline otherwise cuts a dark gap below the shin.
+          pixel(foot.x-1.5,foot.y-3,3,2,color);
+        }
         }
         if (gear.feet)
           // The boot already includes its toe extension. Its shaft and rotation
@@ -1221,6 +1236,9 @@ export function drawPlayer(
                 c.save();c.globalAlpha*=Math.min(1,(.61-t)/.12);paintSwordRibbon(c,points,action==='swipe_big');c.restore();
               }
             }
+            if(weapon==='sword'&&swordCharging(actor)){
+              const v=projectPoint([side==='R'?3:-3,-17,3],visualDirection??d);tip={x:hand.x+v.x,y:hand.y+v.y};
+            }
             const material=gearPalette(weaponId);
             if(weaponId==='stick'){
               limb(c,hand,tip,4,'#493a28');
@@ -1269,6 +1287,7 @@ export function drawPlayer(
             pixel(guard.x-1,guard.y-1,1,1,material.shine);
             pixel(hand.x-ux*2,hand.y-uy*2,1,1,material.trim);
             pixel(hand.x-ux*3-1,hand.y-uy*3,2,1,material.trim);
+            if(weapon==='sword'&&swordCharging(actor))paintSwordChargeSpark(c,hand,tip,actor.charge,time);
             if(ITEMS[weaponId]?.energyBlade&&actor.energyBladeActive!==false){const color=ITEMS[weaponId].bladeColor;c.save();c.globalCompositeOperation='lighter';c.shadowColor=color;c.shadowBlur=9;limb(c,guard,tip,5,color);limb(c,guard,tip,2,'#f4ffff');c.restore();for(let n=0;n<3;n++)pixel(tip.x+Math.sin(time*9+n*2)*2,tip.y+Math.cos(time*8+n*2)*2,1,1,color);}
             }
             }
@@ -1532,7 +1551,7 @@ export function drawPlayer(
           ellipse(c, p[name].x, p[name].y, 1.2, 1.8, pal.headShade);
       if(nativeSkeleton||boneHead){
         drawSkeletonSkull(c,p,d,boneHead?BONE_PALETTE:pal,visible,actor.skeletonCostume||boneHead?.76:model.nativeSkeletonRevision>=3?.76:1);
-      } else {
+      } else if (!humanHead) {
         ellipse(c, h.x, h.y, side ? 3.5 : 4.2, 5, pal.headShade);
         ellipse(c, h.x - 0.6, h.y - 1, side ? 2.8 : 3.6, 4, pal.head);
       }
@@ -1698,7 +1717,7 @@ export function drawPlayer(
       "Bow",
     );
   if(queue.at(-1)?.id==='Bow')queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:p.handL.depth<p.chest.depth};
-  if(sculpted&&['mine','woodcut','carry','pickup','found_unique'].includes(propAction))add((p.handL.depth+p.handR.depth)/2+.3,()=>{
+  if(sculpted&&!actor.heldChickenId&&['mine','woodcut','carry','pickup','found_unique'].includes(propAction))add((p.handL.depth+p.handR.depth)/2+.3,()=>{
     const a=p.handR,b=p.handL,mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     if(propAction==='mine'||propAction==='woodcut'){
       const length=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/length,uy=(b.y-a.y)/length;

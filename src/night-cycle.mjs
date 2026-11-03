@@ -80,6 +80,7 @@ export function lightSources(g,room=null) {
   for(const npc of g.questNpcs||[])if(Number.isFinite(npc.campX??npc.x)&&Number.isFinite(npc.campY??npc.y))
     sources.push({x:npc.campX??npc.x,y:(npc.campY??npc.y)+10,height:16,radius:150,intensity:.82,color:'#ffad4c'});
   if(g.villageCampState?.fire)sources.push({x:g.villageCampState.fire.x,y:g.villageCampState.fire.y,height:20,radius:150,intensity:.92,color:'#ffad4c',owner:`camp:${g.villageCampState.campId}`});
+  for(const p of g.scenery||[])if(p.kind==='bayou_shrine'&&!p.depleted){const scale=p.size/128;for(const dx of [-25,31])sources.push({x:p.x+dx*scale,y:p.rootY-15*scale,height:26,radius:115,intensity:.55,color:'#efcf87',owner:'prop:'+p.id});}
   for(const p of g.scenery||[])if(p.realm&&!p.depleted&&!p.falling&&['cave_crystal','amber_crystal','shadow_obsidian'].includes(p.kind))sources.push({x:p.x,y:p.rootY-18,height:22,radius:100,intensity:.55,color:p.kind==='amber_crystal'?'#e8bd78':p.kind==='shadow_obsidian'?'#b291d1':'#91d9d1'});
   sources.push(...houseLightSources(g));
   sourceFrames.set(g,{key:cacheKey,sources});return sources;

@@ -1,7 +1,10 @@
+import {swordLoadout} from './sword-feel.mjs';
 import {BACKPACK_SLOTS} from "./items.mjs";
 import {useHotChocolate} from './hot-chocolate.mjs';
 import {useBroom,dismountBroom} from './broom-mount.mjs';
 import {interactCreaturePackActor} from './creature-packs/index.mjs';
+import {interactChicken} from './chicken-carry.mjs';
+import {throwHeldChicken} from './chicken-carry.mjs';
 import {initializeBoundlessWorld} from './boundless-world.mjs';
 import {encounterCue} from './encounter-cues.mjs';
 import {weaponHitContext} from './dark-essence.mjs';
@@ -1165,8 +1168,9 @@ export const adventureMethods = {
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
-        if(!sealPriority&&!this.openingBoard&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
-        if (!sealPriority && !this.openingBoard && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
+        if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&interactChicken(this,p)){p.interactUsed=true;p.charge=0;}
+        if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
+        if (!sealPriority && !this.openingBoard && !p.interactUsed && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
           const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||(edge('interact')&&interactCreaturePackActor(this,p))||interactGraveyardCat(this,p)||interactOldWell(this,p)||openMerchant(this,p)||openHouseChest(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
@@ -1261,6 +1265,12 @@ export const adventureMethods = {
   },
   tickWorldLoot(dt){tickXPOrbs(this,dt);},
   tickWeaponInput(p,i,old,dt){
+        const swordReady=swordLoadout(p)&&!controlledFollower(this,p)&&!p.ui&&!p.room&&p.hp>0&&!p.stun&&!p.frozen&&!p.sleeping&&!p.consumeInput&&!p.swimming&&!p.heldChickenId;
+        p.swordChargeAim=!!(swordReady&&!p.attack&&i.attack&&(i.block||i.holdPosition)&&!this.openingBoard);
+        if(p.swordChargeAim||p.swordDash||p.swordFacing&&p.attack>0)p.blocking=false;
+        if(swordLoadout(p)&&!swordReady){p.charge=0;return;}
+
+        if(p.heldChickenId){if(i.attack&&!old.attack)throwHeldChicken(this,p);p.charge=0;p.pounceAimActive=false;p.pounceAim=null;return;}
         if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui){
           p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
           const controlled=controlledFollower(this,p);
@@ -1277,7 +1287,9 @@ export const adventureMethods = {
           }else if(['imp','fire_elemental','water_elemental'].includes(controlled?.kind)&&p.bowAiming){controlled.moving=false;if(['fire_elemental','water_elemental'].includes(controlled.kind))controlled.fireballsAttack=.08;}
         }
         if (!i.attack && old.attack && p.charge&&!p.swimming) {
+          p.swordDashRequested=!!(swordReady&&(i.block||i.holdPosition||old.block||old.holdPosition));
           this.attack(p, p.charge);
+          delete p.swordDashRequested;
           p.charge = 0;
           p.pounceAimActive=false;p.pounceAim=null;
         }

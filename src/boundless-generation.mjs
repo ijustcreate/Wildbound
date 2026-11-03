@@ -154,7 +154,7 @@ export function translateRegionProps(plan){
   if(p.blockers)p.blockers=p.blockers.map(translateRect);
   // Keep complete fences/gates, but clear route shoulders of tall obstacles.
   if(!['cemetery_fence','cemetery_gate'].includes(p.kind)&&regionRouteDistance(plan,p.x,p.rootY??p.y)<90)continue;
-  if(p.realm){const tx=Math.floor((p.x-plan.cx*1600)/32),ty=Math.floor(((p.rootY??p.y)-plan.cy*1600)/32),tile=plan.terrain[ty*50+tx];if(!tile||tile.endsWith('_void')||tile==='water'||tile==='bridge')continue;}
+  if(p.realm){const tx=Math.floor((p.x-plan.cx*1600)/32),ty=Math.floor(((p.rootY??p.y)-plan.cy*1600)/32),tile=plan.terrain[ty*50+tx];if(!tile||tile.endsWith('_void')||tile==='water'||tile==='bridge'&&p.kind!=='bayou_landing')continue;}
   props.push(p);
  }
  const stoneIds=new Set(props.filter(p=>p.kind==='gravestone').map(p=>p.id));

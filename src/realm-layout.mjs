@@ -4,7 +4,7 @@ export const REALMS = ['swamp','caverns','shadow'];
 export const REALM_NAMES = {swamp:'Bayou Marsh',caverns:'Hollowdeep Caverns',shadow:'The Shadow Realm'};
 export const realmHash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export const REALM_ASSETS = {
- swamp:{mangrove:{type:'tree',size:220},old_cypress:{type:'tree',size:240},cypress_knee:{type:'rock',size:28},peat_boulder:{type:'rock',size:60},marsh_reeds:{size:38},bayou_lily:{size:24},marsh_fern:{size:34},moss_log:{type:'log',size:76}},
+ swamp:{mangrove:{type:'tree',size:220},old_cypress:{type:'tree',size:240},cypress_knee:{type:'rock',size:28},peat_boulder:{type:'rock',size:60},marsh_reeds:{size:38},bayou_lily:{size:24},marsh_fern:{size:34},moss_log:{type:'log',size:76},bayou_shrine:{size:210},bayou_ruin:{size:120},bayou_snag:{size:150},bayou_landing:{size:110}},
  caverns:{limestone_shelf:{type:'rock',size:90},stalagmite:{type:'mineral',size:64},cave_crystal:{type:'crystal',size:65},amber_crystal:{type:'crystal',size:58},cave_mushroom:{size:42},cave_drip:{size:26},ceiling_stalactite:{type:'ceiling',size:46},cave_rubble:{size:40}},
  shadow:{wither_tree:{type:'tree',size:150},root_arch:{type:'arch',size:155},shadow_obsidian:{type:'crystal',size:68},thorn_fan:{size:52},echo_fungus:{size:44},shadow_bloom:{size:36},ashen_log:{type:'log',size:80},veil_stone:{type:'rock',size:88}},
 };
@@ -47,7 +47,7 @@ export function realmWorld(seed,env,{authored=true,settings:overrides={},layout=
  }
  // Pixel terrain edits are layered on generated topology, never on another save.
  for(const [id,kind]of Object.entries(saved?.tiles||{}))if(Number.isInteger(+id)&&+id>=0&&+id<2500&&REALM_TILES.includes(kind))terrain[+id]=kind;
- const kinds=Object.keys(REALM_ASSETS[env]).filter(k=>realmAsset(k).type!=='ceiling');
+ const kinds=Object.keys(REALM_ASSETS[env]).filter(k=>realmAsset(k).type!=='ceiling'&&!['bayou_shrine','bayou_ruin','bayou_snag','bayou_landing'].includes(k));
  for(let i=0;i<1400&&scenery.length<settings.propDensity;i++){
   const x=80+realmHash(seed+i,73)*1440,y=80+realmHash(i,seed+91)*1440;
   const tile=terrain[Math.floor(y/32)*50+Math.floor(x/32)],r=realmHash(i+seed,9);
@@ -60,7 +60,7 @@ export function realmWorld(seed,env,{authored=true,settings:overrides={},layout=
    const tx=Math.floor(x/32),ty=Math.floor(y/32),nearWall=[[2,0],[-2,0],[0,2],[0,-2]].some(([dx,dy])=>terrain[(ty+dy)*50+tx+dx]==='cave_void');
    if(!nearWall)kind=r>.5?'stalagmite':'cave_mushroom';
   }
-  scenery.push(realmProp(kind,x,y,scenery.length,{size:Math.round(realmAsset(kind).size*(.85+realmHash(i,21)*.3))}));
+  scenery.push(realmProp(kind,x,y,scenery.length,{...(swamp&&realmTree({kind})?{treeVariantSeed:Math.floor(realmHash(seed,i)*100000)}:{}),size:Math.round(realmAsset(kind).size*(.85+realmHash(i,21)*.3))}));
  }
  // Authored wall growths and landmarks give every room a recognisable destination.
  const landmarks=env==='caverns'?[['cave_crystal',430,330],['amber_crystal',870,220],['cave_crystal',1350,520],['limestone_shelf',1150,1180],['cave_mushroom',720,1370]]:env==='swamp'?[]:[['root_arch',1280,1100],['wither_tree',380,350],['shadow_obsidian',820,240]];
@@ -68,7 +68,30 @@ export function realmWorld(seed,env,{authored=true,settings:overrides={},layout=
  if(env==='swamp')for(let i=0,trees=0;i<1600&&trees<22;i++){
   const x=100+realmHash(seed+i,541)*1400,y=100+realmHash(i,seed+941)*1400;
   if(terrain[Math.floor(y/32)*50+Math.floor(x/32)]!=='marsh_grass'||Math.hypot(x-800,y-800)<260||route(x,y)<42||scenery.some(p=>Math.hypot(p.x-x,p.rootY-y)<(realmTree(p)?110:40)))continue;
-  scenery.push(realmProp(trees%3?'mangrove':'old_cypress',x,y,scenery.length));trees++;
+  scenery.push(realmProp(trees%3?'old_cypress':'mangrove',x,y,scenery.length,{treeVariantSeed:Math.floor(realmHash(seed,i)*100000)}));trees++;
+ }
+ if(swamp&&!saved?.scenery){
+  // Destinations sit off the traversable routes; decorative ruins have no new blockers.
+  for(const [i,island]of chambers.entries()){
+   const candidates=[];
+   for(let j=0;j<32;j++){
+    const a=j*2.399963,x=island.x+Math.cos(a)*island.r*(i===0?.82:.55),y=island.y+Math.sin(a)*island.r*(i===0?.82:.55);
+    if(terrain[Math.floor(y/32)*50+Math.floor(x/32)]!=='marsh_grass'||route(x,y)<40||scenery.some(p=>realmTree(p)&&Math.hypot(p.x-x,p.rootY-y)<70))continue;
+    candidates.push({x,y});
+   }
+   if(!candidates.length)continue;const {x,y}=candidates[0];
+   scenery.push(realmProp(i===0||i===4?'bayou_shrine':i%3===0?'bayou_ruin':'bayou_snag',x,y,scenery.length));
+  }
+  // Three modest crossings on existing shallow routes; never a road grid.
+  let crossings=0;
+  for(const points of swamp.routes){
+   if(crossings>=3)break;const mid=points[1],tx=Math.floor(mid.x/32),ty=Math.floor(mid.y/32);
+   if(tx<2||tx>47||ty<2||ty>47||terrain[ty*50+tx]!=='shallow')continue;
+   const horizontal=Math.abs(points[2].x-points[0].x)>Math.abs(points[2].y-points[0].y);
+   for(let k=-1;k<=1;k++){const id=(ty+(horizontal?0:k))*50+tx+(horizontal?k:0);if(saved?.tiles?.[id]===undefined&&['shallow','mud'].includes(terrain[id]))terrain[id]='bridge';}
+   scenery.push(realmProp('bayou_landing',tx*32+16,ty*32+16,scenery.length,{size:horizontal?110:52}));
+   crossings++;
+  }
  }
  if(env==='caverns')for(let i=0;i<settings.hazardCount;i++){const p=chambers[1+i%7];scenery.push(realmProp('ceiling_stalactite',p.x-55,p.y+65,scenery.length,{warning:settings.hazardWarning,damage:settings.hazardDamage,hazardState:'idle'}));}
  if(Array.isArray(saved?.scenery)){

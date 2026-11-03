@@ -11,7 +11,7 @@ import {saveSession,restoreSession} from '../src/session.mjs';
 import {footprintHit} from '../src/world.mjs';
 import {terrainSupport} from '../src/terrain-support.mjs';
 const game=env=>{const g=new Game(()=>.5);g.environment=env;g.seed=42;g.addPlayer('keyboard');g.start();g.bloom=3;return g;};
-test('native realm catalogs and articulated fauna are valid editable indexed sprites',()=>{for(const [k,s]of Object.entries({...REALM_SPRITES,...FAUNA_SPRITES})){assert.ok(validateSprite(s),k);assert.ok(s.pixels.some(Boolean),k);}for(const env of REALMS)assert.equal(Object.keys(REALM_ASSETS[env]).length,8);});
+test('native realm catalogs and articulated fauna are valid editable indexed sprites',()=>{for(const [k,s]of Object.entries({...REALM_SPRITES,...FAUNA_SPRITES})){assert.ok(validateSprite(s),k);assert.ok(s.pixels.some(Boolean),k);}for(const env of REALMS)assert.equal(Object.keys(REALM_ASSETS[env]).length,env==='swamp'?12:8);});
 test('nutria uses eight readable native views and separate animated paws instead of the boxy placeholder',()=>{
  const views=Array.from({length:8},(_,view)=>FAUNA_SPRITES['nutria_body_'+view]);
  assert.ok(views.every(validateSprite));assert.ok(views.every(sprite=>sprite.palette.includes('#d4b88c')));

@@ -561,6 +561,17 @@ body[data-screen="lobby"] #site-header { display:none !important; }
 
 .particle-workspace canvas {height:min(420px,49vh);object-fit:contain;}
 .particle-workspace input[type=color] {height:32px;padding:2px;}
+.particle-playback{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0;font:13px system-ui;}
+.particle-playback input[type=range]{flex:1;min-width:120px;}
+.particle-playback input[type=color]{width:38px;}
+.particle-workspace aside{max-height:66vh;overflow:auto;padding-right:8px;}
+.particle-workspace aside .pixelfx-option{align-items:flex-start;flex-wrap:wrap;}
+.pixelfx-palette{display:flex;flex-wrap:wrap;gap:3px;max-width:100%;}
+.particle-workspace .pixelfx-palette input[type=color]{width:28px;height:28px;}
+.particle-workspace .pixelfx-palette input[type=number]{width:85px;}
+.particle-toolbar select{max-width:250px;}
+.particle-toolbar input[type=search]{max-width:200px;}
+@media(max-width:760px){.particle-workspace aside{display:block;max-height:none;}.particle-toolbar select{max-width:100%;}}
 
 #lobby .character-gallery .carousel-row button.carousel-arrow {font-size:24px;line-height:1;}
 #lobby .character-gallery .carousel-name.picker-selected::before {content:none;}

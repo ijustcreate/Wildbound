@@ -89,16 +89,19 @@ test('melee strikes the nearest exposed cell and respects facing and intervening
   assert.equal(behind.sectionDamage, undefined, 'intact neighboring section still shields the rear wall');
 });
 
-test('spin can hit behind the actor, while open doors and decorative furniture are exempt', () => {
+test('spin hits behind the actor; open doors and rugs are exempt while potted plants break', () => {
   const {g, p} = setup(), b = wall({x: 240});
   g.house.walls.push(b);
   assert.equal(damageStructureMelee(g, p, 20, 70, false), false);
   assert.equal(damageStructureMelee(g, p, 20, 70, true), true);
   const door = wall({kind: 'door', open: true}), rug = wall({kind: 'rug'}), plant = wall({kind: 'plant'});
   g.house.doors.push(door);
-  g.house.furniture.push(rug, plant);
+  g.house.furniture.push(rug);
   assert.equal(damageStructureProjectile(g, bolt()), false);
-  for (const prop of [door, rug, plant]) assert.equal(prop.sectionDamage, undefined);
+  for (const prop of [door, rug]) assert.equal(prop.sectionDamage, undefined);
+  g.house.furniture.push(plant);
+  assert.equal(damageStructureProjectile(g, bolt()), true);
+  assert.ok(plant.sectionDamage);
 });
 
 test('uncharged and charged healing/friendship projectiles leave damage, collision and debris untouched', () => {

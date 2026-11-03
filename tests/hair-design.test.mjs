@@ -25,7 +25,9 @@ test('facial hair is independent of face details, preserves old saves and is hid
  assert.equal(facialHairStyle({face:'beard'}),'fullbeard');assert.equal(facialHairStyle({face:'beard',facialHair:'none'}),'none');
  for(const facialHair of Object.keys(FACIAL_HAIR_STYLES))for(let d=0;d<8;d++){
   let count=0;drawFacialHair({fillRect(...args){assert.ok(args.every(Number.isFinite));count++;}},{x:0,y:0},{face:'freckles',hairColor:'#593923',facialHair},d);
-  if(d>=3&&d<=5||facialHair==='none')assert.equal(count,0);else assert.ok(count>0);
+  // Stubble is now tinted into the head beneath the features, rather than
+  // emitted as separate hair dots. Native pixel coverage is checked in Electron.
+  if(d>=3&&d<=5||facialHair==='none'||facialHair==='stubble')assert.equal(count,0);else assert.ok(count>0);
  }
 });
 test('skeletons share the new rest rig and preserve customized rest geometry',()=>{

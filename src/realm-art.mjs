@@ -1,3 +1,4 @@
+import {paintBayouHabitat,paintBayouBridge,makeBayouLandmarkSprite,drawBayouWaterMotion} from './bayou-detail.mjs';
 import {applyTreeFall} from './tree-fall.mjs';
 import {realmTerrainAt} from './realm-world.mjs';
 import {REALMS,REALM_ASSETS,realmAsset,realmHash,realmTree,realmResourceScale} from './realm-layout.mjs';
@@ -13,6 +14,7 @@ function painter(){
  return {s,rect,poly,oval};
 }
 export function makeRealmSprite(kind){
+ if(['bayou_shrine','bayou_ruin','bayou_snag','bayou_landing'].includes(kind))return makeBayouLandmarkSprite(kind);
  if(kind==='mangrove'||kind==='old_cypress')return makeSwampTreeSprite(kind);
  const {s,rect:r,poly:p,oval:o}=painter(),type=realmAsset(kind)?.type;
  const shadow=['wither_tree','root_arch','shadow_obsidian','thorn_fan','echo_fungus','shadow_bloom','ashen_log','veil_stone'].includes(kind);
@@ -69,7 +71,7 @@ export function drawRealmSprite(c,kind,x,y,size,library){
  const s=library?.[kind]||REALM_SPRITES[kind];if(!s)return false;
  let cached=rasterCache.get(kind);
  if(!cached||cached.source!==s){const canvas=document.createElement('canvas');canvas.width=s.width;canvas.height=s.height;const ctx=canvas.getContext('2d');for(let yy=0;yy<s.height;yy++)for(let xx=0;xx<s.width;xx++){const v=s.pixels[yy*s.width+xx];if(v){ctx.fillStyle=s.palette[v];ctx.fillRect(xx,yy,1,1);}}cached={source:s,canvas};rasterCache.set(kind,cached);}
- c.imageSmoothingEnabled=false;c.drawImage(cached.canvas,Math.round(x-size/2),Math.round(y-size*61/64),size,size);return true;
+ c.imageSmoothingEnabled=false;c.drawImage(cached.canvas,Math.round(x-size/2),Math.round(y-size*(s.anchorY??61/64)),size,size);return true;
 }
 export function drawRealmProp(c,p,time,g={},renderOptions={}){
  if(!p.realm&&!realmAsset(p.kind))return false;
@@ -83,6 +85,7 @@ export function drawRealmProp(c,p,time,g={},renderOptions={}){
  if(p.depleted&&!p.falling){c.restore();return true;}
  if(!renderOptions.dynamicShadows&&resourceType==='crystal'){const glow=c.createRadialGradient(p.x,y-20,1,p.x,y-20,p.size*.8*resourceScale);glow.addColorStop(0,p.kind==='shadow_obsidian'?'#a481d633':'#83dbd833');glow.addColorStop(1,'#83dbd800');c.fillStyle=glow;c.fillRect(p.x-p.size*resourceScale,y-p.size*resourceScale,p.size*2*resourceScale,p.size*2*resourceScale);}
  if(p.falling){c.translate(p.x,y);applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);}
+ else if(['marsh_reeds','marsh_fern'].includes(p.kind)){c.translate(p.x,y);c.rotate(Math.sin(time*1.2+p.x*.1)*.025);drawRealmSprite(c,p.kind,0,0,p.size,library);}
  else if(!drawLivingSwampTree(c,p,y,time,library))drawRealmSprite(c,p.kind,p.x,y,p.size*resourceScale,library);
  if(realmTree(p)&&p.harvest&&!p.falling&&time-(p.hitAt||0)<4){c.fillStyle='#c9bd83';c.fillRect(p.x-15,y+8,30*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}
  c.restore();return true;
@@ -92,7 +95,7 @@ const livingTrees=new Map();
 export function drawLivingSwampTree(c,p,y,time=0,library){
  if(typeof document==='undefined')return false;
  if(!['old_cypress','mangrove'].includes(p.kind)||library?.[p.kind]&&!library[p.kind].nativeSwampTree)return false;
- const seed=p.treeVariantSeed??(p.kind==='old_cypress'?31:21),varied=p.treeVariantSeed!==undefined,key=`${p.kind}:${seed}:${varied}`;
+ const seed=p.treeVariantSeed??Math.floor(realmHash(p.x,p.rootY??p.y)*100000),varied=true,key=`${p.kind}:${seed}:${varied}`;
  let entry=livingTrees.get(key);
  if(!entry){
   const raster=s=>{const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const pen=canvas.getContext('2d');for(let i=0;i<s.pixels.length;i++)if(s.pixels[i]){pen.fillStyle=s.palette[s.pixels[i]];pen.fillRect(i%128,Math.floor(i/128),1,1);}return canvas;};
@@ -144,13 +147,14 @@ function drawSwampGround(c,g,{sx,sy,ex,ey}){
   let canvas=swampGroundCache.get(key);
   if(!canvas){canvas=document.createElement('canvas');canvas.width=canvas.height=128;const p=canvas.getContext('2d'),ox=cx*256,oy=cy*256;
    for(let y=0;y<128;y++)for(let x=0;x<128;x++){const wx=ox+x*2+1,wy=oy+y*2+1,surface=swampSurface(lookup,wx,wy);p.fillStyle=swampGroundColor(surface.height,wx,wy);p.fillRect(x,y,1,1);}
-   for(let i=0;i<90;i++){const x=Math.floor(realmHash(i+cx*71,cy+31)*128),y=Math.floor(realmHash(i+cy*43,cx+17)*128),wx=ox+x*2,wy=oy+y*2,s=swampSurface(lookup,wx,wy);if(s.kind==='water'&&i%3===0){p.fillStyle='#41675c';p.fillRect(x,y,3+realmHash(i,7)*7,1);}else if(s.kind==='marsh_grass'){p.fillStyle=i%3?'#708052':'#485f42';p.fillRect(x,y,2,1);}}
-   // Authored crossings stay tile-exact, including their physical support surface.
-   for(let y=0;y<8;y++)for(let x=0;x<8;x++)if(lookup(cx*8+x,cy*8+y)==='bridge'){p.fillStyle='#514c36';p.fillRect(x*16,y*16,16,16);for(let k=0;k<16;k+=4){p.fillStyle='#8c7951';p.fillRect(x*16+k,y*16,3,16);p.fillStyle='#ad9867';p.fillRect(x*16+k,y*16,1,16);}}
+   paintBayouHabitat(p,lookup,ox,oy);
+   // Editable crossings retain their exact physical support footprint.
+   for(let y=0;y<8;y++)for(let x=0;x<8;x++)if(lookup(cx*8+x,cy*8+y)==='bridge')paintBayouBridge(p,x*16,y*16,x+cx*8+(y+cy*8)*51);
    if(swampGroundCache.size>=128)swampGroundCache.delete(swampGroundCache.keys().next().value);swampGroundCache.set(key,canvas);
   }
   c.save();c.beginPath();c.rect(sx*32,sy*32,(ex-sx+1)*32,(ey-sy+1)*32);c.clip();c.imageSmoothingEnabled=false;c.drawImage(canvas,cx*256,cy*256,256,256);c.restore();
  }
+ drawBayouWaterMotion(c,g,{sx,sy,ex,ey},at);
  return true;
 }
 export function drawRealmAtmosphere(c,g){

@@ -8,7 +8,7 @@ import {PEACEFUL_FAUNA_KINDS,WILD_FAUNA_KINDS,WILD_FAUNA_LIMIT} from './wild-fau
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export function holdsThreateningWeapon(p){return ['hand1','hand2'].some(slot=>{const id=p.equipment?.[slot];return id!=='occupied'&&!!ITEMS[id]&&(ITEMS[id].damage>0||['bow','gun','rifle','wand','staff','torch','whip'].includes(itemKind(id)));});}
-const species=env=>['forest','temple'].includes(env)?['mother_deer','stag','baby_deer','mother_deer','baby_deer','pig','pig_spotted','fox','chicken','chicken']:env==='house'?['chicken','chicken','chicken']:env==='beach'?['pig','pig_spotted']:env==='desert'?['scorpion','scorpion','scorpion','scorpion']:env==='ice'?['arctic_fox','arctic_fox','penguin','penguin','penguin']:[];
+const species=env=>['forest','temple'].includes(env)?['mother_deer','stag','baby_deer','mother_deer','baby_deer','pig','pig_spotted','fox','chicken','chicken']:env==='house'?['chicken','chicken','chicken']:env==='beach'?['pig','pig_spotted']:env==='desert'?['scorpion','scorpion','scorpion','scorpion']:env==='ice'?['arctic_fox','arctic_fox','penguin','penguin','penguin']:env==='swamp'?['river_otter','river_otter']:[];
 /** Lazy generation on first exploration keeps the board's opening clear.
  * Seeded once per expedition, saved with normal actors. No respawn timer,
  * hidden per-frame population growth or dependence on rendering/camera depth.
@@ -38,10 +38,11 @@ export function seedWildFauna(g,force=false){
     // snowy bank next to that ice so they gather at the shoreline, not on land inland.
     if(g.generatedEnvironment==='ice'?(shore!=='snow'||!adjacent):!adjacent)continue;
    }
+   if(kind==='river_otter'){const adjacent=[[32,0],[-32,0],[0,32],[0,-32]].some(([dx,dy])=>['water','shallow'].includes(waterAt(g,x+dx,y+dy)));if(shore==='water'||!adjacent)continue;}
    if(g.enemies.some(e=>e.hp>0&&distance(e,{x,y})<26))continue;spot={x,y};break;
   }
   if(!spot)continue;
-  const cfg=creatures[kind],e={...spot,id:g.nextId++,kind,skin:kind,wildlife:true,faction:cfg.faction,hp:cfg.stats.hp,maxHp:cfg.stats.hp,speed:cfg.stats.speed,damage:cfg.stats.damage,state:'graze',timer:0,cooldown:1,flash:0,frozen:0,attack:0,step:0,moving:false,faceX:0,faceY:1,homeX:spot.x,homeY:spot.y,wildLastHp:cfg.stats.hp,wanderIn:0,swimCapable:kind==='penguin'};
+  const cfg=creatures[kind],e={...spot,id:g.nextId++,kind,skin:kind,wildlife:true,faction:cfg.faction,hp:cfg.stats.hp,maxHp:cfg.stats.hp,speed:cfg.stats.speed,damage:cfg.stats.damage,state:'graze',timer:0,cooldown:1,flash:0,frozen:0,attack:0,step:0,moving:false,faceX:0,faceY:1,homeX:spot.x,homeY:spot.y,wildLastHp:cfg.stats.hp,wanderIn:0,swimCapable:['penguin','river_otter'].includes(kind)};
   if(kind==='mother_deer'){mother=e;family=spot;}
   if(kind==='baby_deer')e.motherId=mother?.id;
   g.configureCreature(e,false);if(kind==='fox')e.faction='neutral';g.enemies.push(e);g.wildFaunaState.ids.push(e.id);count++;
@@ -62,8 +63,9 @@ function wander(g,e,dt,speed){
 }
 export function tickWildFauna(g,e,dt,targets=[]){
  if(!WILD_FAUNA_KINDS.includes(e.kind))return false;
- if(e.hp<=0)return true;
- e.moving=false;e.attack=Math.max(0,(e.attack||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.frozen=Math.max(0,(e.frozen||0)-dt);e.cooldown=Math.max(0,(e.cooldown||0)-dt);
+ if(e.hp<=0){const carrier=g.players.find(p=>p.id===e.carriedBy);if(carrier?.heldChickenId===e.id){delete carrier.heldChickenId;carrier.carryingChicken=false;}delete e.carriedBy;return true;}
+ if(e.carriedBy){e.state='carried';e.moving=false;return true;}
+ e.moving=false;if(e.kind==='river_otter'){e.swimming=waterAt(g,e.x,e.y)==='water';e.animationAction=e.swimming?'swim':null;}e.attack=Math.max(0,(e.attack||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.frozen=Math.max(0,(e.frozen||0)-dt);e.cooldown=Math.max(0,(e.cooldown||0)-dt);
  const injured=e.hp<(e.wildLastHp??e.hp);e.wildLastHp=e.hp;
  if(e.frozen>0)return true;
  if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
@@ -71,7 +73,8 @@ export function tickWildFauna(g,e,dt,targets=[]){
  if(trap&&trap.variant!=='slow'){trap.life=0;e.state=trap.variant==='interrupt'?'recover':'snared';e.timer=2;e.attack=0;e.pendingSting=false;g.onSound('trap',e);return true;}
  if(e.state==='recover'){e.timer-=dt;if(e.timer<=0)e.state='graze';return true;}
  if(PEACEFUL_FAUNA_KINDS.includes(e.kind)){
-  const armed=nearbyGhost(g,e,200)||g.players.filter(p=>p.hp>0&&!p.room&&holdsThreateningWeapon(p)&&distance(e,p)<240).sort((a,b)=>distance(e,a)-distance(e,b))[0];
+  if(e.calmPlacement&&injured)e.calmPlacement=false;
+  const armed=e.calmPlacement?null:nearbyGhost(g,e,200)||g.players.filter(p=>p.hp>0&&!p.room&&holdsThreateningWeapon(p)&&distance(e,p)<240).sort((a,b)=>distance(e,a)-distance(e,b))[0];
   if(armed||injured){e.fleeTime=3;e.fleeFromX=armed?.x??e.x-e.faceX*30;e.fleeFromY=armed?.y??e.y-e.faceY*30;}
   e.fleeTime=Math.max(0,(e.fleeTime||0)-dt);
   if(e.fleeTime>0){const dx=e.x-e.fleeFromX,dy=e.y-e.fleeFromY,d=Math.hypot(dx,dy)||1;e.state='flee';move(g,e,{x:e.x+dx/d*80,y:e.y+dy/d*80},dt,e.speed);return true;}

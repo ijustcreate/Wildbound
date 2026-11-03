@@ -390,7 +390,10 @@ function newLobby({ keepParty = false } = {}) {
   boardPinned = false;
   boardDismissedRoll = null;
   game = new Game();
-  game.houseWorldsEnabled=localStorage.getItem('wildbound-mode')!=='off';
+  // Each fresh game session starts in the connected Wildbound mode. Players
+  // can still choose Classic for the current session from the expedition menu.
+  game.houseWorldsEnabled=true;
+  localStorage.setItem('wildbound-mode','on');
   playableLobby?.reset();
   wireGame();
   for(const saved of returning){

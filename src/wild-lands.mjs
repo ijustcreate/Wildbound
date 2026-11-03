@@ -5,7 +5,7 @@ import {WILD_LANDS_STOPS,WILD_LANDS_WIDTH,WILD_LANDS_HEIGHT} from './wild-lands-
 export function wildLandsDesign(){
  const d=readTrainDesign();
  Object.assign(d,{name:'The Wild Lands',wildLands:true,width:WILD_LANDS_WIDTH,height:WILD_LANDS_HEIGHT,nativeForest:false,scenery:[],station:null,maxSpeed:240,spawnDistance:5600});
- const points=[[1900,2850],[1900,2150],[2600,1850],[5000,1850],[6000,1900],[7200,3200],[9000,3200],[10000,1900],[11000,1850],[13300,1850],[14000,2500],[14000,4700],[14000,6900],[13300,7800],[11000,7800],[8000,7800],[5000,7800],[2600,7800],[1900,7100],[1900,4800]];
+ const points=[[1900,2850],[1900,2150],[2600,1850],[5000,1850],[6000,2400],[6900,4000],[7800,4400],[9000,4300],[10200,2900],[11000,1850],[13300,1850],[14000,2500],[14000,4700],[14000,6900],[13300,7800],[11000,7800],[8000,7800],[5000,7800],[2600,7800],[1900,7100],[1900,4800]];
  d.nodes=points.map(([x,y],i)=>({id:'wild-'+i,x,y,z:0}));d.routes=[{id:'wild-loop',name:'Wild Lands circuit',nodes:d.nodes.map(n=>n.id)}];d.activeRoute='wild-loop';
  return d;
 }

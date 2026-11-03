@@ -9,4 +9,9 @@ test('question block is one-use, drops a lootable purple mushroom without consum
  const hero={id:1,inventory:[]},m=new TvWildbound([hero],19),p=m.players.get(1);m.intro=3;const b=m.blocks[0];Object.assign(p,{x:b.x,y:b.y+32+58,vy:-500,grounded:false});m.step(.016,{});assert.equal(b.used,true);assert.equal(m.loot.length,1);
  const item=m.loot[0];Object.assign(item,{x:p.x,y:417,age:1});Object.assign(p,{y:437,vy:0});m.step(.016,{});assert.equal(hero.inventory[0].type,'unknown_mushroom');assert.equal(m.loot.length,0);assert.equal(ITEMS.unknown_mushroom.rarity,'unique');assert.match(ITEMS.unknown_mushroom.description,/no use yet/);
 });
-test('goomba spawns vary with seed and remain bounded',()=>{const a=new TvWildbound([],1),b=new TvWildbound([],2);assert.notDeepEqual(a.enemies.filter(e=>e.kind==='goomba').map(e=>e.x),b.enemies.filter(e=>e.kind==='goomba').map(e=>e.x));for(let i=0;i<100;i++)a.spawnGoomba();assert.equal(a.enemies.filter(e=>e.kind==='goomba').length,12);});
+test('board waves are bounded and have no unsolicited ambient spawns',()=>{
+ const a=new TvWildbound([],1);a.intro=3;for(let i=0;i<200;i++)a.step(.05,{});assert.equal(a.enemies.length,0);
+ for(let i=0;i<30;i++)a.queueWave();assert.equal(a.waveQueue.length,24);
+ for(let i=0;i<70;i++)a.step(.05,{});assert.equal(a.enemies.length,24);assert.equal(a.waveQueue.length,0);
+ assert.deepEqual(new Set(a.enemies.map(e=>e.kind)),new Set(['bramblecap','mossback']));
+});

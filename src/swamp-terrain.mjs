@@ -11,12 +11,16 @@ export function swampSurface(tileAt,x,y){
  return {kind:h<-.25?'water':h<.8?'shallow':h<1.13?'mud':'marsh_grass',height:h};
 }
 export function swampGroundColor(h,x,y){
- const n=swampNoise(x/54,y/46),f=swampNoise(x/18,y/18);
- if(h<-.65)return n>.53?'#294f49':'#244947';
- if(h<-.25)return '#345d54';
- if(h<.45)return f>.55?'#536e54':'#506d53';
- if(h<.8)return '#65694c';
- if(h<1.13)return '#7c7953';
- if(swampNoise(x/96+7,y/76)>.68)return f>.5?'#767a50':'#70774e';
- return n<.34?'#556c47':n>.65?'#677a4d':'#5d734a';
+ const n=swampNoise(x/74,y/63),f=swampNoise(x/21,y/19),m=swampNoise(x/113+7,y/97);
+ if(h<-.65)return n>.59?'#28544f':n<.34?'#193e42':'#214a49';
+ if(h<-.25)return f>.63?'#3a6c60':'#2f5d56';
+ if(h<.3)return f>.57?'#537b60':'#456d58';
+ if(h<.68)return f>.6?'#737b51':'#596c4b';
+ if(h<1.05)return f>.62?'#999064':f<.31?'#586047':'#7f7b54';
+ if(h<1.2)return f>.5?'#92905c':'#6c784c';
+ // Large moss/peat patches contain finer leaf and soil planes, across tile edges.
+ if(m>.66)return f>.58?'#8c9158':'#7a8350';
+ if(n<.32)return f>.6?'#536c46':'#496443';
+ if(n>.6)return f>.65?'#849952':'#74894c';
+ return f>.66?'#71894d':f<.3?'#547343':'#65804a';
 }

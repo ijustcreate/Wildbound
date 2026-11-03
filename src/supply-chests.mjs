@@ -60,6 +60,7 @@ export function openSupplyChest(g,p){
  g.onSound('loot',chest);g.message(chest.name+' opened. Collect the supplies with Interact.');g.persist();return true;
 }
 export function drawSupplyChest(c,g,a){
+ if(a.broken){c.save();for(const p of a.debris||[]){c.fillStyle=p.color;c.fillRect(p.x,p.y,p.w,p.h);}c.restore();return;}
  c.save();c.translate(a.x,a.y);c.fillStyle='#0005';c.beginPath();c.ellipse(0,5,15,4,0,0,7);c.fill();
  c.save();c.scale(.25,.25);drawStarterChest(c,{x:0,y:0},a.opened?1:0);
  const biome=a.biome||g.generatedEnvironment,lid=-38-(a.opened?18:0);

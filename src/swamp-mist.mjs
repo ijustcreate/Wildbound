@@ -1,3 +1,4 @@
+import {realmTerrainAt} from './realm-world.mjs';
 // Small, cached two-height mist atlas. It uses a handful of soft, advected
 // banks rather than full-screen particles or per-pixel CPU simulation.
 export const SWAMP_MIST_LIMITS=Object.freeze({width:320,height:180,hz:12,banks:12});
@@ -14,7 +15,7 @@ export class SwampMistRenderer{
   const canvas=document.createElement('canvas');canvas.width=SWAMP_MIST_LIMITS.width;canvas.height=SWAMP_MIST_LIMITS.height*2;
   this.canvas=canvas;this.ctx=canvas.getContext('2d');return this.canvas;
  }
- prepare(g,time){
+ prepare(g,time,camera=null,viewWidth=0,viewHeight=0){
   this.active=swampMistActive(g);if(!this.active)return false;
   const canvas=this.initialize();if(!canvas||!this.ctx)return false;
   const stamp=now();if(stamp-this.lastAt<1000/SWAMP_MIST_LIMITS.hz)return true;
@@ -27,7 +28,10 @@ export class SwampMistRenderer{
    for(let i=0;i<SWAMP_MIST_LIMITS.banks;i++){
     const seed=i*2.39996323, x=((i*83+Math.sin(phase+seed)*30)% (w+100)+w+100)%(w+100)-50;
     const y=yoff+((i*47+Math.cos(phase*.7+seed)*15)%h+h)%h;
-    const rx=30+(i%4)*17,ry=7+(i%3)*4,alpha=(upper?.095:.18)*(i%4===0?1.25:1);
+    if(camera){const wx=camera.x+(x/w-.5)*viewWidth/camera.zoom,wy=camera.y+((y-yoff)/h-.5)*viewHeight/camera.zoom;
+     if(!['water','shallow'].includes(realmTerrainAt(g,Math.floor(wx/32),Math.floor(wy/32))))continue;
+    }
+    const rx=30+(i%4)*17,ry=7+(i%3)*4,alpha=(upper?.037:.095)*(i%4===0?1.25:1);
     const grad=c.createRadialGradient(x,y,1,x,y,rx);
     grad.addColorStop(0,`rgba(174,205,169,${alpha})`);
     grad.addColorStop(.48,`rgba(121,168,148,${alpha*.62})`);

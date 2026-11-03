@@ -46,7 +46,7 @@ test('Every encounter uses its own author stats; squad, edited species and expli
 });
 test('Default event roster has unique save keys, two-line flavor and actionable tips without generic placeholder copy',()=>{
  const original=EVENTS.slice(0,106),added=EVENTS.slice(106);
- assert.equal(original.length,106);assert.equal(added.length,39);assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
+ assert.equal(original.length,106);assert.ok(added.length>=39,'expanded roster retains all original additions');assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
  for(const e of original){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
  for(const e of added){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}
 });
