@@ -34,7 +34,12 @@ test('controller hold anchors swords, shields and empty hands while either stick
   assert.equal(p.x,500);assert.equal(p.y,500);assert.equal(p.faceX,1);assert.equal(p.moving,false);assert.equal(p.slideX,0);
   g.update(.02,{'pad:0':{x:1,aimX:0,aimY:-1,block:true,holdPosition:true,attack:true}});
   assert.equal(p.faceY,-1);assert.equal(p.x,500);
-  g.update(.02,{'pad:0':{x:1}});assert.ok(p.x>500);
+  g.update(.02,{'pad:0':{x:1}});
+  if(equipment.hand1==='sword'){
+   assert.ok(p.swordDash,'release of attack plus hold starts the charged sword dash');
+   for(let i=0;i<40;i++)g.update(.02,{'pad:0':{x:1}});
+   assert.ok(p.x>500);
+  }else assert.ok(p.x>500);
  }
 });
 

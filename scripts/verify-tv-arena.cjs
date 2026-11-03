@@ -6,8 +6,9 @@ app.whenReady().then(async()=>{
  const win=new BrowserWindow({show:false,width:1440,height:900,webPreferences:{backgroundThrottling:false}}),errors=[];win.webContents.setAudioMuted(true);
  win.webContents.on('console-message',event=>{if(event.level==='error')errors.push(event.message);});
  try{
-  await win.loadFile(path.join(base,'index.html'));await win.webContents.executeJavaScript('window.wildboundBoot.ready');
+  await win.loadFile(path.join(base,'index.html'),{query:{tools:'1'}});await win.webContents.executeJavaScript('window.wildboundBoot.ready');
   const result=await win.webContents.executeJavaScript(`(async()=>{
+   const integrated=window.verifyTvWildboundFlow();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
    const raf=requestAnimationFrame;window.requestAnimationFrame=()=>0;await new Promise(raf);
    const {TvWildbound,TV_BOARD_X,TV_WILDBOUND_WIDTH}=await import('./src/tv-wildbound.mjs'),{Animator}=await import('./src/animation.mjs');
    const {ARENA_SUBJECTS}=await import('./src/tv-arena-creatures.mjs'),{directionVector}=await import('./src/player-motion.mjs');
@@ -15,9 +16,10 @@ app.whenReady().then(async()=>{
    const {Game}=await import('./src/core.mjs'),{LobbyState,PlayableLobby}=await import('./src/playable-lobby.mjs'),{LobbyTelevision}=await import('./src/lobby-tv.mjs');
    const g=new Game(),hero=g.addPlayer('keyboard','Lumen'),state=new LobbyState(),television=new LobbyTelevision(7);state.sync(g.players);Object.assign(state.members.get(hero.id),{spawned:true,panel:null,x:785,y:165});television.join(hero.id);television.completed=true;
    const lobby=Object.create(PlayableLobby.prototype);Object.assign(lobby,{getGame:()=>g,state,television,practice:{stepPractice(){}},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});lobby.update(.016,{});
-   const m=lobby.tvWildbound;m.intro=3;const p=m.players.get(hero.id),a=new Animator(),images={},checks=[];
+   const m=lobby.tvWildbound;m.intro=3;const p=m.players.get(hero.id),a=new Animator(),images={'integrated-tv':integrated.png},checks=[];
    const check=(name,test)=>{checks.push({name,passed:!!test});if(!test)throw Error(name);};
    check('real TV completion enters isolated arena',m instanceof TvWildbound&&g.phase==='lobby'&&hero.progress===0);
+   check('actual app TV route transfers two players',integrated.players===2&&integrated.phase==='lobby');
    const canvas=document.createElement('canvas');canvas.width=1440;canvas.height=810;const c=canvas.getContext('2d');
    const snap=(name,camera)=>{m.camera=camera;m.draw(c,canvas.width,canvas.height,a);images[name]=canvas.toDataURL();};
    snap('center-calm',TV_BOARD_X-480);Object.assign(p,{x:TV_BOARD_X,y:437,face:1});m.step(.016,{[hero.id]:{attack:true}});check('board strike queues six enemies',m.waveQueue.length===6&&m.enemies.length===0);snap('board-roll',m.camera);
@@ -56,6 +58,7 @@ app.whenReady().then(async()=>{
   })().catch(e=>({error:e.stack}))`);
   if(result.error)throw Error(result.error);
   for(const [name,data]of Object.entries(result.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(data.split(',')[1],'base64'));delete result.images;
+  fs.writeFileSync(path.join(out,'integrated-ui.png'),(await win.webContents.capturePage()).toPNG());
   if(fs.existsSync(path.join(out,'failure.txt')))fs.unlinkSync(path.join(out,'failure.txt'));
   result.errors=errors;fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));win.destroy();app.exit(errors.length?1:0);
  }catch(e){fs.writeFileSync(path.join(out,'failure.txt'),String(e.stack||e));console.error(e);win.destroy();app.exit(1);}

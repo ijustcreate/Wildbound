@@ -1,0 +1,9 @@
+# Charged sword dash and blade sparkle — 2026-11-03
+
+Request: hold attack together with hold/aim while wielding a sword; show a ground rectangle growing to full-charge distance, then dash and swipe through that lane on attack release. Hold the sword behind the body like the supplied sketch, with sparkles traveling from the hand toward the tip.
+
+Implemented: shared 1.2-second charge, 32–180 world-pixel lane length and 30-pixel width; green full-charge edge; locked release direction; swept four-pixel collision steps; one damage application per enemy in the lane; native heavy swipe and blade ribbon instead of the ordinary charged radial spin. Existing ordinary sword attacks, combo buffering and ranged aiming remain supported. Native pose and procedural sparkles use the current rig without changing authored assets. Both railway and Wild Lands draw the preview and execute the same attack. Menus, status interruption, equipment changes and save restore cancel transient dash state. World transitions clear it.
+
+Verification: focused Node combat, charge, ranged and save-restore checks; isolated muted Electron renderer checks cover eight directions at two sparkle phases, partial/full charge, stationary sword-and-shield hold, release while aim remains held, endpoint, two lane targets hit once, a side target missed, and both dev-world charge/dash paths. Screenshot/report artifacts are under ignored `test-output/sword-charge/`. Physical controllers and multiplayer remain unverified. Broad-suite/build receipts follow below when complete.
+
+Substantial existing work was preserved. No commit or push was requested or performed by this assignment. The checkout advanced concurrently to `d497e7983f0e8ae0a9fe86f888c81b662e1234c1` on `Wildbound_worlds`; the delivered package, if built, contains modified source. Use repository `Play Wildbound.cmd` with blank arguments for the normal save profile.

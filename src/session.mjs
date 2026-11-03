@@ -67,7 +67,7 @@ export function restoreSession(saved) {
     migrateEquipment(p);
     p.previousInput = {};
     p.charge = 0;
-    delete p.swordStrike;delete p.swordFacing;p.swordHitPause=0;p.attack=0;
+    delete p.swordStrike;delete p.swordFacing;delete p.swordDash;delete p.swordDashRequested;p.swordChargeAim=false;p.swordHitPause=0;p.attack=0;
     p.ui = null;
     cancelRobotRepair(p);
     p.dashHeld = false;

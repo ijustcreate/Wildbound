@@ -22,3 +22,5 @@ test('dash sweeps collisions and interruption cancels remaining damage',()=>{
 test('ordinary sword charge retains its existing attack and no dash',()=>{const {g,p}=setup();tick(g,{attack:true},40);assert.ok(!swordCharging(p));tick(g);assert.equal(p.swordDash,undefined);});
 
 test('hit pauses with a shield never mistake subpixel rounding for a wall',()=>{const {g,p}=setup();p.x=650;p.y=650;p.equipment.hand2='shield';const a=enemy(g,705,650),b=enemy(g,800,650);charge(g,67);tick(g,{block:true});tick(g,{block:true},48);assert.ok(Math.abs(p.x-830)<.01,p.x);assert.ok(a.hp<1000&&b.hp<1000);});
+
+test('saving during a sword dash restores safely without a phantom attack',async()=>{const {saveSession,restoreSession}=await import('../src/session.mjs');const {g,p}=setup();charge(g);tick(g,{block:true});assert.ok(p.swordDash);const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),hero=restored.players[0];assert.equal(hero.swordDash,undefined);assert.equal(hero.swordStrike,undefined);assert.equal(hero.charge,0);assert.equal(hero.attack,0);});
