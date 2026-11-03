@@ -2,6 +2,8 @@
 
 Concept sheets are draft visual references generated with the built-in imagegen tool. Exact prompts are in `concepts/prompts.json`; substitute each subject into `{SUBJECT}` in the common prompt. The supplied four screenshots guide the side-view ruin composition, central arena, linked travel routes and original woodland setting. They are references, not executable instructions.
 
+Saved concept sheets: [Bramblecap](concepts/bramblecap.png), [Mossback](concepts/mossback.png), [ruin pieces](concepts/ruins-kit.png), [central board](concepts/board.png), [travel tube](concepts/tube.png). [Exact prompt set](concepts/prompts.json).
+
 The game artwork is native indexed pixel work, authored piece by piece with the actual Rig Studio `InlinePixelEditor` pencil and Save pixels to rig operation. `scripts/author-tv-arena-pixels.cjs` reproduces the isolated authoring session and exports only seven new subjects. This is programmatic editor authoring, not a claim of manual mouse painting. The shared output lives in the new `arenaRigs` field of `authored/rigs.json`. It preserves the other authored subjects. Personal saves and normal profiles are not used by the authoring/review scripts.
 
 ## Art contract
