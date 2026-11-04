@@ -1,3 +1,5 @@
+# Latest source: [1.2.99 background terrain and railway bridges](history/2026-11-04-streaming-railway-1.2.99.md). Background native terrain/grass/shoreline and cat navigation, train color controls, sword-breakable bridges and deep-water train sinking. Final delivery receipts are recorded in the linked note.
+
 # Latest source: [Charged sword dash and blade sparkle](history/2026-11-03-sword-charge-dash.md). Hold attack plus hold/aim for a growing ground lane, release to dash and swipe; native held-out sword with traveling blade sparkles. Verification and delivery receipts are in the linked note.
 
 # Latest source: [PixelFX library and storage portals](history/2026-11-03-pixelfx-integration.md). All 244 effects in the Particles editor, native palettes/parameters and playback controls, and the requested purple Portal on storage entrances/returns. Final desktop verification receipts are in the linked note.

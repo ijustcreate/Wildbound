@@ -1,3 +1,4 @@
+import {railwayStream,streamImage} from './railway-stream.mjs';
 import {drawWildBuildingGround} from './wild-landmark-buildings.mjs';
 import {nativeWildProps,drawNativeWildTile,nativeWildBiome} from './wild-native-biomes.mjs';
 import {drawPortal} from './portal-art.mjs';
@@ -13,7 +14,9 @@ const COLORS={forest:['#4a663c','#4b673d','#4c683e'],jungle:['#3d6339','#3e643a'
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 const nativePlan={seed:42,routes:[],landmarks:[],routeField:new Float32Array(10000).fill(200),paving:{cells:Array(576).fill(0)}};
 const waterMasks=new Map();
-function waterMask(x,y,d){
+export function nativeWaterRuns(d,x,y){if(!d.activeRoom&&!d.wildStops?.some(s=>Math.abs(x+16-s.x)<612&&y+32>s.y-390&&y<s.y+100)){const uniform=sketchUniformSurfaceTile(x,y);if(uniform)return {x,y,wet:uniform==='grass'?[]:[[x,y,32,32]],shallow:uniform==='shallow'?[[x,y,32,32]]:[]};}const wet=[],shallow=[];for(let py=0;py<32;py+=2){let start=-1,ss=-1;for(let px=0;px<=32;px+=2){const kind=px<32?wildLandsSurfaceAt(d,x+px+1,y+py+1):'grass';if(kind!=='grass'&&start<0)start=px;if(kind==='grass'&&start>=0){wet.push([x+start,y+py,px-start,2]);start=-1;}if(kind==='shallow'&&ss<0)ss=px;if(kind!=='shallow'&&ss>=0){shallow.push([x+ss,y+py,px-ss,2]);ss=-1;}}}return {x,y,wet,shallow};}
+function waterMask(x,y,d,t){
+ if(t&&railwayStream(t)){const cx=Math.floor(x/512)*512,cy=Math.floor(y/512)*512,data=streamImage(t,'water',`water:${d.activeRoom||'surface'}:${cx}:${cy}`,{x:cx,y:cy},90);if(data&&!data.installed){for(const tile of data.tiles){const key=`${d.activeRoom||'surface'}:${Math.floor(tile.x/32)}:${Math.floor(tile.y/32)}`;if(!tile.wet.length){waterMasks.set(key,null);continue;}const mask={wet:new Path2D(),shallow:new Path2D(),hasWet:true,hasShallow:!!tile.shallow.length};for(const run of tile.wet)mask.wet.rect(...run);for(const run of tile.shallow)mask.shallow.rect(...run);waterMasks.set(key,mask);}data.installed=true;}return waterMasks.get(`${d.activeRoom||'surface'}:${Math.floor(x/32)}:${Math.floor(y/32)}`)||null;}
  if(typeof Path2D==='undefined')return null;
  const key=`${d.activeRoom||'surface'}:${Math.floor(x/32)}:${Math.floor(y/32)}`;
  let mask=waterMasks.get(key);if(waterMasks.has(key))return mask;if(!d.activeRoom&&!d.wildStops?.some(s=>Math.abs(x+16-s.x)<612&&y+32>s.y-390&&y<s.y+100)&&sketchUniformSurfaceTile(x,y)==='grass'){if(waterMasks.size>=6000)waterMasks.delete(waterMasks.keys().next().value);waterMasks.set(key,null);return null;}
@@ -33,7 +36,7 @@ function floorColor(d,x,y){
  return ['forest','jungle','house'].includes(kind)?forestGroundTone(nativePlan,x,y):COLORS[kind][Math.floor(wildHash(x/32,y/32)*3)];
 }
 function miniLayer(t){
- if(t.wildMap)return t.wildMap;const canvas=document.createElement('canvas');canvas.width=320;canvas.height=192;const pen=canvas.getContext('2d'),d={...t.design,activeRoom:null};
+ if(t.wildMap)return t.wildMap;if(railwayStream(t))return streamImage(t,'map','map',{size:320,height:192},40);const canvas=document.createElement('canvas');canvas.width=320;canvas.height=192;const pen=canvas.getContext('2d'),d={...t.design,activeRoom:null};
  for(let y=0;y<192;y+=2)for(let x=0;x<320;x+=2)rect(pen,x,y,2,2,floorColor(d,x*50+50,y*50+50));t.wildMap=canvas;return canvas;
 }
 function overviewLayer(t){
@@ -46,12 +49,12 @@ function overviewLayer(t){
 export function drawWildLandsFloor(c,t,bounds,overview=false,g=null){
  const d=t.design,step=overview?96:32;
  // Small cached native-resolution tile chunks; never rasterize the entire world at play scale.
- if(overview&&!d.activeRoom){c.imageSmoothingEnabled=false;c.drawImage(overviewLayer(t),0,0,d.width,d.height);return;}
+ if(overview&&!d.activeRoom){c.imageSmoothingEnabled=false;if(railwayStream(t)){const image=streamImage(t,'overview','overview:'+(t.wildExploration?.opened.size||0),{size:1200,height:720,opened:[...(t.wildExploration?.opened||[])]},10)||miniLayer(t);if(image)c.drawImage(image,0,0,d.width,d.height);}else c.drawImage(overviewLayer(t),0,0,d.width,d.height);return;}
 
  const far=(t.viewZoom||1)<.3,chunkSize=far?2048:512,tile=far?128:16,scale=chunkSize/256;
  t.wildFloorChunks??=new Map();
  for(let cy=Math.max(0,Math.floor(bounds.top/chunkSize));cy<=Math.min(Math.ceil(d.height/chunkSize)-1,Math.floor(bounds.bottom/chunkSize));cy++)for(let cx=Math.max(0,Math.floor(bounds.left/chunkSize));cx<=Math.min(Math.ceil(d.width/chunkSize)-1,Math.floor(bounds.right/chunkSize));cx++){
-  const key=[d.activeRoom||'surface',chunkSize,cx,cy].join(':');let canvas=t.wildFloorChunks.get(key);
+  const key=[d.activeRoom||'surface',chunkSize,cx,cy].join(':');if(railwayStream(t)){const image=streamImage(t,'floor','floor:'+key,{x:cx*chunkSize,y:cy*chunkSize,span:chunkSize,far},70);if(image){c.imageSmoothingEnabled=false;c.drawImage(image,cx*chunkSize,cy*chunkSize,chunkSize,chunkSize);}continue;}let canvas=t.wildFloorChunks.get(key);
   if(!canvas){canvas=document.createElement('canvas');canvas.width=canvas.height=256;const pen=canvas.getContext('2d');
    for(let y=0;y<chunkSize;y+=tile)for(let x=0;x<chunkSize;x+=tile){const wx=cx*chunkSize+x,wy=cy*chunkSize+y,color=floorColor(d,wx+tile/2,wy+tile/2);rect(pen,x/scale,y/scale,tile/scale,tile/scale,color);const n=wildHash(wx,wy);pen.globalAlpha=.18;for(let i=0;i<(far?2:1);i++)rect(pen,x/scale+Math.floor(wildHash(wx+i,wy)*Math.max(1,tile/scale-2)),y/scale+Math.floor(wildHash(wx,wy+i)*Math.max(1,tile/scale-2)),2,1,n>.5?'#ced29e':'#152d31');pen.globalAlpha=1;}
    if(!far)for(let y=0;y<chunkSize;y+=32)for(let x=0;x<chunkSize;x+=32)drawNativeWildTile(pen,t,cx*chunkSize+x,cy*chunkSize+y,cx*chunkSize,cy*chunkSize,scale);
@@ -60,7 +63,7 @@ export function drawWildLandsFloor(c,t,bounds,overview=false,g=null){
   c.imageSmoothingEnabled=false;c.drawImage(canvas,cx*chunkSize,cy*chunkSize,chunkSize,chunkSize);
  }
  if(g&&!far&&!d.activeRoom)for(let y=Math.floor(bounds.top/32)*32;y<bounds.bottom;y+=32)for(let x=Math.floor(bounds.left/32)*32;x<bounds.right;x+=32){
-  const mask=waterMask(x,y,d);if(typeof Path2D==='undefined'&&wildLandsSurface(d,x+16,y+16)==='grass'||typeof Path2D!=='undefined'&&!mask)continue;
+  const mask=waterMask(x,y,d,t);if(typeof Path2D==='undefined'&&wildLandsSurface(d,x+16,y+16)==='grass'||typeof Path2D!=='undefined'&&!mask)continue;
   c.save();if(mask)c.clip(mask.wet);drawWaterSurface(c,g,x,y,32,32,mask?{shallow:false}:{});c.restore();
   if(mask?.hasShallow){c.save();c.clip(mask.shallow);c.fillStyle='#79c6a188';c.fillRect(x,y,32,32);c.restore();}
  }
@@ -90,11 +93,11 @@ export function drawWildLandsLandmarks(c,t,bounds){
  const d=t.design;if(!d.activeRoom){drawCrossings(c,d,bounds);drawCemeteryFence(c,bounds);}if(d.activeRoom){
   drawPortal(c,{x:8000,y:5600,color:d.activeRoom==='shadow'?'#aa55ff':'#66c6d7'},t.time,'');c.fillStyle='#e9d9ac';c.font='16px system-ui';c.fillText('Interact to return',7930,5680);drawExplorationSites(c,t,bounds);return;
  }
- drawWildBuildingGround(c,d);
+ if((t.viewZoom||1)<.3&&railwayStream(t)){const image=streamImage(t,'landmarks','landmarks:'+(t.destructionRevision||0),{size:1200,height:720,span:d.width,x:0,y:0,damaged:t.damagedBuildings||[]},40);if(image)c.drawImage(image,0,0,d.width,d.height);}else drawWildBuildingGround(c,d,bounds);
  drawExplorationSites(c,t,bounds);
  for(const gate of WILD_LANDS_GATES){if(gate.x<bounds.left-200||gate.x>bounds.right+200||gate.y<bounds.top-200||gate.y>bounds.bottom+200)continue;
   c.save();c.translate(gate.x,gate.y);c.scale(1.55,1.55);drawPortal(c,{x:0,y:0,color:gate.id==='shadow'?'#aa55ff':'#66c6d7',closing:null},t.time,'');c.restore();
   c.font='14px system-ui';c.fillStyle='#ead9b0';c.fillText('Interact · '+gate.name,gate.x-75,gate.y+30);
  }
 }
-export function drawWildLandsMap(c,t,x,y,w,h){c.imageSmoothingEnabled=false;c.drawImage(miniLayer(t),x,y,w,h);}
+export function drawWildLandsMap(c,t,x,y,w,h){c.imageSmoothingEnabled=false;const image=miniLayer(t);if(image)c.drawImage(image,x,y,w,h);}

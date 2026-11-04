@@ -1,3 +1,4 @@
+import {damageRailwayBridge} from './train-bridges.mjs';
 import {nearbyScenery} from './performance.mjs';
 import {setTreeFallDirection} from './tree-fall.mjs';
 import {propBase} from './environment.mjs';
@@ -84,6 +85,7 @@ function damageCell(g,b,n,damage,dx=0,dy=0){
 // A sword strike only reaches the nearest exposed section; it cannot damage
 // another room through an intact intervening wall.
 export function damageStructureMelee(g,p,damage,range,spin=false){
+  if(damageRailwayBridge(g,p,damage,range,spin))return true;
   if(!g.house||!(damage>0))return false;
   let best=null;
   for(const b of query(g,p.x,p.y,range))for(const cell of cells(b,p.x,p.y,range)){

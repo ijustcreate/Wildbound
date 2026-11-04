@@ -1,7 +1,8 @@
+import {readTrainDesign,saveTrainDesign} from './train-design.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
 import {enterWildLands} from './wild-lands.mjs';
 import {WILD_LANDS_STOPS,WILD_LANDS_GATES,wildLandsTravel} from './wild-lands-world.mjs';
-import {enterTrainTest,leaveTrainTest,openTrainEditor,requestTrainRoute} from './train-test.mjs';
+import {enterTrainTest,leaveTrainTest,openTrainEditor,requestTrainRoute,repairTrain} from './train-test.mjs';
 import {ITEMS,give as giveItem} from './items.mjs';
 import {spawnEventTestBoard} from './event-test-board.mjs';
 
@@ -46,7 +47,9 @@ export function createGameDebug({getGame,events,items,metrics,onPerformanceChang
    const travel=el('button','Travel to Wild Lands destination');travel.dataset.debug='wild-travel';travel.onclick=()=>{const result=wildLandsTravel(getGame(),destinations.value);say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(travel);
    const overview=el('button','Wild Lands: toggle world overview');overview.dataset.debug='wild-overview';overview.onclick=()=>{const t=getGame().trainTest;if(!t?.design.wildLands){say({ok:false,message:'Enter The Wild Lands first.'});return;}t.wildLandsOverview=!t.wildLandsOverview;root.remove();onTrainEnter();};root.append(overview);
    const railRouteLabel=el('label','Next train route at shared junction'),railRoute=el('select');railRoute.ariaLabel='Next train route';railRoute.onfocus=()=>{const t=getGame().trainTest;railRoute.replaceChildren();if(t)for(const r of t.design.routes)railRoute.add(new Option(r.name,r.id,false,r.id===(t.pendingRoute||t.design.activeRoute)));};railRoute.onchange=()=>say(requestTrainRoute(getGame(),railRoute.value));railRouteLabel.append(railRoute);root.append(railRouteLabel);
+   const colorLabel=el('label','Train color '),color=el('input');color.type='color';color.ariaLabel='Train color';color.value=getGame().trainTest?.design.paint.body||readTrainDesign().paint.body;colorLabel.append(color);root.append(colorLabel);const paint=el('button','Apply train color');paint.dataset.debug='train-color';paint.onclick=()=>{const g=getGame(),saved=readTrainDesign();saved.paint.body=color.value;saved.trackRevision=(saved.trackRevision||0)+1;saveTrainDesign(saved);if(g.trainTest){g.trainTest.design.paint.body=color.value;g.trainTest.design.trackRevision=(g.trainTest.design.trackRevision||0)+1;delete g.trainTest.distantTrain;}say({ok:true,message:'Train color saved and applied to every carriage.'});};root.append(paint);
    const workshop=el('button','Train / track workshop');workshop.onclick=()=>getGame().trainTest?.design.wildLands?say({ok:false,message:'Return from The Wild Lands before editing your saved railway.'}):openTrainEditor(getGame(),root);root.append(workshop);
+   const repair=el('button','Repair bridges / reset train');repair.dataset.debug='train-repair';repair.onclick=()=>say(repairTrain(getGame()));root.append(repair);
    const trainReturn=el('button','Return from dev world / train test');trainReturn.dataset.debug='train-return';trainReturn.onclick=()=>{const previousScreen=getGame().trainTest?.returnScreen;leaveTrainTest(getGame());root.remove();onTrainReturn(previousScreen);};root.append(trainReturn);
    target=el('p',null,'debug-target');root.append(target);
    const eventLabel=el('label','Event'),event=el('select');event.dataset.debug='event';

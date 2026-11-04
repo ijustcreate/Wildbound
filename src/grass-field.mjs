@@ -1,3 +1,4 @@
+import {railwayStream,streamImage} from './railway-stream.mjs';
 import {forestHash} from './forest-landscape.mjs';
 import {nearbyScenery} from './performance.mjs';
 import {MEADOW_CHUNK,meadowAllowed,meadowTerrainKey,paintPixelMeadow} from './pixel-meadow.mjs';
@@ -153,10 +154,11 @@ export class GrassFieldRenderer{
     const terrainKey=meadowTerrainKey(g,x,y),geometryKey=local.map(p=>[slot(p),p.x,p.y,p.rootY,p.size,p.tuftSeed,p.grassShade,p.grassBurnRevision||0].join(',')).join(';');
     let entry=this.chunks.get(key);
     if(!entry||entry.terrainKey!==terrainKey||entry.geometryKey!==geometryKey){
-     this.geometryRevision++;const data=grassFieldInstances(g,{sx:x,sy:y,ex:x+256,ey:y+256},local,slot);
+     let prepared;if(g.trainTest&&railwayStream(g.trainTest)){prepared=streamImage(g.trainTest,'grass','grass:'+terrainKey+':'+geometryKey,{x,y,local,slots:local.map(slot),seed:g.seed||42},85);if(!prepared)continue;const ground=document.createElement('canvas');ground.width=ground.height=128;ground.getContext('2d').drawImage(prepared.ground,0,0);prepared={...prepared,ground};}
+     this.geometryRevision++;const data=prepared?.data||grassFieldInstances(g,{sx:x,sy:y,ex:x+256,ey:y+256},local,slot);
      if(entry)gl.deleteBuffer(entry.buffer);
      const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
-     entry={x,y,buffer,count:data.length/8,terrainKey,geometryKey,ground:entry?.terrainKey===terrainKey?entry.ground:paintPixelMeadow(g,x,y)};
+     entry={x,y,buffer,count:data.length/8,terrainKey,geometryKey,ground:prepared?.ground||(entry?.terrainKey===terrainKey?entry.ground:paintPixelMeadow(g,x,y))};
     }
     this.chunks.delete(key);this.chunks.set(key,entry);this.visibleBatches.push(entry);this.instances+=entry.count;
     c.save();c.imageSmoothingEnabled=false;
