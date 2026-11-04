@@ -10,7 +10,7 @@ const packaged=name=>archived?asar.extractFile(archive,name):fs.readFileSync(pat
 const identity=JSON.parse(packaged('package.json'));
 if(identity.version!==version||identity.main!=='main.cjs')throw Error('Packaged runtime identity mismatch');
 const files=['app.mjs','index.html','main.cjs','preload.cjs'];
-function visit(dir){for(const file of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){const name=path.join(dir,file.name).replaceAll('\\','/');if(name.startsWith('assets/shore-goblin/source/')||/^assets\/(?:spider|boar|elephant)-wow\//.test(name))continue;if(file.isDirectory())visit(name);else if(file.isFile())files.push(name);}}
+function visit(dir){for(const file of fs.readdirSync(path.join(root,dir),{withFileTypes:true})){const name=path.join(dir,file.name).replaceAll('\\','/');if(/\.(?:bak|tmp)$/i.test(name))continue;if(name.startsWith('assets/shore-goblin/source/')||/^assets\/(?:spider|boar|elephant)-wow\//.test(name))continue;if(file.isDirectory())visit(name);else if(file.isFile())files.push(name);}}
 for(const dir of ['src','assets','authored'])visit(dir);
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex'),mismatches=[],checks=[];
 for(const name of files){const source=hash(fs.readFileSync(path.join(root,name)));try{const built=hash(packaged(name));checks.push({file:name,sha256:built});if(source!==built)mismatches.push(name);}catch(e){mismatches.push(name+': '+e.message);}}

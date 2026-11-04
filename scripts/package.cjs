@@ -42,6 +42,7 @@ packager({
     /^\/server-data/,
     /^\/server-config\.local\.json/,
     /\.log$/,
+    /\.(?:bak|tmp)$/i,
     /^\/assets\/shore-goblin\/source/,
     /^\/assets\/(?:spider|boar|elephant)-wow\//,
     /^\/art\/player\/detail-native-v[234]/,
