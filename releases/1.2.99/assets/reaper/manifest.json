@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "subject": "grim_reaper",
+  "pixelDensity": 1,
+  "parts": [
+    {
+      "id": "reaper_hood",
+      "joint": "head",
+      "views": [
+        {
+          "direction": 0,
+          "file": "hood.png",
+          "rect": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 1,
+          "file": "hood.png",
+          "rect": [
+            64,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 2,
+          "file": "hood.png",
+          "rect": [
+            128,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 3,
+          "file": "hood.png",
+          "rect": [
+            192,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 4,
+          "file": "hood.png",
+          "rect": [
+            256,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 5,
+          "file": "hood.png",
+          "rect": [
+            320,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 6,
+          "file": "hood.png",
+          "rect": [
+            384,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        },
+        {
+          "direction": 7,
+          "file": "hood.png",
+          "rect": [
+            448,
+            0,
+            64,
+            64
+          ],
+          "pivot": [
+            32,
+            32
+          ],
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

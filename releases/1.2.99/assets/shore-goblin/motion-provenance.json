@@ -1,0 +1,639 @@
+{
+  "reference": "https://www.wowhead.com/npc=285/murloc#modelviewer",
+  "npcId": 285,
+  "displayId": 617,
+  "modelFileId": 1113034,
+  "sourceBones": 67,
+  "sourceAnimations": 53,
+  "excludedSequences": [
+    {
+      "animationId": 216,
+      "reason": "Special dance contains ballistic motion beyond the native 100-unit editable joint bounds; not a combat action."
+    }
+  ],
+  "sourceSha256": "994204c04873374354063e8173a0b20e3d2ce9c070ad7cfe4d1ab7616c147f51",
+  "axes": "WoW X forward Y left Z up -> native Y X Z",
+  "scale": 36,
+  "ground": 0.055,
+  "rootMotion": "Horizontal bone 0 motion removed; vertical retained",
+  "boneMap": {
+    "pelvis": [
+      2,
+      ""
+    ],
+    "chest": [
+      5,
+      "pelvis"
+    ],
+    "head": [
+      9,
+      "chest"
+    ],
+    "jaw": [
+      15,
+      "head"
+    ],
+    "mouth": [
+      15,
+      "jaw",
+      [
+        0.35,
+        0,
+        0.72
+      ]
+    ],
+    "crest": [
+      9,
+      "head",
+      [
+        0.1,
+        0,
+        1.02
+      ]
+    ],
+    "crestTip": [
+      9,
+      "crest",
+      [
+        0.1,
+        0,
+        1.2
+      ]
+    ],
+    "headTop": [
+      9,
+      "head",
+      [
+        0.15,
+        0,
+        1.08
+      ]
+    ],
+    "nose": [
+      9,
+      "head",
+      [
+        0.42,
+        0,
+        0.85
+      ]
+    ],
+    "hipL": [
+      3,
+      "pelvis"
+    ],
+    "kneeL": [
+      6,
+      "hipL"
+    ],
+    "ankleL": [
+      11,
+      "kneeL"
+    ],
+    "footL": [
+      20,
+      "ankleL"
+    ],
+    "shoulderL": [
+      8,
+      "chest"
+    ],
+    "elbowL": [
+      13,
+      "shoulderL"
+    ],
+    "handL": [
+      22,
+      "elbowL"
+    ],
+    "gripL": [
+      65,
+      "handL"
+    ],
+    "eyeL": [
+      9,
+      "head",
+      [
+        0.29,
+        0.135,
+        0.98
+      ]
+    ],
+    "finL": [
+      9,
+      "head",
+      [
+        0.05,
+        0.23,
+        0.95
+      ]
+    ],
+    "weaponTipL": [
+      65,
+      "gripL",
+      [
+        0.06996908783912659,
+        0.2866482734680176,
+        0.9486217486858368
+      ]
+    ],
+    "hipR": [
+      4,
+      "pelvis"
+    ],
+    "kneeR": [
+      7,
+      "hipR"
+    ],
+    "ankleR": [
+      12,
+      "kneeR"
+    ],
+    "footR": [
+      21,
+      "ankleR"
+    ],
+    "shoulderR": [
+      10,
+      "chest"
+    ],
+    "elbowR": [
+      19,
+      "shoulderR"
+    ],
+    "handR": [
+      23,
+      "elbowR"
+    ],
+    "gripR": [
+      66,
+      "handR"
+    ],
+    "eyeR": [
+      9,
+      "head",
+      [
+        0.29,
+        -0.135,
+        0.98
+      ]
+    ],
+    "finR": [
+      9,
+      "head",
+      [
+        0.05,
+        -0.23,
+        0.95
+      ]
+    ],
+    "weaponTipR": [
+      66,
+      "gripR",
+      [
+        0.06996936351060867,
+        -0.28119030594825745,
+        0.9486217784881592
+      ]
+    ]
+  },
+  "derivedHandles": [
+    "crest",
+    "crestTip",
+    "eyeL",
+    "eyeR",
+    "finL",
+    "finR",
+    "crestTip",
+    "headTop",
+    "nose",
+    "mouth",
+    "weaponTipL",
+    "weaponTipR"
+  ],
+  "clips": {
+    "attack": {
+      "sequence": 0,
+      "animationId": 17,
+      "variation": 0,
+      "resolvedSequence": 0,
+      "duration": 1,
+      "alias": false
+    },
+    "attack_1": {
+      "sequence": 1,
+      "animationId": 17,
+      "variation": 1,
+      "resolvedSequence": 1,
+      "duration": 1,
+      "alias": false
+    },
+    "spear": {
+      "sequence": 2,
+      "animationId": 18,
+      "variation": 0,
+      "resolvedSequence": 2,
+      "duration": 1,
+      "alias": false
+    },
+    "spear_1": {
+      "sequence": 3,
+      "animationId": 18,
+      "variation": 1,
+      "resolvedSequence": 3,
+      "duration": 1,
+      "alias": false
+    },
+    "club": {
+      "sequence": 4,
+      "animationId": 107,
+      "variation": 0,
+      "resolvedSequence": 4,
+      "duration": 1,
+      "alias": false
+    },
+    "unarmed": {
+      "sequence": 5,
+      "animationId": 16,
+      "variation": 0,
+      "resolvedSequence": 5,
+      "duration": 1.333,
+      "alias": false
+    },
+    "unarmed_1": {
+      "sequence": 6,
+      "animationId": 16,
+      "variation": 1,
+      "resolvedSequence": 6,
+      "duration": 1,
+      "alias": false
+    },
+    "critical": {
+      "sequence": 7,
+      "animationId": 10,
+      "variation": 0,
+      "resolvedSequence": 7,
+      "duration": 1,
+      "alias": false
+    },
+    "hurt": {
+      "sequence": 8,
+      "animationId": 9,
+      "variation": 0,
+      "resolvedSequence": 8,
+      "duration": 1,
+      "alias": false
+    },
+    "dance": {
+      "sequence": 9,
+      "animationId": 213,
+      "variation": 0,
+      "resolvedSequence": 9,
+      "duration": 2,
+      "alias": false
+    },
+    "dance_alias": {
+      "sequence": 10,
+      "animationId": 69,
+      "variation": 0,
+      "resolvedSequence": 9,
+      "duration": 2,
+      "alias": true
+    },
+    "dance_short": {
+      "sequence": 11,
+      "animationId": 214,
+      "variation": 0,
+      "resolvedSequence": 11,
+      "duration": 0.266,
+      "alias": false
+    },
+    "dance_alias_1": {
+      "sequence": 12,
+      "animationId": 69,
+      "variation": 1,
+      "resolvedSequence": 11,
+      "duration": 0.266,
+      "alias": true
+    },
+    "dance_long": {
+      "sequence": 13,
+      "animationId": 215,
+      "variation": 0,
+      "resolvedSequence": 13,
+      "duration": 2.667,
+      "alias": false
+    },
+    "dance_alias_2": {
+      "sequence": 14,
+      "animationId": 69,
+      "variation": 2,
+      "resolvedSequence": 13,
+      "duration": 2.667,
+      "alias": true
+    },
+    "death": {
+      "sequence": 15,
+      "animationId": 1,
+      "variation": 0,
+      "resolvedSequence": 15,
+      "duration": 3.867,
+      "alias": false
+    },
+    "death_1": {
+      "sequence": 16,
+      "animationId": 1,
+      "variation": 1,
+      "resolvedSequence": 16,
+      "duration": 1.5,
+      "alias": false
+    },
+    "drown": {
+      "sequence": 17,
+      "animationId": 131,
+      "variation": 0,
+      "resolvedSequence": 17,
+      "duration": 3.167,
+      "alias": false
+    },
+    "hold": {
+      "sequence": 18,
+      "animationId": 15,
+      "variation": 0,
+      "resolvedSequence": 18,
+      "duration": 0.167,
+      "alias": false
+    },
+    "drowned": {
+      "sequence": 19,
+      "animationId": 132,
+      "variation": 0,
+      "resolvedSequence": 19,
+      "duration": 3.334,
+      "alias": false
+    },
+    "parry": {
+      "sequence": 20,
+      "animationId": 112,
+      "variation": 0,
+      "resolvedSequence": 20,
+      "duration": 0.833,
+      "alias": false
+    },
+    "guard": {
+      "sequence": 21,
+      "animationId": 108,
+      "variation": 0,
+      "resolvedSequence": 21,
+      "duration": 1.334,
+      "alias": false
+    },
+    "run": {
+      "sequence": 22,
+      "animationId": 5,
+      "variation": 0,
+      "resolvedSequence": 22,
+      "duration": 0.533,
+      "alias": false
+    },
+    "battle_cry": {
+      "sequence": 23,
+      "animationId": 57,
+      "variation": 0,
+      "resolvedSequence": 23,
+      "duration": 1.133,
+      "alias": false
+    },
+    "ready_ability": {
+      "sequence": 24,
+      "animationId": 58,
+      "variation": 0,
+      "resolvedSequence": 24,
+      "duration": 1,
+      "alias": false
+    },
+    "special": {
+      "sequence": 25,
+      "animationId": 118,
+      "variation": 0,
+      "resolvedSequence": 25,
+      "duration": 1.133,
+      "alias": false
+    },
+    "cast": {
+      "sequence": 26,
+      "animationId": 32,
+      "variation": 0,
+      "resolvedSequence": 26,
+      "duration": 1,
+      "alias": false
+    },
+    "idle": {
+      "sequence": 27,
+      "animationId": 0,
+      "variation": 0,
+      "resolvedSequence": 27,
+      "duration": 1.334,
+      "alias": false
+    },
+    "idle_1": {
+      "sequence": 28,
+      "animationId": 0,
+      "variation": 1,
+      "resolvedSequence": 28,
+      "duration": 2.666,
+      "alias": false
+    },
+    "idle_2": {
+      "sequence": 29,
+      "animationId": 0,
+      "variation": 2,
+      "resolvedSequence": 29,
+      "duration": 3.6,
+      "alias": false
+    },
+    "idle_3": {
+      "sequence": 30,
+      "animationId": 0,
+      "variation": 3,
+      "resolvedSequence": 30,
+      "duration": 1.333,
+      "alias": false
+    },
+    "swim": {
+      "sequence": 31,
+      "animationId": 42,
+      "variation": 0,
+      "resolvedSequence": 31,
+      "duration": 1.667,
+      "alias": false
+    },
+    "swim_backwards": {
+      "sequence": 32,
+      "animationId": 45,
+      "variation": 0,
+      "resolvedSequence": 32,
+      "duration": 1.667,
+      "alias": false
+    },
+    "swim_idle": {
+      "sequence": 33,
+      "animationId": 41,
+      "variation": 0,
+      "resolvedSequence": 33,
+      "duration": 1.666,
+      "alias": false
+    },
+    "swim_left": {
+      "sequence": 34,
+      "animationId": 43,
+      "variation": 0,
+      "resolvedSequence": 34,
+      "duration": 1.667,
+      "alias": false
+    },
+    "swim_right": {
+      "sequence": 35,
+      "animationId": 44,
+      "variation": 0,
+      "resolvedSequence": 35,
+      "duration": 1.667,
+      "alias": false
+    },
+    "walk": {
+      "sequence": 36,
+      "animationId": 4,
+      "variation": 0,
+      "resolvedSequence": 36,
+      "duration": 0.533,
+      "alias": false
+    },
+    "jump": {
+      "sequence": 37,
+      "animationId": 38,
+      "variation": 0,
+      "resolvedSequence": 37,
+      "duration": 1,
+      "alias": false
+    },
+    "jump_land": {
+      "sequence": 38,
+      "animationId": 39,
+      "variation": 0,
+      "resolvedSequence": 38,
+      "duration": 1.5,
+      "alias": false
+    },
+    "jump_air": {
+      "sequence": 39,
+      "animationId": 187,
+      "variation": 0,
+      "resolvedSequence": 39,
+      "duration": 0.5,
+      "alias": false
+    },
+    "jump_start": {
+      "sequence": 40,
+      "animationId": 37,
+      "variation": 0,
+      "resolvedSequence": 40,
+      "duration": 0.7,
+      "alias": false
+    },
+    "talk": {
+      "sequence": 41,
+      "animationId": 124,
+      "variation": 0,
+      "resolvedSequence": 41,
+      "duration": 1.067,
+      "alias": false
+    },
+    "point": {
+      "sequence": 42,
+      "animationId": 125,
+      "variation": 0,
+      "resolvedSequence": 42,
+      "duration": 1.066,
+      "alias": false
+    },
+    "spell_prepare": {
+      "sequence": 43,
+      "animationId": 51,
+      "variation": 0,
+      "resolvedSequence": 43,
+      "duration": 1.067,
+      "alias": false
+    },
+    "spell_prepare_alias": {
+      "sequence": 44,
+      "animationId": 52,
+      "variation": 0,
+      "resolvedSequence": 43,
+      "duration": 1.067,
+      "alias": true
+    },
+    "cast_directed": {
+      "sequence": 45,
+      "animationId": 53,
+      "variation": 0,
+      "resolvedSequence": 45,
+      "duration": 1,
+      "alias": false
+    },
+    "cast_area": {
+      "sequence": 46,
+      "animationId": 54,
+      "variation": 0,
+      "resolvedSequence": 46,
+      "duration": 0.933,
+      "alias": false
+    },
+    "cower": {
+      "sequence": 47,
+      "animationId": 82,
+      "variation": 0,
+      "resolvedSequence": 47,
+      "duration": 5.333,
+      "alias": false
+    },
+    "eat": {
+      "sequence": 48,
+      "animationId": 91,
+      "variation": 0,
+      "resolvedSequence": 48,
+      "duration": 5.333,
+      "alias": false
+    },
+    "eat_1": {
+      "sequence": 49,
+      "animationId": 91,
+      "variation": 1,
+      "resolvedSequence": 49,
+      "duration": 1.334,
+      "alias": false
+    },
+    "ready": {
+      "sequence": 51,
+      "animationId": 14,
+      "variation": 0,
+      "resolvedSequence": 51,
+      "duration": 2,
+      "alias": false
+    },
+    "ready_alias": {
+      "sequence": 52,
+      "animationId": 137,
+      "variation": 0,
+      "resolvedSequence": 51,
+      "duration": 2,
+      "alias": true
+    }
+  },
+  "externalAnimations": [
+    {
+      "id": 5371134,
+      "sha256": "cc4ac376fef90573bf2701e6335cc926e1bbb57f585c67d7db4fce8f83217d1e"
+    }
+  ],
+  "rights": "Blizzard source skeletal motion; original native Wildbound pixel art. Donor mesh/textures are not used."
+}
