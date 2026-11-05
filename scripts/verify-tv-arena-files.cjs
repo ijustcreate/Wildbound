@@ -1,7 +1,8 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),base=path.resolve(process.argv[2]),out=path.join(root,'test-output/tv-arena/file-receipt.json');
+const root=path.resolve(__dirname,'..'),base=path.resolve(process.argv[2]),out=process.argv[3]?path.resolve(process.argv[3]):path.join(root,'test-output/tv-arena/file-receipt.json');
 const walk=dir=>fs.readdirSync(path.join(root,dir),{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);
-const files=[...walk('src'),...walk('authored'),...['app.mjs','main.cjs','preload.cjs','package.json','index.html']];
+// Local backup/temp files are not runtime inputs and may be omitted by packaging.
+const files=[...walk('src'),...walk('authored'),...['app.mjs','main.cjs','preload.cjs','package.json','index.html']].filter(f=>!['.bak','.tmp','.log'].includes(path.extname(f).toLowerCase())).map(f=>f.replaceAll('\\','/'));
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const normalizedFiles=['package.json'];
 const packageFields=['name','version','description','main','dependencies'];

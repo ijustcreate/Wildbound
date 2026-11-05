@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {defaultTrainDesign} from '../src/train-design.mjs';
+import {buildTrainRoute,nearestTrainTrack,sampleTrainRoute} from '../src/train-track.mjs';
+import {buildRailwayMeadowField,railwayMeadowDistance} from '../src/railway-meadow-field.mjs';
+const d=defaultTrainDesign(),route=buildTrainRoute(d),field=buildRailwayMeadowField(d,[route]);
+test('prepared meadow clearance matches real rail-segment distance at sampled cell centers',()=>{for(let s=0;s<route.length;s+=87){const q=sampleTrainRoute(route,s);for(const side of [-85,-53,-25,0,25,53,85]){const x=Math.floor((q.x-Math.sin(q.a)*side)/16)*16+8,y=Math.floor((q.y+Math.cos(q.a)*side)/16)*16+8,actual=nearestTrainTrack(route,x,y).distance,prepared=railwayMeadowDistance(field,x,y);if(actual<95)assert.ok(Math.abs(prepared-actual)<.001);else assert.ok(prepared>84);}}});
+test('all meadow placement margins retain the same rail clearance decision',()=>{for(let y=0;y<d.height;y+=112)for(let x=0;x<d.width;x+=112){const px=Math.floor(x/16)*16+8,py=Math.floor(y/16)*16+8,actual=nearestTrainTrack(route,px,py).distance;for(const margin of [0,2,16,32])assert.equal(railwayMeadowDistance(field,px,py)>d.gauge/2+26+margin,actual>d.gauge/2+26+margin);}});
+test('the field includes other routes and stays bounded at the world border',()=>{const other={...route,points:route.points.map(p=>({...p,x:p.x+200}))},both=buildRailwayMeadowField(d,[route,other]),q=sampleTrainRoute(other,1800),x=Math.floor(q.x/16)*16+8,y=Math.floor(q.y/16)*16+8;assert.ok(railwayMeadowDistance(both,x,y)<=railwayMeadowDistance(field,x,y));assert.equal(railwayMeadowDistance(both,-1,0),Infinity);assert.equal(railwayMeadowDistance(both,d.width,0),Infinity);assert.equal(both.distance.length,Math.ceil(d.width/16)*Math.ceil(d.height/16));});

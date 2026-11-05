@@ -1,3 +1,4 @@
+import {trainFurniturePainter} from './train-furniture-order.mjs';
 import {trainWallOccludes} from './train-visibility.mjs';
 import {drawTenderCoal,coalClusters} from './train-coal.mjs';
 import {vehicleReflectionColors} from './car-art.mjs';
@@ -54,20 +55,22 @@ export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=f
    for(const x of[-L/2+4,L/2-4])for(const side of[-1,1])p.wallBox(x,side*(W/4+10),20,6,W/2-20,37,P.body,true);
   }
  }
+ if(part==='furniture'&&signatureOnly){for(const o of trainInterior(d,car)){if(o.kind==='wall')p.wallBox(o.x,o.y,20,o.w,o.h,27,'#51433e',true);else if(o.kind==='door'){const panel=trainDoorGeometry(o,doors[car.id+':'+o.id]??o.open);p.wallBox(panel.x,panel.y,20,o.w,o.h,25,'#6f4d3c',true);}}return;}
  if(part==='furniture'){
-  const cupIds=new Set(trainInterior(d,car).filter(q=>q.kind==='table').slice(0,2).map(q=>q.id)),objects=trainInterior(d,car).slice().sort((a,b)=>Math.sin(car.a)*(a.x-b.x)+Math.cos(car.a)*(a.y-b.y));
+  const furniture=trainFurniturePainter(p,car),cupIds=new Set(trainInterior(d,car).filter(q=>q.kind==='table').slice(0,2).map(q=>q.id)),objects=trainInterior(d,car).slice().sort((a,b)=>Math.sin(car.a)*(a.x-b.x)+Math.cos(car.a)*(a.y-b.y));
   for(const o of objects){const {x,y,w,h}=o;
-   if(o.kind==='wall')p.wallBox(x,y,20,w,h,27,'#51433e',true);
-   if(o.kind==='door'){const open=doors[car.id+':'+o.id]??o.open,panel=trainDoorGeometry(o,open);p.wallBox(panel.x,panel.y,20,w,h,25,'#6f4d3c',true);p.box(panel.x+w*.3,y,34,3,4,3,P.lining);}
-   if(o.kind==='table'){p.box(x,y,20,4,4,11,'#544437');p.box(x,y,31,w,h,3,P.wood,true);if(car.kind==='compartments'&&cupIds.has(o.id)&&!cocoaTaken.has(car.id+':'+o.id)){const ring=(radius,z)=>Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return[x+Math.cos(a)*radius,y+Math.sin(a)*radius,z];});p.poly(ring(6,34.5),'#d9c49c',true);p.poly(ring(4.5,35),'#eee1bf');const low=ring(3.4,35),high=ring(3.8,41);for(let i=0;i<12;i++){const j=(i+1)%12;p.poly([low[i],low[j],high[j],high[i]],i<6?'#c1b18f':'#eee4c7');}p.poly(ring(3.8,41),'#fff2cf',true);p.poly(ring(2.8,41.5),'#754532');p.poly([[x-1.5,y-1,41.7],[x+.5,y-1,41.7],[x+1,y,41.7],[x-1,y+.4,41.7]],'#b27d50');const handle=Array.from({length:10},(_,i)=>{const a=i*Math.PI*2/9;return[x+4.7+Math.cos(a)*2.2,y,38+Math.sin(a)*2.5];});p.line(handle,'#f2e4c4',1.6);for(let i=0;i<2;i++){const drift=Math.sin(time*2+i)*1.5;p.line([[x-1+i*2,y,43],[x+drift-1+i*2,y,46],[x-drift+i*2,y,49]],'#d8e5d16a',1);}}}
+   if(o.kind==='wall')furniture.wallBox(x,y,20,w,h,27,'#51433e',true);
+   if(o.kind==='door'){const open=doors[car.id+':'+o.id]??o.open,panel=trainDoorGeometry(o,open);furniture.wallBox(panel.x,panel.y,20,w,h,25,'#6f4d3c',true);furniture.box(panel.x+w*.3,y,34,3,4,3,P.lining);}
+   if(o.kind==='table'){furniture.box(x,y,20,4,4,11,'#544437');furniture.box(x,y,31,w,h,3,P.wood,true);if(car.kind==='compartments'&&cupIds.has(o.id)&&!cocoaTaken.has(car.id+':'+o.id)){const ring=(radius,z)=>Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return[x+Math.cos(a)*radius,y+Math.sin(a)*radius,z];});furniture.poly(ring(6,34.5),'#d9c49c',true);furniture.poly(ring(4.5,35),'#eee1bf');const low=ring(3.4,35),high=ring(3.8,41);for(let i=0;i<12;i++){const j=(i+1)%12;furniture.poly([low[i],low[j],high[j],high[i]],i<6?'#c1b18f':'#eee4c7');}furniture.poly(ring(3.8,41),'#fff2cf',true);furniture.poly(ring(2.8,41.5),'#754532');furniture.poly([[x-1.5,y-1,41.7],[x+.5,y-1,41.7],[x+1,y,41.7],[x-1,y+.4,41.7]],'#b27d50');const handle=Array.from({length:10},(_,i)=>{const a=i*Math.PI*2/9;return[x+4.7+Math.cos(a)*2.2,y,38+Math.sin(a)*2.5];});furniture.line(handle,'#f2e4c4',1.6);for(let i=0;i<2;i++){const drift=Math.sin(time*2+i)*1.5;furniture.line([[x-1+i*2,y,43],[x+drift-1+i*2,y,46],[x-drift+i*2,y,49]],'#d8e5d16a',1);}}}
 
    if(o.kind==='seat'){
-    const a=(o.facing??0)*Math.PI/2;const dx=Math.round(Math.cos(a)),dy=Math.round(Math.sin(a));p.box(x,y,20,w,h,7,car.kind==='seats'?'#927358':P.seats,true);p.box(x-dx*w*.38,y-dy*h*.38,25,Math.abs(dx)>.5?5:w,Math.abs(dy)>.5?5:h,14,car.kind==='seats'?'#73513e':shade(P.seats,.82),true);p.box(x,y,26,w-5,h-5,2,car.kind==='seats'?'#b7956c':shade(P.seats,1.2));
+    const a=(o.facing??0)*Math.PI/2;const dx=Math.round(Math.cos(a)),dy=Math.round(Math.sin(a));furniture.box(x,y,20,w,h,7,car.kind==='seats'?'#927358':P.seats,true);furniture.box(x-dx*w*.38,y-dy*h*.38,25,Math.abs(dx)>.5?5:w,Math.abs(dy)>.5?5:h,14,car.kind==='seats'?'#73513e':shade(P.seats,.82),true);furniture.box(x,y,26,w-5,h-5,2,car.kind==='seats'?'#b7956c':shade(P.seats,1.2));
    }
-   if(o.kind==='console'){p.box(x,y,20,w,h,17,'#38474b',true);for(const dx of[-7,2,9])p.box(x+dx,y,37,4,5,4,P.lining);p.line([[x-6,y-2,41],[x-6,y-2,47]],'#d6c489',2);}
-   if(o.kind==='firebox'){p.box(x,y,20,w,h,25,'#293039',true);p.box(x-2,y,28,w,Math.max(8,h-12),9,engine?'#ed913c':'#503f36');if(engine){p.box(x-4,y,30,w-4,h-20,6,'#ffce71');p.box(x-6,y+Math.sin(time*13)*2,33,6,h-24,3,'#fff1ac');for(const side of[-1,0,1]){p.box(x-4,y+side*6,29,6,5,3,'#542d27');p.box(x-5,y+side*6,32,3,3,2,Math.sin(time*9+side)>0?'#f7bd60':'#d87537');}}}
-   if(o.kind==='lamp'){p.box(x,y,20,3,3,24,'#bda05d');p.box(x,y,44,9,9,7,'#e9cd87');}
+   if(o.kind==='console'){furniture.box(x,y,20,w,h,17,'#38474b',true);for(const dx of[-7,2,9])furniture.box(x+dx,y,37,4,5,4,P.lining);furniture.line([[x-6,y-2,41],[x-6,y-2,47]],'#d6c489',2);}
+   if(o.kind==='firebox'){furniture.box(x,y,20,w,h,25,'#293039',true);furniture.box(x-2,y,28,w,Math.max(8,h-12),9,engine?'#ed913c':'#503f36');if(engine){furniture.box(x-4,y,30,w-4,h-20,6,'#ffce71');furniture.box(x-6,y+Math.sin(time*13)*2,33,6,h-24,3,'#fff1ac');for(const side of[-1,0,1]){furniture.box(x-4,y+side*6,29,6,5,3,'#542d27');furniture.box(x-5,y+side*6,32,3,3,2,Math.sin(time*9+side)>0?'#f7bd60':'#d87537');}}}
+   if(o.kind==='lamp'){furniture.box(x,y,20,3,3,24,'#bda05d');furniture.box(x,y,44,9,9,7,'#e9cd87');}
   }
+  furniture.flush();
  }
  if(part==='machinery'&&car.kind==='engine'){
   const x0=-L*.02,x1=L*.42,R=W*.32,zc=40;

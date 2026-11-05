@@ -27,6 +27,33 @@ app.whenReady().then(async()=>{
    canvas.width=2880;canvas.height=540;m.camera=960;m.draw(c,2880,540,a);images['full-arena']=canvas.toDataURL();canvas.width=1440;canvas.height=810;
    m.enemies=[];const t=m.tubes[0];Object.assign(p,{x:t.x,y:t.y,grounded:true,vx:0,vy:0,tubeCooldown:0,lootHeld:false});m.rollView=null;m.step(.05,{[hero.id]:{loot:true}});check('interact begins tube travel',!!p.tubeTransit);for(let i=0;i<17;i++)m.step(.05,{});const target=m.tubes.find(s=>s.id===t.pair);check('tube arrives on paired upper lip without depth motion',p.x===target.x&&Math.abs(p.y-target.y)<1&&p.grounded);snap('tube-arrival',0);
    Object.assign(p,{x:TV_BOARD_X,y:437,vx:0,vy:0,grounded:true,lootHeld:false});m.step(.05,{[hero.id]:{up:true,down:true}});check('up/down cannot move actor into depth',p.x===TV_BOARD_X&&p.y===437);
+   for(const [label,start,end]of [['floor-to-bridge',437,317],['bridge-to-crown',317,197]]){
+    Object.assign(p,{x:TV_BOARD_X,y:start,grounded:true,vy:0,jumpHeld:false});let highest=start;
+    for(let i=0;i<84;i++){m.step(1/60,{[hero.id]:{jump:true}});highest=Math.min(highest,p.y);}
+    check(label+' real input passes the overhead platform and lands',highest<end&&p.y===end&&p.grounded);snap(label,TV_BOARD_X-480);
+    m.step(1/60,{});
+   }
+   Object.assign(p,{x:TV_BOARD_X,y:197,grounded:true,vy:0,jumpHeld:false});let topHead=999,lowestFoot=197,groundBottom=0;
+   for(let i=0;i<84;i++){
+    m.step(1/60,{[hero.id]:{jump:true}});m.draw(c,1440,810,a);
+    topHead=Math.min(topHead,p.y+m.verticalOffset-58);
+    groundBottom=Math.max(groundBottom,437+m.verticalOffset);
+    if(p.y<lowestFoot){lowestFoot=p.y;images['upper-jump-headroom']=canvas.toDataURL();}
+   }
+   check('upper jump keeps the full player below the header',topHead>=56);
+   check('upper jump keeps the ground lane on screen',groundBottom<=510);
+   Object.assign(p,{x:800,y:149,grounded:true,vy:0,jumpHeld:false});let tubeHead=999,tubePeak=149;
+   for(let i=0;i<84;i++){
+    m.step(1/60,{[hero.id]:{jump:true}});m.draw(c,1440,810,a);tubeHead=Math.min(tubeHead,p.y+m.verticalOffset-58);
+    if(p.y<tubePeak){tubePeak=p.y;images['upper-tube-jump-headroom']=canvas.toDataURL();}
+   }
+   check('jumping off the highest tube keeps the player visible',tubeHead>=56);
+   check('highest tube jump lands back on its lip',p.y===149&&p.grounded);
+   for(const [label,x,dir]of [['west-ascent',380,1],['east-ascent',2500,-1],['west-arena-ascent',1130,-1],['east-arena-ascent',1750,1]]){
+    Object.assign(p,{x,y:317,grounded:true,vy:0,jumpHeld:false});
+    for(let i=0;i<84;i++)m.step(1/60,{[hero.id]:{jump:true,right:dir===1,left:dir===-1}});
+    check(label+' climbs with normal walking input',p.y===197&&p.grounded);snap(label,Math.max(0,Math.min(1920,p.x-480)));
+   }
    const turtle=m.spawnAt({x:1400,y:437,face:1},'mossback');turtle.emerging=0;turtle.speed=0;Object.assign(p,{x:1400,y:398,vy:180,grounded:false,invulnerable:0});m.step(.03,{});check('Mossback stomp retracts and bounces',turtle.shell&&p.vy<0);Object.assign(p,{x:1365,y:437,vy:0,grounded:true,face:1});m.attack(p);check('strike launches retracted shell',turtle.shellSpeed===300);
    canvas.width=640;canvas.height=360;snap('small-window',TV_BOARD_X-480);canvas.width=1440;canvas.height=810;
    // Native assembled views and every animation action, including the bent/fallen pose.

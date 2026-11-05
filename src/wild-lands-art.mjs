@@ -16,7 +16,7 @@ const nativePlan={seed:42,routes:[],landmarks:[],routeField:new Float32Array(100
 const waterMasks=new Map();
 export function nativeWaterRuns(d,x,y){if(!d.activeRoom&&!d.wildStops?.some(s=>Math.abs(x+16-s.x)<612&&y+32>s.y-390&&y<s.y+100)){const uniform=sketchUniformSurfaceTile(x,y);if(uniform)return {x,y,wet:uniform==='grass'?[]:[[x,y,32,32]],shallow:uniform==='shallow'?[[x,y,32,32]]:[]};}const wet=[],shallow=[];for(let py=0;py<32;py+=2){let start=-1,ss=-1;for(let px=0;px<=32;px+=2){const kind=px<32?wildLandsSurfaceAt(d,x+px+1,y+py+1):'grass';if(kind!=='grass'&&start<0)start=px;if(kind==='grass'&&start>=0){wet.push([x+start,y+py,px-start,2]);start=-1;}if(kind==='shallow'&&ss<0)ss=px;if(kind!=='shallow'&&ss>=0){shallow.push([x+ss,y+py,px-ss,2]);ss=-1;}}}return {x,y,wet,shallow};}
 function waterMask(x,y,d,t){
- if(t&&railwayStream(t)){const cx=Math.floor(x/512)*512,cy=Math.floor(y/512)*512,data=streamImage(t,'water',`water:${d.activeRoom||'surface'}:${cx}:${cy}`,{x:cx,y:cy},90);if(data&&!data.installed){for(const tile of data.tiles){const key=`${d.activeRoom||'surface'}:${Math.floor(tile.x/32)}:${Math.floor(tile.y/32)}`;if(!tile.wet.length){waterMasks.set(key,null);continue;}const mask={wet:new Path2D(),shallow:new Path2D(),hasWet:true,hasShallow:!!tile.shallow.length};for(const run of tile.wet)mask.wet.rect(...run);for(const run of tile.shallow)mask.shallow.rect(...run);waterMasks.set(key,mask);}data.installed=true;}return waterMasks.get(`${d.activeRoom||'surface'}:${Math.floor(x/32)}:${Math.floor(y/32)}`)||null;}
+ if(t&&railwayStream(t)){const cx=Math.floor(x/512)*512,cy=Math.floor(y/512)*512,data=streamImage(t,'water',`water:${d.activeRoom||'surface'}:${cx}:${cy}`,{x:cx,y:cy},170);if(data&&!data.installed){for(const tile of data.tiles){const key=`${d.activeRoom||'surface'}:${Math.floor(tile.x/32)}:${Math.floor(tile.y/32)}`;if(!tile.wet.length){waterMasks.set(key,null);continue;}const mask={wet:new Path2D(),shallow:new Path2D(),hasWet:true,hasShallow:!!tile.shallow.length};for(const run of tile.wet)mask.wet.rect(...run);for(const run of tile.shallow)mask.shallow.rect(...run);waterMasks.set(key,mask);}data.installed=true;}return waterMasks.get(`${d.activeRoom||'surface'}:${Math.floor(x/32)}:${Math.floor(y/32)}`)||null;}
  if(typeof Path2D==='undefined')return null;
  const key=`${d.activeRoom||'surface'}:${Math.floor(x/32)}:${Math.floor(y/32)}`;
  let mask=waterMasks.get(key);if(waterMasks.has(key))return mask;if(!d.activeRoom&&!d.wildStops?.some(s=>Math.abs(x+16-s.x)<612&&y+32>s.y-390&&y<s.y+100)&&sketchUniformSurfaceTile(x,y)==='grass'){if(waterMasks.size>=6000)waterMasks.delete(waterMasks.keys().next().value);waterMasks.set(key,null);return null;}
@@ -51,16 +51,26 @@ export function drawWildLandsFloor(c,t,bounds,overview=false,g=null){
  // Small cached native-resolution tile chunks; never rasterize the entire world at play scale.
  if(overview&&!d.activeRoom){c.imageSmoothingEnabled=false;if(railwayStream(t)){const image=streamImage(t,'overview','overview:'+(t.wildExploration?.opened.size||0),{size:1200,height:720,opened:[...(t.wildExploration?.opened||[])]},10)||miniLayer(t);if(image)c.drawImage(image,0,0,d.width,d.height);}else c.drawImage(overviewLayer(t),0,0,d.width,d.height);return;}
 
- const far=(t.viewZoom||1)<.3,chunkSize=far?2048:512,tile=far?128:16,scale=chunkSize/256;
+ const far=(t.viewZoom||1)<.3,chunkSize=far?2048:512,tile=far?32:16,scale=chunkSize/256;
  t.wildFloorChunks??=new Map();
+ const stream=railwayStream(t);
+ if(stream){
+  const tiles=[];for(let cy=Math.max(0,Math.floor(bounds.top/chunkSize));cy<=Math.min(Math.ceil(d.height/chunkSize)-1,Math.floor(bounds.bottom/chunkSize));cy++)for(let cx=Math.max(0,Math.floor(bounds.left/chunkSize));cx<=Math.min(Math.ceil(d.width/chunkSize)-1,Math.floor(bounds.right/chunkSize));cx++){const key='floor:'+ [d.activeRoom||'surface',chunkSize,cx,cy].join(':');stream.pinned.add(key);tiles.push({cx,cy,image:streamImage(t,'floor',key,{x:cx*chunkSize,y:cy*chunkSize,span:chunkSize,far,seed:t.grassSeed||42},180)});}
+  const missing=tiles.filter(q=>!q.image).length;if(t.streamCoverage)t.streamCoverage.groundPending+=missing;
+  let lod=t.floorLod;if(!lod||lod.room!==(d.activeRoom||'surface'))lod=t.floorLod={room:d.activeRoom||'surface',far,transition:false};if(!far&&lod.far){lod.transition=true;delete lod.start;}lod.far=far;
+  let alpha=1;if(!far&&lod.transition){if(!missing)lod.start??=performance.now();alpha=lod.start===undefined?0:Math.min(1,(performance.now()-lod.start)/300);if(alpha===1)lod.transition=false;}lod.detailAlpha=far?0:alpha;
+  if(!far&&(missing||alpha<1)){for(let cy=Math.max(0,Math.floor(bounds.top/2048));cy<=Math.min(Math.ceil(d.height/2048)-1,Math.floor(bounds.bottom/2048));cy++)for(let cx=Math.max(0,Math.floor(bounds.left/2048));cx<=Math.min(Math.ceil(d.width/2048)-1,Math.floor(bounds.right/2048));cx++){const key='floor:'+ [d.activeRoom||'surface',2048,cx,cy].join(':');stream.pinned.add(key);const image=streamImage(t,'floor',key,{x:cx*2048,y:cy*2048,span:2048,far:true,seed:t.grassSeed||42},175);if(image)c.drawImage(image,cx*2048,cy*2048,2048,2048);}}
+  if(alpha>0){c.save();c.globalAlpha*=alpha;c.imageSmoothingEnabled=false;for(const q of tiles)if(q.image)c.drawImage(q.image,q.cx*chunkSize,q.cy*chunkSize,chunkSize,chunkSize);c.restore();}
+ }else{
  for(let cy=Math.max(0,Math.floor(bounds.top/chunkSize));cy<=Math.min(Math.ceil(d.height/chunkSize)-1,Math.floor(bounds.bottom/chunkSize));cy++)for(let cx=Math.max(0,Math.floor(bounds.left/chunkSize));cx<=Math.min(Math.ceil(d.width/chunkSize)-1,Math.floor(bounds.right/chunkSize));cx++){
-  const key=[d.activeRoom||'surface',chunkSize,cx,cy].join(':');if(railwayStream(t)){const image=streamImage(t,'floor','floor:'+key,{x:cx*chunkSize,y:cy*chunkSize,span:chunkSize,far},70);if(image){c.imageSmoothingEnabled=false;c.drawImage(image,cx*chunkSize,cy*chunkSize,chunkSize,chunkSize);}else{const coarse=miniLayer(t);if(coarse){c.save();c.beginPath();c.rect(cx*chunkSize,cy*chunkSize,chunkSize,chunkSize);c.clip();c.imageSmoothingEnabled=false;c.drawImage(coarse,0,0,d.width,d.height);c.restore();}}continue;}let canvas=t.wildFloorChunks.get(key);
+  const key=[d.activeRoom||'surface',chunkSize,cx,cy].join(':');let canvas=t.wildFloorChunks.get(key);
   if(!canvas){canvas=document.createElement('canvas');canvas.width=canvas.height=256;const pen=canvas.getContext('2d');
    for(let y=0;y<chunkSize;y+=tile)for(let x=0;x<chunkSize;x+=tile){const wx=cx*chunkSize+x,wy=cy*chunkSize+y,color=floorColor(d,wx+tile/2,wy+tile/2);rect(pen,x/scale,y/scale,tile/scale,tile/scale,color);const n=wildHash(wx,wy);pen.globalAlpha=.18;for(let i=0;i<(far?2:1);i++)rect(pen,x/scale+Math.floor(wildHash(wx+i,wy)*Math.max(1,tile/scale-2)),y/scale+Math.floor(wildHash(wx,wy+i)*Math.max(1,tile/scale-2)),2,1,n>.5?'#ced29e':'#152d31');pen.globalAlpha=1;}
    if(!far)for(let y=0;y<chunkSize;y+=32)for(let x=0;x<chunkSize;x+=32)drawNativeWildTile(pen,t,cx*chunkSize+x,cy*chunkSize+y,cx*chunkSize,cy*chunkSize,scale);
    if(t.wildFloorChunks.size>=80)t.wildFloorChunks.delete(t.wildFloorChunks.keys().next().value);t.wildFloorChunks.set(key,canvas);
   }
   c.imageSmoothingEnabled=false;c.drawImage(canvas,cx*chunkSize,cy*chunkSize,chunkSize,chunkSize);
+ }
  }
  if(g&&!far&&!d.activeRoom)for(let y=Math.floor(bounds.top/32)*32;y<bounds.bottom;y+=32)for(let x=Math.floor(bounds.left/32)*32;x<bounds.right;x+=32){
   const mask=waterMask(x,y,d,t);if(typeof Path2D==='undefined'&&wildLandsSurface(d,x+16,y+16)==='grass'||typeof Path2D!=='undefined'&&!mask)continue;

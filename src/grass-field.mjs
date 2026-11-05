@@ -1,3 +1,4 @@
+import {grassRasterLayout,GRASS_BUFFER_WIDTH,GRASS_BUFFER_HEIGHT} from './grass-raster-layout.mjs';
 import {railwayStream,streamImage} from './railway-stream.mjs';
 import {forestHash} from './forest-landscape.mjs';
 import {nearbyScenery} from './performance.mjs';
@@ -154,24 +155,23 @@ export class GrassFieldRenderer{
     const terrainKey=meadowTerrainKey(g,x,y),geometryKey=local.map(p=>[slot(p),p.x,p.y,p.rootY,p.size,p.tuftSeed,p.grassShade,p.grassBurnRevision||0].join(',')).join(';');
     let entry=this.chunks.get(key);
     if(!entry||entry.terrainKey!==terrainKey||entry.geometryKey!==geometryKey){
-     let prepared;if(g.trainTest&&railwayStream(g.trainTest)){prepared=streamImage(g.trainTest,'grass','grass:'+terrainKey+':'+geometryKey,{x,y,local,slots:local.map(slot),seed:g.seed||42},85);if(!prepared)continue;const ground=document.createElement('canvas');ground.width=ground.height=128;ground.getContext('2d').drawImage(prepared.ground,0,0);prepared={...prepared,ground};}
-     this.geometryRevision++;const data=prepared?.data||grassFieldInstances(g,{sx:x,sy:y,ex:x+256,ey:y+256},local,slot);
+     let prepared;if(g.trainTest&&railwayStream(g.trainTest)){prepared=streamImage(g.trainTest,'grass','grass:'+terrainKey+':'+geometryKey,{x,y,local,slots:local.map(slot),seed:g.seed||42},160);if(!prepared){if(g.trainTest?.streamCoverage)g.trainTest.streamCoverage.grassPending++;const base=g.trainTest.terrainStream.baseGrass.get(`${g.trainTest.design.activeRoom||'surface'}:${x}:${y}:${g.seed||42}`);if(!entry&&base)prepared={data:base,ground:null,base:true};else if(!entry||entry.terrainKey!==terrainKey){if(g.trainTest?.streamCoverage)g.trainTest.streamCoverage.grassHoles++;continue;}}else{const ground=document.createElement('canvas');ground.width=ground.height=128;ground.getContext('2d').drawImage(prepared.ground,0,0);prepared={...prepared,ground};}}
+     if(prepared||!g.trainTest||!railwayStream(g.trainTest)){this.geometryRevision++;const data=prepared?.data||grassFieldInstances(g,{sx:x,sy:y,ex:x+256,ey:y+256},local,slot);
      if(entry)gl.deleteBuffer(entry.buffer);
      const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
-     entry={x,y,buffer,count:data.length/8,terrainKey,geometryKey,ground:prepared?.ground||(entry?.terrainKey===terrainKey?entry.ground:paintPixelMeadow(g,x,y))};
+     entry={x,y,buffer,count:data.length/8,terrainKey,geometryKey:prepared?.base&&geometryKey?'base':geometryKey,ground:prepared?.ground||(entry?.terrainKey===terrainKey?entry.ground:g.trainTest?.design.wildLands&&!g.trainTest.streamDisabled&&g.trainTest.terrainStream?null:paintPixelMeadow(g,x,y))};}
     }
     this.chunks.delete(key);this.chunks.set(key,entry);this.visibleBatches.push(entry);this.instances+=entry.count;
     c.save();c.imageSmoothingEnabled=false;
     if(g.mapMode!=='boundless'&&g.bloom<3){c.beginPath();c.arc(800,800,g.bloom*430,0,Math.PI*2);c.clip();}
-    c.drawImage(entry.ground,x,y,256,256);c.restore();
+    if(!g.trainTest?.design.wildLands||g.trainTest.streamDisabled)c.drawImage(entry.ground,x,y,256,256);c.restore();
    }
    while(this.chunks.size>128){const key=this.chunks.keys().next().value;gl.deleteBuffer(this.chunks.get(key).buffer);this.chunks.delete(key);}
    for(const p of patches)if(p.grassBurnMarks?.length)drawGrassBurnMarks(c,p);
   }
   const activeActors=[...(g.players||[]),...(g.enemies||[])].filter(a=>!a.room&&a.hp>0&&!a.swimming&&!(a.jumpHeight>8));
   if(front&&!(this.visiblePatches||[]).some(p=>!p.cut&&!p.charred&&activeActors.some(a=>Math.abs(p.x-a.x)<65&&Math.abs((p.rootY??p.y)-a.y)<50))){this.active=true;return true;}
-  const pixelStep=2**Math.max(1,Math.ceil(Math.log2(Math.max(w/camera.zoom/1200,h/camera.zoom/800))));
-  const width=Math.ceil((w/camera.zoom+128)/pixelStep),height=Math.ceil((h/camera.zoom+128)/pixelStep);
+  const {pixelStep,width,height}=grassRasterLayout(w,h,camera.zoom);
   const rasterCamera={x:Math.round(camera.x/32)*32,y:Math.round(camera.y/32)*32,zoom:camera.zoom};
   const viewW=width*pixelStep*camera.zoom,viewH=height*pixelStep*camera.zoom;
   if(!front)this.wake.update(activeActors,g.time||0);
@@ -184,9 +184,9 @@ export class GrassFieldRenderer{
   const actorKey=activeActors.filter(a=>Math.abs(a.x-camera.x)<w/camera.zoom&&Math.abs(a.y-camera.y)<h/camera.zoom&&meadowAllowed(g,a.x,a.y+(a.kind?14:1))).slice(0,8).map(a=>Math.round(a.x/2)+','+Math.round(a.y/2)).join(';');
   const rasterKey=[rasterCamera.x,rasterCamera.y,width,height,pixelStep,Math.floor((g.time||0)*20),this.stateRevision,this.geometryRevision,actorKey,g.bloom,vegetationWindStrength(g)].join(':');
   const slotName=front?'frontRaster':'backRaster';let raster=this[slotName];
-  const composite=()=>{c.save();c.imageSmoothingEnabled=false;c.drawImage(raster.canvas,rasterCamera.x-width*pixelStep/2,rasterCamera.y-height*pixelStep/2,width*pixelStep,height*pixelStep);c.restore();};
+  const composite=()=>{c.save();c.imageSmoothingEnabled=false;c.globalAlpha*=g.trainTest?.floorLod?.detailAlpha??1;c.drawImage(raster.canvas,rasterCamera.x-width*pixelStep/2,rasterCamera.y-height*pixelStep/2,width*pixelStep,height*pixelStep);c.restore();};
   if(raster?.key===rasterKey){composite();this.active=true;return true;}
-  if(this.canvas.width!==width||this.canvas.height!==height){this.canvas.width=width;this.canvas.height=height;}
+  if(this.canvas.width<GRASS_BUFFER_WIDTH||this.canvas.height<GRASS_BUFFER_HEIGHT){this.canvas.width=GRASS_BUFFER_WIDTH;this.canvas.height=GRASS_BUFFER_HEIGHT;}
   gl.viewport(0,0,width,height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(this.program);gl.bindVertexArray(this.vao);
   gl.uniform2f(u.camera,rasterCamera.x,rasterCamera.y);gl.uniform2f(u.view,viewW,viewH);gl.uniform1f(u.zoom,camera.zoom);
   gl.uniform1f(u.time,Math.floor((g.time||0)*20)/20);gl.uniform1f(u.bloom,g.mapMode==='boundless'?3:g.bloom??3);gl.uniform1f(u.front,front?1:0);
@@ -209,7 +209,7 @@ export class GrassFieldRenderer{
   }
   if(!raster){const canvas=document.createElement('canvas');raster={canvas,key:null};this[slotName]=raster;}
   if(raster.canvas.width!==width||raster.canvas.height!==height){raster.canvas.width=width;raster.canvas.height=height;}
-  const pen=raster.canvas.getContext('2d');pen.clearRect(0,0,width,height);pen.drawImage(this.canvas,0,0);raster.key=rasterKey;composite();
+  const pen=raster.canvas.getContext('2d');pen.clearRect(0,0,width,height);pen.drawImage(this.canvas,0,this.canvas.height-height,width,height,0,0,width,height);raster.key=rasterKey;composite();
   this.active=true;return true;
  }
  dispose(){if(!this.gl)return;const gl=this.gl;for(const b of this.chunks?.values()||[])gl.deleteBuffer(b.buffer);gl.deleteTexture(this.stateTexture);gl.deleteTexture(this.wakeTexture);gl.deleteBuffer(this.mesh);gl.deleteBuffer(this.buffer);gl.deleteVertexArray(this.vao);gl.deleteProgram(this.program);this.gl=null;this.game=null;this.key=null;}

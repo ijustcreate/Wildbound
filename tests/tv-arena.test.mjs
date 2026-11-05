@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TvWildbound,TV_BOARD_X,TV_WILDBOUND_WIDTH} from '../src/tv-wildbound.mjs';
-import {moveArenaBody,createArenaLevel,arenaSolids} from '../src/tv-arena-level.mjs';
+import {moveArenaBody,createArenaLevel,arenaSolids,ARENA_JUMP_SPEED} from '../src/tv-arena-level.mjs';
 import {ARENA_SUBJECTS,arenaRigPack,replaceArenaRig} from '../src/tv-arena-creatures.mjs';
 import {poseAt} from '../src/player-motion.mjs';
 import {definitionPack,applyDefinitions} from '../src/definitions.mjs';
@@ -58,13 +58,41 @@ test('collision resolves platform tops, undersides, sides, and bounded arena edg
  const side={x:85,y:240,vx:200,vy:0};assert.equal(moveArenaBody(side,.05,solid),true);assert.equal(side.x,88);
  const edge={x:35,y:437,vx:-430,vy:0};moveArenaBody(edge,.05,[]);assert.equal(edge.x,32);
 });
+test('suspended tiers leave standing headroom and do not block upward jumps',()=>{
+ const level=createArenaLevel(),solids=arenaSolids(level);
+ for(const lower of [...level.platforms,{x:0,y:437,w:2880}])for(const upper of level.platforms){
+  if(upper.y>=lower.y||lower.x>=upper.x+upper.w||upper.x>=lower.x+lower.w)continue;
+  assert.ok(lower.y-upper.y-upper.h>=90,'clearance above '+lower.x+','+lower.y);
+ }
+ for(const platform of level.platforms){
+  const body={x:platform.x+platform.w/2,y:platform.y+120,vx:0,vy:-ARENA_JUMP_SPEED};let highest=body.y;
+  for(let i=0;i<60;i++){moveArenaBody(body,1/60,[platform]);highest=Math.min(highest,body.y);}
+  assert.ok(highest<platform.y,'jump passes through '+platform.x);assert.equal(body.y,platform.y);assert.ok(body.grounded);
+ }
+ const tube={x:100,y:200,w:48,h:48,style:'tube'},body={x:124,y:310,vx:0,vy:-ARENA_JUMP_SPEED};
+ moveArenaBody(body,.02,[tube]);assert.equal(body.y,306,'tube underside remains solid');
+});
+test('real player input jumps from the center bridge onto the crown without head bonks',()=>{
+ for(const dt of [1/60,1/30,.05]){
+  const {m,p}=ready();Object.assign(p,{x:1440,y:317,grounded:true,vy:0});let highest=p.y;
+  for(let i=0;i<Math.ceil(1.3/dt);i++){m.step(dt,{one:{jump:true}});highest=Math.min(highest,p.y);}
+  assert.ok(highest<197,'head clears the upper platform at '+dt);assert.equal(p.y,197);assert.equal(p.grounded,true);
+ }
+});
+test('both side routes and both arena approaches climb at normal walking speed',()=>{
+ for(const dt of [1/60,1/30,.05])for(const [x,dir]of [[380,1],[2500,-1],[1130,-1],[1750,1]]){
+  const {m,p}=ready();Object.assign(p,{x,y:317,grounded:true,vy:0});
+  for(let i=0;i<Math.ceil(1.3/dt);i++)m.step(dt,{one:{jump:true,right:dir===1,left:dir===-1}});
+  assert.equal(p.y,197,'normal-speed route from '+x+' at '+dt);assert.ok(p.grounded);
+ }
+});
 test('all upper platforms are reachable using the actual jump collision solver',()=>{
  const level=createArenaLevel(),solids=arenaSolids(level),floor={x:32,y:437,w:2816,h:100},surfaces=[floor,...solids],edges=surfaces.map(()=>new Set());
  for(const [index,surface]of surfaces.entries()){
   for(let x=surface.x+14;x<=surface.x+surface.w-14;x+=16){
    if(solids.some(s=>s!==surface&&x+12>s.x&&x-12<s.x+s.w&&surface.y>s.y+.5&&surface.y-58<s.y+s.h-.5))continue;
    for(const direction of [-1,0,1]){
-    const actor={x,y:surface.y,vx:direction*220,vy:-520};
+    const actor={x,y:surface.y,vx:direction*170,vy:-ARENA_JUMP_SPEED};
     for(let i=0;i<65;i++){
      moveArenaBody(actor,.02,solids);
      if(actor.grounded){for(const [j,s]of surfaces.entries())if(Math.abs(actor.y-s.y)<.1&&actor.x+12>s.x&&actor.x-12<s.x+s.w)edges[index].add(j);break;}

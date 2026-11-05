@@ -63,7 +63,7 @@ function editedTorch(c,x,y,time){
  c.save();c.globalAlpha=.04;c.fillStyle='#ffdb7c';c.beginPath();c.arc(x,y-6,34+f,0,Math.PI*2);c.fill();c.restore();
 }
 export function drawArenaBoard(c,x,progress,time){
- prop(c,'tv_board_altar',x,437);c.textAlign='center';c.fillStyle=C.cream;c.font='bold 11px Georgia';c.fillText(progress>=48?'INTERACT · CALL WILDBOUND':'STRIKE THE LIVING BOARD',x,330);
+ prop(c,'tv_board_altar',x,437);c.textAlign='center';c.fillStyle=C.cream;c.font='bold 11px Georgia';c.fillText(progress>=48?'INTERACT · CALL WILDBOUND':'STRIKE THE LIVING BOARD',x,486);
  c.fillStyle=C.ink;c.fillRect(x-87,443,174,9);c.fillStyle=C.gold;c.fillRect(x-85,445,170*Math.min(1,progress/48),5);
 }
 export function drawArenaArchitecture(c,mode,left,right){
@@ -118,7 +118,7 @@ function forestLayer(layer){
  return backdrops[layer]=surface;
 }
 export function drawArenaBackdrop(c,camera,left,width,time){
- rect(c,'#739b88',left,55,width,382);rect(c,'#5e897b',left,185,width,252);rect(c,'#365f58',left,330,width,107);
+ rect(c,'#739b88',left,55,width,382);rect(c,'#5e897b',left,185,width,252);rect(c,'#365f58',left,330,width,210);
  c.imageSmoothingEnabled=false;
  for(let layer=0;layer<3;layer++){
   const scroll=Math.floor(camera*[.08,.20,.39][layer]);

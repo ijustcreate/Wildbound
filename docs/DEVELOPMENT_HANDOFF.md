@@ -1,3 +1,7 @@
+# Latest source: [1.2.101 co-op streaming and train table depth](history/2026-11-04-coop-streaming-tables-1.2.101.md). Predictive coherent terrain/grass streaming, stable GPU buffers, wide two-player travel and corrected tabletop/chair order. Includes the completed local TV arena work. Final exact delivery receipts are in the linked note.
+
+# Latest source: [1.2.100 TV arena jump clearance](history/2026-11-04-tv-headroom-1.2.100.md). Two roomy suspended tiers, upward-passable ledges, stronger TV jump, repositioned linked tubes and high-jump camera headroom. Final desktop receipts are in the linked note.
+
 # Latest source: [1.2.99 background terrain and railway bridges](history/2026-11-04-streaming-railway-1.2.99.md). Background native terrain/grass/shoreline and cat navigation, train color controls, sword-breakable bridges and deep-water train sinking. Final delivery receipts are recorded in the linked note.
 
 # Latest source: [Charged sword dash and blade sparkle](history/2026-11-03-sword-charge-dash.md). Hold attack plus hold/aim for a growing ground lane, release to dash and swipe; native held-out sword with traveling blade sparkles. Verification and delivery receipts are in the linked note.

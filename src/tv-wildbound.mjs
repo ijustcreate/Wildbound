@@ -1,7 +1,7 @@
 // A self-contained, side-view Wildbound expedition reached through the lobby TV.
 // Board progress/physics stay isolated; collected items go to the owning hero.
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
-import {ARENA_WIDTH,ARENA_FLOOR,ARENA_BOARD_X,ARENA_ENEMIES,createArenaLevel,arenaSolids,moveArenaBody} from './tv-arena-level.mjs';
+import {ARENA_WIDTH,ARENA_FLOOR,ARENA_BOARD_X,ARENA_JUMP_SPEED,ARENA_ENEMIES,createArenaLevel,arenaSolids,moveArenaBody} from './tv-arena-level.mjs';
 import {drawArenaArchitecture,drawArenaBackdrop,drawArenaBoard} from './tv-arena-art.mjs';
 import {drawBoard} from './board.mjs';
 import {drawDie} from './render.mjs';
@@ -146,7 +146,7 @@ export class TvWildbound {
       if(input.dash&&!p.dashHeld&&p.dashCooldown<=0){p.dashTime=.18;p.dashCooldown=.72;p.dashDirection=direction||p.face;}
       p.vx=p.dashTime>0?p.dashDirection*430:direction*(input.run?220:170);
       p.dashTime=Math.max(0,p.dashTime-dt);p.dashHeld=!!input.dash;
-      if(input.jump&&!p.jumpHeld&&p.grounded){p.vy=-520;p.grounded=false;}
+      if(input.jump&&!p.jumpHeld&&p.grounded){p.vy=-ARENA_JUMP_SPEED;p.grounded=false;}
       p.jumpHeld=!!input.jump;
       if(input.attack&&!p.attackHeld){
         p.attackTime=.28;
@@ -214,7 +214,8 @@ export class TvWildbound {
     this.viewportWidth=Math.min(TV_WILDBOUND_WIDTH,viewWidth);
     c.beginPath();c.rect(viewLeft,0,viewWidth,VIEW_H);c.clip();
     this.drawLandscape(c,viewLeft,viewWidth);
-    c.save();c.translate(-this.camera,0);
+    this.verticalOffset=this.won?0:clamp(116-Math.min(FLOOR,...[...this.players.values()].map(p=>p.y)),0,130);
+    c.save();c.translate(-this.camera,this.verticalOffset);
     drawArenaArchitecture(c,this,left,right);
     for(const block of this.blocks)if(block.x>left-40&&block.x<right+40)drawQuestionBlock(c,block,this.time);
     drawBlockParticles(c,this.blockParticles,left,right);
@@ -234,8 +235,8 @@ export class TvWildbound {
       c.save();if(p.tubeTransit){const t=p.tubeTransit.time;c.globalAlpha=t<.35?1-t/.35:(t-.35)/.4;}c.globalAlpha*=(p.invulnerable>0&&Math.floor(this.time*12)%2)?0.55:1;
       const owner=this.owners.get(p.id);
       animator.draw(c,{...p.hero,...owner,appearance:{...DEFAULT_APPEARANCE,...owner?.appearance},kind:'player',x:p.x,y:p.y,faceX:p.face,faceY:0,moving:Math.abs(p.vx)>1,step:p.step,attack:p.attackTime,animationAction:p.attackTime>0?'slash':undefined},this.time,71);
-      c.fillStyle='#fff3d1';c.textAlign='center';c.font='bold 13px system-ui';c.fillText(p.hero.name||'Explorer',p.x,p.y-67);
-      for(let i=0;i<p.hp;i++){c.fillStyle='#e05e62';c.fillText('♥',p.x-16+i*16,p.y-81);}
+      if(p.y+this.verticalOffset>=150){c.fillStyle='#fff3d1';c.textAlign='center';c.font='bold 13px system-ui';c.fillText(p.hero.name||'Explorer',p.x,p.y-67);
+      for(let i=0;i<p.hp;i++){c.fillStyle='#e05e62';c.fillText('♥',p.x-16+i*16,p.y-81);}}
       c.restore();
     }
     c.fillStyle=this.progress>=TV_WILDBOUND_GOAL?'#e6c66f':'#557e75';c.fillRect(TV_WILDBOUND_WIDTH-98,285,16,138);c.fillRect(TV_WILDBOUND_WIDTH-160,282,95,16);c.fillRect(TV_WILDBOUND_WIDTH-160,282,16,141);
@@ -257,7 +258,7 @@ export class TvWildbound {
   }
   drawLandscape(c,left=0,width=VIEW_W){c.imageSmoothingEnabled=false;drawArenaBackdrop(c,this.camera,left,width,this.time);}
   drawArenaMap(c,left,width){
-    const w=Math.min(280,width*.35),x=VIEW_W/2-w/2,y=65;c.fillStyle='#0f2425dd';c.fillRect(x-7,y-5,w+14,36);
+    const w=Math.min(280,width*.35),x=left+width-w-20,y=468;c.fillStyle='#0f2425dd';c.fillRect(x-7,y-5,w+14,36);
     c.fillStyle='#668875';c.fillRect(x,y+18,w,2);
     for(const tube of this.tubes){c.fillStyle='#6bbb8a';c.fillRect(x+tube.x/TV_WILDBOUND_WIDTH*w,y+tube.y/437*18,3,4);}
     c.fillStyle='#f4d283';c.fillRect(x+w/2-2,y+14,4,6);
