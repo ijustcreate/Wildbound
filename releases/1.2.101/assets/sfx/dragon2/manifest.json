@@ -1,0 +1,41 @@
+{
+  "source": "https://www.wowhead.com/npc=186455/black-dragon#sounds",
+  "credit": "World of Warcraft / Blizzard Entertainment. Sound files linked by the user-supplied Wowhead Dragon2 reference; unmodified source recordings.",
+  "files": [
+    {
+      "key": "hurt",
+      "name": "10.0_MON_Dragon2_Wound_01",
+      "url": "https://wow.zamimg.com/sound-ids/live/enus/40/4633384/10.ogg",
+      "id": 4633384,
+      "sha256": "d1c952befa4386341330f371272bd79da1364f699c299cf19b96b47f80311703"
+    },
+    {
+      "key": "flap",
+      "name": "BlackRockV2_Drake_WingFlap_06",
+      "url": "https://wow.zamimg.com/sound-ids/live/enus/65/596033/BlackRockV2_Drake_WingFlap_06.ogg",
+      "id": 596033,
+      "sha256": "16cce4d02ccda83e843982cc3dea70966597ae53f5d97cd7c94c52fadf29d95c"
+    },
+    {
+      "key": "attack",
+      "name": "10.0_MON_Dragon2_AttackWhoosh_Slash_01",
+      "url": "https://wow.zamimg.com/sound-ids/live/enus/234/4633578/10.ogg",
+      "id": 4633578,
+      "sha256": "90cf8400bb7cc9c94973042234c7343ad40c82e9f7cc53aebdbbc6cca2fecba8"
+    },
+    {
+      "key": "breath",
+      "name": "10.0_MON_Dragon2_ChompBite_01",
+      "url": "https://wow.zamimg.com/sound-ids/live/enus/250/4633594/10.ogg",
+      "id": 4633594,
+      "sha256": "a630b80569361f92929a9626520a8aa8821b9458c974c82f8dd1eead63475fd1"
+    },
+    {
+      "key": "death",
+      "name": "10.0_MON_Dragon2_Death_SegmentA_01",
+      "url": "https://wow.zamimg.com/sound-ids/live/enus/230/4633318/10.ogg",
+      "id": 4633318,
+      "sha256": "8e0663261a0d647bc2254fd9ef535e78829ab5530710da414079ba961138a8fb"
+    }
+  ]
+}
