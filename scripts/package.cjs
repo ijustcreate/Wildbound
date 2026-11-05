@@ -39,6 +39,7 @@ packager({
     /^\/scripts\/(upgrade|integrate|extract|fix|finish|optimize|polish|cleanup)/,
     /^\/\.tools/,
     /^\/test-output/,
+    /^\/(?:output|tmp)(?:\/|$)/,
     /^\/server-data/,
     /^\/server-config\.local\.json/,
     /\.log$/,
