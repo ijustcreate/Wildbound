@@ -1,0 +1,13 @@
+# Wildbound 1.2.113 publication result
+
+The user accepted the fuller train boiler and requested publication of the accumulated source and web game. Game source snapshot: `34393ae3d2983b6a0022ec614d94c6c95cadffdf`, branch `Wildbound_worlds`. Pages snapshot: `8285fa8f271c8a0ca729f1e9c1aafd9017c370ef`, branch `gh-pages`. Both normal pushes were verified against the remote; no force push was used.
+
+The browser build came from an isolated clean checkout of the source commit, not the moving shared workspace. Manifest: version1.2.113, sourceDirty=false, builtAt2026-11-23T21:23:18.778Z. Browser output: `dist/source-web-1.2.113/dist/web-1.2.113`. Concurrent later source/art edits remain in the shared checkout, untouched and outside this release snapshot.
+
+Checks: 89 import-order and creature/board regression tests passed after breaking the creature-catalog/navigation initialization cycle. Syntax coverage: 996 runtime files; 975 matched the previously checked desktop snapshot after canonical newline comparison, and all 21 changed/new files passed fresh Node syntax checks. The browser-only build passed 16 gameplay checks with zero renderer errors and no missing files. Assembled Pages passed 10 chooser, gameplay, Workshop, Worlds and save-isolation checks. All 428 checked original files match; original and previous1.0.74 both still boot.
+
+Limits: the broad mutable-workspace test run was stopped before completion and must not be described as a passing full suite. Two gear-art assertions also reproduce on the frozen snapshot: directional boot soles and side-view ankle cuff placement. They are known publication limits, not fixed in this train follow-up. The accepted desktop build and its 83 focused/499 packaged checks are detailed in the train-construction note. Physical controllers, remote multiplayer and FPS are unverified.
+
+Permanent browser release: https://ijustcreate.github.io/Wildbound/releases/1.2.113/ . Latest: https://ijustcreate.github.io/Wildbound/latest/ . Historical editions remain untouched. Desktop saves and browser saves remain separate; this web/source publication does not rebuild another computer's executable.
+
+GitHub Pages deployment [45270074421](https://github.com/ijustcreate/Wildbound/actions/runs/45270074421) completed successfully. Live latest resolves to1.2.113. A muted isolated live browser boots fully with failed=0, desktop=false and no renderer errors; its manifest reports the exact clean source commit above. Nine live train/navigation modules match the frozen web build by canonical SHA256. Final receipt: `test-output/publish-1.2.113-delivery.json`. This result note is a documentation-only follow-up; the web manifest continues to identify the game-code snapshot34393ae.
