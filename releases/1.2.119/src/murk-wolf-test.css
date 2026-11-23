@@ -1,0 +1,103 @@
+body {
+  margin: 0;
+  background: #18292b;
+  color: #f2e7ce;
+  overflow: auto;
+  font-family: system-ui, sans-serif;
+}
+#murk-test {
+  display: block;
+  max-width: 1520px;
+  margin: auto;
+  padding: 24px;
+}
+#murk-test header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+#murk-test h1 {
+  font-size: 38px;
+  margin: 4px 0;
+}
+#murk-test p {
+  color: #a5b8ad;
+  margin: 6px 0 18px;
+}
+#murk-test small {
+  color: #d7ad65;
+  letter-spacing: 0.14em;
+}
+#murk-test nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 16px 0;
+}
+#murk-test nav label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#murk-test button,
+#murk-test select {
+  padding: 8px 14px;
+  background: #294345;
+  color: #f6e7cb;
+  border: 1px solid #607870;
+  border-radius: 6px;
+}
+#murk-test button:hover {
+  background: #395c5d;
+}
+#views {
+  width: 100%;
+  height: auto;
+  background: #243a3b;
+  border-radius: 12px;
+  image-rendering: pixelated;
+}
+#status {
+  color: #89d9cb;
+  max-width: 350px;
+}
+#editor {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  height: 920px;
+  max-height: none;
+  background: #263535;
+  border: 1px solid #647a6a;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 20px 0;
+}
+#editor[hidden] {
+  display: none;
+}
+#rig-editor {
+  height: 100%;
+}
+#part-editor {
+  background: #243a3b;
+  color: #fff;
+  padding: 24px;
+  border: 1px solid #b3c9b1;
+  border-radius: 8px;
+}
+#part-canvas {
+  display: block;
+  margin: 16px auto;
+  image-rendering: pixelated;
+  touch-action: none;
+  background: repeating-conic-gradient(#4a5559 0% 25%, #353f44 0% 50%) 0/16px
+    16px;
+  max-width: 600px;
+  max-height: 500px;
+}
+#part-editor::backdrop {
+  background: #000a;
+}

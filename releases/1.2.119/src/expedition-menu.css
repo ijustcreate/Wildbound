@@ -1,0 +1,198 @@
+/* Dark trim frames readable controls on parchment. */
+#lobby .lobby-player-panel.expedition-menu {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  background: #ead8ae;
+  border: 3px solid #866134;
+  border-radius: 8px;
+  color: #302719;
+  box-shadow: inset 0 0 0 1px #fff0cd, 0 8px 28px #081612b0;
+  container-type: inline-size;
+}
+#lobby .lobby-player-panel.expedition-menu::before { display: none; }
+#lobby .expedition-menu [hidden] { display: none !important; }
+#lobby .expedition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid #997749;
+  background: linear-gradient(120deg, #493622, #2d271e);
+}
+#lobby .expedition-header .expedition-heading {
+  margin: 0;
+  color: #fff2d3;
+  font: 700 clamp(18px, 6cqw, 28px)/1.08 Georgia, serif;
+}
+#lobby .expedition-header .expedition-owner {
+  margin: 2px 0 0;
+  color: #eddbac;
+  font: 600 14px/1.25 system-ui;
+  overflow-wrap: anywhere;
+}
+#lobby .expedition-title {border-inline-start:3px solid var(--player-color,#cbb071);padding-inline-start:8px;}
+#lobby .expedition-menu button {
+  height: auto;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 5px 8px;
+  color: #362717;
+  border: 1px solid #957349;
+  border-radius: 5px;
+  background: #f5e9cc;
+  box-shadow: none;
+  text-transform: none;
+  letter-spacing: normal;
+}
+#lobby .expedition-menu button:is(.lobby-focus, :focus-visible) {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid #265b51;
+  outline-offset: -4px;
+}
+#lobby .expedition-menu button:hover { background-color: #fff5dd; }
+#lobby .expedition-menu button.expedition-close {
+  flex: 0 0 44px;
+  width: 44px;
+  color: #fff1d6;
+  background: #694132;
+  border-color: #b68d63;
+  font: 700 27px/1 system-ui;
+}
+#lobby .expedition-menu button:is(.expedition-close, .expedition-accept):is(.lobby-focus, :focus-visible) {
+  outline-color: #fff0aa;
+}
+#lobby .expedition-body {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: auto;
+  scrollbar-color: #8a623d #ead8ae;
+  padding: 10px 12px;
+}
+#lobby .expedition-modes { display: grid; gap: 6px; }
+#lobby .expedition-menu .expedition-mode,
+#lobby .expedition-menu :is(.expedition-boundless, .expedition-daily) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+#lobby .expedition-menu :is(.expedition-boundless, .expedition-daily) { margin-top: 8px; }
+#lobby .expedition-menu :is(.expedition-mode, .expedition-map)[aria-pressed="true"],
+#lobby .expedition-menu [role="switch"][aria-checked="true"] {
+  border-color: #48664b;
+  background: #d6e1c2;
+  box-shadow: inset 0 0 0 1px #718965;
+}
+#lobby .expedition-menu .expedition-crest {
+  flex: 0 0 36px;
+  display: block;
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border-radius: 5px;
+  background: #284336;
+  image-rendering: pixelated;
+}
+#lobby .expedition-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#lobby .expedition-copy strong { color: inherit; font: 700 16px/1.15 Georgia, serif; }
+#lobby .lobby-player-panel.expedition-menu .expedition-copy small { color: #44321f !important; font: 14px/1.25 system-ui; letter-spacing: normal; }
+#lobby .expedition-check,
+#lobby .expedition-map-selected {
+  flex: 0 0 20px;
+  color: #17614a;
+  font: 800 16px/1 system-ui;
+  visibility: hidden;
+}
+#lobby .expedition-menu [aria-pressed="true"] :is(.expedition-check, .expedition-map-selected) { visibility: visible; }
+#lobby .expedition-switch-state { min-width: 2em; color: #35503c; font: 700 14px/1 system-ui; }
+#lobby .expedition-map-heading { margin: 12px 0 6px; color: #3d2e1c; font: 700 18px/1.25 Georgia, serif; }
+#lobby .expedition-map-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+#lobby .expedition-menu .expedition-map {
+  position: relative;
+  display: grid;
+  grid-template-rows: 34px auto;
+  justify-items: center;
+  align-items: center;
+  gap: 3px;
+  min-height: 64px;
+  text-align: center;
+}
+#lobby .expedition-menu .expedition-map .expedition-icon {
+  width: 52px;
+  height: 34px;
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: 3px;
+}
+#lobby .expedition-map .expedition-copy strong { font: 650 13px/1.15 system-ui; }
+#lobby .expedition-map-selected { position: absolute; top: 5px; right: 5px; }
+#lobby .expedition-map-preview { color: #473823; font: 14px/1.4 system-ui; }
+#lobby .expedition-footer {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid #ad905f;
+  background: #e2cda2;
+}
+#lobby .expedition-footer .expedition-status { color: #792e20; font: 13px/1.2 system-ui; }
+#lobby .expedition-menu .expedition-accept {
+  flex: 0 0 min(145px, 55%);
+  color: #fff1cc !important;
+  background: #234f40 !important;
+  border-color: #436e57 !important;
+  font: 700 17px/1.1 Georgia, serif;
+}
+#lobby .expedition-menu .expedition-accept:hover { background: #315f4c !important; }
+#lobby .expedition-menu .expedition-accept:disabled { opacity: .65; }
+@container (max-width: 360px) {
+  #lobby .expedition-map-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+#lobby .expedition-grid .expedition-header { padding-block: 4px; }
+#lobby .expedition-grid .expedition-heading { font-size: 22px; }
+#lobby .expedition-grid .expedition-body { padding-block: 5px; border-bottom: 1px solid #98754b; }
+#lobby .expedition-grid .expedition-modes { gap: 4px; }
+#lobby .expedition-grid .expedition-mode { min-height: 44px !important; padding-block: 3px !important; }
+#lobby .expedition-grid .expedition-crest { flex-basis: 32px; width: 32px; height: 32px; }
+#lobby .expedition-grid .expedition-footer { padding-block: 3px; }
+#lobby .lobby-world:has(> .expedition-grid) > #roster {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  right: 12px;
+  align-items: start;
+}
+#lobby .lobby-world:has(> .expedition-grid) .roster-card {
+  display: grid;
+  grid-template: auto auto / 44px minmax(0, 1fr);
+  width: 100%;
+  min-height: 64px;
+  max-width: none;
+  margin: 0;
+  border-width: 5px !important;
+}
+#lobby .lobby-world:has(> .expedition-grid) .roster-portrait-wrap {
+  grid-row: 1/3;
+  width: 38px;
+  height: 44px;
+}
+#lobby .lobby-world:has(> .expedition-grid) .roster-portrait { width: 34px; height: 42px; }
+#lobby .lobby-world:has(> .expedition-grid) .roster-card :is(.roster-info, .mana-meter, .roster-minions) { display: none; }
