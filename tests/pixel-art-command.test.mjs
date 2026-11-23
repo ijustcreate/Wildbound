@@ -12,7 +12,10 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
+import lanternRecipe from "../assets/pixel-recipes/winter-lantern.pixel.json" with { type: "json" };
+import { compilePixelRecipe, pixelRecipeFrameAt } from "../src/pixel-recipe.mjs";
 import { validateSprite } from "../src/pixels.mjs";
+import { winterLanternFrame } from "../src/winter-night.mjs";
 
 const cli = fileURLToPath(new URL("../scripts/pixel-art.mjs", import.meta.url));
 
@@ -117,6 +120,24 @@ test("pixel-art patches a native base without drifting offsets or accumulating b
   assert.match(pixels, /0 #9b733e/);
   assert.match(pixels, /Frame 2 \(160 ms\)\n {4}01\n {2}0 \.0/);
   assert.deepEqual(JSON.parse(readFileSync(source, "utf8")), base);
+});
+
+test("the engine and CLI use the same lantern pixels and millisecond holds", (t) => {
+  const { out, run } = fixture(t, lanternRecipe);
+  const compiled = compilePixelRecipe(lanternRecipe);
+  assert.equal(compiled.duration, 710);
+  const result = run();
+  assert.equal(result.status, 0, result.stderr);
+  const exported = JSON.parse(readFileSync(join(out, "animation.json"), "utf8"));
+  assert.deepEqual(exported.frames, compiled.frames);
+  let time = 0;
+  for (const {duration, sprite} of exported.frames) {
+    assert.deepEqual(pixelRecipeFrameAt(compiled, time), sprite);
+    assert.deepEqual(winterLanternFrame((time + 1) / 1000), sprite);
+    assert.deepEqual(pixelRecipeFrameAt(compiled, time + duration - 1), sprite);
+    time += duration;
+  }
+  assert.equal(pixelRecipeFrameAt(compiled, time), compiled.frames[0].sprite);
 });
 
 test("pixel-art reports invalid coordinates, timing, and colors without creating an output", (t) => {

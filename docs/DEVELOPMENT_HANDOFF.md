@@ -1,3 +1,13 @@
+# Combined numbered release — [Build workflow and release contents](history/2026-11-23-numbered-builds.md)
+
+This integrates the Overlook maze, native pixel recipes, forest variants, performance and encounter work. The desktop and browser builds are identified by their numbered manifests. Final local verification receipts are written to ignored `test-output/`.
+
+# Latest Overlook hedge maze — [Reference trace, clipped entrance, and Cursed Axe](history/2026-11-23-overlook-hedge-maze.md). The same traced plan sits behind the Garden Villa and Wilds homestead. Both footprints match the reviewed trace. The numbered 1.2.116 normal-profile desktop build passed the muted lobby boot and 74 packaged native checks.
+
+# Latest performance audit: [Bounded native caches and collision indexing](history/2026-11-23-performance-audit.md). Rain drawing CPU −34%, crowded-house drawing CPU −42%, Shadow simulation CPU −62% in frozen-scene samples. 270 selected regressions and 497 source/497 packaged native checks passed; actual EXE, eight runtime hashes and pinned normal-profile launcher verified. Gameplay FPS remains unverified because Windows throttled visible delivery to approximately 1 Hz. Exact modified 1.2.113 build, concurrent Git revision and limits are recorded in the note.
+
+# Latest ranged cleanup and pack pursuit: [Bounded ranged movement and distinct same-type tactics](history/2026-11-23-ranged-cleanup-and-pack-pursuit.md). All three cleanup cases now clear; 50/50 packaged scripted encounters complete without fresh close-target overlaps. Stable hunter, four-tile lead, interceptor and flanker roles; obstacle-aware watchers/books, planted archer openings and native bow-bash fallback. Pixel ground cues remain restrained. 173 focused checks, 151 packaged native checks, actual EXE and dedicated normal-profile shortcut verified. Exact modified-source 34393ae desktop receipt and human/controller limits are in the note.
+
 # Latest train construction: [Fuller boiler, supported carriage details and shaped shadows](history/2026-11-23-train-construction.md). Native construction pass with exact desktop build and visual audit receipts. User accepted the fuller boiler on November 23; web/source publication is now authorized.
 
 # Latest biome encounter playtest: [Fair co-op pressure and native pixel tells](history/2026-11-23-biome-encounter-playtest-polish.md). Shared close-target attack budget, staggered co-op tells, distinct introductory pairs, weighted incoming heavies and lone-healer cleanup. Pixel contours match native bronze/teal art, with no extra floor symbols. 170 focused checks, 50 packaged scripted fights with zero fresh close-target overlaps, 748 packaged native checks, actual EXE and pinned normal-profile shortcut verified. Three ranged cleanup times remain unverified; exact desktop receipt and limits are in the note.
@@ -318,15 +328,15 @@ First check what the repository launcher would run:
 & '.\Play Wildbound.cmd' --check
 ```
 
-It reports the exact executable, source commit and build time. If it reports a missing or mismatched build, the pulled source is newer than the package. Do not use an old desktop shortcut as evidence that the pull worked. Close the target build before replacing it, after checking with anyone using it. Then run from the checkout:
+It reports the selected build number, exact executable, source commit and build time. If it reports a missing or mismatched build, run the rebuild from the checkout:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\rebuild-desktop.ps1
 ```
 
-This single step runs the Node tests, packages the current source, writes `wildbound-build.json` beside the executable, and creates or refreshes the versioned Desktop shortcut. It checks for the local Electron dependencies and stops if the target game is running. The shortcut targets this checkout's `Play Wildbound.cmd`, which checks the build each time before opening `dist/<package.json version>/Wildbound-win32-x64/Wildbound.exe`; it uses the project icon. Run `Play Wildbound.cmd --check` again, inspect the shortcut target and working directory, and launch it to confirm the intended game loads. Replace old shortcuts that target an executable directly. Do not carry `.lnk` files with another user's absolute paths to the new machine. If the Desktop is redirected, pass `-DesktopPath` to the rebuild script.
+The rebuild runs the Node tests, packages the current source, writes `wildbound-build.json` beside the executable, and creates `Wildbound Worlds (<build version>).lnk` on the resolved Desktop. The shortcut targets this checkout's `Play Wildbound.cmd` and pins `dist/<build version>/Wildbound-win32-x64`. The unpinned launcher selects the highest completed normal build for the current source version and commit. Run `Play Wildbound.cmd --check` again and verify the shortcut target and working directory. If the Desktop is redirected, pass `-DesktopPath` to the rebuild script.
 
-For non-overwriting test builds, `node scripts/package.cjs --preview` creates a timestamped `dist/night-hunt-...` folder. The normal launcher and shortcut do **not** select these folders: a test shortcut must explicitly target the exact successful output. This packaging flag names the output; it does not itself add the runtime `--preview` argument. The normal launcher does not pass `--preview`, so it uses the normal Electron profile.
+Normal, preview and web packages share a numeric sequence. The version in `package.json` is the minimum source version, and the packager reserves each new build number in local Git metadata shared by linked worktrees. A reservation survives interrupted packaging and removal of the generated output. Independent clones have their own local reservations. `node scripts/package.cjs --preview` assigns the next number to a Night Hunt preview. `Play Wildbound Night Hunt.cmd` opens the latest compatible preview with the separate runtime profile. The standard launcher uses the normal profile.
 
 Keep the entire packaged directory together when distributing a playable build. `dist/` is ignored by Git. Rebuild on the destination or deliberately transfer a complete release; pulling source alone is not enough.
 

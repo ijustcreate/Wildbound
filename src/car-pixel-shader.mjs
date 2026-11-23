@@ -1,5 +1,5 @@
-// The CPU implementation remains the reference/fallback for exact palette and
-// alpha rules. Unoccupied assembled cars avoid repeated conversion/readback.
+// Native palette and alpha conversion retain the existing CPU algorithm.
+// Unoccupied assembled cars reuse the completed image instead of reading again.
 export function shadeCarPixels(data){
  for(let i=0;i<data.length;i+=4){if(data[i+3]<128){data[i+3]=0;continue;}data[i+3]=255;for(let k=0;k<3;k++)data[i+k]=Math.min(255,Math.round(data[i+k]/8)*8);}return data;
 }

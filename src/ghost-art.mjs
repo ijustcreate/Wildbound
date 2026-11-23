@@ -54,17 +54,17 @@ export function drawGhostMist(c,p,time,actor={}){
   rect(c,x,y,1,1,n%3===0?'#e1ffe8':'#7dbda6');
  }
 }
-export function drawGhostEyes(c,p,d,time,actor={},visible=()=>true){
+export function drawGhostEyes(c,p,d,time,actor={},visible=()=>true,curseEyeColor){
  if(d===4||actor.hp<=0)return;
  const eyes=['eyeL','eyeR'].filter(n=>visible(n));
  for(const name of eyes){
   const q=p[name];if(!q)continue;
   // Tiny luminous eyes in the hood's dark opening, not a pair of mint blocks
   // over the wearer's cheeks. Keep the existing joint-following trail.
-  rect(c,q.x,q.y-2,1,2,'#ddffe2');rect(c,q.x,q.y-2,1,1,'#ffffff');
+  rect(c,q.x,q.y-2,1,2,curseEyeColor||'#ddffe2');rect(c,q.x,q.y-2,1,1,curseEyeColor?'#ffc9af':'#ffffff');
   if(actor.moving&&actor.hp>0&&!(actor.frozen>0))for(let n=0;n<3;n++){
    const trail=actor.ghostEyeTrail?.[n],dx=trail?trail.x-(actor.x||0):-(actor.faceX||0)*(n+1)*1.5,dy=trail?trail.y-(actor.y||0):-(actor.faceY||0)*(n+1)*1.5;
-   rect(c,q.x+dx,q.y-2+dy+Math.sin(time*9+n)*.5,1,1,n===0?'#baffd9':'#6eb99c');
+   rect(c,q.x+dx,q.y-2+dy+Math.sin(time*9+n)*.5,1,1,curseEyeColor?(n===0?curseEyeColor:'#902e39'):(n===0?'#baffd9':'#6eb99c'));
   }
  }
 }

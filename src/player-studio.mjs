@@ -1,4 +1,5 @@
 import {InlinePixelEditor} from './inline-pixel-editor.mjs';
+import {mountPixelRecipePanel} from './pixel-recipe-panel.mjs';
 import {VILLAGERS} from './villager-data.mjs';
 import {drawItem} from './item-art.mjs';
 import { ikChain, solveTwoBone } from './ik.mjs';
@@ -612,9 +613,102 @@ card.append(edit);
     }
   }
   openBonePixelEditor(part){
-    this.playing=false;const model=this.model,direction=this.direction,subject=this.subject,root=this.$('.ps-bone-sprites'),parts=boneSprites(model,direction,this.selected),initial=parts.find(p=>p.id===part.id)||part;let activeId=initial.id;const drafts=new Map(parts.map(p=>[p.id,copy(p.sprite)])),changed=new Set();
-    this.root.querySelector('.rig-inline-pixels')?.remove();const panel=document.createElement('section');panel.className='rig-inline-pixels';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Rig part pixel editor');panel.style='position:fixed;inset:4vh 4vw;z-index:1000;padding:16px;background:#102a25;color:#eee5c8;border:2px solid #648675;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;gap:8px';const top=document.createElement('header');top.style='display:flex;align-items:center;justify-content:space-between;gap:12px';const heading=document.createElement('h3');heading.textContent='EDIT LAYERS · '+DIRECTIONS[direction];const close=document.createElement('button');close.textContent='×';close.title='Close pixel editor';close.setAttribute('aria-label','Close pixel editor');close.style='font-size:24px;min-width:44px';top.append(heading,close);panel.append(top);const note=document.createElement('p');note.textContent='Choose a layer to edit. Use the eye boxes to show or hide layers. Zoom with the wheel or buttons; Shift-drag or middle-drag to pan.';panel.append(note);const surface=document.createElement('div');panel.append(surface);const status=document.createElement('p');status.className='rig-pixel-save-status';panel.append(status);const layerOptions=parts.map(p=>({id:p.id,name:p.id==='Head and headwear'?'Face, hair & headwear':p.id==='Head shape'?'Skull shape':p.id,sprite:drafts.get(p.id),visible:true}));const editor=new InlinePixelEditor(surface,drafts.get(activeId),{title:activeId+' · '+DIRECTIONS[direction],layers:layerOptions,onLayerChange:id=>{drafts.set(activeId,copy(editor.sprite));activeId=id;editor.setSprite(drafts.get(id));},onChange:sprite=>{drafts.set(activeId,copy(sprite));changed.add(activeId);}});this.bonePixelEditor=editor;surface.style.cssText+=';overflow:auto;flex:1;min-height:0';
-    const dismiss=()=>{panel.remove();this.bonePixelEditor=null;};close.onclick=dismiss;const save=document.createElement('button');save.textContent='Save pixels to rig';save.onclick=async()=>{drafts.set(activeId,copy(editor.sprite));if(this.model!==model||this.subject!==subject){status.textContent='Return to this unit before saving.';return;}try{this.remember();model.boneSprites??={};for(const key of changed){const source=parts.find(p=>p.id===key),sprite={...drafts.get(key),x:source.sprite.x,y:source.sprite.y};model.boneSprites[key]??={};model.boneSprites[key][direction]=sprite;saveRigSpriteOverride(subject,key,direction,sprite);}this.definition.replace(model);const message=await this.save();dismiss();this.boneSpriteKey=null;this.changed(message||'Pixels saved on '+[...changed].join(', ')+' · '+DIRECTIONS[direction]);}catch(error){status.textContent=error.message;}};const cancel=document.createElement('button');cancel.textContent='Cancel';cancel.onclick=dismiss;const actions=document.createElement('div');actions.style='display:flex;gap:12px;padding-top:8px;flex-shrink:0';actions.append(save,cancel);panel.append(actions);this.root.append(panel);panel.scrollIntoView({block:'nearest'});
+    this.playing = false;
+    const {model, direction, subject} = this;
+    const parts = boneSprites(model, direction, this.selected);
+    const initial = parts.find(layer => layer.id === part.id);
+    if (!initial) {
+      this.refreshBoneSprites();
+      return;
+    }
+    let activeId = initial.id;
+    const drafts = new Map(parts.map(layer => [layer.id, copy(layer.sprite)]));
+    const changed = new Set();
+
+    this.root.querySelector('.rig-inline-pixels')?.remove();
+    const panel = document.createElement('section');
+    panel.className = 'rig-inline-pixels';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Rig part pixel editor');
+    panel.style = 'position:fixed;inset:4vh 4vw;z-index:1000;padding:16px;background:#102a25;color:#eee5c8;border:2px solid #648675;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;gap:8px';
+    const top = document.createElement('header');
+    top.style = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
+    const heading = document.createElement('h3');
+    heading.textContent = 'EDIT LAYERS · ' + DIRECTIONS[direction];
+    const close = document.createElement('button');
+    close.textContent = '×';
+    close.title = 'Close pixel editor';
+    close.setAttribute('aria-label', 'Close pixel editor');
+    close.style = 'font-size:24px;min-width:44px';
+    top.append(heading, close);
+    const note = document.createElement('p');
+    note.textContent = 'Choose a layer to edit. Use the eye boxes to show or hide layers. Zoom with the wheel or buttons; Shift-drag or middle-drag to pan.';
+    const surface = document.createElement('div');
+    const status = document.createElement('p');
+    status.className = 'rig-pixel-save-status';
+    panel.append(top, note, surface, status);
+
+    const layerNames = {'Head and headwear':'Face, hair & headwear', 'Head shape':'Skull shape'};
+    const layers = parts.map(({id}) => ({id, name: layerNames[id] || id, sprite: drafts.get(id), visible:true}));
+    const editor = new InlinePixelEditor(surface, drafts.get(activeId), {
+      title: activeId + ' · ' + DIRECTIONS[direction],
+      layers,
+      onLayerChange: id => { activeId = id; },
+      onChange: sprite => {
+        drafts.set(activeId, copy(sprite));
+        changed.add(activeId);
+      },
+    });
+    this.bonePixelEditor = editor;
+    surface.style.cssText += ';overflow:auto;flex:1;min-height:0';
+
+    const dismiss = () => {
+      panel.remove();
+      this.bonePixelEditor = null;
+    };
+    close.onclick = dismiss;
+    const save = document.createElement('button');
+    save.textContent = 'Save pixels to rig';
+    save.onclick = async () => {
+      if (this.model !== model || this.subject !== subject) {
+        status.textContent = 'Return to this unit before saving.';
+        return;
+      }
+      try {
+        this.remember();
+        model.boneSprites ??= {};
+        for (const key of changed) {
+          const {x, y} = parts.find(layer => layer.id === key).sprite;
+          const sprite = {...drafts.get(key), x, y};
+          model.boneSprites[key] ??= {};
+          model.boneSprites[key][direction] = sprite;
+          saveRigSpriteOverride(subject, key, direction, sprite);
+        }
+        this.definition.replace(model);
+        const message = await this.save();
+        dismiss();
+        this.boneSpriteKey = null;
+        this.changed(message || 'Pixels saved on ' + [...changed].join(', ') + ' · ' + DIRECTIONS[direction]);
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    };
+    const cancel = document.createElement('button');
+    cancel.textContent = 'Cancel';
+    cancel.onclick = dismiss;
+    const actions = document.createElement('div');
+    actions.style = 'display:flex;gap:12px;padding-top:8px;flex-shrink:0';
+    actions.append(save, cancel);
+    mountPixelRecipePanel(actions, {
+      getDraft: () => editor.sprite,
+      applyFrame: frame => {
+        editor.applyFrameToDraft(frame);
+        status.textContent = 'Recipe frame applied to this layer. Use Save pixels to rig to keep it.';
+      },
+    });
+    panel.append(actions);
+    this.root.append(panel);
+    panel.scrollIntoView({block:'nearest'});
   }
   changed(message = "Unsaved · preview updated") {
     if (this.subject === "rhino") invalidateRhinoFrames();

@@ -90,15 +90,18 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
   } else if(kind==='boots') {
     // A narrow, fitted shaft widens only where the foot meets the toe.
     const toe=profile?(direction===2?-2:2):side==='L'?-1:1;
+    const toeOffset=Math.round(toe*.5);
     const height=def.style==='tall'||def.style==='safari'?7:5;
     for(let row=0;row<height+2;row++){
-      const y=-height+row,foot=row>=height-1,half=foot?3:row===0?1:2,cx=foot?Math.round(toe*.5):0;
+      const y=-height+row,foot=row>=height-1,half=foot?3:row===0?1:2,cx=foot?toeOffset:0;
       r(cx-half,y,half*2+1,1,p.ink);
       r(cx-half+1,y,Math.max(1,half*2-1),1,rear?p.dark:p.base);
       if(!rear&&row<height-1)r(cx-half+1,y,Math.max(1,half-1),1,row===0?p.light:p.base);
       if(row===height+1)r(cx-half+1,y,half*2-1,1,p.leather);
     }
-    r(-2,-height+1,1,Math.max(1,height-3),p.light);
+    r(toeOffset-2,2,5,1,p.ink);
+    r(-1,-height+2,1,height-4,p.light);
+    if(!rear)r(-1,-height+1,3,1,p.light);
     if(!rear)r(-1,-1,2,1,p.trim);
     if(!rear&&def.style!=='sandals')r(1,-2,1,1,p.shine);
     if(def.style==='sandals') {r(-1,-4,3,4,'#b98e62');r(-1,-3,3,1,p.dark);r(-1,-1,3,1,p.base);}

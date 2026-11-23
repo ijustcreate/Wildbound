@@ -18,11 +18,11 @@ test('wolf has independent model and renderer, and dedicated sound assets',()=>{
  assert.notEqual(wolfMotion,lionMotion);assert.ok(validateWolfMotion(defaultWolfMotion()));assert.notEqual(RIG_SUBJECTS.wolf.draw,RIG_SUBJECTS.lion.draw);
  for(const action of ['spawn','attack','hurt','death']){const cue=creatureCue('wolf',action);assert.ok(cue.files[0].includes('/wolf/'));assert.ok(existsSync(cue.files[0]));}
 });
-test('pack shares alpha target, follows its leader and elects a successor',()=>{
+test('pack shares alpha target, splits pursuit roles and elects a successor',()=>{
  const g=setup('forest');g.spawnEvent(EVENTS.findIndex(e=>e.kind==='wolf'));const wolves=g.enemies.filter(e=>e.kind==='wolf');const {alpha}=wolfPack(g,wolves[0]);assert.equal(wolves.filter(e=>e.alpha).length,1);
- const target=g.players[0];Object.assign(target,{x:800,y:800});Object.assign(alpha,{x:300,y:300});
+ const target=g.players[0];Object.assign(target,{x:800,y:800});wolves.forEach((e,i)=>Object.assign(e,{x:300+i*25,y:300+i*20}));
  for(const e of wolves)tickWolf(g,e,[target],.05);
- assert.ok(wolves.every(e=>e.packTargetId===target.id));assert.equal(wolves[1].packRole,'follow');
+ assert.ok(wolves.every(e=>e.packTargetId===target.id));assert.equal(wolves[0].packRole,'hunter');assert.equal(wolves[1].packRole,'lead');assert.ok(new Set(wolves.map(e=>e.packRole)).size>=2);
  alpha.hp=0;assert.notEqual(wolfPack(g,wolves[1]).alpha.id,alpha.id);assert.equal(wolves.filter(e=>e.hp>0&&e.alpha).length,1);
 });
 test('wolf bite has a windup, only one attacker, and respects walls',()=>{

@@ -98,7 +98,8 @@ test('distinct ranged specials launch visible projectiles and keep their own imp
     const {actor,target,game}=resolve(kind,kind==='crystal_golem'?50:82);
     if(kind==='mindflayer')assert.ok(target.hp<300,'psionic pulse directly damages in its radius');
     else assert.equal(game.fireballs.length,count,`${kind} launches expected projectile count`);
-    assert.ok(game.effects.some(f=>f.color),'${kind} should create a visible attack cue');
+    if(kind==='enchanted_book')assert.ok(game.fireballs.every(f=>f.constructKind==='pageVolley'),'native paper projectiles carry the volley cue without a floor ring');
+    else assert.ok(game.effects.some(f=>f.color),kind+' should create a visible attack cue');
   }
   assert.equal(resolve('crystal_golem',50).game.fireballs[0].ice,true,'crystal shard projectile has the cold crystal visual');
   assert.equal(resolve('blaise',82).game.fireballs[0].burnDamage,5,'Blaise fire projectile carries burn damage');

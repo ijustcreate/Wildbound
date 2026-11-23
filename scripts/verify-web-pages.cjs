@@ -1,7 +1,7 @@
 const {app,BrowserWindow}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),pages=path.resolve(process.env.WILDBOUND_PAGES_DIR||path.join(root,'dist/pages-publish')),out=path.join(root,'test-output/web-pages');
-const version=require('../package.json').version;
+const version=process.env.WILDBOUND_WEB_VERSION||require('../package.json').version;
 fs.mkdirSync(out,{recursive:true});app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
 const server=http.createServer((req,res)=>{
  const relative=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\/Wildbound\//,'/');
@@ -23,7 +23,7 @@ app.whenReady().then(async()=>{
  };
  try{
   await w.loadURL(base+'/');
-  assert(await w.webContents.executeJavaScript(`document.querySelector('a[href="latest/"]')&&document.querySelector('a[href="original/"]')`),'Chooser has both play links');
+  assert(await w.webContents.executeJavaScript(`document.querySelector('a[href="latest/"]')&&document.querySelector('a[href="original/"]')&&document.querySelector('a[href="releases/${version}/"]')`),'Chooser links to latest, original and the numbered release');
   await w.webContents.executeJavaScript(`localStorage.setItem('wildbound-publish-probe','original sentinel')`);
   await w.loadURL(base+'/latest/');
   for(let i=0;i<200;i++){if(await w.webContents.executeJavaScript(`location.pathname==='/releases/${version}/'&&!!window.wildboundBoot`))break;await new Promise(r=>setTimeout(r,50));}

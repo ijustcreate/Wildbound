@@ -56,8 +56,8 @@ export function planPlayerPanels(players, open, width, height, sizing = {}) {
   const hasBoth = sides.left.length > 0 && sides.right.length > 0;
   // A central strip remains clear even when both sides have large chest menus.
   const clearWidth = Math.max(240, width * .25);
-  const dockInset=open.length>1?Math.min(64,Math.max(GAP,width*.05),(clearWidth+GAP*2-120)/2):GAP;
-  const railWidth = Math.max(1, hasBoth ? Math.min((width - clearWidth - GAP * 2) / 2, (width - GAP * 3) / 2) : width - GAP * 2);
+  const dockInset = players.length > 1 ? Math.min(64, Math.max(GAP, width * .05), (clearWidth + GAP * 2 - 120) / 2) : GAP;
+  const railWidth = Math.max(1, hasBoth ? (width - clearWidth - GAP * 2) / 2 : width - dockInset * 2);
   for (const side of ['left', 'right']) {
     const occupants = sides[side].sort((a, b) => a.index - b.index);
     const cellHeight = (height - GAP * (occupants.length + 1)) / Math.max(1, occupants.length);

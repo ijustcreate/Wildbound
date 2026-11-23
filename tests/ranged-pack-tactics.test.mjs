@@ -14,6 +14,7 @@ test('same-type packs split direct pursuit, four-tile lead, intercept and flank 
  const goals=enemies.map(e=>enemyPursuitGoal(g,e,p));assert.equal(goals[0],p);assert.equal(goals[1].x,p.x+128);assert.equal(goals[1].y,p.y);
  assert.equal(new Set(enemies.map(e=>e.pursuitTactic.role)).size,4);assert.notDeepEqual(goals[2],goals[3]);assert.ok(!g.effects);
  const slots=enemies.map(e=>e.pursuitTactic.slot);g.enemies=[...g.enemies].reverse();g.enemies[0].hp=0;enemies.filter(e=>e.hp>0).forEach(e=>enemyPursuitGoal(g,e,p));assert.deepEqual(enemies.map(e=>e.pursuitTactic.slot),slots);
+ g.enemies.find(a=>a.pursuitTactic.slot===0).hp=0;const promoted=g.enemies.filter(a=>a.hp>0).sort((a,b)=>a.pursuitTactic.slot-b.pursuitTactic.slot)[0];assert.equal(enemyPursuitGoal(g,promoted,p),p);assert.equal(promoted.pursuitTactic.role,'hunter');
  assert.doesNotThrow(()=>JSON.stringify(g));
 });
 test('pursuit does not predict stationary players, crowd melee, rewrite committed attacks or recruit allies',()=>{

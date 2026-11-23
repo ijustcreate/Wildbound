@@ -2,12 +2,15 @@
 
 Read [docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md) before resuming work on a different computer, user account or checkout. Read the latest relevant notes in `docs/history/` for unresolved issues and verification limits.
 
+For art, sprites, rigs, or animation, use the [Wildbound art skill](.agents/skills/wildbound-art/SKILL.md) and follow the relevant workflow for the asset. It is included with the project source.
+
 ## Preserve the working game and user data
 
 - Default to the **Electron desktop game**. The browser version is a separate supported target, not a replacement for a broken desktop launch. Do not switch launch methods without the user's agreement.
 - Identify the actual repository root, Git branch, remote and dirty files before editing. Never assume a previous machine's absolute path or desktop shortcut is valid here.
 - Preserve uncommitted work, authored assets, local saves and unfinished editor drafts. Do not reset/clean the checkout or replace profiles to troubleshoot.
 - A Git pull updates source, not ignored `dist` builds or another user's desktop shortcut. Rebuild before claiming that a packaged game includes pulled changes.
+- Use the shared sequential version allocator for every new desktop and web build, including test and preview packages. Identify desktop builds by their assigned version in the executable, manifest and shortcut. Keep topic names in release notes and use `dist/<build version>` for desktop packages and `dist/web-<build version>` for browser packages. Do not reuse an assigned version or rename older packages.
 - After every cross-computer pull, run `Play Wildbound.cmd --check` from the repository root. A missing or mismatched build identity means the executable is stale; use `scripts/rebuild-desktop.ps1` before playtesting. Do not use an older version or a `night-hunt-*` preview as an automatic fallback.
 - Use project-relative paths in scripts and the current user's resolved Desktop for shortcuts. Quote paths containing spaces. Point the shortcut at `Play Wildbound.cmd`, which verifies and launches the exact current build, and use `assets/wildbound-icon.ico`. Never preserve an old direct executable shortcut as the "Latest" launcher after a pull.
 - Keep profile choice explicit. Running Electron with `--preview` uses a different profile from normal launch. A missing character or house may mean the wrong profile, not missing code.

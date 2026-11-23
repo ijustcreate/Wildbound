@@ -29,7 +29,11 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     // The torso raster already supplies the clean outer contour and broad
     // light/shadow planes. Add only one identifying construction detail per
     // garment family instead of outlining every row of cloth.
-    if(!back&&!side&&style==='plate'){
+    if(gear.chest==='armor'){
+      const x=chest.x+(bottom.x-chest.x)*.75, y=chest.y+(bottom.y-chest.y)*.75;
+      rect(x-(side?1:2),y,side?3:5,1,material.leather);
+      if(!back)rect(x+(d===2?-1:d===6?1:0),y,1,1,material.trim);
+    }else if(!back&&!side&&style==='plate'){
       const y=chest.y+2;
       rect(chest.x-2,y,5,1,material.dark);rect(chest.x-1,y+1,3,2,material.base);
       rect(chest.x-1,y+1,1,1,material.light);rect(chest.x,y+1,1,2,material.shine);

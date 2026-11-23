@@ -8,6 +8,7 @@ import {enemyQuiver,retrieveEnemyArrows} from './arrow-supplies.mjs';
 import {nearbyEnemyTrap,triggerEnemyTrap} from './enemy-traps.mjs';
 import {tickBananaAttack} from './enemy-banana.mjs';
 import {chargeRecoveryTime,openChargeCounter} from './counterattack.mjs';
+import {forgetHiddenTarget} from './enemy-sight.mjs';
 // Only the old shared-contact/charge routes are replaced. Bespoke bosses,
 // wildlife, pack roles and user-edited AI retain their own controllers.
 export const SPECIES_ATTACKS=Object.freeze({
@@ -74,6 +75,14 @@ export function tickSpeciesCombat(g,e,dt,targets){
   if(enemyQuiver(e)<=0)base={...base,style:'melee',windup:.55,active:.18,recover:.95,range:48,arc:.45};
  }
  const s=e.speciesCombat;
+ // A snake abandons its bite when the target disappears beneath the surface.
+ if(e.kind==='snake'&&(!targets.length||
+   (s.phase==='windup'||s.phase==='active')&&s.targetId!=null&&!targets.some(p=>p.id===s.targetId))){
+  forgetHiddenTarget(e);
+  speciesPhase(e,'approach',0).targetId=undefined;
+  e.dx=e.dy=0;
+  return true;
+ }
  if(s.phase==='recover'){
   s.remaining-=dt;e.timer=s.remaining;
   if(s.remaining<=0){const next=speciesPhase(e,'approach',0);next.index=(s.index+1)%3;e.cooldown=Math.max(e.cooldown||0,.28);}
@@ -185,7 +194,8 @@ export function tickSpeciesCombat(g,e,dt,targets){
   const next=speciesPhase(e,'windup',attack.windup);next.targetId=p.id;next.bowBash=e.kind==='archer'&&base.style==='melee';next.style=base.style==='spell'?'ranged':base.style;next.reach=base.style==='rush'?base.speed*base.active+(base.width||0):attack.range;next.width=(base.width||13)*2;next.arc=Math.acos(base.arc??.3);return true;
  }
  const before={x:e.x,y:e.y};if(beh.hunt!==false){
-  if(occupied){if(!backline||d>180)navigateEnemy(g,e,enemyGroupPosition(g,e,p,{backline,range:attack.range}),dt);}
+  if(backline&&!clearShot(g,e,p))navigateEnemy(g,e,p,dt);
+  else if(occupied){if(!backline||d>180)navigateEnemy(g,e,enemyGroupPosition(g,e,p,{backline,range:attack.range}),dt);}
   else if(circling){
    const side=e.orbit||((Number(e.id)||0)%2?1:-1),radial=d<100?-.65:d>155?.5:0;
    const mx=dx*radial-dy*side,my=dy*radial+dx*side,length=Math.hypot(mx,my)||1;

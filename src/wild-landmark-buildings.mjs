@@ -5,15 +5,16 @@ import {drawHouseInteriorWalls,drawTempleWallFinish} from './house-interior-art.
 import {paintInteriorMaterial} from './interior-materials.mjs';
 import {drawFurniture,drawWindow} from './house-render.mjs';
 import {drawBreakable} from './structure-destruction.mjs';
+import {WILD_HOMESTEAD,WILDS_OVERLOOK,inOverlookGround} from './overlook-maze-layout.mjs';
 const cache=new WeakMap();
 export function wildLandmarkBuildings(d){
  if(!d.wildLands||d.activeRoom)return [];let result=cache.get(d);if(result)return result;
- result=[{id:'homestead',x:8200,y:7050,source:defaultHouse()},{id:'jungle-temple',x:3300,y:2900,source:templeLayout({authored:false})}].map(site=>{
+ result=[{id:'homestead',...WILD_HOMESTEAD,source:defaultHouse()},{id:'jungle-temple',x:3300,y:2900,source:templeLayout({authored:false})}].map(site=>{
   const h=site.source,dx=site.x-800,dy=site.y-800,move=b=>({...structuredClone(b),x:b.x+dx,y:b.y+dy,id:site.id+':'+(b.id||b.kind||'asset')+':'+b.x+':'+b.y});
   return {...h,id:site.id,floors:h.floors.map(move),floorZones:(h.floorZones||[]).map(move),walls:h.walls.map(b=>move({kind:'wall',...b})),doors:h.doors.map(b=>move({kind:'door',...b})),furniture:h.furniture.map(move),paths:(h.paths||[]).map(move),pools:[],vehicles:[],trees:[],destructionRevision:0};
  });cache.set(d,result);return result;
 }
-export function inWildLandmark(d,x,y,padding=0){return wildLandmarkBuildings(d).some(h=>h.floors.some(f=>x>f.x-padding&&x<f.x+f.w+padding&&y>f.y-padding&&y<f.y+f.h+padding));}
+export function inWildLandmark(d,x,y,padding=0){return d.wildLands&&!d.activeRoom&&inOverlookGround(WILDS_OVERLOOK,x,y,padding)||wildLandmarkBuildings(d).some(h=>h.floors.some(f=>x>f.x-padding&&x<f.x+f.w+padding&&y>f.y-padding&&y<f.y+f.h+padding));}
 const templeFloors=new WeakMap();
 function paintTempleLandmark(c,f){
  const slab=['#4f5c51','#687b68','#788977','#869781','#a9b69b','#5a7259'];

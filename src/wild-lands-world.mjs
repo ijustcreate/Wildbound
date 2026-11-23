@@ -3,6 +3,7 @@ import {inDiagon} from './diagon-alley.mjs';
 import {nativeWildTile} from './wild-native-biomes.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
 import {sketchBiome,sketchGround,sketchSurface,sketchSurfaceAt} from './wild-lands-geography.mjs';
+import {WILDS_OVERLOOK,inOverlookGround} from './overlook-maze-layout.mjs';
 // The user's landscape sketch, expressed in world coordinates (Classic is 1600²).
 export const WILD_LANDS_WIDTH=16000,WILD_LANDS_HEIGHT=9600;
 export const WILD_LANDS_STOPS=[
@@ -32,6 +33,7 @@ export function wildLandsSurfaceAt(d,x,y){
 }
 export function wildLandsGround(d,x,y){
  if(d.activeRoom)return d.activeRoom==='shadow'?'shadow':'caverns';
+ if(d.wildLands&&inOverlookGround(WILDS_OVERLOOK,x,y))return 'house';
  return sketchGround(x,y);
 }
 export function wildLandsTravel(g,id){

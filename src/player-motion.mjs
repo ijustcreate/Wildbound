@@ -5,6 +5,7 @@ import {drawCarverClaws} from './carver-claw-shader.mjs';
 import {drawCarverVest,drawCarverMantle,drawCarverDress} from './bone-carver-art.mjs';
 import {addBroomRide} from './broom-clips.mjs';
 import {drawBroom} from './broom-art.mjs';
+import {drawCursedAxe} from './cursed-axe-art.mjs';
 import {drawConductorCap,drawConductorDetails,drawConductorMoustache} from './train-conductor-art.mjs';
 import {drawStudentScarf,drawHarryFace,drawHogwartsHem} from './train-students-art.mjs';
 import {drawScarfTails} from './school-scarves.mjs';
@@ -850,7 +851,9 @@ export function drawPlayer(
   const nativeSkeleton=model.skeleton&&!actor.skeletonCostume&&model.nativeSkeletonRevision>=1;
   if(sculpted){stabilizeSculptedEyes(p,restModel,d);alignWorkKnees(p,playerAction(actor));}
   const equipmentPose=playerEquipmentAction(actor,time,model);
-  const look = blankExplorer ? BLANK_EXPLORER_LOOK : actor.appearance || (human ? DEFAULT_APPEARANCE : null);
+  const naturalLook = blankExplorer ? BLANK_EXPLORER_LOOK : actor.appearance || (human ? DEFAULT_APPEARANCE : null);
+  const curseEyeColor = ITEMS[gear.hand1]?.curseEyeColor || ITEMS[gear.hand2]?.curseEyeColor;
+  const look = naturalLook && curseEyeColor ? {...naturalLook, eyeColor:curseEyeColor, curseEyeColor} : naturalLook;
   const ink = blankExplorer ? BLANK_EXPLORER_COLORS.outline : human ? "#302b2b" : pal.outline;
   const pixel = (x, y, w, h, color) => {
     c.fillStyle = color;
@@ -921,6 +924,10 @@ export function drawPlayer(
     add(
       p.chest.depth - 3,
       () => {
+        if(stowedWeapon==='cursed_axe'){
+          drawCursedAxe(c,{x:p.pelvis.x+6,y:p.pelvis.y+3},{x:p.chest.x-8,y:p.chest.y-8},d);
+          return;
+        }
         limb(
           c,
           { x: p.chest.x - 7, y: p.chest.y - 8 },
@@ -1277,7 +1284,13 @@ export function drawPlayer(
               const v=projectPoint(swordChargeBladeVector(actor,side,{charging:true,stock:[side==='R'?3:-3,13,6]}),visualDirection??d);tip={x:hand.x+v.x,y:hand.y+v.y};
             }
             const material=gearPalette(weaponId);
-            if(weaponId==='stick'){
+            if(weaponId==='cursed_axe'){
+              if(!attack&&['idle','walk','run'].includes(equipmentPose.action)){
+                const v=projectPoint([side==='R'?10:-10,5,13],visualDirection??d);
+                tip={x:hand.x+v.x,y:hand.y+v.y};
+              }
+              drawCursedAxe(c,hand,tip,d);
+            }else if(weaponId==='stick'){
               limb(c,hand,tip,4,'#493a28');
               limb(c,hand,tip,2,'#a78652');
               limb(c,{x:hand.x-1,y:hand.y},{x:tip.x-1,y:tip.y},1,'#d0b17a');
@@ -1518,7 +1531,12 @@ export function drawPlayer(
             c.fillStyle = "#ffb43e";
             c.fillRect(Math.round(clasp.x) - 1, Math.round(clasp.y), 2, 2);
           } else {
-            const gem = attach(0, native?3:4, native?-2:-4);
+            const edgeOn = d === 2 || d === 6;
+            // Fit the narrow amber rim to the leading edge of the profile collar.
+            const profileAmber = edgeOn && gear.neck === 'charm';
+            const front = (native ? 3 : 4) + (profileAmber ? 2 : 0);
+            const drop = (native ? 2 : 4) - (profileAmber ? 2 : 0);
+            const gem = attach(0, front, -drop);
             limb(c, attach(-3, 2, 1), gem, 1, "#f2ce7c");
             limb(c, attach(3, 2, 1), gem, 1, "#f2ce7c");
             if(gear.neck==='mosquito_charm'){
@@ -1527,12 +1545,13 @@ export function drawPlayer(
               c.fillStyle='#b8ce86';c.fillRect(x-3,y-1,2,3);c.fillRect(x+1,y-1,2,3);
               c.fillStyle='#d7a963';c.fillRect(x,y-2,1,5);c.fillRect(x,y+3,1,3);return;
             }
-            const pendant=gearPalette(gear.neck,gear.neck==='charm'?'#ffb43e':undefined),edgeOn=d===2||d===6;
+            const pendant=gearPalette(gear.neck,gear.neck==='charm'?'#ffb43e':undefined);
             const rows=gear.neck==='bogglass_charm'?[1,2,2,1,1]:gear.neck==='alan_medallion'?[1,2,2,2,1]:[1,2,3,2,1];
             for(let row=0;row<rows.length;row++){
               const y=Math.round(gem.y)-2+row,half=edgeOn?0:rows[row];
               pixel(Math.round(gem.x)-half,y,half*2+1,1,pendant.ink);
-              if(half>0){pixel(Math.round(gem.x)-half+1,y,half*2-1,1,pendant.base);pixel(Math.round(gem.x)-half+1,y,Math.max(1,half-1),1,row<2?pendant.light:pendant.dark);}
+              if(edgeOn){if(row>0&&row<4)pixel(Math.round(gem.x),y,1,1,pendant.base);}
+              else if(half>0){pixel(Math.round(gem.x)-half+1,y,half*2-1,1,pendant.base);pixel(Math.round(gem.x)-half+1,y,Math.max(1,half-1),1,row<2?pendant.light:pendant.dark);}
             }
             if(gear.neck==='alan_medallion'){c.fillStyle='#563d25';c.fillRect(Math.round(gem.x),Math.round(gem.y),1,2);c.fillRect(Math.round(gem.x)-1,Math.round(gem.y),2,1);}
             if(gear.neck==='bogglass_charm'){c.fillStyle='#879d69';c.fillRect(Math.round(gem.x)-2,Math.round(gem.y)-2,1,4);c.fillRect(Math.round(gem.x)+2,Math.round(gem.y)-1,1,4);c.fillStyle='#a9e0bd';c.fillRect(Math.round(gem.x),Math.round(gem.y)-1,1,2);}
@@ -1680,7 +1699,7 @@ export function drawPlayer(
           if(enlarged)c.restore();
         },d);
       if(model.type==='skeleton_wizard')drawSkeletonWizardHat(c,h,d);
-      if(ITEMS[gear.head]?.spectralEyes)drawGhostEyes(c,facePoints,d,time,actor,visible);
+      if(ITEMS[gear.head]?.spectralEyes)drawGhostEyes(c,facePoints,d,time,actor,visible,curseEyeColor);
       drawFaceAccessories(c,facePoints,d,faceLook,visible);
       },model.joints.head.editor?.baseScale));
     },

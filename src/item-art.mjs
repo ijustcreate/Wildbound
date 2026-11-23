@@ -13,6 +13,8 @@ import {paintSuccubusItem} from './succubus-attachments.mjs';
 import {detailRaster,materialIndex,humanoidArtStatus} from './humanoid-hd.mjs';
 import {paintKeeperItem} from './keeper-gear-art.mjs';
 import {paintPumpkinItem} from './pumpkin-art.mjs';
+import {paintCursedAxeIcon} from './cursed-axe-art.mjs';
+import {overlookNorth} from './overlook-maze-layout.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -43,6 +45,7 @@ export function paintItem(c, type) {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     r(8,2,8,7,'#414b4d');r(9,3,6,5,'#8b9596');r(5,9,14,8,'#414b4d');r(6,10,12,6,'#858f90');r(7,16,4,6,'#697476');r(13,16,4,6,'#697476');r(11,4,2,1,'#b7c0bf');r(12,5,1,1,'#b7c0bf');r(11,7,1,1,'#b7c0bf');return;
   }
+  if(type==='cursed_axe')return paintCursedAxeIcon(c);
   if(paintSkeletonItem(c,type))return;
   if (type === 'skeleton_long_axe') {
     c.fillStyle = '#342d2d'; c.fillRect(9, 1, 6, 13);
@@ -856,8 +859,9 @@ export function drawItemPart(
   c.restore();
 }
 export function lootSpot(game, x, y) {
+  const north = overlookNorth(game) + 24;
   const clear = (xx, yy, space = true) =>
-    (game.mapMode==='boundless'||xx>=24&&yy>=24&&xx<=1576&&yy<=1576) &&
+    (game.mapMode==='boundless'||xx>=24&&yy>=north&&xx<=1576&&yy<=1576) &&
     !game.blocked(xx, yy, 12) &&
     (!space || game.loot.every((l) => Math.hypot(l.x - xx, l.y - yy) >= 20));
   if (clear(x, y)) return { x, y };
@@ -871,6 +875,6 @@ export function lootSpot(game, x, y) {
   if(game.mapMode==='boundless')return {x,y};
   return {
     x: Math.max(24, Math.min(1576, x)),
-    y: Math.max(24, Math.min(1576, y)),
+    y: Math.max(north, Math.min(1576, y)),
   };
 }

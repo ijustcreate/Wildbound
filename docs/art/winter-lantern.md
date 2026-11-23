@@ -4,14 +4,8 @@ The lantern on the northwest route from the opening clearing uses a six-pose amb
 
 To find it, open the lobby Map table and choose **Classic → Ice** with **Boundless World** off. Accept, then ready up at the Gameboard. Head northwest from the opening clearing toward the lodge. The animated lantern is `winter:lantern:0` at `(650, 700)` and the next lamp to the east provides a static comparison.
 
-Edit [winter-lantern.pixel.json](winter-lantern.pixel.json) and run the following from the repo root to refresh the contact sheet, pixel text and runtime data. The game reads the resulting [frame module](../../src/winter-lantern-frames.mjs) directly.
+Edit [the lantern recipe](../../assets/pixel-recipes/winter-lantern.pixel.json) to change the art or its timing. The [winter renderer](../../src/winter-night.mjs) compiles that same JSON when the game loads. Run this from the repository root to generate a contact sheet and inspect pixel coordinates before launching.
 
 ```powershell
-node scripts/pixel-art.mjs docs/art/winter-lantern.pixel.json --out test-output/winter-lantern
-@'
-import { readFileSync, writeFileSync } from "node:fs";
-const { frames } = JSON.parse(readFileSync("test-output/winter-lantern/animation.json", "utf8"));
-const rows = frames.map(frame => `  ${JSON.stringify(frame)},`).join("\n");
-writeFileSync("src/winter-lantern-frames.mjs", `// Generated from docs/art/winter-lantern.pixel.json using scripts/pixel-art.mjs.\nexport default [\n${rows}\n];\n`);
-'@ | node --input-type=module
+node scripts/pixel-art.mjs assets/pixel-recipes/winter-lantern.pixel.json --out test-output/winter-lantern
 ```

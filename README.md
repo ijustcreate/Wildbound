@@ -1,55 +1,69 @@
 # Wildbound Worlds
 
-A work-in-progress pixel adventure with shared-screen local co-op, living worlds and a built-in creation workshop. Gather explorers in a playable lobby, venture into unpredictable encounters, collect equipment and shape the game's characters and places.
+A pixel adventure for one to four local players. Gather your party, roll the living board, explore connected worlds and create your own characters, creatures and places.
 
-The 1.2.79 title screen welcomes new parties with pixel artwork of two explorers opening the Wildbound board. Press a key, move/click the mouse, scroll, or use a controller button, trigger or stick to open **Choose your explorer**. The room fills the screen below one **Studio** button. Studio opens the creation tools without joining a player.
+**[Play Wildbound in your browser](https://ijustcreate.github.io/Wildbound/latest/)** · [Browse web editions](https://ijustcreate.github.io/Wildbound/) · [Play the preserved original](https://ijustcreate.github.io/Wildbound/original/)
 
-When no saved explorer is available, the chooser shows a grey question-mark character with only **+ New character** and **Close**. The **Blank explorer costume** is real developer-only gear, excluded from normal loot. Title and explorer panels resize consistently.
+## Getting started and local co-op
 
-## Play in your browser
+Open **Choose your explorer** from the title screen. Press **Enter** on the keyboard or **A** on a controller to join, then select or create an explorer. Walk around the lobby to practice movement and combat, change the map and dice settings, pick a difficulty and ready up at the board together.
 
-| Edition | Play |
+The party shares a camera when nearby and can split into separate views while exploring. Each player has their own inventory, equipment and action bindings. Open **Camp → Controls** to review or change bindings, or **Controls & journal** in play for a quick reference. Use a desktop browser with a keyboard or compatible gamepad. This edition supports local play. Mobile controls and online multiplayer are outside its current scope.
+
+## Board adventures and game modes
+
+Roll the dice to move the party's pieces and trigger encounters in the world around you. Encounter cards give clues for enemy waves, puzzles and boss fights. Shared turns, one- or two-die rolls and the Gentle, Adventure and Wild difficulty settings change the pace of a run.
+
+| Mode | How it plays |
 | --- | --- |
-| Version chooser | [Choose an adventure](https://ijustcreate.github.io/Wildbound/) |
-| Latest web build · 1.2.93 | [Play latest](https://ijustcreate.github.io/Wildbound/latest/) |
-| Original web build · preserved project beginnings | [Play original](https://ijustcreate.github.io/Wildbound/original/) |
-| Permanent current snapshot | [Play 1.2.93](https://ijustcreate.github.io/Wildbound/releases/1.2.93/) |
-| Previous modern snapshot | [Play 1.2.55](https://ijustcreate.github.io/Wildbound/releases/1.2.55/) |
-| Earlier archived update | [Play 1.0.74](https://ijustcreate.github.io/Wildbound/releases/1.0.74/) |
+| **Wildbound** | Start at Home and open portals to linked worlds. |
+| **Classic** | Start at the board in one destination. Play on a bounded map or choose a streamed Boundless map where available. |
+| **The Wilds** | Start by the railway, then explore The Wild Lands on foot or by train. Save at Camp to resume later. |
+| **Worlds** | Create a named, persistent local world from a seed and a world pack. Explore and return to it between sessions. |
+| **Mossroot Coliseum** | Enter through the lobby TV for a side-view arena with platforms, travel tubes and a board-driven run. |
 
-The original is retained as a historical snapshot. Future updates can change the latest link without replacing the original or earlier release folders. Use a desktop browser with a keyboard or compatible gamepad; controller support depends on the browser and device. Touch/mobile play is not verified.
+## Biomes, living worlds and travel
 
-## The game
+Explore forest, desert, ice, House & Yard, Jungle Temple, beach, graveyard, Bayou Marsh, Hollowdeep Caverns and the Shadow Realm. Availability varies by mode. Each region has its own terrain, creatures, encounters and scenery, with changing light, weather and time of day.
 
-- **Local co-op:** choose explorers in the lobby and share one screen. Character creation, equipment, inventory and controller menus support the adventure.
-- **Board adventures and exploration:** encounter-based journeys alongside seeded, persistent local worlds. Forest, cemetery, beach, jungle, temple, desert, ice and newer realm environments have different scenery, wildlife and encounters; availability varies by mode.
-- **Living worlds:** streamed regions, regional ecology, wildlife, weather, day/night changes, discoveries, quests and settlement interactions. Distant regions use statistical simulation rather than running every individual creature. The bundled world packs are Heartwood, Cemetery, Beach and Jungle.
-- **Combat and equipment:** melee and ranged attacks, blocking, jumping, dashing, followers, loot, consumables, crafting and wearable gear.
-- **A changing pixel world:** native articulated characters, eight-direction appearance and equipment, animated creatures, vegetation, lighting and shadows. The current update includes native locomotion and forest rendering improvements.
+In persistent Worlds, discover settlements, talk with NPCs, trade with merchants, search nests and complete local quests. Wildlife populations, food, water and settlement conditions evolve as world time advances. Bundled world packs include Heartwood, Cemetery, Beach and Jungle. [Local worlds and content packs](docs/LOCAL_WORLDS.md)
 
-This is an evolving development build, not a finished release. Large encounters and newly streamed regions can still hitch. Online multiplayer and hosted servers are not available in this edition.
+In The Wild Lands, board the steam train, cross the gangways, ride in the passenger coaches or take the controls in the cab. Explore station interiors, shops, rivers, caves and portals along the route. The game also includes a drivable car and an editable railway test map. [Railway controls and workshop](docs/railway-system.md)
 
-## The editor and workshop
+Look for the Overlook hedge maze behind the villa or the Wilds farmhouse. Explore its paths or break hedges to make a shortcut to the hidden reward.
 
-The game includes tools for creating and reviewing content:
+## Combat, creatures and progression
 
-- Sprite and appearance editing for characters, creatures, clothing, equipment and items.
-- Rig setup and animation: bone hierarchy, per-facing draw order, keyframe timeline, graph editing, two-bone IK, undo/redo and JSON export. A playable preview lets you test movement while editing.
-- House Builder for structures, rooms, furnishings and saved local designs.
-- Board and environment tools for terrain and prop layouts, including the newer realm environments.
-- World authoring for levels, scenes, NPCs, ecology and shadows, with quest/dialogue editing and JSON backup/restore.
+- **Combat and magic.** Fight with swords, shields, bows, boomerangs, wands and traps. Read attack tells, dodge or block, interrupt dangerous casts and work with teammates on elemental and terrain-based combinations. Discover techniques in the Field Kit as you perform them.
+- **Wildlife and companions.** Encounter skittish wildlife, territorial creatures, coordinated enemy packs and bosses. Catch eligible creatures, raise companions and bring followers along on expeditions.
+- **Equipment and supplies.** Collect loot, craft and use consumables, equip weapons and armor, socket gear and uncover rare drops and boss sets. Keep supplies in your inventory or use personal and shared storage.
+- **Explorers and progress.** Customize an explorer's appearance, develop their abilities, and resume saved expeditions with their gear and discoveries.
 
-Some tools are experimental. See [rig workflow and current limitations](RIG_WORKFLOW.md) and [local worlds and content packs](docs/LOCAL_WORLDS.md). The browser can retain local edits; saving shared rigs directly into authored/rigs.json, native save-folder access and local content-pack installation require Electron. Editor drafts and personal libraries are not automatically uploaded to GitHub.
+## Pixel art, sound and settings
+
+Editable pixel rigs animate characters, creatures, clothing and equipment in eight directions. Forest canopies move in the wind, light and shadows change through the day, and attack effects show where a strike or spell will land. Music responds to exploration and combat, with local sounds for weather, water, creatures and machinery. Camp Settings includes display, sound and control options.
+
+## Studio and creation tools
+
+Open **Studio** from the title or lobby to work on game content without joining a party. Some tools are experimental.
+
+- **Characters, creatures and equipment.** Edit sprites, palettes, outfits and item art. Rig Studio supports bone hierarchies, per-facing draw order, keyframes, graph editing, two-bone IK, undo and redo, JSON export and an interactive movement preview. [Rig workflow](RIG_WORKFLOW.md)
+- **Locations and scenery.** Build and furnish houses, lay out boards and environments, and edit terrain, forest props, regions and lighting. The railway workshop supports track routes, car interiors and eight-view pixel parts.
+- **Rules and presentation.** Author NPC dialogue, quests, encounters and ecology. Tune items, combat, combos, particles and camera behavior, then test changes in the game.
+
+The browser stores edits locally. Writing shared rigs to `authored/rigs.json`, opening native save folders and installing local world packs use the Electron edition. Export drafts and designs you want to move between machines.
+
+## Art workflows for contributors
+
+Clone or download the [Wildbound_worlds source branch](https://github.com/ijustcreate/Wildbound/tree/Wildbound_worlds) to get the [Wildbound art skill](.agents/skills/wildbound-art/SKILL.md), examples, and tools together. The guides cover sprite recipes, environment art, eight-direction rig parts, and skeletal motion transfer. With an AI coding assistant, try “Read `.agents/skills/wildbound-art/SKILL.md` and use it to make a small draft in this checkout.”
 
 ## Saves and editions
 
-Saves live on the device and browser/profile used to play. The new web edition uses a separate storage namespace from the original, so testing it preserves historical saves. Later current web snapshots share that new namespace. The original keeps the site's previous save keys. Browser storage is shared across paths on the same origin; opening these links in another browser creates separate saves. Clearing site data removes browser saves. Export important editor work where export is available.
+Characters, expeditions, worlds and editor libraries are saved on the device and profile where you play. Electron, localhost and GitHub Pages have separate saves. The current Pages editions share a browser storage namespace, and the preserved original keeps its historical keys. Clearing site data removes browser saves. Play requires no account.
 
-Electron, localhost and GitHub Pages each have separate saves. No account or cloud sync is required, and personal saves are not part of the source repository.
+## Run the Windows desktop game
 
-## Run the desktop game
-
-The repository root is the Electron game. With Node.js/npm installed:
+With Node.js and npm installed, open PowerShell in the game checkout.
 
 ```powershell
 npm ci
@@ -58,11 +72,11 @@ powershell -ExecutionPolicy Bypass -File scripts/rebuild-desktop.ps1
 & ".\Play Wildbound.cmd"
 ```
 
-The rebuild runs checks, packages the current source and updates the versioned desktop shortcut. The launcher verifies its build identity. Normal play uses the normal profile; --preview uses a separate profile. Pulling source does not update an already packaged executable. See [development handoff](docs/DEVELOPMENT_HANDOFF.md).
+The rebuild runs the tests, creates a numbered package and adds a shortcut for that exact build. The launcher verifies the package before starting it. Normal play uses the normal save profile. The Night Hunt preview uses its own profile. After pulling game source, rebuild the desktop package. [Development handoff](docs/DEVELOPMENT_HANDOFF.md)
 
-For local browser play, run node scripts/launch-browser.cjs or use Play Wildbound Browser.cmd. See [browser setup and publishing](BROWSER-PLAY.md).
+For local browser play use `Play Wildbound Browser.cmd` on Windows or `node scripts/launch-browser.cjs` with Node.js. [Browser setup and publishing](BROWSER-PLAY.md)
 
-## Development
+## Development and publishing
 
 ```powershell
 npm test
@@ -70,6 +84,6 @@ node scripts/check-syntax.cjs
 node scripts/build-web.cjs --versioned
 ```
 
-The web builder writes a snapshot under dist/web-<version>/; generated packages, dependencies and personal profiles are excluded from source control. GitHub Pages is published separately from the gh-pages branch. Keep original/ and existing releases/ folders intact when publishing. [Publishing details](BROWSER-PLAY.md).
+The game source lives on [`Wildbound_worlds`](https://github.com/ijustcreate/Wildbound/tree/Wildbound_worlds). GitHub Pages publishes from `gh-pages`, and the version chooser links to `latest/`, the original and permanent snapshots. Keep the original and previous releases intact when publishing. Generated packages, dependencies and personal profiles stay out of source control. [Publishing workflow](BROWSER-PLAY.md)
 
-The repository also retains the [separate character animation viewer project](docs/CHARACTER_VIEWER.md) on main, including its Site source and stored-feedback integration. It is independent of the playable GitHub Pages game and personal game saves. Do not replace its hosting project or feedback database when updating the game.
+The `main` branch also retains the separate character animation viewer and its stored-feedback integration. [Character animation viewer](https://github.com/ijustcreate/Wildbound/blob/main/docs/CHARACTER_VIEWER.md)

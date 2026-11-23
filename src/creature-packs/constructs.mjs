@@ -721,7 +721,7 @@ const rangedKind=s=>s.behaviors.fireball?'fireball':s.behaviors.pageVolley?'page
 const attackColor=kind=>({fireball:'#ff7433',pageVolley:'#f4dba0',psionicPulse:'#c875ed',heartBolt:'#ff83b3',arcBolt:'#7be5dc',shardBurst:'#8de8ff',curse:'#d569db',dive:'#d5a783',clubSlam:'#d4a568',feint:'#c8d9c5',sweep:'#dfb371',rootSnare:'#9ad86d'})[kind]||'#ffe2a0';
 function cue(g,x,y,color,radius=28,life=.38){g.effects||=[];g.effects.push({x,y,color,radius,life,duration:life});}
 function pulse(g,kind,x,y,seed=0){
-  cue(g,x,y,attackColor(kind),kind==='psionicPulse'?52:kind==='clubSlam'?44:kind==='rootSnare'?40:kind==='sweep'?34:27,.42);
+  if(kind!=='pageVolley')cue(g,x,y,attackColor(kind),kind==='psionicPulse'?52:kind==='clubSlam'?44:kind==='rootSnare'?40:kind==='sweep'?34:27,.42);
   if(kind==='fireball')spawnParticleEffect(g,'px-fire-burst',x,y,seed);
   else if(kind==='shardBurst'||kind==='clubSlam')spawnParticleEffect(g,'rock-fragments',x,y,seed);
   else if(kind==='curse'||kind==='psionicPulse'||kind==='heartBolt')spawnParticleEffect(g,'purple-aura',x,y,seed);
@@ -738,7 +738,7 @@ function shot(g,actor,target,kind,damage,index=0,count=1){
   g.fireballs||=[];
   const ice=kind==='shardBurst';
   g.fireballs.push({x:actor.x,y:actor.y-10,vx:dx/d*205,vy:dy/d*205,life:2.4,trail:.02,damage,burnDamage:kind==='fireball'?5:0,ice,friendly:false,controllerOwner:actor.id,room:actor.room||null,constructKind:kind});
-  if(!ice&&kind!=='fireball')cue(g,actor.x,actor.y-8,attackColor(kind),9,.22);
+  if(!ice&&kind!=='fireball'&&kind!=='pageVolley')cue(g,actor.x,actor.y-8,attackColor(kind),9,.22);
 }
 function shove(g,actor,target,amount){const dx=target.x-actor.x,dy=target.y-actor.y,d=Math.hypot(dx,dy)||1;g.moveActor?.(target,dx/d*amount,dy/d*amount);}
 function damageArea(g,actor,targets,radius,amount,{root=0,knockback=0,kind='clubSlam'}={}){

@@ -1,4 +1,5 @@
 import {railwaySurface} from './railway-water.mjs';
+import {overlookNorth} from './overlook-maze-layout.mjs';
 import {vegetationBlocked} from './house-surfaces.mjs';
 import {setTreeFallDirection,treeFallVector,applyTreeFall} from './tree-fall.mjs';
 import {vegetationWindStrength} from './vegetation-motion.mjs';
@@ -33,6 +34,7 @@ export function waterAt(g, x, y) {
   const tx = Math.floor(x / 32),
     ty = Math.floor(y / 32);
   const outside=tx<0||ty<0||tx>=50||ty>=50;
+  if(outside&&tx>=0&&tx<50&&ty<0&&ty*32>=overlookNorth(g))return 'grass';
   if(outside&&g.mapMode!=='boundless')return 'water';
   if(g.generatedEnvironment==='swamp')return swampSurface((tx,ty)=>realmTerrainAt(g,tx,ty),x,y).kind;
   let base=outside?boundlessTerrainAt(g,tx,ty):g.terrain?.[ty*50+tx]||'grass';
@@ -258,8 +260,9 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
   if(drawBiomeProp(c,p,time,game,renderOptions))return true;
   if(p.kind==='forest_ruin'){drawForestRuin(c,p);return true;}
   if(p.procedural&&['tree','snow_tree','palm','leafless_tree'].includes(p.kind)){
-    if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game);
-    if(p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
+    const tier=renderOptions.treeTier;
+    if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game,tier);
+    if((!tier||tier==='roots')&&p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
   }
   if(p.kind==='bush'){drawBush(c,p,time,{...renderOptions,windStrength:vegetationWindStrength(game)});return true;}
   if(p.procedural&&p.kind==='fern'&&(game.generatedEnvironment||game.environment)==='forest'){

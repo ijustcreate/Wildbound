@@ -1,9 +1,10 @@
 // Exact runtime-content identity: packaging must include dirty and new source files.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
-const root=path.resolve(__dirname,'..'),version=require('../package.json').version;
-const directory=path.resolve(process.argv[2]||path.join(root,'dist',version,'Wildbound-win32-x64'));
+const root=path.resolve(__dirname,'..'),sourceVersion=require('../package.json').version;
+const directory=path.resolve(process.argv[2]||path.join(root,'dist',sourceVersion,'Wildbound-win32-x64'));
 const manifest=JSON.parse(fs.readFileSync(path.join(directory,'wildbound-build.json'),'utf8'));
-if(manifest.version!==version||manifest.preview)throw Error('Release version/profile does not match source');
+const {version}=manifest;
+if((manifest.sourceVersion??version)!==sourceVersion||manifest.preview||manifest.variant)throw Error('Release version/profile does not match source');
 const archive=path.join(directory,'resources','app.asar'),plain=path.join(directory,'resources','app'),archived=fs.existsSync(archive);
 const asar=archived?require('@electron/asar'):null;
 const packaged=name=>archived?asar.extractFile(archive,name):fs.readFileSync(path.join(plain,name));

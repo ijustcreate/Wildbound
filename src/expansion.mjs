@@ -16,6 +16,7 @@ import {triggerEnemyTrap} from './enemy-traps.mjs';
 import {creatures} from './definitions.mjs';
 import {sectionBlocked,drawBreakable,breakDamagedWindow} from './structure-destruction.mjs';
 import {controlledFollower} from './follower-control.mjs';
+import {overlookBlocked} from './overlook-maze.mjs';
 export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','graveyard','swamp','caverns','shadow'];
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
@@ -23,6 +24,7 @@ export const makeHouse=()=>activeHouse();
 export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false,from=null,flying=false){
  r=from?.vehicleId?Math.max(r,34):r;
  if(!projectile&&boardTableBlocked(g,x,y,r,elevation,from))return true;
+ if(overlookBlocked(g,x,y+footOffset,r,elevation,projectile))return true;
  const hit=b=>raisedSurfaceBlocked(b,x,y+footOffset,r);
  const clearsFence=!projectile&&(flying||from?.wingHover&&elevation>=32);
  if((g.house?.walls||[]).some(w=>!(clearsFence&&w.kind==='fence')&&!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y+footOffset,r)))return true;

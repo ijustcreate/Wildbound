@@ -111,7 +111,7 @@ export function tickTacticalEnemy(g,e,dt,targets){
   }
   track(e,p,dt);
   const archer=e.combatRole==='archer',empty=archer&&enemyQuiver(e)<=0,footwork=archer?rangedFootwork(g,e,p):null;
-  if(archer&&!empty&&!footwork.plant&&m.repositionUntil>g.time&&beh.hunt!==false){strafe(g,e,p,dt);return true;}
+  if(archer&&!empty&&!footwork.plant&&clearShot(g,e,p)&&m.repositionUntil>g.time&&beh.hunt!==false){strafe(g,e,p,dt);return true;}
   if(e.combatRole==='shield'&&g.time-(m.lastHitAt??-99)>2)m.guard=Math.min(100,(m.guard??100)+dt*12);
   if(archer){
     const arrows=enemyQuiver(e);
@@ -129,6 +129,7 @@ export function tickTacticalEnemy(g,e,dt,targets){
   }
   if(beh.hunt!==false){
     if(archer){
+      if(!clearShot(g,e,p)){travel(g,e,p,dt);return true;}
       if(empty){if(d>40)travel(g,e,p,dt);return true;}
       if(footwork.plant)return true;
       if(occupied){travel(g,e,enemyGroupPosition(g,e,p,{backline:true}),dt);return true;}

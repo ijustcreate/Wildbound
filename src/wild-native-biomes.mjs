@@ -16,7 +16,7 @@ export function nativeWildBiome(d,x,y){
 }
 export function nativeWildWorld(t,x,y,biome=nativeWildBiome(t.design,x,y)){
  const cx=Math.floor(x/1600),cy=Math.floor(y/1600),env=biome==='jungle'?'temple':biome==='house'?'forest':biome,key=[t.design.activeRoom||'surface',biome,env,cx,cy].join(':');t.wildNativeWorlds??=new Map();let record=t.wildNativeWorlds.get(key);if(record)return record;if(railwayStream(t)){streamRegion(t,x,y);return null;}
- const seed=42+cx*71+cy*179,world=generateWorld(seed,env,{authored:false});Object.assign(world,{seed,environment:env,generatedEnvironment:env,mapMode:'classic',phase:'play',bloom:3,time:0,players:[],enemies:[],spriteLibrary:{}});
+ const seed=42+cx*71+cy*179,world=generateWorld(seed,env,{authored:false,featuredTrees:false});Object.assign(world,{seed,environment:env,generatedEnvironment:env,mapMode:'classic',phase:'play',bloom:3,time:0,players:[],enemies:[],spriteLibrary:{}});
  // The large world's river/coast stays authoritative; native dry ground fills its land.
  if(env==='beach')world.terrain=world.terrain.map(k=>['water','shallow','wood','bridge'].includes(k)?'sand':k);
  if(env==='swamp')world.terrain=world.terrain.map(k=>['water','shallow','bridge'].includes(k)?'mud':k);

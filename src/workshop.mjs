@@ -1,4 +1,5 @@
 import { rigSubject } from "./rig-subjects.mjs";
+import { mountPixelRecipePanel } from "./pixel-recipe-panel.mjs";
 import {
   GAME_PALETTE,
   rgbaToSprite,
@@ -61,6 +62,25 @@ export class Workshop {
       $("sprite-name").value = this.name;
       this.render();
     };
+    mountPixelRecipePanel($("new-sprite").parentElement, {
+      getDraft: () => this.sprite,
+      applyFrame: (frame) => {
+        const resized = frame.width !== this.sprite.width || frame.height !== this.sprite.height;
+        if (resized && this.sprite.footprint?.some(Boolean)) {
+          throw Error("Match the current dimensions to preserve its collision footprint, or start with New Sprite.");
+        }
+        const draft = { ...this.sprite, ...frame };
+        if (resized) delete draft.footprint;
+        if (this.attachmentSave) {
+          draft.x = this.sprite.x;
+          draft.y = this.sprite.y;
+        }
+        this.checkpoint();
+        this.sprite = draft;
+        this.render();
+        this.status("Recipe frame applied to the draft. Use Save to Game to keep it.");
+      },
+    });
     $("asset-search").oninput = () => this.library();
     $("show-grid").onchange = () => this.render();
     for (const b of document.querySelectorAll("[data-tool]"))
@@ -246,7 +266,7 @@ export class Workshop {
     document.addEventListener("keydown", (e) => {
       if (
         !$("workshop").classList.contains("active") ||
-        ["INPUT", "SELECT"].includes(document.activeElement.tagName)
+        ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)
       )
         return;
       if (e.ctrlKey && e.key.toLowerCase() === "z") {

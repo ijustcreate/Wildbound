@@ -33,7 +33,11 @@ const players = Array.from({length: 4}, (_, id) => ({id, ui: {}}));
 test('multiplayer merchants use readable full-window columns without a wasted center gap',()=>{
  for(const [width,height,count]of [[600,430,2],[1000,700,4],[1280,800,6]]){
   const party=Array.from({length:count},(_,id)=>({id,ui:{shop:'merchant'}})),boxes=[...planPlayerPanels(party,party,width,height).values()];
-  assert.ok(boxes.every(b=>b.width>=288));
+  const left=boxes[0].x,right=Math.max(...boxes.map(b=>b.x+b.width));
+  assert.ok(left>=16&&left<=28);
+  assert.equal(width-right,left);
+  assert.equal(boxes[1].x-boxes[0].x-boxes[0].width,12);
+  assert.ok(boxes.every(b=>b.width>=278));
   for(const a of boxes){assert.ok(a.x>=0&&a.x+a.width<=width&&a.y>=0&&a.y+a.height<=height);for(const b of boxes)if(a!==b)assert.ok(a.x+a.width<=b.x||b.x+b.width<=a.x||a.y+a.height<=b.y||b.y+b.height<=a.y);}
  }
 });
@@ -44,8 +48,11 @@ test('a second player keeps the first inventory full height and at its dock', ()
   assert.equal(two.get(0).x, one.x);
   assert.equal(two.get(0).y, one.y);
   assert.equal(two.get(0).side, one.side);
+  assert.equal(two.get(0).height, one.height);
   assert.equal(two.get(1).height, one.height);
-  assert.ok(openPlayArea(two, 1280, 700).width >= 320);
+  const playable = openPlayArea(two, 1280, 700);
+  assert.equal(playable.width, two.get(1).x - two.get(0).x - two.get(0).width);
+  assert.ok(playable.width >= 120);
 });
 
 test('closing a menu does not move a remaining player to the other side', () => {
@@ -57,10 +64,13 @@ test('closing a menu does not move a remaining player to the other side', () => 
 });
 
 test('a bottom-docked player keeps the bottom edge when a top menu opens', () => {
-  const alone = planPlayerPanels(players, [players[2]], 1280, 900).get(2);
-  const together = planPlayerPanels(players, [players[1], players[2]], 1280, 900).get(2);
-  assert.equal(alone.y + alone.height, together.y + together.height);
-  assert.equal(alone.x, together.x);
+  for (const width of [360, 1280]) {
+    const alone = planPlayerPanels(players, [players[2]], width, 900).get(2);
+    const together = planPlayerPanels(players, [players[1], players[2]], width, 900).get(2);
+    assert.equal(alone.y + alone.height, together.y + together.height);
+    assert.equal(alone.x, together.x);
+    assert.ok(together.x + together.width <= width);
+  }
 });
 
 test('crowded layouts fit panels without overlap', () => {

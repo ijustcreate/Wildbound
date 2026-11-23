@@ -8,11 +8,13 @@ app.whenReady().then(async()=>{
   const result=await w.webContents.executeJavaScript(`(async()=>{
    if(wildboundBoot.error||!wildboundBoot.finished)throw Error('Boot failed: '+wildboundBoot.error);window.requestAnimationFrame=()=>0;
    const {Game,EVENTS}=await import('./src/core.mjs'),{Assets}=await import('./src/assets.mjs'),{Renderer}=await import('./src/render.mjs'),{combatPhase}=await import('./src/enemy-combat-catalog.mjs');
-   const assets=new Assets();await assets.load();const canvas=document.createElement('canvas');canvas.style.cssText='width:1180px;height:760px';document.body.replaceChildren(canvas);const renderer=new Renderer(canvas,assets);renderer.setDynamicShadows(false);
+   const assets=new Assets();await assets.load();const canvas=document.createElement('canvas');canvas.style.cssText='width:1180px;height:760px';const reviewHost=document.createElement('div');reviewHost.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#233a31';reviewHost.append(canvas);document.body.append(reviewHost);const renderer=new Renderer(canvas,assets);renderer.setDynamicShadows(false);
    const images={},cases=[],pairs=new Map();for(const e of EVENTS.filter(e=>e.biomeMixed)){const key=e.enemies.slice(0,2).map(u=>u.kind+':'+(u.combatRole||'')).sort().join('|');pairs.set(key,[...(pairs.get(key)||[]),e.name]);}
    const duplicatePairs=[...pairs.values()].filter(a=>a.length>1);
+   const selected=${JSON.stringify((process.env.BIOME_PLAYTEST_CASES||'').split(',').filter(Boolean))};
    const cards=EVENTS.filter(e=>e.biomeMixed);
    for(const [cardIndex,card]of cards.entries())for(const party of [1,2,...(cardIndex%2===0?[4]:[])]){
+    if(selected.length&&!selected.includes(cardIndex+':'+party))continue;
     let randomState=19871+cardIndex*197+party*11;const random=()=>((randomState=(Math.imul(randomState,1664525)+1013904223)>>>0)/4294967296);
     const g=new Game(random);g.environment=card.environment;g.seed=42;for(let i=0;i<party;i++)g.addPlayer(i?'pad:'+i:'keyboard');g.start();g.onSound=()=>{};g.persist=()=>{};g.spriteLibrary=assets.library;
     Object.assign(g,{enemies:[],traps:[],event:null,weather:null,openingBoard:false,time:20,objective:null});
@@ -42,19 +44,21 @@ app.whenReady().then(async()=>{
      for(const e of turns){const key=e.id+':'+e.groupTurn.startedAt;if(seen.has(key))continue;seen.add(key);const p=g.players.find(p=>p.id===e.groupTurn.targetId);starts.push({time:+(g.time-20).toFixed(3),actor:e.kind,target:p?.id});
       for(const other of turns){if(other===e||other.groupTurn.startedAt>e.groupTurn.startedAt||other.groupTurn.startedAt===e.groupTurn.startedAt&&other.id>e.id)continue;const q=g.players.find(p=>p.id===other.groupTurn.targetId);if(p&&q&&p!==q&&Math.hypot(p.x-q.x,p.y-q.y)<110)overlaps.push({time:+(g.time-20).toFixed(3),actors:[other.kind,e.kind],targets:[q.id,p.id],distance:Math.round(Math.hypot(p.x-q.x,p.y-q.y))});}
      }
-     const capture=cardIndex%4===0&&(party===1||party===2);
+     const capture=selected.length||cardIndex%4===0&&(party===1||party===2);
      const nearTell=frame>=120&&!closeTell&&turns.some(e=>g.players.some(p=>Math.hypot(e.x-p.x,e.y-p.y)<150));
-     if(capture&&(!firstTell&&turns.length||!firstHitImage&&hits.length||nearTell||frame===300)){
+     if(capture&&(!firstTell&&turns.length||!firstHitImage&&hits.length||nearTell||frame===300||frame===899)){
       const live=g.enemies.filter(e=>ids.has(e.id)&&e.hp>0),center={x:live.length?live.reduce((n,e)=>n+e.x,0)/live.length:origin.x,y:live.length?live.reduce((n,e)=>n+e.y,0)/live.length:origin.y,zoom:1.2};renderer.cameraOverride=center;Object.assign(renderer.camera,center);renderer.draw(g,0);images[label+'-'+frame]=canvas.toDataURL();if(turns.length)firstTell=true;if(hits.length)firstHitImage=true;if(nearTell)closeTell=true;
      }
      if(!g.enemies.some(e=>ids.has(e.id)&&e.hp>0)){clearedAt=+(g.time-20).toFixed(2);break;}
     }
-    cases.push({name:card.name,zone:card.environment,party,simulated:+(g.time-20).toFixed(2),spawned:true,maximum,starts:starts.length,targets:[...new Set(starts.map(s=>s.target))],damage:g.players.map(p=>({id:p.id,lost:+hits.filter(h=>h.target===p.id).reduce((n,h)=>n+h.damage,0).toFixed(2),travel:Math.round(playerTravel.get(p.id)),alive:p.hp>0})),hits,clusterOverlaps:overlaps,clearedAt,remaining:g.enemies.filter(e=>ids.has(e.id)&&e.hp>0).map(e=>e.kind)});
+    cases.push({name:card.name,zone:card.environment,party,simulated:+(g.time-20).toFixed(2),spawned:true,maximum,starts:starts.length,targets:[...new Set(starts.map(s=>s.target))],damage:g.players.map(p=>({id:p.id,lost:+hits.filter(h=>h.target===p.id).reduce((n,h)=>n+h.damage,0).toFixed(2),travel:Math.round(playerTravel.get(p.id)),alive:p.hp>0})),hits,clusterOverlaps:overlaps,clearedAt,remaining:g.enemies.filter(e=>ids.has(e.id)&&e.hp>0).map(e=>e.kind),details:g.enemies.filter(e=>ids.has(e.id)&&e.hp>0).map(e=>({kind:e.kind,x:e.x,y:e.y,hp:e.hp,state:e.state,tactics:e.tactics,arrows:e.arrowsLeft,retrieving:e.retrievingArrows,footwork:e.rangedFootwork,role:e.pursuitTactic,turn:e.groupTurn,wait:e.groupWait,players:g.players.map(p=>({id:p.id,x:p.x,y:p.y,hp:p.hp,room:p.room}))}))});
    }
    return {cases,duplicatePairs,images};
   })()`);
   for(const [name,data]of Object.entries(result.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(data.split(',')[1],'base64'));delete result.images;
   const overlaps=result.cases.reduce((n,c)=>n+(c.clusterOverlaps?.length||0),0),failed=errors.length+(enforce?(overlaps>0?1:0)+(result.duplicatePairs.length?1:0)+result.cases.filter(c=>!c.spawned).length:0);
-  const report={...result,stage,appPath:base,errors,overlaps,failed};fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({stage,cases:result.cases.length,spawnFailures:result.cases.filter(c=>!c.spawned).length,overlaps,duplicatePairs:result.duplicatePairs,failed,out}));w.destroy();app.exit(failed?1:0);
+  const cleanupFailures=result.cases.filter(c=>c.name==='The unquiet armory'&&c.party===4||c.name==='The veilwood hunters'&&c.party===1||c.name==='The thornlight court'&&c.party===2).filter(c=>!c.clearedAt).map(c=>({name:c.name,party:c.party}));
+  const finalFailed=failed+(enforce&&process.env.BIOME_PLAYTEST_REQUIRE_CLEANUP==='1'?cleanupFailures.length:0);
+  const report={...result,stage,appPath:base,errors,overlaps,cleanupFailures,failed:finalFailed};fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({stage,cases:result.cases.length,spawnFailures:result.cases.filter(c=>!c.spawned).length,overlaps,duplicatePairs:result.duplicatePairs,cleanupFailures,failed:finalFailed,out}));w.destroy();app.exit(finalFailed?1:0);
  }catch(error){fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({error:String(error),stack:error.stack,errors},null,2));console.error(error);w.destroy();app.exit(1);}
 });

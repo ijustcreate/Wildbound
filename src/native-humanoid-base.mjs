@@ -50,7 +50,7 @@ export function retargetHumanoidClip(source,target,clip) {
 // Studio retains the original clip duration and source sampling.
 const importedStride={walk:32,run:59};
 
-function fitImportedGait(model,action){
+function fitImportedGait(model,action,previous){
  const source=captain.clips[action];
  const fitted=retargetHumanoidClip(captain,model,source);
  const ground=Math.min(model.joints.footL.position[2],model.joints.footR.position[2]);
@@ -81,7 +81,11 @@ function fitImportedGait(model,action){
   }
   return {...key,joints,angles};
  });
- return {...fitted,keys,stride:importedStride[action]};
+ const clip={...fitted,keys,stride:importedStride[action]};
+ // A saved fitted clip is eligible only if its keys still match the old stock gait.
+ if(previous&&!same(previous,clip))return previous;
+ for(const key of keys)balanceLocomotionHeadKey(model,key);
+ return clip;
 }
 
 // Fill the Captain/April action library from the complete player library.
@@ -224,6 +228,19 @@ function refineNativeJump(model,fresh){
 
 // Author ordinary editable keys. Only an exact donor-generated locomotion clip
 // is migrated: imported/edited poses and deliberate combat bends remain intact.
+function balanceLocomotionHeadKey(model,key){
+ const absolute=name=>add(model.joints[name].position,key.joints[name]||[0,0,0]);
+ const oldHead=absolute('head'),chest=absolute('chest'),offset=sub(oldHead,chest),size=length(offset);
+ const x=offset[0]*.18,y=offset[1]*.18;
+ const head=add(chest,[x,y,Math.sqrt(Math.max(0,size*size-x*x-y*y))]);
+ key.joints.head=sub(head,model.joints.head.position);
+ for(const name of facial){
+  const rest=sub(model.joints[name].position,model.joints.head.position),old=sub(absolute(name),oldHead);
+  const direction=rest.map((value,i)=>value*.85+old[i]*.15),magnitude=length(direction)||1;
+  key.joints[name]=sub(add(head,mul(direction,length(rest)/magnitude)),model.joints[name].position);
+ }
+}
+
 export function balanceLocomotionHead(model){
  if(model.nativeHumanoidRevision!==1||model.headBalanceRevision===1)return model;
  const target=copy(model);let changed=false;
@@ -231,17 +248,7 @@ export function balanceLocomotionHead(model){
   const clip=model.clips[name],expected=retargetHumanoidClip(captain,model,captain.clips[name]);
   if(!same(clip,expected))continue;
   changed=true;
-  for(const key of target.clips[name].keys){
-   const absolute=n=>add(model.joints[n].position,key.joints[n]||[0,0,0]);
-   const oldHead=absolute('head'),chest=absolute('chest'),v=sub(oldHead,chest),size=length(v);
-   const balanced=[v[0]*.18,v[1]*.18,Math.sqrt(Math.max(0,size*size-(v[0]*.18)**2-(v[1]*.18)**2))];
-   const head=add(chest,balanced);key.joints.head=sub(head,model.joints.head.position);
-   for(const n of facial){
-    const rest=sub(model.joints[n].position,model.joints.head.position),old=sub(absolute(n),oldHead);
-    const direction=rest.map((v,i)=>v*.85+old[i]*.15),magnitude=length(direction)||1;
-    key.joints[n]=sub(add(head,mul(direction,length(rest)/magnitude)),model.joints[n].position);
-   }
-  }
+  for(const key of target.clips[name].keys)balanceLocomotionHeadKey(model,key);
  }
  if(changed)target.headBalanceRevision=1;
  return changed?target:model;

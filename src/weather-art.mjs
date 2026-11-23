@@ -5,6 +5,7 @@ import {houseLightSources} from './house-lights.mjs';
 import { terrainHash } from "./world.mjs";
 import { rules } from "./definitions.mjs";
 import { waterAt, isShallow } from "./environment.mjs";
+import {overlookNorth} from './overlook-maze-layout.mjs';
 let fogCanvas, memoryCanvas, memoryKey, memorySet;
 export function drawFog(ctx, g, camera, w, h) {
   if (g.phase !== "play") return;
@@ -22,16 +23,17 @@ export function drawFog(ctx, g, camera, w, h) {
     fogCanvas.height = h;
   }
   // Cache a softly edged exploration mask. The live vision cut-outs are continuous circles.
-  const key = g.seed + ":" + g.explored.size;
+  const north = overlookNorth(g), rowOffset = north / 32;
+  const key = g.seed + ":" + g.explored.size + ":" + north;
   if (memoryKey !== key || memorySet !== g.explored) {
     memorySet = g.explored;
     memoryKey = key;
     memoryCanvas.width = 400;
-    memoryCanvas.height = 400;
+    memoryCanvas.height = 400 - rowOffset * 8;
     const m = memoryCanvas.getContext("2d");
     m.fillStyle = "#fff";
     for (const i of g.explored)
-      m.fillRect((i % 50) * 8, Math.floor(i / 50) * 8, 8, 8);
+      m.fillRect((((i % 50) + 50) % 50) * 8, (Math.floor(i / 50) - rowOffset) * 8, 8, 8);
   }
   const c = fogCanvas.getContext("2d");
   c.clearRect(0, 0, w, h);
@@ -48,9 +50,9 @@ export function drawFog(ctx, g, camera, w, h) {
   c.drawImage(
     memoryCanvas,
     w / 2 - camera.x * camera.zoom,
-    h / 2 - camera.y * camera.zoom,
+    h / 2 - (camera.y - north) * camera.zoom,
     1600 * camera.zoom,
-    1600 * camera.zoom,
+    (1600 - north) * camera.zoom,
   );
   c.filter = "none";
   c.globalAlpha = 1;

@@ -1,75 +1,81 @@
 const { packager } = require("@electron/packager");
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-require('./check-syntax.cjs').checkSyntax();
-const preview = process.argv.includes('--preview');
-const version = require('../package.json').version;
-// Never replace a normal development build: an older Electron executable may
-// still be open while the next fix is being tested.
-const buildFolder = preview
-  ? 'night-hunt-' + new Date().toISOString().replace(/[:.]/g, '-')
-  : version + '-' + new Date().toISOString().replace(/[:.]/g, '-');
-packager({
-  tmpdir:fs.mkdtempSync(path.join(require('node:os').tmpdir(),'wildbound-worlds-package-')),
-  dir: path.resolve(__dirname, ".."),
-  out: path.join("dist", buildFolder),
-  name: "Wildbound",
-    icon: path.join(__dirname, "..", "assets", "wildbound-icon.ico"),
-  platform: "win32",
-  arch: "x64",
-  // The renderer dynamically imports app.mjs. Keep the app as a normal
-  // directory so Electron's file:// module loader can resolve that graph.
-  asar: false,
-  overwrite: false,
-  // Stage real production packages, resolving npm or pnpm links at the source.
-  // The pruner assumes a flattened installation and fails on pnpm's virtual
-  // dependency tree. Development tools are excluded before copying instead.
-  prune: false,
-  afterCopy: [({buildPath}) => require('./copy-runtime-dependencies.cjs')(path.resolve(__dirname,'..'),buildPath)],
-  ignore: [
-    /^\/\.migration-backups(?:\/|$)/,
-    /^\/node_modules/,
-    /^\/Progress pictures/,
-    /^\/docs/,
-    /^\/public/,
-    /^\/\.openai/,
-    /^\/drizzle/,
-    /^\/db/,
-    /^\/design/,
-    /^\/scripts\/(upgrade|integrate|extract|fix|finish|optimize|polish|cleanup)/,
-    /^\/\.tools/,
-    /^\/test-output/,
-    /^\/(?:output|tmp)(?:\/|$)/,
-    /^\/server-data/,
-    /^\/server-config\.local\.json/,
-    /\.log$/,
-    /\.(?:bak|tmp)$/i,
-    /^\/assets\/shore-goblin\/source/,
-    /^\/assets\/(?:spider|boar|elephant)-wow\//,
-    /^\/art\/player\/detail-native-v[234]/,
-    /^\/tests/,
-    /^\/dist/,
-    /^\/\.git/,
-    /^\/Concept Art Pixel/,
-  ],
-})
-  .then((packages) => {
-    const root = path.resolve(__dirname, '..');
-    const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
-    const build = {
-      version: require('../package.json').version,
-      sourceCommit: git('rev-parse', 'HEAD'),
-      sourceDirty: Boolean(git('status', '--porcelain', '--untracked-files=no')),
-      builtAt: new Date().toISOString(),
-      preview,
-    };
-    for (const packageDir of packages) {
-      fs.writeFileSync(path.join(packageDir, 'wildbound-build.json'), JSON.stringify(build, null, 2) + '\n');
-      console.log(`Packaged ${packageDir} from ${build.sourceCommit.slice(0, 12)}${build.sourceDirty ? ' (modified source)' : ''}`);
-    }
-  })
-  .catch((e) => {
-    console.error(e);
-    process.exitCode = 1;
+const { reserveBuildVersion } = require('./build-version.cjs');
+const root = path.resolve(__dirname, '..');
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+
+async function buildDesktop() {
+  require('./check-syntax.cjs').checkSyntax(root);
+  const sourceVersion = require('../package.json').version;
+  const sourceCommit = git('rev-parse', 'HEAD');
+  const sourceDirty = Boolean(git('status', '--porcelain'));
+  const preview = process.argv.includes('--preview');
+  const version = reserveBuildVersion(root, sourceVersion);
+  const packages = await packager({
+    tmpdir: fs.mkdtempSync(path.join(os.tmpdir(), 'wildbound-worlds-package-')),
+    dir: root,
+    out: path.join(root, 'dist', version),
+    appVersion: version,
+    name: 'Wildbound',
+    icon: path.join(root, 'assets', 'wildbound-icon.ico'),
+    platform: 'win32',
+    arch: 'x64',
+    // The renderer imports app.mjs through Electron's file:// module loader.
+    asar: false,
+    overwrite: false,
+    // Stage production packages from npm or pnpm without the packager's pruning step.
+    prune: false,
+    afterCopy: [({ buildPath }) => require('./copy-runtime-dependencies.cjs')(root, buildPath)],
+    ignore: [
+      /^\/\.migration-backups(?:\/|$)/,
+      /^\/node_modules/,
+      /^\/Progress pictures/,
+      /^\/docs/,
+      /^\/public/,
+      /^\/\.openai/,
+      /^\/drizzle/,
+      /^\/db/,
+      /^\/design/,
+      /^\/scripts\/(upgrade|integrate|extract|fix|finish|optimize|polish|cleanup)/,
+      /^\/\.tools/,
+      /^\/test-output/,
+      /^\/(?:output|tmp)(?:\/|$)/,
+      /^\/server-data/,
+      /^\/server-config\.local\.json/,
+      /\.log$/,
+      /\.(?:bak|tmp)$/i,
+      /^\/assets\/shore-goblin\/source/,
+      /^\/assets\/(?:spider|boar|elephant)-wow\//,
+      /^\/art\/player\/detail-native-v[234]/,
+      /^\/tests/,
+      /^\/dist/,
+      /^\/\.git/,
+      /^\/Concept Art Pixel/,
+    ],
   });
+  if (git('rev-parse', 'HEAD') !== sourceCommit) {
+    throw Error('The checkout commit changed during packaging. Rebuild from the intended revision.');
+  }
+  const build = {
+    version,
+    sourceVersion,
+    sourceCommit,
+    sourceDirty: sourceDirty || Boolean(git('status', '--porcelain')),
+    builtAt: new Date().toISOString(),
+    preview,
+  };
+  for (const packageDir of packages) {
+    const manifest = path.join(packageDir, 'wildbound-build.json');
+    fs.writeFileSync(manifest + '.tmp', JSON.stringify(build, null, 2) + '\n');
+    fs.renameSync(manifest + '.tmp', manifest);
+    console.log(`Packaged ${packageDir} from ${sourceCommit.slice(0, 12)}${build.sourceDirty ? ' (modified source)' : ''}`);
+  }
+}
+
+buildDesktop().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

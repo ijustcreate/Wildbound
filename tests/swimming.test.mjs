@@ -6,6 +6,7 @@ import {Game} from '../src/core.mjs';
 import {readFileSync} from 'node:fs';
 import {upgradePlayerMotion,defaultPlayerMotion} from '../src/player-motion.mjs';
 import {enemyCanSeeTarget} from '../src/enemy-sight.mjs';
+import {speciesPhase} from '../src/enemy-species-combat.mjs';
 import {villagerAction} from '../src/villager-motion.mjs';
 test('Shipping swim animation upgrades without overwriting edited strokes',()=>{
  const model=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url))).player;
@@ -44,8 +45,18 @@ test('A swimming snake can bite at the surface and drops its attack when the pla
  g.configureCreature(snake,false);g.enemies=[snake];Object.assign(p,{x:350,y:350,hp:100,invuln:0});
  for(let n=0;n<50&&p.hp===100;n++)g.update(.05,{});
  assert.ok(p.hp<100,'surface bite');
- p.diveDepth=1;snake.state='windup';snake.timer=.8;g.update(.05,{});
+ assert.equal(snake.speciesCombat.phase,'active');
+ const afterBite=p.hp;
+ p.diveDepth=1;g.update(.05,{keyboard:{attack:true}});
+ assert.equal(p.hp,afterBite);
  assert.equal(snake.state,'hunt');assert.equal(snake.timer,0);assert.equal(snake.moving,false);
+ assert.equal(snake.speciesCombat.targetId,undefined);
+
+ const teammate=g.addPlayer('pad:1');Object.assign(teammate,{x:370,y:350,hp:100});
+ speciesPhase(snake,'windup',.02).targetId=p.id;
+ g.tickCombatActors(.05);
+ assert.equal(snake.speciesCombat.phase,'approach','a visible teammate cannot inherit the committed bite');
+ assert.equal(teammate.hp,100);
 });
 test('Water entry emits once; surface wakes use the water shader without stacking particle emitters',()=>{
  const {g,p}=fixture();tickSwimming(g,p,{},.1);assert.equal(p.swimming,true);assert.equal(p.breath,BREATH_SECONDS);assert.equal(g.effects.filter(e=>e.particle==='splash').length,1);assert.ok(!g.effects.some(e=>e.particle==='swim-wake'));

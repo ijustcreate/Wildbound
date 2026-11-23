@@ -96,7 +96,7 @@ test('Every boot cuff stays on the ankle in both side views through idle and run
       const c={fillStyle:'',fillRect(x,y,w,h){calls.push({x,y,w,h,color:this.fillStyle});}};
       const pose=poseAt(model,action,frame),[faceX,faceY]=directionVector(direction);
       drawPlayer(c,{faceX,faceY,equipment:{feet:id},animationAction:action,playerFrame:frame},0,model,pose);
-      const height=def.style==='tall'?7:5,light=gearPalette(id).light;
+      const height=def.style==='tall'||def.style==='safari'?7:5,light=gearPalette(id).light;
       for(const side of ['L','R']) {
         const foot=projectPoint(pose['foot'+side],direction),knee=projectPoint(pose['knee'+side],direction);
         const {cos,sin}=bootFrame(foot,knee),y=-height+1.5;

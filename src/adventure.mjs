@@ -24,6 +24,8 @@ import {carvePumpkin,pickPumpkin} from './pumpkins.mjs';
 import {useChristmasItem,interactToyTrain,hitToyTrain} from './christmas.mjs';
 import {ensureSkeletonEquipment} from './skeleton-equipment.mjs';
 import {damageStructureProjectile} from './structure-destruction.mjs';
+import {interactOverlookChest} from './overlook-maze.mjs';
+import {overlookNorth} from './overlook-maze-layout.mjs';
 import {openNpcDialogue,npcDialogueAction} from './npc-quests.mjs';
 import {clearVillagerCamp} from './villagers.mjs';
 import {houseKeepsWorld,recalledEnemy} from './house-victory.mjs';
@@ -1205,7 +1207,7 @@ export const adventureMethods = {
         if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&interactChicken(this,p)){p.interactUsed=true;p.charge=0;}
         if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
         if (!sealPriority && !this.openingBoard && !p.interactUsed && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
-          const opened = !!p.ui||(edge('interact')&&openNpcDialogue(this,p))||(edge('interact')&&interactCreaturePackActor(this,p))||interactGraveyardCat(this,p)||interactOldWell(this,p)||openMerchant(this,p)||openHouseChest(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
+          const opened = !!p.ui||interactOverlookChest(this,p)||(edge('interact')&&openNpcDialogue(this,p))||(edge('interact')&&interactCreaturePackActor(this,p))||interactGraveyardCat(this,p)||interactOldWell(this,p)||openMerchant(this,p)||openHouseChest(this,p)||openSupplyChest(this,p)||(edge('interact')&&toggleDoor(this,p))||interactIce(this,p)||pickPumpkin(this,p);
           if(opened){p.interactUsed=true;p.charge=0;p.doodadAttackConsumed=!!i.attack;}
         }
         if(!i.attack&&p.doodadAttackConsumed){p.charge=0;p.doodadAttackConsumed=false;}
@@ -1240,7 +1242,7 @@ export const adventureMethods = {
         const sight =
           sightRadius(this, p, rules.visionRadius);
         for (
-          let y = this.mapMode==='boundless'?Math.floor((p.y - sight) / 32):Math.max(0, Math.floor((p.y - sight) / 32));
+          let y = this.mapMode==='boundless'?Math.floor((p.y - sight) / 32):Math.max(overlookNorth(this) / 32, Math.floor((p.y - sight) / 32));
           y < (this.mapMode==='boundless'?Math.ceil((p.y + sight) / 32):Math.min(50, (p.y + sight) / 32));
           y++
         )

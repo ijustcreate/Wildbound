@@ -14,9 +14,8 @@ app.whenReady().then(()=>{
   let bytes=0;for(const file of files){const source=fs.readFileSync(path.join(root,file));if(!source.equals(fs.readFileSync(path.join(base,file))))throw Error('Stale packaged content: '+file);bytes+=source.length;}
   const identity=JSON.parse(fs.readFileSync(path.join(base,'../../wildbound-build.json'),'utf8'));
   const sourcePackage=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')),packedPackage=JSON.parse(fs.readFileSync(path.join(base,'package.json'),'utf8'));
-  for(const key of ['name','version','main','dependencies'])if(JSON.stringify(sourcePackage[key])!==JSON.stringify(packedPackage[key]))throw Error('Wrong packaged manifest: '+key);
-  const version=sourcePackage.version;
-  if(identity.version!==version||identity.preview)throw Error('Wrong desktop build identity.');
+  for(const key of ['name','main','dependencies'])if(JSON.stringify(sourcePackage[key])!==JSON.stringify(packedPackage[key]))throw Error('Wrong packaged manifest: '+key);
+  if((identity.sourceVersion??identity.version)!==sourcePackage.version||packedPackage.version!==identity.version||identity.preview||identity.variant)throw Error('Wrong desktop build identity.');
   const report={...identity,byteMatchedFiles:files.length,byteMatchedBytes:bytes,packagedApp:base};
   fs.writeFileSync(path.join(root,'test-output/desktop-content-report.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report));app.exit(0);

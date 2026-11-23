@@ -23,10 +23,10 @@ Electron, localhost and GitHub Pages have separate storage. Historical versions 
 
 ## Publish an update
 
-1. Verify source and tests, then run node scripts/build-web.cjs --versioned. It checks runtime syntax and writes dist/web-<package version>/, including runtime modules, assets, shared rigs and world manifests. Existing output folders are never overwritten.
+1. Verify source and tests, then run `node scripts/build-web.cjs --versioned`. It checks runtime syntax, takes the next number in the shared desktop and browser build sequence, and writes `dist/web-<build version>/` with the runtime, assets, shared rigs and world manifests. Existing output folders are never overwritten.
 2. Use a separate checkout of the latest gh-pages. Run node scripts/assemble-web-pages.cjs <pages-checkout> <web-build>. The first run preserves the old root in original/. Every run refuses to overwrite an existing versioned release.
-3. Update docs/web-index.html, README links and this document for a new version before assembling. The assembler copies the chooser and points latest/ at the new release.
-4. Verify browser loading, Workshop and Worlds, game rendering, save separation, historical file hashes and links. Commit/push source and the Pages checkout separately, without force-pushing. Verify the GitHub Pages deployment and the live build identity.
+3. The assembler takes the release number from web-build.json and uses it in the chooser and latest/ redirect. The README play link always points to latest/.
+4. Run `scripts/verify-web-build.cjs` with the exact web build directory. Set `WILDBOUND_WEB_VERSION` to the assigned build version when running `scripts/verify-web-pages.cjs` against the assembled Pages checkout. Verify browser loading, Workshop, Worlds, game rendering, save separation, historical file hashes and links. Commit and push source and Pages without force-pushing, then check the live build identity.
 
 Keep original/ and earlier releases/ unchanged. Do not publish local saves, credentials, test profiles, dependencies or desktop packages. web-build.json identifies the source commit and whether it contained modified source. Publishing Pages does not update desktop packages or create a downloadable GitHub release.
 

@@ -1,5 +1,6 @@
 import {railwayMeadowDistance} from './railway-meadow-field.mjs';
 import {inWildLandmark} from './wild-landmark-buildings.mjs';
+import {VILLA_OVERLOOK,inOverlookGround,overlookNorth} from './overlook-maze-layout.mjs';
 import {wildLandsPathAt} from './wild-lands-geography.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
 import {WILD_LANDS_STOPS,wildLandsGround} from './wild-lands-world.mjs';
@@ -29,6 +30,7 @@ export function meadowAllowed(g,x,y,margin=0){
  }
  if(meadowTerrain(g,x,y)!=='grass')return false;
  if((g.generatedEnvironment||g.environment)==='house'&&g.house){
+  if(overlookNorth(g)&&inOverlookGround(VILLA_OVERLOOK,x,y,margin+5))return false;
   const inside=(r,pad=0)=>x>=r.x-pad&&x<r.x+r.w+pad&&y>=r.y-pad&&y<r.y+r.h+pad;
   return ![...(g.house.floors||[]),...(g.house.paths||[]),...(g.house.pools||[])].some(r=>inside(r,5+margin))&&!(g.house.furniture||[]).some(f=>!f.destroyed&&inside(f,5+margin));
  }

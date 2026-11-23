@@ -1,3 +1,5 @@
+import {isTwoTierForestTree,twoTierForestTreeHeight} from './forest-tree-art.mjs';
+
 export function renderLOD(zoom) { return zoom < .55 ? 2 : zoom < 1 ? 1 : 0; }
 // Bounded RAM cache, not an entire-world bitmap. Interactive state stays live.
 export class DecorationCache {
@@ -5,11 +7,12 @@ export class DecorationCache {
   draw(ctx,prop,tier,paint) {
     if(!tier || prop.falling || prop.burning || prop.harvest || !['tree','snow_tree','palm','bush','rock','fern'].includes(prop.kind))return paint(ctx);
     const key=prop.id??`${prop.kind}:${prop.x}:${prop.y}`;
-    const signature=[tier,prop.kind,prop.size,prop.x,prop.y,prop.rootY,prop.fallen,prop.seed,prop.variant,prop.treeType,prop.season,prop.leafHabit].join(':');
+    const tallHeight=isTwoTierForestTree(prop)?twoTierForestTreeHeight(prop):0;
+    const signature=[tier,prop.kind,prop.size,prop.x,prop.y,prop.rootY,prop.fallen,prop.seed,prop.variant,prop.treeType,prop.treeVariant,tallHeight,prop.season,prop.leafHabit].join(':');
     let entry=this.entries.get(key);
     if(entry?.signature!==signature){if(entry){this.bytes-=entry.bytes;this.entries.delete(key);}entry=null;}
     if(!entry){
-      const radius=Math.max(48,(prop.size||64)*2.5),scale=tier===1?.65:.3;
+      const radius=Math.max(48,(prop.size||64)*2.5,tallHeight+8),scale=tier===1?.65:.3;
       const pixels=Math.min(512,Math.ceil(radius*2*scale));
       const canvas=document.createElement('canvas');canvas.width=canvas.height=pixels;
       const c=canvas.getContext('2d');c.scale(pixels/(radius*2),pixels/(radius*2));c.translate(radius-prop.x,radius-prop.y);

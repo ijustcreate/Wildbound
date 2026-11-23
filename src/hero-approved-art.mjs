@@ -20,7 +20,7 @@ function pen(c,h,key){
 
 export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
  const handles=['eyeL','eyeR','earL','earR','nose','mouth'].map(n=>[visible(n),Math.round((p[n].x-p.head.x)*2),Math.round((p[n].y-p.head.y)*2)]);
- const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,PLAYER_HEAD_PIXELS.width,PLAYER_HEAD_PIXELS.height,d,skin,look.face,look.facialHair,look.facialHairColor,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
+ const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,PLAYER_HEAD_PIXELS.width,PLAYER_HEAD_PIXELS.height,d,skin,look.face,look.facialHair,look.facialHairColor,look.eyeColor,look.curseEyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
  if(r.cached)return r.flush();
  const shadow=mix(skin,'#83504b',.30),light=mix(skin,'#fff0d0',.20),blush=mix(skin,'#d87d78',.26);
  if(!front){
@@ -64,10 +64,10 @@ export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
   const diagonal=d===1||d===7;
   const x=q.x-p.head.x,y=q.y-p.head.y-1+(diagonal?(far?.5:-.75):profile?-1:0),w=far?1.5:2.5;
   if(look.eyesClosed){r(x-w/2,y,w,.5,ink);continue;}
-  r(x-w/2,y-1,w,.5,ink);r(x-w/2,y-.5,w,2,'#fff1d9');
+  r(x-w/2,y-1,w,.5,ink);r(x-w/2,y-.5,w,2,look.curseEyeColor?'#dc6b66':'#fff1d9');
   r(x+(profile?turn*.25:0)-.5,y-.5,1,1.5,look.eyeColor||'#506c59');
-  r(x+(profile?turn*.25:0)-.25,y,.5,1,ink);
-  r(x-.5,y-.5,.5,.5,'#fff7e4');
+  r(x+(profile?turn*.25:0)-.25,y,.5,1,look.curseEyeColor?'#902e39':ink);
+  r(x-.5,y-.5,.5,.5,look.curseEyeColor?'#ffc9af':'#fff7e4');
   r(x-w/2,y+1.5,w,.5,blush);
  }
  if(visible('nose')){const q=p.nose;r(q.x-p.head.x-.25,q.y-p.head.y+.5,.5,.5,shadow);}

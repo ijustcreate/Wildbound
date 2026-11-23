@@ -2,8 +2,14 @@
 import {forestSettings} from './forest-settings.mjs';
 import {applyTreeFall} from './tree-fall.mjs';
 import {vegetationWindStrength,leafClusterMotion} from './vegetation-motion.mjs';
+import {MAPLE_BARK,mapleFoliageClusters,paintMapleFoliageCluster,drawMapleBranches,drawMapleTrunk} from './forest-maple-art.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
-export const TREE_TYPES=['oak','birch','pine'];
+const standardTreeTypes=['oak','birch','pine'];
+export const TREE_TYPES=[...standardTreeTypes,'maple'];
+const tallLowerClusters=[[-26,-56,23,17],[24,-62,24,18],[-8,-71,26,18],[19,-78,20,14]];
+const tallUpperClusters=[[-24,-105,18,14],[19,-111,19,16],[-2,-118,23,17],[-10,-132,17,16]];
+const tallClusters=[...tallLowerClusters,...tallUpperClusters];
+const tallCrownTop=154;
 export const palmBase=p=>({x:p.x,y:Number.isFinite(p.rootY)?p.rootY:p.y+p.size*.19});
 export function palmStructure(p){const seed=p.seed??hash(p.x,p.y)*1000;return {seed,lean:(hash(seed,11)-.5)*19,height:(45+hash(seed,12)*10)*forestSettings.trunkHeight,spread:(.85+hash(seed,13)*.3)*forestSettings.canopyWidth*forestSettings.branchSpread};}
 export function drawPalmTrunk(c,p){
@@ -33,15 +39,39 @@ export function drawPalmFronds(c,p,time){
  crown(c,cx,cy,5,4,'#476839',s.seed);
  for(let i=0;i<Math.min(3,p.coconuts??Math.floor(hash(s.seed,17)*4));i++){rect(c,cx-5+i*4,cy+2+i%2*3,5,5,'#503d2b');rect(c,cx-4+i*4,cy+2+i%2*3,2,2,'#b28a50');}
 }
-export const treeType=p=>TREE_TYPES.includes(p.treeType)?p.treeType:p.kind==='snow_tree'?'pine':TREE_TYPES[Math.floor(hash(p.x,p.y)*3)];
+export const treeType=p=>TREE_TYPES.includes(p.treeType)?p.treeType:p.kind==='snow_tree'?'pine':standardTreeTypes[Math.floor(hash(p.x,p.y)*standardTreeTypes.length)];
 export const treeBase=p=>({x:p.x,y:Number.isFinite(p.rootY)?p.rootY:p.y+p.size*.35});
-export function treeSeason(p,g={}){return p.season|| (forestSettings.season==='auto'?(g.generatedEnvironment==='ice'||p.kind==='snow_tree'?'winter':p.autumnAccent?'autumn':'summer'):forestSettings.season);}
-export const leafHabit=p=>p.leafHabit||forestSettings[treeType(p)];
+export function treeSeason(p,g={}){return p.season|| (forestSettings.season==='auto'?(g.generatedEnvironment==='ice'||p.kind==='snow_tree'?'winter':p.autumnAccent||p.treeType==='maple'?'autumn':'summer'):forestSettings.season);}
+export const leafHabit=p=>p.leafHabit||(p.treeType==='maple'?'deciduous':forestSettings[treeType(p)]);
 export function treeStructure(p){const seed=p.seed??hash(p.x,p.y)*1000;return {height:(.88+hash(seed,2)*.24)*forestSettings.trunkHeight,width:(.85+hash(seed,3)*.3)*forestSettings.canopyWidth,lean:(hash(seed,4)-.5)*.16,branchSpread:(.8+hash(seed,5)*.4)*forestSettings.branchSpread,seed};}
+export const isTwoTierForestTree=p=>p.kind==='tree'&&p.procedural&&p.treeVariant==='two-tier'&&treeType(p)==='oak';
+export const twoTierForestTreeHeight=p=>tallCrownTop*p.size/64*treeStructure(p).height;
+
+export function forestTreeTierOcclusion(p,player){
+ const clear={lower:false,upper:false};
+ if(!isTwoTierForestTree(p)||p.fallen||p.falling||player.room||player.hp<=0)return clear;
+ const base=treeBase(p),scale=p.size/64,shape=treeStructure(p);
+ if(player.y>=base.y)return clear;
+ const foot=(player.y-(player.jumpHeight||0)-(player.groundHeight||0)-base.y)/(scale*shape.height);
+ const head=foot-32/(scale*shape.height),avatarHalfWidth=8/(scale*shape.width);
+ const overlaps=([cx,cy,rx,ry])=>{
+  const y=Math.max(head,Math.min(foot,cy));
+  const x=((player.x-base.x)/scale-shape.lean*y)/shape.width;
+  const dx=Math.max(0,Math.abs(x-cx*shape.branchSpread)-avatarHalfWidth);
+  return (dx/(rx+3))**2+((y-cy)/(ry+3))**2<1;
+ };
+ const lower=tallLowerClusters.some(overlaps);
+ const upper=tallUpperClusters.some(overlaps);
+ // The trunk tapers but still covers part of a hero passing behind the fork.
+ const trunkY=Math.max(head,Math.min(foot,-27));
+ const trunkX=((player.x-base.x)/scale-shape.lean*trunkY)/shape.width;
+ return {lower:lower||(head<-7&&foot>-91&&Math.abs(trunkX)<6+avatarHalfWidth),upper};
+}
 export function treeStumpPalette(p){
  if(p.realmPalette==='shadow')return {shadow:'#242137',bark:'#51415f',highlight:'#8c7397',rings:'#352c48',root:'#564961'};
  if(p.kind==='palm')return {shadow:'#403729',bark:'#94734c',highlight:'#c7a171',rings:'#695238',root:'#796043'};
  const type=treeType(p);
+ if(type==='maple')return MAPLE_BARK;
  if(type==='birch')return {shadow:'#343b35',bark:'#c9cbb3',highlight:'#ebebcf',rings:'#4f5650',root:'#bfc3af'};
  if(type==='pine')return {shadow:'#3b352c',bark:'#5f4b39',highlight:'#967755',rings:'#403a32',root:'#665a47'};
  return {shadow:'#514333',bark:'#65503a',highlight:'#b79463',rings:'#72593e',root:'#65503a'};
@@ -66,6 +96,7 @@ export function drawTreeRoots(c,p){
  }
 }
 export function drawTreeTrunk(c,p){
+ if(treeType(p)==='maple'){drawMapleTrunk(c);drawTreeRoots(c,p);return;}
  const birch=treeType(p)==='birch',bark=p.realmPalette==='shadow'?'#51415f':birch?'#c9cbb3':'#655044';
  // Square brush strokes end at the ground, not a brush-width below it.
  line(c,0,-43,-1,birch?-7:-11,birch?7:11,'#343b35');line(c,-1,-40,-2,birch?-5:-7,birch?5:7,bark);
@@ -75,6 +106,7 @@ export function drawTreeTrunk(c,p){
 }
 export function drawTreeBranches(c,p){
  const shape=treeStructure(p),pine=treeType(p)==='pine',birch=treeType(p)==='birch';
+ if(treeType(p)==='maple'){drawMapleBranches(c,shape);return;}
  const ends=pine?[[-19,-30],[20,-32],[-14,-43],[13,-47],[-6,-58],[6,-60]]:[[-22,-43],[19,-47],[-12,-59],[10,-64]];
  ends.forEach(([xx,yy],i)=>{const x=xx*shape.branchSpread,y=yy+hash(xx,shape.seed)*5,baseY=-19-i*4,mx=x*.55,my=y+8;
  line(c,0,baseY,mx,my,4,'#3d4036');line(c,mx,my,x,y,3,'#3d4036');
@@ -84,8 +116,35 @@ export function drawTreeBranches(c,p){
  line(c,bx,by,tx,ty,1,birch?'#c5c9b7':'#665a47');line(c,tx,ty,tx-sign*2,ty-4,1,'#575547');}}
  });
 }
+function drawTallOakWood(c,p,tier){
+ const upper=tier==='upper',shape=treeStructure(p);
+ const bark='#655044',shade='#343b35',face='#987652';
+ const limb=(x,y,xx,yy,width)=>{
+  line(c,x,y,xx,yy,width,shade);
+  line(c,x-1,y,xx-1,yy,Math.max(1,width-2),bark);
+  line(c,x-2,y,xx-2,yy,1,face);
+ };
+ if(upper){
+  limb(4,-91,6,-109,6);limb(6,-109,-7,-132,4);
+  limb(5,-101,17*shape.branchSpread,-116,4);
+  limb(4,-94,-22*shape.branchSpread,-108,4);
+ }else{
+  limb(-1,-5,-5,-34,12);limb(-5,-34,0,-61,9);limb(0,-61,4,-93,7);
+  limb(-4,-32,-13,-49,6);limb(-13,-49,-26*shape.branchSpread,-60,4);
+  limb(-2,-42,13,-55,6);limb(13,-55,25*shape.branchSpread,-65,4);
+  limb(0,-62,-12*shape.branchSpread,-77,4);limb(3,-72,17*shape.branchSpread,-84,4);
+  for(const [x,y] of [[1,-13],[-2,-25],[-4,-40],[-1,-53],[3,-66],[4,-84]])rect(c,x,y,2,2,'#403a32');
+ }
+}
 const foliageCache=new Map();
-const foliageClusters=type=>type==='pine'?[[-4,-27,25,14],[4,-39,22,14],[-3,-51,19,15],[2,-63,13,14],[-1,-75,7,11]]:type==='birch'?[[-10,-39,12,16],[9,-48,14,18],[-8,-63,12,17],[5,-76,11,13]]:[[-24,-35,19,16],[22,-40,21,18],[-19,-52,22,20],[13,-59,25,19],[-5,-73,23,17]];
+const speciesClusters={
+ oak:[[-24,-35,19,16],[22,-40,21,18],[-19,-52,22,20],[13,-59,25,19],[-5,-73,23,17]],
+ birch:[[-10,-39,12,16],[9,-48,14,18],[-8,-63,12,17],[5,-76,11,13]],
+ pine:[[-4,-27,25,14],[4,-39,22,14],[-3,-51,19,15],[2,-63,13,14],[-1,-75,7,11]],
+ maple:mapleFoliageClusters,
+};
+const foliageClusters=p=>isTwoTierForestTree(p)?tallClusters:speciesClusters[treeType(p)];
+const inTreeTier=(i,tier)=>tier==='upper'?i>=tallLowerClusters.length:tier==='lower'?i<tallLowerClusters.length:true;
 function leafTextureFrame(layer,phase){
  layer.frames??=[];if(layer.frames[phase])return layer.frames[phase];
  const source=layer.canvas,canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;const pen=canvas.getContext('2d');pen.imageSmoothingEnabled=false;
@@ -95,14 +154,14 @@ function leafTextureFrame(layer,phase){
  for(let n=0;n<18;n++){const x=2+Math.floor(hash(n+phase*3,layer.x)*Math.max(1,canvas.width-5)),y=2+Math.floor(hash(n+phase*5,layer.y)*Math.max(1,canvas.height-5));pen.drawImage(source,x,y,2,2,x+(phase%2?1:-1),y,2,2);}
  pen.globalCompositeOperation='destination-in';pen.drawImage(source,0,0);layer.frames[phase]=canvas;return canvas;
 }
-export function drawTreeFoliage(c,p,time,g={}){
+export function drawTreeFoliage(c,p,time,g={},tier){
  if(p.kind==='leafless_tree')return;
- if(typeof document==='undefined'){paintTreeFoliage(c,p,time,g);return;}
+ if(typeof document==='undefined'){paintTreeFoliage(c,p,time,g,null,tier);return;}
  if(treeSeason(p,g)==='winter'&&leafHabit(p)==='deciduous')return;
- const shape=treeStructure(p),key=[treeType(p),treeSeason(p,g),leafHabit(p),p.x,p.y,shape.branchSpread,p.realmPalette].join(':');
+ const shape=treeStructure(p),key=[treeType(p),p.treeVariant,treeSeason(p,g),leafHabit(p),p.x,p.y,shape.branchSpread,p.realmPalette].join(':');
  let layers=foliageCache.get(key);
  if(!layers){
-  layers=foliageClusters(treeType(p)).map(([cx,cy,rx,ry],i)=>{
+  layers=foliageClusters(p).map(([cx,cy,rx,ry],i)=>{
    // Each cached fan has a generous two-pixel border for scalloped tips/snow.
    const x=Math.floor((cx*shape.branchSpread-rx-8)/2)*2,y=Math.floor((cy-ry-9)/2)*2;
    const canvas=document.createElement('canvas');canvas.width=Math.ceil((rx*2+18)/2)*2;canvas.height=Math.ceil((ry*2+20)/2)*2;
@@ -114,14 +173,14 @@ export function drawTreeFoliage(c,p,time,g={}){
  }
  const strength=vegetationWindStrength(g)*forestSettings.wind;
  c.save();c.imageSmoothingEnabled=false;
- layers.forEach((layer,i)=>{const motion=leafClusterMotion(p.x,p.y,time,i,strength),phase=((Math.floor(time*6*forestSettings.leafFlutter)+i+Math.floor(shape.seed||0))%4+4)%4;c.drawImage(leafTextureFrame(layer,phase),layer.x+Math.round(motion.x*forestSettings.canopySway),layer.y+Math.round(motion.y*forestSettings.canopySway));});
+ layers.forEach((layer,i)=>{if(!inTreeTier(i,tier))return;const motion=leafClusterMotion(p.x,p.y,time,i,strength),phase=((Math.floor(time*6*forestSettings.leafFlutter)+i+Math.floor(shape.seed||0))%4+4)%4;c.drawImage(leafTextureFrame(layer,phase),layer.x+Math.round(motion.x*forestSettings.canopySway),layer.y+Math.round(motion.y*forestSettings.canopySway));});
  c.restore();
 }
-export function paintTreeFoliage(c,p,time,g,onlyCluster=null){
+export function paintTreeFoliage(c,p,time,g,onlyCluster=null,tier){
  const type=treeType(p),season=treeSeason(p,g);if(season==='winter'&&leafHabit(p)==='deciduous')return;
  const autumn=season==='autumn'&&leafHabit(p)==='deciduous',colors=p.realmPalette==='shadow'?['#29233e','#4b3b65','#71608c','#a095ba']:autumn?['#534d35','#877139','#b5a148','#d6c96b']:type==='pine'?['#204b43','#326652','#54845f','#91aa73']:type==='birch'?['#355941','#527944','#83a151','#bdc97b']:['#234d39','#386d43','#668c47','#a5b962'];
- const seed=hash(p.x,p.y),sway=0;
- const clusters=foliageClusters(type);
+ const seed=hash(p.x,p.y),spread=treeStructure(p).branchSpread;
+ const clusters=foliageClusters(p);
  // Interlocking lobes carry broad shaded planes instead of horizontal stripes.
  const mass=(x,y,rx,ry,color,phase=0)=>{
   c.fillStyle=color;
@@ -132,8 +191,9 @@ export function paintTreeFoliage(c,p,time,g,onlyCluster=null){
   }
  };
  clusters.forEach(([cx,cy,rx,ry],i)=>{
-  if(onlyCluster!==null&&i!==onlyCluster)return;
-  const x=cx*treeStructure(p).branchSpread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
+  if((onlyCluster!==null&&i!==onlyCluster)||!inTreeTier(i,tier))return;
+  const x=cx*spread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
+  if(type==='maple'){paintMapleFoliageCluster(c,x,y,rx,ry,seed,i,season);return;}
   mass(x,y,rx,ry,colors[0],i);
   for(let n=0;n<5;n++){const a=n*1.3+i*.4;mass(x+Math.cos(a)*rx*.67,y+Math.sin(a)*ry*.62,rx*.4,ry*.46,colors[0],i+n);}
   mass(x-2,y-3,rx*.91,ry*.83,colors[1],i+10);
@@ -141,8 +201,8 @@ export function paintTreeFoliage(c,p,time,g,onlyCluster=null){
   mass(x-rx*.39,y-ry*.47,rx*.19,ry*.18,colors[3],i+32);
  });
  if(season==='winter')clusters.forEach(([cx,cy,rx,ry],i)=>{
-  if(onlyCluster!==null&&i!==onlyCluster)return;
-  const x=cx*treeStructure(p).branchSpread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
+  if((onlyCluster!==null&&i!==onlyCluster)||!inTreeTier(i,tier))return;
+  const x=cx*spread+(hash(i,seed)-.5)*4,y=cy+(hash(seed,i)-.5)*4;
   // Overlapping drifts follow individual branch tips, not wide horizontal slabs.
   // Their cool undersides and scalloped silhouettes are baked into the foliage cache.
   const lobes=Math.max(3,Math.round(rx/5));
@@ -158,24 +218,54 @@ export function paintTreeFoliage(c,p,time,g,onlyCluster=null){
 }
 const woodSprites=new Map();
 const WOOD_SPRITE_LIMIT=512;let woodHits=0,woodMisses=0;
-export function treeWoodCacheStats(){return {hits:woodHits,misses:woodMisses,entries:woodSprites.size,limit:WOOD_SPRITE_LIMIT,bytes:woodSprites.size*96*96*8};}
+export function treeWoodCacheStats(){
+ let bytes=0;
+ for(const entry of woodSprites.values())for(const part of ['trunk','branches','lower','upper']){
+  const sprite=entry[part];if(sprite)bytes+=sprite.width*sprite.height*4;
+ }
+ return {hits:woodHits,misses:woodMisses,entries:woodSprites.size,limit:WOOD_SPRITE_LIMIT,bytes};
+}
 function drawTreeWood(c,p,part){
- const paint=part==='trunk'?drawTreeTrunk:drawTreeBranches;
+ const tallPart=part==='lower'||part==='upper';
+ const paint=tallPart?(pen,prop)=>drawTallOakWood(pen,prop,part):part==='trunk'?drawTreeTrunk:drawTreeBranches;
  if(typeof document==='undefined'){paint(c,p);return;}
- const signature=[p.seed,p.x,p.y,treeType(p),p.realmPalette,forestSettings.branchSpread].join(':');
+ const signature=[p.seed,p.x,p.y,treeType(p),p.treeVariant,p.realmPalette,forestSettings.branchSpread].join(':');
  let entry=woodSprites.get(signature);
  if(!entry){woodMisses++;entry={signature};if(woodSprites.size>=WOOD_SPRITE_LIMIT)woodSprites.delete(woodSprites.keys().next().value);}
  else {woodHits++;woodSprites.delete(signature);}woodSprites.set(signature,entry);
+ const x=tallPart?56:48,y=tallPart?142:80;
  if(!entry[part]){
-  const canvas=document.createElement('canvas');canvas.width=96;canvas.height=96;
-  const pen=canvas.getContext('2d');pen.translate(48,80);paint(pen,p);entry[part]=canvas;
+  const canvas=document.createElement('canvas');canvas.width=x*2;canvas.height=y+16;
+  const pen=canvas.getContext('2d');pen.translate(x,y);paint(pen,p);entry[part]=canvas;
  }
- c.drawImage(entry[part],-48,-80);
+ c.drawImage(entry[part],-x,-y);
 }
-export function drawForestTree(c,p,time,g={}){
+let treeTierSurface;
+function drawTallTreeTier(c,p,time,g,tier){
+ const paint=pen=>{drawTreeWood(pen,p,tier);drawTreeFoliage(pen,p,time,g,tier);};
+ if(typeof document==='undefined'||c.globalAlpha===1){paint(c);return;}
+ // Fade the finished tier as one image so overlapping leaf clumps stay even.
+ if(!treeTierSurface){treeTierSurface=document.createElement('canvas');treeTierSurface.width=176;treeTierSurface.height=168;}
+ const pen=treeTierSurface.getContext('2d');
+ pen.setTransform(1,0,0,1,0,0);pen.clearRect(0,0,176,168);
+ pen.translate(88,156);paint(pen);c.drawImage(treeTierSurface,-88,-156);
+}
+
+export function drawForestTree(c,p,time,g={},tier){
  const b=treeBase(p),s=p.size/64;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(s,s);
  const shape=treeStructure(p);c.transform(shape.width,0,shape.lean,shape.height,0,0);
- drawSplitTree(c,p,()=>drawTreeWood(c,p,'trunk'),()=>{drawTreeWood(c,p,'branches');drawTreeFoliage(c,p,time,g);});c.restore();
+ if(isTwoTierForestTree(p)){
+  if(p.falling||p.fallen){
+   drawSplitTree(c,p,()=>{drawTreeWood(c,p,'lower');drawTreeRoots(c,p);},()=>{
+    drawTreeFoliage(c,p,time,g,'lower');drawTallTreeTier(c,p,time,g,'upper');
+   });
+  }else{
+   if(!tier||tier==='lower')drawTallTreeTier(c,p,time,g,'lower');
+   if(!tier||tier==='upper')drawTallTreeTier(c,p,time,g,'upper');
+   if(!tier||tier==='roots')drawTreeRoots(c,p);
+  }
+ }else drawSplitTree(c,p,()=>drawTreeWood(c,p,'trunk'),()=>{drawTreeWood(c,p,'branches');drawTreeFoliage(c,p,time,g);});
+ c.restore();
 }
 export function drawPalmTree(c,p,time){
  const b=palmBase(p),s=p.size/64;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(s,s);

@@ -7,7 +7,7 @@ import {drawForestBankBase,drawForestBankFlow} from './forest-art.mjs';
 const layers=new WeakMap(),wet=new Set(['water','shallow','bridge','floodbridge']);
 export function forestWaterLayer(g,bounds=null){
  const key=[g.seed,g.weather?.type||'',g.phase,!!g.house?.pools,g.terrain.join(',')].join(':');let layer=layers.get(g);
- if(!layer||layer.key!==key){const tiles=new Map();for(let i=0;i<2500;i++){const kind=waterAt(g,i%50*32+16,Math.floor(i/50)*32+16);if(wet.has(kind))tiles.set(i,{index:tiles.size,kind});}const columns=Math.max(1,Math.ceil(Math.sqrt(tiles.size))),canvas=document.createElement('canvas');canvas.width=columns*40;canvas.height=Math.max(1,Math.ceil(tiles.size/columns))*40;for(const slot of tiles.values()){slot.x=slot.index%columns*40;slot.y=Math.floor(slot.index/columns)*40;}const banks=document.createElement('canvas');banks.width=canvas.width;banks.height=canvas.height;const b=banks.getContext('2d');
+ if(!layer||layer.key!==key){const tiles=new Map();for(let i=0;i<2500;i++){const kind=waterAt(g,i%50*32+16,Math.floor(i/50)*32+16);if(wet.has(kind))tiles.set(i,{index:tiles.size,kind});}const columns=Math.max(1,Math.ceil(Math.sqrt(tiles.size))),canvas=document.createElement('canvas');canvas.width=columns*40;canvas.height=Math.max(1,Math.ceil(tiles.size/columns))*40;for(const slot of tiles.values()){slot.x=slot.index%columns*40;slot.y=Math.floor(slot.index/columns)*40;}const banks=document.createElement('canvas');banks.width=canvas.width;banks.height=canvas.height;
  layer={key,canvas,banks,tiles,frame:-1};layers.set(g,layer);}
  const frame=Math.floor((g.time||0)*30);
  const c=layer.canvas.getContext('2d');c.imageSmoothingEnabled=false;let visible=layer.tiles;

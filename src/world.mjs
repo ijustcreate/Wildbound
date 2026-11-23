@@ -5,6 +5,7 @@ import {iceWorld} from './ice-world.mjs';
 import {beachWorld} from './beach-world.mjs';
 import {contains} from './house-design.mjs';
 import {makeHouse,insideHouse} from './expansion.mjs';
+import {VILLA_OVERLOOK,hasOverlookGarden,inOverlookGround} from './overlook-maze-layout.mjs';
 import {BOARD_TABLE} from './board-table-geometry.mjs';
 import {createForestLandscape,createForestScenery} from './forest-landscape.mjs';
 import {palmBase} from './forest.mjs';
@@ -64,7 +65,7 @@ export function createScenery(seed = 0, environment = "forest") {
 export function generateWorld(seed, environment = "forest",options={}) {
   return {playground:null,realmState:null,forestLandscape:null,forestLandscapeVersion:0,graveyard:null,ravenFlocks:[],...generateWorldData(seed,environment,options)};
 }
-function generateWorldData(seed, environment,{authored=true}={}) {
+function generateWorldData(seed, environment,{authored=true,featuredTrees=true}={}) {
   const terrain = Array(2500).fill("grass");
   if(REALMS.includes(environment))return realmWorld(seed,environment);
   if(environment==='ice')return iceWorld(seed);
@@ -84,7 +85,8 @@ function generateWorldData(seed, environment,{authored=true}={}) {
       if(house.paths.some(r=>contains(r,px,py)))terrain[y*50+x]='path';
       if(house.pools.some(r=>contains(r,px,py)))terrain[y*50+x]='water';
     }
-    const scenery=createScenery(seed).filter(p=>!(p.x>288&&p.x<1312&&p.y>112&&p.y<1520));
+    const garden=hasOverlookGarden(house);
+    const scenery=createScenery(seed).filter(p=>!(p.x>288&&p.x<1312&&p.y>112&&p.y<1520)&&!(garden&&inOverlookGround(VILLA_OVERLOOK,p.x,p.y,28)));
     scenery.push(...createHouseShortGrass(seed,terrain,house));
     scenery.push(...house.trees.map((t,i)=>({...t,id:'yard:'+i,kind:'tree',procedural:true})));
     return {terrain,house,webs:[],scenery};
@@ -132,7 +134,7 @@ function generateWorldData(seed, environment,{authored=true}={}) {
   });
   if (environment === 'forest') {
     const forestLandscape = createForestLandscape(seed, terrain);
-    return {terrain, scenery: createForestScenery(seed, terrain, forestLandscape), forestLandscape, forestLandscapeVersion:3, house:null, webs:[]};
+    return {terrain, scenery: createForestScenery(seed, terrain, forestLandscape, {featuredTrees}), forestLandscape, forestLandscapeVersion:3, house:null, webs:[]};
   }
   return { terrain, scenery, forestLandscape:null, house:null, webs:[] };
 }

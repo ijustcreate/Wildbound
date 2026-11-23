@@ -4,16 +4,19 @@ export const hostileEnemy=e=>e&&e.hp>0&&!e.practiceTarget&&!e.wildlife&&!e.pet&&
 // Navigation goals only: attacks still aim at the real player and retain the
 // shared turn budget. Role slots survive deaths/reordering and serialize as data.
 export function enemyPursuitGoal(g,e,p){
- if(!hostileEnemy(e)||!g.players?.includes(p)||e.boss||e.cryptBoss||/boss|queen|dragon|reaper/.test(e.kind)||['windup','active'].includes(combatPhase(e)))return p;
- const peers=(g.enemies||[]).filter(a=>hostileEnemy(a)&&a.kind===e.kind&&(a.room??null)===(e.room??null)&&Math.abs((a.groundHeight||0)-(e.groundHeight||0))<16&&Math.hypot(a.x-e.x,a.y-e.y)<650&&(a.group===e.group||Math.hypot(a.x-e.x,a.y-e.y)<350));
+ if(!hostileEnemy(e)||e.ownerKey!=null||e.allyOwner!=null||!g.players?.includes(p)||e.boss||e.cryptBoss||/boss|queen|dragon|reaper/.test(e.kind)||['windup','active'].includes(combatPhase(e)))return p;
+ const peers=(g.enemies||[]).filter(a=>hostileEnemy(a)&&a.ownerKey==null&&a.allyOwner==null&&a.kind===e.kind&&(a.room??null)===(e.room??null)&&Math.abs((a.groundHeight||0)-(e.groundHeight||0))<16&&Math.hypot(a.x-e.x,a.y-e.y)<650&&(a.group===e.group||Math.hypot(a.x-e.x,a.y-e.y)<350));
  if(peers.length<2)return p;
+ if(peers.some(a=>a.pursuitTactic?.kind!==a.kind)){
  const used=new Set(peers.filter(a=>a.pursuitTactic?.kind===e.kind).map(a=>a.pursuitTactic.slot));
  for(const a of peers.slice().sort((a,b)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true}))){if(a.pursuitTactic?.kind===a.kind)continue;let slot=0;while(used.has(slot))slot++;a.pursuitTactic={kind:a.kind,slot};used.add(slot);}
- const slot=e.pursuitTactic.slot,role=['hunter','lead','intercept','flank'][slot%4];e.pursuitTactic.role=role;
+ }
+ const slot=e.pursuitTactic.slot,hasHunter=peers.some(a=>a.pursuitTactic.slot%4===0),role=!hasHunter&&slot===Math.min(...peers.map(a=>a.pursuitTactic.slot))?'hunter':['hunter','lead','intercept','flank'][slot%4];e.pursuitTactic.role=role;
  const now=g.time||0,m=p.enemyPursuitSample;
  if(!m)p.enemyPursuitSample={x:p.x,y:p.y,time:now,dx:0,dy:0};
  else if(now>m.time){const dt=now-m.time,dx=p.x-m.x,dy=p.y-m.y,d=Math.hypot(dx,dy);Object.assign(m,{x:p.x,y:p.y,time:now,dx:d>.05&&d/dt>5?dx/d:0,dy:d>.05&&d/dt>5?dy/d:0});}
- if(role==='hunter'||Math.hypot(p.x-e.x,p.y-e.y)<100)return p;
+ const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<100)e.pursuitTactic.engaged=true;else if(d>160)e.pursuitTactic.engaged=false;
+ if(role==='hunter'||e.pursuitTactic.engaged)return p;
  const sample=p.enemyPursuitSample,dx=sample.dx,dy=sample.dy,side=slot%2?1:-1;
  const lead=role==='lead'?128:role==='intercept'?64:0,lateral=role==='lead'?0:role==='intercept'?72:104;
  // Stationary players get a readable side approach, not omniscient prediction.

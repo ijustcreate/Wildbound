@@ -5,6 +5,7 @@ import {BOUNDLESS_GENERATION_VERSION,boundlessMap,naturalBoundlessTile,boundless
 import {applyAuthoredScenes,authoredPropsInRegion} from './world-authoring-runtime.mjs';
 import {translateShadowForestState} from './shadow-forest-layout.mjs';
 import {forestUnderstoryTask} from './forest-props.mjs';
+import {placeFeaturedForestTrees} from './forest-landscape.mjs';
 
 // Boundless worlds are streamed in fixed 50×50 tile regions. Only scenery
 // within one region of an active explorer is resident in the live simulation.
@@ -85,6 +86,7 @@ export function* createBoundlessChunkTask(g,cx,cy){
   if(kind==='palm')p.coconuts=1+Math.floor(random(lx+13,ly)*3);
   props.push(p);
  }
+ if(biome==='forest')placeFeaturedForestTrees(props,plan.seed);
  if(biome==='forest')for(let cell=0;cell<529;cell++){
   if(cell%23===0)yield;
   const ly=3+Math.floor(cell/23)*2,lx=3+(cell%23)*2;

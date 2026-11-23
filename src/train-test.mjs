@@ -18,6 +18,7 @@ import {structureBlocked,toggleDoor} from './expansion.mjs';
 import {tickDestruction} from './structure-destruction.mjs';
 import {tickTrainImpacts} from './train-impact.mjs';
 import {tickWildLandsContent,interactWildLandsSite,nearbyWildSite} from './wild-lands-content.mjs';
+import {interactOverlookChest} from './overlook-maze.mjs';
 import {tickPlayerIce} from './frost-prison.mjs';
 import {tickBroomFlight,dismountBroom} from './broom-mount.mjs';
 import {tickWingFlight} from './wing-flight.mjs';
@@ -102,7 +103,7 @@ export function leaveTrainCar(g,p,c,r){const t=g.trainTest,side=Math.sign(r.y||1
 function stand(t,c,r){const seat=trainInterior(t.design,c).find(o=>c.id+':'+o.id===r.seat);if(!seat){delete r.seat;return true;}for(const a of[(seat.facing||0)*Math.PI/2,0,Math.PI/2,Math.PI,Math.PI*1.5]){const x=seat.x+Math.cos(a)*(seat.w/2+12),y=seat.y+Math.sin(a)*(seat.h/2+12);if(!trainInteriorBlocked(t,c,x,y)){delete r.seat;r.x=x;r.y=y;return true;}}notice(t,'There is no room to stand beside this seat.');return false;}
 export function trainInteraction(g,p,cs=trainCars(g.trainTest)){
  const t=g.trainTest,r=p.trainRide,c=r?cs[r.car]:null;
- if(interactAlley(g,p)||openOwlCage(g,p)||interactWildLandsSite(g,p)||wildLandsInteract(g,p)||!r&&interactNativeIce(g,p))return true;
+ if(interactAlley(g,p)||openOwlCage(g,p)||interactOverlookChest(g,p)||interactWildLandsSite(g,p)||wildLandsInteract(g,p)||!r&&interactNativeIce(g,p))return true;
  if(!r){if(toggleDoor(g,p))return true;if(p.underBridge)return false;for(const car of cs){const q=trainLocal(car,p);if(doorAt(car,q)){if((p.jumpHeight||0)+(p.trainGround||0)<10+car.z){notice(t,'Jump onto the raised doorway to board.');return true;}const x=clamp(q.x,-car.length/2+16,car.length/2-16),y=Math.sign(q.y)*(car.width/2-16);if(trainInteriorBlocked(t,car,x,y))continue;p.trainRide={car:car.index,x,y};p.swimming=false;p.underBridge=false;p.trainDeck=false;p.trainGround=0;p.jumpHeight=0;p.jumpVelocity=0;p.jumpHeld=false;cue(g,'door',p);notice(t,'Boarded. Move through the carriage. Interact near seats, doors or the cab console.');return true;}}return false;}
  if(r.seat)return stand(t,c,r);
  const closeCup=closerTrainCocoa(g,p,cs);if(closeCup)return claimTrainCocoa(g,p,c.id+':'+closeCup.id);

@@ -1,32 +1,13 @@
 import {groundShadowPolygon} from './world-lighting.mjs';
-import {spriteToRgba} from './pixels.mjs';
-import lanternFrames from './winter-lantern-frames.mjs';
+import lanternRecipe from '../assets/pixel-recipes/winter-lantern.pixel.json' with {type:'json'};
+import {compilePixelRecipe,pixelRecipeFrameAt} from './pixel-recipe.mjs';
+import {drawPixelRecipe} from './pixel-recipe-canvas.mjs';
 
 const base=p=>({x:p.x,y:p.y+p.size*.19});
-const lanternLoopMs = lanternFrames.reduce((total, frame) => total + frame.duration, 0);
-const lanternCanvases = new WeakMap();
+const lantern=compilePixelRecipe(lanternRecipe);
 
 export function winterLanternFrame(time = 0) {
- let elapsed = Math.floor(Math.max(0, time) * 1000) % lanternLoopMs;
- for (const {duration, sprite} of lanternFrames) {
-  if (elapsed < duration) return sprite;
-  elapsed -= duration;
- }
- return lanternFrames[0].sprite;
-}
-
-function drawAnimatedWinterLantern(c, time) {
- const sprite = winterLanternFrame(time);
- let canvas = lanternCanvases.get(sprite);
- if (!canvas) {
-  canvas = typeof OffscreenCanvas === 'function'
-   ? new OffscreenCanvas(sprite.width, sprite.height)
-   : Object.assign(document.createElement('canvas'), {width: sprite.width, height: sprite.height});
-  canvas.getContext('2d').putImageData(new ImageData(spriteToRgba(sprite), sprite.width, sprite.height), 0, 0);
-  lanternCanvases.set(sprite, canvas);
- }
- c.imageSmoothingEnabled = false;
- c.drawImage(canvas, sprite.x, sprite.y);
+ return pixelRecipeFrameAt(lantern,time*1000);
 }
 
 export function winterLightSources(g){
@@ -46,7 +27,7 @@ export function drawWinterFixture(c,p,time=0){
  const poly=(points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};
  // This existing fixture is the animated one on the route from spawn to the lodge.
  if(p.kind==='winter_lantern'&&p.id==='winter:lantern:0'){
-  drawAnimatedWinterLantern(c,time);
+  drawPixelRecipe(c,lantern,time*1000);
  }else if(p.kind==='winter_lantern'){
   r(-9,-2,18,4,'#cbdde9');r(-4,-8,8,8,'#394455');r(-2,-43,4,38,'#344052');r(-1,-40,1,32,'#8091a1');
   r(-7,-55,14,13,'#322f35');r(-5,-53,10,9,'#d89145');r(-3,-52,6,8,'#ffe9a4');r(-1,-53,2,11,'#fff3bc');

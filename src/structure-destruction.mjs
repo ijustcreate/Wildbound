@@ -2,6 +2,7 @@ import {damageRailwayBridge} from './train-bridges.mjs';
 import {nearbyScenery} from './performance.mjs';
 import {setTreeFallDirection} from './tree-fall.mjs';
 import {propBase} from './environment.mjs';
+import {damageOverlookProjectile} from './overlook-maze.mjs';
 
 // Geometry remains authored as whole assets. Only damaged cells are serialized;
 // spatial indices, raster caches and cosmetic debris never enter a save/network snapshot.
@@ -123,6 +124,7 @@ export function damageStructureVehicle(g,bumper,speed,halfWidth){
 export function damageStructureProjectile(g,bolt){
   if(!(bolt.structureCharge>=.5)||bolt.healing||bolt.friendship)return false;
   const radius=(bolt.size||6)/2;
+  if(damageOverlookProjectile(g,bolt,radius))return true;
   for(const b of query(g,bolt.x,bolt.y,radius))for(const {n} of cells(b,bolt.x,bolt.y,radius))
     if(!b.sectionDamage?.[n]?.broken)return damageCell(g,b,n,bolt.damage,bolt.vx/260,bolt.vy/260);
   return false;

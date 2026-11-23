@@ -1,5 +1,6 @@
 const {app,BrowserWindow}=require('electron'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..'),version=require('../package.json').version,base=path.resolve(process.argv[2]||path.join(root,'dist','web-'+version));
+const root=path.resolve(__dirname,'..'),sourceVersion=require('../package.json').version,base=path.resolve(process.argv[2]||path.join(root,'dist','web-'+sourceVersion));
+const {version}=JSON.parse(fs.readFileSync(path.join(base,'web-build.json'),'utf8'));
 const out=path.join(root,'test-output','web-'+version);fs.mkdirSync(out,{recursive:true});app.disableHardwareAcceleration();app.setPath('userData',fs.mkdtempSync(path.join(out,'profile-')));
 const prefix='/Wildbound/releases/'+version+'/',missing=[],mime={'.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.html':'text/html','.json':'application/json','.png':'image/png','.mp3':'audio/mpeg','.ogg':'audio/ogg','.wav':'audio/wav','.webp':'image/webp'};
 const server=http.createServer((req,res)=>{

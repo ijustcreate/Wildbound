@@ -2,6 +2,7 @@ import {nearbyScenery} from './performance.mjs';
 import {BOARD_TABLE,boardLightVolumes} from './board-table-geometry.mjs';
 import {realmAsset} from './realm-layout.mjs';
 import {pointLightVisibility} from './realtime-shadows.mjs';
+import {isTwoTierForestTree,twoTierForestTreeHeight,treeStructure} from './forest-tree-art.mjs';
 
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 export const lightOwner=p=>p.lightOwner??(p.id!==undefined?`prop:${p.id}`:`prop:${p.kind}:${p.x}:${p.y}`);
@@ -9,16 +10,17 @@ const geometryCache=new WeakMap();
 const geometryFields=['id','kind','size','x','y','rootY','width','depth','height','lightHeight','lightOpacity','lightBlocker','fallen','falling','depleted','destroyed'];
 export function propLightGeometry(p){
  if(p.lightGeometry)return p.lightGeometry;
+ const tallHeight=isTwoTierForestTree(p)?twoTierForestTreeHeight(p):0;
  let slot=geometryCache.get(p);
- if(!slot||geometryFields.some((n,i)=>p[n]!==slot.values[i])){slot={values:geometryFields.map(n=>p[n]),geometry:buildPropLightGeometry(p)};geometryCache.set(p,slot);}
+ if(!slot||slot.tallHeight!==tallHeight||geometryFields.some((n,i)=>p[n]!==slot.values[i])){slot={tallHeight,values:geometryFields.map(n=>p[n]),geometry:buildPropLightGeometry(p,tallHeight)};geometryCache.set(p,slot);}
  return slot.geometry;
 }
-function buildPropLightGeometry(p){
+function buildPropLightGeometry(p,tallHeight){
  if(p.lightGeometry)return p.lightGeometry;
  const size=p.size||64,kind=String(p.kind||'').toLowerCase();
  const type=realmAsset(kind)?.type,tree=type==='tree'||/tree|palm|pine|cedar/.test(kind),bush=/bush|shrub|hedge/.test(kind);
  const rootY=Number.isFinite(p.rootY)?p.rootY:p.y+size*(tree&&kind!=='palm'?.35:.19),owner=lightOwner(p);
- const height=Math.max(2,p.lightHeight||p.height||size*(tree?1.05:bush?.65:.42));
+ const height=Math.max(2,p.lightHeight||p.height||tallHeight||size*(tree?1.05:bush?.65:.42));
  const rx=Math.max(3,(p.width||size)*.44),ry=Math.max(3,(p.depth||size*.4)*.5);
  const base={owner,x:p.x,y:rootY,rx,ry,minZ:0,maxZ:height,opacity:p.lightOpacity??1};
  if(p.depleted||p.destroyed||p.lightBlocker===false)return {owner,x:p.x,y:rootY,height,rx,ry,tree,volumes:[]};
@@ -26,7 +28,11 @@ function buildPropLightGeometry(p){
  if(tree){
   const trunk={...base,rx:Math.max(3,size*.065),ry:Math.max(3,size*.06),maxZ:p.fallen||p.falling?size*.1:height*.82,shape:'cylinder'};
   volumes=[trunk];
-  if(!p.fallen&&!p.falling&&!/leafless|dead/.test(kind))volumes.push({...base,y:rootY-size*.035,rx:size*(kind==='palm'?.57:.47),ry:size*.3,minZ:height*.48,maxZ:height,shape:'ellipsoid',opacity:.96});
+  if(!p.fallen&&!p.falling&&!/leafless|dead/.test(kind)){
+   const crown={...base,y:rootY-size*.035,rx:size*(kind==='palm'?.57:.47),ry:size*.3,minZ:height*(tallHeight?.27:.48),maxZ:height*(tallHeight?.65:1),shape:'ellipsoid',opacity:.96};
+   volumes.push(crown);
+   if(tallHeight)volumes.push({...crown,rx:size*.37,ry:size*.25,minZ:height*.59,maxZ:height});
+  }
  }else if(type==='arch'){
   volumes=[-.35,.35].map(dx=>({...base,x:p.x+size*dx,rx:size*.08,ry:size*.06,maxZ:size*.65,shape:'cylinder'}));
  }else if(['rock','mineral','crystal','log'].includes(type)||p.lightBlocker===true||/rock|boulder|stone|ruin|pillar|spire|cactus|log|stump|cache|chest|grave|tomb|sarcoph|crate|barrel/.test(kind)||bush){
@@ -122,14 +128,15 @@ export class WorldLightRenderer{
   // not merely light count. Reuse textures without resetting their backing store.
   while(this.groundSlots?.size>256||this.groundBytes>8*1024*1024){const key=this.groundSlots.keys().next().value;this.groundBytes-=this.groundSlots.get(key).bytes;this.groundSlots.delete(key);}
  }
- drawProp(ctx,prop,paint,frame){
+ drawProp(ctx,prop,paint,frame,tier){
   if(!frame?.sources.length||prop.falling||prop.burning)return paint(ctx);
   const geometry=propLightGeometry(prop);
   const power=s=>Math.max(0,1-Math.hypot(s.x-geometry.x,s.y-geometry.y)/((s.radius||1)+geometry.height))*(s.intensity??1);
   const lights=frame.sources.filter(s=>power(s)>0).sort((a,b)=>power(b)-power(a)).slice(0,2);
   if(!lights.length||!geometry.volumes.length)return paint(ctx);
-  const owner=geometry.owner,clock=/tree|palm|bush|shrub|mangrove|cypress/.test(prop.kind)?Math.floor(frame.time*8):0;
-  const signature=[prop.kind,prop.lightMaterial,prop.size,prop.width,prop.height,prop.depth,prop.x,prop.y,prop.rootY,prop.fallen,prop.depleted,prop.chipped,prop.treeType,prop.treeVariantSeed,prop.season,prop.seed,prop.harvest,prop.surfaceArtKey,JSON.stringify(prop.sectionDamage||{})].join(':');
+  const owner=tier?`${geometry.owner}:${tier}`:geometry.owner,clock=/tree|palm|bush|shrub|mangrove|cypress/.test(prop.kind)?Math.floor(frame.time*8):0;
+  const variantShape=isTwoTierForestTree(prop)?treeStructure(prop):null;
+  const signature=[prop.kind,prop.lightMaterial,prop.size,prop.width,prop.height,prop.depth,prop.x,prop.y,prop.rootY,prop.fallen,prop.depleted,prop.chipped,prop.treeType,prop.treeVariant,prop.treeVariantSeed,prop.season,prop.seed,prop.harvest,prop.surfaceArtKey,variantShape?.height,variantShape?.width,variantShape?.branchSpread,JSON.stringify(prop.sectionDamage||{})].join(':');
   if(this.frame!==frame||this.frameTime!==frame.time){
    this.frame=frame;this.frameTime=frame.time;this.frameIndex++;this.propUpdates=0;this.propUpdateMs=0;
    // Offscreen/evicted work cannot hold up the visible FIFO.
@@ -138,7 +145,14 @@ export class WorldLightRenderer{
   let entry=this.props.get(owner);
   if(entry?.signature!==signature){if(entry)this.bytes-=entry.bytes;entry=null;this.props.delete(owner);}
   if(!entry){
-   const radius=Math.max(40,(prop.size||64)*1.4,(prop.width||0)+(prop.height||0)),bounds=prop.lightBounds||{x:prop.x-radius,y:prop.y-radius,width:radius*2,height:radius*2};
+   const radius=Math.max(40,(prop.size||64)*1.4,(prop.width||0)+(prop.height||0));
+   let bounds=prop.lightBounds||{x:prop.x-radius,y:prop.y-radius,width:radius*2,height:radius*2};
+   if(variantShape&&!prop.lightBounds&&!prop.fallen){
+    const scale=prop.size/64,half=(76*variantShape.width+154*Math.abs(variantShape.lean))*scale;
+    const height=twoTierForestTreeHeight(prop),above=tier==='roots'?14*scale:height*(tier==='lower'?.69:1.02);
+    const below=tier==='upper'?-height*.55:18*scale;
+    bounds={x:prop.x-half,y:geometry.y-above,width:half*2,height:above+below};
+   }
    const scale=Math.min(1,384/Math.max(bounds.width,bounds.height));
    const canvas=document.createElement('canvas');canvas.width=Math.ceil(bounds.width*scale);canvas.height=Math.ceil(bounds.height*scale);
    const original=document.createElement('canvas');original.width=canvas.width;original.height=canvas.height;

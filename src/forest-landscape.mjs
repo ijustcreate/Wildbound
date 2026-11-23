@@ -5,6 +5,7 @@ import OverlappingModel from './vendor/wfc/overlapping-model.mjs';
 import {createForestTallGrass} from './tall-grass.mjs';
 import {vegetationWind} from './vegetation-motion.mjs';
 import {createForestUnderstory} from './forest-props.mjs';
+import {treeType as renderedTreeType} from './forest-tree-art.mjs';
 
 export const forestHash = (x, y = 0) => {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -169,7 +170,36 @@ export function forestRuinProps(plan, terrain) {
   return props;
 }
 
-export function createForestScenery(seed, terrain, plan) {
+export function placeFeaturedForestTrees(scenery, seed) {
+  if (forestSettings.season === 'winter' || forestSettings.oakWeight === 0) return;
+  // Dress existing oaks, so trails, root footprints and saved prop IDs stay stable.
+  const oaks = scenery.filter(p => p.kind === 'tree' && renderedTreeType(p) === 'oak');
+  if (oaks.length < 8) return;
+  const tallTarget = Math.min(2, Math.ceil(oaks.length / 35));
+  const mapleTarget = Math.min(3, Math.ceil(oaks.length / 22));
+  const tallSize = Math.max(...oaks.map(p => p.size)) * .83;
+  const candidates = oaks.map(p => ({p, rank: forestHash(p.x + seed, p.y + 537)}))
+    .sort((a, b) => a.rank - b.rank);
+  const featured = [];
+  let tall = 0, maples = 0;
+  for (const {p} of candidates) {
+    const y = p.rootY ?? p.y + p.size * .35;
+    if (featured.some(q => Math.hypot(q.x - p.x, q.y - y) < 170)) continue;
+    if (tall < tallTarget && p.size >= tallSize) {
+      p.treeType = 'oak';
+      p.treeVariant = 'two-tier';
+      tall++;
+    } else if (maples < mapleTarget) {
+      p.treeType = 'maple';
+      p.autumnAccent = true;
+      maples++;
+    } else continue;
+    featured.push({x:p.x, y});
+    if (tall === tallTarget && maples === mapleTarget) break;
+  }
+}
+
+export function createForestScenery(seed, terrain, plan, {featuredTrees = false} = {}) {
   const scenery = forestRuinProps(plan, terrain);
   for (let cy = 1; cy < 33; cy++) for (let cx = 1; cx < 33; cx++) {
     const x = cx * 48 + (forestHash(cx + seed, cy) - .5) * 34;
@@ -189,6 +219,7 @@ export function createForestScenery(seed, terrain, plan) {
       kind:tree?(treeType==='palm'?'palm':treeType==='snow'?'snow_tree':treeType==='bare'?'leafless_tree':'tree'):kind, size, treeType:treeType==='snow'?'pine':treeType==='bare'?'oak':treeType,
       ...(tree && grove > .54 && grove < .64 ? {autumnAccent: true} : {}), procedural: true});
   }
+  if (featuredTrees) placeFeaturedForestTrees(scenery, seed);
   for (let y = 32; y < 1570; y += 18) for (let x = 32; x < 1570; x += 18) {
     const px = x + forestHash(x, y + seed) * 15, py = y + forestHash(y, x + seed) * 15;
     if (tile(terrain, px, py) !== 'grass' || routeDistance(plan, px, py) < 28 || clearingDistance(px, py, seed) < .92) continue;

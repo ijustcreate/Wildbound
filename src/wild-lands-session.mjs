@@ -6,7 +6,7 @@ const TRAIN_PROGRESS=[
  'distance','speed','throttle','engine','time','driver','doors','roof','derailed','emergencyBrake',
  'autoStationStop','requestedStop','lastArrivalKey','lastStationStop','passengerRest','conductor',
  'conductorSpeech','studentConversations','studentSpeech','studentFrogs','alleyActors','alleyMerchants',
- 'alleyOpened','alleyOpenedAt','alleyReturn','wildLandsReturn','damagedBuildings','destructionRevision',
+ 'alleyOpened','alleyOpenedAt','alleyReturn','wildLandsReturn','damagedBuildings','destructionRevision','overlookMaze',
 ];
 
 export function snapshotWildLands(train) {

@@ -30,7 +30,8 @@ export function refineNativeLocomotion(model,shipping,importGait){
   // retarget. Match both that archived original and its exact fitted runtime
   // version, so an editor change made before or after retargeting stays intact.
   const sharedRun=action==='run'&&clipFingerprint(target.nativeHumanoidSource?.preservedClips?.run)==='713d796f'&&clipFingerprint(current)==='2d65367';
-  if(generated||lastWalk||sharedRun)clips[action]=importGait(target,action);
+  const replaceStock=generated||lastWalk||sharedRun;
+  if(replaceStock||Number.isFinite(current?.stride))clips[action]=importGait(target,action,replaceStock?undefined:current);
  }
  if(clips.walk===target.clips.walk&&clips.run===target.clips.run)return target;
  return {...target,locomotionRevision:2,clips};

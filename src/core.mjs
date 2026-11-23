@@ -102,6 +102,8 @@ import { initializeField, record, tickField } from "./field-systems.mjs";
 import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
 import {damageStructureMelee,damageSupplyChestMelee} from './structure-destruction.mjs';
+import {overlookNorth} from './overlook-maze-layout.mjs';
+import {damageOverlookMelee} from './overlook-maze.mjs';
 import {VILLAGER_EVENT,spawnVillagerCamp,tickVillagers} from './villagers.mjs';
 import {NPC_QUEST_EVENT} from './npc-quest-data.mjs';
 import {spawnQuestNpc,tickNpcQuests,recordNpcQuestKill} from './npc-quests.mjs';
@@ -595,10 +597,10 @@ for (const event of EVENTS) {
 import {enemyCanSeeTarget,forgetHiddenTarget} from './enemy-sight.mjs';
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-export function cameraTarget(players, w, h, reveal = null, mapMode='bounded') {
+export function cameraTarget(players, w, h, reveal = null, mapMode='bounded', north=0) {
   if (reveal) {
-    const party = cameraTarget(players,w,h,null,mapMode);
-    const event = cameraTarget([...players,reveal],w,h,null,mapMode);
+    const party = cameraTarget(players,w,h,null,mapMode,north);
+    const event = cameraTarget([...players,reveal],w,h,null,mapMode,north);
     // Never sacrifice party visibility to frame a distant event. Reveal at most
     // 15% more world, centered on the party, rather than the faraway spawn.
     return {...party,zoom:Math.max(party.zoom*.85,event.zoom)};
@@ -627,9 +629,9 @@ export function cameraTarget(players, w, h, reveal = null, mapMode='bounded') {
         ? CENTER
         : clamp((minX + maxX) / 2, halfW, WORLD - halfW),
     y: mapMode==='boundless'?(minY+maxY)/2:
-      halfH > WORLD / 2
-        ? CENTER
-        : clamp((minY + maxY) / 2, halfH, WORLD - halfH),
+      halfH > (WORLD - north) / 2
+        ? (WORLD + north) / 2
+        : clamp((minY + maxY) / 2, north + halfH, WORLD - halfH),
     zoom,
   };
 }
@@ -649,6 +651,7 @@ export function expeditionCameraTarget(game, w, h) {
     Math.max(130, h - 85),
     uiOpen ? null : game.reveal,
     game.mapMode,
+    overlookNorth(game),
   );
 }
 export class Game {
@@ -749,7 +752,7 @@ export class Game {
     return (
       (this.mapMode!=='boundless'&&x - radius < 0) ||
       (this.mapMode!=='boundless'&&x + radius >= WORLD) ||
-      (this.mapMode!=='boundless'&&y + 14 - radius < 0) ||
+      (this.mapMode!=='boundless'&&y + 14 - radius < overlookNorth(this)) ||
       (this.mapMode!=='boundless'&&y + 14 + radius >= WORLD) ||
       this.blocked(x, y, radius, false, true,false,this.house?0:14,0,true)
     );
@@ -779,12 +782,13 @@ export class Game {
     const oldX = actor.x,
       oldY = actor.y,
       steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 3));
+    const north = overlookNorth(this);
     for (let i = 0; i < steps; i++) {
       const x = this.mapMode==='boundless'?actor.x+dx/steps:clamp(actor.x + dx / steps, 24, WORLD - 24);
       const hostile = this.mapMode==='boundless' && this.enemies.includes(actor) && !['ally','neutral'].includes(actor.faction);
       const outsideSanctuary = (x - CENTER) ** 2 + (actor.y - CENTER) ** 2 >= BOUNDLESS_SAFE_RADIUS ** 2;
       if ((!hostile||outsideSanctuary) && !(actor.vehicleId?vehicleColliderBlocked(this,actor,x,actor.y):this.blocked(x, actor.y, actorRadius(collider), flying,canSwim,false,collisionOffset(this,collider),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor))) actor.x = x;
-      const y = this.mapMode==='boundless'?actor.y+dy/steps:clamp(actor.y + dy / steps, 24, WORLD - 24);
+      const y = this.mapMode==='boundless'?actor.y+dy/steps:clamp(actor.y + dy / steps, north + 24, WORLD - 24);
       const outsideSanctuaryY = (actor.x - CENTER) ** 2 + (y - CENTER) ** 2 >= BOUNDLESS_SAFE_RADIUS ** 2;
       if ((!hostile||outsideSanctuaryY) && !(actor.vehicleId?vehicleColliderBlocked(this,actor,actor.x,y):this.blocked(actor.x, y, actorRadius(collider), flying,canSwim,false,collisionOffset(this,collider),(actor.groundHeight||0)+(actor.jumpHeight||0),false,actor))) actor.y = y;
     }
@@ -1094,7 +1098,8 @@ export class Game {
     const playHit=!isCharmed(p)&&hitPlayground(this,p,spin?96:melee.range,spin);
     const toyHit=!isCharmed(p)&&hitToyTrain(this,p,spin?96:melee.range);
     const structureWeapon=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword');
-    const structureHit=!isCharmed(p)&&(damageSupplyChestMelee(this,p,damage,spin?96:melee.range,spin)||structureWeapon&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin));
+    const hedgeHit=!isCharmed(p)&&blade&&damageOverlookMelee(this,p,damage,spin?96:melee.range,spin);
+    const structureHit=hedgeHit||!isCharmed(p)&&(damageSupplyChestMelee(this,p,damage,spin?96:melee.range,spin)||structureWeapon&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin));
     stickHit=grassHit||!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
     if(structureHit||toyHit||playHit){stickHit=true;this.persist();}
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
@@ -1740,7 +1745,7 @@ export class Game {
         beh = cfg?.behaviors || {};
       const aiKind = cfg?.aiKind || e.kind;
       if (cfg?.faction === "neutral") continue;
-      if(!this.trainTest&&this.mapMode!=='boundless'){e.x = clamp(e.x, 24, WORLD - 24);e.y = clamp(e.y, 24, WORLD - 24);}
+      if(!this.trainTest&&this.mapMode!=='boundless'){e.x = clamp(e.x, 24, WORLD - 24);e.y = clamp(e.y, overlookNorth(this) + 24, WORLD - 24);}
       e.flash = Math.max(0, e.flash - dt);
       e.summonPulse = Math.max(0, (e.summonPulse || 0) - dt);
       if (e.maxMana) e.mana = Math.min(e.maxMana, (e.mana ?? e.maxMana) + dt * (e.manaRegen ?? 5));
