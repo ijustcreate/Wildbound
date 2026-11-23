@@ -16,11 +16,20 @@ function validate(record){
 }
 exports.createWorldStore=(root)=>{
   const folder=id=>path.join(root,safe(id));
+  async function readSnapshot(file){
+    const record=validate(JSON.parse(await fs.readFile(file,'utf8')));
+    const {validateWorldState}=await import('./src/world-simulation.mjs');
+    validateWorldState(record.session.state.localWorld);
+    return record;
+  }
+  const loadBackup=id=>readSnapshot(path.join(folder(id),'save.snapshot.bak'));
   async function load(id){
-    const file=path.join(folder(id),'save.snapshot');
     let first;
-    try{return validate(JSON.parse(await fs.readFile(file,'utf8')));}catch(e){first=e;}
-    try{return validate(JSON.parse(await fs.readFile(file+'.bak','utf8')));}catch{if(first.code==='ENOENT')return null;throw first;}
+    try{return await readSnapshot(path.join(folder(id),'save.snapshot'));}catch(e){first=e;}
+    try{return await loadBackup(id);}catch(backupError){
+      if(first.code==='ENOENT'&&backupError.code==='ENOENT')return null;
+      throw first.code==='ENOENT'?backupError:first;
+    }
   }
   async function list(){
     await fs.mkdir(root,{recursive:true});const result=[];
@@ -33,7 +42,7 @@ exports.createWorldStore=(root)=>{
     validate(record);const body=structuredClone(record),dir=folder(record.id),file=path.join(dir,'save.snapshot');
     const task=(queues.get(file)||Promise.resolve()).catch(()=>{}).then(async()=>{
       await fs.mkdir(dir,{recursive:true});
-      try{const previous=validate(JSON.parse(await fs.readFile(file,'utf8')));await atomic(file+'.bak',previous);}catch{}
+      try{const previous=await readSnapshot(file);await atomic(file+'.bak',previous);}catch{}
       await atomic(file,body);
       const s=body.session.state.localWorld;
       await atomic(path.join(dir,'world.json'),{version:1,id:s.id,name:s.name,seed:s.seed,pack:s.pack,seconds:s.seconds,savedAt:body.savedAt});
@@ -44,5 +53,5 @@ exports.createWorldStore=(root)=>{
       return {ok:true,path:dir};
     });queues.set(file,task);return task;
   }
-  return {load,list,save,root};
+  return {load,loadBackup,list,save,root};
 };

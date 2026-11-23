@@ -310,6 +310,7 @@ export function replaceTigerMotion(m) {
 export function lionAction(actor) {
   if (actor.animationAction)
     return actor.animationAction === "attack" ? "bite" : actor.animationAction;
+  if(actor.hp>0&&actor.combatRole==='charger'&&actor.tactics?.phase==='stagger')return 'hurt';
   if (actor.flash > 0 || actor.hit > 0) return "hurt";
   if(actor.jumpHeight>0)return "pounce";
   if (actor.state === "windup") return "windup";
@@ -333,13 +334,21 @@ export function lionFrame(actor, time, model = lionMotion) {
     const duration =
       actor.motionDuration ||
       { windup: 0.65, pounce: 0.48, recover: 0.65 }[action];
-    return (
-      Math.max(0, Math.min(1, 1 - (actor.timer || 0) / duration)) *
-      (clip.length - 1)
-    );
+    let progress=Math.max(0,Math.min(1,1-(actor.timer||0)/duration));
+    if(actor.combatRole==='charger'&&actor.tactics){
+      const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+      if(action==='windup')progress=smooth(progress/.8);
+      if(action==='recover')progress=smooth((progress-.48)/.52);
+    }
+    return progress*(clip.length-1);
   }
   if (action === "bite")
     return Math.max(0, 1 - (actor.attack || 0) / 0.34) * (clip.length - 1);
+  if (action === "hurt")
+    if(actor.combatRole==='charger'&&actor.tactics?.phase==='stagger'){
+      const t=Math.max(0,Math.min(1,(1-actor.tactics.remaining/actor.tactics.duration-.6)/.4));
+      return (.25+.75*t*t*(3-2*t))*(clip.length-1);
+    }
   if (action === "hurt")
     return (
       Math.max(0, 1 - (actor.flash || actor.hit || 0) / 0.2) * (clip.length - 1)
@@ -354,9 +363,15 @@ export function drawLion(
   suppliedPose = null,
 ) {
   const direction = facingIndex(actor.faceX, actor.faceY),
-    pose =
+    basePose =
       suppliedPose ||
       poseAt(model, lionAction(actor), lionFrame(actor, time, model));
+  const pose=actor.combatRole==='charger'&&actor.tactics&&!actor.animationAction&&!suppliedPose?Object.fromEntries(Object.entries(basePose).map(([n,v])=>[n,[...v]])):basePose;
+  if(actor.combatRole==='charger'&&actor.tactics?.phase==='recover'&&!actor.animationAction&&!suppliedPose){
+    const t=Math.max(0,Math.min(1,1-actor.tactics.remaining/actor.tactics.duration)),wall=actor.roleMind?.lastRush==='wall';
+    const recoil=wall?Math.sin(Math.min(1,t/.3)*Math.PI)*2:0,breath=Math.sin(time*8)*.2*(1-t);
+    for(const [n,v]of Object.entries(pose))if(/^(head|neck|ear|eye|muzzle|face|nose|jaw)/.test(n)){v[1]-=recoil;v[2]+=breath;}
+  }
   const p = Object.fromEntries(
       Object.entries(pose).map(([n, v]) => [n, projectPoint(v, direction)]),
     ),

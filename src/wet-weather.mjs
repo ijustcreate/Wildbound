@@ -3,6 +3,13 @@ import {terrainHash} from './world.mjs';
 const states=new WeakMap();
 export function clearWetWeather(g){states.delete(g);}
 export const rainActive=g=>['monsoon','thunderstorm'].includes(g.weather?.type);
+export function weatherIntensity(g){
+ const w=g.weather;if(!w)return 0;
+ const life=Math.max(0,w.life??0),duration=Math.max(life,w.duration||45),elapsed=Math.max(0,duration-life);
+ const fade=Math.min(1,elapsed/2.5,life/3.5),t=g.time||0;
+ const gust=.78+.15*Math.sin(t*.31+(g.seed||0)*.0007)+.07*Math.sin(t*.83);
+ return Math.max(0,Math.min(1,(w.intensity||1)/1.4*gust*fade));
+}
 export function sheltered(g,a){return !!a.room||(g.house?.floors||[]).some(f=>a.x>=f.x&&a.x<f.x+f.w&&a.y>=f.y&&a.y<f.y+f.h);}
 export function rainExposed(g,a){return rainActive(g)&&!sheltered(g,a);}
 export function wetWeatherState(g){let s=states.get(g);if(!s||s.seed!==g.seed||s.terrain!==g.terrain){s={seed:g.seed,terrain:g.terrain,actors:new WeakMap(),drops:[],puddles:[],timer:0};states.set(g,s);}return s;}

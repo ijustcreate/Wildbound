@@ -44,7 +44,9 @@ export function create(o) {
         }
     },
   });
-  let t = 0;
+  // Gameplay is triggered at actual water contact; skip the gallery's falling
+  // stone lead-in and show the crown on the very first rendered frame.
+  let t = o.gameplay ? HIT + 0.035 : 0;
   const done = new Set(), once = (key, at) => !done.has(key) && t >= at && done.add(key);
   // the lip isn't level: it rises and dips round the crown
   const scallop = (a, h) => h * (0.86 + 0.14 * noise(Math.cos(a) * 2.2 + Math.sin(a) * 1.3 + phi * 3, o.seed));

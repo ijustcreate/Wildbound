@@ -1,7 +1,9 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import { rules } from "./definitions.mjs";
 import { clearShot, navigateEnemy } from "./navigation.mjs";
 import { creatureCue } from "./sound-bank.mjs";
 import { dreadmaneLionMotion } from "./dreadmane-lion-motion.mjs";
+import { chargeRecoveryTime, openChargeCounter } from './counterattack.mjs';
 
 export const DREADMANE_EVENT = Object.freeze({
   name: "The Dreadmane wakes",
@@ -12,7 +14,7 @@ export const DREADMANE_EVENT = Object.freeze({
   damage: 18,
   weight: 3,
   verse: "A golden mane begins to rise.\nA thunderous warning fills the skies.",
-  tip: "Leave the amber circle before the roar. Dodge across the pounce trail. Its claw attack has TWO swings; punish the recovery.",
+  tip: "Leave the amber circle before the roar. Dodge or catch the pounce, then strike the opening. Its claw attack has TWO swings.",
 });
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -40,14 +42,11 @@ function face(e, p) {
   e.faceX = (p.x - e.x) / d;
   e.faceY = (p.y - e.y) / d;
 }
+function canDamage(g, e, p) {
+  return e.damage > 0 && p.hp > 0 && (p.jumpHeight || 0) <= 22 && clearShot(g, e, p);
+}
 function damage(g, e, p, mult = 1) {
-  if (
-    !(e.damage > 0) ||
-    p.hp <= 0 ||
-    (p.jumpHeight || 0) > 22 ||
-    !clearShot(g, e, p)
-  )
-    return false;
+  if (!canDamage(g, e, p)) return false;
   const before = p.hp;
   g.hurt(p, e.damage * mult, e);
   return p.hp < before;
@@ -67,6 +66,7 @@ function pounceStep(g, e, targets, from, to, stats) {
   const seconds = Math.max(0, Math.min(to, 0.96) - Math.max(from, 0.25));
   let remaining =
     (stats.dashSpeed || 265) * seconds * (e.rooted > 0 ? 0.45 : 1);
+  e.dreadPounceContact ??= e.dreadHits.length > 0;
   while (remaining > 0 && !e.dreadBlocked) {
     const step = Math.min(8, remaining),
       x = e.x,
@@ -86,7 +86,10 @@ function pounceStep(g, e, targets, from, to, stats) {
         Math.hypot(p.x - x - dx * t, p.y - y - dy * t) < 34
       ) {
         e.dreadHits.push(p.id);
-        damage(g, e, p, 1.35);
+        if (!canDamage(g, e, p)) continue;
+        const before = p.hp, impact = g.hurt(p, e.damage * 1.35, e, {charge:true});
+        if (impact === 'caught') return p;
+        if (impact === 'blocked' || impact === 'hit' || p.hp < before) e.dreadPounceContact = true;
       }
     }
     if (moved < step * 0.4) e.dreadBlocked = true;
@@ -205,8 +208,18 @@ export function tickDreadmaneLion(
       behaviors.melee !== false
     )
       swing(g, e, possible, stats);
-    if (active === "pounce" && behaviors.dash !== false)
-      pounceStep(g, e, possible, before, after, stats);
+    if (active === "pounce" && behaviors.dash !== false) {
+      const blocker = pounceStep(g, e, possible, before, after, stats);
+      if (blocker || after >= total) {
+        const opening = blocker ? 'caught' : e.dreadPounceContact ? null : 'missed';
+        const owner = blocker || possible.find(target => target.id === e.dreadPounceTargetId) || p;
+        recover(e, chargeRecoveryTime(opening, .8));
+        if (opening) openChargeCounter(g, e, owner, opening);
+        delete e.dreadPounceContact;
+        delete e.dreadPounceTargetId;
+      }
+      return;
+    }
     if (after < total) return;
     // At most one transition per update; a long frame never skips telegraphing
     // the second claw or the crouch. Its next action starts at frame zero.
@@ -214,6 +227,8 @@ export function tickDreadmaneLion(
     else if (active === "cower" && p && behaviors.dash !== false) {
       begin(e, "pounce");
       e.dreadBlocked = false;
+      e.dreadPounceContact = false;
+      e.dreadPounceTargetId = e.groupTurn?.targetId ?? p.id;
     } else if (active === "sleep_down") begin(e, "sleep");
     else if (active === "sleep" && !p) {
       e.dreadAge = 0;
@@ -244,7 +259,7 @@ export function tickDreadmaneLion(
     visible &&
     behaviors.melee !== false &&
     e.dreadRoarCooldown <= 0 &&
-    d <= (stats.roarRange || 125)
+    d <= (stats.roarRange || 125) && requestEnemyGroupTurn(g,e,p)
   ) {
     e.dreadRoarCooldown = stats.roarCooldown || 8;
     begin(e, "roar");
@@ -254,7 +269,7 @@ export function tickDreadmaneLion(
     visible &&
     behaviors.melee !== false &&
     d <= (stats.attackRange || 72) &&
-    (e.cooldown || 0) <= 0
+    (e.cooldown || 0) <= 0 && requestEnemyGroupTurn(g,e,p)
   ) {
     e.cooldown = stats.recovery || 1;
     begin(e, "claw_left");
@@ -265,7 +280,7 @@ export function tickDreadmaneLion(
     behaviors.dash !== false &&
     d > 100 &&
     d < 255 &&
-    e.dreadPounceCooldown <= 0
+    e.dreadPounceCooldown <= 0 && requestEnemyGroupTurn(g,e,p,{rush:true})
   ) {
     e.dreadPounceCooldown = stats.dashCooldown || 5;
     begin(e, "cower");

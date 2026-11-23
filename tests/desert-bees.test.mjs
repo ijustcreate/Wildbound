@@ -2,11 +2,19 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {Game,EVENTS} from '../src/core.mjs';import {creatures,applyDefinitions} from '../src/definitions.mjs';
 import {generateWorld} from '../src/world.mjs';import {BEE_HIVE_CAP,BEE_HIVE_INTERVAL,tickBeeHive,tickBee,migrateBeeEvent,hivePlacement} from '../src/bee-swarm.mjs';
 import {actorContact} from '../src/contact-shadow.mjs';
+import {startBeeHive} from '../src/bee-swarm.mjs';
 import {befriendCreature} from '../src/friendly-creatures.mjs';
 import {drawDesertChunk,drawDesertSand,drawDesertClutter,desertSandColor,drawDesertWind,DESERT_WIND_LIMIT,DESERT_CLUTTER} from '../src/desert-art.mjs';
 import {boardArtBiome} from '../src/board-art.mjs';import {drawBeePose,drawBeeHive} from '../src/bee-art.mjs';
 function field(){const g=new Game(()=>.42);g.phase='play';g.openingBoard=false;g.terrain.fill('grass');g.scenery=[];g.house=null;g.enemies=[];const p=g.addPlayer('keyboard');Object.assign(p,{x:800,y:900,hp:999,maxHp:999});return g;}
 function canvas(){const calls=[],stack=[];return {calls,globalAlpha:1,save(){stack.push(this.globalAlpha);},restore(){this.globalAlpha=stack.pop();},translate(){},scale(){},fillRect(x,y,w,h){assert.ok([x,y,w,h].every(Number.isInteger));assert.ok(w>0&&h>0);calls.push([x,y,w,h,this.fillStyle,this.globalAlpha]);}};}
+
+test('an outdoor hive cannot attach across the house boundary or choose an indoor fallback',()=>{
+ const g={house:{floors:[{x:480,y:480,w:640,h:640}]},scenery:[{id:1,kind:'tree',x:470,y:580,rootY:600,size:64}],enemies:[],nextId:3,blocked:()=>false};
+ const bee={id:2,x:440,y:600,hp:27,speed:90,damage:7};
+ assert.equal(hivePlacement(g,bee),null,'tree attachment would put the hive indoors');
+ const hive=startBeeHive(g,1,[bee]);assert.ok(hive);assert.ok(hive.x<480||hive.y<480||hive.x>=1120||hive.y>=1120);
+});
 test('bee event spawns recognizable bees plus a destructible persistent hive, not charging wasps',()=>{
  const g=field(),i=EVENTS.findIndex(e=>e.name==='A thousand little wings');g.spawnEvent(i);const hive=g.enemies.find(e=>e.kind==='bee_hive'),bees=g.enemies.filter(e=>e.kind==='bee');assert.ok(hive);assert.equal(bees.length,5);assert.ok(bees.every(e=>e.hiveId===hive.id));assert.equal(creatures.bee.behaviors.dash,false);assert.equal(creatures.bee_hive.behaviors.hunt,false);assert.equal(befriendCreature(hive,g.players[0].id),false);
  const restored=JSON.parse(JSON.stringify(hive));assert.equal(restored.spawnTimer,BEE_HIVE_INTERVAL);assert.deepEqual(restored.beeStats,hive.beeStats);

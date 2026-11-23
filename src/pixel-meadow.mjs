@@ -19,7 +19,19 @@ export function meadowTerrain(g,x,y){
 export function meadowAllowed(g,x,y,margin=0){
  if(g.trainTest){const t=g.trainTest,d=t.design;if(d.wildLands&&(inWildLandmark(d,x,y,margin+12)||wildLandsPathAt(x,y)||WILD_LANDS_SITES.some(s=>!s.room&&Math.hypot(s.x-x,s.y-y)<300)||WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-x,s.y-y)<550)||!['forest','jungle','house'].includes(wildLandsGround(d,x,y))||d.activeRoom))return false;if(meadowTerrain(g,x,y)!=='grass')return false;const s=d.station;if(s&&(Math.abs(x-s.x)<s.w/2+44+margin&&Math.abs(y-s.y)<s.h/2+100+margin||Math.abs(x-s.platformX)<s.platformLength/2+20+margin&&Math.abs(y-s.platformY)<s.platformWidth/2+30+margin))return false;if(t.meadowRailField&&margin<=32)return railwayMeadowDistance(t.meadowRailField,x,y)>d.gauge/2+26+margin;t.meadowMask??=new Map();const key=Math.floor(x/16)+':'+Math.floor(y/16);let distance=t.meadowMask.get(key);if(distance===undefined){distance=Math.min(...[t.route,...(t.otherRoutes||[])].map(r=>nearestTrainTrack(r,Math.floor(x/16)*16+8,Math.floor(y/16)*16+8).distance));if(t.meadowMask.size>=16000)t.meadowMask.delete(t.meadowMask.keys().next().value);t.meadowMask.set(key,distance);}return distance>d.gauge/2+26+margin;}
 
+ if((g.generatedEnvironment||g.environment)==='shadow'){
+  if(meadowTerrain(g,x,y)!=='shadow_soil')return false;
+  const cx=Math.floor(x/1600),cy=Math.floor(y/1600),lx=x-cx*1600,ly=y-cy*1600;
+  if(((lx-800)/180)**2+((ly-816)/140)**2<1)return false;
+  const state=cx===0&&cy===0?g.realmState:boundlessRegionPlan(g,cx,cy).realmState;
+  const ox=state?.originX||0,oy=state?.originY||0;
+  return ![...(state?.links||[]).map(([a,b])=>[state.chambers[a],state.chambers[b]]),...(state?.enchantedPaths||[])].some(([p,q])=>{const px=p.x-ox,py=p.y-oy,dx=q.x-p.x,dy=q.y-p.y,t=Math.max(0,Math.min(1,((lx-px)*dx+(ly-py)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(lx-px-dx*t,ly-py-dy*t)<23+margin;});
+ }
  if(meadowTerrain(g,x,y)!=='grass')return false;
+ if((g.generatedEnvironment||g.environment)==='house'&&g.house){
+  const inside=(r,pad=0)=>x>=r.x-pad&&x<r.x+r.w+pad&&y>=r.y-pad&&y<r.y+r.h+pad;
+  return ![...(g.house.floors||[]),...(g.house.paths||[]),...(g.house.pools||[])].some(r=>inside(r,5+margin))&&!(g.house.furniture||[]).some(f=>!f.destroyed&&inside(f,5+margin));
+ }
  if(x>=0&&x<1600&&y>=0&&y<1600){
   if(routeDistance(g.forestLandscape,x,y)<29+margin||clearingDistance(x,y,g.seed)<.97||forestPavingAt(g.forestLandscape,x,y))return false;
   if(g.forestLandscape.landmarks?.some(l=>Math.hypot((x-l.x)/130,(y-l.y)/100)<.86))return false;
@@ -38,11 +50,11 @@ export function meadowTerrainKey(g,x,y){
   else if(g.mapMode==='boundless'){const cx=Math.floor(tx/50),cy=Math.floor(ty/50),id=cx+','+cy;let plan=plans.get(id);if(!plan){plan=boundlessRegionPlan(g,cx,cy);plans.set(id,plan);}terrain=plan.terrain[((ty%50+50)%50)*50+(tx%50+50)%50];}
   key+=terrain+',';
  }
- return key;
+ return key+(g.generatedEnvironment==='shadow'?':enchanted'+(g.realmState?.enchantedForestVersion||0):'');
 }
 export function paintPixelMeadow(g,x,y){
  const canvas=document.createElement('canvas');canvas.width=canvas.height=128;
- const c=canvas.getContext('2d'),colors=['#45672f','#537535','#62813c','#718f46'];
+ const c=canvas.getContext('2d'),colors=g.generatedEnvironment==='shadow'?['#383044','#41384f','#4b4059','#554861']:['#45672f','#537535','#62813c','#718f46'];
  for(let dy=0;dy<256;dy+=4)for(let dx=0;dx<256;dx+=4){
   const wx=x+dx,wy=y+dy;
   if(!meadowAllowed(g,wx+2,wy+2))continue;

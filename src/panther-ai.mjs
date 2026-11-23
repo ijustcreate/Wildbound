@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import { creatureCue } from './sound-bank.mjs';
 import {clearShot} from './navigation.mjs';
 
@@ -24,6 +25,7 @@ function setAction(e, action, duration, state = action) {
 }
 
 function clearAction(e) {
+  delete e.pantherContactPending;
   e.animationAction = null;
   e.poseTime = null;
   e.motionDuration = null;
@@ -67,6 +69,7 @@ export function tickPanther(game, e, target, dt, stats = {}) {
   if (['windup','swoop','swipe','bite','recover'].includes(e.state)) {
     e.timer-=dt;
     e.poseTime=clamp(1-e.timer/e.motionDuration,0,1);
+    if(e.pantherContactPending&&e.poseTime>=.35){const pending=e.pantherContactPending;delete e.pantherContactPending;if(target?.id===pending.targetId)strike(game,e,target,pending.kind);}
     if(e.state==='swoop') {
       const speed=340,oldX=e.x,oldY=e.y;game.moveActor(e,e.dx*speed*dt,e.dy*speed*dt);
       e.moving=true;
@@ -103,15 +106,15 @@ export function tickPanther(game, e, target, dt, stats = {}) {
   }
   if (['sit','lie','prowl'].includes(e.state)) {e.state='hunt';clearAction(e);}
   face();
-  if(d<175 && e.cooldown<=0 && e.pantherDecision<=0) {
+  if(d<175 && e.cooldown<=0 && e.pantherDecision<=0 && requestEnemyGroupTurn(game,e,target,{rush:d>=40})) {
     if(d>75 && e.pantherEnergy>=(stats.swoopEnergy||COST.swoop)) {
       e.pantherEnergy-=stats.swoopEnergy||COST.swoop;e.cooldown=.32;e.dx=e.faceX;e.dy=e.faceY;setAction(e,'crouch',.42,'windup');game.onSound(creatureCue('panther','windup'),e);return true;
     }
     if(d<40 && e.pantherEnergy>=(stats.biteEnergy||COST.bite) && e.pantherDecision<=0) {
-      e.pantherEnergy-=stats.biteEnergy||COST.bite;e.cooldown=.45;setAction(e,'bite',.32,'bite');strike(game,e,target,'bite');game.onSound(creatureCue('panther','bite'),e);return true;
+      e.pantherEnergy-=stats.biteEnergy||COST.bite;e.cooldown=.45;setAction(e,'bite',.32,'bite');e.pantherContactPending={kind:'bite',targetId:target.id};game.onSound(creatureCue('panther','bite'),e);return true;
     }
     if(d<53 && e.pantherEnergy>=(stats.swipeEnergy||COST.swipe)) {
-      e.pantherEnergy-=stats.swipeEnergy||COST.swipe;e.cooldown=.33;e.pantherSwipeSide=e.pantherSwipeSide==='L'?'R':'L';setAction(e,e.pantherSwipeSide==='L'?'swipe_left':'swipe_right',.34,'swipe');strike(game,e,target,'swipe');game.onSound(creatureCue('panther','swipe'),e);return true;
+      e.pantherEnergy-=stats.swipeEnergy||COST.swipe;e.cooldown=.33;e.pantherSwipeSide=e.pantherSwipeSide==='L'?'R':'L';setAction(e,e.pantherSwipeSide==='L'?'swipe_left':'swipe_right',.34,'swipe');e.pantherContactPending={kind:'swipe',targetId:target.id};game.onSound(creatureCue('panther','swipe'),e);return true;
     }
   }
   if(d>36) {

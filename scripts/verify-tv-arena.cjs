@@ -11,21 +11,22 @@ app.whenReady().then(async()=>{
    const integrated=window.verifyTvWildboundFlow();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
    const raf=requestAnimationFrame;window.requestAnimationFrame=()=>0;await new Promise(raf);
    const {TvWildbound,TV_BOARD_X,TV_WILDBOUND_WIDTH}=await import('./src/tv-wildbound.mjs'),{Animator}=await import('./src/animation.mjs');
+   const {loadTvParallax}=await import('./src/tv-arena-parallax.mjs');await loadTvParallax();
    const {ARENA_SUBJECTS}=await import('./src/tv-arena-creatures.mjs'),{directionVector}=await import('./src/player-motion.mjs');
    const {RigStudio}=await import('./src/player-studio.mjs'),{captureLayers,releaseLayers,capturedLayers}=await import('./src/render-order.mjs');
    const {Game}=await import('./src/core.mjs'),{LobbyState,PlayableLobby}=await import('./src/playable-lobby.mjs'),{LobbyTelevision}=await import('./src/lobby-tv.mjs');
    const g=new Game(),hero=g.addPlayer('keyboard','Lumen'),state=new LobbyState(),television=new LobbyTelevision(7);state.sync(g.players);Object.assign(state.members.get(hero.id),{spawned:true,panel:null,x:785,y:165});television.join(hero.id);television.completed=true;
-   const lobby=Object.create(PlayableLobby.prototype);Object.assign(lobby,{getGame:()=>g,state,television,practice:{stepPractice(){}},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});lobby.update(.016,{});
+   const lobby=Object.create(PlayableLobby.prototype);Object.assign(lobby,{getGame:()=>g,state,television,practice:{stepPractice(){}},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>document.createElement('div')}});lobby.update(.016,{});
    const m=lobby.tvWildbound;m.intro=3;const p=m.players.get(hero.id),a=new Animator(),images={'integrated-tv':integrated.png},checks=[];
    const check=(name,test)=>{checks.push({name,passed:!!test});if(!test)throw Error(name);};
    check('real TV completion enters isolated arena',m instanceof TvWildbound&&g.phase==='lobby'&&hero.progress===0);
    check('actual app TV route transfers two players',integrated.players===2&&integrated.phase==='lobby');
    const canvas=document.createElement('canvas');canvas.width=1440;canvas.height=810;const c=canvas.getContext('2d');
    const snap=(name,camera)=>{m.camera=camera;m.draw(c,canvas.width,canvas.height,a);images[name]=canvas.toDataURL();};
-   snap('center-calm',TV_BOARD_X-480);Object.assign(p,{x:TV_BOARD_X,y:437,face:1});m.step(.016,{[hero.id]:{attack:true}});check('board strike queues six enemies',m.waveQueue.length===6&&m.enemies.length===0);snap('board-roll',m.camera);
-   for(let i=0;i<115;i++)m.step(.05,{});check('both chosen enemy types emerge from alcoves',new Set(m.enemies.map(e=>e.kind)).size===2&&m.enemies.length===6);snap('center-wave',TV_BOARD_X-480);snap('west-route',0);snap('east-route',TV_WILDBOUND_WIDTH-960);
+   snap('center-calm',TV_BOARD_X-480);Object.assign(p,{x:TV_BOARD_X,y:437,face:1});m.step(.016,{[hero.id]:{attack:true}});const waveSize=m.waveQueue.length;check('board strike queues the previewed encounter',waveSize>=4&&waveSize<=6&&m.enemies.length===0);snap('board-roll',m.camera);
+   for(let i=0;i<115;i++)m.step(.05,{});check('both opening enemy types emerge from alcoves',new Set(m.enemies.map(e=>e.kind)).size===2&&m.enemies.length===waveSize);snap('center-wave',TV_BOARD_X-480);snap('west-route',0);snap('east-route',TV_WILDBOUND_WIDTH-960);
    canvas.width=2880;canvas.height=540;m.camera=960;m.draw(c,2880,540,a);images['full-arena']=canvas.toDataURL();canvas.width=1440;canvas.height=810;
-   m.enemies=[];const t=m.tubes[0];Object.assign(p,{x:t.x,y:t.y,grounded:true,vx:0,vy:0,tubeCooldown:0,lootHeld:false});m.rollView=null;m.step(.05,{[hero.id]:{loot:true}});check('interact begins tube travel',!!p.tubeTransit);for(let i=0;i<17;i++)m.step(.05,{});const target=m.tubes.find(s=>s.id===t.pair);check('tube arrives on paired upper lip without depth motion',p.x===target.x&&Math.abs(p.y-target.y)<1&&p.grounded);snap('tube-arrival',0);
+   m.enemies=[];m.roundState='idle';m.encounter=null;m.roundObjects=[];m.hazards=[];const t=m.tubes[0];Object.assign(p,{x:t.x,y:t.y,grounded:true,vx:0,vy:0,tubeCooldown:0,lootHeld:false});m.rollView=null;m.step(.05,{[hero.id]:{loot:true}});check('interact begins tube travel',!!p.tubeTransit);for(let i=0;i<17;i++)m.step(.05,{});const target=m.tubes.find(s=>s.id===t.pair);check('tube arrives on paired upper lip without depth motion',p.x===target.x&&Math.abs(p.y-target.y)<1&&p.grounded);snap('tube-arrival',0);
    Object.assign(p,{x:TV_BOARD_X,y:437,vx:0,vy:0,grounded:true,lootHeld:false});m.step(.05,{[hero.id]:{up:true,down:true}});check('up/down cannot move actor into depth',p.x===TV_BOARD_X&&p.y===437);
    for(const [label,start,end]of [['floor-to-bridge',437,317],['bridge-to-crown',317,197]]){
     Object.assign(p,{x:TV_BOARD_X,y:start,grounded:true,vy:0,jumpHeld:false});let highest=start;

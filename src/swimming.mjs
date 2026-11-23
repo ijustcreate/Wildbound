@@ -40,8 +40,8 @@ export function tickSwimBreath(g,p,input,dt){
   p.breathVisible=p.breath<BREATH_SECONDS?1:Math.max(0,(p.breathVisible||0)-dt*3);
  }
  p.waterEmit=Math.max(0,(p.waterEmit||0)-dt);
- if(p.swimming&&p.waterEmit===0&&(underwater||p.moving)){
-  p.waterEmit=underwater?.28:.13;g.effects||=[];
-  g.effects.push({particle:underwater?'bubbles':'swim-wake',x:p.x-(p.faceX||0)*9,y:p.y-(p.faceY||1)*5,life:.65,duration:.65,seed:p.id||0});
+ if(p.swimming&&p.waterEmit===0&&underwater){
+  p.waterEmit=.28;g.effects||=[];
+  g.effects.push({particle:'bubbles',x:p.x-(p.faceX||0)*9,y:p.y-(p.faceY||1)*5,life:.65,duration:.65,seed:p.id||0});
  }
 }

@@ -1,3 +1,6 @@
+import {CROSSFIRE_EVENT} from './combat-tactics-state.mjs';
+import {COMBO_ENCOUNTERS, hasEncounterLayout} from './encounter-layout-data.mjs';
+import {BIOME_MIXED_EVENTS} from './biome-encounters.mjs';
 import {honeyCatMotion,validateHoneyCat,replaceHoneyCat} from './honey-cat.mjs';
 import {fireflyMotion,validateFireflyMotion,replaceFireflyMotion} from './firefly-motion.mjs';
 import {shoreGoblinMotion,validateShoreGoblinMotion,replaceShoreGoblinMotion} from './shore-goblin-motion.mjs';
@@ -350,6 +353,8 @@ for (const [kind, stats] of [
   Object.assign(creatures[kind].stats, stats);
   Object.assign(creatures[kind].behaviors, {ranged:true,melee:false,loot:true,jump:false,dash:false});
 }
+creatures.beholder.gearRewardPool={items:['arcanist_circlet','arcanist_robe','arcanist_gloves','mender_focus','groveheart_focus'],chance:1,source:'Beholder arcane cache'};
+creatures.lesser_beholder.gearRewardPool={items:['mender_focus','bogglass_charm'],chance:.5,source:'Lesser beholder cache'};
 creatures.succubus=creatureDefaults('succubus');
 Object.assign(creatures.succubus.stats,{hp:180,speed:56,damage:18,detection:520,attackRange:112,windup:.75,recovery:1.6});
 Object.assign(creatures.succubus.behaviors,{ranged:true,melee:true,loot:true,dash:false,jump:false});
@@ -372,6 +377,7 @@ for(const [kind,settings]of Object.entries(WILD_FAUNA_DEFAULTS)){
  if(kind==='pig'||kind==='pig_spotted')cfg.lootDrops=[{item:'meat',qty:1,chance:100}];
 }
 creatures.scorpion_boss.lootDrops=[{item:'ash_reliquary',qty:1,chance:100,manualPickup:true,source:'Matriarch antivenom relic'},{item:'meat',qty:3,chance:100}];
+creatures.scorpion_boss.gearRewardPool={items:['waykeeper_shield','wayfinder_quiver','bogglass_charm','bastion_shield'],chance:1,source:'Matriarch regional gear'};
 creatures.chicken.lootDrops=[{item:'meat',qty:1,chance:100}];
 Object.assign(creatures.bee.stats,{hp:27,speed:90,damage:7});creatures.bee.behaviors.dash=false;
 Object.assign(creatures.bee_hive.stats,{hp:160,speed:0,damage:0});Object.assign(creatures.bee_hive.behaviors,{hunt:false,melee:false,dash:false,jump:false});
@@ -809,9 +815,12 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if (Array.isArray(d.events) && d.events.length) {
     const stampedeSquad = events.find(e => e.type === 'stampede' && Array.isArray(e.squad))?.squad
       || ['rhino', 'elephant', 'zebra', 'zebra', 'pelican'];
-    const importedEvents = d.events.map(event => event.type === 'stampede' && event.squad == null
-      ? { ...event, squad: structuredClone(stampedeSquad) }
-      : event);
+    const importedEvents = d.events.map(source => {
+      const event = source.type==='stampede'&&source.squad==null ? {...source,squad:structuredClone(stampedeSquad)} : source;
+      if(!Object.hasOwn(event,'comboLayout')||hasEncounterLayout(event.comboLayout))return event;
+      const {comboLayout,...knownFields}=event;
+      return knownFields;
+    });
     const added = events.filter(
       (e) =>
         [
@@ -852,7 +861,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     // their authored event list and modifications, then append only native
     // pack cards that are missing from that older save.
     const retainedNames = new Set([...importedEvents, ...added].map(event => event.name));
-    const missingPackNames = new Set(CREATURE_PACK_EVENTS
+    const missingPackNames = new Set([...CREATURE_PACK_EVENTS,CROSSFIRE_EVENT,...COMBO_ENCOUNTERS,...BIOME_MIXED_EVENTS]
       .filter(event => !retainedNames.has(event.name))
       .map(event => event.name));
     // Preserve the current runtime ordering for every newly added card. Pack

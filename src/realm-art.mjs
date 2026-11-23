@@ -1,9 +1,15 @@
+import {drawShadowWoodlandProp} from './shadow-woodland-props.mjs';
+import {drawShadowForestTree} from './shadow-moonveil-tree.mjs';
 import {paintBayouHabitat,paintBayouBridge,makeBayouLandmarkSprite,drawBayouWaterMotion} from './bayou-detail.mjs';
 import {applyTreeFall} from './tree-fall.mjs';
 import {realmTerrainAt} from './realm-world.mjs';
 import {REALMS,REALM_ASSETS,realmAsset,realmHash,realmTree,realmResourceScale} from './realm-layout.mjs';
 import {makeSwampTreeSprite,swampMossCurtains} from './swamp-art.mjs';
 import {swampSurface,swampGroundColor} from './swamp-terrain.mjs';
+import {makeUnderworldSprite,drawUnderworldGround,drawUnderworldAtmosphere} from './shadow-underworld-art.mjs';
+import {drawShadowSceneryReflections} from './shadow-water-reflections.mjs';
+import {caveEdgeMask,drawCaveWallCell} from './cave-wall-art.mjs';
+import {caveFloorEdges,drawCaveFloorCell} from './cave-floor-art.mjs';
 // Same indexed-pixel format as the sprite editor. No external raster dependency.
 function painter(){
  const s={width:64,height:64,palette:['transparent'],pixels:Array(4096).fill(0),footprint:Array(4096).fill(0),occludes:false};
@@ -14,6 +20,7 @@ function painter(){
  return {s,rect,poly,oval};
 }
 export function makeRealmSprite(kind){
+ const underworld=makeUnderworldSprite(kind);if(underworld)return underworld;
  if(['bayou_shrine','bayou_ruin','bayou_snag','bayou_landing'].includes(kind))return makeBayouLandmarkSprite(kind);
  if(kind==='mangrove'||kind==='old_cypress')return makeSwampTreeSprite(kind);
  const {s,rect:r,poly:p,oval:o}=painter(),type=realmAsset(kind)?.type;
@@ -64,14 +71,23 @@ export function makeRealmSprite(kind){
  else {for(const [x,y,w]of [[18,52,12],[35,56,15],[46,47,8]]){p([[x-w/2,y],[x-3,y-8],[x+w/2,y-5],[x+w/2+2,y+2]],'#596963');r(x-3,y-7,5,2,'#a9b1a0');}}
  return s;
 }
-export const REALM_SPRITES=Object.fromEntries(Object.values(REALM_ASSETS).flatMap(a=>Object.keys(a).map(k=>[k,makeRealmSprite(k)])));
+// Leave drawing until first access so importing forest and realm art in either order is safe.
+export const REALM_SPRITES={};
+for(const group of Object.values(REALM_ASSETS))for(const kind of Object.keys(group)){
+ Object.defineProperty(REALM_SPRITES,kind,{enumerable:true,configurable:true,get(){
+  const sprite=makeRealmSprite(kind);
+  Object.defineProperty(REALM_SPRITES,kind,{value:sprite,enumerable:true,writable:true,configurable:true});
+  return sprite;
+ }});
+}
 // Reference-keyed cache respects a sprite replaced by the editor and is bounded by the catalog.
 const rasterCache=new Map();
-export function drawRealmSprite(c,kind,x,y,size,library){
+export function drawRealmSprite(c,kind,x,y,size,library,groundBlend=false){
  const s=library?.[kind]||REALM_SPRITES[kind];if(!s)return false;
  let cached=rasterCache.get(kind);
  if(!cached||cached.source!==s){const canvas=document.createElement('canvas');canvas.width=s.width;canvas.height=s.height;const ctx=canvas.getContext('2d');for(let yy=0;yy<s.height;yy++)for(let xx=0;xx<s.width;xx++){const v=s.pixels[yy*s.width+xx];if(v){ctx.fillStyle=s.palette[v];ctx.fillRect(xx,yy,1,1);}}cached={source:s,canvas};rasterCache.set(kind,cached);}
- c.imageSmoothingEnabled=false;c.drawImage(cached.canvas,Math.round(x-size/2),Math.round(y-size*(s.anchorY??61/64)),size,size);return true;
+ if(groundBlend&&!cached.grounded){const canvas=document.createElement('canvas');canvas.width=s.width;canvas.height=s.height;const pen=canvas.getContext('2d');pen.drawImage(cached.canvas,0,0);pen.globalCompositeOperation='destination-out';const fade=pen.createLinearGradient(0,s.height*.83,0,s.height);fade.addColorStop(0,'#00000000');fade.addColorStop(.6,'#00000022');fade.addColorStop(1,'#000000ba');pen.fillStyle=fade;pen.fillRect(0,s.height*.83,s.width,s.height*.17);cached.grounded=canvas;}
+ c.imageSmoothingEnabled=false;c.drawImage(groundBlend?cached.grounded:cached.canvas,Math.round(x-size/2),Math.round(y-size*(s.anchorY??61/64)),size,size);return true;
 }
 export function drawRealmProp(c,p,time,g={},renderOptions={}){
  if(!p.realm&&!realmAsset(p.kind))return false;
@@ -80,13 +96,15 @@ export function drawRealmProp(c,p,time,g={},renderOptions={}){
  const library=renderOptions.spriteLibrary||g.spriteLibrary;
  const resourceType=realmAsset(p.kind)?.type,resourceScale=realmResourceScale(p);
  c.save();
+ if(!p.distant&&!p.depleted&&['underworld_gate','underworld_ribs','soul_brazier','soul_candles','underworld_columns','underworld_bones','underworld_urn','underworld_rubble'].includes(p.kind)){c.fillStyle=renderOptions.dynamicShadows?'#050d192b':'#050d1955';c.beginPath();c.ellipse(p.x+3,y+2,p.size*.28,p.size*.055,0,0,Math.PI*2);c.fill();}
  if(!renderOptions.dynamicShadows&&!p.depleted&&resourceType){c.fillStyle='#0d142033';c.beginPath();c.ellipse(p.x+4,y+2,p.size*.27*resourceScale,p.size*.075*resourceScale,0,0,Math.PI*2);c.fill();}
  if(p.fallen){c.fillStyle='#3b3935';c.fillRect(p.x-p.size*.1,y-5,p.size*.2,7);c.fillStyle='#a39474';c.fillRect(p.x-p.size*.08,y-6,p.size*.16,3);c.restore();return true;}
  if(p.depleted&&!p.falling){c.restore();return true;}
- if(!renderOptions.dynamicShadows&&resourceType==='crystal'){const glow=c.createRadialGradient(p.x,y-20,1,p.x,y-20,p.size*.8*resourceScale);glow.addColorStop(0,p.kind==='shadow_obsidian'?'#a481d633':'#83dbd833');glow.addColorStop(1,'#83dbd800');c.fillStyle=glow;c.fillRect(p.x-p.size*resourceScale,y-p.size*resourceScale,p.size*2*resourceScale,p.size*2*resourceScale);}
- if(p.falling){c.translate(p.x,y);applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);}
+ if(!renderOptions.dynamicShadows&&resourceType==='crystal'){const glow=c.createRadialGradient(p.x,y-20,1,p.x,y-20,p.size*.8*resourceScale);glow.addColorStop(0,p.kind==='shadow_obsidian'?'#73b9cc26':'#83dbd833');glow.addColorStop(1,'#83dbd800');c.fillStyle=glow;c.fillRect(p.x-p.size*resourceScale,y-p.size*resourceScale,p.size*2*resourceScale,p.size*2*resourceScale);}
+ if(p.kind==='wither_tree'&&(!library?.[p.kind]||library[p.kind].nativeShadowTree)){drawShadowForestTree(c,p,y,time,g,resourceScale);}
+ else if(p.falling){c.translate(p.x,y);applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);}
  else if(['marsh_reeds','marsh_fern'].includes(p.kind)){c.translate(p.x,y);c.rotate(Math.sin(time*1.2+p.x*.1)*.025);drawRealmSprite(c,p.kind,0,0,p.size,library);}
- else if(!drawLivingSwampTree(c,p,y,time,library))drawRealmSprite(c,p.kind,p.x,y,p.size*resourceScale,library);
+ else if(!drawShadowWoodlandProp(c,p,y,time,g,library,resourceScale)&&!drawLivingSwampTree(c,p,y,time,library))drawRealmSprite(c,p.kind,p.x,y,p.size*resourceScale,library,g.generatedEnvironment==='shadow'&&!p.distant);
  if(realmTree(p)&&p.harvest&&!p.falling&&time-(p.hitAt||0)<4){c.fillStyle='#c9bd83';c.fillRect(p.x-15,y+8,30*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}
  c.restore();return true;
 }
@@ -112,17 +130,26 @@ export function drawLivingSwampTree(c,p,y,time=0,library){
  }
  return true;
 }
-export const REALM_COLORS={swamp:{marsh_grass:'#435d42',mud:'#665f43',water:'#233c38',shallow:'#4d6957',bridge:'#8b7956'},caverns:{cave_floor:'#495258',cave_void:'#11151f',water:'#203b48',shallow:'#3b6470'},shadow:{shadow_soil:'#383047',shadow_void:'#100f1c',shallow:'#655575'}};
-export function drawRealmGround(c,g,{sx=0,sy=0,ex=50,ey=50}={}){
+export const REALM_COLORS={swamp:{marsh_grass:'#435d42',mud:'#665f43',water:'#233c38',shallow:'#4d6957',bridge:'#8b7956'},caverns:{cave_floor:'#495258',cave_void:'#11151f',water:'#203b48',shallow:'#3b6470'},shadow:{shadow_soil:'#2d404d',shadow_void:'#214a57',shallow:'#2a5a63'}};
+export function drawRealmGround(c,g,{sx=0,sy=0,ex=50,ey=50,shadowFloorMaterial}={}){
  if(g.generatedEnvironment==='swamp')return drawSwampGround(c,g,{sx,sy,ex,ey});
+ if(g.generatedEnvironment==='shadow'){const bounds={sx,sy,ex,ey},at=(tx,ty)=>realmTerrainAt(g,tx,ty);drawUnderworldGround(c,g,bounds,at,shadowFloorMaterial);drawShadowSceneryReflections(c,g,bounds,at,drawRealmSprite);return true;}
  const palette=REALM_COLORS[g.generatedEnvironment];if(!palette)return false;
  c.fillStyle=g.generatedEnvironment==='swamp'?'#233c38':'#100f1c';c.fillRect(sx*32,sy*32,(ex-sx+1)*32,(ey-sy+1)*32);
  const tile=(x,y)=>realmTerrainAt(g,x,y);
+ const caverns=g.generatedEnvironment==='caverns';
+ const openCave=(x,y)=>{
+  if(g.mapMode!=='boundless'&&(x<0||y<0||x>=50||y>=50))return false;
+  return !tile(x,y)?.endsWith('_void');
+ };
  for(let ty=g.mapMode==='boundless'?sy:Math.max(0,sy);ty<(g.mapMode==='boundless'?ey+1:Math.min(50,ey+1));ty++)for(let tx=g.mapMode==='boundless'?sx:Math.max(0,sx);tx<(g.mapMode==='boundless'?ex+1:Math.min(50,ex+1));tx++){
-  const k=tile(tx,ty),x=tx*32,y=ty*32,r=realmHash(tx+g.seed,ty),isVoid=k?.endsWith('_void');c.fillStyle=palette[k]||'#55634c';c.fillRect(x,y,32.5,32.5);
+  const k=tile(tx,ty),x=tx*32,y=ty*32,r=realmHash(tx+g.seed,ty),isVoid=k?.endsWith('_void');
+  if(caverns&&isVoid){drawCaveWallCell(c,x,y,32,caveEdgeMask(tx,ty,openCave),g.seed,tx,ty);continue;}
+  if(caverns&&k==='cave_floor'){drawCaveFloorCell(c,x,y,32,g.seed,tx,ty,caveFloorEdges(tx,ty,openCave));continue;}
+  c.fillStyle=palette[k]||'#55634c';c.fillRect(x,y,32.5,32.5);
   if(isVoid){
    // Broken shelves follow only exposed boundaries, with a solid interior behind them.
-   for(const [dx,dy]of [[0,-1],[-1,0],[1,0],[0,1]])if((g.mapMode==='boundless'||tx+dx>=0&&ty+dy>=0&&tx+dx<50&&ty+dy<50)&&!tile(tx+dx,ty+dy)?.endsWith('_void')){c.fillStyle=g.generatedEnvironment==='caverns'?'#697477':'#67536f';const w=dx?8:32,h=dy?8:32;c.fillRect(x+(dx>0?24:0),y+(dy>0?24:0),w,h);c.fillStyle=g.generatedEnvironment==='caverns'?'#333c49':'#322b42';c.fillRect(x+(dx>0?18:dx<0?8:4),y+(dy>0?18:dy<0?8:4),dx?8:24,dy?8:24);}
+   for(const [dx,dy]of [[0,-1],[-1,0],[1,0],[0,1]])if((g.mapMode==='boundless'||tx+dx>=0&&ty+dy>=0&&tx+dx<50&&ty+dy<50)&&!tile(tx+dx,ty+dy)?.endsWith('_void')){c.fillStyle='#67536f';const w=dx?8:32,h=dy?8:32;c.fillRect(x+(dx>0?24:0),y+(dy>0?24:0),w,h);c.fillStyle='#322b42';c.fillRect(x+(dx>0?18:dx<0?8:4),y+(dy>0?18:dy<0?8:4),dx?8:24,dy?8:24);}
    continue;
   }
   if(k==='bridge'){c.fillStyle='#453f32';for(let j=0;j<32;j+=8)c.fillRect(x,y+j,32,2);c.fillStyle='#b09b6c';c.fillRect(x+2,y+3,2,28);c.fillRect(x+27,y+3,2,28);}
@@ -157,8 +184,9 @@ function drawSwampGround(c,g,{sx,sy,ex,ey}){
  drawBayouWaterMotion(c,g,{sx,sy,ex,ey},at);
  return true;
 }
-export function drawRealmAtmosphere(c,g){
+export function drawRealmAtmosphere(c,g,bounds={}){
  if(!REALMS.includes(g.generatedEnvironment)||g.phase==='won')return;
+ if(g.generatedEnvironment==='shadow')drawUnderworldAtmosphere(c,g,bounds);
  const time=g.time||0;
  for(const p of g.scenery||[]){
   if(p.kind==='cave_drip'){const t=(time*.65+realmHash(p.x,p.y))%1;c.fillStyle='#b3d2d399';c.fillRect(p.x,p.rootY-60+t*60,2,4);c.strokeStyle='#8db1bc66';c.beginPath();c.ellipse(p.x,p.rootY,t*10,t*3,0,0,Math.PI*2);c.stroke();}

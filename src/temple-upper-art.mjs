@@ -2,17 +2,29 @@ import {activeLocationDesign} from './location-designs.mjs';
 import {drawDungeonDecor} from './dungeon-decor.mjs';
 import {drawTorchFlame} from './torch-flame.mjs';
 import {drawDesignedRoom} from './location-designs.mjs';
+import {drawInteriorFace,paintInteriorMaterial} from './interior-materials.mjs';
 // Same jade/aged limestone/gold vocabulary as the lower temple. Room coordinates
 // stay compatible with existing characters, ritual chest and tiger encounters.
 export const UPPER_TORCHES=Object.freeze([{x:32,y:68},{x:288,y:68},{x:32,y:174},{x:288,y:174}]);
+const floorPalette=['#4b5b49','#64765f','#718268','#849374','#a5ad88','#586851'];
+let defaultFloor;
+function paintFloor(c){
+ c.fillStyle='#0c211c';c.fillRect(0,0,320,240);
+ paintInteriorMaterial(c,{x:16,y:30,w:288,h:192},'cement',floorPalette);
+ drawInteriorFace(c,{x:12,y:34,w:296,height:28,material:'masonry',palette:floorPalette,
+  trim:['#3a5340','#697a5d','#aaaa7e']});
+}
+function drawDefaultFloor(c){
+ if(!defaultFloor&&typeof document!=='undefined'){
+  defaultFloor=document.createElement('canvas');
+  defaultFloor.width=320;defaultFloor.height=240;paintFloor(defaultFloor.getContext('2d'));
+ }
+ if(defaultFloor)c.drawImage(defaultFloor,0,0);
+ else paintFloor(c);
+}
 export function drawUpperSanctum(c,g,design=undefined){
  const designed=design===undefined?activeLocationDesign('temple-upper'):design;
- c.save();c.imageSmoothingEnabled=false;if(!designed){c.fillStyle='#0c211c';c.fillRect(0,0,320,240);
- // Stone slabs with shallow bevels, bounded variation rather than noisy grain.
- c.fillStyle='#344a3d';c.fillRect(16,30,288,192);
- for(let y=34;y<220;y+=16)for(let x=20;x<300;x+=20){const shade=((x/20|0)*7+(y/16|0)*3)%3;
-  c.fillStyle=['#6d7860','#788369','#707f61'][shade];c.fillRect(x,y,19,15);c.fillStyle='#a0aa83';c.fillRect(x+1,y,17,1);c.fillStyle='#4e6049';c.fillRect(x+18,y+1,1,13);
- }
+ c.save();c.imageSmoothingEnabled=false;if(!designed){drawDefaultFloor(c);
  // Inlaid processional aisle and central jade sun, not a flat gray rectangle.
  c.fillStyle='#465f47';c.fillRect(125,82,70,123);c.fillStyle='#b09c5c';c.fillRect(126,84,2,118);c.fillRect(192,84,2,118);
  for(let y=90;y<196;y+=14){c.fillStyle='#79956c';c.fillRect(132,y,55,1);}

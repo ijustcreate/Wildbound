@@ -304,13 +304,13 @@ export function detailedLimb(c,a,b,width,color){
 export function detailedTorso(c,p,d,color,skin,back,plain=false){
   if(!humanoidArtAvailable(c)||c.__legacyHumanoid)return false;
   const dx=p.pelvis.x-p.chest.x,dy=p.pelvis.y-p.chest.y,len=Math.max(3,Math.round(Math.hypot(dx,dy)*4)/4);
-  const width=d===2||d===6?5:d%2?5.8:6.4,material=c.__humanoidMaterials?.get(color)??0;
+  const width=d===2||d===6?5.3:d%2?6:6.7,waistWidth=d===2||d===6?4.45:5.15,material=c.__humanoidMaterials?.get(color)??0;
   const key=['torso',len,width,color,skin,back,plain,material].join(':');let entry=details.get(key);
   if(!entry){
     const out=canvas(60,Math.ceil((len+5)*4)),pen=out.getContext('2d'),base=rgb(color),m=materialSample(material),ink='#302b2b';
     const r=(x,y,w,h,fill)=>{pen.fillStyle=fill;pen.fillRect(Math.round((x+7.5)*4),Math.round((y+2.5)*4),Math.max(1,Math.round(w*4)),Math.max(1,Math.round(h*4)));};
     for(let y=-2;y<len+1.25;y+=.25){
-      const t=Math.max(0,Math.min(1,y/len)),half=y<0?width-1.3+(y+2)*.55:width-(width-3.75)*(t*.65+t*t*.35);
+      const t=Math.max(0,Math.min(1,y/len)),taper=t*t*(3-2*t),half=y<0?width-1.05+(y+2)*.5:width-(width-waistWidth)*taper;
       for(let x=-width;x<=width;x+=.25){
         if(Math.abs(x)>half)continue;
         const edge=Math.abs(x)>half-.5||!plain&&y>len+.5;
@@ -319,18 +319,16 @@ export function detailedTorso(c,p,d,color,skin,back,plain=false){
         r(x,y,.25,.25,edge?ink:'#'+base.map(n=>clamp(n+v).toString(16).padStart(2,'0')).join(''));
       }
     }
+    const cloth=delta=>'#'+base.map((n,i)=>clamp(n+delta*(i===2?.7:1)).toString(16).padStart(2,'0')).join('');
     if(!back&&!plain){
-      // Broad folded collar and cloth planes. Keep the shirt's own hue instead
-      // of putting the same pale trim and tiny gold buttons on every character.
-      for(let y=-1.75;y<1.5;y+=.25){const half=Math.max(.2,1.6-(y+1.75)*.42);r(-half,y,half*2,.25,skin);}
-      const cloth=delta=>'#'+base.map((n,i)=>clamp(n+delta*(i===2?.7:1)).toString(16).padStart(2,'0')).join('');
-      for(const side of [-1,1])for(let n=0;n<5;n++)r(side*(1.75-n*.2)-.25,-1.5+n*.5,.85,.5,cloth(n<3?28:-22));
-      r(-.5,2,.5,Math.max(1,len-3),cloth(-28));
-      r(-width+1,2,1,Math.max(1,len*.45),cloth(16));
-      r(2,len-2,2,.5,cloth(-25));
+      // A small open neckline and two broad cloth planes describe the form;
+      // the base outfit has no stitched seam, buttons or pocket marks.
+      for(let y=-1.25;y<.5;y+=.25){const half=Math.max(.25,1.25-(y+1.25)*.48);r(-half,y,half*2,.25,skin);}
+      r(-width*.58,1.6,1.15,Math.max(1,len*.43),cloth(13));
+      r(width*.37,1.8,1.15,Math.max(1,len*.4),cloth(-17));
     }else{
-      const seam='#'+base.map(n=>clamp(n-23).toString(16).padStart(2,'0')).join('');
-      r(-3,-.5,6,.5,seam);r(1,len-3,2,.5,seam);
+      r(-width*.62,1.4,1.1,Math.max(1,len*.42),cloth(12));
+      r(width*.38,1.6,1.1,Math.max(1,len*.38),cloth(-17));
     }
     // The pelvis owns the waistband. A second belt here produces a bulky double hem.
     entry=keep(details,key,{image:chunkyBody(out)},256);
@@ -375,19 +373,19 @@ export function detailedArm(c,shoulder,elbow,hand,shirt,skin,chestId,part='all')
   const length=Math.hypot(hand.x-elbow.x,hand.y-elbow.y)||1,ux=(hand.x-elbow.x)/length,uy=(hand.y-elbow.y)/length;
   const wrist={x:hand.x-ux*.85,y:hand.y-uy*.85};
   const segments=part==='upper'?[0]:part==='lower'?[1,2]:null;
-  if(!detailedChain(c,[shoulder,elbow,wrist,hand],[4,3.7,2.8,4.5],skin,12,'round',segments))return false;
+  if(!detailedChain(c,[shoulder,elbow,wrist],[4.2,3.45,2.65],skin,12,'round',segments&&segments.filter(n=>n<2)))return false;
   if(part!=='lower'){
     const sleeveLength=chestId==='reaper_chest'?1:.55;const sleeveEnd={x:shoulder.x+(elbow.x-shoulder.x)*sleeveLength,y:shoulder.y+(elbow.y-shoulder.y)*sleeveLength};
     detailedChain(c,[shoulder,sleeveEnd],[4.8,4.2],shirt,materialIndex(chestId),'sleeve');
   }
   if(part==='upper')return true;
   const base=rgb(skin),dark='#'+base.map(n=>clamp(n-30).toString(16).padStart(2,'0')).join(''),light='#'+base.map(n=>clamp(n+24).toString(16).padStart(2,'0')).join('');
-  // Broaden the palm around the existing hand joint. Weapon/wand attachments
-  // still use the untouched joint, so their authored scale and pivots stay exact.
+  // Keep the palm distinct from the forearm and the existing hand joint. Weapon
+  // attachments still use the untouched joint and preserve their authored pivot.
   c.save();c.translate(hand.x,hand.y);c.rotate(-Math.atan2(ux,uy));
-  c.fillStyle=dark;c.fillRect(-2.25,-1,4.5,4.5);c.fillRect(1.75,.25,1.25,1.5);
-  c.fillStyle=skin;c.fillRect(-1.75,-.75,3.5,3.25);c.fillRect(1.5,.5,1,1);
-  c.fillStyle=light;c.fillRect(-1,-.5,1.5,1);c.restore();
+  c.fillStyle=dark;c.fillRect(-1.75,-.75,3.5,4);c.fillRect(1.25,.1,1,1.5);
+  c.fillStyle=skin;c.fillRect(-1.25,-.5,2.5,3);c.fillRect(1,.25,.75,1);
+  c.fillStyle=light;c.fillRect(-.75,-.25,1,.75);c.restore();
   return true;
 }
 
@@ -395,9 +393,9 @@ export function detailedNeck(c,p,skin){
   if(!c.__humanoidDetail||!humanoidArtAvailable(c))return false;
   const dx=p.chest.x-p.head.x,dy=p.chest.y-p.head.y,len=Math.hypot(dx,dy)||1;
   // The upper end sits under the jaw; the lower end is hidden by the collar.
-  const top={x:p.head.x+dx/len*3.2,y:p.head.y+dy/len*3.2};
-  const bottom={x:p.chest.x-dx/len*.25,y:p.chest.y-dy/len*.25};
-  return detailedChain(c,[top,bottom],[2.8,3.5],skin,12);
+  const top={x:p.head.x+dx/len*3.1,y:p.head.y+dy/len*3.1};
+  const bottom={x:p.chest.x-dx/len*.72,y:p.chest.y-dy/len*.72};
+  return detailedChain(c,[top,bottom],[3,3.25],skin,12);
 }
 
 export function detailedPelvis(c,p,d,color,back){
@@ -406,7 +404,7 @@ export function detailedPelvis(c,p,d,color,back){
   const down={x:dx/len,y:dy/len},right={x:down.y,y:-down.x};
   const local=q=>({x:(q.x-p.pelvis.x)*right.x+(q.y-p.pelvis.y)*right.y,y:(q.x-p.pelvis.x)*down.x+(q.y-p.pelvis.y)*down.y});
   const hips=[local(p.hipL),local(p.hipR)],side=d===2||d===6;
-  const waist=side?3.3:3.8,left=Math.min(...hips.map(q=>q.x))-2.25,rightEdge=Math.max(...hips.map(q=>q.x))+2.25;
+  const waist=side?3.35:4.1,left=Math.min(...hips.map(q=>q.x))-2.25,rightEdge=Math.max(...hips.map(q=>q.x))+2.25;
   const bottom=Math.max(1.5,Math.min(3.25,Math.max(...hips.map(q=>q.y))+1.5));
   const base=rgb(color),shade=n=>'#'+base.map(v=>clamp(v+n).toString(16).padStart(2,'0')).join('');
   c.save();c.translate(p.pelvis.x,p.pelvis.y);c.rotate(-Math.atan2(dx,dy));
@@ -419,13 +417,7 @@ export function detailedPelvis(c,p,d,color,back){
       c.fillRect(Math.round(x*4)/4,y,.25,.25);
     }
   }
-  c.fillStyle='#44362b';c.fillRect(-waist,-.85,waist*2,1.15);
-  c.fillStyle='#906b43';c.fillRect(-waist+.35,-.85,waist*2-.7,.25);
-  if(!back&&!side){
-    c.fillStyle='#bc9554';c.fillRect(-.65,-.9,1.4,1.2);
-    c.fillStyle='#493b2c';c.fillRect(-.35,-.6,.8,.6);
-    c.fillStyle=shade(-27);c.fillRect(0,.65,.25,Math.max(.5,bottom-.85));
-  }
+  if(!back&&!side){c.fillStyle=shade(-16);c.fillRect(-.25,1.4,.5,Math.max(.5,bottom-1.6));}
   c.restore();return true;
 }
 

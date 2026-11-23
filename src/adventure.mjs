@@ -1,3 +1,12 @@
+import {spellTransition} from './portal-transition.mjs';
+import {actionFeedback} from './action-feedback.mjs';
+import {interactShadowPassage} from './shadow-passages.mjs';
+import {updateSwordChargePolish} from './sword-charge-state.mjs';
+import {catchChargeGuard,raiseCounterGuard} from './counterattack.mjs';
+import {emitGameplayFx} from './gameplay-fx.mjs';
+import {useChocolateFrog} from './train-students.mjs';
+import {interactHouseLiving} from './house-living.mjs';
+import {interactPlayground,useApple} from './playground.mjs';
 import {swordLoadout} from './sword-feel.mjs';
 import {BACKPACK_SLOTS} from "./items.mjs";
 import {useHotChocolate} from './hot-chocolate.mjs';
@@ -44,12 +53,14 @@ import {canHitEventTestBoard} from './event-test-board.mjs';
 
 import {equipmentAction} from './equipment-actions.mjs';
 import {seedSupplyChests,openSupplyChest} from './supply-chests.mjs';
+import {ticketExperience} from './train-ticket.mjs';
 import {xpBurst,tickXPOrbs} from './xp-orbs.mjs';
 import {equipmentNeighbor} from './equipment-navigation.mjs';
 import {tickStorageRoom,resetStorageJump} from './storage-room.mjs';
 import {cancelRobotRepair,robotOnline,openRobotIntroduction} from './storage-repair.mjs';
 import {canDropInventoryItem,dropInventoryItem} from './inventory-world.mjs';
 import {arrowVisualAngle,recordArrowTrail} from './embedded-arrow.mjs';
+import {arrowFlameSources,stepArrowFlame,flameArrowDamage,flameArrowTargetHit,flameArrowGroundHit} from './flame-arrows.mjs';
 import {ARROW_TYPES,arrowDrop,arrowScenery,compactArrowDrops,consumeQuiver,enemyQuiver,frostImpact,tickArrowIce} from './arrow-supplies.mjs';
 import {tickMeltingIce} from './ice-crafting.mjs';
 import { givePickup,storeInBag,takeFromBag } from './inventory-containers.mjs';
@@ -60,6 +71,8 @@ import {hunterPets} from './hunter-pets.mjs';
 import {SKILLS,SCROLL_BOSSES,skillAvailable,skillScrollId} from './field-skills.mjs';
 import {hasAimWeapon, updateAimFacing,updateBowAimBlend} from './ranged-aim.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
+import {applyCombatFrost, freezeFromIceSpell} from './frost-shatter.mjs';
+import {triggerCombatImpact} from './combat-impact.mjs';
 import {befriendCreature} from './friendly-creatures.mjs';
 import {sightRadius, emitNoise} from './night-cycle.mjs';
 import {cutLivingVines,releaseCritter} from './living-ecosystem.mjs';
@@ -69,7 +82,7 @@ import {interactIce} from './ice-world.mjs';
 import {clearShot} from './navigation.mjs';
 import {controlledFollower,FELINE_CONTROL_KINDS} from './follower-control.mjs';
 import {resolveEnvironment,toggleDoor} from './expansion.mjs';
-import {interactHouseVehicle,openHouseChest,tryInstallVehiclePart,toggleGarageDoor,houseVehicleForPlayer,vehicleDriver} from './house-vehicles.mjs';
+import {interactHouseVehicle,openHouseChest,tryInstallVehiclePart,toggleGarageDoor,houseVehicleForPlayer,houseVehicleEntry,vehicleDriver} from './house-vehicles.mjs';
 import {interactHouseSurface} from './house-surfaces.mjs';
 import {
   initializeField,
@@ -92,6 +105,7 @@ import { initHazards, ignite } from "./hazards.mjs";
 import { lootSpot } from "./item-art.mjs";
 import { rules, creatures } from "./definitions.mjs";
 import { generateWorld } from "./world.mjs";
+import {rollProgressionGear} from './loot-progression.mjs';
 import {
   ITEMS,
   moveInventoryItem,
@@ -369,9 +383,13 @@ export const adventureMethods = {
     this.persist();
   },
   usePotion(p) {
-    if (p.hp <= 0 || p.hp >= p.maxHp || !take(p.inventory, "potion"))
-      return false;
+    if(p.hp<=0)return false;
+    if(p.hp>=p.maxHp){actionFeedback(this,p,{key:'potion-failed',text:'Health already full',kind:'failure'});return false;}
+    if(!take(p.inventory,'potion')){actionFeedback(this,p,{key:'potion-failed',text:'No health potions',kind:'failure'});return false;}
+    const before=p.hp;
     p.hp = Math.min(p.maxHp, p.hp + rules.potionHeal);
+    actionFeedback(this,p,{key:'healed',text:'Health restored',quantity:Math.round((p.hp-before)*10)/10});
+    if(p.ui)p.ui.notice='Restored '+Math.round((p.hp-before)*10)/10+' health.';
     this.onSound("heal");
     this.persist();
     return true;
@@ -416,10 +434,11 @@ export const adventureMethods = {
     )
       return false;
     this.xpOrbs = this.xpOrbs.filter((o) => o !== orb);
+    emitGameplayFx(this,'xp',{x:p.x,y:p.y-18});
     // Preserve co-op progression: gathering an orb shares its XP with the party.
     for (const hero of this.players) {
       trainingPoints(hero);
-      hero.xp += orb.amount;
+      hero.xp = Math.round((hero.xp+ticketExperience(hero,orb.amount))*1e6)/1e6;
       while (hero.xp >= hero.level * 50) {
         hero.xp -= hero.level * 50;
         hero.level++;
@@ -431,7 +450,7 @@ export const adventureMethods = {
     this.effects.push({
       x: p.x,
       y: p.y - 25,
-      text: "+" + orb.amount + " XP",
+      text: "+" + Number(ticketExperience(p,orb.amount).toFixed(1)) + " XP",
       color: "#a3eafa",
       life: 0.8,
     });
@@ -462,6 +481,7 @@ export const adventureMethods = {
     this.arrows = this.arrows.filter((a) => a !== arrow);
     this.onSound("loot", p);
     this.message(`Recovered ${qty} arrow${qty === 1 ? "" : "s"}.`);
+    actionFeedback(this,p,{key:arrow.ammoType||'arrow',text:ITEMS[arrow.ammoType||'arrow']?.name||'Arrows',quantity:qty});
     this.persist();
     return true;
   },
@@ -470,6 +490,7 @@ export const adventureMethods = {
     p.inventoryFullNoticeUntil = this.time + 1.5;
     p.inventoryFullNoticeKey = key;
     this.message("Inventory full.");
+    actionFeedback(this,p,{key:'inventory-full',text:'Bag full · make space to collect',kind:'failure'});
   },
   collect(p, l, quick = false) {
     if (!l || !this.loot.includes(l) || dist(p, l) > 65 + stat(p, "magnet"))
@@ -499,6 +520,7 @@ export const adventureMethods = {
     if (!april&&["unique", "legendary"].includes(ITEMS[l.type]?.rarity)) looter.foundUnique = 1.1;
     if(april){p.pickupTime=0;p.foundUnique=0;}
     this.loot = this.loot.filter((i) => i !== l);
+    actionFeedback(this,p,{key:l.type,text:ITEMS[l.type]?.name||l.type,quantity:l.qty||1});
     this.persist();
     return true;
   },
@@ -585,6 +607,7 @@ export const adventureMethods = {
     if(door?.oldWell)return enterOldWell(this,p,door);
     if(door?.forestTravel)return false; // Legacy journey portals are retired.
     if (p.hp <= 0 || p.room || dist(p, door) > 26) return false;
+    spellTransition(this,p);
     p.room = door.id;
     p.roomX = 160;
     p.roomY = 158;
@@ -612,6 +635,7 @@ export const adventureMethods = {
       if(!forced&&p.hp>0&&Math.hypot(p.roomX-d.well.exit.x,p.roomY-d.well.exit.y)>=36){this.message(d.mausoleum?'Find the entrance stairs and use Interact to return.':'Find the shaft of light and climb the rope to return.');return false;}
       return leaveOldWell(this,p);
     }
+    spellTransition(this,p);
     p.room = null;
     p.ui = null;
     resetStorageJump(p);
@@ -634,6 +658,8 @@ export const adventureMethods = {
   openInventory(p, storage = null) {
     cancelRobotRepair(p);
     this.onSound("inventory",p);
+    if(storage==='starter')emitGameplayFx(this,'chest',p,{targetId:p.id});
+    if(storage==='victory')emitGameplayFx(this,'chest',{x:800,y:919});
     p.ui = { ownerDevice:p.device,panel: storage === "victory" && (this.victoryRewards || []).length ? "chest" : "pack", index: 0, slot: 0, storage, hold: 0 };
     if(storage==='starter')Object.assign(p.ui,{panel:'chest',loot:true,index:Math.max(0,starterChestFor(this,p).findIndex(Boolean))});
     if(storage==='temple')Object.assign(p.ui,{panel:'chest',loot:true,index:Math.max(0,this.templeChest?.findIndex(Boolean)??0)});
@@ -991,16 +1017,20 @@ export const adventureMethods = {
         else u.notice='Find Gravemyst’s cat in the Graveyard first.';
       }
       else {
-        if(item?.type?.startsWith('caught_')){
+        if(item?.type==='caught_chocolate_frog'){useChocolateFrog(this,p);}
+        else if(item?.type?.startsWith('caught_')){
           if(['caught_grave_moth','caught_crypt_beetle'].includes(item.type)){
             if(!releaseGraveyardCritter(this,p,u.index))u.notice='Release this cemetery critter on open graveyard ground.';
           }else releaseCritter(this,p,u.index);
         }
         else if(item?.type==='arrow')u.notice='Arrows are used automatically when you fire a bow.';
         else if (item?.type === "stamina_potion") useStamina(p);
+        else if(item?.type==='diagon_ice_cream'){if(p.hp>0&&p.hp<p.maxHp){p.hp=Math.min(p.maxHp,p.hp+35);if(--item.qty===0)p.inventory[u.index]=null;u.notice='A scoop of strawberry magic. +35 health.';this.persist?.();}}
         else if (item?.type === "potion") this.usePotion(p);
         else if (item?.type === "coconut") this.useCoconut(p);
+        else if (item?.type === "apple") useApple(this,p);
         else if (item?.type === "hot_chocolate") useHotChocolate(this,p);
+        else if (item?.type === "chocolate_frog"||item?.type==='caught_chocolate_frog') useChocolateFrog(this,p);
         else if (item?.type === "honeycomb") useHoneycomb(this,p);
         else if (item?.type === "trap" && !p.room) this.trap(p);
         else equip(p, u.index);
@@ -1054,7 +1084,7 @@ export const adventureMethods = {
     tickMeltingIce(this,dt);tickArrowIce(this,dt);
     if(this.time>=(this.arrowCompactAt||0)){compactArrowDrops(this);this.arrowCompactAt=this.time+1;}
     for (const d of [...this.portals])
-      if (d.closing !== null) {
+      if (!d.shadowPassage&&d.closing !== null) {
         d.closing -= dt;
         if (d.closing <= 0) {
           for (const p of this.players.filter((p) => p.room === d.id))
@@ -1135,9 +1165,9 @@ export const adventureMethods = {
         tickStorageRoom(this,p,i,dt,edge('interact'));
       } else if (!p.consumeInput) {
         const car=houseVehicleForPlayer(this,p);
+        if(edge('interact')&&(car||houseVehicleEntry(this,p))){interactHouseVehicle(this,p);p.interactTime=0;p.interactUsed=true;p.previousInput={...i};continue;}
         if(car&&vehicleDriver(this,car)===p){
           p.charge=0;p.bowAiming=false;p.blocking=false;delete p.queuedAttack;
-          if(edge('interact'))interactHouseVehicle(this,p);
           p.previousInput={...i};continue;
         }
         if(this.openingBoard)faceOpeningBoard(p);else if (!p.sleeping) updateAimFacing(p, i);
@@ -1148,6 +1178,7 @@ export const adventureMethods = {
         if (edge("summon")) this.raiseSkeleton(p);
         if (edge("potion")) this.usePotion(p);
         p.blocking = !!i.block && !hasAimWeapon(p) && itemKind(p.equipment.hand2) === "shield";
+        if(p.blocking && edge('block'))raiseCounterGuard(this,p);
         p.bowAiming = Boolean(p.bowAiming);
         if (
           edge("bait") &&
@@ -1168,6 +1199,9 @@ export const adventureMethods = {
         } else p.sealHold = 0;
         if(p.swimming){p.charge=0;delete p.queuedAttack;}
         if(this.openingBoard&&edge('attack')){this.attack(p);p.charge=0;}
+        if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&interactShadowPassage(this,p)){p.previousInput={...i};return;}
+        if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&interactPlayground(this,p)){p.interactUsed=true;p.charge=0;}
+        if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&interactHouseLiving(this,p)){p.interactUsed=true;p.charge=0;}
         if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&interactChicken(this,p)){p.interactUsed=true;p.charge=0;}
         if(!sealPriority&&!this.openingBoard&&!p.interactUsed&&edge('interact')&&openNpcDialogue(this,p)){p.interactUsed=true;p.doodadAttackConsumed=true;}
         if (!sealPriority && !this.openingBoard && !p.interactUsed && edge('interact') && !this.nearbyLoot(p) && !this.nearbyArrow(p)) {
@@ -1178,7 +1212,7 @@ export const adventureMethods = {
         this.tickWeaponInput(p,i,old,dt);
         const l = this.nearbyLoot(p), embeddedArrow = this.nearbyArrow(p);
         if (!(sealPriority&&i.interact) && edge("loot") && embeddedArrow) this.collectArrow(p, embeddedArrow);
-        if (!(sealPriority&&i.interact) && edge("loot") && l) this.collect(p, l);
+        else if (!(sealPriority&&i.interact) && edge("loot") && l) this.collect(p, l);
         if (i.interact) {
           p.interactTime = (p.interactTime || 0) + dt;
           if (!sealPriority && p.interactTime >= 0.55 && !p.interactUsed && l) {
@@ -1188,7 +1222,7 @@ export const adventureMethods = {
         } else {
           if (!sealPriority && old.interact && p.interactTime > 0 && p.interactTime < 0.55 && !p.interactUsed && !p.sealHold) {
             const d = this.portals.find((d) => dist(p, d) < 65);
-            if(interactHouseVehicle(this,p)||toggleGarageDoor(this,p)||openHouseChest(this,p)||openNpcDialogue(this,p)||interactGraveyardCat(this,p)||interactToyTrain(this,p)||interactMystery(this,p)||interactHouseSurface(this,p)||toggleWorldLight(this,p)){}
+            if(interactHouseVehicle(this,p)||toggleGarageDoor(this,p)||openHouseChest(this,p)||openNpcDialogue(this,p)||interactGraveyardCat(this,p)||interactToyTrain(this,p)||interactMystery(this,p)||interactHouseLiving(this,p)||interactHouseSurface(this,p)||toggleWorldLight(this,p)){}
             else if (l) this.collect(p, l);
             else if (embeddedArrow) this.collectArrow(p, embeddedArrow);
             else if (interactOldWell(this,p)||openMerchant(this,p)||openSupplyChest(this,p)||toggleDoor(this,p)||interactIce(this,p)||pickPumpkin(this,p)) {}
@@ -1265,12 +1299,13 @@ export const adventureMethods = {
   },
   tickWorldLoot(dt){tickXPOrbs(this,dt);},
   tickWeaponInput(p,i,old,dt){
+        if(p.heldChickenId||p.chickenThrowTime>0){if(i.attack&&!old.attack)throwHeldChicken(this,p);p.charge=0;p.pounceAimActive=false;p.pounceAim=null;return;}
         const swordReady=swordLoadout(p)&&!controlledFollower(this,p)&&!p.ui&&!p.room&&p.hp>0&&!p.stun&&!p.frozen&&!p.sleeping&&!p.consumeInput&&!p.swimming&&!p.heldChickenId;
         p.swordChargeAim=!!(swordReady&&!p.attack&&i.attack&&(i.block||i.holdPosition)&&!this.openingBoard);
         if(p.swordChargeAim||p.swordDash||p.swordFacing&&p.attack>0)p.blocking=false;
-        if(swordLoadout(p)&&!swordReady){p.charge=0;return;}
+        if(swordLoadout(p)&&!swordReady){p.charge=0;updateSwordChargePolish(this,p,dt);return;}
 
-        if(p.heldChickenId){if(i.attack&&!old.attack)throwHeldChicken(this,p);p.charge=0;p.pounceAimActive=false;p.pounceAim=null;return;}
+
         if (!this.openingBoard&&i.attack&&!p.swimming&&!p.doodadAttackConsumed&&!p.ui){
           p.charge = Math.min(1.2, (p.charge || 0) + dt*(1+(itemKind(p.equipment?.hand1)==='bow'?stat(p,'bowDrawSpeed'):0)));
           const controlled=controlledFollower(this,p);
@@ -1293,6 +1328,7 @@ export const adventureMethods = {
           p.charge = 0;
           p.pounceAimActive=false;p.pounceAim=null;
         }
+        updateSwordChargePolish(this,p,dt);
   },
   tickProjectiles(dt){
     this.spells ||= [];
@@ -1320,7 +1356,7 @@ export const adventureMethods = {
           target.flash = 0.2;
           target.aggro = target.faction!=='ally';
           if (bolt.fire) ignite(target, 2, bolt.burnDamage || 3);
-          if (bolt.ice && !this.players.includes(target) && this.random() < 0.35) target.frozen = 1.6;
+          freezeFromIceSpell(this, bolt, target);
           bolt.life = 0;
         } else if (this.projectileBlocked(bolt.x, bolt.y, (bolt.size || 6) / 2,true)) {
           bolt.life = 0;finishMagicBolt(this,bolt,true);
@@ -1333,6 +1369,8 @@ export const adventureMethods = {
     for (const b of this.baits) b.life -= dt;
     this.baits = this.baits.filter((b) => b.life > 0);
     tickBoomerangs(this,dt);
+    let shotFlames;
+    const getShotFlames = () => shotFlames ??= arrowFlameSources(this);
     for (const a of this.arrows) {
       recordArrowTrail(a,this.time-dt);
       if (a.stuck) {
@@ -1350,13 +1388,12 @@ export const adventureMethods = {
       const steps = Math.ceil((Math.hypot(a.vx, a.vy) * dt) / 5) || 1;
       for (let n = 0; n < steps && !a.stuck; n++) {
         const s = dt / steps;
-        const previousX=a.x,previousY=a.y;
+        const previous={x:a.x,y:a.y,z:a.z};
         a.x += a.vx * s;
         a.y += a.vy * s;
         if(a.bansheeFrost){a.rangeLeft=(a.rangeLeft??460)-Math.hypot(a.vx,a.vy)*s;if(a.rangeLeft<=0){a.remove=true;a.stuck=true;break;}}
         const gravity=a.gravity??rules.arrowGravity;
         a.z += a.vz * s-.5*gravity*s*s;
-        recordArrowTrail(a,this.time-dt+(n+1)*s);
         a.vz -= gravity * s;
         if(a.z<=18&&(this.toyTrains||[]).length){const speed=Math.hypot(a.vx,a.vy)||1;if(hitToyTrain(this,{x:a.x,y:a.y,faceX:a.vx/speed,faceY:a.vy/speed},0)){a.remove=true;a.stuck=true;break;}}
         if(this.projectileBlocked(a.x,a.y,1,true)){
@@ -1364,6 +1401,7 @@ export const adventureMethods = {
           a.angle=arrowVisualAngle(a);
           if(a.rock)this.effects.push({particle:'rock-fragments',x:impactX,y:impactY-impactHeight,life:.42,duration:.42,seed:a.owner||0});
           const prop=arrowScenery(this,impactX,impactY);
+          flameArrowGroundHit(this,a,prop);
           a.stuck=true;a.impactTime=this.time;frostImpact(this,a);
           if(prop?.kind==='rock'&&!a.rock&&!a.ice){
             this.effects.push({x:impactX,y:impactY-impactHeight,text:'Splinter',color:'#d0b181',life:.35});
@@ -1371,6 +1409,8 @@ export const adventureMethods = {
           }else if(!a.rock&&!a.ice){arrowDrop(this,{...a,x:impactX,y:impactY,z:Math.max(0,impactHeight),surfaceEmbedded:true});}
           a.remove=true;break;
         }
+        if(a.z>0)stepArrowFlame(this,a,previous,getShotFlames);
+        recordArrowTrail(a,this.time-dt+(n+1)*s);
         const target = a.hostile
           ? [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(p=>p.pet)].find((p) => !p.room && p.hp > 0 && !isCharmed(p) && dist(p, a) < 16 && clearShot(this,a,p))
           : playerCombatTargets(this,a).find((e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,a,1,a.z):e.hp > 0 &&
@@ -1387,17 +1427,19 @@ export const adventureMethods = {
               a.remove = true;
             } else {
               const before=target.hp;
-              this.hurt(target, a.damage, a);
+              this.hurt(target, flameArrowDamage(a), a);
+              flameArrowTargetHit(a,target,before-target.hp);
               if(a.bansheeFrost&&target.hp<before&&target.hp>0)freezeBansheeTarget(this,target);
               frostImpact(this,a,target);
               a.remove = true;
             }
           } else {
             target.aggro = true;
-            damageEnemy(target,a.damage,a.ice?'ice':'physical',{g:this,p:this.players.find(p=>p.id===a.owner),shot:a});target.killedBy=a.owner;target.ritualKill=false;
+            const dealt=damageEnemy(target,flameArrowDamage(a),a.ice?'ice':'physical',{g:this,p:this.players.find(p=>p.id===a.owner),shot:a});target.killedBy=a.owner;target.ritualKill=false;
+            flameArrowTargetHit(a,target,dealt);
             target.flash = 0.2;
             frostImpact(this,a,target);
-            if (a.ice && this.random() < 0.35) target.frozen = 1.6;
+            if (a.ice && target.hp > 0 && this.random() < 0.35) applyCombatFrost(this,target,1.6,a.owner);
             bansheeArrowImpact(this,a,target);
             a.enemy = target.id;
             a.hitOffsetX = a.x - target.x;
@@ -1425,6 +1467,7 @@ export const adventureMethods = {
             this.effects.push({particle:'arrow-splash',x:a.x,y:a.y,life:.4,duration:.4,seed:a.owner||0});
             this.onSound('splash',a);
           }else{
+            flameArrowGroundHit(this,a);
             frostImpact(this,a);
             if(!a.rock&&!a.ice)arrowDrop(this,a);
           }
@@ -1435,16 +1478,22 @@ export const adventureMethods = {
     this.arrows = this.arrows.filter((a) => !a.remove);
     tickSuccubusKisses(this,dt);
   },
-  shieldBlocks(p, source) {
+  shieldBlocks(p, source, charge = false) {
     if (!source || !p.blocking) return false;
     const d = dist(p, source) || 1;
     const blocked = ((source.x - p.x) * p.faceX + (source.y - p.y) * p.faceY) / d > 0.25;
+    const caught = blocked && charge && catchChargeGuard(this,p,source);
     if (blocked && source.state === "windup") {
       p.parry = 0.32;
       source.state = "recover";
       source.timer = 0.45;
     }
-    return blocked;
+    if(blocked&&stat(p,'guardBreakResist')>0)p.guardWardTime=Math.max(p.guardWardTime||0,.75);
+    if(blocked){
+      triggerCombatImpact(this,source,p,{kind:'shieldBlock'});
+      emitGameplayFx(this,p.parry>0?'parry':'block',{x:p.x+p.faceX*16,y:p.y+p.faceY*10-20},{angle:Math.atan2(p.faceY,p.faceX)});
+    }
+    return caught ? 'caught' : blocked;
   },
   shopOwner(p) {
     const door = this.portals.find((d) => d.id === p.room);
@@ -1496,7 +1545,8 @@ export const adventureMethods = {
     emitNoise(this, p, 'magic', 260);
     const def = ITEMS[p.equipment[slot]];
     const cost=(def?.manaCost||0)*(1-Math.min(.75,stat(p,'manaDiscount')));
-    if (!def?.magic || (p.mana ?? 100) < cost) return false;
+    if (!def?.magic) return false;
+    if((p.mana??100)<cost){actionFeedback(this,p,{key:'no-mana',text:'Not enough mana',kind:'failure'});return false;}
     this.onSound("magic",p);
     p.mana = (p.mana ?? 100) - cost;
     if(p.hp>0)p.hp=Math.min(p.maxHp,p.hp+stat(p,'castHeal'));
@@ -1515,7 +1565,7 @@ export const adventureMethods = {
       remaining: chargedProjectileRange(charge),
       size: 6 + Math.round(strength * 8),
       structureCharge: strength,
-      damage: Math.round((def.damage+stat(p,'damageBonus')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
+      damage: Math.round((def.damage+stat(p,'damageBonus')+stat(p,'spellDamage')) * (1 + strength) * Math.max(.1, comboDamage || 1)),
       color: def.artColor || def.color,
       glow: magicBoltGlow(def),
       fire: def.spellType === "fire",
@@ -1530,6 +1580,7 @@ export const adventureMethods = {
     const ammoType=consumeQuiver(p);
     if (!ammoType) {
       this.message("Out of arrows. Collect or recover more arrows.");
+      actionFeedback(this,p,{key:'no-arrows',text:'No arrows · collect or recover ammunition',kind:'failure'});
       return false;
     }
     this.onSound("bow",p);
@@ -1540,6 +1591,7 @@ export const adventureMethods = {
       speed = (rules.bowSpeed + strength * rules.bowBonusSpeed)*(1+stat(p,'arrowSpeed'));
     const origin=rangedLaunchOrigin(p,this.time,'bow',{charge,size:rangedRenderSize(this)}),z=origin.z;
     const aim = aimedDirection(this, p, origin, 0.2);
+    emitGameplayFx(this,'bow',{x:origin.x,y:origin.y-z},{angle:Math.atan2(aim.y,aim.x),life:.3});
     for(const spread of stat(p,'arrowVolley')>=2?[-.16,0,.16]:[0]){
     const angle=Math.atan2(aim.y,aim.x)+spread;
     this.arrows.push({
@@ -1590,7 +1642,7 @@ export const adventureMethods = {
         chosen === "relic"
           ? rollRelic(this.random)
           : ITEMS[chosen]?.slot
-            ? rollGear(this.random)
+            ? rollProgressionGear(this.random,{biome:this.generatedEnvironment,party:this.players,slot:ITEMS[chosen].slot})||rollGear(this.random)
             : chosen;
       this.dropLoot(
         p.x + (n - 1) * 28,
@@ -1643,14 +1695,12 @@ export const adventureMethods = {
     }
     const xpValue = e.kind === "skeleton" ? 10 : Math.max(4, Math.min(80, Math.round(difficulty / 5)));
     this.dropXP(e.x, e.y, xpValue);
-    if (this.random() < 0.4 || e.kind === "skeleton_boss")
-      drop(
-        e.x + 24,
-        e.y,
-        rollGear(this.random, e.kind === "skeleton_boss" ? "unique" : null),
-        1,
-        e.kind === "skeleton_boss" ? "Bone king reward" : "Enemy gear",
-      );
+    const bossReward=!!(e.boss||e.kind==='skeleton_boss');
+    const gearChance=bossReward ? .1 : difficulty>=180 ? .08 : difficulty>=95 ? .055 : .04;
+    if (this.random() < gearChance) {
+      const type=rollProgressionGear(this.random,{biome:this.generatedEnvironment,party:this.players,threat:difficulty,boss:bossReward});
+      if(type)this.dropLoot(e.x+24,e.y,type,1,bossReward?'Boss equipment':'Enemy equipment',bossReward);
+    }
     if (this.random() < (e.kind === "skeleton_boss" ? 0.35 : 0.08))
       drop(e.x - 18, e.y + 12, rollRelic(this.random), 1, "Relic");
     const config = creatures[e.kind];
@@ -1660,6 +1710,13 @@ export const adventureMethods = {
       if (!entry?.item || !this.lootConditionMet(entry.condition)) continue;
       if (this.random() >= Math.max(0, Math.min(100, Number(entry.chance ?? 100))) / 100) continue;
       this.dropLoot(e.x, e.y, entry.item, Math.max(1, Number(entry.qty) || 1), entry.source || "Enemy drop", !!entry.manualPickup);
+    }
+    const gearPool=config?.gearRewardPool;
+    if(gearPool?.items?.length&&this.random()<Math.max(0,Math.min(1,Number(gearPool.chance??1)))){
+      const missing=gearPool.items.filter(type=>ITEMS[type]?.slot&&!this.players.some(player=>
+        Object.values(player.equipment||{}).includes(type)||(player.inventory||[]).some(item=>item?.type===type&&item.qty>0)));
+      if(missing.length){const type=missing[Math.min(missing.length-1,Math.floor(this.random()*missing.length))];
+        this.dropLoot(e.x+18,e.y+18,type,1,gearPool.source||'Regional equipment cache',true);}
     }
     if (
       !lootDrops.length && (config?.dropType || e.frostMage) &&

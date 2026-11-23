@@ -4,6 +4,14 @@ import {grassFieldInstances} from '../src/grass-field.mjs';
 import {generateWorld} from '../src/world.mjs';
 import {routeDistance,clearingDistance,forestPavingAt} from '../src/forest-landscape.mjs';
 import {meadowAllowed} from '../src/pixel-meadow.mjs';
+import {realmWorld} from '../src/realm-layout.mjs';
+
+test('shadow grass is dense and tall while leaving the clearing and void uncovered',()=>{
+ const g={...realmWorld(42,'shadow'),seed:42,generatedEnvironment:'shadow'};
+ const data=grassFieldInstances(g,{sx:0,sy:0,ex:1600,ey:1600},[]);assert.ok(data.length/8>15000);
+ for(let i=0;i<data.length;i+=8){assert.equal(meadowAllowed(g,data[i],data[i+1],2),true);assert.ok(data[i+2]>=15&&data[i+2]<=30);assert.equal(data[i+7],1);}
+ assert.equal(meadowAllowed(g,800,816),false);assert.equal(meadowAllowed({...g,terrain:Array(2500).fill('shadow_void')},400,400),false);
+});
 
 test('short meadow carpet respects water, paths, paving and the starting clearing',()=>{
  const g={...generateWorld(42,'forest'),seed:42};

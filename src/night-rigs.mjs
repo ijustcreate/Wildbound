@@ -254,7 +254,7 @@ export function nightAction(kind, actor = {}, model = nightMotions[kind]) {
   if (actor.state === 'recover') return valid({ night_stalker: 'retreat', carrion_pack: 'retreat', hunter: 'reload', burrower: 'burrow', mimic_vine: 'retract' }[kind]) || 'idle';
   if (valid(actor.state)) return actor.state;
   if (kind === 'burrower' && actor.underground) return 'underground';
-  if(kind==='chicken')return actor.moving?(actor.state==='flee'?'run':'walk'):'peck';
+  if(kind==='chicken')return actor.state==='carried'?'idle':actor.moving?(actor.state==='flee'?'run':'walk'):'peck';
   if (actor.moving || Math.hypot(actor.vx || 0, actor.vy || 0) > 2) return valid('stalk') || 'run';
   return kind === 'carnivorous_flower' ? 'sway' : 'idle';
 }
@@ -296,11 +296,11 @@ export function drawNightRig(c, actor, time, model = nightMotions[actor.sprite] 
   if(kind==='chicken'){
     if(actor.carriedFlap){
       const wingPose=Object.fromEntries(Object.entries(pose).map(([name,value])=>[name,Array.isArray(value)?value.slice():value]));
-      const flap=(Math.sin(time*34+(actor.id||0))*.5+.5);
-      for(const side of ['L','R']){
-        if(wingPose['elbow'+side])wingPose['elbow'+side][2]+=2+flap*3;
-        if(wingPose['hand'+side])wingPose['hand'+side][2]+=3+flap*5;
-        if(wingPose['wingTip'+side])wingPose['wingTip'+side][2]+=4+flap*8;
+      const flap=Math.sin(time*28+(actor.id||0)),spread=3+(1-Math.abs(flap))*3;
+      for(const [side,sign]of [['L',-1],['R',1]]){
+        for(const [joint,width,lift]of [['elbow',spread*.35,flap*2.5+.5],['hand',spread*.7,flap*5-1],['wingTip',spread,flap*6-1]]){
+          const v=wingPose[joint+side];if(v){v[0]+=sign*width;v[2]+=lift;}
+        }
       }
       return drawChickenPixels(c,model,wingPose,d);
     }

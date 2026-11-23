@@ -1,0 +1,21 @@
+# Train scene layering and cab refinement
+
+User scope: fix character/environment/train-part layering, and refine the actual train walls, engine and controls. Wildbound_worlds, f0b787ff33c3ac8f3675b48504937ebda4f0dcb5, origin https://github.com/ijustcreate/Wildbound.git, with extensive preserved unrelated modified source. No commit/push requested.
+
+Cause: only player bodies used the carriage foreground compositor; students bypassed it, and enemies/environment sprites used unrelated ordering. Rider depth was compressed into a tiny band after its whole car, so it no longer interleaved correctly with nearby scenery roots. The actor-sized surface also could not hold a large environment sprite.
+
+At normal play scale, car geometry is painted before the upright scene. Players, students, enemies, pets/followers, owls, frogs, scenery and station assets then retain their real ground depth and receive physical train foreground masks. Student masks use the real seat point independently of the raised seated rig. Existing carriage sentinels keep scenery near trains out of distant batches. Distant overview drawing retains its lighter original car/root ordering. The compositor has three reusable size classes (192 square, 512x768 and 1024 square), with a maximum three surfaces per renderer. No saved data or authored artwork is replaced.
+
+Train craft: sloped iron cab desk with brass pressure dials, throttle grip, brake wheel and status lamp; an arched, grated firebox face; timber coach wall lining and waist rail. Native near outer walls replay over furniture to prevent furnishings from overwriting the wall. Authored body sprite overrides are excluded from that native repaint. Existing interaction footprints, console/firebox bounds and design schema stay unchanged.
+
+Source checks: 71 focused tests passed, including four new scene-order/large-sprite cases, support and tabletop jump, input, station assets and scenery batching. 81 actual Electron mixed actor/tree/engine/coach assertions passed, 136 foreground pixel probes passed and 280 scene captures completed. The native tree fixture was corrected to use an actual procedural oak; its nonempty raster is asserted. The full suite and hardware playtesting were not repeated. Sustained FPS is not claimed.
+
+Before source: test-output/train-layer-world-before.mjs; native captures: train-scene-order/source, train-craft-review/scene-art-final, train-layer-matrix/scene-final. Final packaged identity and checks are appended below after verification. Visual user review pending.
+
+## Verified desktop delivery
+
+Version 1.2.113: `dist/1.2.113-2026-11-23T19-56-26-384Z/Wildbound-win32-x64/Wildbound.exe`. Packaging passed 986 runtime syntax checks. Finalized train files were individually syntax-checked and copied into this generated snapshot; all six train module hashes match source. Manifest retains packagedAt and records finalization time and exact hashes. Source commit f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 with modified source. A full 1,749+ runtime/assets comparison identified only concurrent gear-art.mjs and player-motion.mjs differences; they were left outside this tested snapshot. See test-output/train-scene-delivery.json for the exact audit count and identities.
+
+Final muted packaged checks pass: 85 mixed scene/large-sprite/tile-seam/day-night-cab assertions, 136 physical overlap pixel probes, 280 five-car/eight-direction scene captures and 20 close art scenes. The actual packaged EXE boots to a ready lobby with no renderer errors, exit 0. Day and night cab views and open coach doors were visually inspected, alongside mixed tree/actor scenes. Oversized architecture uses disjoint clipped tiles to avoid both cropped art and translucent seams. Ground shadows are painted beneath the whole train at normal scale. The full suite and sustained FPS were not measured for this task.
+
+Normal desktop shortcut: C:/Users/New User/Desktop/Wildbound Worlds (1.2.113).lnk, target C:/Users/New User/Desktop/Wildbound/Play Wildbound.cmd, blank arguments, repository working directory and Wildbound ICO. Launcher --check selects the verified snapshot. Saves, rigs, personal sound settings and editor drafts remain untouched. No commit/push/web publication. Visual/playtest review remains pending.

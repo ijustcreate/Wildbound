@@ -12,7 +12,7 @@ export const WILD_LANDS_SITES=[
 ];
 function state(t){return t.wildExploration??={discovered:new Set(),opened:new Set(),nextCheck:0};}
 export const wildSiteVisible=(d,site)=>(d.activeRoom||null)===(site.room||null);
-export function nearbyWildSite(g,p){const t=g.trainTest;if(!t?.design.wildLands||p.trainRide)return null;return WILD_LANDS_SITES.find(s=>wildSiteVisible(t.design,s)&&Math.hypot(p.x-s.x,p.y-s.y)<125)||null;}
+export function nearbyWildSite(g,p){const t=g.trainTest;if(!t?.design.wildLands||p.trainRide||t.design.activeRoom==='diagon')return null;return WILD_LANDS_SITES.find(s=>wildSiteVisible(t.design,s)&&Math.hypot(p.x-s.x,p.y-s.y)<125)||null;}
 export function tickWildLandsContent(g){
  const t=g.trainTest;if(!t?.design.wildLands||t.wildLandsOverview)return;const data=state(t);if(t.time<data.nextCheck)return;data.nextCheck=t.time+.25;
  for(const s of WILD_LANDS_SITES){if(!wildSiteVisible(t.design,s)||data.discovered.has(s.id)||!g.players.some(p=>p.hp>0&&!p.trainRide&&Math.hypot(p.x-s.x,p.y-s.y)<420))continue;

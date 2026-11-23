@@ -4,11 +4,38 @@ import {Game,EVENTS} from '../src/core.mjs';
 import {defaultHouse,validateHouse,carveDoor} from '../src/house-design.mjs';
 import {findPath,navigateEnemy,clearShot} from '../src/navigation.mjs';
 import {tickHazards} from '../src/hazards.mjs';
-const setup=()=>{const g=new Game();g.environment='house';g.addPlayer('keyboard');g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');Object.assign(g.players[0],{x:640,y:580});return g;};
-const archer=g=>{g.spawnEvent(EVENTS.findIndex(e=>e.mixedSkeletons));const e=g.enemies.find(e=>e.kind==='archer');assert.ok(e);g.enemies=[e];Object.assign(e,{x:640,y:400,cooldown:0,speed:70});return e;};
+const setup=random=>{const g=new Game(random);g.environment='house';g.addPlayer('keyboard');g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');Object.assign(g.players[0],{x:640,y:580});return g;};
+const initialQuiver=36;
+function stationaryArcher(g,x,y){
+ g.spawnEvent(EVENTS.findIndex(e=>e.mixedSkeletons),{force:true});
+ const archer=g.enemies.find(enemy=>enemy.kind==='archer');
+ assert.ok(archer);
+ g.enemies=[archer];
+ Object.assign(archer,{x,y,cooldown:0,speed:0,startingArrows:initialQuiver,arrowsLeft:initialQuiver});
+ return archer;
+}
 test('archers never fire without a living present target, beyond range, or through walls',()=>{
- for(const scenario of ['dead','room','far','wall']){const g=setup(),e=archer(g),p=g.players[0];if(scenario==='dead')p.hp=0;if(scenario==='room')p.room={};if(scenario==='far')p.y=1000;g.update(.05,{});assert.equal(g.arrows.filter(a=>a.hostile).length,0,scenario);}
- const g=setup(),e=archer(g);e.y=540;g.players[0].y=620;g.update(.05,{});assert.equal(g.arrows.filter(a=>a.hostile).length,1,'clear in-range target');
+ const scenarios=[
+  {name:'dead',archerY:540,playerX:640,playerY:620,clear:true,playerState:{hp:0}},
+  {name:'room',archerY:540,playerX:640,playerY:620,clear:true,playerState:{room:900,roomX:150,roomY:125}},
+  {name:'far',archerY:400,playerX:1100,playerY:400,clear:true},
+  {name:'wall',archerY:400,playerX:640,playerY:580,clear:false},
+ ];
+ for(const {name,archerY,playerX,playerY,clear,playerState} of scenarios){
+  const g=setup(()=>.5),e=stationaryArcher(g,640,archerY),p=g.players[0];
+  Object.assign(p,{x:playerX,y:playerY},playerState);
+  for(let i=0;i<20;i++)g.update(.05,{});
+  assert.equal(clearShot(g,e,p),clear,`${name} fixture line of sight`);
+  assert.equal(e.arrowsLeft,initialQuiver,name);
+  assert.equal(g.arrows.filter(a=>a.hostile).length,0,name);
+ }
+ const g=setup(()=>.5),e=stationaryArcher(g,640,540);
+ g.players[0].y=620;
+ g.update(.05,{});
+ assert.ok(clearShot(g,e,g.players[0]),'in-range fixture has an open sightline');
+ assert.equal(g.arrows.filter(a=>a.hostile).length,0,'clear target still gets a tell');
+ for(let i=0;i<20&&e.arrowsLeft===initialQuiver;i++)g.update(.05,{});
+ assert.equal(e.arrowsLeft,initialQuiver-1,'clear in-range target');
 });
 test('monkeys navigate through doors while animals wait; dragons cannot fit even through open doors',()=>{
  const g=setup(),p=g.players[0];p.x=640;p.y=600;

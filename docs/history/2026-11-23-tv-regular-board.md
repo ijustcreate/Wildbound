@@ -1,0 +1,13 @@
+# Regular Wildbound board in the TV arena
+
+The user rejected the separate side-view overworld map and asked for the boards used in the other levels. The TV roll presentation now delegates to the existing `drawBoard` in `src/board.mjs`: standard forest artwork, authored 48-space inward path, native animal pawns, dice toss, center-seal magic, user board-art settings and effects. No alternative route geometry or flat character marker is drawn. A small TV state adapter animates only cloned hero data; the TV's 1.8-second reveal plays the native dice/pawn sequence at double speed. Shared TV progression, repeat rolls, creature encounters and center-seal victory stay unchanged.
+
+The arena's central altar face also draws the same native forest board inside its existing authored wood frame. The generated landscape remains on the 'The game is real' entrance only; the rejected side-view board drawing was removed, and existing assets are preserved. The progress ribbon now says 'The Living Board'.
+
+Validation: 118 focused TV and regular-board sequence tests pass. Source muted Electron review passes 177 checks and includes standard-board-dice, standard-board-moving and standard-board-landed screenshots. Final desktop receipt follows below. No hardware-playtest or full-suite claim is made.
+
+Final desktop: version **1.2.112**, `dist/1.2.112-2026-11-23T18-49-08-078Z/Wildbound-win32-x64`, built UTC 2026-11-23T18:51:55.406Z from modified source at `f0b787ff33c3ac8f3675b48504937ebda4f0dcb5` on `Wildbound_worlds`. The regular board function is passed from the TV caller into the altar renderer, preserving safe module initialization. The earlier 18:42 build is superseded.
+
+Final repeated tests: 118 pass; final packaged muted Electron checks: 177 pass, no renderer errors. Actual EXE boot passed in an isolated muted test profile. Syntax: 957 runtime files parsed by the test-output V8 driver, followed by the unchanged production packager. File comparison covered 994 inputs; all requested TV files match. `src/lobby-entry.css` has a later concurrent source edit not included in this snapshot; preserve it. No commit or push performed.
+
+Normal-profile desktop shortcut: `Wildbound Worlds (1.2.112).lnk`; target is this checkout's `Play Wildbound.cmd`, no preview arguments. Launcher --check selects the exact 18:49 build above. Consolidated receipt: `test-output/tv-standard-board/final-receipt.json`; tests and packaging logs are in the same folder. Packaged screenshots/report: `test-output/tv-polish/standard-board-final`. The prior generated landscape is retained for the illustrated entrance; no new image-generation call was needed for this correction.

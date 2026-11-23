@@ -5,9 +5,10 @@ import {swordChargeReach,swordCharging} from '../src/sword-feel.mjs';
 const setup=()=>{const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.weather=null;g.event=null;g.persist=()=>{};Object.assign(p,{x:600,y:600,faceX:1,faceY:0,equipment:{hand1:'sword'},invincible:true});g.enemies=[];return {g,p};};
 const tick=(g,input={},n=1)=>{for(let i=0;i<n;i++)g.update(.02,{keyboard:input});};
 const charge=(g,n=60,hold='block')=>tick(g,{attack:true,[hold]:true,aimX:1},n);
-const enemy=(g,x,y)=>{const e={id:900+g.enemies.length,kind:'lion',x,y,hp:1000,maxHp:1000,speed:0,damage:0,frozen:100,state:'hunt',cooldown:99,faceX:-1,faceY:0};g.enemies.push(e);return e;};
+// Jungle vines immobilize the geometry fixtures without priming an ice shatter.
+const enemy=(g,x,y)=>{const e={id:900+g.enemies.length,kind:'lion',x,y,hp:1000,maxHp:1000,speed:0,damage:0,frozen:100,jumanjiVines:100,state:'hunt',cooldown:99,faceX:-1,faceY:0};g.enemies.push(e);return e;};
 test('held aim grows a capped stationary sword lane; release travels its reach and cuts once',()=>{
- const {g,p}=setup();const a=enemy(g,650,600),b=enemy(g,755,600),side=enemy(g,690,630),beyond=enemy(g,795,600);
+ const {g,p}=setup();const a=enemy(g,650,600),b=enemy(g,755,600),side=enemy(g,690,660),beyond=enemy(g,825,600);
  charge(g);assert.equal(p.charge,1.2);assert.ok(swordCharging(p));assert.equal(p.x,600);assert.equal(swordChargeReach(p.charge),180);
  tick(g,{block:true});assert.ok(p.swordDash);tick(g,{block:true},45);
  assert.ok(Math.abs(p.x-780)<.01,p.x);assert.ok(a.hp<1000);assert.equal(a.hp,b.hp);assert.equal(side.hp,1000);assert.equal(beyond.hp,1000);assert.equal(p.spin,0);assert.equal(p.swordDash,undefined);

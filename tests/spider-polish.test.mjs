@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {defaultSpiderMotion,upgradeSpiderMotion,drawSpider,spiderAction} from '../src/spider-motion.mjs';
+import {defaultSpiderMotion,upgradeSpiderMotion,drawSpider,spiderAction,spiderFrame} from '../src/spider-motion.mjs';
 import {legacyInsectMotion,validateBeastMotion,BEAST_KINDS} from '../src/beast-motion.mjs';
 import {poseAt,directionVector} from '../src/player-motion.mjs';
 import {rigSubject} from '../src/rig-subjects.mjs';
 import {Game,EVENTS} from '../src/core.mjs';
-import {isSpider,webSlow,tickSpider,maintainSpiderWebs} from '../src/expansion.mjs';
+import {isSpider,webSlow,tickSpider,maintainSpiderWebs,drawExpansion} from '../src/expansion.mjs';
 import {creatures} from '../src/definitions.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 
@@ -49,6 +49,24 @@ test('All eight facings and every action draw crisp integer pixels without blurr
 test('Companions walk by movement and spider hurt/death/bite poses have precedence',()=>{
  assert.equal(spiderAction({moving:true,locomotionSpeed:44,faction:'ally'}),'walk');assert.equal(spiderAction({moving:false}),'idle');
  assert.equal(spiderAction({moving:true,flash:.1}),'hurt');assert.equal(spiderAction({hp:0,attack:.2}),'death');assert.equal(spiderAction({attack:.2}),'attack');
+});
+
+test('Tarantula gait advances by actual short steps instead of sliding for a hundred world units',()=>{
+ const m=defaultSpiderMotion('tarantula'),a={hp:110,speed:48,moving:true,step:0};
+ assert.equal(spiderFrame(a,0,m),0);a.step=18*.13;assert.equal(spiderFrame(a,0,m),m.clips.walk.length);
+ assert.equal(spiderFrame(a,10,m),spiderFrame(a,0,m),'movement phase comes from distance');
+});
+
+test('Frozen sand spiders stop moving and frozen timers expire',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.house=null;g.scenery=[];g.terrain.fill('sand');
+ const e={id:10,kind:'tarantula',x:500,y:600,hp:110,speed:48,frozen:.2,step:0};g.enemies=[e];Object.assign(p,{x:550,y:600});
+ tickSpider(g,e,.1,[p]);assert.equal(e.x,500);assert.equal(e.moving,false);assert.equal(e.frozen,.1);
+});
+
+test('Offscreen webs do no canvas work, and an empty encounter clears tree marks just once',()=>{
+ drawExpansion(new Proxy({},{get(){throw Error('offscreen web touched canvas');}}),{webs:[{x:100,y:100,radius:145}]},()=>false,{floorOnly:true});
+ let reads=0;const tree={get webbed(){reads++;return false;}};const g={scenery:[tree],enemies:[],webs:[]};
+ maintainSpiderWebs(g,.016);assert.equal(reads,1);maintainSpiderWebs(g,.016);assert.equal(reads,1);
 });
 test('Tarantula encounter spawns distinct enemies, owns webs and hatches tarantula juveniles after reload',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.openingBoard=false;

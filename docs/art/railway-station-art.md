@@ -1,0 +1,15 @@
+# Railway station pixel art
+
+Ollivanders set the reference for upright world projection, stepped contours, clustered material ramps, warm window panes, and cast shade where fixtures meet the floor. The old railway hall appeared as a flat roof over low wall strips. Platform colors alternated across the whole width, and the tall checker strip competed with the waiting furniture. The new longer ridge and eaves sit above window bays and a legible entrance. Rails still sit behind a contrasting safety edge.
+
+Jungle Ruins uses mossy stone and a hipped ridge. Frostmere has a snow lip, a tall slate ridge, and warm wood around its windows. Bayou uses a single pitch over raised timber and reeds. East Forest has twin gables and woodland greenery. South Beach uses terracotta and limestone. Homestead has a timber roof, a crest, and rust upholstery. Cemetery uses a steep plum slate gable and subdued paving. West Beach uses weathered blue hips and a wave crest. Lakewood keeps the gabled timber hall and amber glass.
+
+Furniture follows the actual native footprint and the shallow top planes of the wand shop counter. Dispatch cubbies, the ticket bell and ledger, patterned runners, and separate upholstery colors give the waiting rooms specific uses. Forecourt plants reuse the contours in the native forest painter. The door and platform landings retain their original positions. The platform renderer uses the same sampled track normals as deck collision and draws each stretch from a cached raster. Lamps derive their pools from the actual fixture anchors.
+
+Source: [station painter](../../src/station-polish.mjs) and [railway renderer](../../src/railway-station.mjs). The focused station and travel suite passed 58 tests. The [station Electron verifier](../../scripts/verify-station-art.cjs) passed 44 checks in an isolated muted run, with zero renderer errors. The review captured all eight exteriors and open waiting rooms, legacy Lakewood, the live Jungle stop and a night lighting sample. Baseline and revised images are under test-output/station-art.
+
+## Interior detail pass
+
+The station cutaways now show a taller, textured far wall behind the waiting furniture. Jungle Ruins and Cemetery use masonry. Bayou and Homestead use timber, while the remaining stations use tinted plaster. Lit window bays retain their authored spacing above recessed timber panels. Low trim on the inward edge of side and front sill pieces follows their native destructible footprints. The visual cutaway starts just before an explorer crosses the entrance, including east and west doors. Doorway and platform collision still use the same station geometry.
+
+Coach interiors carry the same material treatment at train scale. Walnut lining sits below the visible far window bays, while thin patterned aisle cloth rests on the deck between the seats or along the corridor. The decoration is painted behind the actors, outside the obstruction mask, and retains authored train overrides. Before and after native screenshots are under test-output/station-art and test-output/train-craft-review.

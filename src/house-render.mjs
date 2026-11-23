@@ -1,3 +1,4 @@
+import {drawChristmasTree,drawChristmasGift} from './holiday-decor.mjs';
 import {drawWallClock} from './wall-clock.mjs';
 import {drawTempleFixture} from './temple-fixtures.mjs';
 import {timeOfDay} from './night-cycle.mjs';
@@ -44,6 +45,8 @@ function paintFurniture(c,f){
 }
 
 export function drawFurniture(c,f,g={}){
+ if(f.kind==='christmas_tree'){drawChristmasTree(c,f);return;}
+ if(f.kind==='wrapped_gift'){drawChristmasGift(c,f);return;}
  if(f.kind==='wall_clock'){drawWallClock(c,f.x+f.w/2,f.y+f.h/2,Math.min(f.w,f.h));return;}
  if(drawTempleFixture(c,f,g))return;
  drawFurnitureContact(c,f);paintFurniture(c,f);

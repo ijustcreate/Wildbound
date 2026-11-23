@@ -1,8 +1,12 @@
 import {broomProfileInventory} from './broom-mount.mjs';
 import {petRecord,restoreHunterPet} from './hunter-pets.mjs';
-import { freshCharacter, ITEMS, SLOTS, migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
+import { BACKPACK_SLOTS, canonicalItemType, freshCharacter, ITEMS, migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
 import {migrateSavedStarterChest} from './starter-chest.mjs';
+import {restoreFollowerControl} from './follower-control.mjs';
+import {knownWeaponCombos} from './weapon-combo-discovery.mjs';
+
+const newerRevision = (...versions) => Math.max(Date.now(), ...versions.map(value => (value || 0) + 1));
 export const cleanCharacterName = (name) =>
   String(name || "")
     .normalize("NFKC")
@@ -46,23 +50,71 @@ export function characterNameError(name, heroes, exceptId = null) {
     return "That name is already taken. Choose a unique name.";
   return "";
 }
+function validateBackupItems(list, slots, depth = 0) {
+  if (!Array.isArray(list) || slots == null || list.length > slots || depth > 8) throw Error("Invalid inventory in character backup.");
+  for (const item of list) {
+    if (!item) continue;
+    const def = ITEMS[canonicalItemType(item.type)];
+    if (!def || !Number.isInteger(item.qty) || item.qty < 1) throw Error("Invalid item in character backup.");
+    if (item.contents != null) validateBackupItems(item.contents, def.bag?.slots, depth + 1);
+  }
+}
+
+export function prepareCharacterBackup(raw, current, { restoreStash = false } = {}) {
+  if (raw?.version !== 1 || !Array.isArray(raw.heroes) || raw.heroes.length > 200) throw Error("Invalid character backup.");
+  const data = structuredClone(current);
+  let added = 0;
+  for (const hero of structuredClone(raw.heroes)) {
+    if (typeof hero?.id !== "string" || !hero.id || typeof hero.name !== "string" || characterNameError(hero.name, []) ||
+        !Array.isArray(hero.chests) || hero.chests.length !== 3 || !hero.equipment) throw Error("Invalid character in backup.");
+    validateBackupItems(hero.inventory, BACKPACK_SLOTS);
+    for (const chest of hero.chests) validateBackupItems(chest, 24);
+    if (data.heroes.some(existing => existing.id === hero.id)) continue;
+    const name = cleanCharacterName(hero.name);
+    hero.name = name;
+    for (let suffix = 2; characterNameError(hero.name, data.heroes); suffix++) {
+      const tail = " " + suffix;
+      hero.name = name.slice(0, 20 - tail.length) + tail;
+    }
+    migrateEquipment(hero);
+    hero.revision = newerRevision();
+    data.heroes.push(hero);
+    added++;
+  }
+  const stashRestored = restoreStash && raw.sharedStash != null;
+  if (stashRestored) {
+    validateBackupItems(raw.sharedStash, Infinity);
+    data.sharedStash = structuredClone(raw.sharedStash);
+    migrateLegacySupplies(data.sharedStash);
+    data.stashRevision = newerRevision(data.stashRevision);
+  }
+  return { data, added, stashRestored };
+}
+
 export class Profiles {
   constructor() {
     this.data = { version: 1, heroes: [], sharedStash: [] };
     this.error = null;
+    this.loadError = null;
   }
   async load() {
     try {
       const raw = window.desktop
         ? await window.desktop.loadProfiles()
         : JSON.parse(localStorage.getItem("wildbound-profiles") || "null");
-      if (raw?.version === 1 && Array.isArray(raw.heroes)) {
+      if (raw != null) {
+        if (raw.version !== 1 || !Array.isArray(raw.heroes) ||
+            raw.heroes.some(hero => !hero?.id || !Array.isArray(hero.inventory) || !Array.isArray(hero.chests)) ||
+            raw.sharedStash != null && !Array.isArray(raw.sharedStash)) throw Error("Invalid character save");
+        for (const hero of raw.heroes) migrateEquipment(hero);
+        raw.sharedStash ??= [];
+        migrateLegacySupplies(raw.sharedStash);
         this.data = raw;
-        for(const hero of this.data.heroes)migrateEquipment(hero);
-        migrateLegacySupplies(this.data.sharedStash);
+        this.lastSavedSignature = JSON.stringify(raw);
       }
+      this.loadError = this.error = null;
     } catch (e) {
-      this.error = e.message;
+      this.loadError = this.error = e.message;
     }
     return this;
   }
@@ -75,8 +127,8 @@ export class Profiles {
     this.save();
     return h;
   }
-  assign(p, h) {
-    migrateSavedStarterChest(h);
+  assign(p, h, { preserveStarterChest = false } = {}) {
+    if (!preserveStarterChest) migrateSavedStarterChest(h);
     p.ready = false;
     p.field = structuredClone(
       h.field || {
@@ -125,17 +177,100 @@ export class Profiles {
     await this.save();
     if(this.error){const error=this.error;this.data=before;throw Error('Could not save deletion: '+error);}
   }
+  get revisions() {
+    return {
+      heroes: Object.fromEntries(this.data.heroes.map(hero => [hero.id, hero.revision || 0])),
+      stash: this.data.stashRevision || 0,
+    };
+  }
+  reconcileCheckpoint(g) {
+    if (this.loadError) return false;
+    const saved = g.profileRevisions || { heroes: {}, stash: -1 };
+    let changed = false;
+    for (const player of g.players) {
+      const hero = this.data.heroes.find(record => record.id === player.profileId);
+      if (!hero) continue;
+      const checkpointDiscoveries = knownWeaponCombos(player);
+      const discoveries = knownWeaponCombos(player, hero);
+      if ((hero.revision || 0) <= (saved.heroes?.[hero.id] ?? -1)) {
+        if (discoveries.length > checkpointDiscoveries.length) {
+          player.field ??= {};
+          player.field.weaponCombos = discoveries;
+          changed = true;
+        }
+        continue;
+      }
+      const { ready, hp, hunterPet, starterChest, inventory, equipment, equipmentSockets } = player;
+      this.assign(player, structuredClone(hero), { preserveStarterChest: true });
+      if (discoveries.length) player.field.weaponCombos = discoveries;
+      player.ready = ready;
+      player.hp = Math.min(hp, player.maxHp);
+      player.starterChest = [
+        ...(starterChest || []).filter(item => item?.starterStock === true),
+        ...(structuredClone(hero.starterChest) || []).filter(item => item && item.starterStock !== true),
+      ];
+      if (!player.starterChest.length && !starterChest && !hero.starterChest) player.starterChest = null;
+      if (hunterPet && player.hunterPet?.kind === hunterPet.kind) {
+        Object.assign(player.hunterPet, {
+          id: hunterPet.id, x: hunterPet.x, y: hunterPet.y,
+          room: hunterPet.room, roomX: hunterPet.roomX, roomY: hunterPet.roomY,
+        });
+      }
+      if (player.controlMainLoadout) {
+        player.controlMainLoadout = {
+          ...player.controlMainLoadout, inventory: player.inventory,
+          equipment: player.equipment, equipmentSockets: player.equipmentSockets,
+        };
+        Object.assign(player, { inventory, equipment, equipmentSockets });
+        restoreFollowerControl(g, player);
+      }
+      if (player.broomMount) {
+        const reservation = inventory.find(item => item?.type === 'mounted_broom');
+        const broom = JSON.stringify(player.broomMount.item);
+        const index = player.inventory.findIndex(item => item && JSON.stringify(item) === broom);
+        if (reservation && index >= 0) player.inventory[index] = reservation;
+        else {
+          delete player.broomMount;
+          delete player.broomPet;
+          player.jumpVelocity = Math.min(player.jumpVelocity || 0, 0);
+        }
+      }
+      changed = true;
+    }
+    const stashIsKnown = this.data.stashRevision || this.lastSavedSignature || this.data.sharedStash.length;
+    if (stashIsKnown && (this.data.stashRevision || 0) > (saved.stash ?? -1)) {
+      g.sharedStash = structuredClone(this.data.sharedStash);
+      changed = true;
+    }
+    const current = this.revisions;
+    g.profileRevisions = {
+      heroes: Object.fromEntries(g.players.map(player => [
+        player.profileId,
+        Math.max(current.heroes[player.profileId] || 0, saved.heroes?.[player.profileId] || 0),
+      ])),
+      stash: Math.max(current.stash, saved.stash || 0),
+    };
+    return changed;
+  }
   capture(g) {
-    if(g.trainTest)return;
+    if (this.loadError || this.importPromise || g.trainTest && !g.trainTest.persistent) return;
+    const previous = g.profileRevisions;
     for (const p of g.players) {
       let h = this.data.heroes.find((h) => h.id === p.profileId);
       if (!h) continue; // New local heroes must pass the name dialog first.
+      // Older expedition checkpoints can predate discoveries in the profile.
+      const discoveries = knownWeaponCombos(p, h);
+      if (discoveries.length) {
+        p.field ??= {};
+        p.field.weaponCombos = discoveries;
+      }
       // While a creature is controlled, the shared UI temporarily points the
       // player at that creature's bag and equipment. Persist the saved hero
       // loadout instead, so opening the creature inventory cannot replace the
       // selected character's permanent gear.
       const loadout=p.controlMainLoadout||p;
-      Object.assign(h, {
+      const updated = {
+        ...h,
         field: structuredClone(p.field || {}),
         name: p.name,
         npcQuests: structuredClone(p.npcQuests || {}),
@@ -147,7 +282,7 @@ export class Profiles {
         chests: structuredClone(p.chests),
         // Deposits are returned to this owner's overflow at next selection.
         starterChest: structuredClone(p.starterChest || null),
-        starterChestSupplyVersion: 2,
+        starterChestSupplyVersion: 3,
         chestNames: structuredClone(p.chestNames || []),
         level: p.level,
         xp: p.xp,
@@ -158,14 +293,43 @@ export class Profiles {
         vendingStock: structuredClone(p.vendingStock || null),
         vendingOrders: structuredClone(p.vendingOrders || []),
         nextVendingId: p.nextVendingId || 0,
-      });
+      };
+      if (JSON.stringify(updated) !== JSON.stringify(h)) {
+        updated.revision = newerRevision(h.revision, previous?.heroes?.[h.id]);
+        Object.assign(h, updated);
+      }
     }
-    this.data.sharedStash = structuredClone(g.sharedStash);
-    this.save();
+    if (JSON.stringify(this.data.sharedStash) !== JSON.stringify(g.sharedStash)) {
+      this.data.sharedStash = structuredClone(g.sharedStash || []);
+      this.data.stashRevision = newerRevision(this.data.stashRevision, previous?.stash);
+    }
+    g.profileRevisions = this.revisions;
+    return this.save();
+  }
+  importBackup(raw, options) {
+    if (this.importPromise) throw Error("A character import is already in progress.");
+    const task = Promise.resolve().then(async () => {
+      await this.savePromise;
+      const result = prepareCharacterBackup(raw, this.data, options);
+      if (!result.added && !result.stashRestored) return result;
+      await this.write(result.data);
+      this.data = result.data;
+      this.lastSavedSignature = JSON.stringify(result.data);
+      this.loadError = this.error = null;
+      return result;
+    }).finally(() => { this.importPromise = null; });
+    this.importPromise = task;
+    return task;
+  }
+  async write(data) {
+    if (window.desktop) await window.desktop.saveProfiles(data);
+    else localStorage.setItem("wildbound-profiles", JSON.stringify(data));
   }
   async save() {
+    if (this.loadError) return;
+    if (this.importPromise) return this.importPromise.catch(() => {});
     const signature = JSON.stringify(this.data);
-    if (signature === this.lastSavedSignature && !this.error) return;
+    if (!this.saving && signature === this.lastSavedSignature && !this.error) return;
     this.pendingSave = structuredClone(this.data);
     if (this.saving) return this.savePromise;
     this.saving = true;
@@ -174,8 +338,7 @@ export class Profiles {
         const data = this.pendingSave;
         this.pendingSave = null;
         try {
-          if (window.desktop) await window.desktop.saveProfiles(data);
-          else localStorage.setItem("wildbound-profiles", JSON.stringify(data));
+          await this.write(data);
           this.error = null;
           this.lastSavedSignature = JSON.stringify(data);
         } catch (e) {

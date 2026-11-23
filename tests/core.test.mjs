@@ -16,8 +16,9 @@ import {
   validateSprite,
   floodFill,
 } from "../src/pixels.mjs";
-function game() {
+function game(environment) {
   const g = new Game(() => 0.5);
+  if (environment) g.environment = environment;
   g.addPlayer("keyboard", "Scout");
   g.addPlayer("pad:0", "Ember");
   g.start();
@@ -89,12 +90,19 @@ test("A roll still moves the piece and can summon another event over a live wave
   assert.ok(g.eventTime > 0);
 });
 test("All events have working spawns, including mixed squads", () => {
-  const g = game();
+  const baseline = game();
   for (let i = 0; i < EVENTS.length; i++) {
+    const event = EVENTS[i];
+    const freshWorld = event.comboLayout || event.biomeMixed;
+    const g = freshWorld ? game(event.environment) : baseline;
     g.enemies = [];
     g.mystery=null;
-    g.generatedEnvironment=EVENTS[i].environment||EVENTS[i].environments?.[0]||'forest';
-    if(REALMS.includes(g.generatedEnvironment))Object.assign(g,realmWorld(g.seed,g.generatedEnvironment,{authored:false}));
+    if(freshWorld) {
+      for(const [seat, player] of g.players.entries()) Object.assign(player, {ui:null, x:800+seat*24, y:900});
+    } else {
+      g.generatedEnvironment=event.environment||event.environments?.[0]||'forest';
+      if(REALMS.includes(g.generatedEnvironment))Object.assign(g,realmWorld(g.seed,g.generatedEnvironment,{authored:false}));
+    }
     // Shore encounters require real sand, not only a renamed forest map.
     if(EVENTS[i].requiredStartArea==='sand')g.terrain.fill('sand');
     g.spawnEvent(i);
@@ -120,7 +128,7 @@ test("All events have working spawns, including mixed squads", () => {
 test("Traps capture creatures and remove them after a delay", () => {
   const g = game(),
     p = g.players[0];
-  g.spawnEvent(0);
+  g.spawnEvent(0,{force:true});
   const e = g.enemies[0];
   g.traps.push({ x: e.x, y: e.y, life: 30 });
   tick(g, 0.1);

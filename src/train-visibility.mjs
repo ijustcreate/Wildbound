@@ -7,7 +7,12 @@ export function trainFootprintSlice(c,x){
 }
 export function trainActorDepth(p,cars){
  const ride=p.trainRide,own=ride?[ride.car,...(ride.gangway?[ride.gangway.to]:[])]:[];let lower=-Infinity,upper=Infinity;
- for(const c of cars){const depth=trainCarDepth(c);if(own.includes(c.index)){lower=Math.max(lower,depth+.02);continue;}
+ for(const c of cars){const depth=trainCarDepth(c);if(own.includes(c.index)){
+  // Retain each rider's ground depth after the shared floor, even on the far
+  // half of a coach where clamping everybody to one value used to erase it.
+  const span=Math.abs(Math.sin(c.a))*c.length/2+Math.abs(Math.cos(c.a))*c.width/2+1;
+  lower=Math.max(lower,depth+.02+Math.max(0,Math.min(1,(p.y-c.y+span)/(2*span)))*.01);continue;
+ }
  const dx=p.x-c.x,dy=p.y-c.y,ca=Math.cos(c.a),sa=Math.sin(c.a),x=ca*dx+sa*dy,y=-sa*dx+ca*dy;
  if(Math.abs(x)>c.length/2+45||Math.abs(y)>c.width/2+60)continue;
  if(Math.abs(y)>c.width/2&&Math.abs(ca)<.15&&Math.abs(x)<c.length/2+12){lower=Math.max(lower,depth+.01);continue;}
@@ -21,5 +26,5 @@ export function trainWallOccludes(car,riders,x,y,z,w,h,height){
  const ca=Math.cos(car.a),sa=Math.sin(car.a),base={...car,x:ca*x-sa*y,y:sa*x+ca*y,length:w,width:h},corners=[];
  for(const dx of[-w/2,w/2])for(const dy of[-h/2,h/2])for(const dz of[z,z+height])corners.push({x:ca*(x+dx)-sa*(y+dy),y:sa*(x+dx)+ca*(y+dy)-dz});
  const left=Math.min(...corners.map(p=>p.x)),right=Math.max(...corners.map(p=>p.x)),top=Math.min(...corners.map(p=>p.y)),bottom=Math.max(...corners.map(p=>p.y));
- return riders.some(r=>{const px=ca*r.x-sa*r.y,ground=sa*r.x+ca*r.y,feet=ground-20-(r.height||0);if(px+12<left||px-12>right||feet<top||feet-54>bottom)return false;const sx=Math.max(left,Math.min(right,px)),slice=trainFootprintSlice(base,sx);return !!slice&&slice.front>=ground-3;});
+ return riders.some(r=>{const px=ca*r.x-sa*r.y,ground=sa*r.x+ca*r.y,feet=ground-(r.floor??20)-(r.height||0);if(px+12<left||px-12>right||feet<top||feet-54>bottom)return false;const sx=Math.max(left,Math.min(right,px)),slice=trainFootprintSlice(base,sx);return !!slice&&slice.front>=ground-3;});
 }

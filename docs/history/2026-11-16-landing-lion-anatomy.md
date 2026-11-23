@@ -1,0 +1,11 @@
+# Landing lion anatomy correction — November 16, 2026
+
+Replaced `assets/wildbound-landing-v1.png` using the built-in image generation editor. Removed the extra raised foreleg on the lion's right silhouette and restored a natural stance with two planted front paws. The full title, explorers, board, skeletons and jungle composition remain. The original image is backed up in ignored `test-output/wildbound-landing-before-lion-fix.png`.
+
+Verification: muted Electron `scripts/verify-lobby-entry.cjs` passed all 30 checks with no renderer errors; title captures cover 1440×900, 1920×1080, 800×600 and 640×420. The 1440×900 capture was visually inspected. No physical-controller claims. No new tests were added for this bitmap replacement.
+
+Source is modified from `f0b787ff33c3ac8f3675b48504937ebda4f0dcb5` on `Wildbound_worlds`. This assignment updates the source asset; the previously packaged Desktop build and published web edition have not been rebuilt or republished with it. No commit/push. Existing saves and other pending work were preserved.
+
+## Final built-in editing prompt
+
+Edit target: the provided full WILDBOUND title-screen illustration. Make a precise localized anatomy correction ONLY to the lion at upper left. Remove the anatomically impossible extra raised bent foreleg/paw that sticks horizontally out of the RIGHT side of its chest/mane toward the red-haired woman's head (the dangling golden paw around image x450 y370). Replace that entire extra bent limb with the appropriate dark blue jungle/background and clear space behind the woman, seamlessly matching the pixel-art environment. Keep the lion's natural two weight-bearing forelegs: the planted paw on the mossy stone ledge at image x210 y405 and the foreleg descending diagonally from its chest at x365 y430. The lion is a normal quadruped with four total legs, with hindquarters partially hidden by the left ruins; no raised arm, no additional paw, no new limbs. Preserve lion face, mane and expression. Preserve EVERYTHING ELSE as closely as possible: exact WILDBOUND lettering, golden logo and green vines, two explorers' faces/poses/outfits/hands, skeletons, magical board game, castle/waterfalls/moon, composition, palette, crisp pixel texture, lighting and original wide aspect ratio. Do not redesign or crop the scene. Output the complete corrected full title art.

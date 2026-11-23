@@ -5710,6 +5710,882 @@
     "source": "Original deterministic synthesis; no external samples"
   },
   {
+    "id": "encounter-146",
+    "name": "Crossfire patrol",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-146.wav",
+    "duration": 1.3485468150582165,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.331,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.193,
+        "duration": 0.343,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.393,
+        "duration": 0.208,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.617,
+        "duration": 0.239,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.791,
+        "duration": 0.359,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.93,
+        "duration": 0.442,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-147",
+    "name": "Ember Clearing",
+    "role": "ordinary",
+    "voice": "fire",
+    "file": "assets/sfx/encounters/encounter-147.wav",
+    "duration": 1.5355528308544308,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.268,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.159,
+        "duration": 0.208,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.268,
+        "duration": 0.157,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.379,
+        "duration": 0.218,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.52,
+        "duration": 0.184,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.707,
+        "duration": 0.443,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-148",
+    "name": "Snare Pass",
+    "role": "ordinary",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-148.wav",
+    "duration": 1.3277049641590566,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.191,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.177,
+        "duration": 0.436,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.387,
+        "duration": 0.365,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.587,
+        "duration": 0.245,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.698,
+        "duration": 0.344,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.891,
+        "duration": 0.135,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-149",
+    "name": "Shieldgate Ruins",
+    "role": "ordinary",
+    "voice": "metal",
+    "file": "assets/sfx/encounters/encounter-149.wav",
+    "duration": 1.1882519587641582,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.413,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.14,
+        "duration": 0.422,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.276,
+        "duration": 0.265,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-150",
+    "name": "Brambleline patrol",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-150.wav",
+    "duration": 1.2937065358972177,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.416,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.18,
+        "duration": 0.172,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.297,
+        "duration": 0.399,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-151",
+    "name": "Hunters of the fern trail",
+    "role": "ordinary",
+    "voice": "howl",
+    "file": "assets/sfx/encounters/encounter-151.wav",
+    "duration": 1.224018027028069,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.183,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.158,
+        "duration": 0.305,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.258,
+        "duration": 0.304,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.408,
+        "duration": 0.206,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.567,
+        "duration": 0.323,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.727,
+        "duration": 0.449,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-152",
+    "name": "Embers behind the carapace",
+    "role": "ordinary",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-152.wav",
+    "duration": 1.2467182924272493,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.316,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.221,
+        "duration": 0.293,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.439,
+        "duration": 0.172,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.601,
+        "duration": 0.147,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.743,
+        "duration": 0.422,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-153",
+    "name": "The dune salvage crew",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-153.wav",
+    "duration": 1.0740324548212812,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.443,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.209,
+        "duration": 0.145,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.353,
+        "duration": 0.24,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-154",
+    "name": "Hunters of the white drift",
+    "role": "ordinary",
+    "voice": "howl",
+    "file": "assets/sfx/encounters/encounter-154.wav",
+    "duration": 1.498196572600864,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.262,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.234,
+        "duration": 0.361,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.374,
+        "duration": 0.406,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-155",
+    "name": "The frostbound watch",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-155.wav",
+    "duration": 1.3771949053741992,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.394,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.219,
+        "duration": 0.154,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.354,
+        "duration": 0.222,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.503,
+        "duration": 0.199,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-156",
+    "name": "The unquiet armory",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-156.wav",
+    "duration": 1.1040576810017229,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.446,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.145,
+        "duration": 0.245,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.315,
+        "duration": 0.18,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.525,
+        "duration": 0.36,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-157",
+    "name": "Rustling in the rafters",
+    "role": "ordinary",
+    "voice": "click",
+    "file": "assets/sfx/encounters/encounter-157.wav",
+    "duration": 1.4015403893543408,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.403,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.207,
+        "duration": 0.179,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.375,
+        "duration": 0.432,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-158",
+    "name": "The shrine sentries",
+    "role": "ordinary",
+    "voice": "stone",
+    "file": "assets/sfx/encounters/encounter-158.wav",
+    "duration": 1.343836314813234,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.201,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.216,
+        "duration": 0.297,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.413,
+        "duration": 0.347,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.629,
+        "duration": 0.453,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.742,
+        "duration": 0.441,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-159",
+    "name": "Raiders of the hanging roots",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-159.wav",
+    "duration": 1.5290077229263261,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.428,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.154,
+        "duration": 0.136,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.37,
+        "duration": 0.14,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.583,
+        "duration": 0.309,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.807,
+        "duration": 0.274,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-160",
+    "name": "The gravewatch detail",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-160.wav",
+    "duration": 1.4692803991027177,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.14,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.227,
+        "duration": 0.155,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.344,
+        "duration": 0.363,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.52,
+        "duration": 0.156,
+        "note": 10,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-161",
+    "name": "The candlelit coven",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-161.wav",
+    "duration": 1.0691794973798097,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.307,
+        "note": 10,
+        "accent": true
+      },
+      {
+        "at": 0.214,
+        "duration": 0.309,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.366,
+        "duration": 0.341,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.518,
+        "duration": 0.12,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-162",
+    "name": "The tideguard skirmish",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-162.wav",
+    "duration": 1.209026405075565,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.359,
+        "note": 0,
+        "accent": true
+      },
+      {
+        "at": 0.185,
+        "duration": 0.135,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.409,
+        "duration": 0.366,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.553,
+        "duration": 0.413,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.661,
+        "duration": 0.375,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.859,
+        "duration": 0.211,
+        "note": 7,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-163",
+    "name": "Shellbreakers on the strand",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-163.wav",
+    "duration": 1.295452698902227,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.217,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.188,
+        "duration": 0.186,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.314,
+        "duration": 0.391,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.466,
+        "duration": 0.325,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.631,
+        "duration": 0.371,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-164",
+    "name": "Hunters of the reedbank",
+    "role": "ordinary",
+    "voice": "water",
+    "file": "assets/sfx/encounters/encounter-164.wav",
+    "duration": 1.2313047741306946,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.128,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.219,
+        "duration": 0.163,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.388,
+        "duration": 0.293,
+        "note": 5,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-165",
+    "name": "The bog lantern escort",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-165.wav",
+    "duration": 1.25432695269119,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.339,
+        "note": 12,
+        "accent": true
+      },
+      {
+        "at": 0.18,
+        "duration": 0.424,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.315,
+        "duration": 0.12,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-166",
+    "name": "The crystal sentries",
+    "role": "ordinary",
+    "voice": "chime",
+    "file": "assets/sfx/encounters/encounter-166.wav",
+    "duration": 1.2269764334894717,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.205,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.196,
+        "duration": 0.418,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.376,
+        "duration": 0.26,
+        "note": 12,
+        "accent": false
+      },
+      {
+        "at": 0.573,
+        "duration": 0.339,
+        "note": 0,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-167",
+    "name": "Fangs beneath the shelf",
+    "role": "ordinary",
+    "voice": "stone",
+    "file": "assets/sfx/encounters/encounter-167.wav",
+    "duration": 1.1508260812377558,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.367,
+        "note": 3,
+        "accent": true
+      },
+      {
+        "at": 0.129,
+        "duration": 0.346,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.277,
+        "duration": 0.311,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-168",
+    "name": "The veilwood hunters",
+    "role": "ordinary",
+    "voice": "wood",
+    "file": "assets/sfx/encounters/encounter-168.wav",
+    "duration": 1.0683287212857977,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.245,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.207,
+        "duration": 0.403,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.353,
+        "duration": 0.235,
+        "note": 0,
+        "accent": false
+      },
+      {
+        "at": 0.514,
+        "duration": 0.435,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.74,
+        "duration": 0.222,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
+    "id": "encounter-169",
+    "name": "The thornlight court",
+    "role": "ordinary",
+    "voice": "bone",
+    "file": "assets/sfx/encounters/encounter-169.wav",
+    "duration": 1.4538901015883312,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.37,
+        "note": 7,
+        "accent": true
+      },
+      {
+        "at": 0.138,
+        "duration": 0.424,
+        "note": 3,
+        "accent": false
+      },
+      {
+        "at": 0.332,
+        "duration": 0.242,
+        "note": 3,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
     "id": "travel-forest",
     "name": "Travel · forest",
     "voice": "wood",

@@ -6,6 +6,7 @@ import {tickRealmLife,tickRealmEvent,REALM_FAUNA} from '../src/realm-life.mjs';
 import {boundlessRegionPlan,regionPortals,clearBoundlessGeneration} from '../src/boundless-generation.mjs';
 import {updateBoundlessWorld,createBoundlessChunk,boundlessTerrainAt} from '../src/boundless-world.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
+import {SHADOW_THICKET_BUDGET} from '../src/shadow-thickets.mjs';
 const game=env=>{const g=new Game(()=>.5);g.environment=env;g.mapMode='boundless';g.seed=42;g.addPlayer('keyboard');g.start();g.openingBoard=false;g.bloom=3;return g;};
 const travel=(g,cx,cy)=>{Object.assign(g.players[0],{x:cx*1600+800,y:cy*1600+800});for(let n=0;n<12;n++)updateBoundlessWorld(g,.016);tickRealmLife(g,.016);return g.boundlessLoadedChunks.find(e=>e.key===`${cx},${cy}`);};
 const blocked=k=>['water','cave_void','shadow_void'].includes(k);
@@ -18,10 +19,28 @@ test('shared entrances and all chambers connect in positive and negative realm r
   for(const point of Object.values(p.portals)){assert.ok(!blocked(boundlessTerrainAt(g,Math.floor((point.x-16)/32),Math.floor((point.y-16)/32))));assert.ok(!blocked(boundlessTerrainAt(g,Math.floor((point.x+16)/32),Math.floor((point.y+16)/32))));}
  }}
 });
-test('outer regions retain native assets and wildlife, and scenery stays bounded while travelling',()=>{for(const env of REALMS){const g=game(env),found=new Set();for(const [cx,cy]of [[1,0],[-2,1],[4,-3]]){const entry=travel(g,cx,cy);assert.ok(entry?.realmState);for(const p of entry.scenery){assert.ok(REALM_ASSETS[env][p.kind]);found.add(p.kind);assert.ok(p.x>=cx*1600&&p.rootY>=cy*1600);}
- for(const kind of REALM_FAUNA[env])assert.ok(entry.realmState.animals.some(a=>a.kind===kind),`${env}: ${kind}`);assert.ok(g.boundlessLoadedChunks.length<=9);assert.ok(g.scenery.length<1700);}
- for(const kind of Object.keys(REALM_ASSETS[env]))assert.ok(found.has(kind),`${env} missing ${kind}`);
-}});
+test('outer regions retain native assets and wildlife, and scenery stays bounded while travelling',()=>{
+ for(const env of REALMS){
+  const g=game(env),found=new Set();
+  for(const [cx,cy]of [[1,0],[-2,1],[4,-3]]){
+   const entry=travel(g,cx,cy);assert.ok(entry?.realmState);
+   for(const p of entry.scenery){assert.ok(REALM_ASSETS[env][p.kind]);found.add(p.kind);assert.ok(p.x>=cx*1600&&p.rootY>=cy*1600);}
+   for(const kind of REALM_FAUNA[env])assert.ok(entry.realmState.animals.some(a=>a.kind===kind),`${env}: ${kind}`);
+   assert.ok(g.boundlessLoadedChunks.length<=9);
+   const thickets=g.scenery.filter(p=>p.shadowThicket);
+   assert.ok(g.scenery.length-thickets.length<1700,`${env} ${cx},${cy}: ordinary scenery exceeded its limit`);
+   const thicketsByRegion=new Map([['0,0',0],...g.boundlessLoadedChunks.map(chunk=>[chunk.key,0])]);
+   for(const plant of thickets){
+    const key=`${Math.floor(plant.x/1600)},${Math.floor(plant.rootY/1600)}`;
+    assert.ok(env==='shadow'&&thicketsByRegion.has(key),`${env}: unexpected live thicket in ${key}`);
+    const count=thicketsByRegion.get(key)+1;
+    assert.ok(count<=SHADOW_THICKET_BUDGET,`shadow ${key}: thickets exceeded their budget`);
+    thicketsByRegion.set(key,count);
+   }
+  }
+  for(const kind of Object.keys(REALM_ASSETS[env]))assert.ok(found.has(kind),`${env} missing ${kind}`);
+ }
+});
 test('harvest, one-shot ceiling hazards and wildlife survive unload, reload and session restore',()=>{for(const env of REALMS){const g=game(env),entry=travel(g,2,-1),prop=entry.scenery.find(p=>p.kind!=='ceiling_stalactite');prop.depleted=true;const animal=entry.realmState.animals[0];animal.phase=123;const hazard=entry.scenery.find(p=>p.kind==='ceiling_stalactite');if(hazard){Object.assign(g.players[0],{x:hazard.x,y:hazard.rootY});let damage=0;g.hurt=(_p,n)=>damage+=n;for(let i=0;i<22;i++)tickRealmHazards(g,.1);assert.equal(hazard.hazardState,'spent');assert.equal(damage,5);}
  const saved=JSON.parse(JSON.stringify(saveSession(g))),restored=restoreSession(saved),reload=travel(restored,2,-1);assert.ok(reload.scenery.find(p=>p.id===prop.id).depleted);assert.equal(reload.realmState.animals[0].phase,123);if(hazard)assert.equal(reload.scenery.find(p=>p.id===hazard.id).hazardState,'spent');travel(restored,-4,3);const again=travel(restored,2,-1);assert.ok(again.scenery.find(p=>p.id===prop.id).depleted);assert.equal(again.realmState.animals[0].phase,123);
 }});
@@ -33,7 +52,33 @@ test('post-spawn linked Watcher tentacles remain on walkable caverns tiles',()=>
  assert.equal(group.filter(actor=>actor.kind==='jade_tentacle').length,3);
  for(const actor of group){assert.ok(actor.x<0&&actor.y>=1600);assert.equal(g.blocked(actor.x,actor.y,16),false,`${actor.kind} ${actor.id} at ${actor.x},${actor.y}`);}
 });
-test('six events spawn in the explored region with local objectives, rewards and no duplicate completion',()=>{for(const env of REALMS){const g=game(env);travel(g,-2,1);for(const event of EVENTS.filter(e=>e.environment===env)){const before=g.enemies.length;g.spawnEvent(EVENTS.indexOf(event));if(event.type==='realm_expedition'){const state=realmContexts(g).find(c=>c.realmState.key==='-2,1').realmState;assert.ok(state.event);for(const n of state.event.nodes){assert.ok(n.x<0&&n.y>=1600);assert.equal(g.blocked(n.x,n.y,16),false);Object.assign(g.players[0],n);tickRealmEvent(g,2.1);}assert.ok(state.event.done);const reward=g.loot.find(l=>l.x<0&&l.y>1600);assert.ok(reward);const count=g.loot.length;tickRealmEvent(g,1);assert.equal(g.loot.length,count);}else{const spawned=g.enemies.slice(before),expected=(event.enemies||[{count:event.count}]).reduce((n,member)=>n+(member.count||1),0);assert.equal(spawned.length,expected);for(const e of spawned){assert.ok(e.x<0&&e.y>=1600);assert.equal(g.blocked(e.x,e.y,16),false);}}}}});
+test('realm events spawn in the explored region with local objectives, rewards and no duplicate completion',()=>{
+ for(const env of REALMS){
+  const g=game(env);travel(g,-2,1);
+  for(const event of EVENTS.filter(e=>e.environment===env)){
+   // Each mixed patrol needs space in the local attack budget. Earlier cards
+   // in this loop have already had their spawn and objective assertions.
+   if(event.biomeMixed)g.enemies=g.enemies.filter(enemy=>enemy.wildlife);
+   const before=g.enemies.length;
+   assert.notEqual(g.spawnEvent(EVENTS.indexOf(event)),false,event.name);
+   if(event.type==='realm_expedition'){
+    const state=realmContexts(g).find(c=>c.realmState.key==='-2,1').realmState;
+    assert.ok(state.event);
+    for(const node of state.event.nodes){
+     assert.ok(node.x<0&&node.y>=1600);assert.equal(g.blocked(node.x,node.y,16),false);
+     Object.assign(g.players[0],node);tickRealmEvent(g,2.1);
+    }
+    assert.ok(state.event.done);assert.ok(g.loot.find(l=>l.x<0&&l.y>1600));
+    const count=g.loot.length;tickRealmEvent(g,1);assert.equal(g.loot.length,count);
+   }else{
+    const spawned=g.enemies.slice(before);
+    const expected=event.biomeMixed?2:(event.enemies||[{count:event.count}]).reduce((n,member)=>n+(member.count||1),0);
+    assert.equal(spawned.length,expected,event.name);
+    for(const enemy of spawned){assert.ok(enemy.x<0&&enemy.y>=1600,event.name);assert.equal(g.blocked(enemy.x,enemy.y,16),false,event.name);}
+   }
+  }
+ }
+});
 test('void collision works beyond the board for walkers, flyers and projectiles',()=>{for(const env of ['caverns','shadow']){const g=game(env);travel(g,-1,-1);const p=boundlessRegionPlan(g,-1,-1),i=p.terrain.findIndex(k=>k.endsWith('_void')),x=-1600+i%50*32+16,y=-1600+Math.floor(i/50)*32+16;assert.ok(g.blocked(x,y,8,true,true,false,0));const portal=p.portals.east;assert.equal(g.blocked(portal.x,portal.y,12,false,false,false,0),false);}});
 
 test('persistent local Worlds packs save the new region ecology and partially completed events',async()=>{

@@ -51,6 +51,7 @@ export function drawBeeHive(c,a,time,size=48){
  const bands=[[8,-38,6],[13,-32,6],[17,-26,6],[20,-20,6],[21,-14,6],[19,-8,5]];
  for(const [w,y,h]of bands){rect(c,-w,y,w*2,h,'#a57537');rect(c,-w+2,y,w*2-4,2,'#e4bc76');rect(c,-w+1,y+2,w,2,'#c99b54');rect(c,w-5,y+3,4,h-3,'#805b32');for(let x=-w+5;x<w-5;x+=7)rect(c,x,y+2,1,2,'#b78a46');}
  rect(c,-7,-14,14,10,'#583d29');rect(c,-5,-14,10,9,'#292826');rect(c,-7,-5,14,2,'#e1b26b');rect(c,5,-11,1,3,'#aa7c40');
+ if(a.broodRecovery>0){rect(c,-7,-14,14,10,'#292826');rect(c,-8,-5,16,2,'#efcd88');}
  rect(c,-2,-42,4,5,'#715035');rect(c,-1,-42,1,4,'#d2ae72');
  if(a.flash>0){c.globalAlpha*=.35;rect(c,-15,-30,28,23,'#fff0bb');}
  c.restore();

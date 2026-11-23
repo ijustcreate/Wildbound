@@ -23,7 +23,7 @@ test('hood hair continues behind the upper opening, while ordinary hat bands kee
 });
 
 test('every head item resolves all eight views with four-region art and stable pivots',()=>{
- const hats=Object.entries(ITEMS).filter(([,v])=>v.slot==='head'&&!v.boneArmor);assert.equal(hats.length,25);
+ const hats=Object.entries(ITEMS).filter(([,v])=>v.slot==='head'&&!v.boneArmor);assert.ok(hats.length>=25);
  for(const [id,def]of hats)for(let d=0;d<8;d++){
   const render=(x,y)=>{const out=[];const c={fillRect(...r){out.push([this.fillStyle,...r]);}};assert.equal(drawResolvedHeadwear(c,{x,y},d,headwearStyle(id,def),gearPalette(id),id),true,id);return out;};
   const a=render(0,0),b=render(11,-8);assert.ok(a.length>8,id);

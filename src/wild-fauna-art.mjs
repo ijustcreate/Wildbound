@@ -2,10 +2,12 @@ import {projectPoint,facingIndex} from './player-motion.mjs';
 import {pixelVolume,pixelLine,pixelPolygon} from './pixel-shapes.mjs';
 import {DEER_KINDS} from './wild-fauna-data.mjs';
 import {drawPig} from './pig-art.mjs';
+import {drawOtter} from './otter-motion.mjs';
 const deerPal={body:'#b88352',shade:'#78503c',light:'#dfb37a',outline:'#48382f'},shadowPal={body:'#d7e3ec',shade:'#8296ad',light:'#fff4da',outline:'#41435c'},fur={body:'#e5eef0',shade:'#a3b8c7',light:'#fff9e9',outline:'#5d7589'},shell={body:'#b0783d',shade:'#674932',light:'#e6bc70',outline:'#46352b'};
 // Articulated anatomical pixel volumes: legs/tail/head move independently,
 // eight true facings, with a stable foot origin. No rotating overhead sprite.
 export function drawWildFauna(c,e,time,size=47){
+ if(e.kind==='river_otter')return drawOtter(c,e,time,size);
  if(e.kind==='pig'||e.kind==='pig_spotted')return drawPig(c,e,time,size*.7);
  const deer=DEER_KINDS.includes(e.kind),shadowStag=e.kind==='shadow_stag',scorpion=e.kind==='scorpion',pal=scorpion?shell:shadowStag?shadowPal:deer?deerPal:fur,d=facingIndex(e.faceX,e.faceY),frozen=e.frozen>0||e.state==='snared',moving=e.moving&&!frozen;
  const t=frozen?0:(e.step||time*3),stride=moving?Math.sin(t*1.3)*4:0,bob=frozen?0:moving?Math.abs(Math.sin(t*1.3))*1.5:Math.sin(time*1.6)*.35,parts=[];

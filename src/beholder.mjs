@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 // Beholder combat is an original Wildbound adaptation of the classic
 // eye-ray idea: one visible telegraph, one distinct control/damage effect.
 import { clearShot } from './navigation.mjs';
@@ -49,6 +50,7 @@ export function tickBeholder(g, e, p, dt, stats = {}) {
   if (e.hp <= 0 || e.frozen > 0 || e.stun > 0) return;
   e.recovery = Math.max(0, (e.recovery || 0) - dt);
   if (e.recovery > 0) { e.moving = false; return; }
+  if(e.state==='recover')e.state='hunt';
   const d = Math.hypot(p.x - e.x, p.y - e.y) || 1;
   if(e.beholderRayTime>0){e.faceX=e.beholderAimX??e.faceX;e.faceY=e.beholderAimY??e.faceY;}
   else {e.faceX = (p.x - e.x) / d;e.faceY = (p.y - e.y) / d;}
@@ -77,7 +79,7 @@ export function tickBeholder(g, e, p, dt, stats = {}) {
     return;
   }
   e.moving = false;
-  if (e.beholderCooldown <= 0 && clearShot(g, e, p)) {
+  if (e.beholderCooldown <= 0 && clearShot(g, e, p) && requestEnemyGroupTurn(g,e,p,{flightSpeed:220})) {
     e.beholderRayType = RAYS[(e.beholderRayIndex || 0) % RAYS.length];
     e.beholderRayIndex = (e.beholderRayIndex || 0) + 1;
     e.beholderAimX=e.faceX;e.beholderAimY=e.faceY;

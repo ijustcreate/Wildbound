@@ -61,8 +61,8 @@ export function drawBack(p, t, o) {
       if (d > 1) continue;
       const edge = Math.min(1, (1 - d) * 6);
       // the puddle: dark see-through water, the far part holding a little of the sky
-      p.blend(x, y, C[0], (0.62 + 0.2 * far) * edge);
-      if (far < 0.45) p.blend(x, y, C[2], 0.3 * (1 - far / 0.45) * edge);
+      if(!o.gameplay)p.blend(x, y, C[0], (0.62 + 0.2 * far) * edge);
+      if (!o.gameplay && far < 0.45) p.blend(x, y, C[2], 0.3 * (1 - far / 0.45) * edge);
       // its swell: every ring summed, so crests catch the light, troughs go dark, and crossings beat
       const h = act.length ? field(x, z, act) : 0, hx = h - hPrev;
       hPrev = h;

@@ -25,15 +25,11 @@ test('room finishes preserve custom houses and ground vegetation cannot occupy s
  assert.ok(vegetationBlocked(g,140,125));assert.ok(!vegetationBlocked(g,200,190));g.house.furniture[0].destroyed=true;assert.ok(!vegetationBlocked(g,140,125));
 });
 
-test('kitchen props support a saved one-time cooking reward, repeat healing and non-destructive ingredient checks',()=>{
- const kettle={kind:'stove',x:100,y:100,w:48,h:32},book={kind:'desk',x:300,y:100,w:100,h:40};
- const messages=[],g={house:{furniture:[kettle,book]},message:t=>messages.push(t),persist(){},onSound(){}};
- const p={x:126,y:114,hp:20,maxHp:100,coins:0,inventory:[{type:'meat',qty:2},{type:'fruit',qty:1}]};
- assert.ok(interactHouseSurface(g,p));assert.equal(p.hp,75);assert.equal(p.coins,15);assert.ok(kettle.kitchenQuestComplete);
- const reloaded=JSON.parse(JSON.stringify(g.house));g.house=reloaded;p.inventory=[{type:'meat',qty:1},{type:'fruit',qty:1}];
- assert.ok(interactHouseSurface(g,p));assert.equal(p.hp,100);assert.equal(p.coins,15,'quest cannot pay again after reload');
- p.inventory=[{type:'meat',qty:1}];assert.ok(interactHouseSurface(g,p));assert.equal(p.inventory[0].qty,1,'missing ingredients consume nothing');
- p.x=340;p.y=120;interactHouseSurface(g,p);assert.match(messages.at(-1),/completed/);
+test('decorative household props are quiet and never consume ingredients or grant rewards',()=>{
+ const g={house:{furniture:[{kind:'stove',x:100,y:100,w:48,h:32},{kind:'desk',x:300,y:100,w:100,h:40,surfaceItems:[{kind:'recipe_book',u:.4,v:.5}]}]},message(){throw Error('decorative message');}};
+ const p={x:126,y:114,hp:20,coins:0,inventory:[{type:'meat',qty:2},{type:'fruit',qty:1}]};
+ assert.equal(interactHouseSurface(g,p),false);assert.equal(p.hp,20);assert.equal(p.coins,0);assert.equal(p.inventory[0].qty,2);
+ p.x=340;p.y=120;assert.equal(interactHouseSurface(g,p),false);
 });
 
 test('surface candles preserve edited positions and actually feed the house lighting system',()=>{
@@ -42,10 +38,10 @@ test('surface candles preserve edited positions and actually feed the house ligh
  const saved=JSON.parse(JSON.stringify(f));assert.deepEqual(furnishSurface(saved),f.surfaceItems);interactHouseSurface(g,p);assert.equal(houseLightSources(g).length,0);
 });
 
-test('normal Interact reaches the kitchen task and session restore retains its reward flag',()=>{
+test('normal Interact toggles the stove and session restore retains the appliance state',()=>{
  const g=new Game(()=>.5);Object.assign(g,{house:defaultHouse(),generatedEnvironment:'house',environment:'house',phase:'play',openingBoard:false,enemies:[],scenery:[],portals:[]});
- const p=g.addPlayer('keyboard'),stove=g.house.furniture.find(f=>f.kind==='stove');Object.assign(p,{x:stove.x+stove.w*.55,y:stove.y+stove.h*.42+24,hp:50,inventory:[{type:'meat',qty:1},{type:'fruit',qty:1}]});
+ const p=g.addPlayer('keyboard'),stove=g.house.furniture.find(f=>f.kind==='stove');Object.assign(p,{x:stove.x+stove.w*.55,y:stove.y+stove.h+18,hp:50,inventory:[{type:'meat',qty:1},{type:'fruit',qty:1}]});
  const coins=p.coins;g.update(.05,{keyboard:{interact:true}});g.update(.05,{keyboard:{}});
- assert.equal(p.coins,coins+15);assert.ok(stove.kitchenQuestComplete);
- const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.ok(restored.house.furniture.some(f=>f.kind==='stove'&&f.kitchenQuestComplete));
+ assert.equal(p.coins,coins);assert.equal(stove.applianceOn,true);assert.equal(p.inventory[0].qty,1);
+ const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(restored.house.furniture.find(f=>f.kind==='stove').applianceOn,true);
 });

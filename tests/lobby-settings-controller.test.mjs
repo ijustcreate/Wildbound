@@ -1,13 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLobbySettingsControllerRouter } from '../src/lobby-settings-controller.mjs';
-import { controllerFamily, controllerButtonNames } from '../src/controls.mjs';
+import { controllerFamily, controllerButtonNames, controllerMenuButtons, DEFAULT_MAPPING, normalizeMapping, serializeMapping } from '../src/controls.mjs';
 
 const pad = (index = 0, id = 'Xbox Wireless Controller') => ({
   index, id, mapping: 'standard', axes: [0, 0, 0, 0],
   buttons: Array.from({ length: 17 }, () => ({ pressed: false })),
 });
 const settings = ownerDevice => ({ id: 'settings-dialog', dataset: { ownerDevice } });
+
+test('The selected button artwork does not change the physical menu convention', () => {
+  const storage=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:key=>key==='wildbound-controller-family'?'switch':null}});
+  try{
+    const xbox=pad();
+    assert.equal(controllerFamily(xbox),'switch');
+    assert.deepEqual(controllerMenuButtons(xbox),{confirm:0,back:1});
+    assert.deepEqual(controllerMenuButtons(pad(1,'Nintendo Switch Pro Controller')),{confirm:1,back:0});
+  }finally{
+    if(storage)Object.defineProperty(globalThis,'localStorage',storage);
+    else delete globalThis.localStorage;
+  }
+});
+
+test('A versioned custom mapping preserves deliberate swaps that resembled old defaults',()=>{
+  const customized={...DEFAULT_MAPPING,board:4,potion:14,inventory:9,pause:8};
+  assert.deepEqual(normalizeMapping(JSON.parse(serializeMapping(customized))),customized);
+  assert.deepEqual(normalizeMapping(customized),DEFAULT_MAPPING);
+});
 
 test('ordinary held navigation never blocks confirm, tabs or subsequent settings frames',()=>{
  const router=createLobbySettingsControllerRouter(),p=pad(),dialog=settings('pad:0');p.axes[1]=1;

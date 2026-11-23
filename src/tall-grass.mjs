@@ -26,7 +26,8 @@ const tint=(base,over,amount)=>rgbHex(base.map((v,i)=>v*(1-amount)+over[i]*amoun
 const shade=(base,mult)=>rgbHex(base.map(v=>v*mult));
 
 export function grassPalette(prop={},environment='forest'){
- const palette=palettes[prop.grassPalette]||palettes[environment]||palettes.forest;
+ const key=environment==='house'&&prop.grassPalette==='house'?'forest':prop.grassPalette;
+ const palette=palettes[key]||palettes[environment]||palettes.forest;
  const override=hexRgb(prop.grassTint),amount=override?.[0]===undefined?0:.26;
  const light=Math.max(.55,Math.min(1.35,Number(prop.grassShade)||1));
  return palette.map((color,i)=>{
@@ -71,7 +72,7 @@ export function createHouseShortGrass(seed,terrain,house){
      house.trees.some(t=>Math.hypot(px-t.x,py-t.y)<t.size*.48))continue;
   const roll=forestHash(x+seed*5,y+seed*3);if(roll>.48)continue;
   result.push(grassProp(`yardgrass:${x}:${y}`,px,py,26+roll*10,'short_grass',{
-   grassPalette:'house',grassShade:.84+forestHash(y,x+seed)*.28,
+   grassPalette:'forest',grassShade:.84+forestHash(y,x+seed)*.28,
   }));
  }
  return result;

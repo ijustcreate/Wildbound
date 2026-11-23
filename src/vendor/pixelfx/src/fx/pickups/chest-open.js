@@ -328,12 +328,12 @@ export function create(o) {
       const open = t >= T_OPEN ? 1 : 0;
       pool(p, 0, 0, 30 + 10 * g, 4, C[4], (0.1 + 0.18 * open) * g);
       p.glow(0, -16, 24 + 8 * g, C[4], (0.1 + 0.2 * open) * g);
-      if (t < T_POOF) {
+      if (!o.gameplay && t < T_POOF) {
         L.begin(-20, -32);
         paintChest(C, W, th, Math.min(1.2, g));
         L.outline(W[0]);
         L.draw(p, sh.dx, -sh.hop);
-      } else for (const b of bits) if (!b.done) p.px(b.x, b.y, b.td - t < 0.04 ? (b.c === W[0] ? C[3] : C[6]) : b.c);
+      } else for (const b of o.gameplay?[]:bits) if (!b.done) p.px(b.x, b.y, b.td - t < 0.04 ? (b.c === W[0] ? C[3] : C[6]) : b.c);
       // light leaking from the seam before it opens
       if (t < T_OPEN) {
         p.glowLine(-11, -9.5 - sh.hop, 11, -9.5 - sh.hop, 5, C[5], 0.22 * g);
@@ -370,7 +370,7 @@ export function create(o) {
         flare(p, 0, -14, 22 * Math.pow(1 - a, 1.4), 1 - a, C);
       }
       // the loot
-      for (const it of loot) {
+      for (const it of o.gameplay?[]:loot) {
         if (!it.up || it.gone) continue;
         const pu = t - it.pop, lift = pu > 0 ? 6 * ease.outCubic(clamp(pu / 0.1)) : 0, wh = pu > 0.095;
         let y = it.y - lift, ax = it.ax, spin = it.spin;

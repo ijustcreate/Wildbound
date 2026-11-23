@@ -1,14 +1,14 @@
 // Half-unit silhouette drawings: S, SW, W, NW, N. Only symmetric cuts mirror.
 // Locks and tails are separate head-bound pieces, never baked character frames.
-export const NATIVE_HAIR_REVISION=1;
+export const NATIVE_HAIR_REVISION=7;
 const v=(...views)=>views;
 export const HAIR_CONTOURS={
  crop:v(
- [[-5,-3],[-4,-5],[-2,-6],[2,-6],[4,-5],[5,-3],[4,-1],[3,-2],[0,-2.5],[-3,-2],[-4,-1]],
- [[-5,-3],[-4,-5],[-1,-6],[2,-5.5],[4,-4],[4.5,-1],[3,0],[2,-2],[-2,-2],[-4,-1]],
- [[-5,-3],[-4,-5],[-1,-6],[2,-5.5],[4,-4],[4.5,-1],[3,1],[1,1],[1,-2],[-3,-2],[-4,-1]],
- [[-4.5,-3],[-3.5,-5],[-1,-6],[2,-5.5],[4,-4],[5,-1],[4,2],[2.5,3],[-1,2],[-3,0]],
- [[-5,-3],[-4,-5],[-2,-6],[2,-6],[4,-5],[5,-3],[4,1],[2.5,2.5],[-2.5,2.5],[-4,1]]),
+ [[-5.5,-1],[-6,-3],[-4.5,-4],[-3,-6],[-1,-6.5],[1,-5.5],[3,-5.5],[5,-4],[5.5,-2],[4,-1],[2,-1.5],[0,-2.5],[-1,-1.5],[-3,-.5],[-4.5,0]],
+ [[-5,-2],[-5,-4],[-3,-6],[-.5,-6.5],[2,-5.5],[4.5,-4],[5.5,-2],[4,-.5],[2,-1.5],[0,-2.5],[-2,-1.5],[-4,0]],
+ [[-5,-2],[-5.5,-4],[-3.5,-6],[-1,-6.5],[2,-5.5],[4.5,-3],[5,-1],[3.5,-.5],[1,-1.5],[0,-2],[-2,-1.5],[-4,.5]],
+ [[-4.5,-2],[-4.5,-4],[-2.5,-6],[-.5,-6.5],[2,-5.5],[4.5,-3],[5,-1],[4,1],[2.5,2],[-1,1],[-3,-.5]],
+ [[-5,-2],[-4.5,-4],[-2.5,-6],[0,-6.5],[3,-5.5],[5,-3],[5,0],[4,2],[2.5,2.5],[-2.5,2.5],[-4,1]]),
  bob:v(
  [[-5.5,-3],[-4.5,-5],[-2,-6],[2,-6],[4.5,-5],[5.5,-3],[6,3.5],[4.5,5],[3.5,4],[3.5,-1.5],[-3,-2],[-3.5,4],[-5,5],[-6,3]],
  [[-5,-3],[-4,-5],[-1,-6],[2.5,-5.5],[4.5,-4],[6,1],[5,5],[2,5],[1,-1.5],[-3,-2],[-4,2],[-5,2]],
@@ -120,7 +120,14 @@ export function hairDrawing(style,d,frame=0,action='idle'){
   if(shape===braid)details.push({type:'braid',x,y:y+3,front:near});
  };
  if(style==='ponytail')addTail(anchorBack[d],tail);
- if(style==='braids')addTail(anchorBack[d],braid);
+ if(style==='braids'){
+  addTail(anchorBack[d],braid);
+  // Classic braids frame the cheeks more closely than twin pigtails; keep the
+  // back weave centered and let the near locks remain visible from the front.
+  const leftBraid=[anchorLeft[d][0]+1.5,anchorLeft[d][1]],rightBraid=[anchorRight[d][0]-1.5,anchorRight[d][1]];
+  if([0,6,7].includes(d))addTail(leftBraid,braid,true);
+  if([0,1,2].includes(d))addTail(rightBraid,braid,true);
+ }
  if(style==='twinbraids'){addTail(anchorLeft[d],braid,d===0||d===6||d===7);addTail(anchorRight[d],braid,d===0||d===1||d===2);}
  if(style==='sideponytail')addTail(anchorRight[d],tail,d===0||d===1||d===2);
  if(style==='topknot'){

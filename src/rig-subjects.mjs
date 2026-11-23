@@ -301,6 +301,8 @@ RIG_SUBJECTS.april={...RIG_SUBJECTS.boatless_captain,name:"April / controller hu
 RIG_SUBJECTS.captain={...RIG_SUBJECTS.boatless_captain,name:"Captain / controller humanoid",sprite:"captain"};
 RIG_SUBJECTS.lesser_beholder={...RIG_SUBJECTS.beholder,name:'Lesser beholder / shared beholder rig',sprite:'lesser_beholder'};
 for (const [kind, subject] of Object.entries(CREATURE_PACK_SUBJECTS)) {
+  // The dedicated editable otter supersedes the pack's legacy default subject.
+  if(kind==='river_otter'&&Object.hasOwn(RIG_SUBJECTS,kind))continue;
   if (Object.hasOwn(RIG_SUBJECTS, kind)) throw new Error(`Creature pack rig subject already exists: ${kind}`);
   RIG_SUBJECTS[kind] = subject;
 }

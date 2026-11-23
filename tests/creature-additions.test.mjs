@@ -15,13 +15,29 @@ import {rigSubject} from '../src/rig-subjects.mjs';
 import {rigPack} from '../src/project-rigs.mjs';
 import {befriendCreature} from '../src/friendly-creatures.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
-import {collisionOffset,usesDoors} from '../src/navigation.mjs';
+import {collisionOffset,usesDoors,clearShot} from '../src/navigation.mjs';
 import {actorContact} from '../src/contact-shadow.mjs';
 function field(){const g=new Game(()=>.5),p=g.addPlayer('keyboard','Tester');g.phase='play';g.openingBoard=false;g.scenery=[];g.house=null;g.terrain.fill('grass');g.enemies=[];g.traps=[];Object.assign(p,{x:650,y:600,equipment:{},hp:100,invuln:0});return {g,p};}
 function actor(g,kind,extra={}){const cfg=creatures[kind],e={id:g.nextId++,kind,x:500,y:600,faceX:1,faceY:0,hp:cfg.stats.hp,maxHp:cfg.stats.hp,speed:cfg.stats.speed,damage:cfg.stats.damage,faction:cfg.faction,state:'hunt',step:0,moving:false,flash:0,frozen:0,cooldown:0,tacticTime:1,attack:0,...extra};if(kind==='imp')initializeImp(e);if(kind==='zombie')initializeZombie(e);g.enemies.push(e);return e;}
 function advance(g,e,fn,time){for(let n=0;n<Math.ceil(time/.05);n++){e.cooldown-=.05;fn(g,e,g.players,.05,creatures[e.kind].stats,creatures[e.kind].behaviors);g.time+=.05;}}
 const canvas=()=>({pixels:[],save(){},restore(){},translate(){},scale(){},rotate(){},beginPath(){},moveTo(){},lineTo(){},arc(){},closePath(){},stroke(){},fillRect(x,y,w,h){assert.ok([x,y,w,h].every(Number.isFinite));this.pixels.push([x,y,w,h,this.fillStyle]);}});
 const bomb=(g,extra={})=>({id:g.nextId++,owner:444,x:500,y:600,originX:500,originY:600,targetX:650,targetY:600,age:0,duration:1,z:32,damage:14,...extra});
+
+test('Imps route around walls even inside throwing distance, without direct moves undoing the detour',()=>{
+ for(const startX of [560,400]){
+  const {g,p}=field();g.house={walls:[{x:600,y:480,w:16,h:240}],doors:[],furniture:[],floors:[],pools:[]};
+  Object.assign(p,{x:680,y:600});const e=actor(g,'imp',{x:startX,y:600,cooldown:100});
+  assert.equal(clearShot(g,e,p),false);advance(g,e,tickImp,12);
+  assert.ok(clearShot(g,e,p),JSON.stringify({startX,x:e.x,y:e.y}));
+  assert.ok(Math.hypot(e.x-p.x,e.y-p.y)<=230,'reaches clear throwing range');
+ }
+});
+
+test('Imps enter the house through a closed door to reach a blocked target',()=>{
+ const {g,p}=field();g.environment='house';g.start();g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');
+ Object.assign(p,{x:640,y:600});const e=actor(g,'imp',{x:640,y:420,cooldown:100});
+ advance(g,e,tickImp,12);assert.ok(clearShot(g,e,p),JSON.stringify(e));assert.ok(g.house.doors.some(d=>d.open));
+});
 test('Imp and zombie events append without changing the banshee/succubus indices; old packs retain them',()=>{
  assert.equal(EVENTS[54].kind,'banshee_queen');assert.equal(EVENTS[55].kind,'succubus');assert.equal(EVENTS[56].name,IMP_EVENT.name);assert.equal(EVENTS[57].name,ZOMBIE_EVENT.name);
  const imported=structuredClone(EVENTS);applyDefinitions({version:1,events:EVENTS.slice(0,56)},imported,{});assert.deepEqual(imported.map(e=>e.name),EVENTS.map(e=>e.name));

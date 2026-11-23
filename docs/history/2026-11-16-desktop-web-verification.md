@@ -1,0 +1,11 @@
+# Desktop testing build and current web verification — November 16, 2026
+
+- Request: create an updated desktop testing build and update the browser edition.
+- Checkout: `Wildbound_worlds`, clean tracked source at `f0b787ff33c3ac8f3675b48504937ebda4f0dcb5`, matching the remote branch. Existing untracked `output/` and `tmp/` were preserved. No gameplay source changes, source commit or push.
+- Rebuild: `scripts/rebuild-desktop.ps1 -TestConcurrency 4`; all 1,822 tests passed and 835 runtime files passed syntax checks. The initial serial test run was stopped and superseded by the complete parallel run.
+- Package: `dist/1.2.101-2026-11-16T21-59-47-536Z/Wildbound-win32-x64/Wildbound.exe`, built UTC `2026-11-16T22:01:18.761Z`; manifest reports `sourceDirty: false`, `preview: false`.
+- Desktop shortcut: current user's Desktop `Wildbound Worlds (1.2.101).lnk` targets this checkout's `Play Wildbound.cmd`, with blank arguments, repository working directory and `assets/wildbound-icon.ico`. Launcher `--check` selects the new package. Normal save profile; no player settings, saves or authored rigs replaced.
+- Verification: 1,575 packaged files match source byte-for-byte. Actual packaged EXE `--worlds-smoke-test --mute-audio` exited successfully; `test-output/worlds-desktop.json` inside the package reports `failed: 0`, no renderer errors and no network requests. Tests used isolated profiles and muted windows.
+- Web: the live `https://ijustcreate.github.io/Wildbound/latest/` already redirects to `releases/1.2.101/` with this exact clean source commit. No republish or archive replacement was needed. A muted isolated live browser boot reports `failed: 0`, ready game and no renderer errors. Existing browser build passed 16 gameplay checks with no missing files. Fresh gh-pages checkout passed 10 chooser/gameplay/storage/archive checks and verified 428 preserved files.
+- Evidence: ignored `test-output/rebuild-2026-11-16-parallel.log`, `desktop-content-report.json`, `web-1.2.101/report.json`, `web-pages/report.json`, `live-web-2026-11-16.json`, and the exact package's `test-output/worlds-desktop.json`.
+- Limits: physical controllers, extended user playtesting, online replication and FPS were not verified.

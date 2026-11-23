@@ -4,6 +4,7 @@ import {playThunder} from './thunder.mjs';
 import {CUES,creatureCue,SOUND_FILES} from './sound-bank.mjs';
 import {audioDistance,audioPosition,sameAudioRoom} from './adaptive-music-threat.mjs';
 import {isUndergroundRoom,createUndergroundReverb} from './underground-audio.mjs';
+import {worldAmbienceEmitters,weatherAudioState} from './world-ambience.mjs';
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
 export const AMBIENT_TRACKS={forest:'forest_ambient',desert:'desert_ambient',ice:'ice_ambient',house:'house_ambient',temple:'temple_ambient',graveyard:'graveyard_ambient',beach:'beach_ambient',swamp:'swamp_ambient',caverns:'cave_ambient',shadow:'shadow_ambient'};
 export const AUDIO_LIMITS=Object.freeze({voices:24,cache:96,cooldowns:128,variants:96});
@@ -30,7 +31,7 @@ export class GameAudio {
  constructor(){
   this.settings={master:.8,sfx:.8,ui:.65,ambience:.45,night:false};
   try{const saved=JSON.parse(localStorage.getItem('wildbound-mixer')||'{}');for(const k of Object.keys(this.settings))if(k in saved)this.settings[k]=k==='night'?!!saved[k]:clamp(saved[k]);}catch{}
-  this.cache=new Map();this.last=new Map();this.variants=new Map();this.actorLast=new WeakMap();this.voices=new Set();this.voiceInfo=new WeakMap();this.pending=new Set();this.previous=new WeakMap();this.playerState=new WeakMap();this.listeners=[];this.engineLoops=new Map();this.enabled=true;this.unlocked=false;this.epoch=0;
+  this.cache=new Map();this.last=new Map();this.variants=new Map();this.actorLast=new WeakMap();this.voices=new Set();this.voiceInfo=new WeakMap();this.pending=new Set();this.previous=new WeakMap();this.playerState=new WeakMap();this.listeners=[];this.engineLoops=new Map();this.worldLoops=new Map();this.worldScanAt=0;this.enabled=true;this.unlocked=false;this.epoch=0;
  }
  unlock(){
   if(!this.ctx){this.ctx=new AudioContext();this.master=this.ctx.createGain();this.compressor=this.ctx.createDynamicsCompressor();this.master.connect(this.compressor);this.compressor.connect(this.ctx.destination);this.buses={};for(const b of ['sfx','ui','ambience']){this.buses[b]=this.ctx.createGain();this.buses[b].connect(this.master);}this.apply();}
@@ -77,6 +78,55 @@ export class GameAudio {
    const pos=this.spatial({distance:560},v);loop.pan.pan.setTargetAtTime(pos.pan,t,.2);loop.gain.gain.setTargetAtTime((.014+speed*.022+throttle*.015)*pos.attenuation,t,.18);
   }
   for(const [v,l]of this.engineLoops)if(!live.has(v)){const t=this.ctx.currentTime;l.gain.gain.setTargetAtTime(0,t,.08);try{l.low.stop(t+.4);l.high.stop(t+.4);}catch{}setTimeout(()=>{l.low.disconnect();l.high.disconnect();l.filter.disconnect();l.gain.disconnect();l.pan.disconnect();},500);this.engineLoops.delete(v);}
+ }
+ noiseBuffer(kind){
+  this.worldNoise||=new Map();if(this.worldNoise.has(kind))return this.worldNoise.get(kind);
+  const c=this.ctx,b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),a=b.getChannelData(0);
+  let last=0;for(let i=0;i<a.length;i++){const white=Math.random()*2-1;last=last*.28+white*.72;a[i]=last*.72+white*.28;}
+  const overlap=Math.min(1024,Math.floor(a.length/8)),edge=a.length-overlap,anchor=a[edge-1],first=a[0];
+  for(let i=0;i<overlap;i++){const f=i/(overlap-1);a[edge+i]=anchor*(1-f)+first*f;}
+  this.worldNoise.set(kind,b);return b;
+ }
+ updateWorldAmbience(game,active){
+  const t=this.ctx.currentTime,desired=new Map();
+  if(active&&game.phase==='play'&&this.enabled&&this.settings.master>0&&this.settings.ambience>0){
+   if(t>=this.worldScanAt){this.worldEmitters=worldAmbienceEmitters(game,this.listeners);this.worldScanAt=t+.35;}
+   for(const e of this.worldEmitters||[]){
+    const nearest=this.listeners.filter(p=>p.hp>0&&!p.room).map(p=>({p,d:Math.hypot(p.x-e.x,p.y-e.y)})).sort((a,b)=>a.d-b.d)[0];
+    if(!nearest||nearest.d>=e.radius)continue;
+    const attenuation=Math.max(0,1-nearest.d/e.radius),pan=Math.max(-.85,Math.min(.85,(e.x-nearest.p.x)/420));
+    desired.set(e.key,{kind:e.kind,pan,gain:(e.kind==='water' ? .055 : .025)*attenuation*attenuation});
+   }
+  }
+  for(const [key,target]of desired){let loop=this.worldLoops.get(key);
+   if(!loop){const noise=this.noiseBuffer(target.kind),source=this.ctx.createBufferSource(),filter=this.ctx.createBiquadFilter(),gain=this.ctx.createGain(),pan=this.ctx.createStereoPanner();
+    source.buffer=noise;source.loop=true;filter.type='lowpass';filter.frequency.value=target.kind==='water'?1900:target.kind==='fire'?3600:target.kind==='rain'?4800:1250;
+    source.connect(filter);filter.connect(gain);gain.connect(pan);pan.connect(this.buses.ambience);gain.gain.value=0;source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();pan.disconnect();};source.start(0,Math.random()*noise.duration);loop={source,filter,gain,pan,kind:target.kind};this.worldLoops.set(key,loop);
+   }
+   loop.retireAt=0;loop.filter.frequency.setTargetAtTime(target.kind==='water'?1900:target.kind==='fire'?3600:target.kind==='rain'?4800:1250,t,.25);loop.pan.pan.setTargetAtTime(target.pan,t,.22);loop.gain.gain.setTargetAtTime(target.gain,t,.32);
+  }
+  for(const [key,loop]of this.worldLoops)if(!desired.has(key)){if(!loop.retireAt){loop.retireAt=t+.85;loop.gain.gain.setTargetAtTime(0,t,.25);}if(t>=loop.retireAt){try{loop.source.stop(t);}catch{}this.worldLoops.delete(key);}}
+ }
+ async updateWeatherBed(game,active){
+  const state=active&&game.phase==='play'&&this.enabled&&this.settings.master&&this.settings.ambience>0?weatherAudioState(game,this.listeners):null;
+  const file=state?.type==='monsoon'||state?.type==='thunderstorm'?CUES.rain.files[0]:state?.type==='blizzard'||state?.type==='sandstorm'?CUES.wind.files[0]:null;
+  const t=this.ctx.currentTime;
+  if(this.weatherAmbient&&this.weatherAmbient.file===file){
+   const shelter=state?.sheltered ? .2 : 1,baseGain=file===CUES.rain.files[0] ? .14 : .075;
+   this.weatherAmbient.g.gain.setTargetAtTime(state?Math.min(.2,state.intensity*baseGain)*shelter:0,t,.45);
+   return;
+  }
+  if(this.weatherLoading===file)return;
+  const serial=(this.weatherSerial||0)+1;this.weatherSerial=serial;this.weatherLoading=file||null;
+  if(this.weatherAmbient){const old=this.weatherAmbient;old.g.gain.setTargetAtTime(0,t,.35);try{old.s.stop(t+1.1);}catch{}this.weatherAmbient=null;}
+  if(!file){this.weatherLoading=null;return;}
+  const raw=await this.buffer(file);if(!raw||serial!==this.weatherSerial||!this.enabled||!this.settings.ambience)return;
+  const overlap=Math.min(raw.sampleRate,Math.floor(raw.length/4)),length=raw.length-overlap,b=this.ctx.createBuffer(raw.numberOfChannels,length,raw.sampleRate);
+  for(let c=0;c<b.numberOfChannels;c++){const a=raw.getChannelData(c),out=b.getChannelData(c);out.set(a.subarray(0,length));for(let i=0;i<overlap;i++){const f=i/overlap;out[i]=a[i]*f+a[length+i]*(1-f);}}
+  const s=this.ctx.createBufferSource(),g=this.ctx.createGain(),filter=this.ctx.createBiquadFilter();s.buffer=b;s.loop=true;filter.type='lowpass';filter.frequency.value=file===CUES.rain.files[0]?6200:2600;s.connect(filter);filter.connect(g);g.connect(this.buses.ambience);g.gain.value=0;s.onended=()=>{s.disconnect();filter.disconnect();g.disconnect();};s.start();
+  const current=weatherAudioState(game,this.listeners),shelter=current?.sheltered ? .2 : 1,baseGain=file===CUES.rain.files[0] ? .14 : .075;
+  const volume=current?Math.min(.2,current.intensity*baseGain)*shelter:0;
+  g.gain.setTargetAtTime(volume,this.ctx.currentTime,.6);this.weatherAmbient={file,s,g};this.weatherLoading=null;
  }
  reserve(token){
   const all=[...this.pending,...[...this.voices].map(source=>this.voiceInfo.get(source)||{source,priority:10,group:'weather',at:0})];
@@ -137,17 +187,19 @@ export class GameAudio {
  update(game,active){
   if(!this.unlocked)return;
   if(this.game!==game||this.seed!==game.seed){
-   this.cancelPending();this.previous=new WeakMap();this.playerState=new WeakMap();this.actorLast=new WeakMap();this.last.clear();this.game=game;this.seed=game.seed;
+   this.cancelPending();this.previous=new WeakMap();this.playerState=new WeakMap();this.actorLast=new WeakMap();this.last.clear();this.worldScanAt=0;this.worldEmitters=[];this.game=game;this.seed=game.seed;
    for(const s of this.voices)if(this.voiceInfo.get(s)?.group!=='ui')this.stopVoice(s);
   }
   this.listeners=(game.players||[]).filter(p=>p.hp>0);this.listener=this.listeners[0];
   this.updateVehicleEngines(game,active&&game.phase==='play');
   for(const s of this.voices){const info=this.voiceInfo.get(s);if(info?.actor&&this.spatial(info.cue,info.actor).attenuation<=.002)this.stopVoice(s);}
   const biome=game.trainTest?'forest':game.generatedEnvironment||game.environment||'forest';
-  const ambientCue=['monsoon','thunderstorm'].includes(game.weather?.type)?'rain':(AMBIENT_TRACKS[biome]||'wind');
+  const ambientCue=AMBIENT_TRACKS[biome]||'wind';
   const inLobby=game.phase==='lobby',inRooms=this.listeners.length&&this.listeners.every(p=>p.room);
   const roomAmbient=biome==='temple'?'temple_ambient':this.listeners.some(p=>isUndergroundRoom(game,p.room))?'cave_ambient':'house_ambient';
   this.ambient(inLobby?'house_ambient':active&&!['won','lost'].includes(game.phase)&&this.listeners.length?(inRooms?roomAmbient:ambientCue):null);
+  this.updateWorldAmbience(game,active&&game.phase==='play');
+  this.updateWeatherBed(game,active&&game.phase==='play');
   const thunder=active&&game.phase==='play'&&game.weather?.type==='thunderstorm'&&this.listeners.some(p=>!p.room)?game.seed+':'+Math.floor(game.time/9):null;
   if(thunder&&thunder!==this.thunderCycle&&this.voices.size+this.pending.size<AUDIO_LIMITS.voices)playThunder(this);this.thunderCycle=thunder;
   if(!active&&this.wasActive)this.cancelPending();this.wasActive=active;
@@ -159,7 +211,10 @@ export class GameAudio {
     if(e.kind!=='panther'&&((e.attack||0)>old.attack+.03||e.state!==old.state&&['windup','breath','rocklift'].includes(e.state)))this.play(creatureCue(e.kind,'attack'),e);
     if(e.hp<old.hp)this.play(creatureCue(e.kind,'hurt'),e);
    }}
-   this.previous.set(e,{kind:e.kind,attack:e.attack||0,state:e.state,hp:e.hp});
+   if(old&&old.hp>0&&e.hp<=0&&!e.practiceTarget)this.play(creatureCue(e.kind,'death'),e);
+   let stepDistance=old?.stepDistance||0;
+   if(old&&e.hp>0&&e.moving){stepDistance+=Math.hypot(e.x-old.x,e.y-old.y);if(stepDistance>=86){if(this.spatial(CUES.creatureStep,e).attenuation>.015)this.play('creatureStep',e);stepDistance%=86;}}
+   this.previous.set(e,{kind:e.kind,attack:e.attack||0,state:e.state,hp:e.hp,x:e.x,y:e.y,stepDistance});
   }
   for(const p of game.players||[]){
     const old=this.playerState.get(p),pos=audioPosition(p),air=(p.jumpHeight||0)>0,flying=!!(p.wingHover||p.broomMount),now=performance.now();let flightAt=old?.flightAt||now;

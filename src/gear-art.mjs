@@ -70,30 +70,36 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
   const r=gearPixels(c,anchor), profile=direction===2||direction===6;
   const rear=direction>=3&&direction<=5;
   if(kind==='gloves') {
-    // The joint is the wrist: keep the silhouette compact so the glove does
-    // not swallow the sleeve or read as a second arm.
-    const thumb=side==='L'?-1:1;
-    const half=profile?1:2;
-    r(-half,-2,half*2+1,6,p.ink);r(-half+1,-1,Math.max(1,half*2-1),4,rear?p.dark:p.base);
-    r(-half+1,-2,Math.max(1,half*2-1),1,p.light);r(-half+1,2,Math.max(1,half*2-1),2,p.dark);
-    r(-half,3,half*2+1,2,p.leather);r(-half+1,3,Math.max(1,half*2-1),1,p.trim);
+    // Taper from the cuff into a rounded palm, with a small offset thumb.
+    // The open outline belongs to the whole glove rather than every band.
+    const thumb=side==='L'?-1:1,widths=profile?[1,1,2,1,1]:[1,2,2,2,1];
+    widths.forEach((half,i)=>{
+      const y=-3+i,outer=half*2+1;
+      r(-half,y,outer,1,p.ink);
+      r(-half+1,y,Math.max(1,outer-2),1,rear?p.dark:p.base);
+      if(i===1&&!rear)r(-half+1,y,Math.max(1,half),1,p.light);
+      if(i===3)r(-half+1,y,Math.max(1,outer-2),1,p.dark);
+    });
+    r(-2,2,5,2,p.ink);r(-1,2,3,1,p.leather);r(-1,3,3,1,p.trim);
     if(!rear){r(thumb<0?-2:1,0,2,2,p.dark);r(thumb<0?-2:2,0,1,1,p.light);}
-    r(-1,0,profile?1:2,1,rear?p.dark:p.light);r(0,2,1,1,p.trim);
-    if(def.style==='wraps') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.light);}
-    if(def.style==='gauntlets'||def.style==='sun') {r(-1,-1,3,1,p.light);r(-1,1,3,1,p.shine);}
-    if(def.style==='spiked'||id==='gloves') {r(-2,-4,1,2,p.shine);r(1,-4,1,2,p.light);}
-    if(def.style==='safari') r(-1,-1,3,1,p.trim);
+    if(def.style==='wraps'){r(-1,-2,3,1,p.light);r(-1,0,3,1,p.light);}
+    if(def.style==='gauntlets'||def.style==='sun'){r(-1,-2,3,1,p.light);r(-1,0,3,1,p.shine);}
+    if(def.style==='arcanist'){r(-1,-2,3,1,'#8fe0d7');r(-1,0,3,1,'#4baeb2');r(0,-3,1,1,'#d9e7bb');}
+    if(def.style==='spiked'){r(-2,-4,1,2,p.shine);r(1,-4,1,2,p.light);}
+    if(def.style==='safari')r(-1,-2,3,1,p.trim);
   } else if(kind==='boots') {
-    // The foot joint is the ankle. Keep the sole one pixel below it and put
-    // the toe on the visible side for profile views.
+    // A narrow, fitted shaft widens only where the foot meets the toe.
     const toe=profile?(direction===2?-2:2):side==='L'?-1:1;
     const height=def.style==='tall'||def.style==='safari'?7:5;
-    r(-3,-height,6,height+2,p.ink);r(-2,-height+1,4,height-1,p.dark);
-    r(-3+toe,-1,6,4,p.ink);r(-2+toe,-1,4,3,p.base);
-    r(-1,-height+1,3,height-1,p.base);r(-1,-height+1,3,1,p.light);
-    r(-3+toe,2,6,1,p.leather);r(-2+toe,1,4,1,p.trim);
-    if(!rear) {r(-1,-3,2,1,p.trim);r(-1,-1,2,1,p.light);}
+    for(let row=0;row<height+2;row++){
+      const y=-height+row,foot=row>=height-1,half=foot?3:row===0?1:2,cx=foot?Math.round(toe*.5):0;
+      r(cx-half,y,half*2+1,1,p.ink);
+      r(cx-half+1,y,Math.max(1,half*2-1),1,rear?p.dark:p.base);
+      if(!rear&&row<height-1)r(cx-half+1,y,Math.max(1,half-1),1,row===0?p.light:p.base);
+      if(row===height+1)r(cx-half+1,y,half*2-1,1,p.leather);
+    }
     r(-2,-height+1,1,Math.max(1,height-3),p.light);
+    if(!rear)r(-1,-1,2,1,p.trim);
     if(!rear&&def.style!=='sandals')r(1,-2,1,1,p.shine);
     if(def.style==='sandals') {r(-1,-4,3,4,'#b98e62');r(-1,-3,3,1,p.dark);r(-1,-1,3,1,p.base);}
     if(def.style==='flame') {r(1,-3,1,3,'#f2b66c');r(0,-2,1,2,p.shine);}
@@ -107,32 +113,62 @@ export function fittedGear(c, id, anchor, direction, side, dye) {
       return;
     }
     if(def.bansheeGear){bansheeShoulder(c,anchor,direction,side,p);return;}
-    const w=profile?4:5;
-    r(-2,-2,w,1,p.ink);r(-3,-1,w+2,3,p.ink);r(-2,2,w,1,p.ink);
-    r(-2,-1,w,2,rear?p.dark:p.base);r(-2,-1,w-1,1,p.light);r(-1,1,w-1,1,p.dark);
+    const widths=profile?[1,2,2,1]:[1,2,3,3,2,1],top=-Math.floor(widths.length/2);
+    widths.forEach((half,i)=>{
+      const y=top+i;r(-half,y,half*2+1,1,p.ink);
+      if(half>1){r(-half+1,y,half*2-1,1,rear?p.dark:p.base);r(-half+1,y,Math.max(1,half-1),1,p.light);}
+    });
     if(rear)r(0,-1,1,3,p.leather);
-    r(-1,-1,1,1,p.shine);
+    else r(-1,-1,2,2,p.shine);
     if(def.style==='leaf') {r(1,0,2,2,p.dark);r(1,0,1,1,p.light);}
     if(def.style==='moon'||def.style==='sun') r(0,0,1,2,p.shine);
-    if(def.style==='safari') {r(-2,0,w,1,p.trim);r(0,-1,1,1,p.shine);}
-    if(def.warlockGear){r(-2,-3,2,2,'#d3c9a4');r(1,-3,2,2,'#a69a7b');r(-2,1,w,1,'#6e5978');}
+    if(def.style==='safari') {r(-2,0,profile?4:6,1,p.trim);r(0,-1,1,1,p.shine);}
+    if(def.warlockGear){r(-2,-3,2,2,'#d3c9a4');r(1,-3,2,2,'#a69a7b');r(-2,1,profile?4:6,1,'#6e5978');}
   }
 }
 
 export function fittedShield(c,id,hand,d,blocking,dye) {
   if(detailedProcedural(c,hand,pen=>fittedShield(pen,id,hand,d,blocking,dye),materialIndex(id,'metal')))return;
   const p=gearPalette(id,dye),style=ITEMS[id]?.style;
-  const r=gearPixels(c,hand), profile=d===2||d===6, rear=d>=3&&d<=5;
-  const width=profile?1:(d%2?3:style==='tower'?5:4);
-  const height=style==='tower'?7:6;
-  for(let y=-height;y<=height;y++) {
-    const taper=style==='round'?Math.floor(Math.abs(y)*Math.abs(y)/15):Math.max(0,Math.floor((y-1)/2));
-    const half=Math.max(1,width-taper);
+  const raw=gearPixels(c,hand),profile=d===2||d===6,rear=d>=3&&d<=5,fit=.86;
+  const r=(x,y,w,h,color)=>raw(Math.round(x*fit),Math.round(y*fit),Math.max(1,Math.round(w*fit)),Math.max(1,Math.round(h*fit)),color);
+  if(style==='waykeeper'||style==='bastion'){
+    const rows=style==='waykeeper'
+      ?[2,4,5,6,6,6,6,6,5,4,3,2]
+      :[2,4,5,6,7,7,7,7,6,5,4,3,2];
+    const top=style==='waykeeper'?-6:-7;
+    if(profile){
+      r(0,top+1,3,rows.length-2,p.ink);r(1,top+2,1,rows.length-4,p.light);r(-1,top+3,1,rows.length-6,p.dark);
+      r(-1,-1,3,3,p.leather);r(0,0,1,1,p.trim);return;
+    }
+    rows.forEach((half,i)=>r(-half,top+i,half*2+1,1,p.ink));
+    rows.forEach((half,i)=>{if(half>1)r(-half+1,top+i,half*2-1,1,rear?p.leather:p.trim);});
+    rows.forEach((half,i)=>{if(half>2)r(-half+2,top+i,half*2-3,1,rear?p.dark:p.base);});
+    if(rear){
+      r(-1,top+2,2,rows.length-4,p.leather);r(-3,top+4,6,1,p.trim);r(-4,top+8,8,1,p.trim);
+      r(-1,top+4,2,5,p.dark);r(0,top+5,1,3,p.light);return;
+    }
+    if(style==='waykeeper'){
+      r(-4,top+2,2,6,p.light);r(-2,top+1,2,5,p.light);r(3,top+2,2,5,p.dark);r(2,top+7,2,2,p.dark);
+      r(-2,-1,5,1,p.trim);r(-2,0,4,2,p.light);r(-1,0,2,1,p.shine);r(0,2,2,3,p.dark);
+    }else{
+      r(-5,top+2,3,7,p.light);r(-2,top+1,2,7,p.light);r(3,top+2,2,6,p.dark);r(5,top+2,1,5,p.dark);r(2,top+9,2,2,p.dark);
+      r(-3,top+1,6,1,p.trim);r(-2,top+2,4,1,p.shine);
+      r(-2,-2,5,2,p.trim);r(-1,0,3,4,p.light);r(0,0,1,4,p.shine);r(-1,4,3,2,p.trim);r(0,6,1,2,p.dark);
+    }
+    return;
+  }
+  const roundRows=[2,4,5,6,6,6,5,4,2],kiteRows=[2,4,5,5,5,4,3,2,1],towerRows=[4,5,5,5,5,5,5,4,3,2,1],woodRows=[2,4,5,5,5,4,3,2,1];
+  const silhouette=style==='round'?roundRows:style==='kite'?kiteRows:style==='tower'?towerRows:woodRows;
+  const height=Math.floor(silhouette.length/2),width=profile?1:Math.max(...silhouette),top=-height;
+  for(let row=0;row<silhouette.length;row++) {
+    const y=top+row,half=profile?1:silhouette[row];
     r(-half,y,half*2+1,1,p.ink);
     if(half>1) {
       r(-half+1,y,half*2-1,1,rear?p.leather:p.dark);
-      r(-half+1,y,Math.max(1,half-1),1,rear?p.dark:p.base);
-      if(!rear)r(-half+1,y,1,1,p.light);
+      const faceWidth=Math.max(1,half*2-2),frontSide=d%2===1;
+      r(frontSide?-half+2:-half+1,y,faceWidth,1,rear?p.dark:p.base);
+      if(!rear)r(frontSide?-half+2:-half+1,y,Math.max(1,half-1),1,p.light);
     } else r(0,y,1,1,p.dark);
   }
   if(profile){r(0,-height+1,1,height*2-1,p.light);return;}
@@ -143,11 +179,21 @@ export function fittedShield(c,id,hand,d,blocking,dye) {
   r(-width+1,-height+2,1,height,blocking?p.shine:p.light);
   if(!style||style==='wood') {
     r(0,-height+2,1,height*2-3,p.dark);
-    r(-width+1,-3,width*2-1,1,p.trim);r(-width+1,3,width*2-1,1,p.trim);
-  } else r(0,-height+2,1,height*2-3,p.trim);
-  r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
-  for(const y of [-height+3,height-3]) {r(-width+1,y,1,1,p.shine);r(width-1,y,1,1,p.trim);}
-  if(style==='tower') {r(-2,3,5,1,p.trim);r(-2,-4,5,1,p.trim);}
+    r(-width+1,-2,width*2-1,1,p.trim);r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
+  } else if(style==='round') {
+    r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
+    r(-width+2,0,1,2,p.light);r(width-2,1,1,2,p.dark);
+  } else if(style==='kite') {
+    r(-3,-height+2,6,1,p.trim);r(-2,-height+3,4,1,p.light);
+    r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
+    r(-1,height-2,2,2,p.trim);
+  } else {
+    r(-width+1,-height+2,1,height-1,p.light);r(width-1,-height+2,1,height-1,p.dark);
+    r(-2,2,5,1,p.trim);r(-1,-1,3,3,p.ink);r(-1,-1,2,2,p.light);r(-1,-1,1,1,p.shine);
+  }
+  for(const y of [-height+3,height-3]) {if(silhouette[Math.max(0,Math.min(silhouette.length-1,y-top))]>2){r(-width+1,y,1,1,p.shine);r(width-1,y,1,1,p.trim);}}
+  if(style==='waykeeper'){r(-2,-3,5,1,'#c3d29a');r(-1,-2,1,3,'#9bc28a');r(0,-1,2,2,'#d4dfaa');r(1,0,1,2,'#78a57d');}
+  if(style==='bastion'){r(-2,-4,5,2,'#465968');r(-1,-3,3,1,'#a3b5b0');r(-1,-1,3,4,'#a88b55');r(0,-1,1,3,'#e1c676');}
 }
 
 // Inventory silhouettes use the same materials as the worn pieces, with room
@@ -156,7 +202,7 @@ export function paintGearIcon(c,id) {
   const def=ITEMS[id];if(!def?.slot)return false;
   const kind=itemKind(id),style=def.style,p=gearPalette(id),r=gearPixels(c,{x:0,y:0});
   if(def.bansheeGear&&bansheeGearIcon(c,kind,p))return true;
-  if(!['hat','armor','pants','gloves','boots','shoulder_armor','cape','shield','wand'].includes(kind))return false;
+  if(!['hat','armor','pants','gloves','boots','shoulder_armor','cape','shield','wand','quiver','charm'].includes(kind))return false;
   if(kind==='hat') {
     if(style==='turtle'){
       for(const [y,half] of [[8,2],[9,4],[10,5],[11,6],[12,7],[13,7]]){
@@ -198,6 +244,7 @@ export function paintGearIcon(c,id) {
     r(7,8,2,12,p.light);r(15,7,2,14,p.dark);r(11,8,2,13,p.dark);
     r(6,4,3,2,p.light);r(15,4,3,2,p.light);r(8,18,8,2,p.leather);r(11,18,2,2,p.trim);
     if(style==='coat'||style==='robe') {r(5,18,5,4,p.base);r(14,18,5,4,p.dark);r(6,20,3,1,p.trim);r(15,20,3,1,p.trim);}
+    if(style==='arcanist'){r(11,8,2,10,'#29495c');r(11,8,1,8,'#6cc6be');r(10,10,4,2,'#b7cf9b');r(11,11,2,2,'#ebdfaa');}
     if(style==='plate') {r(3,5,5,4,p.light);r(16,5,5,4,p.base);for(const y of [10,14])r(8,y,8,1,p.light);}
     if(style==='safari')for(const x of [7,13]) {r(x,10,4,5,p.dark);r(x,10,4,1,p.light);r(x+1,12,1,1,p.trim);}
     if(style==='shirt') {r(7,5,3,3,p.shine);r(14,5,3,3,p.shine);}
@@ -217,6 +264,8 @@ export function paintGearIcon(c,id) {
       if(style==='spiked'||id==='gloves') {r(x+1,4,1,4,p.shine);r(x+5,3,1,5,p.light);}
       if(style==='gauntlets'||style==='sun') {r(x+2,10,4,1,p.light);r(x+2,14,4,1,p.light);r(x+3,11,2,2,p.shine);}
       if(style==='safari')r(x+2,17,4,1,p.trim);
+      if(style==='arcanist'){r(x+2,10,4,1,'#91e1d6');r(x+2,14,4,1,'#4caeb0');r(x+3,11,2,2,p.shine);}
+      if(style==='arcanist'){r(x+2,10,4,1,'#91e1d6');r(x+2,14,4,1,'#4caeb0');r(x+3,11,2,2,p.shine);}
     }
   } else if(kind==='boots') {
     for(const x of [2,13]) {
@@ -264,18 +313,47 @@ export function paintGearIcon(c,id) {
     if(style==='gold') {r(10,11,4,4,p.trim);r(11,12,2,2,p.shine);}
     }
   } else if(kind==='shield') {
-    for(let y=4;y<=21;y++) {
-      const half=style==='tower'?7:style==='round'?Math.max(2,Math.floor(Math.sqrt(Math.max(0,81-(y-12)**2)))):Math.max(2,7-Math.max(0,y-12));
-      r(12-half,y,half*2,1,p.dark);r(13-half,y,half*2-2,1,p.base);
+    if(style==='waykeeper') {
+      const rows=[[10,13],[8,15],[6,17],[5,18],[4,19],[3,20],[3,20],[3,20],[3,20],[3,20],[3,20],[4,19],[5,18],[6,17],[8,15],[10,13]];
+      rows.forEach(([l,rr],i)=>r(l,i+3,rr-l+1,1,p.ink));
+      rows.forEach(([l,rr],i)=>{if(rr-l>3)r(l+1,i+3,rr-l-1,1,p.trim);});
+      rows.forEach(([l,rr],i)=>{if(rr-l>5)r(l+2,i+3,rr-l-3,1,p.base);});
+      r(6,7,3,7,p.light);r(7,14,4,3,p.light);r(9,7,6,2,p.base);r(14,8,3,7,p.dark);r(11,8,1,2,p.shine);
+      r(10,9,4,1,p.trim);r(9,10,6,4,p.dark);r(10,10,4,3,p.trim);r(10,10,2,1,p.shine);r(11,12,2,1,p.leather);
+      r(7,8,1,1,p.shine);r(16,8,1,1,p.leather);r(7,16,1,1,p.trim);r(16,16,1,1,p.dark);
+    } else if(style==='bastion') {
+      const rows=[[10,13],[8,15],[6,17],[4,19],[3,20],[2,21],[2,21],[2,21],[2,21],[3,20],[3,20],[4,19],[5,18],[6,17],[7,16],[8,15],[9,14],[10,13],[11,12]];
+      rows.forEach(([l,rr],i)=>r(l,i+2,rr-l+1,1,p.ink));
+      rows.forEach(([l,rr],i)=>{if(rr-l>3)r(l+1,i+2,rr-l-1,1,p.light);});
+      rows.forEach(([l,rr],i)=>{if(rr-l>5)r(l+2,i+2,rr-l-3,1,p.dark);});
+      r(5,7,4,9,p.base);r(6,7,2,8,p.light);r(16,8,2,6,p.dark);r(15,14,2,3,p.dark);
+      r(9,6,8,2,p.ink);r(10,6,5,1,p.shine);r(10,8,4,1,p.trim);r(9,9,6,2,p.leather);
+      r(10,11,4,6,p.trim);r(11,11,2,5,p.shine);r(11,16,3,2,p.leather);r(12,17,1,2,p.ink);
+      r(5,8,1,1,p.shine);r(18,8,1,1,p.trim);r(8,18,1,1,p.light);r(15,18,1,1,p.dark);
+    } else {
+      for(let y=4;y<=21;y++) {
+        const half=style==='tower'?7:style==='round'?Math.max(2,Math.floor(Math.sqrt(Math.max(0,81-(y-12)**2)))):Math.max(2,7-Math.max(0,y-12));
+        r(12-half,y,half*2,1,p.ink);r(13-half,y,half*2-2,1,p.base);
+      }
+      r(7,6,1,10,p.light);r(11,5,2,14,p.trim);r(9,10,6,5,p.dark);r(10,11,4,3,p.light);r(10,11,2,1,p.shine);
     }
-    r(7,6,1,10,p.light);r(11,5,2,14,p.trim);r(9,10,6,5,p.dark);r(10,11,4,3,p.light);r(10,11,2,1,p.shine);
   } else if(kind==='wand') {
     for(let i=0;i<13;i++) {r(6+Math.floor(i*.6),21-i,2,1,p.leather);r(6+Math.floor(i*.6),21-i,1,1,p.light);}
     r(12,3,7,7,p.dark);r(13,4,5,5,p.base);r(13,4,2,3,p.light);r(13,4,1,1,p.shine);r(11,10,8,2,p.trim);
     if(style==='flame') {r(14,1,2,4,'#ffb957');r(11,4,2,3,'#ff8b42');r(16,5,2,3,p.shine);}
     if(style==='star'||style==='sun') {r(9,5,3,2,p.light);r(19,5,3,2,p.light);r(14,0,2,3,p.light);}
     if(style==='crystal') {r(14,1,2,3,p.light);r(14,6,1,3,p.shine);}
+    if(style==='mender'){r(9,3,9,2,'#397968');r(11,2,5,2,'#a6dec4');r(13,1,2,6,'#eff6cf');r(11,3,6,2,'#eff6cf');r(10,8,5,2,'#a6dec4');}
+    if(style==='groveheart'){r(9,4,4,3,'#347752');r(17,4,4,3,'#347752');r(11,5,3,5,'#7fcb77');r(16,5,3,5,'#aadf83');r(13,4,4,6,'#d2e8a0');r(14,5,2,3,'#f3f4c8');}
     if(id==='cinder_wand') {r(9,3,2,2,'#ffd894');r(10,1,1,1,'#ff7840');}
+  } else if(kind==='charm') {
+    r(6,4,12,2,p.trim);r(7,6,1,4,p.trim);r(16,6,1,4,p.trim);r(10,8,4,2,p.trim);
+    r(9,10,6,2,p.ink);r(8,12,8,4,p.dark);r(9,12,6,4,p.base);r(10,13,4,2,p.light);r(11,13,2,2,p.shine);r(10,16,4,2,p.trim);
+    if(style==='bogglass'){r(10,10,4,2,'#c5e4c1');r(9,12,6,2,'#65c2a7');r(11,14,2,2,'#317966');r(8,11,1,4,'#a5b77b');r(15,11,1,4,'#a5b77b');}
+  } else if(kind==='quiver') {
+    r(6,5,12,15,p.ink);r(8,4,8,13,p.dark);r(9,5,6,11,p.base);r(9,5,2,10,p.light);r(9,16,7,2,p.trim);
+    for(const [x,h]of [[9,8],[12,11],[15,9]]){r(x,3,1,h,'#ead7aa');r(x-1,3,3,2,'#c8a164');}
+    if(style==='dunewind'){r(10,7,5,2,'#e8c275');r(11,8,3,1,'#fff0b4');r(9,12,7,1,'#775438');}
   }
   // Tiny maker's marks preserve identity between otherwise similar variants.
   if(def.variant)for(let bit=0;bit<6;bit++)if(def.variant&(1<<bit))r(10+bit%3,12+Math.floor(bit/3),1,1,p.shine);

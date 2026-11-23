@@ -1,9 +1,13 @@
+import {createSaveCoordinator,saveStatusText} from './src/save-coordinator.mjs';
+import {rememberSafePositions,recoverToSafety,recoveryReason} from './src/safe-recovery.mjs';
 import {updateTrainAudio} from './src/train-audio.mjs';
 import {routeLootController} from './src/loot-controller.mjs';
 import {seatOpeningParty} from './src/opening-board.mjs';
 import {mountCampSettings,readCampInputSettings,shapeCampStick} from './src/settings-camp.mjs';
 import {renderVictoryReport,scrollVictoryReport} from './src/victory-ui.mjs';
 import {continueAfterDefeat} from './src/defeat-flow.mjs';
+import {enterWildLands} from './src/wild-lands.mjs';
+import {stopRailwayStream} from './src/railway-stream.mjs';
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
 import {worldGridSettings,setWorldGridSettings} from './src/world-grid.mjs';
 import {dynamicShadowsEnabled,setDynamicShadowsEnabled} from './src/shadow-settings.mjs';
@@ -18,10 +22,10 @@ import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
 import { GameAudio } from './src/audio.mjs';
 import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
-import { controlLabels, controlHelp, PAD_NAMES, DEFAULT_MAPPING, normalizeMapping, renderPlayerMappings, controllerFamily, CONTROLLER_NAMES, vehiclePadInput, lobbyPadInput } from "./src/controls.mjs";
+import { controlLabels, KEYS, PAD_NAMES, DEFAULT_MAPPING, KEYBOARD_ACTION_CODES, normalizeMapping, serializeMapping, renderPlayerMappings, controllerFamily, controllerMenuButtons, controllerButtonNames, CONTROLLER_NAMES, vehiclePadInput, lobbyPadInput } from "./src/controls.mjs";
 import { controllerGlyph } from './src/controller-glyphs.mjs';
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
-import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels} from './src/creation-preview.mjs';
+import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels,creationMenuButtons} from './src/creation-preview.mjs';
 import { dialogNeighbour,focusDialogControl } from './src/dialog-navigation.mjs';
 import { createLobbySettingsControllerRouter } from './src/lobby-settings-controller.mjs';
 import { FieldKit } from "./src/field-kit.mjs";
@@ -84,8 +88,9 @@ import {mountWorldsUI} from './src/worlds-ui.mjs';
 import {studioPreviewOwnsPad} from './src/rig-live-preview.mjs';
 import {loadWorldPackAssets,packMusicPair} from './src/world-pack-assets.mjs';
 const rooms = new Rooms(onRoomEvent);
-await loadHouseStorage();
-await loadLocationStorage();
+const layoutStorage = await Promise.allSettled([loadHouseStorage(), loadLocationStorage()]);
+const layoutRecoveryNotices = layoutStorage.flatMap((result, index) => result.status === 'rejected'
+  ? [`${index === 0 ? 'House' : 'Location'} library unavailable. Wildbound will use an intact local layout or the built-in design.`] : []);
 const profiles = await new Profiles().load();
 const heroRoot = document.createElement("div");
 heroRoot.id = "hero-overlays";
@@ -110,7 +115,13 @@ let boardPinned = false,
   boardDismissedRoll = null,
   lootDetailsVisible = false;
 let mapping = { ...DEFAULT_MAPPING };
-try { Object.assign(mapping, normalizeMapping(JSON.parse(localStorage.getItem("wildbound-mapping") || "{}"))); } catch {}
+try {
+  const stored = JSON.parse(localStorage.getItem('wildbound-mapping') || 'null');
+  if (stored) {
+    Object.assign(mapping, normalizeMapping(stored));
+    if (!stored.mappingVersion) localStorage.setItem('wildbound-mapping', serializeMapping(mapping));
+  }
+} catch {}
 const keys = new Set(),
   mouse = { x: 0, y: 0, down: false, active: false },
   previousPads = new Map(),
@@ -246,62 +257,110 @@ function wireGame() {
     persistSession().catch(()=>{});
   };
 }
-let pendingSession = null,
-  sessionSaving = false,
-  lastSessionBody = "";
-async function persistSession() {
-  if (game.trainTest || rooms.role === "client" || !game.players.length || game.phase === "lobby")
-    return;
-  if(game.localWorld)return persistLocalGame(game);
-  const body = JSON.stringify(saveSession(game));
-  if (body === lastSessionBody && !game.saveError) return;
-  pendingSession = { body, data: JSON.parse(body) };
-  if (sessionSaving) return;
-  sessionSaving = true;
-  game.saving = true;
-  while (pendingSession) {
-    const next = pendingSession;
-    pendingSession = null;
-    const started = performance.now();
-    try {
-      if (window.desktop) await window.desktop.saveSession(next.data);
-      else localStorage.setItem("wildbound-session", next.body);
-      lastSessionBody = next.body;
-      game.saveError = null;
-    } catch (e) {
-      game.saveError = e.message;
-      game.message("Save failed: " + e.message);
-    } finally {
-      if (typeof metrics !== "undefined")
-        metrics.record("save", performance.now() - started);
-    }
+const gameSaves = new WeakMap();
+function gameSaveQueue(target) {
+  let queue = gameSaves.get(target);
+  if (!queue) {
+    queue = createSaveCoordinator(async data => {
+      const started = performance.now();
+      try {
+        if (target.localWorld) {
+          if (window.desktop?.saveWorld) await window.desktop.saveWorld(data);
+          else {
+            localStorage.setItem('wildbound-world-'+data.id, JSON.stringify(data));
+            const index=JSON.parse(localStorage.getItem('wildbound-world-index')||'[]').filter(w=>w.id!==data.id);
+            index.unshift({id:data.id,name:data.session.state.localWorld.name,pack:data.session.state.localWorld.pack.name,seed:data.session.state.seed,savedAt:data.savedAt,regions:Object.keys(data.session.state.localWorld.regions).length});
+            localStorage.setItem('wildbound-world-index',JSON.stringify(index));
+          }
+        } else if (window.desktop) await window.desktop.saveSession(data,data.wilds?'wilds':undefined);
+        else localStorage.setItem(data.wilds?'wildbound-session-wilds':'wildbound-session', JSON.stringify(data));
+      } finally { metrics.record('save',performance.now()-started); }
+    }, {onChange: state => {
+      target.saving = state.saving;
+      target.saveError = state.error;
+      refreshSaveStatus();
+    }});
+    gameSaves.set(target,queue);
   }
-  sessionSaving = false;
-  game.saving = false;
+  return queue;
+}
+function persistSession(target=game) {
+  if ((target.trainTest&&!target.trainTest.persistent) || rooms.role === 'client' || !target.players.length || target.phase === 'lobby') return Promise.resolve();
+  try { return gameSaveQueue(target).save(target.localWorld ? saveLocalWorld(target) : saveSession(target)); }
+  catch (error) { return gameSaveQueue(target).fail(error); }
 }
 
 wireGame();
-let worldSaveTask=Promise.resolve();
 function persistLocalGame(target=game){
-  if(!target.localWorld)return Promise.resolve();
-  const record=saveLocalWorld(target);
-  target.saving=true;
-  const task=worldSaveTask.catch(()=>{}).then(async()=>{
-    if(window.desktop?.saveWorld)await window.desktop.saveWorld(record);
-    else{
-      localStorage.setItem('wildbound-world-'+record.id,JSON.stringify(record));
-      const index=JSON.parse(localStorage.getItem('wildbound-world-index')||'[]').filter(w=>w.id!==record.id);
-      index.unshift({id:record.id,name:record.session.state.localWorld.name,pack:record.session.state.localWorld.pack.name,seed:record.session.state.seed,savedAt:record.savedAt,regions:Object.keys(record.session.state.localWorld.regions).length});
-      localStorage.setItem('wildbound-world-index',JSON.stringify(index));
-    }
-    target.saveError=null;
-  }).catch(error=>{target.saveError=error.message;target.message('World save failed: '+error.message);throw error;}).finally(()=>{target.saving=false;});
-  worldSaveTask=task;return task;
+  return target.localWorld ? persistSession(target) : Promise.resolve();
 }
-window.wildboundFlushLocalWorld=()=>persistLocalGame();
+let lastProfileFlush=null;
+async function flushProgress({allowProfileLoadFailure=false}={}) {
+  if (rooms.role === 'client') return;
+  if(game.trainTest&&!game.trainTest.persistent){await profiles.savePromise;await gameSaves.get(game)?.flush();if(profiles.error&&!(profiles.loadError&&allowProfileLoadFailure))throw Error(profiles.error);return;}
+  const target=game;
+  // Capture both stores before awaiting either; the active session stays open
+  // if either record fails. No transition may discard a failed checkpoint.
+  const profileTask=profiles.capture(target);
+  const results=await Promise.allSettled([persistSession(target),profileTask || profiles.save()]);
+  refreshSaveStatus();
+  const failed=results.find(result=>result.status==='rejected');
+  if(failed)throw failed.reason;
+  if(profiles.error&&!(profiles.loadError&&allowProfileLoadFailure))throw Error(profiles.error);
+  lastProfileFlush=Date.now();refreshSaveStatus();
+}
+window.wildboundFlushLocalWorld=()=>flushProgress({allowProfileLoadFailure:true});
+const continueExpedition=document.createElement('button');continueExpedition.id='continue-expedition';continueExpedition.className='text-button';continueExpedition.textContent='Continue saved expedition';
+const continueNotice=document.createElement('p');continueNotice.id='continue-expedition-notice';continueNotice.setAttribute('role','status');
+const continueWilds=document.createElement('button');continueWilds.id='continue-wilds';continueWilds.className='text-button';continueWilds.textContent='Continue The Wilds';
+continueWilds.onclick=()=>continueSavedExpedition('wilds',{button:continueWilds});
+$('party-menu').append(continueExpedition,continueWilds,continueNotice);
+if(layoutRecoveryNotices.length||profiles.loadError){
+  const storageNotice=document.createElement('p');storageNotice.setAttribute('role','status');
+  storageNotice.textContent=[...layoutRecoveryNotices,profiles.loadError?'The character library could not be read. The original file is preserved. Recover a backup or import characters through Field Kit.':''].filter(Boolean).join(' ');
+  $('party-menu').append(storageNotice);
+}
+continueExpedition.onclick=()=>continueSavedExpedition();
+async function continueSavedExpedition(mode, {button=continueExpedition, notice=continueNotice}={}) {
+  if(button.disabled)return;
+  button.disabled=true;notice.textContent='Loading saved expedition…';
+  try {
+    const storageKey=mode==='wilds'?'wildbound-session-wilds':'wildbound-session';
+    const saved=window.desktop?.loadSession?await window.desktop.loadSession(mode):JSON.parse(localStorage.getItem(storageKey)||'null');
+    if(!saved){notice.textContent='No expedition checkpoint yet. Start an adventure or open a saved local world.';if($('pause-dialog').open)$('pause-text').textContent=notice.textContent;return;}
+    // Restore into a separate object first; a damaged save cannot replace the
+    // current party, inventory or editor state.
+    if(Boolean(saved.wilds)!==(mode==='wilds'))throw Error('The checkpoint belongs to a different adventure mode.');
+    const next=restoreSession(structuredClone(saved));
+    if(next.localWorld)throw Error('Open this named world through Your living worlds.');
+    profiles.reconcileCheckpoint(next);
+    const stash=next.sharedStash;await rooms.stop();game=next;wireGame();game.sharedStash=stash;
+    for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+    delete $('settings-dialog').dataset.pauseMenu;
+    renderer=new Renderer($('game-canvas'),assets);renderer.showLootDetails=lootDetailsVisible;
+    keys.clear();mouse.down=false;mouse.dash=false;paused=false;fixedClock.reset();show('play');renderRoster();
+    notice.textContent='';
+    if(game.phase==='lost')showDefeatMenu();
+    else if(disconnected().length)pause('Saved party restored. Reconnect its controllers or assign keyboard control.');
+  } catch(error){notice.textContent='Could not continue: '+error.message+'. Existing saves and your party are unchanged.';if($('pause-dialog').open)$('pause-text').textContent=notice.textContent;}
+  finally{button.disabled=false;}
+}
+function refreshSaveStatus() {
+  const node=$('progress-save-status');
+  if(!node)return;
+  const state={...gameSaves.get(game)?.state,error:game.saveError||gameSaves.get(game)?.state.error};
+  if(game.phase==='lobby'&&!state.savedAt)state.savedAt=lastProfileFlush;
+  const text=rooms.role==='client'?'The host saves this expedition.':game.trainTest&&!game.trainTest.persistent?'Train test · expedition save unchanged.':saveStatusText(state,{profileError:profiles.error,profileSaving:profiles.saving});
+  if(node.textContent!==text)node.textContent=text;
+  node.dataset.failed=String(!!(state?.error||profiles.error||game.saveError));
+  const button=$('progress-save-now');
+  if(button)button.textContent=node.dataset.failed==='true'?'Retry saving':state.saving||profiles.saving?'Saving…':'Save now';
+}
 let worldsWasPaused=false;
-async function activateLocalGame(next){
-  await loadWorldPackAssets(next);
+function activateLocalGame(next){
+  for(const dialog of document.querySelectorAll('dialog[open]:not(#worlds-dialog)'))dialog.close();
+  delete $('settings-dialog').dataset.pauseMenu;
+  if(game.trainTest)stopRailwayStream(game.trainTest);
   game=next;const stash=game.sharedStash;wireGame();game.sharedStash=stash;
   renderer=new Renderer($('game-canvas'),assets);renderer.showLootDetails=lootDetailsVisible;
   $('world-status-button').hidden=false;$('world-status-button').textContent=game.localWorld.name+' · WORLD';
@@ -313,13 +372,25 @@ const worldsUI=mountWorldsUI({getGame:()=>game,
     if(!game.players.length)throw Error('Choose explorers in the lobby first, then open Worlds again.');
     await persistSession();if(game.saveError)throw Error(game.saveError);
     await rooms.stop();
-    const next=createLocalWorld({...options,id:crypto.randomUUID(),party:game.players});
-    await persistLocalGame(next);await activateLocalGame(next);
+    const next=createLocalWorld({...options,id:crypto.randomUUID(),party:game.players,
+      sharedStash:game.sharedStash,profileRevisions:game.profileRevisions||profiles.revisions});
+    await loadWorldPackAssets(next);
+    await persistLocalGame(next);activateLocalGame(next);
   },
   load:async id=>{
-    await persistSession();if(game.saveError)throw Error(game.saveError);
-    const record=window.desktop?.loadWorld?await window.desktop.loadWorld(id):JSON.parse(localStorage.getItem('wildbound-world-'+id)||'null');
-    const next=restoreLocalWorld(record);await rooms.stop();await activateLocalGame(next);await persistLocalGame(next);
+    await flushProgress({allowProfileLoadFailure:true});
+    const loadRecord=()=>window.desktop?.loadWorld?window.desktop.loadWorld(id):JSON.parse(localStorage.getItem('wildbound-world-'+id)||'null');
+    let next;
+    try{next=restoreLocalWorld(await loadRecord());}
+    catch(error){
+      if(!window.desktop?.loadWorld)throw error;
+      try{next=restoreLocalWorld(await window.desktop.loadWorld(id,true));}
+      catch{throw error;}
+      next.message('An older checkpoint was recovered. The newest world save could not be loaded.');
+    }
+    profiles.reconcileCheckpoint(next);
+    await loadWorldPackAssets(next);
+    await rooms.stop();activateLocalGame(next);
   },
   save:()=>persistLocalGame(),
   action:async id=>{const message=worldAction(game,id,give);await persistLocalGame();return message;},
@@ -356,6 +427,10 @@ const fieldKit = new FieldKit({
     fixedClock.reset();
   },
 });
+const backupButton = document.createElement('button');
+backupButton.type='button';backupButton.className='text-button';backupButton.textContent='Save backups';
+backupButton.onclick=()=>fieldKit.openBackups();
+$('party-menu').append(backupButton);
 document.documentElement.style.setProperty(
   "--ui-scale",
   localStorage.getItem("wildbound-ui-scale") || "1",
@@ -376,7 +451,11 @@ function show(next) {
   $("nav-workshop").classList.toggle("active", next === "workshop");
   if (next === "workshop") workshop?.render();
 }
-function newLobby({ keepParty = false } = {}) {
+function newLobby({ keepParty = false, progressFlushed = false } = {}) {
+  if(game.trainTest?.persistent&&!progressFlushed){
+    const target=game;
+    return flushProgress().then(()=>{if(game===target)newLobby({keepParty,progressFlushed:true});}).catch(error=>pause('Could not save The Wilds. '+error.message));
+  }
   if(game.localWorld){const target=game;return persistLocalGame(target).then(()=>{if(game!==target)return;delete target.localWorld;newLobby({keepParty});}).catch(()=>worldsUI.open());}
   $('world-status-button').hidden=true;
   const returning = keepParty ? game.players.map(p=>({
@@ -387,6 +466,7 @@ function newLobby({ keepParty = false } = {}) {
     controllerName:p.controllerName,
   })) : [];
   if (game.phase !== "lobby" && game.phase !== "lost") profiles.capture(game);
+  if(game.trainTest)stopRailwayStream(game.trainTest);
   boardPinned = false;
   boardDismissedRoll = null;
   game = new Game();
@@ -555,8 +635,8 @@ function nameNewCharacter(p, done = () => {}) {
   dialog.innerHTML =
     '<form><h2>Create your character</h2><p>D-pad / stick: move · Left/right: change options · A: choose · B: back. You can type with the mouse/keyboard or use the on-screen keyboard.</p><label>Character name <input name="characterName" minlength="2" maxlength="20" required autocomplete="off"></label><canvas class="creation-preview" width="240" height="180"></canvas><details class="creation-details"><summary>Customize appearance</summary><div class="creation-appearance"></div></details><p class="name-error" role="alert"></p><footer class="creation-footer"><button type="submit">Create character</button><button type="button" class="name-cancel">Cancel</button></footer></form>';
   document.body.append(dialog);
-  dialog.updateControllerFamily=family=>{dialog.dataset.controllerFamily=family;dialog.querySelector('form>p').textContent=creationHelp(family)+' · Left/right: change options · '+creationButtonLabels(family).rotate+': rotate preview';};
-  dialog.updateControllerFamily(creationFamily(p));
+  dialog.updateControllerFamily=(family,buttons)=>{dialog.dataset.controllerFamily=family;dialog.querySelector('form>p').textContent=creationHelp(family,false,buttons)+' · Left/right: change options · '+creationButtonLabels(family,buttons).rotate+': rotate preview';};
+  dialog.updateControllerFamily(creationFamily(p),creationMenuButtons(p));
   const input = dialog.querySelector("input");
   input.value = p.name;
   const appearance = structuredClone(DEFAULT_APPEARANCE);
@@ -795,13 +875,53 @@ function renderRoster() {
       $("roster").insertBefore(card, $("roster").children[index] || null);
   });
 }
+let controlGuideSignature='', encounterGuideGame;
+function setHudText(id,value){
+  const element=$(id);
+  if(element.textContent!==value)element.textContent=value;
+}
+function updateControlGuide(message){
+  setHudText('game-help-context',message);
+  if(encounterGuideGame!==game){
+    encounterGuideGame=game;
+    $('last-encounter').hidden=true;
+    $('pause-last-encounter').hidden=true;
+    $('pause-last-encounter').open=false;
+  }
+  const families=[...new Set(game.players.map(player=>player.device==='keyboard'?'keyboard':player.controllerFamily||'generic'))];
+  if(!families.length)families.push('keyboard');
+  const signature=[...families,...Object.values(mapping)].join(':');
+  if(controlGuideSignature===signature)return;
+  controlGuideSignature=signature;
+  const actions=[['move','Move'],['attack','Attack'],['interact','Interact'],['jump','Jump'],['dodge','Dodge'],['inventory','Inventory'],['field','Field Kit']];
+  const groups=families.map(family=>{
+    const keyboard=family==='keyboard',section=document.createElement('section'),name=document.createElement('h3'),list=document.createElement('dl');
+    name.textContent=keyboard?'Keyboard & mouse':CONTROLLER_NAMES[family]||'Controller';
+    const names=controllerButtonNames(family);
+    for(const [action,label]of actions){
+      const term=document.createElement('dt'),binding=document.createElement('dd');
+      term.textContent=label;
+      binding.textContent=action==='move'?(keyboard?'WASD / arrows':'Left stick'):keyboard?KEYS[action]:names[mapping[action]]||`Button ${mapping[action]}`;
+      list.append(term,binding);
+    }
+    section.append(name,list);
+    return section;
+  });
+  $('game-control-groups').replaceChildren(...groups);
+}
 function updateHud() {
   $('board-button').hidden=!!game.trainTest;
   if(game.trainTest){
-    const t=game.trainTest;$('round-label').textContent=t.design.wildLands?'THE WILD LANDS':'DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';$('game-hint').textContent='Jump + interact at a raised side door · Dev menu: railway workshop or return to expedition';
+    const t=game.trainTest;$('round-label').textContent=t.design.wildLands?'THE WILD LANDS':'DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';
+    updateControlGuide(t.persistent?'Jump at a raised door to board. Camp preserves your Wilds checkpoint.':'Jump at a raised door to board. Use Developer tools to return to your expedition.');
     for(const id of ['event-card','dice-result','game-toast'])$(id)?.classList.add('hidden');renderRoster();return;
   }
   game.controlLabels = controlLabels(mapping);
+  updateControlGuide(game.realm
+    ? 'Meet the Keeper east of camp. Return Home keeps your forest progress.'
+    : game.openingBoard
+      ? 'Strike the board to roll. Movement unlocks when the first encounter appears.'
+      : game.locked ? '' : 'An additional player can join during the first round.');
   const p = game.current;
   $("round-label").textContent = "ROUND " + String(game.round).padStart(2, "0");
   $("turn-label").textContent = game.realm?'Explore the persistent forest':p
@@ -825,43 +945,46 @@ function updateHud() {
     game.enemies.length + " CREATURE" + (game.enemies.length === 1 ? "" : "S");
   const toast=$("game-toast");
   if(game.phase==='play'&&game.openingBoard&&!profiles.error){
-    const attackDirection={0:'up',1:'right',2:'left',3:'down'}[mapping.attack]||'left';
     const controller=game.players.find(p=>p.device?.startsWith('pad:'));
-    const family=controller?.controllerFamily||'xbox',signature=family+':'+attackDirection;
+    const family=controller?.controllerFamily||'generic',signature=controller?family+':'+mapping.attack:'keyboard';
     if(toast.dataset.openingPrompt!==signature){
       const label=document.createElement('span');label.textContent='Press';
-      const glyph=controllerGlyph(document.createElement('canvas'),family,'face',attackDirection);
       const action=document.createElement('span');action.textContent='to roll';
       const keyboard=document.createElement('small');keyboard.textContent='F / click';keyboard.setAttribute('aria-label','Keyboard: F or click');
-      toast.replaceChildren(label,glyph,action,keyboard);toast.dataset.openingPrompt=signature;
+      if(controller){
+        const glyph=controllerGlyph(document.createElement('canvas'),family,'binding',mapping.attack);
+        glyph.removeAttribute('aria-hidden');glyph.setAttribute('role','img');glyph.setAttribute('aria-label',controllerButtonNames(family)[mapping.attack]||`Button ${mapping.attack}`);
+        toast.replaceChildren(label,glyph,action,keyboard);
+      }else toast.replaceChildren(label,keyboard,action);
+      toast.dataset.openingPrompt=signature;
     }
     toast.classList.add('opening-board-prompt');
     toast.classList.remove('hidden');
   }else{
     toast.classList.remove('opening-board-prompt');toast.dataset.openingPrompt='';
-    toast.textContent=game.log[0]||'';
+    const toastMessage=game.log[0]||'';
+    if(toast.textContent!==toastMessage)toast.textContent=toastMessage;
     const victoryLootOpen=game.players.some(p=>p.ui?.storage==='victory'||p.ui?.storage==='tv-victory');
     toast.classList.toggle('hidden',victoryLootOpen||!!(game.event&&game.eventTime>0&&!profiles.error&&(game.log[0]||'').startsWith(game.event.name)));
-    if(profiles.error)toast.textContent='SAVE FAILED: '+profiles.error;
+    if(profiles.error||game.saveError){toast.textContent='Save failed · '+(game.saveError||profiles.error)+' · Open pause to retry';toast.classList.remove('hidden');}
   }
   $("event-card").classList.toggle(
     "hidden",
     !!game.roll || !!game.eventOnBoard || !game.event || game.eventTime <= 0,
   );
   if (game.event) {
-    $("event-card").style.opacity = String(
-      Math.max(
-        0,
-        Math.min(
-          1,
-          ((game.eventDuration || 5) - game.eventTime) / 0.4,
-          game.eventTime / 1.1,
-        ),
-      ),
-    );
-    $("event-name").textContent = game.event.name;
-    $("event-verse").textContent = game.event.verse;
-    $("event-tip").textContent = game.event.tip;
+    const duration=game.eventDuration||5;
+    $("event-card").style.opacity=duration<=3?'1':String(Math.max(0,Math.min(1,(duration-game.eventTime)/.3,game.eventTime/.4)));
+    setHudText('event-name',game.event.name||'');
+    setHudText('event-verse',game.event.verse||'');
+    setHudText('event-tip',game.event.tip||'');
+    if(game.eventTime>0){
+      for(const entry of ['last-encounter','pause-last-encounter']){
+        setHudText(entry+'-name',game.event.name||'');
+        setHudText(entry+'-tip',game.event.tip||'');
+        $(entry).hidden=false;
+      }
+    }
     $('event-progress').style.transform='scaleX('+Math.max(0,game.eventTime/(game.eventDuration||5))+')';
     if($('event-portrait').dataset.event!==game.event.name){
       const canvas=$('event-portrait'),c=canvas.getContext('2d');canvas.dataset.event=game.event.name;c.clearRect(0,0,144,144);c.imageSmoothingEnabled=false;
@@ -878,13 +1001,6 @@ function updateHud() {
   if (game.roll && game.roll.elapsed >= 1.6)
     $("dice-result").textContent =
       game.roll.dice.join(" + ") + " = " + game.roll.total;
-  $("game-hint").textContent = game.realm
-    ? controlHelp(mapping)+' · Meet the Keeper east of camp · Return Home keeps your forest progress'
-    : game.openingBoard
-    ? "The board is waking. Hit it to roll; movement unlocks when the first event appears."
-    : game.locked
-      ? controlHelp(mapping) + " · Field Kit: " + game.controlLabels.field
-      : "First round: use a controller to control your solo hero; Start/Menu on an unused controller or Enter adds a player";
   renderRoster();
 }
 function disconnected() {
@@ -913,6 +1029,8 @@ $("victory-results").addEventListener("keydown", (event) => {
 });
 $("victory-continue").addEventListener("click", () => $("victory-results").close());
 function restartSameLevel() {
+  const wilds=game.trainTest?.persistent;
+  if(game.trainTest)stopRailwayStream(game.trainTest);
   const level = { seed: game.seed, environment: game.environment, mapMode:game.mapMode||'bounded', difficulty: game.difficulty, diceCount: game.diceCount };
   const party = game.players.map((p) => ({
     device: p.device, name: p.name, profileId: p.profileId,
@@ -939,6 +1057,13 @@ function restartSameLevel() {
     p.controllerFamily = saved.controllerFamily;
     p.controllerName = saved.controllerName;
   }
+  wireGame();
+  if(wilds){
+    const result=enterWildLands(game,{persistent:true});
+    if(result.ok){enterTrainScreen();game.persist();return;}
+    $('continue-expedition-notice').textContent=result.message;
+    newLobby({keepParty:true});return;
+  }
   $("environment").value = level.environment;
   $("map-mode").value = level.mapMode;
   $("difficulty").value = level.difficulty;
@@ -963,9 +1088,16 @@ heroRoot.addEventListener('victory-action', (event) => {
 });
 function showDefeatMenu(){
   if(screen!=='play'||$('defeat-dialog').open)return;
-  paused=true;persistSession();if(rooms.role!=='client')profiles.capture(game);keys.clear();mouse.down=false;
+  paused=true;persistSession().catch(()=>{});if(rooms.role!=='client')profiles.capture(game);keys.clear();mouse.down=false;
   $('pause-dialog').close();
-  const dialog=$('defeat-dialog');dialog.showModal();focusDialogControl(dialog,$('defeat-continue'));
+  const dialog=$('defeat-dialog');
+  setDefeatConfirmation(false);
+  $('defeat-status').textContent='';
+  $('defeat-restart').hidden=!!game.localWorld;
+  const reset=game.trainTest?.persistent?'Start beside the train again. Reset Wilds exploration and train progress.':'Start from the opening with the same settings and explorers. Reset board and encounter progress.';
+  $('defeat-restart-detail').textContent=reset;
+  $('defeat-confirm-detail').textContent=reset;
+  dialog.showModal();focusDialogControl(dialog,$('defeat-continue'));
 }
 function pause(reason,device) {
   // A completed expedition still leaves the player in the house/world so the
@@ -975,15 +1107,21 @@ function pause(reason,device) {
   refreshPauseOptions();
   if (!['play','lobby'].includes(screen)) return;
   const owner=game.players.find(p=>p.device===(device||'keyboard'))||game.current||game.players[0];
-  if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
+  const dialog=$('pause-dialog');
+  if(owner)dialog.dataset.debugOwnerId=String(owner.id);
+  if(device?.startsWith('pad:'))dialog.dataset.ownerDevice=device;
+  else delete dialog.dataset.ownerDevice;
   pauseCheat.reset();
   paused = true;
-  persistSession();
+  persistSession().catch(()=>{});
   if (rooms.role !== "client") profiles.capture(game);
   keys.clear();
   mouse.down = false;
   const ended = game.phase === "won";
   const inLobby=screen==='lobby';
+  $('pause-continue-expedition').hidden=!inLobby;
+  $('pause-continue-wilds').hidden=!inLobby;
+  $('recover-ground').hidden=inLobby;
   $('pause-dialog').dataset.context=inLobby?'lobby':'expedition';
   document.querySelector('.pause-actions').append($('pause-worlds'));
   $('pause-dialog').dataset.ended=String(ended);
@@ -1007,13 +1145,16 @@ function pause(reason,device) {
     "hidden",
     !disconnected().length || game.players.some((p) => p.device === "keyboard"),
   );
-  if (!$("pause-dialog").open) {
-    $("pause-dialog").showModal();
-    const initial = $("resume-button");
-    focusDialogControl($('pause-dialog'),initial);
-    initial.scrollIntoView({block:'nearest'});
-  }
-  openSettings(device||'keyboard',true);
+  const pad=Array.from(navigator.getGamepads?.()||[]).find(candidate=>candidate&&device==='pad:'+candidate.index);
+  const buttonLabels=pad?controllerButtonNames(controllerFamily(pad)):null;
+  dialog.querySelector('.pause-control-help').textContent=pad?`${buttonLabels[controllerMenuButtons(pad).confirm]} confirm · ${buttonLabels[controllerMenuButtons(pad).back]} back · D-pad select`:'Enter confirm · Esc back';
+  if (!$('settings-dialog').open) showPauseLayer(ended?$('restart-button'):$('resume-button'));
+}
+function showPauseLayer(control){
+  const dialog=$('pause-dialog');
+  if(!dialog.open)dialog.showModal();
+  focusDialogControl(dialog,control);
+  control.scrollIntoView({block:'nearest'});
 }
 function transitionTrainScreen(next){
   for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
@@ -1023,6 +1164,43 @@ function transitionTrainScreen(next){
   if(renderer)renderer.trainScene=null;
   show(next);paused=false;keys.clear();mouse.down=false;mouse.dash=false;pauseCheat.reset();fixedClock.reset();
   if(next==='lobby'){playableLobby?.sync();renderLobby();}else updateHud();
+}
+function startWildsExpedition(player,done){
+ const target=game;
+ const unfinished=target.players.find(p=>!profiles.data.heroes.some(hero=>hero.id===p.profileId));
+ if(unfinished){nameNewCharacter(unfinished,()=>startWildsExpedition(player,done));return;}
+ const launch=()=>{
+  if(game!==target||screen!=='lobby')return;
+  const result=enterWildLands(target,{persistent:true});
+  if(!result.ok){$('continue-expedition-notice').textContent=result.message;return;}
+  done();
+  enterTrainScreen();
+  target.persist();
+ };
+ const request=async()=>{
+  const saved=window.desktop?.loadSession?await window.desktop.loadSession('wilds'):JSON.parse(localStorage.getItem('wildbound-session-wilds')||'null');
+  if(game!==target||screen!=='lobby')return;
+  if(!saved){launch();return;}
+  const confirmation=document.createElement('dialog');
+  confirmation.className='wilds-start-dialog';
+  confirmation.setAttribute('aria-label','Start a new Wilds expedition');
+  confirmation.dataset.ownerDevice=player.device;
+  confirmation.innerHTML='<h2>The Wilds</h2><p>A Wilds expedition is already saved. Starting a fresh expedition replaces its map progress and train position.</p><button type="button" data-wilds-resume>Continue saved Wilds</button><button type="button" data-wilds-new>Start fresh</button><button type="button" data-wilds-cancel>Cancel</button>';
+  document.body.append(confirmation);
+  confirmation.addEventListener('close',()=>confirmation.remove());
+  confirmation.querySelector('[data-wilds-resume]').onclick=()=>{
+   confirmation.close();
+   continueWilds.click();
+  };
+  confirmation.querySelector('[data-wilds-new]').onclick=()=>{confirmation.close();launch();};
+  confirmation.querySelector('[data-wilds-cancel]').onclick=()=>confirmation.close();
+  confirmation.showModal();
+  confirmation.querySelector('[data-wilds-resume]').focus();
+ };
+ if(startWildsExpedition.pending||document.querySelector('.wilds-start-dialog[open]'))return;
+ startWildsExpedition.pending=true;
+ return request().catch(error=>{$('continue-expedition-notice').textContent='Could not read The Wilds checkpoint. '+error.message;})
+  .finally(()=>{startWildsExpedition.pending=false;});
 }
 function enterTrainScreen(){if(!game.trainTest)return;audio.unlock();game.trainTest.returnScreen??=screen;transitionTrainScreen('play');}
 function leaveTrainScreen(previousScreen){transitionTrainScreen(previousScreen==='lobby'?'lobby':'play');}
@@ -1088,7 +1266,7 @@ for(const sign of ['down','up']){
  $('pause-music-'+sign).onclick=()=>{$('music-volume').value=Math.max(0,Math.min(1,musicVolume+(sign==='up'?.1:-.1)));$('music-volume').dispatchEvent(new Event('input'));refreshPauseOptions();};
  $('pause-sfx-'+sign).onclick=()=>{audio.set('sfx',audio.settings.sfx+(sign==='up'?.1:-.1));$('sfx-volume').value=audio.settings.sfx;refreshPauseOptions();};
 }
-$('pause-settings').onclick=()=>$('settings-button').click();
+$('pause-settings').onclick=()=>openSettings(controllerDialogDevice||'keyboard',true);
 $('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});const host=$('settings-dialog').open?$('settings-dialog'):$('pause-dialog');host.dataset.debugOwnerId=$('pause-dialog').dataset.debugOwnerId||'';gameDebug.open(host);};
 $("board-button").onclick = () => (boardPinned = !boardPinned);
 $("close-board").onclick = () => {
@@ -1105,28 +1283,91 @@ $('pause-dialog').addEventListener('focusin', e => {
 $('pause-dialog').addEventListener('focusout', e => e.target.classList.remove('menu-focus'));
 $("pause-dialog").addEventListener("cancel", (e) => {
   e.preventDefault();
-  if (game.phase === "play" || screen==='lobby') resume();
+  if($('pause-dialog').querySelector('.game-debug-console')){
+    $('pause-dialog').querySelector('.game-debug-console').remove();
+    $('pause-dev').focus();
+    return;
+  }
+  resume();
 });
 $("restart-button").onclick = () => {
   $("settings-dialog").close();delete $("settings-dialog").dataset.pauseMenu;
   $("pause-dialog").close();
   newLobby({keepParty:["won","lost"].includes(game.phase)});
 };
-$('defeat-dialog').addEventListener('cancel',e=>e.preventDefault());
-$('defeat-lobby').onclick=()=>{$('defeat-dialog').close();newLobby({keepParty:true});};
-$('defeat-restart').onclick=restartSameLevel;
+function setDefeatConfirmation(confirming){
+ const dialog=$('defeat-dialog');
+ dialog.querySelector('.defeat-actions').hidden=confirming;
+ $('defeat-confirm').hidden=!confirming;
+ if(dialog.open)focusDialogControl(dialog,$(confirming?'defeat-keep-going':'defeat-restart'));
+}
+async function departDefeat(button,action){
+ button.disabled=true;
+ try{await flushProgress();await action();}
+ catch(error){$('defeat-status').textContent='Could not save the expedition. '+error.message;}
+ finally{button.disabled=false;}
+}
+$('defeat-dialog').addEventListener('cancel',event=>{event.preventDefault();if(!$('defeat-confirm').hidden)setDefeatConfirmation(false);});
+$('defeat-lobby').onclick=()=>departDefeat($('defeat-lobby'),()=>{
+ $('defeat-dialog').close();return newLobby({keepParty:true,progressFlushed:true});
+});
+$('defeat-restart').onclick=()=>setDefeatConfirmation(true);
+$('defeat-keep-going').onclick=()=>setDefeatConfirmation(false);
+$('defeat-confirm-restart').onclick=()=>departDefeat($('defeat-confirm-restart'),restartSameLevel);
 $('defeat-continue').onclick=()=>{
   if(!continueAfterDefeat(game))return;
   $('defeat-dialog').close();paused=false;keys.clear();
 };
-$("quit-button").onclick = () => {
-  $("settings-dialog").close();delete $("settings-dialog").dataset.pauseMenu;
-  profiles.capture(game);
-  persistSession();
-  $("pause-dialog").close();
-  paused = false;
-  show("home");
+let leavingGame=false;
+$("quit-button").textContent='Save and return to landing';
+$("quit-button").onclick = async () => {
+  if(leavingGame)return;
+  leavingGame=true;
+  const button=$('quit-button');button.disabled=true;
+  try {
+    await flushProgress();
+    $("settings-dialog").close();delete $("settings-dialog").dataset.pauseMenu;
+    $("pause-dialog").close();paused=false;keys.clear();mouse.down=false;newLobby({progressFlushed:true});
+  } catch(error) {
+    refreshSaveStatus();
+    const node=$('progress-save-status');node.textContent='Could not save: '+error.message+'. Your game is still open. Retry saving or return to play.';node.dataset.failed='true';
+    $('progress-save-now').focus();
+  } finally {leavingGame=false;button.disabled=false;}
 };
+const savePanel=document.createElement('div');savePanel.className='progress-save-panel';
+const saveStatus=document.createElement('p');saveStatus.id='progress-save-status';saveStatus.setAttribute('role','status');saveStatus.setAttribute('aria-live','polite');
+const saveNow=document.createElement('button');saveNow.id='progress-save-now';saveNow.type='button';saveNow.textContent='Save now / Retry';
+saveNow.onclick=async()=>{saveNow.disabled=true;try{await flushProgress();}catch{}finally{saveNow.disabled=false;refreshSaveStatus();}};
+const pauseBackups=document.createElement('button');pauseBackups.type='button';pauseBackups.textContent='Save backups';
+pauseBackups.onclick=()=>fieldKit.openBackups(controllerDialogDevice||'keyboard');
+savePanel.append(saveStatus,saveNow,pauseBackups);document.querySelector('.pause-actions').prepend(savePanel);
+const continueFromPause=document.createElement('button');continueFromPause.id='pause-continue-expedition';continueFromPause.type='button';continueFromPause.textContent='Continue saved expedition';continueFromPause.hidden=true;
+continueFromPause.onclick=async()=>{continueFromPause.disabled=true;try{await continueExpedition.onclick();}finally{continueFromPause.disabled=false;}};
+const continueWildsFromPause=document.createElement('button');continueWildsFromPause.id='pause-continue-wilds';continueWildsFromPause.type='button';continueWildsFromPause.textContent='Continue The Wilds';continueWildsFromPause.hidden=true;
+continueWildsFromPause.onclick=()=>continueSavedExpedition('wilds',{button:continueWildsFromPause});
+document.querySelector('.pause-actions').append(continueFromPause,continueWildsFromPause);
+const recoveryButton=document.createElement('button');recoveryButton.id='recover-ground';recoveryButton.type='button';recoveryButton.textContent='Help · Move to safe ground';
+document.querySelector('.pause-actions').append(recoveryButton);
+const recoveryDialog=document.createElement('dialog');recoveryDialog.id='recovery-dialog';recoveryDialog.setAttribute('aria-labelledby','recovery-title');
+recoveryDialog.innerHTML='<h2 id="recovery-title">Move to safe ground</h2><p data-recovery-copy></p><p>Health, inventory and world progress stay unchanged. The recorded position option may return you farther back.</p><div class="recovery-actions"><button data-recovery-near>Move to nearby clear ground</button><button data-recovery-entrance>Return to recorded safe position</button><button data-recovery-cancel>Cancel</button></div><p data-recovery-result role="status" aria-live="polite"></p>';
+document.body.append(recoveryDialog);
+let recoveryOwner=null;
+recoveryButton.onclick=()=>{
+  const device=$('pause-dialog').dataset.ownerDevice;
+  recoveryOwner=game.players.find(p=>p.device===device)||game.players.find(p=>String(p.id)===$('pause-dialog').dataset.debugOwnerId)||game.players[0];
+  const reason=recoveryReason(game,recoveryOwner);
+  recoveryDialog.querySelector('[data-recovery-copy]').textContent=(recoveryOwner?.name||'Explorer')+' · '+(reason||'Use this if scenery or an invalid position has trapped you.');
+  recoveryDialog.querySelector('[data-recovery-result]').textContent='';
+  for(const button of recoveryDialog.querySelectorAll('[data-recovery-near],[data-recovery-entrance]'))button.disabled=!!reason;
+  if(device)recoveryDialog.dataset.ownerDevice=device;else delete recoveryDialog.dataset.ownerDevice;
+  recoveryDialog.showModal();recoveryDialog.querySelector('[data-recovery-cancel]').focus();
+};
+for(const [selector,entrance]of [['near',false],['entrance',true]])recoveryDialog.querySelector('[data-recovery-'+selector+']').onclick=()=>{
+  const result=recoverToSafety(game,recoveryOwner,{entrance});
+  recoveryDialog.querySelector('[data-recovery-result]').textContent=result.message;
+  if(result.ok){keys.clear();mouse.down=false;mouse.dash=false;fixedClock.reset();}
+};
+recoveryDialog.querySelector('[data-recovery-cancel]').onclick=()=>recoveryDialog.close();
 $("reassign-button").onclick = () => {
   const p = disconnected()[0];
   if (p && !game.players.some((q) => q.device === "keyboard")){
@@ -1168,16 +1409,12 @@ let controllerDialogDevice = null;
 function openSettings(device = controllerDialogDevice || 'keyboard', fromPause = false) {
   const dialog = $("settings-dialog");
   if (dialog.open) return;
-  if (screen === "play"&&!paused){pause(undefined,device);return;}
+  if (screen === "play"&&!paused){pause(undefined,device);fromPause=true;}
   if(fromPause){
     dialog.dataset.pauseMenu="true";
-    const actions=$("camp-session-actions");actions.hidden=false;actions.open=false;
-    actions.querySelector("summary").textContent=screen==="lobby"?"Lobby actions":"Expedition actions";
-    for(const selector of ["#pause-text",".pause-secondary",".pause-actions"]){const node=$("pause-dialog").querySelector(selector);if(node)actions.append(node);}
-    const options=actions.querySelector(".pause-actions");for(const id of ["pause-pvp","pause-difficulty"])options.append($(id));
-    // Full game settings own the paused surface; the old shell is bookkeeping only.
-    $("pause-dialog").dataset.campMenu="true";
-  }else $("camp-session-actions").hidden=true;
+    $("pause-dialog").close();
+  }
+  $("close-settings").textContent=fromPause?'Back to pause menu':'Done';
   dialog.dataset.ownerDevice = device;
   const pad = Array.from(navigator.getGamepads?.() || []).find(pad => pad && device === 'pad:' + pad.index);
   dialog.dataset.controllerFamily = pad ? controllerFamily(pad) : 'keyboard';
@@ -1192,15 +1429,13 @@ function openSettings(device = controllerDialogDevice || 'keyboard', fromPause =
   focusSettingsPanel();
 }
 function closeSettings() {
-  if($("settings-dialog").dataset.pauseMenu){
-    musicPicker.close();
-    if(disconnected().length){$("camp-session-actions").open=true;$("reassign-button").focus();return;}
-    resume();return;
-  }
+  const returningToPause=!!$("settings-dialog").dataset.pauseMenu;
   musicPicker.close();
   $("settings-dialog").close();
+  delete $("settings-dialog").dataset.pauseMenu;
   delete $("settings-dialog").dataset.ownerDevice;
   delete $("settings-dialog").dataset.controllerFamily;
+  if(returningToPause&&paused)showPauseLayer($('reassign-button').classList.contains('hidden')?$('pause-settings'):$('reassign-button'));
 }
 $("settings-button").onclick = () => openSettings();
 $("close-settings").onclick = closeSettings;
@@ -1280,17 +1515,18 @@ for (const [action, value] of Object.entries(mapping)) {
       0,
       Math.min(31, Math.floor(Number(input.value) || 0)),
     );
-    localStorage.setItem("wildbound-mapping", JSON.stringify(mapping));
+    localStorage.setItem("wildbound-mapping", serializeMapping(mapping));
     renderPlayerMappings($("player-mappings"), game, mapping);
   };
   label.append(input);
   $("mapping-fields").append(label);
 }
 const campSettings=mountCampSettings($('settings-dialog'),{mapping,defaults:DEFAULT_MAPPING,
-  onMapping:()=>{localStorage.setItem('wildbound-mapping',JSON.stringify(mapping));for(const input of document.querySelectorAll('[data-mapping]'))input.value=mapping[input.dataset.mapping];renderPlayerMappings($('player-mappings'),game,mapping);},
+  onMapping:()=>{localStorage.setItem('wildbound-mapping',serializeMapping(mapping));for(const input of document.querySelectorAll('[data-mapping]'))input.value=mapping[input.dataset.mapping];renderPlayerMappings($('player-mappings'),game,mapping);},
   promptsChanged:()=>renderPlayerMappings($('player-mappings'),game,mapping)});
 window.addEventListener("keydown", (e) => {
   if(lobbyLanding?.handleKey(e))return;
+  const modal = document.querySelector('dialog[open]');
   if(e.code==='KeyY' && pauseCheatActive()){
     e.preventDefault();
     if(!e.repeat)pressPauseCheat();
@@ -1312,8 +1548,15 @@ window.addEventListener("keydown", (e) => {
     if (renderer) renderer.showLootDetails = lootDetailsVisible;
     return;
   }
-  if(screen==='lobby' && !document.querySelector('dialog[open]')) {
-    if(['Enter',' '].includes(e.key))e.preventDefault();
+  if(modal)return;
+  const nativeControl=e.target.closest?.('button, a[href], summary, input, select, textarea, [contenteditable=true]');
+  if (e.key==='Tab' && (nativeControl||screen==='lobby')) return;
+  if (nativeControl && ['Enter',' '].includes(e.key)) {
+    const owner=nativeControl.closest('[data-owner-device]')?.dataset.ownerDevice;
+    if(owner&&owner!=='keyboard')e.preventDefault();
+    return;
+  }
+  if(screen==='lobby') {
     if(playableLobby?.key(e)) return;
     if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','KeyF','KeyJ','KeyZ','KeyX','Space','KeyC','KeyQ','KeyH','KeyT','KeyI','Tab','Digit2','KeyR'].includes(e.code)||(e.code==='Enter'&&game.players.some(p=>p.device==='keyboard'&&p.ui))) {
       e.preventDefault();keys.add(e.code);return;
@@ -1334,8 +1577,7 @@ window.addEventListener("keydown", (e) => {
   if (
     screen === "play" &&
     e.code === "KeyG" &&
-    !e.repeat &&
-    !document.querySelector("dialog[open]")
+    !e.repeat
   ) {
     e.preventDefault();
     fieldKit.open(hero);
@@ -1343,7 +1585,7 @@ window.addEventListener("keydown", (e) => {
   }
   if (screen === "play" && hero?.ui && e.key === "Escape") {
     e.preventDefault();
-    hero.ui = null;
+    game.inventoryAction(hero,'close');
     return;
   }
   if (
@@ -1364,7 +1606,6 @@ window.addEventListener("keydown", (e) => {
     pause();
     return;
   }
-  if (document.querySelector("dialog[open]")) return;
   if (
     e.code === "Enter" &&
     rooms.role !== "client" &&
@@ -1389,7 +1630,6 @@ window.addEventListener("keydown", (e) => {
   }
 }, true);
 window.addEventListener("keyup", (e) => {
-  if(screen==='lobby'&&['Enter',' '].includes(e.key)&&!document.querySelector('dialog[open]'))e.preventDefault();
   keys.delete(e.code);
 },true);
 window.addEventListener("blur", () => {
@@ -1434,7 +1674,9 @@ function dialogController(pad, previous) {
   const dialog = [...document.querySelectorAll("dialog[open]")].at(-1);
   if (!dialog) return;
   if(dialog.dataset.ownerDevice && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
-  dialog.updateControllerFamily?.(controllerFamily(pad));
+  const menuButtons=controllerMenuButtons(pad);
+  dialog.updateControllerFamily?.(controllerFamily(pad),menuButtons);
+  if(dialog.id==='pause-dialog'&&pad.buttons[mapping.pause]?.pressed&&!previous[mapping.pause]){resume();return;}
   if(dialog.id==='victory-results'){
     if((pad.buttons[0]?.pressed&&!previous[0])||(pad.buttons[1]?.pressed&&!previous[1]))dialog.close();
     else if(pad.buttons[12]?.pressed&&!previous[12])scrollVictoryReport(dialog,-1);
@@ -1459,15 +1701,7 @@ function dialogController(pad, previous) {
     ((pad.buttons[4]?.pressed && !previous[4]) ||
       (pad.buttons[5]?.pressed && !previous[5]))
   ) {
-    const tabs = ["Craft", "Skills"];
-    fieldKit.tab =
-      tabs[
-      (tabs.indexOf(fieldKit.tab) + (pad.buttons[5]?.pressed ? 1 : tabs.length - 1)) % tabs.length
-      ];
-    fieldKit.render();
-    fieldKit.dialog
-      .querySelector(".field-body button,.field-body select")
-      ?.focus();
+    fieldKit.cycleTab(pad.buttons[5]?.pressed ? 1 : -1);
     return;
   }
   if (dialog.id === "settings-dialog" &&
@@ -1490,8 +1724,8 @@ function dialogController(pad, previous) {
       (!!pad.buttons[12]?.pressed && !previous[12]) || (y < 0 && axis[1] >= 0),
     down =
       (!!pad.buttons[13]?.pressed && !previous[13]) || (y > 0 && axis[1] <= 0),
-    accept = !!pad.buttons[0]?.pressed && !previous[0],
-    back = !!pad.buttons[1]?.pressed && !previous[1];
+    accept = !!pad.buttons[menuButtons.confirm]?.pressed && !previous[menuButtons.confirm],
+    back = !!pad.buttons[menuButtons.back]?.pressed && !previous[menuButtons.back];
   previousDialogAxes.set(pad.index, [x, y]);
   if(dialog.id==='settings-dialog'){
     const dx=pad.buttons[14]?.pressed?-1:pad.buttons[15]?.pressed?1:x,dy=pad.buttons[12]?.pressed?-1:pad.buttons[13]?.pressed?1:y;
@@ -1528,7 +1762,7 @@ function dialogController(pad, previous) {
   if (active < 0 && (left || right || up || down || accept)) {
     selected = controls[0];
     selected.focus();
-  } else if (active >= 0 && (dialog.id==='pause-dialog'||selected?.closest('#camp-session-actions')) && (left||right||up||down) && !(selected instanceof HTMLSelectElement) && !dialog.querySelector('.game-debug-console')) {
+  } else if (active >= 0 && dialog.id==='pause-dialog' && (left||right||up||down) && !(selected instanceof HTMLSelectElement) && !dialog.querySelector('.game-debug-console')) {
     selected = dialogNeighbour(controls,selected,left?-1:right?1:0,up?-1:down?1:0);
     selected.focus();
   } else if (active >= 0 && (up || down)) {
@@ -1558,9 +1792,11 @@ function dialogController(pad, previous) {
     else selected?.click();
   }
   if (back) {
+    if(dialog.id==='defeat-dialog'){if(!$('defeat-confirm').hidden)setDefeatConfirmation(false);return;}
+    if(dialog.id==='recovery-dialog'){dialog.close();recoveryButton.focus();return;}
     if(dialog.querySelector('.game-debug-console')){dialog.querySelector('.game-debug-console').remove();dialog.querySelector('button')?.focus();return;}
     if (dialog.id === "pause-dialog") {
-      if (game.phase === "play" || screen==='lobby') resume();
+      resume();
     } else if (dialog.id === "settings-dialog") {
       if(musicPicker.picker.open){musicPicker.close();musicPicker.picker.querySelector('summary').focus();}
       else $("close-settings").click();
@@ -1570,6 +1806,7 @@ function dialogController(pad, previous) {
     else if (dialog.id === "character-name-dialog")
       dialog.querySelector(".name-cancel").click();
     else if(['delete-character-dialog','rename-character-dialog'].includes(dialog.id))dialog.dispatchEvent(new Event('cancel',{cancelable:true}));
+    else dialog.requestClose?.();
   }
 }
 function inputFrame() {
@@ -1607,14 +1844,10 @@ function inputFrame() {
     }
     if(lobbyLanding?.waitingForRelease(pad)){inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
     if(lobbyLanding?.active&&!modal&&(active||pendingControllerJoins.has(claimKey))&&lobbyLanding.activate(device,pad)){pendingControllerJoins.delete(claimKey);pendingControllerSettings.delete(claimKey);inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
-    if(modal&&openDialog.id!=='settings-dialog')modalControllerHeld.add(pad.index);
+    if(modal)modalControllerHeld.add(pad.index);
     if(!modal&&modalControllerHeld.has(pad.index)){
       if(pad.buttons.some(b=>b.pressed)||pad.axes.some(v=>Math.abs(v)>.35)){inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));continue;}
       modalControllerHeld.delete(pad.index);
-    }
-    if(openDialog?.id==='settings-dialog'&&openDialog.dataset.ownerDevice==='keyboard'){
-      const intent=[0,1,4,5,9,12,13,14,15].some(i=>pad.buttons[i]?.pressed&&!previous[i])||pad.axes.slice(0,2).some(v=>Math.abs(v)>.65);
-      if(intent){openDialog.dataset.ownerDevice=device;openDialog.dataset.controllerFamily=controllerFamily(pad);}
     }
     const settingsAction = controllerSettingsRouter.route({
       pad, previous, screen, dialog: openDialog, pendingOpen: pendingControllerSettings.has(claimKey),
@@ -1639,6 +1872,7 @@ function inputFrame() {
       const reclaim = (!modal || $("pause-dialog").open) && (missing || solo);
       if (reclaim) {
         reclaim.device = device;
+        modalControllerHeld.add(pad.index);
         joinedNow = true;
         previous = pad.buttons.map((b) => b.pressed);
         if ($("pause-dialog").open) $("pause-text").textContent =
@@ -1688,6 +1922,15 @@ function inputFrame() {
       }
     }
     const lootOwner=game.players.find(p=>p.device===device);
+    const inventoryPanel=lootOwner?.ui&&heroUI.panels.get(lootOwner.id);
+    const detailsButton=inventoryPanel?.querySelector('.inventory-details-toggle:not(:disabled)');
+    const detailsPressed=pad.buttons[11]?.pressed&&!previous[11];
+    const closeDetails=inventoryPanel?.tooltipExpanded&&pad.buttons[1]?.pressed&&!previous[1];
+    if(!modal&&detailsButton&&(detailsPressed||closeDetails)){
+      detailsButton.click();
+      modalControllerHeld.add(pad.index);
+      inputs[device]={};previousPads.set(pad.index,pad.buttons.map(button=>button.pressed));continue;
+    }
     if(!modal&&lootOwner&&routeLootController(heroUI.panels.get(lootOwner.id),game,lootOwner,pad,previous)){
       inputs[device]={};previousPads.set(pad.index,pad.buttons.map(b=>b.pressed));
       if(!lootOwner.ui)modalControllerHeld.add(pad.index);
@@ -1853,7 +2096,7 @@ function inputFrame() {
     block: keys.has("KeyC"),
     inventory: keys.has("KeyI"),
     portal: keys.has("KeyP"),
-    bait: keys.has("KeyT"),
+    bait: keys.has(KEYBOARD_ACTION_CODES.bait),
     next: keys.has("ArrowRight"),
     prev: keys.has("ArrowLeft"),
     up: keys.has("ArrowUp"),
@@ -1884,6 +2127,7 @@ function frame(now) {
   if(document.visibilityState!=='hidden') metrics.record("frame", elapsed * 1000);
   last = now;
   if (ready) {
+    if(paused)refreshSaveStatus();
     lobbyLanding?.sync();
     designer?.animate(dt);
     const wasBlocked = paused || !!document.querySelector('dialog[open]');
@@ -1928,10 +2172,11 @@ function frame(now) {
           fixedClock.advance(elapsed, (step) => game.update(step, effective)),
         );
       else fixedClock.reset();
+      if(!paused&&rooms.role!=='client')rememberSafePositions(game,dt);
       saveAge += dt;
       if (saveAge > 5 && !paused && rooms.role !== "client") {
-        persistSession().catch(()=>{});
         profiles.capture(game);
+        persistSession().catch(()=>{});
         saveAge = 0;
       }
       renderer.animator.metrics = metrics;
@@ -2029,7 +2274,7 @@ try {
   designer.dialog.addEventListener("close", () => {
     if (screen === "play" && !$("pause-dialog").open && !$("defeat-dialog").open) paused = false;
   });
-  playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound});
+  playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound,onTrainEnter:enterTrainScreen,startWilds:startWildsExpedition});
   playableLobby.showLootDetails=()=>lootDetailsVisible;
   lobbyLanding=new LobbyLanding({area:playableLobby.area,available:()=>screen==='lobby'&&game.players.length===0,join:(device,pad)=>{const player=game.addPlayer(device);if(!player)return null;if(pad){player.controllerFamily=controllerFamily(pad);player.controllerName=CONTROLLER_NAMES[player.controllerFamily];}renderLobby();playableLobby.sync();sound('join');return player;}});
   ready = true;
@@ -2054,6 +2299,14 @@ if (
   new URLSearchParams(location.search).has("tools")
 ) {
   const { installDebugTools } = await import("./src/debug-tools.mjs");
+  window.wildboundPolishTest={
+    get game(){return game;},set game(value){game=value;wireGame();},
+    get profiles(){return profiles;},get assets(){return assets;},get renderer(){return renderer;},set renderer(value){renderer=value;},
+    get screen(){return screen;},get paused(){return paused;},
+    show,pause,resume,inputFrame,persistSession,flushProgress,
+    get heroUI(){return heroUI;},rememberSafePositions,recoverToSafety,
+    saveState:()=>gameSaves.get(game)?.state,
+  };
   installDebugTools({
     get drawPlayer() {
       return drawPlayer;

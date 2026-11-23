@@ -1,0 +1,28 @@
+# Six train journey improvements
+
+Checkout: C:/Users/New User/Desktop/Wildbound, branch Wildbound_worlds, origin https://github.com/ijustcreate/Wildbound.git. Base f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 plus substantial pre-existing modified source/assets. Preserve authored rigs, profiles, saves and editor drafts. No commit or web publication requested for this assignment.
+
+## Six changes
+1. A ticketed explorer can ask the conductor for the next station stop. The ticket is retained. A requested stop survives boarding/co-op occupancy, brakes using the existing stopping envelope, switches off at the marker and keeps the current driver at the controls until they choose to leave. An unattended-only stop still cancels when a living explorer boards.
+2. The cab's normal Dodge action (Space / right mouse, default right trigger on controllers) applies a three-times-stronger emergency brake without dashing the driver. Restarting at the console releases it. Ordinary passengers cannot apply it. No controller mapping or saved control preference is changed.
+3. The compact two-line railway HUD shows the next station, distance and approximate ETA. Requested stops and parked station state have clear labels. Station projections are cached per route/design revision, including surface stops while explorers visit portal rooms. The existing HUD dimensions are retained; long labels are bounded to its width. Braking, coasting and parked status are distinguished.
+4. A station crossing rings a short locally synthesized bell and shows an arrival callout. The event is keyed by route/station/absolute passage, so parked frames cannot repeat it and another lap can ring again. Audio uses the existing spatial SFX bus and volume settings.
+5. Quietly sitting in a passenger seat allows slow recovery: three seconds to settle, then one HP per two seconds, capped at maximum health. Damage, attacks, dodge/trap input, changing seats, standing and death interrupt/reset recovery. The seat prompt displays RESTING and healing uses the existing world-text effect. No XP is awarded by resting.
+6. Boarding prompts identify the locomotive, tender, compartment coach, seating coach or caboose. Gangways identify both connected coaches with short names that fit a small viewport.
+
+## Integration and limits
+All services are transient train state, cleared by repair and design application; no train design schema, shared rig or player-save migration is introduced. The Golden Train Ticket and rectangular actor-aware chat retain their existing behavior. Driver emergency input uses the canonical Dodge action; labels cover the standard Xbox, PlayStation, Nintendo and keyboard controls. Physical hardware/controller feel is not claimed.
+
+Focused checks: 52 focused journey/conductor/student/gameplay tests pass. They cover real Game.update requested arrival with two riders, held-throttle safety after arrival, real emergency input and restart, normal dash/combat regressions, capped/interrupted rest, route-loop arrivals, labels and bounded bell voices. Muted isolated Electron review, full rebuild and packaged receipts are recorded below after completion. Normal saved sound preferences and system volume are not changed.
+
+Desktop source review: 23 checks passed in an isolated, muted Electron window (`test-output/train-six/source/report.json`). Captures cover a 640x480 window, Xbox/PlayStation/Switch cab labels, requested co-op arrival, seating recovery and carriage/gangway labels. The small-view HUD retains distance and ETA with a truncated long station name. No physical hardware or audible mix review is claimed.
+
+Broad rebuild run: 2,087/2,089 tests passed. The two failures were the audio fixture lacking procedural ambience methods and the existing Enemy gear drop-rate assertion in xp-loot. The current audio file passes all 18 checks on isolated recheck; xp-loot retains one failure (two other XP checks pass). No loot/audio gameplay code was changed to hide these failures. The standard rebuild correctly refused to replace the desktop. A separate normal packaging pass runs all runtime syntax checks; packaged native checks and launcher identity are required before delivery. Logs: `test-output/train-six-rebuild.log`, `train-six-audio-recheck.log`, `train-six-xp-recheck.log`, `train-six-package.log`.
+
+## Delivered desktop (November 23)
+
+Version 1.2.109, `dist/1.2.109-2026-11-23T16-07-50-343Z/Wildbound-win32-x64/Wildbound.exe`, built 2026-11-23T16:08:14.627Z from f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 **with modified source**. Packaging passed all 934 runtime syntax checks. A concurrently completed TV-art metadata manifest was copied into the generated package after capture; final content audit matches all 1,699 current runtime/assets/authored files. No source or authored data was replaced to perform this audit.
+
+The packaged Electron train driver passed all 23 checks with no renderer errors, in a muted isolated test profile. The exact packaged executable passed `--boot-smoke-test --mute-audio`, exit 0, lobby ready. Physical controller feel and audible bell mix remain manual review items. Receipts: `test-output/train-six-delivery.json`, `train-six/packaged/report.json`, `train-six-final-content.log`, and the package-local `test-output/boot-smoke.json`.
+
+Desktop shortcut: `C:/Users/New User/Desktop/Wildbound Worlds (1.2.109).lnk`; target `C:/Users/New User/Desktop/Wildbound/Play Wildbound.cmd`, blank arguments, repository Wildbound icon. Launcher `--check` selects the exact build above. Normal save profile, no `--preview`; personal sound preferences and saves untouched. No commit, push or web publication performed for this six-improvement assignment.

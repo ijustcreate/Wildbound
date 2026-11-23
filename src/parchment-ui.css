@@ -1,11 +1,11 @@
 /* Shared nine-slice pixel-art chrome; text remains live, accessible and scalable. */
 :root{--paper:#eadba5;--ink:#302b1e;--wood:#64442d;--jade:#53a67a;}
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog){border:12px solid var(--wood);border-image:url('../assets/ui-parchment/panel.png') 28 fill stretch;background:var(--paper);color:var(--ink);border-radius:0;box-shadow:0 10px 28px #0009;font-family:system-ui,sans-serif;}
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog){border:12px solid var(--wood);border-image:url('../assets/ui-parchment/panel.png') 28 fill stretch;background:var(--paper);color:var(--ink);border-radius:0;box-shadow:0 10px 28px #0009;font-family:system-ui,sans-serif;}
 .hero-panel.inventory-redesign{border:12px solid var(--wood)!important;border-image:url('../assets/ui-parchment/panel.png') 28 fill stretch!important;background:var(--paper)!important;color:var(--ink);box-shadow:0 10px 28px #0009;}
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) :is(h2,h3,header){color:#26372b;}
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) button{border:8px solid #305b43;border-image:url('../assets/ui-parchment/button.png') 20 fill stretch;background:var(--jade);color:#11281c;border-radius:0;box-shadow:none;font-size:14px;font-weight:650;min-height:36px;padding:4px 10px;text-shadow:none;}
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) button:is(.selected,:focus-visible){border-image-source:url('../assets/ui-parchment/button-selected.png');outline:2px solid #af772a;outline-offset:1px;}
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) button:disabled{opacity:.55;}
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) :is(h2,h3,header){color:#26372b;}
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) button{border:8px solid #305b43;border-image:url('../assets/ui-parchment/button.png') 20 fill stretch;background:var(--jade);color:#11281c;border-radius:0;box-shadow:none;font-size:14px;font-weight:650;min-height:36px;padding:4px 10px;text-shadow:none;}
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) button:is(.selected,:focus-visible){border-image-source:url('../assets/ui-parchment/button-selected.png');outline:2px solid #af772a;outline-offset:1px;}
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) button:disabled{opacity:.55;}
 :is(#settings-dialog,#pause-dialog,#field-kit-dialog){font-size:16px;line-height:1.5;}
 :is(#settings-dialog,#field-kit-dialog) :is(label,p,small){font-size:14px;color:#493e29;}
 :is(#settings-dialog,#field-kit-dialog) :is(input,select){background:#f5e8bd;color:#302719;border:2px solid #947451;min-height:38px;font-size:16px;}

@@ -257,17 +257,17 @@ test('airborne stampede creatures leave trees and structures untouched', () => {
   assert.equal(destructionStats(g).particles, 0);
 });
 
-test('many distinct impacts cap debris at 160 without skipping damage, and expired debris frees capacity', () => {
-  assert.equal(DESTRUCTION_PARTICLE_LIMIT, 160);
+test('many distinct impacts cap debris at 64 without skipping damage, and expired debris frees capacity', () => {
+  assert.equal(DESTRUCTION_PARTICLE_LIMIT, 64);
   const {g} = setup();
   for (let n = 0; n < 80; n++) g.house.walls.push(wall({x: 100 + n * 12, y: 200, w: 8, h: 8}));
   for (const b of g.house.walls) {
     assert.equal(damageStructureProjectile(g, bolt({x: b.x + 4, y: 204, size: 2,damage:200})), true);
     assert.equal(b.destroyed, true);
-    assert.ok(destructionStats(g).particles <= 160);
+    assert.ok(destructionStats(g).particles <= 64);
   }
-  assert.equal(destructionStats(g).particles,160);
-  assert.equal(destructionStats(g).particleLimit,160);
+  assert.equal(destructionStats(g).particles,64);
+  assert.equal(destructionStats(g).particleLimit,64);
   assert.ok(destructionStats(g).rasterBytes<=destructionStats(g).rasterByteLimit);
   assert.equal(g.house.destructionRevision, 80);
   tickDestruction(g, 2);

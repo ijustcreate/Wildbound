@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 import { ITEMS, SLOTS, give, take, equip, stat, itemKind,refreshVitals,clearSlot,gearStat } from "./items.mjs";
 import {ensureRescueExplorer,completeRescueExplorer} from './npc-quests.mjs';
 
@@ -265,6 +266,7 @@ export function choosePath(g, p, choice) {
   } else {
     p.field.curse = true;
     p.coins = (p.coins || 0) + 20;
+    emitGameplayFx(g,'coin',p);
     g.message(
       "20 gold claimed. Incoming damage increases 15% until the next expedition.",
     );
@@ -357,6 +359,7 @@ export function tickField(g, dt, inputs) {
       if(o.kind==='rescue')g.onSound?.('rescue',o);
       for (const p of g.players) {
         p.coins = (p.coins || 0) + 10;
+        emitGameplayFx(g,'coin',p);
         record(p, "objectives");
       }
       g.message(o.kind==='rescue'?'Explorer rescued! They’re safe now—talk to them for a thank-you reward.':'Trail objective complete · 10 gold for each explorer.');

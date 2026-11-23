@@ -1,3 +1,5 @@
+import {drawAttackFootprint} from './enemy-telegraphs.mjs';
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
 import {waterAt} from './environment.mjs';
 import {ignite} from './hazards.mjs';
@@ -21,14 +23,17 @@ export function tickImp(g,e,targets,dt,stats={},behaviors={}){
    const bombs=(g.impBombs||=[]);if(bombs.length<IMP_BOMB_LIMIT){const d=distance(e,aim),duration=Math.max(.65,Math.min(1.25,d/220));bombs.push({id:g.nextId++,owner:e.id,x:e.x,y:e.y,originX:e.x,originY:e.y,targetX:aim.x,targetY:aim.y,age:0,duration,z:32,damage:e.damage});}
   }return;
  }
- const d=distance(e,p)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;
- if(e.cooldown<=0&&behaviors.ranged!==false&&d<=(stats.rangedRange||330)&&clearShot(g,e,p)){
+ const d=distance(e,p)||1,visible=clearShot(g,e,p);e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;
+ if(e.cooldown<=0&&behaviors.ranged!==false&&d<=(stats.rangedRange||330)&&visible&&requestEnemyGroupTurn(g,e,p,{flightSpeed:180})){
   e.impWindup=e.impWindupDuration=Math.max(.6,stats.windup||.9);e.impAim={x:p.x,y:p.y};e.moving=false;return;
  }
  if(behaviors.hunt===false)return;
  const speed=e.speed*(e.rooted>0?.45:1);
- if(d>230){const step=Math.min(d-230,speed*dt),moved=g.moveActor(e,e.faceX*step,e.faceY*step);if(moved<step*.3)navigateEnemy(g,e,p,dt);}
+ // Keep following the route even inside attack range when masonry blocks a throw.
+ // A direct shove before every route step would undo detours around corners.
+ if(!visible||d>230)navigateEnemy(g,e,p,Math.min(dt,visible?(d-230)/speed:dt)*(e.rooted>0?.45:1));
  else if(d<110)g.moveActor(e,-e.faceX*speed*dt,-e.faceY*speed*dt);
+ else e.moving=false;
 }
 function hitCircle(g,patch,amount,initial=false){
  if(!(amount>0))return;
@@ -67,7 +72,7 @@ export function drawImpGround(c,g){
  c.save();
  const circles=[...(g.impFireCircles||[]).slice(-IMP_FIRE_LIMIT),...(g.impBombs||[]).slice(-IMP_BOMB_LIMIT).map(b=>({x:b.targetX,y:b.targetY,radius:IMP_FIRE_RADIUS,warning:true})),...g.enemies.filter(e=>e.kind==='imp'&&e.hp>0&&e.impWindup>0&&e.impAim).slice(-IMP_BOMB_LIMIT).map(e=>({...e.impAim,radius:IMP_FIRE_RADIUS,warning:true}))];
  for(const f of circles){
-  if(f.warning){c.globalAlpha=.7;c.strokeStyle='#ffbc72';c.lineWidth=1;c.beginPath();c.arc(f.x,f.y,f.radius,0,Math.PI*2);c.stroke();pixel(c,f.x-3,f.y-1,7,2,'#ffbe80');pixel(c,f.x-1,f.y-3,2,7,'#ffbe80');continue;}
+  if(f.warning){c.globalAlpha=1;drawAttackFootprint(c,{shape:'circle',x:f.x,y:f.y,range:f.radius});continue;}
   c.globalAlpha=Math.min(.85,f.life/.7);
   for(let y=-f.radius;y<=f.radius;y+=3)for(let x=-f.radius;x<=f.radius;x+=3){const r=Math.hypot(x,y);if(r>f.radius)continue;const wave=Math.sin(r*.7-f.age*11+Math.atan2(y,x)*3);pixel(c,f.x+x,f.y+y,3,3,r>f.radius-4?'#f6b23c':wave>.6?'#db662e':wave<-.4?'#73312b':'#a93f27');}
   for(let n=0;n<14;n++){const a=n*Math.PI*2/14+f.id*.2,x=f.x+Math.cos(a)*f.radius*.85,y=f.y+Math.sin(a)*f.radius*.85,lift=3+Math.floor((Math.sin(f.age*12+n)+1)*3);pixel(c,x-1,y-lift,3,lift,'#ec8130');pixel(c,x,y-lift,1,Math.max(2,lift-2),'#ffe296');}

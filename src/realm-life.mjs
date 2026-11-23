@@ -1,5 +1,8 @@
+import {footprintIndex} from './footprint-index.mjs';
 import {REALMS,realmHash,realmVoidBlocked,realmFootprint,realmTerrainAt,realmContexts,realmEventContext} from './realm-world.mjs';
 import {drawRealmSprite} from './realm-art.mjs';
+import {dressUnderworld} from './shadow-underworld-layout.mjs';
+import {ensureShadowExit} from './shadow-passages.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
 import {drawMonarchFairyDragon} from './monarch-fairy-dragon.mjs';
 import {drawAxolotl} from './axolotl.mjs';
@@ -116,16 +119,16 @@ export function hasCustomOlmArt(library){
   olmArtChecks.set(sprite,{revision:sprite.revision,custom});return custom;
  });
 }
-function habitat(g,kind,x,y){
+function habitat(g,kind,x,y,collision=null){
  const ox=g.realmState?.originX||0,oy=g.realmState?.originY||0;
  if(x<ox+48||y<oy+48||x>ox+1552||y>oy+1552||realmVoidBlocked(g,x,y,8)||Math.hypot(x-800,y-800)<195)return false;
  const tile=realmTerrainAt(g,Math.floor(x/32),Math.floor(y/32));
  if(kind==='blind_fish'){if(tile!=='water')return false;}else if(tile==='water')return false;
- return !(g.scenery||[]).some(p=>{const b=realmFootprint(p);return b&&x>b.x-8&&x<b.x+b.w+8&&y>b.y-8&&y<b.y+b.h+8;});
+ return collision?!collision.blocked(x,y):!(g.scenery||[]).some(p=>{const b=realmFootprint(p);return b&&x>b.x-8&&x<b.x+b.w+8&&y>b.y-8&&y<b.y+b.h+8;});
 }
 export function seedRealmLife(g){
  const state=g.realmState;if(!state||!REALMS.includes(g.generatedEnvironment))return [];
- const needsUpgrade=state.faunaVersion!==2||!Array.isArray(state.animals);
+ const needsUpgrade=state.faunaVersion!==2||!Array.isArray(state.animals),collision=needsUpgrade?footprintIndex(g.scenery||[],realmFootprint,8):null;
  state.animals=Array.isArray(state.animals)?state.animals:[];
  // Upgrade already-saved shadow regions in place: preserve each hart's
  // position and identity, then seed only the newly introduced fairy dragons.
@@ -139,7 +142,7 @@ export function seedRealmLife(g){
    for(let attempt=0;attempt<600;attempt++){
     const salt=k*941+ordinal*37+attempt*13,x=(state.originX||0)+80+realmHash(state.seed+salt,13)*1440,y=(state.originY||0)+80+realmHash(salt,state.seed+71)*1440;
     const gap=kind==='shadow_stag'?72:kind==='monarch_fairy_dragon'?26:32;
-    if(!habitat(g,kind,x,y)||state.animals.some(a=>Math.hypot(a.x-x,a.y-y)<gap))continue;
+    if(!habitat(g,kind,x,y,collision)||state.animals.some(a=>Math.hypot(a.x-x,a.y-y)<gap))continue;
     state.animals.push({id:'fauna:'+k+':'+ordinal,kind,x,y,homeX:x,homeY:y,phase:realmHash(salt,5)*6.28,faceX:1,faceY:0,neutral:true});have++;added=true;break;
    }
    if(!added)break;
@@ -152,26 +155,35 @@ export function seedRealmLife(g){
 export function tickRealmLife(g,dt){for(const ctx of realmContexts(g))tickRegionLife(ctx,dt);}
 function tickRegionLife(g,dt){
  if(!REALMS.includes(g.generatedEnvironment)||g.phase!=='play'||g.paused)return;
- for(const a of seedRealmLife(g)){
+ if(g.generatedEnvironment==='shadow'&&!g.realmEditor){dressUnderworld(g,(tx,ty)=>realmTerrainAt(g,tx,ty));ensureShadowExit(g);}
+ const animals=seedRealmLife(g),collision=animals.length?footprintIndex(g.scenery||[],realmFootprint,8):null;
+ for(const a of animals){
   if(a.kind==='marsh_firefly'){tickMarshFirefly(g,a,dt);continue;}
   const t=g.time+a.phase,threat=(g.players||[]).find(p=>!p.room&&p.hp>0&&Math.hypot(p.x-a.x,p.y-a.y)<75),large=['nutria','olm','pale_hart','shadow_stag'].includes(a.kind),dragon=a.kind==='monarch_fairy_dragon';
   if(dragon)a.fleeing=!!threat;
   let dx=a.homeX+Math.sin(t*.17)*60-a.x,dy=a.homeY+Math.cos(t*.23)*35-a.y;
   if(threat){dx=a.x-threat.x;dy=a.y-threat.y;}else if(large&&Math.sin(t*.24)>.2){a.moving=false;continue;}
   const length=Math.hypot(dx,dy)||1,step=Math.min(length,Math.min(dt,.1)*(threat?48:large?12:dragon?22:18));a.moving=false;
-  for(const [mx,my]of [[dx/length*step,dy/length*step],[dx/length*step,0],[0,dy/length*step]])if(habitat(g,a.kind,a.x+mx,a.y+my)){a.x+=mx;a.y+=my;a.faceX=dx/length;a.faceY=dy/length;const travel=Math.hypot(mx,my);a.travelDistance=(a.travelDistance||0)+travel;a.moving=travel>.01;break;}
+  for(const [mx,my]of [[dx/length*step,dy/length*step],[dx/length*step,0],[0,dy/length*step]])if(habitat(g,a.kind,a.x+mx,a.y+my,collision)){a.x+=mx;a.y+=my;a.faceX=dx/length;a.faceY=dy/length;const travel=Math.hypot(mx,my);a.travelDistance=(a.travelDistance||0)+travel;a.moving=travel>.01;break;}
  }
 }
 export function drawRealmLife(c,g,layer='ground'){for(const ctx of realmContexts(g))drawRegionLife(c,ctx,layer);}
-function drawRegionLife(c,g,layer){
+const realmAir=a=>['marsh_firefly','dusk_moth','monarch_fairy_dragon'].includes(a.kind);
+export const realmAnimalSize=a=>['pale_hart','shadow_stag'].includes(a.kind)?34:a.kind==='monarch_fairy_dragon'?42:a.kind==='olm'?48:a.kind==='nutria'?42:23;
+export function realmGroundActors(g){
+ if(g.phase==='won')return [];
+ return realmContexts(g).flatMap(ctx=>(ctx.realmState?.animals||[]).filter(a=>!realmAir(a)&&(g.mapMode==='boundless'||!Number.isFinite(g.bloom)||g.bloom>=3||Math.hypot(a.x-800,a.y-800)<=g.bloom*430)).map(a=>({...a,isRealmAnimal:true,realmAnimal:a,realmContext:ctx,drawDepth:a.y})));
+}
+export function drawRealmAnimal(c,entry){drawRegionLife(c,entry.realmContext,'ground',entry.realmAnimal);}
+function drawRegionLife(c,g,layer,only=null){
  if(!g.realmState||g.phase==='won')return;
  const library=g.spriteLibrary||FAUNA_SPRITES;
- for(const a of g.realmState.animals||[]){
+ for(const a of only?[only]:g.realmState.animals||[]){
   if(a.kind==='marsh_firefly'&&!firefliesAwake(g))continue;
-  const air=a.kind==='marsh_firefly'||a.kind==='dusk_moth'||a.kind==='monarch_fairy_dragon';if(air!==(layer==='air'))continue;
+  const air=realmAir(a);if(air!==(layer==='air'))continue;
   if(g.mapMode!=='boundless'&&Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(a.x-800,a.y-800)>g.bloom*430)continue;
   if(a.kind==='marsh_firefly'){drawMarshFirefly(c,a,g.time);continue;}
-  const large=['nutria','olm','pale_hart','shadow_stag'].includes(a.kind),size=['pale_hart','shadow_stag'].includes(a.kind)?55:a.kind==='monarch_fairy_dragon'?42:a.kind==='olm'?48:large?42:23,view=(Math.round(Math.atan2(a.faceX,a.faceY)/(Math.PI/4))+8)%8;
+  const large=['nutria','olm','pale_hart','shadow_stag'].includes(a.kind),size=realmAnimalSize(a),view=(Math.round(Math.atan2(a.faceX,a.faceY)/(Math.PI/4))+8)%8;
   const bounce=air?6+Math.sin(g.time*5+a.phase)*2:a.moving?Math.sin(g.time*12+a.phase):0;
   c.save();c.fillStyle='#090e172f';c.beginPath();c.ellipse(a.x,a.y,size*.25,size*.07,0,0,Math.PI*2);c.fill();
   if(a.kind==='shadow_stag'){
@@ -192,7 +204,7 @@ export const REALM_EVENTS=[
  {name:'The nesting bank',kind:'crocodile',environment:'swamp',count:2,hp:95,speed:46,damage:10,weight:7,verse:'A ripple breaks the silent green.\nTwo ancient shapes slip in unseen.',tip:'Alligators guard the outer banks. Keep the boardwalk behind you and dodge their lunges.'},
  {name:'The singing geodes',type:'realm_expedition',kind:'singing_geodes',environment:'caverns',count:0,weight:10,verse:'Three buried voices hum in stone.\nWake each bright heart; return as one.',tip:'Find three cyan resonance circles and stand in each for two seconds. The surrounding crystals can be mined.',reward:'stone'},
  {name:'Wings in the echo hall',kind:'bat',environment:'caverns',count:6,hp:26,speed:72,damage:5,weight:8,verse:'A thousand echoes stir the air.\nSix waking shadows leave their lair.',tip:'Watch for bats in the open chambers. Dust and a growing floor shadow warn of falling stone.'},
- {name:'Keep the last lights',type:'realm_expedition',kind:'shadow_wards',environment:'shadow',count:0,weight:10,verse:'The roots remember stolen day.\nThree pale lights can hold the grey.',tip:'Stand in each of three violet ward circles for two seconds before their ninety-second glow fades.',reward:'potion',deadline:90},
+ {name:'Keep the last lights',type:'realm_expedition',kind:'shadow_wards',environment:'shadow',count:0,weight:10,verse:'The roots remember stolen day.\nThree pale lights can hold the grey.',tip:'Stand in each of three blue ward circles for two seconds before their ninety-second glow fades.',reward:'potion',deadline:90},
  {name:'Hounds beyond the veil',kind:'murk_wolf',environment:'shadow',count:3,hp:65,speed:66,damage:8,weight:7,verse:'The silence walks on padded feet.\nStay in the light where shadows meet.',tip:'Three murk wolves stalk the clearings. Use the root arches to break up the pack.'},
 ];
 export function startRealmEvent(g,event,{test=false,force=false}={}){
@@ -223,5 +235,5 @@ function tickRegionEvent(g,dt){
 export function drawRealmEvent(c,g){for(const ctx of realmContexts(g))drawRegionEvent(c,ctx);}
 function drawRegionEvent(c,g){
  const e=g.realmState?.event;if(!e||e.done)return;
- for(const n of e.nodes){if(n.done)continue;const color=e.kind==='marsh_lanterns'?'#e0d885':e.kind==='singing_geodes'?'#9bdcd7':'#c5a6e2';c.save();c.strokeStyle=color;c.lineWidth=2;c.setLineDash([5,5]);c.beginPath();c.ellipse(n.x,n.y,38,20,0,0,Math.PI*2);c.stroke();c.setLineDash([]);c.fillStyle=color;for(let i=0;i<5;i++){const a=g.time+i*Math.PI*.4;c.fillRect(n.x+Math.cos(a)*18,n.y-18+Math.sin(a)*8,3,3);}c.fillRect(n.x-20,n.y+27,40*n.charge/2,3);c.restore();}
+ for(const n of e.nodes){if(n.done)continue;const color=e.kind==='marsh_lanterns'?'#e0d885':e.kind==='singing_geodes'?'#9bdcd7':'#8ed4db';c.save();c.strokeStyle=color;c.lineWidth=2;c.setLineDash([5,5]);c.beginPath();c.ellipse(n.x,n.y,38,20,0,0,Math.PI*2);c.stroke();c.setLineDash([]);c.fillStyle=color;for(let i=0;i<5;i++){const a=g.time+i*Math.PI*.4;c.fillRect(n.x+Math.cos(a)*18,n.y-18+Math.sin(a)*8,3,3);}c.fillRect(n.x-20,n.y+27,40*n.charge/2,3);c.restore();}
 }

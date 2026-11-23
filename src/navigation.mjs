@@ -1,8 +1,10 @@
+import {crowdSteering,enemyPursuitGoal} from './enemy-systems.mjs';
 import {rigSubject} from './rig-subjects.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {creatures} from './definitions.mjs';
 import {startJump} from './jumping.mjs';
 import {furnitureHeight} from './house-design.mjs';
+import {nearbyEnemyTrap,triggerEnemyTrap} from './enemy-traps.mjs';
 export const collisionOffset=(g,e)=>!e.kind||e.villagerId||rigSubject(e.kind)?0:e.kind==='slime'||e.kind==='shore_goblin'||e.kind==='anaconda'||e.kind==='dreadmane_lion'||e.kind==='oathless_captain'||e.kind==='grim_reaper'||e.kind==='succubus'||e.kind==='imp'||e.kind==='zombie'||e.kind==='ghost'||WILD_FAUNA_KINDS.includes(e.kind)?0:(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
 export const actorRadius=e=>e.villagerId?10:e.kind==='dreadmane_lion'?14:e.kind==='anaconda'?16:e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
 export const usesDoors=e=>e.heroFollower===true||['shore_goblin','grim_reaper','oathless_captain','hunter','banshee_queen','succubus','imp','zombie','ghost','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
@@ -30,7 +32,7 @@ export function findPath(g,e,target){
   if(heuristic(id)<heuristic(closest))closest=id;
   if(id===goal){found=id;break;}
   const x=id%width,y=Math.floor(id/width);
-  for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||ny<0||nx>=width||ny>=height)continue;const next=ny*width+nx;if(!grid[next]||closed[next])continue;if(e.villagerId&&Array.from({length:7},(_,i)=>(i+1)/8).some(t=>g.blocked((x+ox)*32+16+(nx-x)*32*t,(y+oy)*32+16+(ny-y)*32*t,actorRadius(e),false,true,false,0)))continue;const cost=costs[id]+1;if(cost<costs[next]){costs[next]=cost;parents[next]=id;open.push(next);}}
+  for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]){if(nx<0||ny<0||nx>=width||ny>=height)continue;const next=ny*width+nx;if(!grid[next]||closed[next])continue;if((e.villagerId||e.kind==='imp')&&Array.from({length:7},(_,i)=>(i+1)/8).some(t=>g.blocked((x+ox)*32+16+(nx-x)*32*t,(y+oy)*32+16+(ny-y)*32*t,actorRadius(e),e.villagerId?false:flies(e),e.villagerId?true:swims(e),e.villagerId?false:usesDoors(e),e.villagerId?0:collisionOffset(g,e))))continue;const cost=costs[id]+1;if(cost<costs[next]){costs[next]=cost;parents[next]=id;open.push(next);}}
  }
  if(found<0&&(e.faction==='ally'||e.allyOwner!=null||e.hunterPet||e.ownerKey||e.pet)&&closest!==start)found=closest;
  if(found<0)return [];
@@ -38,15 +40,21 @@ export function findPath(g,e,target){
 }
 export function navigateEnemy(g,e,target,dt){
  if(!target||!e.speed){e.moving=false;return false;}
+ if(!creatures[e.kind]?.edited){const goal=enemyPursuitGoal(g,e,target);if(goal!==target&&!g.blocked(goal.x,goal.y,actorRadius(e),flies(e),swims(e),false,collisionOffset(g,e)))target=goal;}
  if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return false;}
- const trap=!e.heroFollower&&g.traps?.find(t=>t.life>0&&t.variant!=='slow'&&Math.hypot(t.x-e.x,t.y-e.y)<30);if(trap){trap.life=0;e.state='snared';e.timer=2;return false;}
+ if(e.navigationTrapRecovery){
+  if(e.state==='recover'&&e.timer>0){e.timer-=dt;return false;}
+  e.navigationTrapRecovery=false;
+ }
+ const trap=!e.heroFollower&&nearbyEnemyTrap(g,e);
+ if(trap){if(triggerEnemyTrap(g,e,trap))e.navigationTrapRecovery=true;return false;}
  // Grid centers can miss a narrow walkable strip or stop before the actual
  // follow point. Use the real actor footprint along a clear direct approach.
  const separation=Math.hypot(target.x-e.x,target.y-e.y),samples=Math.max(1,Math.ceil(separation/6));
  if(separation>0&&!g.blocked(target.x,target.y,actorRadius(e),flies(e),swims(e),false,collisionOffset(g,e),e.jumpHeight||0,false,e)&&
     Array.from({length:samples},(_,i)=>(i+1)/samples).every(t=>!g.blocked(e.x+(target.x-e.x)*t,e.y+(target.y-e.y)*t,actorRadius(e),flies(e),swims(e),false,collisionOffset(g,e),e.jumpHeight||0,false,e))){
    e.faceX=(target.x-e.x)/separation;e.faceY=(target.y-e.y)/separation;e.state='hunt';
-   const step=Math.min(separation,e.speed*dt);return g.moveActor(e,e.faceX*step,e.faceY*step,flies(e))>0;
+   const step=Math.min(separation,e.speed*dt),steer=crowdSteering(g,e,e.faceX*step,e.faceY*step,actorRadius(e));return g.moveActor(e,steer.x,steer.y,flies(e))>0;
  }
  const {signature}=gridFor(g,e),goal=Math.floor(target.x/32)+':'+Math.floor(target.y/32);
  let route=routes.get(e);if(!route||route.goal!==goal||route.signature!==signature||(g.time||0)>route.expires){route={goal,signature,expires:(g.time||0)+.9,path:findPath(g,e,target)};routes.set(e,route);}
@@ -78,7 +86,7 @@ export function navigateEnemy(g,e,target,dt){
    }
  }
  if(usesDoors(e))for(const d of g.house?.doors||[])if(!d.open&&Math.hypot(e.x-d.x-d.w/2,e.y+collisionOffset(g,e)-d.y-d.h/2)<56&&Math.hypot(next.x-d.x-d.w/2,next.y+collisionOffset(g,e)-d.y-d.h/2)<68)d.open=true;
- const d=Math.hypot(next.x-e.x,next.y-e.y)||1;e.faceX=(next.x-e.x)/d;e.faceY=(next.y-e.y)/d;e.state='hunt';const step=Math.min(d,e.speed*dt),moved=g.moveActor(e,e.faceX*step,e.faceY*step,flies(e));
+ const d=Math.hypot(next.x-e.x,next.y-e.y)||1;e.faceX=(next.x-e.x)/d;e.faceY=(next.y-e.y)/d;e.state='hunt';const step=Math.min(d,e.speed*dt),steer=crowdSteering(g,e,e.faceX*step,e.faceY*step,actorRadius(e)),moved=g.moveActor(e,steer.x,steer.y,flies(e));
  // A thin root can fall between two otherwise free grid centers. Give allies
  // a bounded side-step around that edge instead of retrying it forever.
  if(moved<step*.15&&(e.faction==='ally'||e.allyOwner!=null||e.hunterPet||e.ownerKey||e.pet)){

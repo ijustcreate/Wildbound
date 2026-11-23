@@ -1,0 +1,11 @@
+# Bayou framed board
+
+- Request: find the existing board art templates and make a matching Bayou board. The internal `swamp` realm had no `BOARD_ART_ASSETS` entry and rendered miniature terrain under the live seal instead.
+- Added `assets/board-bayou-v1.png` using the built-in imagegen tool with Cemetery/Beach references. Same wood/gold frame, ivory/blue route and central well; cypress roots, Spanish moss, reeds, lilies, ruined masonry and a lantern dock establish Bayou scenery. Full template index and prompt: `docs/art/2026-11-16-bayou-board.md`.
+- Wired the `swamp` texture into `src/board-art.mjs`; retained pack overrides, calibrated pawn geometry and native animated seal.
+- Expanded existing biome-board checks to cover Bayou's texture, geometry and every calibrated baked stone center. Six focused Node tests passed. Muted isolated Electron verification via `scripts/verify-bayou-board.cjs` passed 195 checks at 1280×900 and 640×420, no renderer errors. Actual board captures and report: ignored `test-output/bayou-board/`.
+- Checkout: `Wildbound_worlds`, base `f0b787ff33c3ac8f3675b48504937ebda4f0dcb5`, modified source. Preserved pre-existing title artwork changes, notes, output/tmp, authored assets and saves. No commit/push or web publication. Full desktop rebuild receipts recorded after completion below. Physical controllers, multiplayer and FPS were not tested; visual approval remains with the user.
+
+- Full rebuild: 1,822 tests passed, 835 runtime files passed syntax checks. Package: `dist/1.2.101-2026-11-17T00-13-24-556Z/Wildbound-win32-x64/Wildbound.exe`, built UTC `2026-11-17T00:13:49.398Z`, modified source at the base commit above, `preview: false`. Includes the pre-existing local title-art correction.
+- Packaged-app Bayou verification repeated all 195 muted Electron checks successfully, zero renderer errors; new texture matches source byte-for-byte. `Play Wildbound.cmd --check` selects this package. Current Desktop `Wildbound Worlds (1.2.101).lnk` targets `C:/Users/New User/Desktop/Wildbound/Play Wildbound.cmd` with blank arguments and the repository working directory. Normal save profile. Rebuild log: ignored `test-output/rebuild-bayou-board.log`.
+- Actual packaged executable also passed `--worlds-smoke-test --mute-audio`; its isolated-profile report is inside the package's `test-output/worlds-desktop.json`.

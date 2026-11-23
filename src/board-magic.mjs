@@ -1,3 +1,4 @@
+import {drawGameplayFx} from './gameplay-fx.mjs';
 const masks=new Map();
 // Inner edge of the stone well in the 1516 x 1038 board artwork.
 // Keep a small inset so glow rectangles cannot paint over its rim.
@@ -48,6 +49,7 @@ export function drawBoardMagic(c,time,settings,{title='',warning='',age=0}={}){
     if(settings.glow>0){c.globalAlpha*=.13*settings.glow;c.fillRect(p.x-size*3,p.y-size*3,size*6,size*6);c.globalAlpha=(goal?1-settle*.7:.65);}
     c.fillRect(p.x-size/2,p.y-size/2,size,size);
   }
+  if(title&&age<1.5){c.save();c.globalAlpha=.4;c.scale(.55,.3);drawGameplayFx(c,'board',0,0,reduced?.5:age,42);c.restore();}
   // Resolve to crisp glyphs after assembly so particle density never harms reading.
   if(mask&&settle>0){c.globalAlpha=settle;c.drawImage(mask.canvas,-150/6.5,-105/6.5,300/6.5,210/6.5);}
   c.restore();

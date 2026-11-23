@@ -1,6 +1,8 @@
 import {drawFriendshipHeart} from './friendship-hearts.mjs';
+import {emitGameplayFx} from './gameplay-fx.mjs';
 export function finishMagicBolt(g,bolt,hit=false){
  if(bolt.finished)return;bolt.finished=true;
+ if(hit&&!bolt.friendship&&!bolt.healing)emitGameplayFx(g,'magic',{x:bolt.x,y:bolt.y-16,room:bolt.room||null});
  const duration=hit?.32:.4;
  g.effects.push({magicBolt:true,hit,friendship:!!bolt.friendship,x:bolt.x,y:bolt.y-16,room:bolt.room||null,color:bolt.color||'#ace3ff',life:duration,duration});
 }

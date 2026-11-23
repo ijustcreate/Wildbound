@@ -47,8 +47,8 @@ test('A swimming snake can bite at the surface and drops its attack when the pla
  p.diveDepth=1;snake.state='windup';snake.timer=.8;g.update(.05,{});
  assert.equal(snake.state,'hunt');assert.equal(snake.timer,0);assert.equal(snake.moving,false);
 });
-test('Water entry emits particles once; moving surface swimmers leave wakes',()=>{
- const {g,p}=fixture();tickSwimming(g,p,{},.1);assert.equal(p.swimming,true);assert.equal(p.breath,BREATH_SECONDS);assert.equal(g.effects.filter(e=>e.particle==='splash').length,1);assert.ok(g.effects.some(e=>e.particle==='swim-wake'));
+test('Water entry emits once; surface wakes use the water shader without stacking particle emitters',()=>{
+ const {g,p}=fixture();tickSwimming(g,p,{},.1);assert.equal(p.swimming,true);assert.equal(p.breath,BREATH_SECONDS);assert.equal(g.effects.filter(e=>e.particle==='splash').length,1);assert.ok(!g.effects.some(e=>e.particle==='swim-wake'));
  tickSwimming(g,p,{},.1);assert.equal(g.effects.filter(e=>e.particle==='splash').length,1);
 });
 test('Holding attack dives, releasing floats up; air recovers quickly',()=>{

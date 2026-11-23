@@ -156,7 +156,7 @@ export function create(o) {
       }
       // the HUD: unfolds, counts up with a pop on every coin, glints, folds away
       const open = ease.outBack(seg(t, 0.06, 0.26), 2.2) * (1 - ease.inBack(seg(t, FOLD, FOLD + 0.2), 2));
-      if (open > 0.04) {
+      if (!o.gameplay && open > 0.04) {
         const h = HH * open, y0 = HY + (HH - h) / 2, sh = seg(t, 1.5, 1.76);
         panel(p, HX, y0, HW, h, INK, { r: Math.min(4, h / 2), shine: sh > 0 && sh < 1 ? HX - 6 + (HW + 16) * sh : null });
         if (open > 0.7) {

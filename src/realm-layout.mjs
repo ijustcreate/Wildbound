@@ -1,4 +1,6 @@
 import {swampIslands,swampTile,swampRouteDistance} from './swamp-layout.mjs';
+import {UNDERWORLD_DETAILS,dressUnderworld,UNDERWORLD_DRESSING_VERSION} from './shadow-underworld-layout.mjs';
+import {addShadowPools} from './shadow-forest-layout.mjs';
 // Native, deterministic environments. All coordinates and tuning remain plain save data.
 export const REALMS = ['swamp','caverns','shadow'];
 export const REALM_NAMES = {swamp:'Bayou Marsh',caverns:'Hollowdeep Caverns',shadow:'The Shadow Realm'};
@@ -6,9 +8,9 @@ export const realmHash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;retu
 export const REALM_ASSETS = {
  swamp:{mangrove:{type:'tree',size:220},old_cypress:{type:'tree',size:240},cypress_knee:{type:'rock',size:28},peat_boulder:{type:'rock',size:60},marsh_reeds:{size:38},bayou_lily:{size:24},marsh_fern:{size:34},moss_log:{type:'log',size:76},bayou_shrine:{size:210},bayou_ruin:{size:120},bayou_snag:{size:150},bayou_landing:{size:110}},
  caverns:{limestone_shelf:{type:'rock',size:90},stalagmite:{type:'mineral',size:64},cave_crystal:{type:'crystal',size:65},amber_crystal:{type:'crystal',size:58},cave_mushroom:{size:42},cave_drip:{size:26},ceiling_stalactite:{type:'ceiling',size:46},cave_rubble:{size:40}},
- shadow:{wither_tree:{type:'tree',size:150},root_arch:{type:'arch',size:155},shadow_obsidian:{type:'crystal',size:68},thorn_fan:{size:52},echo_fungus:{size:44},shadow_bloom:{size:36},ashen_log:{type:'log',size:80},veil_stone:{type:'rock',size:88}},
+ shadow:{wither_tree:{type:'tree',size:150},root_arch:{type:'arch',size:155},shadow_obsidian:{type:'crystal',size:68},thorn_fan:{size:52},echo_fungus:{size:44},shadow_bloom:{size:36},ashen_log:{type:'log',size:80},veil_stone:{type:'rock',size:88},underworld_gate:{size:320},underworld_ribs:{size:190},soul_brazier:{size:65},...UNDERWORLD_DETAILS},
 };
-export const realmAsset=kind=>Object.values(REALM_ASSETS).map(a=>a[kind]).find(Boolean);
+export function realmAsset(kind){for(const realm of REALMS){const asset=REALM_ASSETS[realm]?.[kind];if(asset)return asset;}return undefined;}
 export function realmResourceScale(p){const type=realmAsset(p.kind)?.type;if(!['rock','mineral','crystal'].includes(type))return 1;const chunks=p.chunks??p.maxChunks??Math.max(2,Math.round((p.size||64)/16)),total=p.maxChunks??chunks;return Math.max(.2,Math.min(1,(chunks-(p.harvest||0)/36)/Math.max(1,total)));}
 export const realmTree=p=>realmAsset(p.kind)?.type==='tree';
 export const realmHarvestable=p=>['tree','rock','mineral','crystal','log'].includes(realmAsset(p.kind)?.type);
@@ -45,14 +47,16 @@ export function realmWorld(seed,env,{authored=true,settings:overrides={},layout=
    if(!edge&&Math.hypot(x-1240,(y-440)*1.3)<90)terrain[id]='shallow';
   }
  }
+ if(env==='shadow')addShadowPools(terrain,chambers,links,seed);
  // Pixel terrain edits are layered on generated topology, never on another save.
  for(const [id,kind]of Object.entries(saved?.tiles||{}))if(Number.isInteger(+id)&&+id>=0&&+id<2500&&REALM_TILES.includes(kind))terrain[+id]=kind;
- const kinds=Object.keys(REALM_ASSETS[env]).filter(k=>realmAsset(k).type!=='ceiling'&&!['bayou_shrine','bayou_ruin','bayou_snag','bayou_landing'].includes(k));
+ const kinds=Object.keys(REALM_ASSETS[env]).filter(k=>realmAsset(k).type!=='ceiling'&&!Object.hasOwn(UNDERWORLD_DETAILS,k)&&!['bayou_shrine','bayou_ruin','bayou_snag','bayou_landing','underworld_gate','underworld_ribs','soul_brazier'].includes(k));
  for(let i=0;i<1400&&scenery.length<settings.propDensity;i++){
   const x=80+realmHash(seed+i,73)*1440,y=80+realmHash(i,seed+91)*1440;
   const tile=terrain[Math.floor(y/32)*50+Math.floor(x/32)],r=realmHash(i+seed,9);
   if(['cave_void','shadow_void','water','bridge'].includes(tile)||Math.hypot(x-800,y-800)<245||route(x,y)<(swamp?30:48)||scenery.some(p=>Math.hypot(p.x-x,p.rootY-y)<(swamp?36:55)))continue;
   let kind=kinds[Math.floor(r*kinds.length)];
+  if(env==='shadow'&&kind==='wither_tree'&&[-48,0,48].some(dx=>[-40,-80,-120].some(dy=>['water','shallow'].includes(terrain[Math.floor((y+dy)/32)*50+Math.floor((x+dx)/32)]))))continue;
   if(env==='swamp')kind=tile==='shallow'?(r>.55?'bayou_lily':'marsh_reeds'):r<.12?'old_cypress':r<.25?'mangrove':r<.54?'marsh_fern':r<.71?'cypress_knee':r<.86?'moss_log':'peat_boulder';
   if(env==='swamp'&&realmAsset(kind).type==='tree'&&scenery.some(p=>realmTree(p)&&Math.hypot(p.x-x,p.rootY-y)<105))continue;
   if(env==='shadow'&&kind==='root_arch'&&scenery.filter(p=>p.kind==='root_arch').length>=3)kind='wither_tree';
@@ -65,6 +69,12 @@ export function realmWorld(seed,env,{authored=true,settings:overrides={},layout=
  // Authored wall growths and landmarks give every room a recognisable destination.
  const landmarks=env==='caverns'?[['cave_crystal',430,330],['amber_crystal',870,220],['cave_crystal',1350,520],['limestone_shelf',1150,1180],['cave_mushroom',720,1370]]:env==='swamp'?[]:[['root_arch',1280,1100],['wither_tree',380,350],['shadow_obsidian',820,240]];
  for(const [kind,x,y]of landmarks)scenery.push(realmProp(kind,x,y,scenery.length));
+ if(env==='shadow'&&!Array.isArray(saved?.scenery)){
+  // Monumental decorations do not add blockers or alter a single route tile.
+  for(const [kind,x,y]of [['underworld_gate',820,415],['underworld_ribs',800,640],['underworld_ribs',800,1080],['underworld_ribs',1250,1170],['soul_brazier',650,700],['soul_brazier',950,700],['soul_brazier',650,940],['soul_brazier',950,940],['soul_brazier',1200,1120]]){
+   if(terrain[Math.floor(y/32)*50+Math.floor(x/32)]==='shadow_soil')scenery.push(realmProp(kind,x,y,scenery.length));
+  }
+ }
  if(env==='swamp')for(let i=0,trees=0;i<1600&&trees<22;i++){
   const x=100+realmHash(seed+i,541)*1400,y=100+realmHash(i,seed+941)*1400;
   if(terrain[Math.floor(y/32)*50+Math.floor(x/32)]!=='marsh_grass'||Math.hypot(x-800,y-800)<260||route(x,y)<42||scenery.some(p=>Math.hypot(p.x-x,p.rootY-y)<(realmTree(p)?110:40)))continue;
@@ -97,6 +107,8 @@ export function realmWorld(seed,env,{authored=true,settings:overrides={},layout=
  if(Array.isArray(saved?.scenery)){
   scenery.length=0;for(const p of saved.scenery.slice(0,180))if(realmAsset(p.kind)&&Number.isFinite(p.x+p.rootY)&&p.x>=32&&p.x<1568&&p.rootY>=32&&p.rootY<1568)scenery.push({...p,realm:true,procedural:true});
  }
- return {terrain,scenery,house:null,webs:[],realmState:{version:1,env,seed,settings,chambers,links,animals:Array.isArray(saved?.fauna)?structuredClone(saved.fauna.filter(a=>typeof a.kind==='string'&&Number.isFinite(a.x+a.y)&&a.x>=32&&a.x<=1568&&a.y>=32&&a.y<=1568).slice(0,24)):null,event:null}};
+ const world={terrain,scenery,house:null,webs:[],realmState:{version:1,env,seed,settings,chambers,links,animals:Array.isArray(saved?.fauna)?structuredClone(saved.fauna.filter(a=>typeof a.kind==='string'&&Number.isFinite(a.x+a.y)&&a.x>=32&&a.x<=1568&&a.y>=32&&a.y<=1568).slice(0,24)):null,event:null}};
+ if(env==='shadow'){if(Array.isArray(saved?.scenery)){world.realmState.underworldDressingVersion=UNDERWORLD_DRESSING_VERSION;world.realmState.underworldAuthored=true;}else dressUnderworld(world);}
+ return world;
 }
 export const REALM_TILES=['marsh_grass','mud','shallow','water','bridge','cave_floor','cave_void','shadow_soil','shadow_void'];

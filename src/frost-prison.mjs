@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 const controlled=p=>p?.succubusCharm?.remaining>0;
 export function friendlyIceTarget(g,source,target){
  const owner=(g.players||[]).find(p=>p===source||p.id===source?.owner);
@@ -5,6 +6,7 @@ export function friendlyIceTarget(g,source,target){
 }
 export function breakFriendlyIce(g,source,target){
  if(!friendlyIceTarget(g,source,target))return false;
+ emitGameplayFx(g,'ice-break',target);
  target.bansheeIce=0;target.frozen=0;target.previousInput={};
  g.effects?.push({x:target.x,y:target.y-24,text:'Ice broken!',color:'#b4ecff',life:.7});g.onSound?.('ice',target);return true;
 }

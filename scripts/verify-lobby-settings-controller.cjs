@@ -102,7 +102,10 @@ app.whenReady().then(async () => {
       release(); press(1, 9); verifyOpen(1, 'switch');
       press(0, 9, 1, 5);
       assert(dialog.open && dialog.dataset.ownerDevice === 'pad:1', 'Switch opener retains ownership against Xbox input');
-      press(1, 1);
+      const switchSoundTab = dialog.querySelector('[data-settings-tab="sound"]');
+      switchSoundTab.focus(); press(1, 1);
+      assert(dialog.open && selectedTab()==='sound','Switch right-face A confirms in Settings as it does in the lobby');
+      press(1, 0);
       assert(!dialog.open, 'Switch opener can close settings with its back button');
       $('settings-button').click();
       assert(dialog.dataset.ownerDevice === 'keyboard', 'Mouse/keyboard opening has explicit keyboard ownership');
@@ -111,11 +114,14 @@ app.whenReady().then(async () => {
       $('close-settings').click(); release();
 
       ctx.newLobby();
-      press(1, 9); verifyOpen(1, 'switch');
-      assert(ctx.game.players.length === 0 && ctx.screen === 'lobby', 'Unassigned lobby Start opens settings without creating a player');
-      press(1, 9); assert(!dialog.open, 'Unassigned lobby opener toggles settings closed');
+      press(1, 9);
+      assert(!dialog.open&&ctx.game.players.length===1&&ctx.game.players[0].device==='pad:1','On the title screen, Start joins like other controller buttons');
+      ctx.newLobby();
       press(0, 0);
       assert(ctx.game.players.length === 1 && ctx.game.players[0].device === 'pad:0', 'Ordinary face input still joins the lobby');
+      press(1, 9); verifyOpen(1, 'switch');
+      assert(ctx.game.players.length === 1 && ctx.screen === 'lobby', 'After leaving the title, an unassigned Start opens settings without another player');
+      press(1, 9); assert(!dialog.open, 'Unassigned lobby opener toggles settings closed');
       const p = ctx.game.players[0], q = ctx.game.addPlayer('pad:1', 'Switch QA');
       ctx.playableLobby.sync();
       for (const player of [p, q]) {
@@ -163,41 +169,42 @@ app.whenReady().then(async () => {
       assert(!ctx.paused && !$('pause-dialog').open, 'A separate released Start resumes after closing expedition settings');
 
       // Desktop claim callbacks are synthetic and never touch real shared claim files.
-      ctx.game.phase = 'lobby'; ctx.newLobby(); release();
+      ctx.game.phase = 'lobby'; ctx.newLobby(); ctx.game.addPlayer('keyboard','Claim observer'); release();
       const requests = [];
       Object.defineProperty(document, 'hasFocus', { configurable: true, value: () => true });
       window.desktop = {
         testMode: false,
         claimController: key => new Promise(resolve => requests.push({ key, resolve })),
         releaseController: () => Promise.resolve(true),
+        saveProfiles: () => Promise.resolve(),
       };
       const settle = async claimed => { requests.at(-1).resolve(claimed); await new Promise(resolve => setTimeout(resolve, 0)); };
       set(0, 9, 0); step(); step();
-      assert(requests.length === 1 && !dialog.open && ctx.game.players.length === 0, 'First Start waits for a desktop claim without joining');
+      assert(requests.length === 1 && !dialog.open && ctx.game.players.length === 1, 'First Start waits for a desktop claim without joining');
       await settle(true); step(); verifyOpen(0, 'xbox');
-      assert(ctx.game.players.length === 0 && requests.length === 1, 'Delayed claim opens settings once and never schedules a lobby join');
+      assert(ctx.game.players.length === 1 && requests.length === 1, 'Delayed claim opens settings once and never schedules a lobby join');
       for (let frame = 0; frame < 12; frame++) step();
       assert(dialog.open && selectedTab() === 'display', 'Held input stays consumed after a delayed desktop claim');
       release(); press(0, 9);
       pads[0].id = 'Xbox Wireless Controller QA pending-upgrade'; ctx.previousPads.clear();
       set(0, 0); step(); neutral(); step(); set(0, 9); step();
       await settle(true); step();
-      assert(dialog.open && ctx.game.players.length === 0, 'Start during a pending face-button claim replaces its join intent');
+      assert(dialog.open && ctx.game.players.length === 1, 'Start during a pending face-button claim replaces its join intent');
       release(); press(0, 9);
       set(1, 9); step(); await settle(false); step();
-      assert(!dialog.open && ctx.game.players.length === 0, 'A denied controller claim cannot open settings or join');
+      assert(!dialog.open && ctx.game.players.length === 1, 'A denied controller claim cannot open settings or join');
       for (let frame = 0; frame < 12; frame++) step();
       assert(!dialog.open, 'A held denied Start cannot bypass controller claiming');
       release(); set(1, 9); step();
       ctx.screen = 'workshop'; await settle(true); ctx.screen = 'lobby'; step();
-      assert(!dialog.open && ctx.game.players.length === 0, 'A late claim does not open settings after its source screen changed');
+      assert(!dialog.open && ctx.game.players.length === 1, 'A late claim does not open settings after its source screen changed');
       release();
       pads[1].id = 'Nintendo Switch Pro Controller QA ordinary-join';
       set(1, 0); step(); await settle(true); step();
-      assert(ctx.game.players.length === 1 && ctx.game.players[0].device === 'pad:1', 'Desktop claim still retains an ordinary face-button join');
+      assert(ctx.game.players.length === 2 && ctx.game.players.some(p=>p.device==='pad:1'), 'Desktop claim still retains an ordinary face-button join');
       release();
       delete window.desktop; delete document.hasFocus;
-      press(1, 9); if($('pause-dialog').open){$('pause-settings').focus();press(1,0);} verifyOpen(1, 'switch');
+      press(1, 9); if($('pause-dialog').open){$('pause-settings').focus();press(1,1);} verifyOpen(1, 'switch');
       press(1, 5); press(1, 5);
       dialog.querySelector('[data-settings-tab="sound"]').click();
       const volume=$('music-volume');volume.focus();const oldVolume=Number(volume.value);
@@ -248,7 +255,7 @@ app.whenReady().then(async () => {
         pads[1].buttons[button].pressed = false; ctx.inputFrame();
       };
       if(document.getElementById('pause-dialog').open)document.getElementById('resume-button').click();
-      ctx.inputFrame();press(9); if(document.getElementById('pause-dialog').open){document.getElementById('pause-settings').focus();press(0);} press(5); press(5);
+       ctx.inputFrame();press(9); if(document.getElementById('pause-dialog').open){document.getElementById('pause-settings').focus();press(1);} press(5); press(5);
       if (!dialog.open || dialog.dataset.ownerDevice !== 'pad:1') throw Error('Keyboard cancellation left stale controller ownership');
       return true;
     })()`);

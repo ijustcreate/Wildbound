@@ -1,0 +1,28 @@
+const path=require('node:path'),fs=require('node:fs'),root=path.resolve(__dirname,'..');
+if(!process.versions.electron){const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;const child=require('node:child_process').spawnSync(path.join(root,'node_modules/electron/dist/electron.exe'),[__filename,'--mute-audio'],{cwd:root,env,encoding:'utf8',timeout:120000});if(child.stdout)process.stdout.write(child.stdout);if(child.stderr)process.stderr.write(child.stderr);process.exit(child.status??1);}
+const {app,BrowserWindow}=require('electron'),out=path.join(root,'test-output/chicken-glide');fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(out,'isolated-profile'));app.commandLine.appendSwitch('mute-audio');const deadline=setTimeout(()=>app.exit(1),110000);
+app.whenReady().then(async()=>{const w=new BrowserWindow({show:false,width:1280,height:850,webPreferences:{backgroundThrottling:false}}),errors=[];w.webContents.setAudioMuted(true);w.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});
+try{await w.loadFile(path.join(process.env.WILDBOUND_VERIFY_APP||root,'index.html'));await w.webContents.executeJavaScript('wildboundBoot.ready');const result=await w.webContents.executeJavaScript(`(async()=>{
+ window.requestAnimationFrame=()=>0;
+ const {Game}=await import('./src/core.mjs'),{Assets}=await import('./src/assets.mjs'),{Renderer}=await import('./src/render.mjs');
+ const {interactChicken,throwHeldChicken}=await import('./src/chicken-carry.mjs'),{heldChickenVisual}=await import('./src/chicken-visual.mjs');
+ const {directionVector,poseAt}=await import('./src/player-motion.mjs'),{nightMotions,drawNightRig}=await import('./src/night-rigs.mjs'),{CHICKEN_GLIDE_FALL_SPEED}=await import('./src/jumping.mjs');
+ const checks=[],images={},ok=(v,m)=>{if(!v)throw Error(m);checks.push(m);};
+ const assets=new Assets();await assets.load();const g=new Game(()=>.5),p=g.addPlayer('keyboard','Chicken glide'),normal=g.addPlayer('pad:0','Normal fall');g.start();g.openingBoard=false;g.persist=()=>{};g.onSound=()=>{};g.house=null;g.event=null;g.weather=null;g.scenery=[];g.terrain.fill('grass');g.spriteLibrary=assets.library;
+ Object.assign(p,{x:650,y:650,faceX:1,faceY:0,invuln:999});Object.assign(normal,{x:450,y:650,invuln:999});const bird={id:901,kind:'chicken',hp:22,x:660,y:650};g.enemies=[bird];ok(interactChicken(g,p),'actual pickup holds chicken');
+ g.update(1/60,{keyboard:{jump:true}});ok(p.jumpHeight>0&&heldChickenVisual(p,bird,g.time).carriedFlap,'chicken flaps as soon as the real player jumps');
+ Object.assign(p,{jumpHeight:160,jumpVelocity:0,jumpAge:1,jumpHeld:false});Object.assign(normal,{jumpHeight:160,jumpVelocity:0,jumpAge:1,jumpHeld:false});const startX=p.x,fall=[];
+ for(let i=0;i<60;i++){g.update(1/60,{keyboard:{x:1},'pad:0':{}});fall.push(p.jumpVelocity);}
+ ok(fall.every(v=>v>=-CHICKEN_GLIDE_FALL_SPEED-.001),'real carried fall never exceeds 32 pixels per second');ok(p.jumpHeight>125&&normal.jumpHeight===0,'carried player stays airborne after ordinary player lands');ok(p.x>startX+60,'glide retains horizontal steering');ok(!p.jumpHeld,'glide does not require holding Jump');
+ const canvas=document.createElement('canvas');canvas.style.cssText='width:1280px;height:850px';document.body.replaceChildren(canvas);canvas.width=1280;canvas.height=850;const r=new Renderer(canvas,assets);r.camera={x:p.x,y:p.y-80,zoom:1.5};r.draw(g,0);images.glide=canvas.toDataURL();
+ const sheet=document.createElement('canvas');sheet.width=1280;sheet.height=520;const c=sheet.getContext('2d');c.fillStyle='#384b38';c.fillRect(0,0,1280,520);
+ const probe=document.createElement('canvas');probe.width=probe.height=100;const pc=probe.getContext('2d'),model=nightMotions.chicken,base=poseAt(model,'idle',0);
+ for(let d=0;d<8;d++){
+  const [faceX,faceY]=directionVector(d),actor={...p,id:100+d,x:0,y:0,faceX,faceY,jumpHeight:0,animationAction:'chicken_hold'};
+  for(let row=0;row<2;row++){const time=row*.09,b=heldChickenVisual({...actor,jumpHeight:1},bird,time);c.save();c.translate(70+d*155,180+row*260);c.scale(3,3);r.animator.draw(c,actor,time,43);r.animator.draw(c,{...b,x:b.x,y:b.y+1,animationAction:'idle'},time,47);c.restore();}
+  const pixels=time=>{pc.clearRect(0,0,100,100);pc.save();pc.translate(50,60);drawNightRig(pc,{...bird,faceX,faceY,carriedFlap:true},time,model,base);pc.restore();return pc.getImageData(0,0,100,100).data;};const a=pixels(0),b=pixels(.09);let changed=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])changed++;ok(changed>12,'visible wing stroke changes in direction '+d);
+ }
+ images.wings=sheet.toDataURL();ok(throwHeldChicken(g,p),'throw can release chicken while gliding');for(let i=0;i<18;i++)g.update(1/60,{keyboard:{}});ok(!p.heldChickenId&&p.jumpVelocity < -CHICKEN_GLIDE_FALL_SPEED,'throw restores ordinary falling');for(let i=0;i<100&&p.jumpHeight;i++)g.update(1/60,{});ok(p.jumpHeight===0&&p.jumpVelocity===0,'player lands normally after release');
+ return {checks,images,slowest:Math.min(...fall)};})()`);
+for(const [name,data]of Object.entries(result.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(data.split(',')[1],'base64'));if(errors.length)throw Error(errors.join('\n'));const report={passed:result.checks.length,checks:result.checks,failed:0,errors,muted:w.webContents.isAudioMuted(),minimumFallVelocity:result.slowest,app:process.env.WILDBOUND_VERIFY_APP||root};fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));clearTimeout(deadline);app.exit(0);
+}catch(e){console.error(e.stack,errors);clearTimeout(deadline);app.exit(1);}});

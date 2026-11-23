@@ -12,7 +12,7 @@ export const meta = {
   fps: 30,
   bg: "ground",
   actor: 2,
-  options: { palette: ["#14040a", "#3a0a14", "#6a101c", "#a01824", "#d42a30", "#ff5a50", "#ff9a8a", "#ffe6de"], dark: "#2a1040", seed: 11 },
+  options: { palette: ["#14040a", "#3a0a14", "#6a101c", "#a01824", "#d42a30", "#ff5a50", "#ff9a8a", "#ffe6de"], dark: "#2a1040", seed: 11, target:[104,-24] },
 };
 
 const GRASP = { ...READY, crouch: 3, lean: 3, fx: 17, fy: -28, bx: -6, by: -21, ffx: 10, fbx: -9 };
@@ -42,6 +42,7 @@ export const act = {
 const TX = 104, TY = -24, HX = 1, HY = -20, N = 7;
 
 export function create(o) {
+  const [TX,TY]=o.target||[104,-24];
   const C = fit(o.palette, 8), R = new Rng(o.seed), A = o.actor, floor = () => 0;
   const ps = new Particles({ rng: R, ground: floor, sparks: [WHITE, C[7], C[6], C[5]] });
   const drops = new Drops({ onLand: (x) => stains.push({ x, t0: t }) }), stains = [], lights = [];

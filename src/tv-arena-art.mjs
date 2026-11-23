@@ -1,6 +1,7 @@
 import {paintLayers} from './render-order.mjs';
 import {facingIndex} from './player-motion.mjs';
 import {pixelPolygon} from './pixel-shapes.mjs';
+import {drawTvParallax} from './tv-arena-parallax.mjs';
 const C={ink:'#101f20',deep:'#1b3030',stone:'#314747',shade:'#253a3b',lit:'#52645b',moss:'#537634',grass:'#83a942',tip:'#c1ce6b',gold:'#c18c42',cream:'#f7df9a',wood:'#705037'};
 const rect=(c,color,x,y,w,h)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 export function ruinTile(c,x,y){
@@ -62,14 +63,19 @@ function editedTorch(c,x,y,time){
  prop(c,'tv_torch',x,y+16);const f=Math.floor(time*8)%3;rect(c,'#ffd46d',x-1,y-17+f,3,4);
  c.save();c.globalAlpha=.04;c.fillStyle='#ffdb7c';c.beginPath();c.arc(x,y-6,34+f,0,Math.PI*2);c.fill();c.restore();
 }
-export function drawArenaBoard(c,x,progress,time){
- prop(c,'tv_board_altar',x,437);c.textAlign='center';c.fillStyle=C.cream;c.font='bold 11px Georgia';c.fillText(progress>=48?'INTERACT · CALL WILDBOUND':'STRIKE THE LIVING BOARD',x,486);
+export function drawArenaBoard(c,x,progress,time,mode,drawBoard){
+ c.save();
+ prop(c,'tv_board_altar',x,437);c.textAlign='center';c.fillStyle=C.cream;c.font='bold 11px Georgia';c.fillText(progress>=48?'WILDBOUND!':'ATTACK / INTERACT - ROLL AGAIN',x,486);
+ c.save();c.translate(x,372.5);c.scale(.6,.14);
+ drawBoard(c,{environment:'tv-arena',players:[...(mode?.players?.values()||[])].map(p=>({...p.hero,boardProgress:progress})),roll:null,current:null},time);
+ c.restore();
  c.fillStyle=C.ink;c.fillRect(x-87,443,174,9);c.fillStyle=C.gold;c.fillRect(x-85,445,170*Math.min(1,progress/48),5);
+ c.restore();
 }
 export function drawArenaArchitecture(c,mode,left,right){
  // Dark boundary towers and a moss-lined vault frame the bounded play space.
  for(const x of[0,2852])for(let y=57;y<465;y+=28)prop(c,'tv_ruin_tile',x+16,y+28);
- for(const [start,end]of[[0,600],[2280,2880]])for(let x=Math.max(start,Math.floor(left/32)*32);x<Math.min(end,right+32);x+=32){prop(c,'tv_ruin_tile',x+16,84);if(x%96===0){rect(c,C.moss,x+19,84,3,27);for(let j=0;j<4;j++)rect(c,C.grass,x+17+(j%2)*3,86+j*6,5,3);}}
+
  for(let x=Math.max(0,Math.floor(left/32)*32);x<Math.min(2880,right+32);x+=32){
   prop(c,'tv_ruin_tile',x+16,465);for(let y=465;y<510;y+=24){rect(c,C.deep,x,y,32,24);rect(c,C.shade,x+1,y+1,29,2);rect(c,C.ink,x+(y%48?16:3),y,2,24);}
  }
@@ -82,7 +88,7 @@ export function drawArenaArchitecture(c,mode,left,right){
   if(s.style!=='bridge'&&s.x%3===0){c.fillStyle=C.moss;for(let i=0;i<7;i++)c.fillRect(s.x+18+(i%2)*3,s.y+28+i*4,2,5);}
  }
  for(const t of mode.tubes)if(t.x>left-60&&t.x<right+60){
-  prop(c,'tv_travel_tube',t.x,t.y+48);c.fillStyle=C.cream;c.textAlign='center';c.font='bold 10px monospace';c.fillText(t.rune,t.x,t.y+27);
+  prop(c,'tv_travel_tube',t.x,t.y+48);c.fillStyle=C.cream;c.textAlign='center';c.font='bold 10px monospace';// Linked colors are painted by the arena world overlay.
   if([...mode.players.values()].some(p=>Math.abs(p.x-t.x)<62&&Math.min(Math.abs(p.y-t.y),Math.abs(p.y-t.y-48))<18)){c.fillStyle='#112c27ed';c.fillRect(t.x-65,t.y-22,130,15);c.fillStyle=C.cream;c.font='9px monospace';c.fillText('INTERACT · TUBE '+t.rune,t.x,t.y-11);}
  }
  for(const s of mode.enemySpawns)if(s.x>left-70&&s.x<right+70){
@@ -118,6 +124,7 @@ function forestLayer(layer){
  return backdrops[layer]=surface;
 }
 export function drawArenaBackdrop(c,camera,left,width,time){
+ if(drawTvParallax(c,camera,left,width,time))return;
  rect(c,'#739b88',left,55,width,382);rect(c,'#5e897b',left,185,width,252);rect(c,'#365f58',left,330,width,210);
  c.imageSmoothingEnabled=false;
  for(let layer=0;layer<3;layer++){

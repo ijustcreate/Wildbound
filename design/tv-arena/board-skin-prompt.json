@@ -1,0 +1,16 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "intent": "edit",
+  "editTarget": "assets/board-minimal.png",
+  "styleReference": "test-output/tv-polish/standard-board-final/new-arena-interface.png",
+  "output": "assets/tv-arena/board-mossroot-v1.png",
+  "prompt": "Edit image 1, the EXISTING WILDBOUND GAME BOARD, to give ONLY ITS SCENERY a Mossroot Coliseum skin inspired by image 2, the actual side-view game level. Image 1 is the EDIT TARGET and exact composition/layout reference. Image 2 is a STYLE AND MATERIAL reference only; do not turn the board into a side-view landscape. Preserve the original landscape 1516:1038 board aspect ratio, straight-on overhead-oblique game-board view, ornate rectangular brown wood-and-brass frame and WILDBOUND title, complete same winding inward cream stone path with all spaces in the identical positions, and the same central octagonal turquoise portal well at exactly the same position and size. Do not add or remove any board spaces, do not change the winding route, do not draw a new path. Replace the ordinary forest dirt/leaf scenery in the spaces BETWEEN the path with mossy dark teal masonry ruins and tiny side-view-platform-inspired terraces viewed in the SAME overhead-oblique camera as the board: turf-topped stone ledges, broken squat stone columns, small wood bridges over shallow dark channels, hanging vines, ferns, muted teal shadowed flagstones. Add four small green-bronze travel tubes in scenery gaps CLEAR OF THE PATH, two with turquoise horizontal bands and two with lavender horizontal bands, matching the level's simple bar marking, no letters and no outlines floating around tubes. Suggested scenery gaps: upper left statue gap, upper right inside the large loop, lower right inside its small loop, lower left border gap. Broad olive/moss ground planes next to the cream path should stay close to the original green hues, with jade/teal in the ruin shadows; avoid a bright cyan backdrop. Pixel-art clusters and stepped edges at the SAME density as the original board; broad connected light/shadow material planes, consistent upper-left lighting, no smooth blur or excessive noise. Keep path legible and brightest; scenery below path contrast. No pawns, dice, creatures, UI panels, horizons or skies. One coherent finished full board artwork, NOT a concept sheet. The runtime will preserve the exact original playable foreground on top, so prioritize attractive scenery in the surrounding gaps; preserve the original layout faithfully.",
+  "userLikes": [
+    "Existing board layout, path, dice, pawns and center seal"
+  ],
+  "requestedChange": "Mossy ruins, platforms and simple colored-bar tubes that match the 2D level",
+  "rendering": "Native original playable foreground is drawn over the generated scenery, preserving exact calibrated spaces. No layout data changes.",
+  "archivedStyleReference": "design/tv-arena/board-skin-level-reference.png",
+  "originalBoardSha256": "b481be4cab8372b0818464d4866e152d88f0c5e896ce09c65f52ef3166a47254",
+  "layoutSha256": "d0a61e90e71c383d359dbf902b9b651b7220510a17b68495098d6b3d3855fc7e"
+}

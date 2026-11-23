@@ -30,7 +30,7 @@ export class LobbyLanding {
     this.sync();return true;
   }
   handleKey(event) {
-    if (!this.active || event.repeat || event.isComposing || (event.target.closest?.('#party-menu') && ['Enter','Space'].includes(event.code))) return false;
+    if (!this.active || event.repeat || event.isComposing || event.key==='Tab'||event.ctrlKey||event.metaKey||event.altKey || (event.target.closest?.('#party-menu') && ['Enter','Space'].includes(event.code))) return false;
     if (!this.activate('keyboard')) return false;
     event.preventDefault();event.stopImmediatePropagation();return true;
   }

@@ -31,7 +31,8 @@ app.whenReady().then(async()=>{
      assert(panel.querySelector('.merchant-controls').getBoundingClientRect().bottom<=r.bottom-5,'Footer clipped');
      const body=panel.querySelector('.merchant-body');assert(body.clientHeight>90,'No room for merchandise');
      const action=panel.querySelector('.merchant-confirm').getBoundingClientRect();assert(action.bottom<r.bottom&&action.top>body.getBoundingClientRect().bottom-1,'Confirm action clipped');
-     const inline=panel.querySelector('.merchant-inline-detail');if(getComputedStyle(inline).display!=='none'){assert(parseFloat(getComputedStyle(inline).fontSize)>=13,'Shrunken detail text');assert(panel.querySelector('.merchant-row.selected').clientHeight<=panel.querySelector('.merchant-list').clientHeight+1,'Selected description does not fit '+innerWidth+'x'+innerHeight+' / '+ui.panels.size+' owners: '+panel.querySelector('.merchant-row.selected').clientHeight+' > '+panel.querySelector('.merchant-list').clientHeight);}
+     const detail=panel.querySelector('.merchant-detail'),description=detail.querySelector('.merchant-description');assert(detail.clientHeight>=34&&parseFloat(getComputedStyle(description).fontSize)>=12,'Appraisal must keep readable space');
+     assert(!panel.querySelector('.merchant-inline-detail'),'Repeating the appraisal would change the selected row height');
      for(const e of panel.querySelectorAll('.merchant-row,.merchant-detail,.merchant-tabs'))assert(e.scrollWidth<=e.clientWidth+1,'Content horizontal overflow: '+e.className);
     }
     if(q.ui)assert(ui.panels.get(q.id).querySelector('.merchant-controls').textContent.includes('B: Buy'),'Switch accept glyph');
@@ -44,7 +45,12 @@ app.whenReady().then(async()=>{
   win.setContentSize(1280,800);
   const checks=await win.webContents.executeJavaScript(`(async()=>{
    const {g,p,q,ui,renderer,merchantAction,assert}=qa;const draw=()=>ui.draw(g,renderer);for(const other of g.players.slice(1))other.ui=null;draw();
-   let panel=ui.panels.get(p.id),coins=p.coins;panel.querySelector('[data-action="merchant-item-1"]').click();draw();assert(p.coins===coins,'Selection spent gold');
+   let panel=ui.panels.get(p.id),coins=p.coins;
+   const heights=()=>[...panel.querySelectorAll('.merchant-row')].map(row=>row.clientHeight).join(',');const originalHeights=heights();
+   panel.querySelector('[data-action="merchant-item-1"]').click();draw();assert(p.coins===coins,'Selection spent gold');
+   assert(heights()===originalHeights,'Changing selection changed the stock row heights');
+   const {ITEMS}=await import('./src/items.mjs');
+   assert(panel.querySelector('.merchant-detail h3').textContent===ITEMS.empty_jar.name,'Selected item did not update the appraisal');
    panel.querySelector('.merchant-confirm').click();draw();assert(p.coins===coins-4,'Buy confirm');assert(panel.querySelector('.merchant-owned').textContent.includes('1'),'Owned quantity stale');
    p.inventory=Array.from({length:24},()=>({type:'sword',qty:1}));merchantAction(g,p,'panel:pack');draw();
    for(let i=0;i<23;i++)merchantAction(g,p,'down');draw();const selected=panel.querySelector('.merchant-row.selected'),list=panel.querySelector('.merchant-list');assert(selected.getBoundingClientRect().bottom<=list.getBoundingClientRect().bottom+1,'Controller selection not scrolled');

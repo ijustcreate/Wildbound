@@ -1,6 +1,7 @@
 // Opt-in playable room for visual review. Uses editable terrain and native props.
 import {realmProp} from './realm-layout.mjs';
 import {makeCavernNativeSample} from './cavern-native-sample.mjs';
+import {caveFloorEdges,drawCaveFloorCell} from './cave-floor-art.mjs';
 
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 const rooms=[{x:440,y:800,rx:200,ry:162},{x:730,y:700,rx:98,ry:91}];
@@ -28,8 +29,12 @@ export function installCavernRoomSlice(g,assets,renderer){
  const originalFloor=renderer.floor.bind(renderer);
  renderer.floor=(ctx,w,h,game)=>{
   originalFloor(ctx,w,h,game);ctx.save();
-  // Replace the pool's square tile seams with a broad irregular limestone bank.
-  ctx.fillStyle='#495258';ctx.fillRect(256,768,224,160);
+  // Replace the underlying square wet tiles before painting the authored shoreline.
+  const open=(tx,ty)=>game.terrain[ty*50+tx]!=='cave_void';
+  for(let ty=24;ty<29;ty++)for(let tx=8;tx<15;tx++){
+   const kind=game.terrain[ty*50+tx];
+   if(kind==='water'||kind==='shallow')drawCaveFloorCell(ctx,tx*32,ty*32,32,game.seed,tx,ty,caveFloorEdges(tx,ty,open));
+  }
   const shape=(points,color)=>{ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);for(const [x,y]of points.slice(1))ctx.lineTo(x,y);ctx.closePath();ctx.fillStyle=color;ctx.fill();};
   shape([[267,820],[281,806],[302,801],[319,786],[346,783],[365,793],[384,788],[408,797],[428,808],[455,810],[468,829],[457,847],[462,868],[442,882],[421,882],[402,900],[376,899],[355,909],[333,898],[311,900],[296,884],[278,879],[269,860],[258,843]],'#63827b');
   shape([[280,826],[296,814],[318,812],[333,796],[351,795],[369,803],[388,798],[406,808],[425,817],[448,818],[456,833],[447,847],[451,864],[431,874],[413,872],[394,889],[374,887],[355,897],[336,886],[315,889],[303,874],[284,869],[277,853],[269,841]],'#315963');

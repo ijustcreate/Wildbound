@@ -80,12 +80,10 @@ function wrap(p, W, I, H, t) {
 export function draw(p, t, o) {
   const F = fit(o.palette, 9), H = hotFirst(F), W = fit(o.wood, 6), I = fit(o.iron, 5), S = o.seed;
   const fl0 = 0.74 + 0.16 * NL(t, 7.3, S + 1) + 0.1 * NL(t, 19, S + 2);
-  plate(p, I, H, fl0);
-  handle(p, W);
-  ring(p, I, H, fl0);
+  if(!o.gameplay){plate(p, I, H, fl0);handle(p,W);ring(p,I,H,fl0);}
   burn(p, t, TONGUES, {
     H, D, NL, S, x: 0, y: BASE, height: 20, lean: 0.12, spread: 4,
     puffs: 10, licks: 5, smoke: 7, smokeSize: 2.3, smokeLife: [1.3, 2.1], embers: 7, glowR: 48, glow: 1.25, wind: 2,
-    mid: () => wrap(p, W, I, H, t),
+    mid: () => {if(!o.gameplay)wrap(p, W, I, H, t);},
   });
 }

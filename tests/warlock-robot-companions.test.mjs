@@ -29,11 +29,16 @@ test('warlock supports walk, cast, hurt and death without changing its gameplay 
   }assert.ok(rasters.size>1);
   const pack=structuredClone(definitionPack(EVENTS,ITEMS));assert.ok(validateWarlockMotion(pack.warlock));assert.doesNotThrow(()=>applyDefinitions(pack,EVENTS,ITEMS));
 });
-test('robot backpack navigation is a full six by four grid, including empty slots',()=>{
+test('robot backpack navigation reaches every slot, including the partial final row',()=>{
   const {g,p}=setup();p.room=1;g.portals=[{id:1,owner:p.id}];p.inventory=[null,{type:'potion',qty:7}];assert.ok(g.openShop(p,'robot'));assert.equal(p.ui.index,1);
   g.inventoryAction(p,'down');assert.equal(p.ui.index,7);g.inventoryAction(p,'prev');assert.equal(p.ui.index,6);g.inventoryAction(p,'up');assert.equal(p.ui.index,0);
   g.inventoryAction(p,'next');g.inventoryAction(p,'use');assert.equal(p.coins,21);assert.equal(p.inventory[1],undefined);assert.equal(p.ui.index,1);
   g.inventoryAction(p,'panel');assert.equal(p.ui.robotView,'buyback');g.inventoryAction(p,'use');assert.equal(p.coins,0);assert.equal(p.inventory[0].qty,7);assert.equal(p.robotStock.length,0);
+  p.inventory[31]={type:'potion',qty:2};g.inventoryAction(p,'robotView:sell');
+  g.inventoryAction(p,'robotSelect:sell:0');g.inventoryAction(p,'prev');assert.equal(p.ui.index,31);
+  g.inventoryAction(p,'use');assert.equal(p.coins,6);assert.ok(p.inventory[31]==null);
+  p.inventory[31]={type:'potion',qty:3};g.inventoryAction(p,'robotSelect:sell:31');
+  g.inventoryAction(p,'robotSell');assert.equal(p.coins,15);assert.ok(p.inventory[31]==null);
 });
 test('compact victory loot navigation matches its six-column slot grid',()=>{
   const {g,p}=setup();g.victoryRewards=Array.from({length:12},()=>({type:'hat',qty:1}));g.openInventory(p,'victory');p.ui.loot=true;p.ui.panel='chest';

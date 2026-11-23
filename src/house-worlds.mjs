@@ -2,6 +2,8 @@ import {encounterCue} from './encounter-cues.mjs';
 import {seatOpeningParty} from './opening-board.mjs';
 import {restoreForestLandscape} from './forest-landscape.mjs';
 import {initLivingEcosystem,captureLivingAmbient} from './living-ecosystem.mjs';
+import {checkpointBoundlessWorld,initializeBoundlessWorld} from './boundless-world.mjs';
+import {passageLanding} from './shadow-passage-landing.mjs';
 
 export const HOUSE_WORLD_DESTINATIONS=Object.freeze(['forest','ice','desert','temple','beach','graveyard','swamp','caverns','shadow']);
 export const WORLD_TRAVEL_SECONDS=Object.freeze({depart:1.4,arrive:1});
@@ -20,6 +22,9 @@ export const WORLD_TRAVEL_EVENTS=Object.freeze({
 // Campaign state travels with the explorers. Everything else belongs to a paused map.
 const campaign=new Set(['players','sharedStash','nextId','turn','round','locked','turnOrder','repeatTurnPlayerId','cleared','encounteredEvents','killedCreatures','log','difficulty','diceCount','mapMode','pvp','mapping','eventDuration','houseWorlds','houseWorldsEnabled','worldTravel','roll','rollCooldown','phase','random','persist','onSound','spriteLibrary','saving','saveError','controlLabels','uiRevision','fieldRevision','victoryRewards','victoryChest','victoryChestOpened','victoryShown','debrief','sealTime','paused']);
 campaign.add('expeditionTrials');campaign.add('expeditionDebrief');campaign.add('eventDirector');
+campaign.add('shadowPassages');
+campaign.add('trainAudio');
+campaign.add('profileRevisions');
 const runtimeKeys=new Set(['forestLandscape','boundlessLoadedChunks']);
 const landscapes=new WeakMap(),jobs=new WeakMap();
 const modeFor=g=>g.houseWorlds??={version:2,seed:g.seed,worlds:{}};
@@ -122,6 +127,7 @@ export function preparedHouseWorldView(g){
 }
 function applyWorld(g,to,state){
  const mode=modeFor(g),from=g.generatedEnvironment,suspended=mode.pending,firstVisit=to!=='house'&&!mode.worlds[to];
+ const passage=suspended?.passage,rootLocal=passage?g.localWorld:null,rootPersistent=passage?g.persistentWorld:false;
  const cachedFollowers=collectTravelFollowers(state,g.players);
  const currentFollowers=collectTravelFollowers(g,g.players);
  const uniqueFollowers=[...new Map([...cachedFollowers,...currentFollowers].map(a=>[a.id??a,a])).values()];
@@ -132,13 +138,24 @@ function applyWorld(g,to,state){
  for(const [key,value]of Object.entries(state))if(!campaign.has(key))g[key]=value;
  g.nextId=Math.max(g.nextId,state.nextId||0);g.explored=new Set(state.explored||[]);g.forestLandscape=landscapes.get(state)||null;
  restoreForestLandscape(g,state.forestLandscapeVersion);g.boundlessLoadedChunks=[];
+ if(passage&&g.mapMode==='boundless')initializeBoundlessWorld(g);
  mode.pending=null;mode.version=2;g.roll=null;g.rollCooldown=1.25;g.reveal=null;g.openingBoard=false;g.tableShake=0;g.bloom=3;
  seatOpeningParty(g.players);
+ if(passage){
+  if(rootLocal){g.localWorld=rootLocal;g.persistentWorld=rootPersistent;}
+  const link=g.shadowPassages.links[passage.id],side=to==='shadow'?'shadow':'surface',near=link[side],landing=passage.landing||passageLanding(g,near,mode.serial*917);
+  if(!landing)throw Error('No safe passage landing found');
+  link[side]={x:landing.x,y:landing.y};
+  const id=side==='shadow'?passage.id:passage.id+':surface';g.portals=(g.portals||[]).filter(d=>d.id!==id);
+  g.portals.push({id,linkId:passage.id,shadowPassage:true,passageSide:side,x:landing.x,y:landing.y,color:'#c6a2ed',autoEnter:false,closing:null});
+  if(side==='surface'&&!g.scenery.some(p=>p.id===id+':frame'))g.scenery.push({id:id+':frame',kind:'root_arch',realm:true,procedural:true,x:landing.x,y:landing.y-155*.19,rootY:landing.y,size:155,collisionWidth:0,collisionDepth:0});
+  for(const [i,p]of g.players.entries()){Object.assign(p,landing.party[i]);p.room=null;p.jumpHeight=0;p.groundHeight=0;p.jumpVelocity=0;p.swimming=false;p.sink=0;p.diveDepth=0;}
+ }
  carryTravelFollowers(g,uniqueFollowers);
  for(const p of g.players){p.previousInput={};p.ui=null;p.charge=0;p.attack=0;p.blocking=false;p.queuedAttack=null;p.invuln=Math.max(p.invuln||0,2);
  }
  initLivingEcosystem(g);jobs.delete(g);
- g.message(to==='house'?'The hearth remembers you. Your house waits exactly as you left it.':WORLD_TRAVEL_EVENTS[to].verse.replaceAll('\n',' '));
+ g.message(passage?(to==='shadow'?'The passage leads back to the enchanted forest.':'The veil opens somewhere new in the surface forest. A return portal waits behind you.'):to==='house'?'The hearth remembers you. Your house waits exactly as you left it.':WORLD_TRAVEL_EVENTS[to].verse.replaceAll('\n',' '));
  // Fresh Wildbound destinations should have an encounter ready on arrival;
  // the home board and any previously explored map retain their saved event.
  if(firstVisit)g.spawnEvent();
@@ -149,6 +166,15 @@ export function travelHouseWorlds(g,total){
  const to=modeFor(g).pending.to,job=requestWorld(g,to);
  if(!job.ready)return false;
  applyWorld(g,to,job.state);g.persist();return true;
+}
+export function beginPassageTravel(g,door){
+ if(g.worldTravel||g.phase!=='play'||!door?.shadowPassage)return false;
+ const mode=modeFor(g),to=door.passageSide==='shadow'?'forest':'shadow';if(mode.pending)return false;
+ g.shadowPassages??={version:1,links:{},localRoot:!!g.localWorld};
+ const link=g.shadowPassages.links[door.linkId]??={};link[door.passageSide]={x:door.x,y:door.y};
+ checkpointBoundlessWorld(g);mode.serial=(mode.serial||0)+1;
+ mode.pending={to,serial:mode.serial,event:g.event,eventTime:g.eventTime,eventOnBoard:g.eventOnBoard,passage:{id:door.linkId}};
+ requestWorld(g,to);g.worldTravel={from:g.generatedEnvironment,to,serial:mode.serial,stage:'depart',elapsed:0,passage:true};g.onSound?.(encounterCue('Travel · '+to));return true;
 }
 export function beginHouseWorldTravel(g,total){
  if(!prepareHouseWorldTravel(g,total)||g.worldTravel)return false;
@@ -167,6 +193,8 @@ export function tickHouseWorldTravel(g,dt,inputs={}){
    const pending=modeFor(g).pending;g.event=pending?.event||null;g.eventTime=pending?.eventTime||0;modeFor(g).pending=null;return true;
   }
   if(!job.ready)return true;
+  const pending=modeFor(g).pending;
+  if(pending?.passage){const side=travel.to==='shadow'?'shadow':'surface',link=g.shadowPassages.links[pending.passage.id],view=Object.create(g);Object.assign(view,job.state);view.players=g.players;const landing=passageLanding(view,link[side],modeFor(g).serial*917);if(!landing){g.worldTravel=null;jobs.delete(g);g.event=pending.event;g.eventTime=pending.eventTime;g.eventOnBoard=pending.eventOnBoard;modeFor(g).pending=null;g.message('The far side is blocked. The passage leaves you safely here.');return true;}pending.passage.landing=landing;}
   applyWorld(g,travel.to,job.state);travel.stage='arrive';travel.elapsed=0;
  }else if(travel.stage==='arrive'&&travel.elapsed>=WORLD_TRAVEL_SECONDS.arrive){g.worldTravel=null;g.persist();}
  return true;

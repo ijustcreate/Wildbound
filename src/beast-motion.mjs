@@ -213,7 +213,7 @@ export function drawBeast(
   c,
   a,
   time,
-  m = beastMotions[a.sprite || a.kind],
+  m = beastMotions[a.sprite || (a.kind==='baby_spider'?'spider':a.kind)],
   suppliedPose = null,
 ) {
   if(m.type==='beetle')return drawBeetle(c,a,time,m,suppliedPose);

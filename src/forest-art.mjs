@@ -94,7 +94,7 @@ export function drawLandscapeGround(c, g, bounds) {
     sx * 32, sy * 32, (ex - sx) * 32, (ey - sy) * 32);
 }
 
-export function drawForestBank(c, g, x, y, kind) {
+export function drawForestBankBase(c, g, x, y, kind) {
   if (!['shallow', 'water', 'floodbridge'].includes(kind)) return;
   const terrain = g.terrain, tx = x / 32, ty = y / 32;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -109,6 +109,9 @@ export function drawForestBank(c, g, x, y, kind) {
       if(kind==='shallow'&&hash(px,py+g.seed)>.93){rect(c,px-2,py+3,7,4,'#446962');rect(c,px-2,py+1,6,3,'#9da989');}
     }
   }
+ }
+export function drawForestBankFlow(c,g,x,y,kind){
+  if (!['shallow','water','floodbridge'].includes(kind))return;
   // World-coordinate streamlets travel downstream without restarting at tile edges.
   c.save(); c.beginPath(); c.rect(x, y, 32, 32); c.clip();
   for (let py = Math.floor((y - g.time * 12) / 47) * 47 + g.time * 12; py < y + 32; py += 47) {
@@ -117,6 +120,8 @@ export function drawForestBank(c, g, x, y, kind) {
   }
   c.restore();
 }
+
+export function drawForestBank(c,g,x,y,kind){drawForestBankBase(c,g,x,y,kind);drawForestBankFlow(c,g,x,y,kind);}
 
 export function drawCanopyShadow(c, p, g) {
   const base = p.rootY ?? p.y + p.size * .35;

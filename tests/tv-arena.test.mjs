@@ -12,13 +12,13 @@ const tick=(m,n,commands={})=>{for(let i=0;i<n;i++)m.step(.05,commands);};
 
 test('a board strike reveals the dice before enemies emerge at multiple elevations',()=>{
  const {m,p}=ready();Object.assign(p,{x:TV_BOARD_X,face:1});m.step(.016,{one:{attack:true}});
- assert.equal(m.wave,1);assert.equal(m.waveQueue.length,6);tick(m,65);assert.equal(m.enemies.length,0);
+ assert.equal(m.wave,1);assert.equal(m.waveQueue.length,6);tick(m,30);assert.equal(m.enemies.length,0);
  tick(m,55);assert.equal(m.enemies.length,6);assert.ok(m.enemies.some(e=>e.y<437));
  assert.ok(m.enemies.every(e=>m.enemyRoster.includes(e.kind)));assert.equal(m.owners.get('one').progress,undefined);
 });
 test('the center board cannot be struck or called through the upper floors',()=>{
  const {m,p}=ready();Object.assign(p,{x:TV_BOARD_X,y:125,grounded:true,face:1});m.step(.016,{one:{attack:true}});assert.equal(m.progress,0);assert.equal(m.wave,0);
- m.progress=48;m.step(.016,{one:{loot:true}});assert.equal(m.won,false);
+ m.progress=48;m.step(.016,{});assert.equal(m.won,true,'the final board space wins regardless of arena position');
 });
 test('occupied alcoves defer their spawn without stopping the other alcoves',()=>{
  const {m,p}=ready(),s=m.enemySpawns[0];Object.assign(p,{x:s.x,y:s.y,grounded:true});m.queueWave();tick(m,40);

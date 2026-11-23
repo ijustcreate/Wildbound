@@ -9,7 +9,7 @@ test('storage stays narrow for part of a party and widens only when everyone sha
  assert.equal(storageRoomRepresentative(g,p),true);assert.equal(storageRoomRepresentative(g,q),false);
  p.ui={panel:'pack'};assert.equal(storageRoomRepresentative(g,q),true);
 });
-test('storage camera preserves the main world zoom in both narrow and shared views',()=>{
+test('storage camera fills the viewport with room artwork in narrow and shared views',()=>{
  const p={id:1,room:9,roomX:160,roomY:150},g={players:[p]};
- for(const width of [100,200,460]){const c=storageRoomCamera(g,p,width,300,1.7);assert.equal(c.zoom,1.7);assert.ok(c.x>=0&&c.x<=320);assert.ok(c.y>=0&&c.y<=240);}
+ for(const width of [100,200,460]){const c=storageRoomCamera(g,p,width,300,1.7);assert.ok(width/c.zoom<=290+.001);assert.ok(300/c.zoom<=197+.001);assert.ok(c.x>=0&&c.x<=320);assert.ok(c.y>=0&&c.y<=240);}
 });

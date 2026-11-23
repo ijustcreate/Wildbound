@@ -1,3 +1,5 @@
+import {enemyCombatAnimation} from './enemy-combat-animation.mjs';
+import {drawTacticalTell} from './combat-tactics-state.mjs';
 import {visualActorId} from './animation-id.mjs';
 import {drawGorilla} from './temple.mjs';
 import {CapeInertia} from './cape-inertia.mjs';
@@ -6,20 +8,25 @@ import {characterLightingAt,shadeCharacterSurface} from './character-lighting.mj
 import {humanoidArtStatus} from './humanoid-hd.mjs';
 import {drawAnaconda} from './anaconda-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
+import {drawOtter} from './otter-motion.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {companionVisualActor} from './companion-locomotion.mjs';
 import {creaturePackVisualActor} from './creature-pack-animation-routing.mjs';
 export const usesLegacyWildFaunaArt = actor =>
-  WILD_FAUNA_KINDS.includes(actor?.kind) && actor.kind !== 'chicken' && actor.kind !== 'penguin';
+  WILD_FAUNA_KINDS.includes(actor?.kind) && !['chicken','penguin','river_otter'].includes(actor.kind);
 import {beastMotions,beastMotionRevisions} from './beast-motion.mjs';
 import {beetleAction,beetleFrame} from './beetle-motion.mjs';
+import {spiderAction,spiderFrame} from './spider-motion.mjs';
+import {ScarfInertia} from './school-scarves.mjs';
 import {drawBee,drawBeeHive} from './bee-art.mjs';
 import {drawTsetse} from './tsetse-art.mjs';
 import {drawRaven} from './raven-art.mjs';
+import {drawSpiderEgg} from './spider-egg-art.mjs';
 import { NIGHT_KINDS, STAMPEDE_KINDS, nightMotions, nightMotionRevisions, nightAction, nightFrame } from './night-rigs.mjs';
 import { ITEMS } from "./items.mjs";
 import {
   playerMotion,
+  withPlayerPoseCache,
   playerMotionRevision,
   playerFrame,
   playerAction,
@@ -70,12 +77,15 @@ export class Animator {
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
+    if(actor.kind==='baby_spider'&&!actor.sprite)actor={...actor,sprite:'spider'};
+    actor=enemyCombatAnimation(actor,rigSubject(actor.sprite||actor.kind)?.data);
     if(typeof actor.id==='string')actor={...actor,id:visualActorId(actor.id)};
     if((actor.sprite==='player'||actor.sprite?.startsWith('explorer')||!actor.kind)&&playerMotion.locomotionRevision>=1){
       this.locomotionHistory??=new LocomotionHistory();
       actor={...actor,...this.locomotionHistory.sample(actor,time,playerAction(actor),playerFrame(actor,time))};
     }
     if(actor.equipment?.cape||actor.field?.cosmetics?.cape){this.capeInertia??=new CapeInertia();actor={...actor,capeMotion:this.capeInertia.sample(actor,time)};}
+    if(ITEMS[actor.equipment?.back||actor.field?.cosmetics?.back]?.scarf){this.scarfInertia??=new ScarfInertia();actor={...actor,scarfMotion:this.scarfInertia.sample(actor,time)};}
     const groundActor=actor;
     if(actor.kind==='imp'){size*=.7;if(actor.hp>0)actor={...actor,y:actor.y-(actor.impFlightHeight??20)};}
     if(actor.kind==='succubus'&&actor.hp>0&&actor.succubusFlightHeight>0)actor={...actor,y:actor.y-actor.succubusFlightHeight};
@@ -83,7 +93,7 @@ export class Animator {
     if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
     const character=rigSubject(actor.sprite||actor.kind)?.data?.joints?.handL;
     const lighting=character&&this.lighting&&characterLightingAt(this.lighting,groundActor,{lift:groundActor.y-actor.y,bodyHeight:22*size/48});
-    const paint=()=>celShadingEnabled()&&character?this.drawCutoutCharacter(ctx,actor,time,size,lighting):this.drawActor(ctx,actor,time,size,lighting);
+    const paint=()=>withPlayerPoseCache(()=>{const result=celShadingEnabled()&&character?this.drawCutoutCharacter(ctx,actor,time,size,lighting):this.drawActor(ctx,actor,time,size,lighting);drawTacticalTell(ctx,actor,time,size);return result;});
     if (this.metrics?.enabled)
       return this.metrics.measure("animation", () =>
         paint(),
@@ -108,6 +118,7 @@ export class Animator {
     shadeCharacterSurface(target,lighting,{pixelsPerWorld:surface.width/worldWidth});return target;
   }
   drawActor(ctx, actor, time, size = 48,lighting=null) {
+    if(actor.kind==='river_otter'){drawOtter(ctx,actor,time,size);return;}
     if(drawRaven(ctx,actor,time,size))return;
     if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
     if(usesLegacyWildFaunaArt(actor)){drawWildFauna(ctx,actor,time,size);return;}
@@ -116,9 +127,7 @@ export class Animator {
     if(actor.kind==='bee_hive'){drawBeeHive(ctx,actor,time,size);return;}
     if(actor.kind==='gorilla'){drawGorilla(ctx,actor,time);return;}
     if(actor.kind==='spider_egg'){
-      const jiggle=Math.sin((actor.eggPhase||0)*2.1)*1.8*(Math.sin((actor.eggPhase||0)*.31)>.92?1:.12);ctx.save();ctx.translate(actor.x+jiggle,actor.y);ctx.rotate(jiggle*.018);ctx.fillStyle='#afa8bf';ctx.beginPath();ctx.ellipse(0,0,12,15,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f0e8e7';ctx.lineWidth=2;
-      for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(-10,i*4);ctx.lineTo(10,-i*3);ctx.stroke();}
-      ctx.fillStyle='#fff4ca';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(Math.max(0,Math.ceil(actor.hatchIn))+'s',0,-20);ctx.restore();return;
+      drawSpiderEgg(ctx,actor);ctx.fillStyle='#fff4ca';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(Math.max(0,Math.ceil(actor.hatchIn))+'s',actor.x,actor.y-23);return;
     }
     const nameKey = actor.sprite || actor.kind,
       rig = actor.rigOverride || creatures[nameKey]?.rig;
@@ -128,7 +137,15 @@ export class Animator {
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
     if (rigSubject(nameKey)) {
-      if(nameKey==='beetle'&&!explicitPose&&!actor.rigOverride){
+      if(['spider','tarantula'].includes(nameKey)&&(!explicitPose||actor.enemyCombatFrame)&&!actor.rigOverride){
+        this.spiderFrames??=new Map();
+        const model=beastMotions[nameKey],action=spiderAction(actor),clip=model.clips[action]||model.clips.idle,raw=spiderFrame(actor,time,model);
+        const frame=Math.floor((clip.loop?(raw%clip.length+clip.length)%clip.length:Math.max(0,Math.min(clip.length-1,raw)))*2)/2;
+        const key=[nameKey,beastMotionRevisions[nameKey],facingIndex(actor.faceX,actor.faceY),action,frame,actor.kind==='baby_spider'].join(':');let surface=this.spiderFrames.get(key);
+        if(!surface){surface=document.createElement('canvas');surface.width=surface.height=128;const pen=surface.getContext('2d');pen.translate(64,64);rigSubject(nameKey).draw(pen,{...actor,playerFrame:frame},time,model);if(this.spiderFrames.size>=128)this.spiderFrames.delete(this.spiderFrames.keys().next().value);this.spiderFrames.set(key,surface);}
+        ctx.imageSmoothingEnabled=false;ctx.drawImage(surface,Math.round(actor.x-size*4/3),Math.round(actor.y-size*4/3),size*8/3,size*8/3);return;
+      }
+      if(nameKey==='beetle'&&(!explicitPose||actor.enemyCombatFrame)&&!actor.rigOverride){
         if(this.beetleRevision!==beastMotionRevisions.beetle){this.beetleFrames.clear();this.beetleRevision=beastMotionRevisions.beetle;}
         const model=beastMotions.beetle,action=beetleAction(actor),clip=model.clips[action]||model.clips.idle,raw=beetleFrame(actor,time,model);
         const frame=Math.floor((clip.loop?(raw%clip.length+clip.length)%clip.length:Math.max(0,Math.min(clip.length-1,raw)))*2)/2;
@@ -161,6 +178,7 @@ export class Animator {
       }
       if (
         (nameKey === "player" || nameKey?.startsWith("explorer")) &&
+        !actor.swordChargeAim && !(actor.charge>0) && !actor.swordPolish &&
         !actor.animationAction &&
         !Number.isFinite(actor.playerFrame) &&
         !Number.isFinite(actor.poseTime) &&
@@ -168,6 +186,7 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
+        !ITEMS[actor.equipment?.back||actor.field?.cosmetics?.back]?.scarf &&
         actor.equipment?.head !== 'jack_o_lantern' && actor.equipment?.head !== 'bone_carver_crown' && actor.equipment?.gloves !== 'bone_carver_claws' &&
         playerAction(actor) === "idle" && !playerLayers(actor,time).length && !actor.locomotionTransition && !actor.locomotionTurning
       ) {
@@ -340,7 +359,7 @@ export class Animator {
               : 0.65;
       // Night behavior owns state timing. Avoid replacing its duration with the
       // legacy charge/recovery heuristic; explicit stateAge also remains usable.
-      rigSubject(nameKey).draw(c, (NIGHT_KINDS.includes(nameKey)||nameKey==='dreadmane_lion') ? actor : { ...actor, motionDuration }, time);
+      rigSubject(nameKey).draw(c, (actor.tactics||NIGHT_KINDS.includes(nameKey)||nameKey==='dreadmane_lion') ? actor : { ...actor, motionDuration }, time);
       c.restore();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(

@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
 export const ZOMBIE_VARIANTS=Object.freeze(['shambler','one_arm','broken_jaw']);
 export const ZOMBIE_EVENT=Object.freeze({name:'Footsteps without a heartbeat',kind:'zombie',count:3,hp:80,speed:32,damage:14,weight:6,verse:'Three ragged shadows drag their feet.\nThey follow footsteps, not a beat.',tip:'Zombies only see in front. Movement draws them from farther away; approach quietly from behind. Dodge their slow, sweeping claws.'});
@@ -30,7 +31,7 @@ export function tickZombie(g,e,targets,dt,stats={},behaviors={}){
  }
  if(!p){e.state='idle';e.moving=false;return;}
  const d=distance(e,p)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;e.state='hunt';
- if(seen&&behaviors.melee!==false&&d<=(stats.attackRange||54)&&e.cooldown<=0){e.zombieWindup=e.zombieWindupDuration=Math.max(.5,stats.windup||.65);e.zombieAim={x:e.faceX,y:e.faceY};e.zombieTarget=p.id;e.moving=false;return;}
+ if(seen&&behaviors.melee!==false&&d<=(stats.attackRange||54)&&e.cooldown<=0&&requestEnemyGroupTurn(g,e,p)){e.zombieWindup=e.zombieWindupDuration=Math.max(.5,stats.windup||.65);e.zombieAim={x:e.faceX,y:e.faceY};e.zombieTarget=p.id;e.moving=false;return;}
  const stop=seen?38:8;
  if(behaviors.hunt!==false&&d>stop){const step=Math.min(d-stop,e.speed*(e.rooted>0?.45:1)*dt),travel=g.moveActor(e,e.faceX*step,e.faceY*step);if(travel<step*.3)navigateEnemy(g,e,p,dt);}
 }

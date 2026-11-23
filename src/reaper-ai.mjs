@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
 import {REAPER_EQUIPMENT} from './items.mjs';
 import {livingDrainTargets,drainLivingAnimal} from './living-ecosystem.mjs';
@@ -55,7 +56,7 @@ export function tickReaper(g,e,players,dt,stats={},beh={}){
  // Health gates starting a cast, not finishing one after its first healing tick.
  if(e.hp<=e.maxHp*.5&&e.reaperCooldown<=0&&beh.drain!==false){
   const target=candidates(g,e).filter(t=>valid(g,e,t,range)).sort((a,b)=>distance(e,a.a)-distance(e,b.a))[0];
-  if(target){e.reaperDrain={target:target.key,age:0,targetHp:target.a.maxHp??(target.critter?12:target.a.hp),lastHp:e.hp};e.reaperCooldown=REAPER_DRAIN_COOLDOWN;e.reaperAttack=null;e.state='channel';e.animationAction='reaper_raise';e.poseTime=0;return;}
+  if(target&&requestEnemyGroupTurn(g,e,players.find(p=>p.id===target.a.id)||players.find(p=>p.hp>0&&!p.room),{mode:players.some(p=>p.id===target.a.id)?'attack':'support'})){e.reaperDrain={target:target.key,age:0,targetHp:target.a.maxHp??(target.critter?12:target.a.hp),lastHp:e.hp};e.reaperCooldown=REAPER_DRAIN_COOLDOWN;e.reaperAttack=null;e.state='channel';e.animationAction='reaper_raise';e.poseTime=0;return;}
  }
  const targets=players.filter(p=>p.hp>0&&!p.room),target=targets.sort((a,b)=>distance(e,a)-distance(e,b))[0];
  if(e.reaperAttack){
@@ -66,7 +67,7 @@ export function tickReaper(g,e,players,dt,stats={},beh={}){
  e.poseTime=null;
  if(!target){e.animationAction='idle';e.state='idle';return;}
  const d=distance(e,target)||1;e.faceX=(target.x-e.x)/d;e.faceY=(target.y-e.y)/d;
- if(d<82&&e.cooldown<=0&&clearShot(g,e,target)&&beh.melee!==false){e.reaperCombo=(e.reaperCombo||0)+1;e.animationAction=e.reaperCombo%2?'scythe_sweep':'scythe_reap';e.reaperAttack={age:0};e.poseTime=0;return;}
+ if(d<82&&e.cooldown<=0&&clearShot(g,e,target)&&beh.melee!==false&&requestEnemyGroupTurn(g,e,target)){e.reaperCombo=(e.reaperCombo||0)+1;e.animationAction=e.reaperCombo%2?'scythe_sweep':'scythe_reap';e.reaperAttack={age:0};e.poseTime=0;return;}
  e.animationAction='idle';e.state='hunt';
  if(d>60&&beh.hunt!==false){navigateEnemy(g,e,target,dt);e.moving=true;e.animationAction='walk';}
 }

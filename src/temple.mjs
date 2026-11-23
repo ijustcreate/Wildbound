@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {templeFixtures} from './temple-fixtures.mjs';
 import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {activeLocationDesign,locationFloorBlocked,locationMarker} from './location-designs.mjs';
@@ -13,6 +14,7 @@ import {tickJump} from './jumping.mjs';
 import {hasSetSkill} from './items.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
 import {drawBreakable} from './structure-destruction.mjs';
+import {drawTempleWallFinish} from './house-interior-art.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawUpperSanctum} from './temple-upper-art.mjs';
 import {drawStorageChest} from './storage-art.mjs';
@@ -138,14 +140,14 @@ export function tickGorilla(g,e,dt,visiblePlayers=g.players){
  const d=Math.hypot(p.x-e.x,p.y-e.y)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;
  if(e.state==='windup'){e.timer-=dt;if(e.timer<=0){e.attack=.5;for(const q of visiblePlayers)if(g.players.includes(q)&&!q.room&&q.hp>0&&Math.hypot(q.x-e.x,q.y-e.y)<105&&clearShot(g,e,q))g.hurt(q,26,e);e.state='recover';e.timer=1.1;e.cooldown=2.5;g.onSound('hit',e);}return true;}
  if(e.state==='recover'){e.timer-=dt;if(e.timer<=0)e.state='hunt';return true;}
- if(d<100&&e.cooldown<=0&&clearShot(g,e,p)){e.state='windup';e.timer=.85;e.moving=false;return true;}navigateEnemy(g,e,p,dt);return true;
+ if(d<100&&e.cooldown<=0&&clearShot(g,e,p)&&requestEnemyGroupTurn(g,e,p)){e.state='windup';e.timer=.85;e.moving=false;return true;}navigateEnemy(g,e,p,dt);return true;
 }
 export function drawGorilla(c,a,time){c.save();c.translate(a.x,a.y);const swing=a.moving?Math.sin(time*8)*5:0;c.fillStyle='#202b28';c.fillRect(-25,-50,50,42);c.fillRect(-38,-42+swing,17,44);c.fillRect(21,-42-swing,17,44);c.fillRect(-22,-10,17,23);c.fillRect(5,-10,17,23);c.fillStyle='#68716b';c.fillRect(-17,-39,34,28);c.fillStyle='#303c34';c.fillRect(-20,-65,40,30);c.fillStyle='#999681';c.fillRect(-14,-55,28,20);c.fillStyle='#161e19';c.fillRect(-10,-51,6,4);c.fillRect(4,-51,6,4);c.fillRect(-6,-41,12,4);c.fillStyle='#d6b651';c.fillRect(-22,-65,44,5);for(let x=-18;x<=18;x+=9)c.fillRect(x,-72,5,9);if(a.state==='windup'){c.strokeStyle='#f7b362';c.lineWidth=3;c.beginPath();c.arc(0,0,100,0,Math.PI*2);c.stroke();}c.restore();}
 export function drawTemple(c,g,animator,{lightPaint=null}={}){
  if(g.generatedEnvironment==='temple'){
   c.save();
   // Stepped stone borders and geometric jade inlays frame the temple halls.
-  for(const wall of g.house.walls){const paint=ctx=>drawBreakable(ctx,g,wall,(c,wall)=>{c.fillStyle='#697859';c.fillRect(wall.x,wall.y,wall.w,wall.h);c.strokeStyle='#bbc392';c.lineWidth=2;for(let x=wall.x;x<wall.x+wall.w;x+=24)for(let y=wall.y;y<wall.y+wall.h;y+=16)c.strokeRect(x,y,Math.min(24,wall.x+wall.w-x),Math.min(16,wall.y+wall.h-y));},'temple');if(lightPaint)lightPaint(c,wall,paint);else paint(c);}
+  for(const wall of g.house.walls){const paint=ctx=>drawBreakable(ctx,g,wall,drawTempleWallFinish,'temple');if(lightPaint)lightPaint(c,wall,paint);else paint(c);}
   for(const x of [518,1082])for(let y=490;y<1100;y+=48){c.strokeStyle='#c5ae62';c.lineWidth=2;c.strokeRect(x-7,y,14,14);c.fillStyle='#5f956d';c.fillRect(x-3,y+4,6,6);}
   for(let x=490;x<1110;x+=28){c.strokeStyle='#315d3b';c.lineWidth=3;c.beginPath();c.moveTo(x,455);c.lineTo(x+7,485+(x%4)*8);c.stroke();c.fillStyle='#4d7b41';c.fillRect(x+2,471,11,5);}
   c.restore();

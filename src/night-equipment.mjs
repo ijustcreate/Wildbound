@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 import {setTreeFallDirection} from './tree-fall.mjs';
 import {weaponHitContext} from './dark-essence.mjs';
 import { ITEMS, take } from "./items.mjs";
@@ -38,6 +39,7 @@ export function tryEquipmentAttack(g, p, charge = 0) {
     vx: x * cfg.speed, vy: y * cfg.speed, remaining: cfg.range,
     owner: p.id, playerOwned: !!g.players?.includes(p), damage: def.damage,
     aimed: Number.isFinite(charge) && charge >= cfg.aimTime });
+  emitGameplayFx(g,'muzzle',{x:p.x+x*25,y:p.y+y*15-20},{angle:Math.atan2(y,x),life:.25});
   emitNoise(g, p, "rifle", 700);
   g.onSound?.("rifle", p);
   g.persist?.();
@@ -139,7 +141,7 @@ export function tickNightEquipment(g, dt) {
     const targets = b.playerOwned ? playerCombatTargets(g,b) : players.filter(p=>!isCharmed(p));
     for (let i = 0; i < steps && b.remaining > 0; i++) {
       const next = { x: b.x + b.vx / speed * step, y: b.y + b.vy / speed * step };
-      if (g.projectileBlocked(next.x, next.y, 2, true)) { b.remaining = 0; break; }
+      if (g.projectileBlocked(next.x, next.y, 2, true)) { emitGameplayFx(g,'bullet',{x:next.x,y:next.y-16});b.remaining = 0; break; }
       const previous = { x: b.x, y: b.y };
       b.x = next.x; b.y = next.y; b.remaining -= step;
       const hit = targets.filter(t => t.hp > 0 && !t.room && Math.hypot(t.x - b.x, t.y - b.y) < (t.radius || t.r || 12) + 2 && clearShot(g, previous, t))

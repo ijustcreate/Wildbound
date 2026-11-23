@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Game} from '../src/core.mjs';
+import {ITEMS} from '../src/items.mjs';
+import {holdTelegraphGeometry} from '../src/hold-telegraphs.mjs';
+import {swordDashContact} from '../src/sword-feel.mjs';
+import {CHRISTMAS_SURPRISES,ensureHouseChristmas,unwrapChristmasGift} from '../src/holiday-decor.mjs';
+import {defaultHouse} from '../src/house-design.mjs';
+import {houseRoofSections,houseRoofGeometry} from '../src/house-roof.mjs';
+import {saveSession,restoreSession} from '../src/session.mjs';
+import {enterWildLands} from '../src/wild-lands.mjs';
+import {railwayStations,stationHouse,stationBlocked,stationDeckAt} from '../src/railway-station.mjs';
+import {stationAssetHouse,stationEntrance} from '../src/station-building.mjs';
+import {trainTableForegroundFaces} from '../src/train-furniture-order.mjs';
+
+function setup(){const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.persist=()=>{};Object.assign(g,{house:null,openingBoard:false,scenery:[],weather:null,event:null});g.terrain.fill('grass');Object.assign(p,{x:400,y:400,hp:100,invincible:true,equipment:{hand1:'sword'}});g.enemies=[];return {g,p};}
+test('ground footprint keeps exact reach and width with capped charge progression',()=>{for(const charge of [0,.3,1.2,100]){const a=holdTelegraphGeometry({length:180,width:30,charge});assert.equal(a.reach,180);assert.equal(Math.min(...a.outline.map(p=>p[1])),-15);assert.equal(Math.max(...a.outline.map(p=>p[1])),15);assert.equal(a.progress,Math.min(1,charge/1.2));}});
+for(let d=0;d<8;d++)test('hold-position sword dash damages an overlapping flank once at direction '+d,()=>{
+ const {g,p}=setup(),a=d*Math.PI/4,dx=Math.cos(a),dy=Math.sin(a);Object.assign(p,{faceX:dx,faceY:dy});
+ const enemy=(offset,id)=>({id,kind:'skeleton',x:400+dx*95-dy*offset,y:400+dy*95+dx*offset,hp:1000,maxHp:1000,speed:0,damage:0,frozen:100,jumanjiVines:100,state:'hunt',cooldown:99});
+ const hit=enemy(20,901),miss=enemy(-50,902);g.enemies=[hit,miss];
+ for(let i=0;i<60;i++)g.update(.02,{keyboard:{attack:true,holdPosition:true,aimX:dx,aimY:dy}});
+ let damaged=0,hp=hit.hp;for(let i=0;i<45;i++){g.update(.02,{keyboard:{holdPosition:true,aimX:dx,aimY:dy}});if(hit.hp<hp)damaged++;hp=hit.hp;}
+ assert.equal(damaged,1);assert.ok(hit.hp<1000);assert.equal(miss.hp,1000);assert.equal(p.swordDash,undefined);
+});
+test('sword dash contact is limited to the actual swept section, not the unreached future lane',()=>{const p={x:10,y:0,swordDash:{originX:0,originY:0,x:1,y:0,length:180,sweepFrom:{x:6,y:0},sweepTo:{x:10,y:0}}};assert.ok(swordDashContact(p,{x:9,y:20,hitRadius:6}));assert.equal(swordDashContact(p,{x:100,y:0,hitRadius:14}),null);assert.equal(swordDashContact(p,{x:9,y:30,hitRadius:6}),null);});
+test('tree and gift add once to the left room without replacing authored house content',()=>{const h=defaultHouse(),before=structuredClone(h);ensureHouseChristmas(h);assert.deepEqual(h,before);const tree=h.furniture.find(f=>f.kind==='christmas_tree'),gift=h.furniture.find(f=>f.kind==='wrapped_gift');assert.ok(tree&&gift&&tree.x+tree.w<700&&gift.x+gift.w<700);const custom=structuredClone(h);custom.furniture=custom.furniture.filter(f=>!f.holidayDecor);custom.name='My saved house';const walls=JSON.stringify(custom.walls);ensureHouseChristmas(custom);assert.equal(custom.name,'My saved house');assert.equal(JSON.stringify(custom.walls),walls);assert.equal(custom.furniture.filter(f=>f.kind==='christmas_tree').length,1);});
+test('one gift yields one safe manual drop even with full bags and multiple explorers, and stays open after reload',()=>{for(let i=0;i<CHRISTMAS_SURPRISES.length;i++){const {g,p}=setup();g.house=defaultHouse();const gift=g.house.furniture.find(f=>f.kind==='wrapped_gift');Object.assign(p,{x:gift.x+10,y:gift.y+25});g.random=()=>i/CHRISTMAS_SURPRISES.length+.001;p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));assert.ok(unwrapChristmasGift(g,p,gift));assert.equal(g.loot.length,1);assert.equal(g.loot[0].type,CHRISTMAS_SURPRISES[i]);assert.equal(g.loot[0].qty,1);assert.equal(g.loot[0].manualPickup,true);assert.equal(unwrapChristmasGift(g,{...p,id:2},gift),false);const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(restored.house.furniture.find(f=>f.kind==='wrapped_gift').opened,true);assert.equal(restored.loot.length,1);}});
+test('Christmas surprise pool contains usable ordinary items with no restricted GM rewards',()=>{for(const id of CHRISTMAS_SURPRISES){assert.ok(ITEMS[id],id);assert.ok(!ITEMS[id].gmOnly&&!ITEMS[id].devOnly,id);}});
+test('actual house roof cuts away for indoor co-op players and follows the authored floor rectangles',()=>{const g={house:defaultHouse(),players:[{x:800,y:1200,hp:100}]};assert.ok(houseRoofSections(g).every(s=>s.visible));g.players.push({x:630,y:800,hp:100});const sections=houseRoofSections(g);assert.equal(sections[0].visible,false);assert.equal(sections[1].visible,true);for(const {floor}of sections){const roof=houseRoofGeometry(floor);assert.ok(roof.bounds.x<floor.x&&roof.bounds.w>floor.w);assert.equal(roof.perimeter.length,5);}});
+test('all eight station doors face their platform, buildings stay upright, and the approach remains walkable',()=>{const {g}=setup();assert.ok(enterWildLands(g).ok);const d=g.trainTest.design;for(const world of railwayStations(d)){const s=world.station,h=stationAssetHouse(world,stationHouse(world)),entry=stationEntrance(s);assert.equal(world._stationContext.angle,0);assert.ok((s.platformLanding.x-s.x)*entry.nx+(s.platformLanding.y-s.y)*entry.ny>0,s.name);assert.equal(stationBlocked(d,entry.x,entry.y,6),false,s.name+' door');const inside={x:entry.x-entry.nx*30,y:entry.y-entry.ny*30};assert.equal(stationBlocked(d,inside.x,inside.y,6),false,s.name+' inner aisle');assert.ok(h.walls.every(w=>w.w===16||w.h===16));assert.ok(h.furniture.filter(f=>f.stationDecor).every(f=>f.w===44&&f.h===18));assert.equal(stationDeckAt(d,entry.x+entry.nx*16,entry.y+entry.ny*16),10,s.name+' porch');}});
+for(let d=0;d<8;d++)test('train tables cover far-side sitters and leave near-side sitters visible at view '+d,()=>{const a=d*Math.PI/4,sa=Math.sin(a),ca=Math.cos(a),table={x:0,y:0,w:22,h:22};assert.ok(trainTableForegroundFaces(table,a,{x:-sa*30,y:-ca*30}).length>0);assert.equal(trainTableForegroundFaces(table,a,{x:sa*30,y:ca*30}).length,0);});

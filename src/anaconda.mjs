@@ -1,6 +1,8 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {anacondaBody,anacondaContact,updateAnacondaBody,ANACONDA_CLEARANCE} from './anaconda-body.mjs';
 import {nearbyScenery} from './performance.mjs';
 import {navigateEnemy,clearShot,flies} from './navigation.mjs';
+import {triggerEnemyTrap} from './enemy-traps.mjs';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const ANACONDA_EVENT={name:'The emerald river coils',kind:'anaconda',environment:'forest',count:1,hp:380,speed:46,damage:26,weight:4,
@@ -58,7 +60,7 @@ export function tickAnaconda(g,e,targets,dt,stats={},behaviors={}){
   anacondaBody(e,g);e.moving=false;
   if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return;}
   const trap=(g.traps||[]).find(t=>t.life>0&&t.variant!=='slow'&&anacondaContact(e,t,12).penetration>0);
-  if(trap){trap.life=0;e.state='snared';e.timer=2;e.anacondaTree=null;g.onSound('trap',e);return;}
+  if(trap){triggerEnemyTrap(g,e,trap);e.anacondaTree=null;return;}
   const target=targets.reduce((best,p)=>!best||distance(e,p)<distance(e,best)?p:best,null);
   if(!target)return;
   if(behaviors.melee===false&&['windup','bite'].includes(e.state)){e.state='hunt';e.attack=0;}
@@ -75,7 +77,7 @@ export function tickAnaconda(g,e,targets,dt,stats={},behaviors={}){
   }else{
     e.state='hunt';
     const d=distance(e,target),dx=(target.x-e.x)/(d||1),dy=(target.y-e.y)/(d||1);
-    if(behaviors.melee!==false&&e.cooldown<=0&&d<(stats.attackRange??145)&&clearShot(g,e,target)){
+    if(behaviors.melee!==false&&e.cooldown<=0&&d<(stats.attackRange??145)&&clearShot(g,e,target)&&requestEnemyGroupTurn(g,e,target,{rush:true})){
       e.state='windup';e.timer=stats.windup??.9;e.dx=dx;e.dy=dy;e.faceX=dx;e.faceY=dy;e.anacondaTree=null;
     }else if(behaviors.hunt!==false&&d>36&&(stats.detection==null||d<stats.detection)){
       if(g.house&&!clearShot(g,e,target))navigateEnemy(g,e,target,dt);

@@ -166,6 +166,6 @@ test('pack tick declines unrelated actors and melee attack waits for windup', ()
   assert.equal(CREATURE_PACK.tickActor(game, attacker, .05, [target]), true);
   assert.equal(hits, 0, 'attack does not resolve at windup start');
   CREATURE_PACK.tickActor(game, attacker, .2, [target]);
-  CREATURE_PACK.tickActor(game, attacker, .3, [target]);
+  CREATURE_PACK.tickActor(game, attacker, .4, [target]);
   assert.equal(hits, 1, 'attack resolves once when the warning expires');
 });

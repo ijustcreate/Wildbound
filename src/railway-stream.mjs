@@ -13,14 +13,28 @@ export function railwayStream(t){
  t.preparing=true;worker.postMessage({kind:'init',design:t.design});t.terrainStream=s;return s;
 }
 export function stopRailwayStream(t){t?.terrainStream?.worker.terminate();for(const v of t?.terrainStream?.ready.values()||[])(v.ground||v)?.close?.();if(t){delete t.terrainStream;delete t.preparing;}}
+export function railwayStarting(t,groundReady,now=performance.now()){
+ const stream=t.terrainStream;
+ if(!t.preparing||!stream)return false;
+ stream.startupAt??=now;
+ if(!stream.failed&&groundReady){t.preparing=false;return false;}
+ if(stream.failed||now-stream.startupAt>15000){
+  // The synchronous renderer can supply the same terrain and collision data.
+  stopRailwayStream(t);t.streamDisabled=true;return false;
+ }
+ return true;
+}
 export function streamRegion(t,x,y,priority=10){const s=railwayStream(t);if(!s)return true;const cx=Math.floor(x/1600),cy=Math.floor(y/1600),key=`region:${t.design.activeRoom||'surface'}:${cx}:${cy}`;return !!s.request('region',key,{cx,cy,room:t.design.activeRoom||null},priority);}
 export function streamImage(t,kind,key,args,priority=5){return railwayStream(t)?.request(kind,key,{...args,room:t.design.activeRoom||null},priority);}
-export function prepareRailwayView(t,bounds,players=[]){
- const s=railwayStream(t);if(!s)return;const now=performance.now(),last=s.lastView,dt=last?Math.max(.016,(now-last.time)/1000):.016;
+export function prepareRailwayView(t,bounds,players=[],viewId='shared'){
+ const s=railwayStream(t);if(!s)return;const now=performance.now();s.views??=new Map();
+ for(const [id,view]of s.views)if(now-view.seen>1000)s.views.delete(id);
+ let plan=s.views.get(viewId);if(!plan){plan={seen:now,pinned:new Set(),wanted:new Set()};s.views.set(viewId,plan);}plan.seen=now;
+ const last=plan.lastView,dt=last?Math.max(.016,(now-last.time)/1000):.016;
  const cx=(bounds.left+bounds.right)/2,cy=(bounds.top+bounds.bottom)/2,width=bounds.right-bounds.left,height=bounds.bottom-bounds.top,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
  const vx=last?(last.vx||0)*.7+clamp((cx-last.x)/dt,-800,800)*.3:0,vy=last?(last.vy||0)*.7+clamp((cy-last.y)/dt,-800,800)*.3:0,expanding=last?Math.max(0,(width-last.width)/dt):0;
- s.lastView={x:cx,y:cy,width,vx,vy,time:now};
- if(s.nextPlan>now)return;s.nextPlan=now+150;s.pinned.clear();
+ s.lastView=plan.lastView={x:cx,y:cy,width,vx,vy,time:now};
+ if(plan.nextPlan>now)return;plan.nextPlan=now+150;plan.pinned.clear();
  const far=(t.viewZoom||1)<.3,margin=far?2048:900,lookX=vx*3,lookY=vy*3;
  const area={left:Math.max(0,bounds.left-margin+Math.min(0,lookX)),right:Math.min(t.design.width,bounds.right+margin+Math.max(0,lookX)),top:Math.max(0,bounds.top-margin+Math.min(0,lookY)),bottom:Math.min(t.design.height,bounds.bottom+margin+Math.max(0,lookY))};
  for(const p of players){streamRegion(t,p.x,p.y,220);for(const dy of [-1600,0,1600])for(const dx of [-1600,0,1600])if(p.x+dx>=0&&p.y+dy>=0&&p.x+dx<t.design.width&&p.y+dy<t.design.height)streamRegion(t,p.x+dx,p.y+dy,130);}
@@ -28,10 +42,15 @@ export function prepareRailwayView(t,bounds,players=[]){
  if(t.design.wildLands&&!t.design.activeRoom)for(let y=0;y<Math.ceil(t.design.height/2048);y++)for(let x=0;x<Math.ceil(t.design.width/2048);x++){
   const key=`floor:surface:2048:${x}:${y}`;s.baseline.add(key);s.request('floor',key,{x:x*2048,y:y*2048,span:2048,far:true,room:null,seed:t.grassSeed||42},100);
  }
- s.prepareNearPoses=far&&(t.viewZoom||1)>.2&&expanding< -30;const wanted=new Set(),floor=(size,far,area,priority)=>{for(let y=Math.floor(area.top/size);y<=Math.floor((area.bottom-.1)/size);y++)for(let x=Math.floor(area.left/size);x<=Math.floor((area.right-.1)/size);x++){
-  const key=`floor:${t.design.activeRoom||'surface'}:${size}:${x}:${y}`;wanted.add(key);s.pinned.add(key);if(!far&&!t.design.activeRoom){const waterKey=`water:surface:${x*size}:${y*size}`;wanted.add(waterKey);s.request('water',waterKey,{x:x*size,y:y*size,room:null,prefetch:true},110);}s.request('floor',key,{x:x*size,y:y*size,span:size,far,seed:t.grassSeed||42,room:t.design.activeRoom||null,prefetch:true},priority);
+ s.prepareNearPoses=far&&(t.viewZoom||1)>.2&&expanding< -30;const wanted=plan.wanted=new Set(),floor=(size,far,area,priority)=>{for(let y=Math.floor(area.top/size);y<=Math.floor((area.bottom-.1)/size);y++)for(let x=Math.floor(area.left/size);x<=Math.floor((area.right-.1)/size);x++){
+  const key=`floor:${t.design.activeRoom||'surface'}:${size}:${x}:${y}`;wanted.add(key);plan.pinned.add(key);if(!far&&!t.design.activeRoom){const waterKey=`water:surface:${x*size}:${y*size}`;wanted.add(waterKey);s.request('water',waterKey,{x:x*size,y:y*size,room:null,prefetch:true},110);}s.request('floor',key,{x:x*size,y:y*size,span:size,far,seed:t.grassSeed||42,room:t.design.activeRoom||null,prefetch:true},priority);
  }};
+ if(!t.design.wildLands)for(let y=Math.max(0,Math.floor(bounds.top/1600));y<=Math.min(Math.ceil(t.design.height/1600)-1,Math.floor(bounds.bottom/1600));y++)for(let x=Math.max(0,Math.floor(bounds.left/1600));x<=Math.min(Math.ceil(t.design.width/1600)-1,Math.floor(bounds.right/1600));x++){
+  const key=`forest:${x}:${y}:800`;plan.pinned.add(key);wanted.add(key);s.request('forest',key,{x:x*1600,y:y*1600,span:1600,size:800},180);
+ }
  if(t.design.wildLands){floor(far?2048:512,far,area,105);if(s.prepareNearPoses){const nearArea={left:Math.max(0,cx-3600+Math.min(0,lookX)),right:Math.min(t.design.width,cx+3600+Math.max(0,lookX)),top:Math.max(0,cy-2400+Math.min(0,lookY)),bottom:Math.min(t.design.height,cy+2400+Math.max(0,lookY))};s.nearForecast=nearArea;floor(512,false,nearArea,115);}if(!far&&expanding>2000)floor(2048,true,{left:0,top:0,right:t.design.width,bottom:t.design.height},100);}
- for(const [key,job]of s.queue)if(job.args.prefetch&&!wanted.has(key))s.queue.delete(key);
+ // Retain every active viewport's work without requesting the empty area between them.
+ s.pinned.clear();const allWanted=new Set();for(const view of s.views.values()){for(const key of view.pinned)s.pinned.add(key);for(const key of view.wanted)allWanted.add(key);}
+ for(const [key,job]of s.queue)if(job.args.prefetch&&!allWanted.has(key))s.queue.delete(key);
  s.forecast=area;
 }

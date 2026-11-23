@@ -6,8 +6,12 @@ export function unitStartingArea(kind){const def=creatures[kind];return def?.beh
 export function eventUnitKinds(event){return [...new Set(event.enemies?.length?event.enemies.filter(e=>e.count>0).map(e=>e.kind):event.squad?.length?event.squad:[event.kind])].filter(Boolean);}
 export function startingAreaSpots(g,area){
   if(area==='any')return [];if(!START_AREAS.includes(area))return [];
+  const p=(g.players||[]).find(p=>p.hp>0&&!p.room&&p.id===g.roll?.playerId)||(g.players||[]).find(p=>p.hp>0&&!p.room);
+  const local=p&&(g.trainTest?.design.wildLands||g.mapMode==='boundless'),ox=local?Math.floor(p.x/32)-25:0,oy=local?Math.floor(p.y/32)-25:0;
   const spots=[];for(let y=1;y<49;y++)for(let x=1;x<49;x++){
-    const px=x*32+16,py=y*32+16,kind=waterAt(g,px,py);
+    const px=(x+ox)*32+16,py=(y+oy)*32+16;
+    if(local&&Math.hypot(px-p.x,py-p.y)>650)continue;
+    const kind=waterAt(g,px,py);
     const match=area==='deep_water'?kind==='water':area==='shallow_water'?kind==='shallow':area==='land'?!['water','shallow','floodbridge','quicksand','mud'].includes(kind):kind===area;
     if(match&&(!g.blocked||!g.blocked(px,py,8,false,true,false,0)))spots.push({x:px,y:py});
   }return spots;

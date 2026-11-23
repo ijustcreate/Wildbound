@@ -3,6 +3,7 @@ import { creatures } from './definitions.mjs';
 import {beachWorld} from './beach-world.mjs';
 import {BOUNDLESS_GENERATION_VERSION,boundlessMap,naturalBoundlessTile,boundlessGeneratedTile,boundlessRegionPlan,boundlessRegionPlanTask,regionRouteDistance,translateRegionProps,clearBoundlessGeneration,regionSeed} from './boundless-generation.mjs';
 import {applyAuthoredScenes,authoredPropsInRegion} from './world-authoring-runtime.mjs';
+import {translateShadowForestState} from './shadow-forest-layout.mjs';
 import {forestUnderstoryTask} from './forest-props.mjs';
 
 // Boundless worlds are streamed in fixed 50×50 tile regions. Only scenery
@@ -63,6 +64,7 @@ export function* createBoundlessChunkTask(g,cx,cy){
   if(g.localWorld)generated.props.push(...authoredPropsInRegion(g.environment,cx,cy));
   let realmState=null;
   if(plan.realmState){realmState=structuredClone(plan.realmState);const ox=cx*1600,oy=cy*1600;Object.assign(realmState,{originX:ox,originY:oy,key:plan.key});realmState.chambers=realmState.chambers.map(p=>({...p,x:p.x+ox,y:p.y+oy}));if(realmState.animals)for(const a of realmState.animals){a.x+=ox;a.y+=oy;if(Number.isFinite(a.homeX))a.homeX+=ox;if(Number.isFinite(a.homeY))a.homeY+=oy;}}
+  if(realmState)translateShadowForestState(realmState,cx*1600,cy*1600);
   return {...generated,realmState,plan};
  }
  const props=[],biome=plan.biome,random=(x,y)=>regionSeed(plan.seed,x,y)/2147483647;

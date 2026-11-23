@@ -5,6 +5,8 @@ import {cemeteryEvent} from './graveyard-events.mjs';
 import {UPPER_TORCHES} from './temple-upper-art.mjs';
 import {worldLightField} from './world-lighting.mjs';
 import {pointLightVisibility} from './realtime-shadows.mjs';
+import {encounterLightSources} from './encounter-lights.mjs';
+import {winterLightSources,drawWinterNight} from './winter-night.mjs';
 const sourceFrames=new WeakMap();
 let nightMask;
 
@@ -50,6 +52,7 @@ export function lightSources(g,room=null) {
     const light = carriedLight(p);
     return light ? [{ x: room?p.roomX:p.x, y: room?p.roomY:p.y, ...light, owner:`actor:${p.id}`, room, height:30+(p.jumpHeight||0)+(p.groundHeight||0) }] : [];
   });
+  sources.push(...encounterLightSources(g,room));
   // When the hero is controlling a companion, the active source follows that
   // companion while this second source stays on the displaced hero.
   if(!room)for(const p of g.players||[])if(p.hp>0&&p.controlMainLoadout&&p.controlPetPosition){
@@ -81,8 +84,11 @@ export function lightSources(g,room=null) {
     sources.push({x:npc.campX??npc.x,y:(npc.campY??npc.y)+10,height:16,radius:150,intensity:.82,color:'#ffad4c'});
   if(g.villageCampState?.fire)sources.push({x:g.villageCampState.fire.x,y:g.villageCampState.fire.y,height:20,radius:150,intensity:.92,color:'#ffad4c',owner:`camp:${g.villageCampState.campId}`});
   for(const p of g.scenery||[])if(p.kind==='bayou_shrine'&&!p.depleted){const scale=p.size/128;for(const dx of [-25,31])sources.push({x:p.x+dx*scale,y:p.rootY-15*scale,height:26,radius:115,intensity:.55,color:'#efcf87',owner:'prop:'+p.id});}
-  for(const p of g.scenery||[])if(p.realm&&!p.depleted&&!p.falling&&['cave_crystal','amber_crystal','shadow_obsidian'].includes(p.kind))sources.push({x:p.x,y:p.rootY-18,height:22,radius:100,intensity:.55,color:p.kind==='amber_crystal'?'#e8bd78':p.kind==='shadow_obsidian'?'#b291d1':'#91d9d1'});
+  for(const p of g.scenery||[])if(p.realm&&!p.depleted&&!p.falling&&['cave_crystal','amber_crystal','shadow_obsidian','soul_brazier'].includes(p.kind))sources.push({x:p.x,y:p.rootY-(p.kind==='soul_brazier'?42:18),height:p.kind==='soul_brazier'?44:22,radius:p.kind==='soul_brazier'?145:100,intensity:p.kind==='soul_brazier'?.7:.55,color:p.kind==='amber_crystal'?'#e8bd78':p.kind==='shadow_obsidian'?'#84bfc7':p.kind==='soul_brazier'?'#70c9ed':'#91d9d1',owner:'prop:'+p.id});
+  for(const p of g.scenery||[])if(p.kind==='soul_candles'&&!p.depleted){const scale=p.size/64;sources.push({x:p.x,y:p.rootY-25*scale,height:26*scale,radius:112,intensity:.63+Math.sin((g.time||0)*7+p.x)*.025,color:p.candleHue==='purple'?'#c282ff':'#ff75c8',owner:'prop:'+p.id});}
+  for(const p of g.scenery||[])if(['wisp_lantern','moonwell','thorn_shrine','hollow_stump'].includes(p.kind)&&!p.depleted){const lift=p.kind==='wisp_lantern'?p.size*.48:p.kind==='thorn_shrine'?p.size*.42:p.size*.24;sources.push({x:p.x,y:p.rootY-lift,height:lift,radius:p.kind==='wisp_lantern'?115:135,intensity:p.kind==='wisp_lantern'?.58:.4,color:p.kind==='moonwell'?'#a8b6ed':'#ce9ce8',owner:'prop:'+p.id});}
   sources.push(...houseLightSources(g));
+  sources.push(...winterLightSources(g));
   sourceFrames.set(g,{key:cacheKey,sources});return sources;
 }
 export function lightAt(g, point) {
@@ -175,6 +181,10 @@ export function drawNightLight(c, g, camera, w, h,room=null,{occluded=false}={})
   const dark = 1 - daylight(g);
   c.save();
   if (dark > 0) {
+    const winterSources=g.generatedEnvironment==='ice'&&!room?lightSources(g):null;
+    if(winterSources&&drawWinterNight(c,g,camera,w,h,dark,winterSources,occluded?worldLightField(g,winterSources):null)){
+      // Snow reflects a blue night sky, with local warm light cut into the veil.
+    }else{
     const fixtures=houseLightSources(g).filter(s=>s.houseFixture);
     if(fixtures.length&&g.generatedEnvironment==='house'&&typeof document!=='undefined'){
       nightMask||=document.createElement('canvas');if(nightMask.width!==w||nightMask.height!==h){nightMask.width=w;nightMask.height=h;}
@@ -185,6 +195,7 @@ export function drawNightLight(c, g, camera, w, h,room=null,{occluded=false}={})
         const glow=mask.createRadialGradient(x,y,0,x,y,r);glow.addColorStop(0,'#000e');glow.addColorStop(.55,'#000a');glow.addColorStop(1,'#0000');mask.fillStyle=glow;mask.fillRect(x-r,y-r,r*2,r*2);}
       mask.restore();mask.globalCompositeOperation='source-over';c.drawImage(nightMask,0,0);
     }else{c.fillStyle = `rgba(9,16,39,${dark * 0.28})`;c.fillRect(0, 0, w, h);}
+    }
   }
   // Dynamic mode already composites height-tested light beneath scenery and
   // source-facing light/rims on surfaces. Never wash an unoccluded disc over it.
@@ -203,14 +214,15 @@ export function drawNightLight(c, g, camera, w, h,room=null,{occluded=false}={})
   }
   c.restore();
 }
-export function drawNightStatus(c, g, w, h) {
+export function drawNightStatus(c, g, w, h, avoidRight = 0) {
   if (g.phase !== 'play') return;
   const phase = timeOfDay(g), t = (g.sky?.elapsed || 0) % DAY_LENGTH;
   const next = phase === 'day' ? 240 : phase === 'dusk' ? 300 : phase === 'night' ? 450 : DAY_LENGTH;
   c.save(); c.font = '8px monospace'; c.textAlign = 'right';
-  const text = g.generatedEnvironment==='caverns'?'UNDERGROUND':g.generatedEnvironment==='shadow'?'BEYOND THE VEIL':`${phase.toUpperCase()} · ${Math.ceil(next - t)}s`;
-  c.fillStyle = '#11281fe8'; c.fillRect(w - 133, h - 68, 124, 17);
-  c.fillStyle = phase === 'night' ? '#c8d8ff' : '#ebd494'; c.fillText(text, w - 17, h - 56);
+  const text = g.generatedEnvironment==='caverns'?'UNDERGROUND':g.generatedEnvironment==='shadow'?'THE ENCHANTED SHADOW FOREST':`${phase.toUpperCase()} · ${Math.ceil(next - t)}s`;
+  const right = w - 9 - avoidRight;
+  c.fillStyle = '#11281fe8'; c.fillRect(right - 124, h - 68, 124, 17);
+  c.fillStyle = phase === 'night' ? '#c8d8ff' : '#ebd494'; c.fillText(text, right - 8, h - 56);
   const hunter = g.enemies?.find(e=>e.kind==='hunter' && e.night?.objective?.status==='active');
   if(hunter) {
     const remaining=Math.ceil(120-hunter.night.objective.elapsed);

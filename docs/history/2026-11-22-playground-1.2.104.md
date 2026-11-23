@@ -1,0 +1,36 @@
+# Small playground interactions — 1.2.104
+
+Checkout: C:/Users/New User/Desktop/Wildbound; branch Wildbound_worlds; origin https://github.com/ijustcreate/Wildbound.git. Source HEAD f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 plus modified source. Earlier uncommitted work is preserved. No commit/push or web publication requested.
+
+## Behavior
+
+- Additive, once-per-map playground placement uses clear existing terrain. Three distinct apple trees in house/forest/temple, seven pots, one physical ball, up to two short three-step routes with a bell, and up to four floating logs on actual shorelines. It does not rewrite scenery, authored houses, terrain or player profiles. The train sandbox and underground rooms do not inherit expedition props. Normal session snapshots and paused house-world maps preserve state; generating a fresh map clears it.
+- Pots: 35% empty, 35% three coins, 12% a native hopping green frog, 8% hostile imp, 10% six native chickens. Broken pots remain shards and cannot pay twice. Spawn sites respect solid geometry and water. Creatures released by a sword strike join its target set on the next strike, so the opening swing does not kill the surprise.
+- Apple trees: interact or melee shakes out up to two of five finite apples, with a short shake cooldown. Apples fall, bounce, can be caught with Interact, and follow the carrier. Interact again eats for 12 HP when hurt or packs the apple at full health; a full bag keeps it held. Attack throws it with the equipped weapons preserved. Backpack apples use the existing item Use action. Nearby chickens, pigs and deer can approach and eat grounded apples unless fleeing, hurt, frozen, trapped or carried. Loose apples expire after three minutes; held apples are retained; the loose-apple cap is 32.
+- Ball: body contact kicks it; melee launches it faster with a bounce. Swept small movement steps rebound from solids and stop it crossing map boundaries. Water slows it and it floats with a little drift. No new inventory or mode is required.
+- Routes: fixed short gaps between stump/rock surfaces use existing jump/support physics and depth sorting. The endpoint bell rings by Interact, melee, or arriving from a jump; its three-coin reward happens once. These are optional play spots, not a new quest system.
+- Logs: broad, low floating supports drift while their footprint remains in water and avoid solids. Players can board, steer gently with movement input, share the same log, and jump off. A grounded rider steers rather than walking off accidentally. Log support keeps the player's feet above water; leaving the deck returns to existing jumping/swimming behavior.
+
+## Native art brief
+
+Skill: wildbound-pixel-assets. Production references are Wildbound's existing forest props, native bank frog, player and household objects, inspected in the actual Electron renderer. New fixed-view props use native canvas artwork with integer logical pixels, broad silhouettes and a few identifying clusters. No generated sheets or changed humanoid rigs. Apple trees use a stepped rounded leaf crown, forked brown trunk and five readable red fruit shapes; pots have a narrow mouth and broad terracotta body; the ball has simple patches; logs have end grain and a broad upper face. Stumps have cut rings and rocks use a few stone facets. Green ramp #294c34/#426b3e/#64854a/#879c58; wood #503b2c/#92633d; fruit #563529/#8f3834/#bc4e3c/#e38a59. Existing authored rigs and custom artwork remain untouched.
+
+Visual review found that an early review camera cropped the props, the first pot silhouette resembled a barrel, and stump/rock tops needed clearer contours. The review camera was widened and these silhouettes were revised. Native gameplay captures are under ignored test-output/playground/{source,packaged}/. These are implementation previews, not recorded user aesthetic approval.
+
+## Verification
+
+Focused playground unit tests: 12 passed, zero failures. Covers placement preservation, all five pot outcomes, surprise survival after the real sword strike, apple catch/throw/eat/pack/full bag, facing and walls, ball contact/bounce/water, real jump landing, shared log support/steering/jump-off, one-time bell rewards, wildlife feeding and session restoration.
+
+Source isolated-profile muted Electron: 23 checks passed, no renderer errors. Covers native Interact and attack paths, physical falling/caught/thrown apples, actual sword animation pot contact, surprise actors, world rendering/depth, two riders, log support/steering/jump-off, small-window drawing and inventory icon pixels. One failed intermediate test selected a newly appended pot as its log fixture; selecting the actual log corrected the test. No player save, sound settings, Windows volume or existing game process was changed.
+
+Hardware-controller play, remote multiplayer, extended balancing and aesthetic user approval remain unverified.
+
+## Final desktop receipt
+
+- Full preliminary regression: 1,909 tests passed, zero failures. Required `scripts/rebuild-desktop.ps1 -TestConcurrency 8` independently passed all 1,909 tests, checked syntax in 862 runtime files, packaged successfully and refreshed the desktop shortcut; exit 0.
+- Exact output: `C:/Users/New User/Desktop/Wildbound/dist/1.2.104-2026-11-22T16-57-05-602Z/Wildbound-win32-x64/Wildbound.exe`. Built UTC 2026-11-22T16:57:23.568Z, version 1.2.104, source f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 plus modified source, preview=false.
+- Actual packaged EXE `--boot-smoke-test --mute-audio` exited 0: failed=0, ready lobby, version 1.2.104, muted test audio, errors=[]. The exact packaged runtime also passed all 23 isolated-profile playground Electron checks, failed=0, no renderer errors. Source and packaged captures are in `test-output/playground/`.
+- All 11 feature runtime files touched for this assignment match the package byte-for-byte. Packaged package.json retains version 1.2.104 and production dependencies; the normal packager omits development scripts and the lockfile. A broader comparison covered 1,605 packaged runtime/assets/authored files: 1,604 match the final source tree. A separate `src/bee-swarm.mjs` edit appeared at local 08:58:07, after this package was built at 08:57:23; that later edit is preserved in source and is not included in this tested package. Nine donor/source/backup files are intentionally excluded by the existing packaging rules. Do not describe the package as including edits made after its snapshot.
+- `C:/Users/New User/Desktop/Wildbound Worlds (1.2.104).lnk` targets `C:/Users/New User/Desktop/Wildbound/Play Wildbound.cmd`, blank arguments, repository working directory, `assets/wildbound-icon.ico`. Launcher `--check` selects the exact output above. Normal save profile. No existing player's game process was stopped.
+- Shared `authored/rigs.json` SHA-256 remains `9a2c55d1090231ce5ec11cf06091224a9efb1b62a0c1bb0b3eb312a0cdad0be1`. Personal profiles, house drafts, character records and saved sound settings were not replaced. No commit, push, release upload or web deployment.
+- Logs: ignored `test-output/playground-{unit,full-tests,rebuild,electron,packaged-electron}.log`; detailed content/build/smoke receipt `test-output/playground-delivery.json`; package `test-output/boot-smoke.json`.

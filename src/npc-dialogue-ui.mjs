@@ -33,30 +33,28 @@ export function npcDialoguePanel(panel, g, p, button) {
   if (close) {
     close.setAttribute('aria-label', `End conversation · ${controls.close}`);
     close.title = `${controls.close} · End conversation`;
+    close.textContent='×';
     close.onclick = () => { if (p.ui === u) npcDialogueAction(g, p, 'close'); };
   }
   const box = el('section', '', 'npc-dialogue');
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-label', `Conversation with ${npc?.name || 'a friend'}`);
   const cast = el('div', '', 'npc-dialogue-cast');
-  for (const [side, actor, title] of [
-    ['player', p, 'Adventurer'], ['npc', npc, npc?.title || 'Friendly face'],
+  for (const [side, actor] of [
+    ['npc', npc],
   ]) {
     const portrait = el('figure', '', `npc-dialogue-person npc-dialogue-${side}`);
     const canvas = el('canvas', '', 'npc-dialogue-portrait');
-    canvas.width = 180; canvas.height = 132;
+    canvas.width = 200; canvas.height = 220;
     canvas.dataset.portrait = side;
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', `${actor?.name || 'Friend'} · live portrait`);
-    const caption = el('figcaption');
-    caption.append(el('strong', actor?.name || 'Friend'), el('small', title));
-    portrait.append(canvas, caption); cast.append(portrait);
+    portrait.append(canvas); cast.append(portrait);
   }
   const body = el('div', '', 'npc-dialogue-body');
   const heading = el('div', '', 'npc-dialogue-heading');
-  heading.append(el('h2', view?.title || 'A friendly conversation'));
-  if (view?.totalStages > 1) heading.append(el('small',
-    `${view.stage} / ${view.totalStages}`, 'npc-dialogue-stage'));
+  heading.append(el('h2',npc?.name||'A friendly face'));
+  if(view?.title||npc?.title)heading.append(el('small',view?.title||npc.title,'npc-dialogue-subtitle'));
   body.append(heading, el('p', view?.text || 'Our friend has stepped away. You can close this conversation.', 'npc-dialogue-text'));
   if (view?.quest) {
     const quest = view.quest, card = el('section', '', 'npc-dialogue-quest');
@@ -89,7 +87,7 @@ export function npcDialoguePanel(panel, g, p, button) {
     b.dataset.index = index;
     b.disabled = !!choice.disabled;
     b.setAttribute('aria-current', String(selected));
-    b.append(el('span', selected ? `${controls.accept} · Selected` : `${index + 1}`, 'npc-dialogue-choice-key'),
+    b.append(el('span', selected ? '›' : `${index + 1}`, 'npc-dialogue-choice-key'),
       el('strong', choice.label));
     if (choice.detail) b.append(el('small', choice.detail, 'npc-dialogue-choice-detail'));
     if (choice.disabled) b.append(el('small', 'Unavailable', 'npc-dialogue-choice-detail'));
@@ -99,7 +97,7 @@ export function npcDialoguePanel(panel, g, p, button) {
   const notice = el('p', view?.notice || u.notice || '', 'npc-dialogue-notice');
   notice.setAttribute('role', 'status'); notice.hidden = !notice.textContent;
   body.append(notice);
-  box.append(cast, body, el('small', `${controls.select}: choose · ${controls.accept}: reply · ${controls.close}: leave`, 'npc-dialogue-help'));
+  box.append(cast, body, el('small', `${controls.select}: Choose · ${controls.accept}: Reply · ${controls.close}: Close`, 'npc-dialogue-help'));
   panel.append(box);
 }
 
@@ -119,7 +117,7 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
     // the canvas edge, keeping the head/shoulders and equipped upper body.
     animator.draw(c, {
       ...source, sprite: !player&&source.sprite==='alan'?'alan':!player&&source.villagerId?'villager':'explorer-teal', kind: !player&&source.sprite==='alan'?'alan':!player&&source.villagerId?'villager':'player',
-      x: canvas.width / 2, y: canvas.height + 52,
+      x: canvas.width / 2, y: canvas.height + 34,
       // A dialogue portrait is a stable presentation render, never the live
       // actor's direction or movement state.
       faceX: 0, faceY: 1,
@@ -130,7 +128,7 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
       bowAiming: false, bowAimBlend: 0, bowVisualAngle: undefined, gatherTime: 0,
       equipment: source.equipment || {},
       step: undefined, dx: 0, dy: 0, direction: undefined,
-    }, time, 200);
+    }, time, 260);
     c.restore();
   }
 }

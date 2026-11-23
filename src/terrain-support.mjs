@@ -1,5 +1,6 @@
 import {realmFootprint,realmTerrainAt} from './realm-world.mjs';
 import {nearbyScenery} from './performance.mjs';
+import {playgroundDepth} from './playground-geometry.mjs';
 export const VICTORY_CHEST={x:776,y:905,w:48,h:22,height:20};
 export const supplyChestShape=chest=>({x:chest.x-14,y:chest.y-7,w:28,h:14,height:14});
 export function supplyChestBlocked(g,x,y,radius,elevation,from){
@@ -50,6 +51,7 @@ export function terrainSupport(g,a,offset=0){
   return height;
 }
 export function terrainActorDepth(g,a,depth=a.y){
+  depth=playgroundDepth(g,a,depth);
   for(const p of g.mapMode==='boundless'?nearbyScenery(g.scenery||[],a.x,a.y,32):g.scenery||[]){const s=stumpShape(p)||rockSurface(p);if(s&&(a.jumpHeight||a.groundHeight||0)>=s.height&&a.x>=s.x&&a.x<=s.x+s.w&&a.y>=s.y-14&&a.y<=s.y+s.h)depth=Math.max(depth,s.y+s.h+.1);}
   const chest=VICTORY_CHEST;
   if(g.victoryChest&&(a.jumpHeight||a.groundHeight||0)>=chest.height&&a.x>=chest.x&&a.x<=chest.x+chest.w&&a.y>=chest.y&&a.y<=chest.y+chest.h)depth=Math.max(depth,chest.y+chest.h+.1);

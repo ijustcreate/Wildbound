@@ -1,3 +1,4 @@
+import {drawOwlCage,drawCagedSnowyOwl} from './snowy-owl-art.mjs';
 // Station study: stepped silhouettes, broad material planes, dark openings.
 // Native pixels remain readable at gameplay size; no bitmap or save replacement.
 export function drawStationCargo(c,kind,x,y,time=0){
@@ -18,18 +19,7 @@ export function drawStationCargo(c,kind,x,y,time=0){
   for(const [dx,dy,w,h]of[[-23,-21,32,19],[-8,-39,26,17],[-25,-49,20,12]]){r(x+dx+w*.6|0,y+dy,2,h,'#695b43');r(x+dx,y+dy+h*.45|0,w,2,'#e2cba0');r(x+dx+4,y+dy+3,8,5,'#f1e3bf');r(x+dx+5,y+dy+5,5,1,'#9b8a6b');}
   p([[6,-41],[2,-44],[-1,-43],[3,-40],[-2,-39],[2,-37],[6,-40],[10,-37],[13,-39],[9,-41],[12,-44],[9,-45]],'#7a6446');
  }else if(kind==='owl_crate'){
-  // An open arched carrier with a side plane and a small owl inside.
-  p([[-21,0],[-23,-30],[-19,-39],[-11,-45],[10,-45],[20,-39],[24,-30],[24,0]],'#302e2b');
-  p([[-18,-30],[-15,-37],[-8,-41],[9,-41],[16,-36],[19,-30],[19,-4],[-18,-4]],'#202d30');
-  p([[19,-30],[24,-33],[27,-27],[27,-4],[19,0]],'#71543c');
-  p([[-11,-10],[-10,-25],[-6,-31],[7,-31],[12,-24],[11,-10],[6,-5],[-6,-5]],'#a28d68');
-  p([[-11,-24],[-12,-34],[-5,-30],[5,-30],[12,-34],[11,-24],[7,-19],[-6,-19]],'#cebc91');
-  for(const dx of[-6,5]){r(x+dx-3,y-28,7,7,'#eee0b6');r(x+dx,y-26,2,4,'#263237');}p([[-1,-22],[3,-22],[1,-18]],'#d7aa54');
-  r(x-6,y-14,3,2,'#d8c49a');r(x+3,y-14,3,2,'#d8c49a');r(x-3,y-10,6,2,'#d8c49a');
-  for(const dx of[-18,15]){r(x+dx,y-31,3,28,'#aa8758');r(x+dx,y-30,1,25,'#ddbe85');}
-  for(const dx of[-12,10])r(x+dx,y-37,1,33,'#80755a');
-  p([[-23,-30],[-19,-39],[-11,-45],[10,-45],[20,-39],[24,-30],[20,-30],[16,-36],[8,-41],[-8,-41],[-16,-36],[-19,-30]],'#c2a16c');
-  r(x-23,y-5,47,5,'#b3905e');r(x-20,y-4,40,1,'#e0be84');r(x-6,y-50,12,2,'#322f29');r(x-8,y-48,2,6,'#a38459');r(x+6,y-48,2,6,'#a38459');
+  drawOwlCage(c,{x,y},false,'back');drawCagedSnowyOwl(c,{x,y},time);drawOwlCage(c,{x,y});
  }else if(kind==='flower_tub'){
   p([[-20,-20],[-16,-2],[-10,2],[11,2],[18,-2],[22,-20],[17,-25],[-14,-25]],'#353b2d');
   p([[-18,-19],[-13,-2],[10,0],[17,-3],[20,-20]],'#8f6945');p([[11,-20],[20,-20],[17,-3],[10,0]],'#594835');

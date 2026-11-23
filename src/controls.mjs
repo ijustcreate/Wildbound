@@ -17,6 +17,8 @@ export const PAD_NAMES = [
   "D-right",
 ];
 export const DEFAULT_MAPPING = {attack:2,jump:0,dodge:7,loot:1,trap:10,interact:3,pause:9,board:14,potion:4,block:6,controlCycle:5,inventory:8,portal:12,bait:13,field:11};
+const MAPPING_VERSION = 1;
+export const KEYBOARD_ACTION_CODES = {bait:'KeyT'};
 const PREVIOUS_MAPPING = {...DEFAULT_MAPPING,dodge:7,board:4,potion:5,block:6};
 // Driving uses physical face positions, independently of combat remapping.
 export function vehiclePadInput(pad) {
@@ -27,14 +29,21 @@ export function lobbyPadInput(pad){
   return {dodge:!!pad.buttons[7]?.pressed,block:!!pad.buttons[6]?.pressed,holdPosition:!!pad.buttons[6]?.pressed,inventory:!!pad.buttons[8]?.pressed,portal:!!pad.buttons[12]?.pressed,potion:!!pad.buttons[4]?.pressed};
 }
 const LEGACY_MAPPING = {...PREVIOUS_MAPPING,attack:0,jump:1,loot:2};
-export function controllerFamily(pad) {
+export function physicalControllerFamily(pad) {
   const id = String(pad?.id || '').toLowerCase();
-  const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id)||globalThis.localStorage?.getItem('wildbound-controller-family');
-  if(['switch','xbox','playstation','generic'].includes(override))return override;
   if (/switch|nintendo|joy[- ]?con|pro controller|057e/.test(id)) return 'switch';
   if (/xbox|xinput|360/.test(id)) return 'xbox';
   if (/dualsense|dualshock|playstation|ps[345]|sony/.test(id)) return 'playstation';
   return 'generic';
+}
+export function controllerFamily(pad) {
+  const id = String(pad?.id || '').toLowerCase();
+  const override=globalThis.localStorage?.getItem('wildbound-controller-family:'+id)||globalThis.localStorage?.getItem('wildbound-controller-family');
+  return ['switch','xbox','playstation','generic'].includes(override)?override:physicalControllerFamily(pad);
+}
+export function controllerMenuButtons(padOrPhysicalFamily) {
+  const family = typeof padOrPhysicalFamily === 'string' ? padOrPhysicalFamily : physicalControllerFamily(padOrPhysicalFamily);
+  return family === 'switch' ? {confirm:1,back:0} : {confirm:0,back:1};
 }
 export const CONTROLLER_NAMES = { switch:'Nintendo Switch', xbox:'Xbox / Xbox 360', playstation:'PlayStation', generic:'Game controller' };
 const FACE_NAMES = {
@@ -54,17 +63,21 @@ export function labelsForController(mapping, padOrFamily) {
   const names = controllerButtonNames(family);
   return Object.fromEntries(Object.entries(mapping).map(([action, index]) => [action, names[index] || `Button ${index}`]));
 }
-export function normalizeMapping(saved = {}) {
-  saved={...saved};
-  // Repair the reversed menu pair without discarding other custom bindings.
-  if(saved.inventory===9&&saved.pause===8){saved.inventory=8;saved.pause=9;}
-  // Existing installs saved every default binding. Move that untouched layout
-  // forward, while preserving any layout the player customized.
-  if(Object.keys(saved).length&&[LEGACY_MAPPING,PREVIOUS_MAPPING].some(layout=>Object.entries(saved).every(([action,value])=>layout[action]===value)))saved={};
-  // Older saves predate an explicit creature-control binding. L/R mean the
-  // lower triggers; the right bumper owns creature control. Preserve faces.
-  if(!Number.isInteger(saved.controlCycle)||[4,6].includes(saved.board)||(saved.dodge===5&&saved.block===4))
-    Object.assign(saved,{dodge:7,block:6,board:14,potion:4,portal:12,controlCycle:5});
+export function serializeMapping(mapping) {
+  return JSON.stringify({...mapping,mappingVersion:MAPPING_VERSION});
+}
+export function normalizeMapping({mappingVersion, ...saved} = {}) {
+  if(!mappingVersion){
+    // Repair the reversed menu pair without discarding other custom bindings.
+    if(saved.inventory===9&&saved.pause===8){saved.inventory=8;saved.pause=9;}
+    // Existing installs saved every default binding. Move that untouched layout
+    // forward, while preserving any layout the player customized.
+    if(Object.keys(saved).length&&[LEGACY_MAPPING,PREVIOUS_MAPPING].some(layout=>Object.entries(saved).every(([action,value])=>layout[action]===value)))saved={};
+    // Older saves predate an explicit creature-control binding. L/R mean the
+    // lower triggers; the right bumper owns creature control. Preserve faces.
+    if(!Number.isInteger(saved.controlCycle)||[4,6].includes(saved.board)||(saved.dodge===5&&saved.block===4))
+      Object.assign(saved,{dodge:7,block:6,board:14,potion:4,portal:12,controlCycle:5});
+  }
   const result = {}, used = new Set();
   for (const [action, fallback] of Object.entries(DEFAULT_MAPPING)) {
     const value = saved[action];
@@ -85,7 +98,7 @@ export function renderPlayerMappings(root, game, mapping, pads = Array.from(navi
     const card=document.createElement('section');card.className='controller-card';
     const title=document.createElement('h4');title.textContent=row.name;card.append(title);
     const desc=document.createElement('p');desc.textContent=row.device==='keyboard'?'Keyboard / mouse':row.pad?
-      `Controller ${row.pad.index+1} · ${CONTROLLER_NAMES[controllerFamily(row.pad)]} · ${row.pad.id} · ${row.pad.mapping==='standard'?'standard layout':'device-specific button layout'}`:
+      `Controller ${row.pad.index+1} · ${CONTROLLER_NAMES[physicalControllerFamily(row.pad)]} · ${row.pad.id} · ${row.pad.mapping==='standard'?'standard layout':'device-specific button layout'}`:
       row.device.startsWith('pad:')?'Controller disconnected':row.device;card.append(desc);
     const list=document.createElement('dl');
       const bindings=row.device==='keyboard'?{Move:'WASD / arrows',Aim:'Mouse',...KEYS}:{Move:'Left stick',Aim:'Right stick','Loot labels':controllerButtonNames(row.pad||'generic')[15],'Summon skill':'Keyboard R · Tame / Raise Skeleton',...Object.fromEntries(Object.entries(mapping).map(([k,v])=>[k==='controlCycle'?'Control creature':k,`${labelsForController(mapping, row.pad || 'generic')[k]} · ${v}`]))};
@@ -137,7 +150,7 @@ export const KEYS = {
   block: "C",
   board: "B",
   pause: "Esc",
-  bait: "V",
+  bait: KEYBOARD_ACTION_CODES.bait.slice(3),
   field: "G",
   summon: "R · set skill: Tame / Raise Skeleton",
 };

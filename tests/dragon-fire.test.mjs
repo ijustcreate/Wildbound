@@ -48,11 +48,14 @@ test("Fire elemental shoots, leaves flame at its footsteps, and drops the fire w
   g.spawnEvent(EVENTS.findIndex((e) => e.kind === "fire_elemental"));
   const e = g.enemies.find((e) => e.kind === "fire_elemental");
   g.enemies = [e];
-  Object.assign(e, { x: 300, y: 300, fireCooldown: 0 });
-  g.update(0.05);
+  Object.assign(e, { x: 300, y: 300, fireCooldown: 0, cooldown:0,spawnReadyAt:0 });
+  g.update(.05);assert.equal(g.fireballs.length,0,'elemental preparation is warned');
+  for(let i=0;i<30&&!g.fireballs.length;i++)g.update(.05);
   assert.ok(g.fireballs.length > 0);
-  assert.ok(e.x > 300);
-  assert.ok(g.firePatches.some((f) => f.x === 288 && f.y === 288));
+  // While cooling down, repositioning leaves an anchored hot wake.
+  e.speciesCombat.phase='approach';e.state='hunt';e.cooldown=2;e.x=200;
+  g.update(.05);assert.ok(e.x>200);
+  assert.ok(g.firePatches.some(f=>f.x===192&&f.y===288));
   g.random = () => 0; // Force the now-rare item-drop roll to succeed.
   g.enemyLoot(e);
   assert.ok(g.loot.some((l) => l.type === "fire_wand"));

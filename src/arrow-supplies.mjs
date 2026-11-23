@@ -35,15 +35,21 @@ export function compactArrowDrops(g){
 export function enemyQuiver(e){
  e.startingArrows??=36;e.arrowsLeft??=e.startingArrows;return e.arrowsLeft;
 }
-export function retrieveEnemyArrows(g,e,dt){
+export function retrieveEnemyArrows(g,e,dt,{target}={}){
  enemyQuiver(e);
  if(e.arrowsLeft>=e.startingArrows/2&&!e.retrievingArrows)return false;
  if(e.arrowsLeft>=e.startingArrows){e.retrievingArrows=false;return false;}
- const loot=g.loot.filter(l=>ARROW_TYPES.includes(l.type)&&Math.hypot(l.x-e.x,l.y-e.y)<550)
+ const now=g.time||0,search=e.arrowSearch??={until:0,retryAt:0};
+ const loot=g.loot.filter(l=>ARROW_TYPES.includes(l.type)&&!l.surfaceEmbedded&&Math.abs(l.z||0)<24&&Math.hypot(l.x-e.x,l.y-e.y)<550)
   .sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];
  if(!loot){e.retrievingArrows=false;return false;}
- e.retrievingArrows=true;
  const d=Math.hypot(loot.x-e.x,loot.y-e.y);
+ if(target&&d>=30){
+  if(Math.hypot(target.x-e.x,target.y-e.y)<180||now<search.retryAt){e.retrievingArrows=false;return false;}
+  if(!e.retrievingArrows)search.until=now+2;
+  if(now>=search.until){search.retryAt=now+6;e.retrievingArrows=false;return false;}
+ }
+ e.retrievingArrows=true;
  if(d<30){const qty=Math.min(loot.qty,e.startingArrows-e.arrowsLeft);e.arrowsLeft+=qty;loot.qty-=qty;if(!loot.qty)g.loot=g.loot.filter(l=>l!==loot);}
  else navigateEnemy(g,e,loot,dt);
  return true;

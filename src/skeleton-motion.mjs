@@ -1,3 +1,4 @@
+import {tacticalHumanoidAnimation,tacticalHumanoidPose} from './tactical-motion.mjs';
 import {
   defaultPlayerMotion,
   defaultNativePlayerMotion,
@@ -147,7 +148,9 @@ export function drawSkeleton(
   if(equipment.hand1==='skeleton_long_axe')equipment.hand2='occupied';
   const actor = { ...a, equipment,skeletonCostume:costume,appearance:costume?{skin:'#d4a073',shirt:'#487663',pants:'#665479',shoes:'#493b2d',hair:'crop',hairColor:'#65472f',face:'classic',...a.appearance}:a.appearance };
   if (!a.animationAction) {
-    if (a.flash > 0) {
+    if(a.combatRole&&a.tactics){
+      Object.assign(actor,tacticalHumanoidAnimation(actor,model));
+    } else if (a.flash > 0) {
       actor.hit = a.flash;
     } else if (a.state === "windup") {
       actor.animationAction = kind === "skeleton_unarmed" ? "punch" : kind === "skeleton_wizard" ? "cast" : a.equipment?.hand1==='skeleton_long_axe' ? (model.clips.long_axe_swing?'long_axe_swing':'swipe_big') : "slash";
@@ -166,5 +169,5 @@ export function drawSkeleton(
       actor.playerFrame = (.3+Math.min(1,Math.max(0,1-a.attack/.34))*.7)*(model.clips[actor.animationAction].length-1);
     }
   }
-  return drawPlayer(c, actor, time, model, pose);
+  return drawPlayer(c, actor, time, model, pose||(a.hp>0&&!a.animationAction&&a.combatRole&&a.tactics?tacticalHumanoidPose(actor,time,model):null));
 }

@@ -14,7 +14,7 @@ function worldBaseline(seed,environment){
  initializeBoundlessWorld(base,{fresh:true});return base;
 }
 export function seededRandom(seed){let a=seed>>>0;return()=>{a+=0x6d2b79f5;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
-export function createLocalWorld({id,name,seed,pack,party,now=Date.now()}) {
+export function createLocalWorld({id,name,seed,pack,party,sharedStash=[],profileRevisions,now=Date.now()}) {
   if(!party?.length)throw Error('Choose at least one explorer in the lobby before creating a world.');
   const s=createWorldState({id,name,seed,pack,now});
   const authoredLevel=readWorldDesign().levels.find(level=>level.environment===s.pack.environment);
@@ -24,6 +24,8 @@ export function createLocalWorld({id,name,seed,pack,party,now=Date.now()}) {
   g.seed=seed;g.environment=s.pack.environment;g.generatedEnvironment='';g.mapMode='boundless';
   for(const p of party){const player=g.addPlayer(p.device,p.name);Object.assign(player,clone(p));player.room=null;player.ui=null;player.x=800;player.y=920;}
   g.start();g.openingBoard=false;g.persistentWorld=true;g.localWorld=s;
+ g.sharedStash=clone(sharedStash);
+ if(profileRevisions)g.profileRevisions=clone(profileRevisions);
   applyAuthoredScenes(g,0,0);
   // Fresh identity: no old nested Heartwood journey or remote authority.
   g.portals=g.portals.filter(d=>!d.forestTravel);delete g.forestJourney;
@@ -47,6 +49,7 @@ function sceneryDelta(current,original){
 }
 export function saveLocalWorld(g,now=Date.now()) {
   validateWorldState(g.localWorld);checkpointBoundlessWorld(g);
+  if(g.shadowPassages?.localRoot){g.localWorld.lastWall=Math.max(g.localWorld.lastWall,now);return {version:1,generationVersion:g.boundlessGenerationVersion,id:g.localWorld.id,savedAt:now,session:saveSession(g),delta:{changed:[],added:[],removed:[]},terrain:[],shadowPassageSnapshot:true};}
   g.localWorld.lastWall=Math.max(g.localWorld.lastWall,now);
   const baseline=baselines.get(g)||worldBaseline(g.seed,g.generatedEnvironment);
   baselines.set(g,baseline);
@@ -75,6 +78,7 @@ export function restoreLocalWorld(record,now=Date.now()) {
   if(record?.version!==1||!record.session?.state?.localWorld||record.id!==record.session.state.localWorld.id||!record.delta||!Array.isArray(record.terrain))throw Error('Invalid world snapshot.');
   const s=validateWorldState(clone(record.session.state.localWorld));
   validatePack(s.pack);
+  if(record.shadowPassageSnapshot){const g=restoreSession(record.session);g.random=seededRandom(Math.floor(hash(s.seed,s.seconds)*4294967296));g.localWorld=s;g.persistentWorld=true;g.remoteAuthoritative=false;catchUpWorld(s,now);tickLocalWorld(g,0);return g;}
   const base=record.generationVersion?worldBaseline(s.seed,s.pack.environment):generateWorld(s.seed,s.pack.environment);
   const removed=new Set(record.delta.removed),changed=new Map(record.delta.changed.map(p=>[p.id,p]));
   const scenery=base.scenery.filter(p=>!removed.has(p.id)).map(p=>clone(changed.get(p.id)||p));

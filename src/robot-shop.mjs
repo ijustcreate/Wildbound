@@ -1,15 +1,18 @@
-import {ITEMS,sellStack,sellValue,transfer} from './items.mjs';
+import {BACKPACK_SLOTS,ITEMS,sellStack,sellValue,transfer} from './items.mjs';
 import {robotOnline} from './storage-repair.mjs';
 
 export const robotBuybackIndices=owner=>(owner?.robotStock||[]).flatMap((item,index)=>item?[index]:[]).reverse();
 export const robotBuying=u=>u.robotView==='buyback'||u.robotView==='stock';
+export const ROBOT_COLUMNS=6;
+const backpackRows=Math.ceil(BACKPACK_SLOTS/ROBOT_COLUMNS);
+function packSlot(row,column){return Math.min(BACKPACK_SLOTS-1,row*ROBOT_COLUMNS+column);}
 export function buybackStack(p,owner,index){
   const item=owner?.robotStock?.[index];
   if(!item||!ITEMS[item.type])return 'Select a sold item to buy back.';
   const price=sellValue(item.type)*item.qty;
   if((p.coins||0)<price)return 'Not enough gold to buy this stack back.';
   // transfer checks capacity before any mutation and preserves sockets/container contents.
-  if(!transfer(owner.robotStock,p.inventory,index,32))return 'Backpack full. Free a slot before buying back.';
+  if(!transfer(owner.robotStock,p.inventory,index,BACKPACK_SLOTS))return 'Backpack full. Free a slot before buying back.';
   p.coins-=price;
   return 'Bought back '+ITEMS[item.type].name+' for '+price+' gold.';
 }
@@ -26,22 +29,25 @@ export function robotShopAction(g,p,action){
     const [,view,raw]=action.split(':'),index=Number(raw);
     if(!Number.isInteger(index)||index<0)return true;
     if(view==='buyback'&&indices.includes(index)){changeView(view);u.robotIndex=index;}
-    else if(view==='sell'&&index<24){changeView(view);u.index=index;}
+    else if(view==='sell'&&index<BACKPACK_SLOTS){changeView(view);u.index=index;}
     return true;
   }
   if(action.startsWith('robotPage:')){
-    const page=Math.floor(Math.max(0,indices.indexOf(u.robotIndex))/6),pages=Math.max(1,Math.ceil(indices.length/6));
-    changeView('buyback');u.robotIndex=indices[((page+(action.endsWith('next')?1:-1)+pages)%pages)*6]??0;return true;
+    const page=Math.floor(Math.max(0,indices.indexOf(u.robotIndex))/ROBOT_COLUMNS),pages=Math.max(1,Math.ceil(indices.length/ROBOT_COLUMNS));
+    changeView('buyback');u.robotIndex=indices[((page+(action.endsWith('next')?1:-1)+pages)%pages)*ROBOT_COLUMNS]??0;return true;
   }
   if(['next','prev','down','up'].includes(action)){
     if(robotBuying(u)){
       const at=Math.max(0,indices.indexOf(u.robotIndex));
-      if(action==='down'){changeView('sell');u.index=at%6;}
-      else if(action==='up'){changeView('sell');u.index=18+at%6;}
+      if(action==='down'){changeView('sell');u.index=at%ROBOT_COLUMNS;}
+      else if(action==='up'){changeView('sell');u.index=packSlot(backpackRows-1,at%ROBOT_COLUMNS);}
       else u.robotIndex=indices[(at+(action==='next'?1:-1)+indices.length)%indices.length]??0;
-    }else if(action==='up'&&u.index<6&&indices.length){
+    }else if(action==='up'&&u.index<ROBOT_COLUMNS&&indices.length){
       const column=u.index;changeView('buyback');u.robotIndex=indices[Math.min(column,indices.length-1)];
-    }else u.index=(u.index+(action==='next'?1:action==='prev'?-1:action==='down'?6:-6)+24)%24;
+    }else if(action==='up'||action==='down'){
+      const row=Math.floor(u.index/ROBOT_COLUMNS)+(action==='down'?1:-1);
+      u.index=packSlot((row+backpackRows)%backpackRows,u.index%ROBOT_COLUMNS);
+    }else u.index=(u.index+(action==='next'?1:-1)+BACKPACK_SLOTS)%BACKPACK_SLOTS;
     return true;
   }
   if(action==='offhand'){

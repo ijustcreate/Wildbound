@@ -15,6 +15,7 @@ These sound libraries are CC0. Music is separate and is not covered by these lic
 - JaggedStone Loopable Dungeon Ambience: https://opengameart.org/content/loopable-dungeon-ambience
 - jasinski / qubodup Beach Ocean Waves (two loops): https://opengameart.org/content/beach-ocean-waves
 - SFXMint AI-generated CC0 ambience: Desert Wind 06, Steady Winter Blizzard Wind 04, Quiet Interior Room Tone 54, Night Ambience 01, and Cold Drafty Whisper-Like Wind 38: https://sfxmint.com/license
+- rubberduck, 80 CC0 RPG SFX (23 selected clips under `oga-rpg/`): https://opengameart.org/content/80-cc0-rpg-sfx
 
 License: https://creativecommons.org/publicdomain/zero/1.0/
 

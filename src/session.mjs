@@ -1,3 +1,5 @@
+import {restoreWildLands, snapshotWildLands} from './wild-lands-session.mjs';
+import {clearSwordPolish} from './sword-charge-state.mjs';
 import {initializeBoundlessWorld,checkpointBoundlessWorld} from './boundless-world.mjs';
 import {restoreFollowerControl} from './follower-control.mjs';
 import { migrateEquipment, migrateLegacySupplies } from "./items.mjs";
@@ -15,9 +17,33 @@ import {houseKeepsWorld} from './house-victory.mjs';
 import {upgradeCemeteryFeatures} from './graveyard-world.mjs';
 import {trialState} from './expedition-trials.mjs';
 export function saveSession(game) {
+  if(game.trainTest?.persistent){
+    const state=snapshot(game);
+    delete state.trainTest;
+    state.house=null;
+    return {version:1,state,wilds:snapshotWildLands(game.trainTest)};
+  }
   checkpointBoundlessWorld(game);
   return { version: 1, state: snapshot(game) };
 }
+function hydrateEncounterState(state) {
+  if (state.eventActionRun instanceof Set) return;
+  if (Array.isArray(state.eventActionRun)) {
+    state.eventActionRun = new Set(state.eventActionRun.filter(Number.isInteger));
+    return;
+  }
+  if (!state.eventActionRun && !state.event?.chain?.length) return;
+  // Older JSON saves discarded Set entries. Actions already due on the
+  // saved timeline must never grant their reward a second time.
+  const chain = state.event?.chain ?? [];
+  state.eventActionRun = new Set(chain.flatMap((action, index) => {
+    const trigger = action.trigger || "start";
+    return trigger === "start" ||
+      trigger === "delay" && (Number(action.delay) || 0) <= (state.event.chainRuntime || 0)
+      ? [index] : [];
+  }));
+}
+
 export function restoreSession(saved) {
   if (
     saved?.version !== 1 ||
@@ -26,8 +52,14 @@ export function restoreSession(saved) {
     saved.state.players.length > 6
   )
     throw Error("Invalid expedition save");
-  const g = new Game();
+  const g = new Game(Math.random,{deferWorld:Boolean(saved.wilds)});
   Object.assign(g, saved.state);
+  hydrateEncounterState(g);
+  for (const world of Object.values(g.houseWorlds?.worlds ?? {})) {
+    delete world.trainAudio;
+    hydrateEncounterState(world);
+  }
+  g.effects=(g.effects||[]).filter(f=>!f.swordPolish);
   g.portals=(g.portals||[]).filter(d=>!d.forestTravel);
   delete g.forestJourney;
   if(!saved.state.expeditionTrials){delete g.expeditionTrials;trialState(g);}
@@ -54,7 +86,7 @@ export function restoreSession(saved) {
     g.phase === "won"&&!houseKeepsWorld(g)
       ? []
       : saved.state.scenery || generateWorld(g.seed).scenery;
-  if(g.phase!=='won'||houseKeepsWorld(g))restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
+  if(!saved.wilds&&(g.phase!=='won'||houseKeepsWorld(g)))restoreForestLandscape(g,saved.state.forestLandscapeVersion??0);
   for (const p of g.players) {
     const data = structuredClone(p);
     initHero(p);
@@ -66,17 +98,17 @@ export function restoreSession(saved) {
     if (p.jumpGravity === undefined || p.jumpGravity === 360 || p.jumpGravity === 720) p.jumpGravity = 1200;
     migrateEquipment(p);
     p.previousInput = {};
-    p.charge = 0;
+    p.charge = 0;clearSwordPolish(p);
     delete p.swordStrike;delete p.swordFacing;delete p.swordDash;delete p.swordDashRequested;p.swordChargeAim=false;p.swordHitPause=0;p.attack=0;
     p.ui = null;
     cancelRobotRepair(p);
     p.dashHeld = false;
   }
-  initializeBoundlessWorld(g);
+  if(saved.wilds)g.trainTest=restoreWildLands(saved.wilds);
+  else initializeBoundlessWorld(g);
   for(const p of g.players)restoreFollowerControl(g,p);
   initLivingEcosystem(g);
   tickCharmStatuses(g,0);
-  ensureOldWells(g);
-  upgradeCemeteryFeatures(g);
+  if(!saved.wilds){ensureOldWells(g);upgradeCemeteryFeatures(g);}
   return g;
 }

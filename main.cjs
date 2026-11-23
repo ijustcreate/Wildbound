@@ -14,7 +14,8 @@ let window;
 const worldsSmoke=process.argv.includes('--worlds-smoke-test');
 const shadowPipelineSmoke=process.argv.includes('--shadow-pipeline-smoke-test');
 const bootSmoke = process.argv.includes('--boot-smoke-test')||worldsSmoke;
-const testMode = bootSmoke || shadowPipelineSmoke || process.argv.includes('--smoke-test');
+const qaRemediationSmoke = process.argv.includes('--qa-remediation-smoke-test');
+const testMode = bootSmoke || shadowPipelineSmoke || qaRemediationSmoke || process.argv.includes('--smoke-test');
 const preview = process.argv.includes('--preview');
 if (preview) app.setPath('userData', path.join(app.getPath('appData'), 'Wildbound Night Hunt Preview'));
 let releaseControllerClaims = () => {};
@@ -141,6 +142,8 @@ app.whenReady().then(async () => {
   });
   const profilePath = path.join(app.getPath("userData"), "characters-v1.json");
   const sessionPath = path.join(app.getPath("userData"), "expedition-v1.json");
+  const wildsSessionPath = path.join(app.getPath("userData"), "wilds-expedition-v1.json");
+  const checkpointPath = mode => mode === 'wilds' ? wildsSessionPath : sessionPath;
   const store = require("./save-store.cjs");
   if(!process.argv.includes('--no-live-diagnostics')){
     const diagnostics=require('./live-diagnostics.cjs').createDiagnostics(app.getPath('userData'));
@@ -159,14 +162,14 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('project-rigs-load', () => rigStore.load());
   ipcMain.handle('project-rigs-save', (_e, data) => rigStore.save(data));
-  ipcMain.handle("session-load", () => store.read(sessionPath, "session"));
-  ipcMain.handle("session-save", (_e, data) =>
-    store.write(sessionPath, data, "session"),
+  ipcMain.handle("session-load", (_e,mode) => store.read(checkpointPath(mode), "session"));
+  ipcMain.handle("session-save", (_e,data,mode) =>
+    store.write(checkpointPath(mode), data, "session"),
   );
   const worldStore=require('./world-store.cjs').createWorldStore(path.join(app.getPath('userData'),'Worlds'));
   const packStore=require('./pack-store.cjs').createPackStore({appPath:app.getAppPath(),userData:app.getPath('userData')});
   ipcMain.handle('worlds-list',()=>worldStore.list());
-  ipcMain.handle('worlds-load',(_e,id)=>worldStore.load(id));
+  ipcMain.handle('worlds-load',(_e,id,backup)=>backup===true?worldStore.loadBackup(id):worldStore.load(id));
   ipcMain.handle('worlds-save',(_e,record)=>worldStore.save(record));
   ipcMain.handle('worlds-folder',()=>shell.openPath(worldStore.root));
   ipcMain.handle('world-packs-list',()=>packStore.list());
@@ -208,15 +211,20 @@ app.whenReady().then(async () => {
   ipcMain.handle("profiles-save", (_e, data) =>
     store.write(profilePath, data, "profiles"),
   );
-  ipcMain.handle("restore-backup", async () => {
-    await store.restore(profilePath, "profiles");
-    try {
-      await store.restore(sessionPath, "session");
-    } catch {}
-    return true;
+  const recoveryFiles = { profiles: profilePath, session: sessionPath };
+  ipcMain.handle("restore-backup", async (_event, kind) => {
+    if (kind === "status") {
+      const result = await Promise.allSettled(Object.entries(recoveryFiles)
+        .map(([key, file]) => store.readBackup(file, key)));
+      return Object.fromEntries(Object.keys(recoveryFiles).map((key, index) => [key, result[index].status === "fulfilled"]));
+    }
+    if (!Object.hasOwn(recoveryFiles, kind)) throw Error("Choose which checkpoint to recover.");
+    return store.restore(recoveryFiles[kind], kind);
   });
   await window.loadFile("index.html");
-  if(shadowPipelineSmoke)
+  if(qaRemediationSmoke)
+    await require('./scripts/verify-qa-remediation.cjs')({window,testOutput,app});
+  else if(shadowPipelineSmoke)
     await require('./scripts/shadow-pipeline-smoke.cjs')({window,testOutput,app});
   else if(worldsSmoke)
     await require('./scripts/verify-worlds-desktop.cjs')({window,testOutput,app});

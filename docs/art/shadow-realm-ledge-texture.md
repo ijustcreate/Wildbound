@@ -1,0 +1,9 @@
+# Shadow Realm rock ledges
+
+The Enchanted Shadow Forest and the Underworld use the same terrain boundary pass. The old art drew the raised surfaces as straight strips with repeated upright bars. The new art treats each real terrain boundary as a worn basalt shelf. At the world pixel scale, broken caps sit over irregular vertical plates, deeper strata and a dark wet foot. The longer south-facing drops show more of their faces. Narrower side and far banks carry shorter cap and fracture accents. The muted slate and purple ramp follows the established Shadow forest stone and understory. The distant buttress sprite uses broad fractured columns in the same ramp.
+
+Shallow water still has its whole playable surface. Small damp stone clusters appear on the land side. Void geometry and movement stay tied to the terrain tiles. All river and sky overlays use the same visible wet outline, so no reflection or ripple paints over the rock. Each edge pattern is deterministic, selected from a fixed mask and variation table, and baked into the existing 64-entry, 128-pixel ground chunk cache.
+
+The final source Electron review passed 89 muted checks with zero renderer errors. It verifies all sixteen boundary masks, shared reflection clipping, uncut shallows, no false edges against undefined outer-map neighbors, intact void collision and two-way portals. The existing ground cache remains capped at 64 chunks of 128 pixels on each axis. The focused realm, boundless terrain, Shadow forest, thicket, and fog suite passed 36 tests. Visually reviewed the normal Shadow forest render and material closeup. Sustained frame rate was not measured.
+
+Captures: test-output/shadow-underworld/source/cliffLive.png, cliffMaterialCloseup.png, and overview.png. The pre-pass screenshots are preserved in test-output/shadow-underworld/pre-ledge-pass.

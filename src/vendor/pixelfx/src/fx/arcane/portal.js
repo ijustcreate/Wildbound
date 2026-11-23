@@ -15,7 +15,7 @@ export const meta = {
   loop: true,
   fps: 30,
   bg: "ground",
-  options: { palette: PAL.arcane, width: 17, height: 29, seed: 4 },
+  options: { palette: PAL.arcane, width: 17, height: 29, seed: 4, depthFloor: false },
 };
 
 const wrapPi = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
@@ -147,7 +147,7 @@ function floor(p, s) {
 }
 
 export function drawBack(p, t, o) {
-  floor(p, setup(t, o));
+  if (!o.depthFloor) floor(p, setup(t, o));
 }
 
 export function draw(p, t, o) {
@@ -156,7 +156,7 @@ export function draw(p, t, o) {
   well(p, s);
   orbit(p, s);
   infall(p, s);
-  skaters(p, s);
+  if (!o.depthFloor) skaters(p, s);
   // light comes off the rim, not the void: a big soft pool, a halo hugging the rim, hot spots that shine, the floor lit
   p.glow(0, CY, ry * 5, C[4], 0.17 * pulse);
   p.glow(0, CY, ry * 2.6, C[4], 0.1 * pulse);
@@ -165,5 +165,5 @@ export function draw(p, t, o) {
     p.glow(Math.cos(th) * R0 * rx, CY + Math.sin(th) * R0 * ry, 15, C[4], 0.15 * pulse);
   }
   for (const th of spots) p.glow(Math.cos(th) * rim(th) * rx, CY + Math.sin(th) * rim(th) * ry, 16, C[6], 0.42);
-  for (let i = -3; i <= 3; i++) p.glow(i * 7, -1, 16, C[5], 0.12 * pulse);
+  if (!o.depthFloor) for (let i = -3; i <= 3; i++) p.glow(i * 7, -1, 16, C[5], 0.12 * pulse);
 }

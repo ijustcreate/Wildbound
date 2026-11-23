@@ -1,8 +1,13 @@
+import {drawAttackFootprint} from './enemy-telegraphs.mjs';
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
+import {chooseEnemyTarget} from './enemy-systems.mjs';
 import {creatures} from './definitions.mjs';
 import {nearbyGhost} from './ghost-fear.mjs';
 import {ITEMS,stat,itemKind} from './items.mjs';
 import {clearShot} from './navigation.mjs';
+import {triggerEnemyTrap} from './enemy-traps.mjs';
 import {BOUNDLESS_SAFE_RADIUS} from './boundless-world.mjs';
+import {tickOtterForage,resetOtterForage} from './otter-foraging.mjs';
 import {waterAt} from './environment.mjs';
 import {PEACEFUL_FAUNA_KINDS,WILD_FAUNA_KINDS,WILD_FAUNA_LIMIT} from './wild-fauna-data.mjs';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -38,7 +43,7 @@ export function seedWildFauna(g,force=false){
     // snowy bank next to that ice so they gather at the shoreline, not on land inland.
     if(g.generatedEnvironment==='ice'?(shore!=='snow'||!adjacent):!adjacent)continue;
    }
-   if(kind==='river_otter'){const adjacent=[[32,0],[-32,0],[0,32],[0,-32]].some(([dx,dy])=>['water','shallow'].includes(waterAt(g,x+dx,y+dy)));if(shore==='water'||!adjacent)continue;}
+   if(kind==='river_otter'){const shore=waterAt(g,x,y),adjacent=[[32,0],[-32,0],[0,32],[0,-32]].some(([dx,dy])=>['water','shallow'].includes(waterAt(g,x+dx,y+dy)));if(shore==='water'||!adjacent)continue;}
    if(g.enemies.some(e=>e.hp>0&&distance(e,{x,y})<26))continue;spot={x,y};break;
   }
   if(!spot)continue;
@@ -63,18 +68,19 @@ function wander(g,e,dt,speed){
 }
 export function tickWildFauna(g,e,dt,targets=[]){
  if(!WILD_FAUNA_KINDS.includes(e.kind))return false;
- if(e.hp<=0){const carrier=g.players.find(p=>p.id===e.carriedBy);if(carrier?.heldChickenId===e.id){delete carrier.heldChickenId;carrier.carryingChicken=false;}delete e.carriedBy;return true;}
+ if(e.hp<=0){if(e.kind==='river_otter')resetOtterForage(e);const carrier=g.players.find(p=>p.id===e.carriedBy);if(carrier?.heldChickenId===e.id){delete carrier.heldChickenId;carrier.carryingChicken=false;}delete e.carriedBy;return true;}
  if(e.carriedBy){e.state='carried';e.moving=false;return true;}
- e.moving=false;if(e.kind==='river_otter'){e.swimming=waterAt(g,e.x,e.y)==='water';e.animationAction=e.swimming?'swim':null;}e.attack=Math.max(0,(e.attack||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.frozen=Math.max(0,(e.frozen||0)-dt);e.cooldown=Math.max(0,(e.cooldown||0)-dt);
+ e.moving=false;if(e.kind==='river_otter'){e.swimCapable=true;e.swimming=waterAt(g,e.x,e.y)==='water';e.animationAction=e.swimming?'swim':null;}e.attack=Math.max(0,(e.attack||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.frozen=Math.max(0,(e.frozen||0)-dt);e.cooldown=Math.max(0,(e.cooldown||0)-dt);
  const injured=e.hp<(e.wildLastHp??e.hp);e.wildLastHp=e.hp;
  if(e.frozen>0)return true;
  if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
  const trap=g.traps.find(t=>t.life>0&&distance(t,e)<27);
- if(trap&&trap.variant!=='slow'){trap.life=0;e.state=trap.variant==='interrupt'?'recover':'snared';e.timer=2;e.attack=0;e.pendingSting=false;g.onSound('trap',e);return true;}
+ if(trap&&trap.variant!=='slow'){triggerEnemyTrap(g,e,trap,2);e.pendingSting=false;return true;}
  if(e.state==='recover'){e.timer-=dt;if(e.timer<=0)e.state='graze';return true;}
  if(PEACEFUL_FAUNA_KINDS.includes(e.kind)){
   if(e.calmPlacement&&injured)e.calmPlacement=false;
   const armed=e.calmPlacement?null:nearbyGhost(g,e,200)||g.players.filter(p=>p.hp>0&&!p.room&&holdsThreateningWeapon(p)&&distance(e,p)<240).sort((a,b)=>distance(e,a)-distance(e,b))[0];
+  if(e.kind==='river_otter'&&tickOtterForage(e,dt,{threatened:!!armed||injured||e.fleeTime>0}))return true;
   if(armed||injured){e.fleeTime=3;e.fleeFromX=armed?.x??e.x-e.faceX*30;e.fleeFromY=armed?.y??e.y-e.faceY*30;}
   e.fleeTime=Math.max(0,(e.fleeTime||0)-dt);
   if(e.fleeTime>0){const dx=e.x-e.fleeFromX,dy=e.y-e.fleeFromY,d=Math.hypot(dx,dy)||1;e.state='flee';move(g,e,{x:e.x+dx/d*80,y:e.y+dy/d*80},dt,e.speed);return true;}
@@ -82,7 +88,7 @@ export function tickWildFauna(g,e,dt,targets=[]){
   if(mother&&distance(e,mother)>45)move(g,e,mother,dt,38);else wander(g,e,dt,13);
   return true;
  }
- const target=targets.filter(p=>p.hp>0&&!p.room).sort((a,b)=>distance(e,a)-distance(e,b))[0];
+ const target=chooseEnemyTarget(g,e,targets);
  const scorpion=e.kind==='scorpion',range=scorpion?44:40,d=target?distance(e,target):Infinity;
  if(injured)e.wildAggroUntil=(g.time||0)+5;
  if(e.state==='sting'||e.state==='bite'){
@@ -95,7 +101,7 @@ export function tickWildFauna(g,e,dt,targets=[]){
    e.attack=.22;e.state='recover';e.timer=scorpion?.7:.5;e.cooldown=scorpion?1.9:1.4;
   }return true;
  }
- if(target&&d<range&&e.cooldown<=0&&clearShot(g,e,target)){
+ if(target&&d<range&&e.cooldown<=0&&clearShot(g,e,target)&&requestEnemyGroupTurn(g,e,target)){
   e.state=scorpion?'sting':'bite';e.timer=scorpion?.6:.45;e.attackX=(target.x-e.x)/(d||1);e.attackY=(target.y-e.y)/(d||1);e.faceX=e.attackX;e.faceY=e.attackY;return true;
  }
  const provoked=(e.wildAggroUntil||0)>(g.time||0);
@@ -105,6 +111,6 @@ export function tickWildFauna(g,e,dt,targets=[]){
 }
 export function drawWildFaunaTells(c,g,visible){
  for(const e of g.enemies){if(e.hp<=0||!['sting','bite'].includes(e.state)||!WILD_FAUNA_KINDS.includes(e.kind)||!visible(e))continue;
-  c.save();c.translate(e.x,e.y);c.rotate(Math.atan2(e.attackY,e.attackX));c.fillStyle='#ed865343';c.strokeStyle=e.frozen>0?'#b4efff':'#ffbd7a';c.lineWidth=1;c.beginPath();c.moveTo(0,0);c.arc(0,0,e.kind==='scorpion'?44:40,-.72,.72);c.closePath();c.fill();c.stroke();c.restore();
+  drawAttackFootprint(c,{shape:'cone',x:e.x,y:e.y,angle:Math.atan2(e.attackY,e.attackX),range:e.kind==='scorpion'?44:40,arc:.72});
  }
 }

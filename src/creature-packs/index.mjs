@@ -29,6 +29,9 @@ export const CREATURE_PACK_DEFAULTS = mergeUnique('defaults');
 export const CREATURE_PACK_EVENTS = Object.freeze(CREATURE_PACKS.flatMap(pack => pack.events || []));
 
 export function tickCreaturePackActor(game, actor, dt, livingTargets) {
+  // The shared wild-fauna path owns otter shoreline movement and its saved
+  // dive/find/back-float sequence. Do not let generic pack roaming preempt it.
+  if(actor?.kind==='river_otter')return false;
   // Controlled companions are driven by the player proxy. Let the normal ally
   // update advance their jump physics and combat state instead of letting a
   // creature pack AI return early and overwrite those inputs.
@@ -46,6 +49,14 @@ export function tickCreaturePackActor(game, actor, dt, livingTargets) {
 
 export function initializeCreaturePackEvent(game, event, groupActors) {
   for (const pack of CREATURE_PACKS) pack.onSpawn?.(game, event, groupActors);
+}
+
+export function initializeMixedCreaturePackEvent(game,event,actors){
+ for(const pack of CREATURE_PACKS)for(const kind of new Set(actors.map(a=>a.kind))){
+  if(!Object.hasOwn(pack.defaults||{},kind))continue;
+  const members=actors.filter(a=>a.kind===kind);
+  pack.onSpawn?.(game,{...event,kind,wildlifePackKind:kind,pack:pack===constructsPack?'constructs':pack===eldritchPack?'eldritch':event.pack},members);
+ }
 }
 
 export function interactCreaturePackActor(game, player, actors = game.enemies || []) {

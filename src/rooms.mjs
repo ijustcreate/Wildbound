@@ -1,4 +1,12 @@
-export function snapshot(g) {
+import {activeCounterOpening} from './counterattack.mjs';
+
+function serializedEncounter(state) {
+  const { trainAudio, ...saved } = state;
+  if (state.eventActionRun instanceof Set) saved.eventActionRun = [...state.eventActionRun];
+  return saved;
+}
+
+export function snapshot(g, {combatPresentation = false} = {}) {
   const omit = new Set([
     "random",
     "saving",
@@ -7,6 +15,7 @@ export function snapshot(g) {
     "uiRevision",
     "fieldRevision",
     "onSound",
+    "trainAudio",
     "persist",
     "spriteLibrary",
     "explored",
@@ -14,14 +23,30 @@ export function snapshot(g) {
     "boundlessLoadedChunks",
     "realmViewerId",
   ]);
-  return {
-    ...Object.fromEntries(
-      Object.entries(g).filter(
-        ([key, value]) => !omit.has(key) && typeof value !== "function",
-      ),
-    ),
-    explored: [...g.explored],
-  };
+  const state = serializedEncounter(Object.fromEntries(
+    Object.entries(g).filter(([key, value]) => !omit.has(key) && typeof value !== "function"),
+  ));
+  if (state.enemies) {
+    state.enemies = state.enemies.map(enemy => {
+      const opening = activeCounterOpening(enemy, g.time);
+      if (!opening && !Object.hasOwn(enemy, 'counterOpeningCue')) return enemy;
+      const actor = Object.fromEntries(Object.entries(enemy));
+      delete actor.counterOpeningCue;
+      if (opening && combatPresentation) {
+        const {kind, startedAt, expiresAt} = opening;
+        actor.counterOpeningCue = {kind, startedAt, expiresAt};
+      }
+      return actor;
+    });
+  }
+  if (state.houseWorlds?.worlds) {
+    state.houseWorlds = {
+      ...state.houseWorlds,
+      worlds: Object.fromEntries(Object.entries(state.houseWorlds.worlds)
+        .map(([key, world]) => [key, serializedEncounter(world)])),
+    };
+  }
+  return { ...state, explored: [...g.explored] };
 }
 export function cleanInput(input) {
   const out = {};
@@ -99,7 +124,7 @@ export class Rooms {
     if (this.role === "host") {
       this.age += dt;
       if (this.age > 0.1) {
-        this.send({ type: "state", state: snapshot(g) });
+        this.send({ type: "state", state: snapshot(g, {combatPresentation:true}) });
         this.age = 0;
       }
       return { ...inputs, ...this.inputs };
@@ -109,7 +134,7 @@ export class Rooms {
         Object.entries(inputs).find(
           ([k, v]) =>
             k.startsWith("pad:") &&
-            (v.x || v.y || v.attack || v.interact || v.inventory || v.portal),
+            (v.x || v.y || v.attack || v.block || v.dodge || v.interact || v.inventory || v.portal),
         )?.[1] || inputs.keyboard;
       this.send({ type: "input", input: local });
       return {};

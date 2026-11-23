@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 import {dropIceRecipe} from './ice-crafting.mjs';
 import {drawStarterChest} from './starter-chest.mjs';
 import {ensureChestCritter,drawChestCritter} from './supply-chest-critters.mjs';
@@ -53,11 +54,12 @@ export function openSupplyChest(g,p){
   p.x+=dx*26;p.y+=dy*26;p.groundHeight=0;p.jumpHeight=0;p.jumpVelocity=0;
  }
  chest.opened=true;
+ emitGameplayFx(g,'chest',chest);
  g.dropLoot(chest.x+20,chest.y+26,'empty_jar',1,chest.name,true);
  dropIceRecipe(g,p,chest.x,chest.y+25);
  g.dropLoot(chest.x-12,chest.y+20,'potion',chest.potions,chest.name,true);
  if(chest.reward)g.dropLoot(chest.x+15,chest.y+20,chest.reward,1,chest.name,true);
- g.onSound('loot',chest);g.message(chest.name+' opened. Collect the supplies with Interact.');g.persist();return true;
+ g.onSound('chestOpen',chest);g.message(chest.name+' opened. Collect the supplies with Interact.');g.persist();return true;
 }
 export function drawSupplyChest(c,g,a){
  if(a.broken){c.save();for(const p of a.debris||[]){c.fillStyle=p.color;c.fillRect(p.x,p.y,p.w,p.h);}c.restore();return;}

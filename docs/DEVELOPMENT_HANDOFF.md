@@ -1,3 +1,126 @@
+# Latest train construction: [Fuller boiler, supported carriage details and shaped shadows](history/2026-11-23-train-construction.md). Native construction pass with exact desktop build and visual audit receipts. User accepted the fuller boiler on November 23; web/source publication is now authorized.
+
+# Latest biome encounter playtest: [Fair co-op pressure and native pixel tells](history/2026-11-23-biome-encounter-playtest-polish.md). Shared close-target attack budget, staggered co-op tells, distinct introductory pairs, weighted incoming heavies and lone-healer cleanup. Pixel contours match native bronze/teal art, with no extra floor symbols. 170 focused checks, 50 packaged scripted fights with zero fresh close-target overlaps, 748 packaged native checks, actual EXE and pinned normal-profile shortcut verified. Three ranged cleanup times remain unverified; exact desktop receipt and limits are in the note.
+
+# Latest train regression repair: [All-angle ordering audit](history/2026-11-23-train-angle-regression-repair.md). Reverts the broad scene reorder; corrects engine faces, pipes, coal/rims and seated mask isolation. Complete 280-scene visual review and exact desktop receipts are in the note.
+
+# Latest cave and Shadow Realm floors — [Terrain materials and desktop test build](history/2026-11-23-cave-and-shadow-floors.md). Textured limestone, warm Old Well stone and worn Shadow basalt with cave raster optimization. 111 muted packaged scene checks passed. The verified 1.2.113 test shortcut uses the normal profile.
+
+# Latest interior and cave art: [Interior finishes and cave walls](history/2026-11-23-interior-finish-and-cave-walls.md). Layered walls, flooring and trim across native buildings and coaches. Limestone cave walls and Shadow Realm basalt edges. 156 targeted tests and 544 muted packaged checks. The verified 1.2.113 test shortcut is pinned.
+
+# Latest train layering and cab: [Shared scene depth and controls](history/2026-11-23-train-scene-layering.md). Shared character/environment masking, real root-depth ordering, timber wall lining, sloped controls and arched firebox. Exact desktop snapshot and test limits are recorded in the note.
+
+# Latest natural mixed encounters: [Biome combinations and local party pressure](history/2026-11-23-biome-mixed-encounters.md). Twenty normal cards across ten biomes, local solo/co-op composition, crowd/habitat gates, safe staggered arrivals and region-aware Wild Lands selection. No new ground graphics. 78 focused checks plus saved-definition migration pass; 40 packaged scenarios/796 native checks and actual 1.2.113 EXE/normal launcher verified. Exact snapshot, finalization and concurrency limits are in the note.
+
+# Latest Diagon Alley and railway station art: [Seven shops and nine stations](history/2026-11-23-diagon-alley-station-art.md). 140 new native shop assets, regional station art, 114 focused tests and 266 packaged muted Electron checks. Exact 1.2.113 test shortcut and preview boards recorded in the note.
+
+# Latest multiplayer HUD layout: [Lower-right map, top health cards and inset panels](history/2026-11-23-multiplayer-hud-layout.md). Muted Electron map review and two-panel geometry are recorded; live panel review and package build remain pending.
+
+# Latest train art: [Native car/shop craft refinement](history/2026-11-23-train-native-craft.md). Rounded locomotive fittings, stepped pixel contours, framed glass, recessed coach panels and furnished timber interiors. Verification and desktop receipt are in the note; visual user review is pending.
+
+# Latest TV board skin: [Mossroot ruins, platforms and tubes](history/2026-11-23-tv-mossroot-board-skin.md). New generated scenery on the regular board layout, with original stone centers/frame/well composited natively. Both roll screen and altar use it; other boards retain their skins. Desktop 1.2.113 passes 122 tests and 229 muted packaged native checks, including all 49 calibrated positions. Exact snapshot and concurrent-source limits are recorded.
+
+# Latest combat release pass
+
+Impact cues, timed rush counters, positional boomerang returns, Thermal Shock, co-op finishes and three authored forest encounters ship in the verified normal 1.2.113 desktop build. Studio exposes combat tuning, event layouts and particle bindings. [Release behavior, checks and build identity](history/2026-11-23-combat-release-pass.md).
+
+# Latest QA remediation — [42 fixes and 13 interface improvements](history/2026-11-23-qa-remediation.md). Save and progress fixes came first, including a separate resumable Wilds checkpoint and shared-stash recovery. The note records the Electron checks, test reruns, and desktop build identity.
+
+# Latest mixed-group balance: [Coordinated turns, formations and fair openings](history/2026-11-23-mixed-enemy-balance.md). Shared per-player attack admission, protected handoffs, support spacing and stable flanks across the main combat controllers; no new ground graphics. 67 final focused combat checks, 176 packaged native checks and actual 1.2.112 EXE/normal launcher verified. Exact snapshot, incremental finalization and simulation limits are in the note.
+
+# Latest TV board correction: [Use the regular Wildbound board](history/2026-11-23-tv-regular-board.md). TV rolls and the arena altar now use the shared forest board renderer, authored path, animal pieces, dice and center effects. The separate side-view map is removed; entrance illustration remains. Desktop 1.2.112 passes 118 focused tests and 177 muted packaged native checks; exact build and source-drift limits are documented.
+
+# Latest Ollivanders art: [Native storefront and workshop](history/2026-11-23-ollivanders-native-art.md). Twenty native assets, an aligned east entrance, a playable cutaway, and local lighting. The environment art skill is installed. The history note records the verification and exact desktop receipt.
+
+# Latest Shadow Realm density: [Layered root thickets and clear routes](history/2026-11-23-shadow-dense-thickets.md). Up to 224 additional purple plants per region in layered clusters, with reserved paths, POIs, water and portal approaches. 23 focused tests, 82 packaged muted native checks, actual EXE and launcher verified in 1.2.111. Exact build snapshot and concurrent-edit limits are in the note.
+
+# Latest split camera: [Forward focus, damped facing and smoother split reveal](history/2026-11-23-split-camera-focus.md). One shared minimap stays over split panes. Muted Electron screenshot review is recorded; source-only, with no test suite or package build.
+
+# Latest dialogue and owl heading: [Slate conversation redesign](history/2026-11-23-dialogue-redesign.md). Single speaker, compact bottom panel, isolated menu styling and retained owl travel heading. 28 targeted tests, 27 final packaged muted Electron checks, actual EXE boot and launcher verified in 1.2.111. Revised shop art remains pending.
+
+# Latest TV board loop: [Direct board progress, thorn sources and playable crowns](history/2026-11-23-tv-board-progression.md). Each hit advances toward space 48; no encounter lock or exit door. New generated side-view board/entrance art, destructible Briar Hearts, playable highest ledges and simple tube color bars. Desktop 1.2.111 passes 114 focused tests and 310 muted packaged native checks; exact snapshot and concurrent-source difference are documented.
+
+# Latest enemy roster: [Distinct attacks, readable openings and railway warnings](history/2026-11-23-enemy-roster-and-rail-telegraphs.md). All 96 hostile kinds have explicit combat contracts; shared-contact and eldritch routes gain committed attacks, phase-aligned animation and punish windows. Ground warnings now render above main/crossing rails. 181 focused tests, 156 packaged native checks and the actual 1.2.111 EXE/normal launcher pass. Exact build snapshot, concurrent Shadow Realm drift and full-suite limits are in the note.
+
+# Latest weapon combinations and regression repair
+
+Seven discoverable combinations connect arrows, fire, ice, heavy hits, walls and traps. Field Kit → Combos tracks progress for each explorer. The follow-up repairs the necromancer summon loop, the TV World transition and the failed fixtures. Snapshot suite results and exact Electron build receipts are recorded in [Discoverable weapon combinations](history/2026-11-23-weapon-combinations.md).
+
+# Latest Shadow Realm props: [Forest-derived enchanted plants and wood](history/2026-11-23-shadow-woodland-props.md). Reuses the forest brush and wind with reshaped purple brambles, curled fronds, bellflowers, fungi and mossy stone; new wood silhouettes and matching landmark foliage. 47 focused tests, 79 packaged muted native checks, actual EXE and launcher verified. Build snapshot and concurrent-edit limits are in the note.
+
+# Latest Shadow Realm trees and fog: [Forest oak reuse and curling cloud banks](history/2026-11-23-shadow-canopy-clouds.md). Shared forest canopy geometry, pixel density and live motion; thick rounded clouds and paired wakes. 30 focused tests, 68 packaged muted Electron checks, actual EXE boot and launcher verified. Build snapshot and concurrent-edit limits are in the note.
+
+# Latest split camera and Expedition modes: [A little more room and a Wilds start](history/2026-11-23-split-zoom-the-wilds.md). Split views zoom out eight percent; the Expedition menu now enters the existing Wild Lands train world. Muted Electron menu/route review passed; full terrain load remains visually unreviewed. No tests or package build.
+# Latest train seating: [Student scale and visible legs](history/2026-11-23-train-student-seat-visibility.md). Bigger seated students, cushion-aligned pose origins and visible legs in a muted Electron preview; no tests or package build.
+
+# Latest TV arena: [Parallax, ten enemies and crouch](history/tv-arena-polish-1.2.110.md). Native eight-direction Bramblecap/Mossback art, four generated background layers, themed enemy roster, crouched walking and Down + Jump drop-through. Final 1.2.110 package passes 297 muted native checks and 969 runtime file comparisons; exact build and verification limits are in the note.
+
+# Latest common action polish: [First implementation pass](history/2026-11-22-common-action-polish.md). Awaited saves and retry, Continue expedition, controller release, owned pickup and combat feedback, validated ground recovery and named-world snapshot repair. Required rebuild: 2,116 tests and 934 syntax checks pass; launcher-selected 1.2.110 independently passes 133 native checks, actual EXE boot and 18 file hashes. Full-plan gaps remain explicit in the action audit.
+
+# Latest multiplayer camera: [Dynamic dividers, local travel fades and delivered FPS](history/2026-11-22-dynamic-split-fps.md). Two/three/four spatial views, adjustable motion cues, exact regroup alignment and scoped storage/teleport handling. Measurements and desktop verification limits are in the linked note.
+
+# Latest train journey source: [Six train improvements](history/2026-11-22-train-six-improvements.md). Conductor stop requests, cab emergency braking, next-stop/ETA HUD, arrival bell, seated recovery and named carriages. Verification and desktop receipts are in the note.
+
+# Latest enchanted forest: [Concept-based Shadow Realm pass](history/2026-11-22-shadow-enchanted-forest.md). Four generated concept sheets recreated in native art, seven new props, rule-based POIs/paths, low curling clouds, star-water scenery reflections, contact blending and a saved two-way surface portal. Exact desktop receipts are in the linked note.
+
+# Latest playground art: [Forest-style apple tree and terracotta pots](history/2026-11-22-playground-prop-art.md). Uses the native oak renderer and broad clay planes; focused muted Electron canvas preview recorded. Awaiting in-game visual review.
+
+# Latest enemy and inventory work: [Enemy depth, motion and compact inspection](history/2026-11-22-enemy-depth-and-inventory-inspection.md). Shield fatigue/protection, charger lane tactics, archer repositioning; shared threat, spacing and pressure/resistance; native eight-direction motion pass; compact inventory shelf with explicit full details. Checks and desktop receipts are in the note.
+
+# Latest gameplay additions: [Daily world seed, boomerang return guide and ball-rung bells](history/2026-11-22-pixel-gameplay-additions.md). Source-only changes; no tests/package were run. Electron review remains pending.
+
+# Latest loot source: [Zone-aware gear progression](plans/loot-progression.md). Added shield upgrades, the Arcanist set, Mender/Groveheart healing focuses and regional neck/back gear, with Beholder/Matriarch caches. Effects use native pixel art and progression-aware loot selection. Source-only; gameplay balance remains untested.
+
+# Latest train/tree pass: [Every carriage in eight views and a fuller Christmas tree](history/2026-11-22-train-full-visual-and-tree.md). Actor-only physical foreground masks cover tables, seats, doors, walls, machinery, coal and roofs; overlapping shaded evergreen branches replace the flat house tree. Checks, timing limits and desktop receipts are in the linked note.
+
+# Latest snowy night art: [Blue snow, warm lodge and lanterns](history/2026-11-22-snowy-night-reference.md). Native exterior lodge/lantern scenery, smooth snow apron and snow-only blue night lighting with warm shadowed light pools, based on the user's supplied image. Verification and desktop receipts are in the linked note.
+
+# Latest combat: [Crossfire patrol and connected sword combos](history/2026-11-22-crossfire-combat.md). Shield flanks and guard breaks, committed lion rushes, interruptible archer draws, recovery openings and sword / dodge continuation. Clean charged-sword ground rectangle retained. Verification and desktop receipts are in the linked note.
+
+# Latest Shadow Realm polish: [Thick fog, purple grass and deer depth](history/2026-11-22-shadow-grass-deer-fog.md). Strong running eddies, dense native muted-purple grass, smaller deer and corrected foot-depth sorting. Exact desktop receipts are in the note.
+
+# Latest camera performance: [Zoomed-out multiplayer rendering](history/2026-11-22-multiplayer-camera-performance.md). Shared water/grass work, cached shoreline/board painting, conservative culling and smaller distant sprite rasters. Measurements and verification limits are in the linked note.
+
+# Latest Underworld ground fog: [Reactive fluid fog](history/2026-11-22-shadow-fluid-fog.md). Research-based 2D fluid adaptation with movement trails, swirls, attack/landing displacement and refill. Exact desktop receipts are in the note.
+
+# Latest Underworld atmosphere: [Glowing motes, dust and rolling fog](history/2026-11-22-shadow-atmosphere.md). Bounded world-anchored ambient effects throughout the Shadow Realm; exact desktop verification is in the note.
+
+# Latest owl carrier: [Compact cage and larger owl](history/2026-11-22-owl-carrier-size-1.2.108.md). The owl fills the cage, with headroom and face-clear bars; shared native station/preview artwork. Exact desktop receipts are in the note.
+
+# Latest sword visual: [Clean ground rectangle](history/2026-11-22-sword-ground-cleanup.md). One faint fill, thin outline and stopping edge; removes decorative rails, ticks, symbols and extra foot effects. Native review and desktop receipts are in the linked note.
+
+# Latest Underworld work: [Layered Shadow Realm and pink/purple candles](history/2026-11-22-shadow-underworld.md). Soul river and skull gateway, worn stone paths, clustered ruins/bones, distant cavern forms and colored candlelight. Exact checks, build snapshot and desktop receipts are in the linked note.
+
+# Latest camera source: [Adaptive multiplayer split camera](history/2026-11-22-multiplayer-camera.md). Shared zoom-out limit, automatic two/three/four views and a dedicated Studio Camera section with an interactive test map. Final rebuild receipts are recorded in the linked note.
+
+# Latest TV arena source: [Encounter runs, movement and blessings](history/2026-11-22-tv-arena-run-1.2.107.md). Previewed board trials, three spacious tiers, forgiving jumps/dodges, recoverable supplies, creature combat tools, linked-tube tactics, live equipment roles and independent bounded blessings. Desktop receipts and verification limits are in the linked note.
+
+# Latest train source: [Conductor, Golden Train Ticket and compact pixel chat](history/2026-11-22-train-conductor-and-chat.md). Unattended station stops, native roaming conductor, passive inventory XP bonus and shared pixel speech bubbles. Checks and desktop receipts are in the linked note.
+
+# Latest source: [Diagon Alley, portal cuts and snowy owls](history/2026-11-22-diagon-alley-1.2.106.md). Wand-opened station wall, eight walk-in shops, instant portal camera cuts and persistent caged/following/nettable snowy owl pets. Desktop receipts and verification limits are in the linked note.
+
+# Latest local desktop: [Native Bayou otter rig](history/2026-11-22-bayou-otter.md). Editable 30-joint tail/face/paw rig and 12 clips; swim, dive, surface with a clam and hold/eat it on the belly. The 1.2.107 desktop receipt, draft artwork and verification limits are recorded in the linked note.
+
+# Latest sword work: [Thirteen-part charge/dash polish](history/2026-11-22-sword-charge-polish.md). Collision-clipped lane, staged blade energy, grounded charge/release pose, native afterimages, dust, directional impacts and braking. Exact checks and desktop receipts are in the linked note.
+
+# Latest source: [1.2.107 train depth, passenger access and table jumps](history/2026-11-22-train-depth-table-jumps.md). Relative rider ordering, individual foreground wall/furniture coverage, reachable overlapping students and real tabletop/seat support. Exact verification and desktop receipts are in the linked note.
+
+# Latest local desktop: [Chicken flapping and slow glide](history/2026-11-22-chicken-glide.md). Overhead chicken flaps through a jump and automatically slows descent, with ordinary air steering and landing. Throwing or losing it restores normal gravity. Exact packaged checks, launcher identity and full-suite limits are in the linked note.
+
+# Latest source: [Held attacks, Christmas house and train presentation](history/2026-11-22-hold-holiday-stations.md). Three ground telegraph improvements, swept sword damage, tree and surprise gift, exterior roof lights, upright station entrances and angle-correct seated table coverage. Verification and desktop receipts are in the linked note.
+
+# Latest desktop work: [1.2.103 Hogwarts train passengers and outfitter](history/2026-11-22-hogwarts-train-1.2.103.md). Harry, Hermione and Ron share a compartment with gifts; chocolate frogs can escape and be bottled; Agnes sells a robe set and four back scarves with spring-driven tails. Final checks and build receipts are in the linked note.
+
+# Latest playground work: [1.2.104 small interactions](history/2026-11-22-playground-1.2.104.md). Surprise pots, distinct apple trees with catch/eat/throw fruit, a physical ball, short stump/rock jump trails and shared steerable floating logs. Verification and desktop receipts are recorded in the linked note.
+
+# Latest desktop work: [1.2.102 reported gameplay fixes](history/2026-11-21-reported-gameplay-fixes-1.2.102.md). Smaller candles and world-space debris; imp wall routes; immediate splash, surface wakes/reflections; sand-spider gait and bounded web rendering. Final verification/build receipts are recorded in the linked note.
+
+# Latest local desktop: [Overhead chicken carry](history/2026-11-17-chicken-overhead.md). Zelda-style two-handed overhead hold and forward toss from the native rig, superseding the prior chest-level interpretation. Exact packaged review, source identity and launcher receipts are in the linked note.
+
+# Latest source: [Native character particles and 42 gameplay placements](history/2026-11-17-gameplay-particles.md). Imported body effects follow the actual Wildbound character; 42 editable gameplay slots cover combat/statuses, rewards, weather, travel, vehicles and the board. Full desktop receipts and verification limits are in the linked note.
+
+# Latest local desktop: [Chicken, storage and house polish](history/2026-11-17-storage-and-chicken.md). Lower grip-bound chicken with hold/throw animation; compact owner-colored portals with floor depth; fitted storage frame and smaller chests; live room behind refreshed shops; stove/tap states, healing bed rest and native forest grass around the house. Verified combined desktop receipt is in the linked note.
+
 # Latest source: [1.2.101 co-op streaming and train table depth](history/2026-11-04-coop-streaming-tables-1.2.101.md). Predictive coherent terrain/grass streaming, stable GPU buffers, wide two-player travel and corrected tabletop/chair order. Includes the completed local TV arena work. Final exact delivery receipts are in the linked note.
 
 # Latest source: [1.2.100 TV arena jump clearance](history/2026-11-04-tv-headroom-1.2.100.md). Two roomy suspended tiers, upward-passable ledges, stronger TV jump, repositioned linked tubes and high-jump camera headroom. Final desktop receipts are in the linked note.

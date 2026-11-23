@@ -29,7 +29,7 @@ export function chain(cues) {
         t += dt;
         for (const c of list) {
           if (c.over || t < c.t) continue;
-          if (!c.inst) c.inst = createFx(c.fx, c.opts);
+          if (!c.inst) c.inst = createFx(c.fx, { ...c.opts, ...(o.actor ? {actor:o.actor} : {}) });
           else c.inst.update(dt);
           if (t >= c.until || (c.inst.done() && !c.fx.meta?.loop)) c.over = true;
         }

@@ -47,7 +47,7 @@ export function visitRegion(s,x,y) {
   const key=`${x},${y}`;
   if(!Number.isSafeInteger(x)||!Number.isSafeInteger(y))throw Error('Invalid region coordinates.');
   if(!s.regions[key]){
-    if(Object.keys(s.regions).length>=MAX_REGIONS)throw Error('This world has reached its explored-region limit (4096).');
+    if(Object.keys(s.regions).length>=MAX_REGIONS)return null;
     const r=hash(s.seed,x,y);
     s.regions[key]={x,y,hour:0,prey:12+Math.floor(r*12),predators:1+Math.floor(r*3),food:s.pack.food,water:s.pack.water,nests:1+Math.floor(r*3),settlement:{supplies:30,condition:1,relation:0,faction:s.pack.factions?.[0]||'Wayfarers'},weather:'clear',migration:0,rare:false,merchant:false};
     advanceRegion(s,s.regions[key],Math.floor(s.seconds/WORLD_HOUR));

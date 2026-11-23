@@ -77,8 +77,10 @@ export function drawBiomeAccents(c,g,visible){
       poly(c,[[w.x+2,w.y+w.h],[w.x+w.w-2,w.y+w.h],[w.x+w.w+42,w.y+w.h+85],[w.x+20,w.y+w.h+85]],'#b2d7cd18');
       rect(c,w.x-3,w.y-4,w.w+6,4,'#8b6748');rect(c,w.x-4,w.y,4,w.h,'#693f45');rect(c,w.x+w.w,w.y,4,w.h,'#693f45');
     }
-    for(const f of g.house.furniture||[]){if(!['table','desk','counter'].includes(f.kind)||!visible(f))continue;const x=f.x+f.w*.7,y=f.y+f.h*.3;
-      rect(c,x-3,y,6,2,'#a8945e');rect(c,x-1,y-7,2,7,'#e6d6a1');drawTorchFlame(c,x,y-8,t,x);
+    for(const f of g.house.furniture||[]){if(f.destroyed||!['table','desk','counter'].includes(f.kind)||!visible(f))continue;const x=f.x+f.w*.7,y=f.y+f.h*.3;
+      rect(c,x-3,y,6,2,'#a8945e');rect(c,x-1,y-7,2,7,'#e6d6a1');
+      const flicker=Math.sin(t*9+x)>0?1:0;
+      rect(c,x-1,y-12-flicker,3,5+flicker,'#e9a348');rect(c,x,y-11-flicker,1,3+flicker,'#fff1a1');
     }
   }
   c.restore();

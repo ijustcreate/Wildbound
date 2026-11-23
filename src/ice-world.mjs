@@ -1,9 +1,10 @@
 import {applyTreeFall} from './tree-fall.mjs';
 import {drawBiomeSprite} from './biome-sprites.mjs';
 import {dropIceRecipe} from './ice-crafting.mjs';
+import {drawWinterFixture} from './winter-night.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
-export const ICE_PROPS=['snow_tree','ice_rock','snow_drift','frost_shrub','ice_spire','frozen_log','winter_cache'];
-export const iceSolid=p=>['snow_tree','ice_rock','ice_spire','frozen_log','winter_cache'].includes(p.kind);
+export const ICE_PROPS=['snow_tree','ice_rock','snow_drift','frost_shrub','ice_spire','frozen_log','winter_cache','winter_lodge','winter_lantern'];
+export const iceSolid=p=>['snow_tree','ice_rock','ice_spire','frozen_log','winter_cache','winter_lodge','winter_lantern'].includes(p.kind);
 export const iceBase=p=>({x:p.x,y:p.y+p.size*(p.kind==='snow_tree'?.35:.19)});
 export function drawWinterTile(c,kind,x,y,size=32){
  const r=hash(x/size,y/size);
@@ -34,6 +35,15 @@ export function iceWorld(seed){
    scenery.push({id:'winter:'+x+':'+y,x:px,y:py,kind,size:kind==='snow_tree'?80+Math.floor(n*90):kind==='ice_spire'?54:kind==='frozen_log'?48:36+Math.floor(n*14),procedural:true});
   }
  }
+ // Keep the board/spawn clearing open; the lodge sits on its northern edge.
+ for(let i=scenery.length-1;i>=0;i--)if(Math.hypot((scenery[i].x-800)*.8,scenery[i].y-520)<135)scenery.splice(i,1);
+ scenery.push({id:'winter:lodge',kind:'winter_lodge',x:800,y:500,size:160,procedural:true,width:180,depth:55,height:150,lightBlocker:true});
+ // A continuous snow apron makes the entrance legible between the two lakes.
+ for(let y=13;y<25;y++)for(let x=20;x<30;x++)if(((x*32+16-800)/180)**2+((y*32+16-610)/215)**2<1)terrain[y*50+x]='snow';
+ for(const [i,[x,y]]of [[650,700],[960,710],[620,1030],[1010,1040]].entries()){
+  for(let j=scenery.length-1;j>=0;j--)if(Math.hypot(scenery[j].x-x,scenery[j].y-y)<48)scenery.splice(j,1);
+  scenery.push({id:'winter:lantern:'+i,kind:'winter_lantern',x,y,size:54,procedural:true,lightBlocker:false});
+ }
  return {terrain,scenery,house:null,webs:[],snowDepth:0};
 }
 export function snowAt(g,x,y){if(g.generatedEnvironment!=='ice')return 0;const depth=g.snowDepth||0;return Math.min(1,depth*(.75+hash(Math.floor(x/64),Math.floor(y/64))*.25));}
@@ -62,6 +72,7 @@ export function drawSnowGround(c,g){if(!g.snowDepth)return;c.save();const depth=
 export function clipSnow(c,g,x,base,width,reach=300){const d=snowCoverDepth(g,x,base);if(d<.1)return;c.beginPath();c.rect(x-width/2,base-reach,width,reach-d);c.clip();}
 export function snowRim(c,g,x,base,width){const d=snowCoverDepth(g,x,base);if(d<.1)return;c.save();c.fillStyle='#dcecf0';c.beginPath();c.ellipse(x,base-d+2,width/2,Math.max(2,d*.38),0,0,Math.PI*2);c.fill();c.strokeStyle='#f7ffff';c.globalAlpha=.82;c.lineWidth=Math.max(1,Math.min(3,d*.12));c.beginPath();c.ellipse(x,base-d,width*.46,Math.max(1,d*.26),0,Math.PI*.08,Math.PI*.92);c.stroke();c.restore();}
 export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return false;
+ if(drawWinterFixture(c,p,time))return true;
  const b=iceBase(p),scale=p.size/64;if(!p.falling&&!p.used&&['ice_spire','frost_shrub','frozen_log'].includes(p.kind)&&drawBiomeSprite(c,p.kind,b.x,b.y,p.size,p.kind==='ice_spire'?p.size*1.3:p.size))return true;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(scale,scale);if(p.falling){applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);}
  const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},poly=(points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};
  if(p.kind==='snow_tree'){
@@ -79,7 +90,15 @@ export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return fa
  else if(p.kind==='winter_cache'){r(-20,-24,40,25,'#536775');r(-22,p.used?-36:-26,44,8,'#89a3ac');r(-22,p.used?-38:-28,44,4,'#e7f6f7');r(-16,-22,3,21,'#c4ad74');r(13,-22,3,21,'#c4ad74');r(-4,-18,8,8,p.used?'#283f49':'#e4c77b');}
  c.restore();return true;
 }
-export function drawBlizzard(c,g,w,h){if(g.weather?.type!=='blizzard')return false;c.save();c.fillStyle='#bedce322';c.fillRect(0,0,w,h);const t=g.time||0;c.fillStyle='#f3fbff';for(let i=0;i<140;i++){const z=.4+hash(i,1),x=((hash(i,2)*w+t*(38+z*42))%(w+20))-10,y=((hash(i,3)*h+t*(36+z*55))%(h+20))-10;c.globalAlpha=.35+z*.4;c.fillRect(x,y,2+z*2,2+z);}c.globalAlpha=1;c.fillStyle='#102f3ed9';c.fillRect(12,h-102,214,26);c.fillStyle='#e7f7fb';c.font='12px sans-serif';c.textAlign='left';c.fillText('BLIZZARD · '+Math.ceil(g.weather.life)+'s · Deepening snow',22,h-85);c.restore();return true;}
+export function drawBlizzard(c,g,w,h){
+ const storm=g.weather?.type==='blizzard',ambient=g.generatedEnvironment==='ice'&&!g.weather;
+ if(!storm&&!ambient)return false;
+ c.save();if(storm){c.fillStyle='#bedce322';c.fillRect(0,0,w,h);}
+ const t=g.time||0,count=storm?140:85;c.fillStyle='#f3fbff';
+ for(let i=0;i<count;i++){const z=.4+hash(i,1),wind=storm?38+z*42:6+z*9,x=((hash(i,2)*w+t*wind+Math.sin(t*.7+i)*3)%(w+20))-10,y=((hash(i,3)*h+t*(storm?36+z*55:18+z*24))%(h+20))-10;c.globalAlpha=storm?.35+z*.4:.3+z*.35;c.fillRect(x,y,storm?2+z*2:1+z,storm?2+z:1+z);}
+ if(storm){c.globalAlpha=1;c.fillStyle='#102f3ed9';c.fillRect(12,h-102,214,26);c.fillStyle='#e7f7fb';c.font='12px sans-serif';c.textAlign='left';c.fillText('BLIZZARD · '+Math.ceil(g.weather.life)+'s · Deepening snow',22,h-85);}
+ c.restore();return true;
+}
 export function drawIceHints(c,g){if(g.generatedEnvironment!=='ice')return;for(const p of g.scenery){if(p.used||!['winter_cache','frost_shrub'].includes(p.kind))continue;const b=iceBase(p);if(!g.players.some(a=>a.hp>0&&!a.room&&Math.hypot(a.x-b.x,a.y-b.y)<60))continue;const text=(p.kind==='winter_cache'?'Open winter cache':'Gather frost berries')+' · '+(g.controlLabels?.interact||'E / Y');c.save();c.font='8px sans-serif';c.textAlign='center';const width=c.measureText(text).width;c.fillStyle='#15303dec';c.fillRect(b.x-width/2-5,b.y+8,width+10,15);c.fillStyle='#edf8fb';c.fillText(text,b.x,b.y+18);c.restore();}}
 
 

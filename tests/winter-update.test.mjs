@@ -1,6 +1,31 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {Game,EVENTS} from '../src/core.mjs';import {iceWorld,iceMotion,tickSnow,interactIce,ICE_PROPS,snowCoverDepth,snowShadowFactor} from '../src/ice-world.mjs';import {meleeProfile,meleeTargetInArc} from '../src/melee-geometry.mjs';import {navigateEnemy} from '../src/navigation.mjs';import {waterAt} from '../src/environment.mjs';import {saveSession,restoreSession} from '../src/session.mjs';
+import {winterLanternFrame,winterLightSources} from '../src/winter-night.mjs';
 const game=(env,seed)=>{const g=new Game();if(seed!==undefined)g.seed=seed;g.environment=env;g.addPlayer('keyboard');g.start();g.openingBoard=false;g.scenery=[];return g;};
+
+test('the ice lodge lantern loops through six poses while the frame stays anchored', () => {
+  const frames = [0, .15, .28, .40, .50, .65].map(winterLanternFrame);
+  const first = frames[0];
+  assert.equal(new Set(frames.map(frame => frame.pixels.join(','))).size, 6);
+  assert.equal(winterLanternFrame(.129), first);
+  assert.equal(winterLanternFrame(.130), frames[1]);
+  assert.equal(winterLanternFrame(.710), first);
+  for (const frame of frames) {
+    assert.deepEqual([frame.width, frame.height, frame.x, frame.y], [25, 65, -11, -62]);
+    for (const [index, pixel] of frame.pixels.entries()) {
+      const x = index % first.width, y = Math.floor(index / first.width);
+      if (x >= 8 && x <= 13 && y >= 10 && y <= 18) continue;
+      assert.equal(pixel, first.pixels[index]);
+    }
+  }
+  const snow = {...iceWorld(42), generatedEnvironment: 'ice'};
+  const fixture = snow.scenery.find(prop => prop.id === 'winter:lantern:0');
+  const light = winterLightSources(snow).find(source => source.owner === 'prop:winter:lantern:0');
+  assert.equal(fixture.kind, 'winter_lantern');
+  assert.equal(light.x, fixture.x);
+  assert.equal(light.y, fixture.y + fixture.size * .19);
+});
+
 test('ice has distinct winter scenery and a contiguous frozen lake',()=>{const w=iceWorld(42);assert.ok(w.scenery.every(p=>ICE_PROPS.includes(p.kind)));for(const kind of ICE_PROPS)assert.ok(w.scenery.some(p=>p.kind===kind),kind);for(let y=10;y<18;y++)for(let x=10;x<17;x++)assert.equal(w.terrain[y*50+x],'ice');});
 test('ice caches are uncommon and roll potion quantity plus the Santa hat chance',()=>{const w=iceWorld(42);assert.ok(w.scenery.filter(p=>p.kind==='winter_cache').length<10);const g=game('ice'),p=g.players[0];p.x=500;p.y=500;g.scenery=[{kind:'winter_cache',x:500,y:490,size:40}];g.random=()=>.05;assert.equal(interactIce(g,p),true);assert.equal(g.loot.find(l=>l.type==='potion').qty,1);assert.ok(g.loot.some(l=>l.type==='santa_hat'));});
 test('deep snow buries the lower sprite edge and softens ground shadows',()=>{const g=game('ice');g.snowDepth=0;assert.equal(snowCoverDepth(g,800,800),0);assert.equal(snowShadowFactor(g,800,800),1);g.snowDepth=1;assert.ok(snowCoverDepth(g,800,800)>=13.5);assert.ok(snowCoverDepth(g,800,800)<=18);assert.ok(snowShadowFactor(g,800,800)<=.37);});

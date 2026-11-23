@@ -1,3 +1,4 @@
+import {tickEldritchAttack} from '../eldritch-attack-logic.mjs';
 import { ellipse, facingIndex, limb, poseAt, projectPoint } from '../player-motion.mjs';
 import { GREAT_OWL_WOW_MOTION } from '../great-owl-wow-motion-data.mjs';
 import { BLINKY_WOW_MOTION } from '../blinky-wow-motion-data.mjs';
@@ -904,9 +905,11 @@ export const CREATURE_PACK = {
     if (!Object.hasOwn(defaults, actor.kind)) return false;
     if (actor.jadeLinkId) syncJadeGroup(game, actor);
     if (actor.hp <= 0 || actor.frozen > 0 || actor.stun > 0) return true;
-    const target = livingTargets.filter(p => p.hp > 0 && !p.room).sort((a, b) => Math.hypot(a.x - actor.x, a.y - actor.y) - Math.hypot(b.x - actor.x, b.y - actor.y))[0];
-    if (!target) return true;
-    act(game, actor, target, dt);
+    const committed=actor.eldritchWindup>0||actor.eldritchStrike>0;
+    const target = livingTargets.filter(p => p.hp > 0 && !p.room&&(!committed||actor.eldritchAim?.targetId==null||p.id===actor.eldritchAim.targetId)).sort((a, b) => Math.hypot(a.x - actor.x, a.y - actor.y) - Math.hypot(b.x - actor.x, b.y - actor.y))[0];
+    if (!target&&committed) {actor.eldritchWindup=actor.eldritchStrike=0;actor.eldritchRecovery=1.05;delete actor.eldritchDash;actor.state='recover';actor.animationAction='recover';return true;}
+    if (!target) {actor.eldritchWindup=actor.eldritchStrike=actor.eldritchRecovery=0;delete actor.eldritchDash;actor.state='idle';actor.animationAction='idle';actor.poseTime=null;return true;}
+    act(game, actor, target, dt, livingTargets);
     return true;
   },
 };
@@ -919,43 +922,8 @@ function syncJadeGroup(game, actor) {
   for (const member of members) { member.hp = sharedHp; member.maxHp = host.maxHp || member.maxHp; if (sharedHp <= 0) member.state = 'dead'; }
 }
 
-function act(game, actor, target, dt) {
-  const dx = target.x - actor.x, dy = target.y - actor.y, d = Math.hypot(dx, dy) || 1;
-  actor.faceX = dx / d; actor.faceY = dy / d; actor.cooldown = Math.max(0, (actor.cooldown || 0) - dt);
-  const windupBeforeStep = actor.eldritchWindup || 0;
-  actor.eldritchWindup = Math.max(0, windupBeforeStep - dt); actor.eldritchRecovery = Math.max(0, (actor.eldritchRecovery || 0) - dt);
-  actor.eldritchStrike = Math.max(0, (actor.eldritchStrike || 0) - dt);
-  if (actor.eldritchStrike > 0) { actor.moving = false; actor.state = 'attack'; if (actor.kind === 'evil_hand') actor.animationAction = 'grab'; return; }
-  if (actor.eldritchRecovery > 0) { actor.moving = false; actor.state = 'recover'; if (actor.kind === 'evil_hand') actor.animationAction = 'recover'; return; }
-  if (windupBeforeStep > 0) {
-    actor.state = 'windup'; actor.moving = false;
-    if (actor.kind === 'evil_hand') actor.animationAction = 'windup';
-    if (windupBeforeStep <= dt) {
-      const stats = actor.stats || {}, range = stats.attackRange || 70, inRange = Math.hypot(target.x - actor.x, target.y - actor.y) <= range + 20;
-      if (inRange && typeof game.hurt === 'function') game.hurt(target, actor.damage || stats.damage || 10, actor);
-      if (actor.kind === 'arcane_eye' || actor.kind === 'watcher') { if (inRange && actor.kind === 'watcher') target.rooted = Math.max(target.rooted || 0, .7); }
-      if (actor.kind === 'spore' && inRange) target.poisoned = Math.max(target.poisoned || 0, 2.2);
-      if (actor.kind === 'butterfly_dragon' && inRange) target.burning = Math.max(target.burning || 0, 1.5);
-      if (actor.kind === 'archangel' && inRange) actor.guard = Math.max(actor.guard || 0, .9);
-      actor.state = actor.kind === 'evil_hand' ? 'attack' : 'recover';
-      actor.eldritchRecovery = stats.recovery || .75;
-      if (actor.kind === 'evil_hand') { actor.animationAction = 'grab'; actor.eldritchStrike = .26; }
-    }
-    return;
-  }
-  const speed = actor.speed || actor.stats?.speed || 40, range = actor.stats?.attackRange || 65;
-  const rooted = ['eye_tentacle', 'spore'].includes(actor.kind);
-  let engage = d <= range;
-  if (actor.kind === 'arcane_eye' || actor.kind === 'watcher' || actor.kind === 'butterfly_dragon' || actor.kind === 'great_owl' || actor.kind === 'flying_raptor' || actor.kind === 'archangel') engage = d < range * 1.2;
-  if (!rooted && !engage) { game.moveActor?.(actor, dx / d * speed * dt, dy / d * speed * dt, ['great_owl', 'butterfly_dragon', 'flying_raptor', 'archangel', 'arcane_eye', 'watcher'].includes(actor.kind)); actor.moving = true; actor.state = actor.kind === 'tree_ent' ? 'walk' : 'hunt'; if (actor.kind === 'evil_hand') actor.animationAction = 'crawl'; return; }
-  if (!engage) { actor.moving = false; actor.state = 'idle'; if (actor.kind === 'evil_hand') actor.animationAction = 'idle'; return; }
-  actor.moving = false;
-  if (actor.kind === 'evil_hand') actor.animationAction = 'idle';
-  if (actor.cooldown <= 0) {
-    const windup = ({ arcane_eye: .72, great_owl: .58, butterfly_dragon: .84, evil_hand: .48, eye_tentacle: .64, jade_tentacle: .53, flying_raptor: .45, archangel: .76, watcher: .92, cave_monster: .58, tree_ent: .88, spore: .82 })[actor.kind] || .65;
-    actor.eldritchWindup = windup; actor.attack = windup; actor.cooldown = (actor.stats?.strikeCooldown || actor.stats?.diveCooldown || actor.stats?.rayCooldown || actor.stats?.gazeCooldown || actor.stats?.breathCooldown || actor.stats?.slamCooldown || actor.stats?.pounceCooldown || actor.stats?.lashCooldown || actor.stats?.burstCooldown || 2.5) + windup;
-    actor.state = 'windup'; actor.animationAction = ({ arcane_eye: 'ray', great_owl: 'swoop', butterfly_dragon: 'breath', evil_hand: 'windup', eye_tentacle: 'lash', jade_tentacle: 'lash', flying_raptor: 'dive', archangel: 'strike', watcher: 'gaze', cave_monster: 'pounce', tree_ent: 'slam', spore: 'burst' })[actor.kind];
-  }
+function act(game, actor, target, dt, livingTargets) {
+  return tickEldritchAttack(game,actor,target,dt,livingTargets,defaults[actor.kind]?.stats);
 }
 
 export function validateEldritchRig(model) { return validate(model); }

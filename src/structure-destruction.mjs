@@ -6,7 +6,7 @@ import {propBase} from './environment.mjs';
 // Geometry remains authored as whole assets. Only damaged cells are serialized;
 // spatial indices, raster caches and cosmetic debris never enter a save/network snapshot.
 export const WALL_SECTION_SIZE=40;
-export const DESTRUCTION_PARTICLE_LIMIT=160;
+export const DESTRUCTION_PARTICLE_LIMIT=64;
 const CELL=128, indices=new WeakMap(), visuals=new WeakMap(), rasters=new Map();
 const RASTER_PIXEL_LIMIT=4*1024*1024;let rasterPixels=0;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -19,7 +19,7 @@ const material=(g,b)=>b.kind==='window'?'glass':b.kind==='fence'||b.destructionG
 const toughness=(g,b)=>({glass:1,wood:100,plaster:200,stone:200})[material(g,b)];
 const crackThreshold=(g,b)=>b.kind==='window'?Infinity:['fence','gate'].includes(b.kind)||['furniture','doors'].includes(b.destructionGroup)?40:60;
 const debrisPalette=b=>b.kind==='window'?['#95c8ca','#c9e4d8','#759da2']:b.kind==='bed'?['#527b60','#7d9b69','#895f3c','#6b4a31']:b.kind==='plant'?['#3f8752','#78a354','#895f3c','#65462f']:b.kind==='sofa'?['#49766d','#89a28a','#895f3c','#6b4a31']:b.kind==='bookcase'?['#d6b874','#8e5143','#617d71','#895f3c']:b.kind==='chest'?['#895d38','#bc8b53','#d6b36d','#68472e']:['#895f3c','#6b4a31','#a77d4d'];
-function addDebris(b,r,n){b.debris||=[];const palette=debrisPalette(b);for(let i=0;i<5;i++){const seed=(Math.imul((n+1)*71+i*113,1103515245)+Math.round((b.x+b.y)*31))>>>0;b.debris.push({x:r.x+(seed%Math.max(1,r.w)),y:r.y+r.h+(seed>>>8)%13,color:palette[(seed>>>16)%palette.length],w:2+seed%4,h:1+(seed>>>4)%3});}if(b.debris.length>80)b.debris.splice(0,b.debris.length-80);}
+function addDebris(b,r,n){b.debris||=[];const palette=debrisPalette(b);for(let i=0;i<5;i++){const seed=(Math.imul((n+1)*71+i*113,1103515245)+Math.round((b.x+b.y)*31))>>>0,a=(seed%628)/100,radius=4+(seed>>>8)%15;b.debris.push({x:r.x+r.w/2+Math.cos(a)*radius,y:r.y+r.h/2+Math.sin(a)*radius*.6,color:palette[(seed>>>16)%palette.length],w:1+seed%3,h:1+(seed>>>4)%2});}if(b.debris.length>80)b.debris.splice(0,b.debris.length-80);}
 function dropContents(g,b,x,y){if(b.breakLootDropped)return;b.breakLootDropped=true;b.opened=true;for(const item of b.loot||[]){let qty=0;for(let i=0;i<(item.qty||1);i++)if(g.random()<.6)qty++;if(qty)g.dropLoot(x,y,item.type,qty,b.chestId||'Broken chest',true);}b.loot=[];g.onSound?.('woodBreak',{x,y});}
 function state(g){let s=visuals.get(g);if(!s||s.house!==g.house){s={house:g.house,particles:[],soundAt:-Infinity,shatterAt:-Infinity,saveAt:-Infinity};visuals.set(g,s);}return s;}
 function index(g){
@@ -59,13 +59,15 @@ export function sectionBlocked(b,x,y,r=8){
   return cells(b,x,y,r).some(({n,rect})=>!b.sectionDamage[n]?.broken&&rectDistance(rect,x,y)<r);
 }
 function burst(g,r,b,dx,dy,broken){
-  const s=state(g),count=Math.min(broken?12:3,DESTRUCTION_PARTICLE_LIMIT-s.particles.length),m=material(g,b);
+  const s=state(g),count=Math.min(broken?7:2,DESTRUCTION_PARTICLE_LIMIT-s.particles.length),m=material(g,b);
   const colors={stone:['#9b997e','#6b7067','#ccc7a7'],wood:['#9e7448','#d4af73','#604632'],glass:['#99d2d7','#d9f4e5','#6c969f'],plaster:['#d8c8a1','#97856b','#6d4d36']}[m];
   for(let n=0;n<count;n++){
-    const seed=(Math.imul(Math.round(r.x+r.y*13),1103515245)+n*977)>>>0,a=(seed%628)/100,speed=18+seed%48;
-    s.particles.push({x:r.x+r.w/2,y:r.y+r.h/2,z:3+seed%12,vx:Math.cos(a)*speed+dx*35,vy:Math.sin(a)*speed*.55+dy*25,vz:35+seed%70,
-      age:0,life:.55+(seed%40)/100,size:2+seed%3,color:colors[n%3],dust:n%4===0});
+    const seed=(Math.imul(Math.round(r.x+r.y*13),1103515245)+n*977)>>>0,a=(seed%628)/100,speed=12+seed%24;
+    s.particles.push({x:r.x+r.w/2,y:r.y+r.h/2,z:2+seed%7,vx:Math.cos(a)*speed+clamp(dx,-1,1)*12,vy:Math.sin(a)*speed*.6+clamp(dy,-1,1)*8,vz:30+seed%26,
+      age:0,life:.65+(seed%20)/100,size:1+seed%2,color:colors[n%3],dust:n%4===0});
   }
+  // Native fragments use independent ground x/y and height z. A screen-space
+  // explosion here duplicates the debris and lands it on an invented flat line.
   const now=g.time||0,shatter=broken&&m==='glass';
   if(now-(shatter?s.shatterAt:s.soundAt)>.09){g.onSound?.(shatter?'glassBreak':broken?'wallBreak':'hit',{x:r.x+r.w/2,y:r.y+r.h/2});if(shatter)s.shatterAt=now;else s.soundAt=now;}
 }
@@ -186,41 +188,46 @@ export function drawBreakable(c,g,b,painter,style='default'){
   }
   // Huge editor rectangles use one clipped draw instead of allocating giant
   // surfaces. Normal assets share a globally bounded LRU of paired rasters.
-  if(typeof document==='undefined'||(b.w+16)*(b.h+64)>512*1024){
+  const topPad=b.kind==='christmas_tree'?80:48;
+  if(typeof document==='undefined'||(b.w+16)*(b.h+topPad+16)>512*1024){
     if(!b.sectionDamage){painter(c,b);drawDebris(c,b);return;}c.save();c.beginPath();
     for(let n=0;n<cols(b)*rows(b);n++){const r=at(b,n);if(!b.sectionDamage[n]?.broken)c.rect(r.x,r.y,r.w,r.h);}
     c.clip();painter(c,b);c.restore();
     for(const [n,record]of Object.entries(b.sectionDamage))paintDamage(c,g,b,Number(n),record);drawDebris(c,b);return;
   }
   let cache=rasters.get(b);
-  const key=style+':'+(b.kind==='window'&&!b.sectionDamage?!!b.broken:false);
+  const key=style+':'+(painter.artRevision||0)+':'+(b.kind==='window'&&!b.sectionDamage?!!b.broken:false)+':'+(b.kind==='wrapped_gift'?!!b.opened:'');
   if(!cache||cache.style!==key){
     if(cache){rasterPixels-=cache.pixels;cache.source.width=cache.canvas.width=1;rasters.delete(b);}
-    const pixels=(b.w+16)*(b.h+64);
+    const pixels=(b.w+16)*(b.h+topPad+16);
     while(rasterPixels+pixels>RASTER_PIXEL_LIMIT&&rasters.size){const oldest=rasters.keys().next().value,entry=rasters.get(oldest);rasterPixels-=entry.pixels;entry.source.width=entry.canvas.width=1;rasters.delete(oldest);}
-    const source=document.createElement('canvas');source.width=b.w+16;source.height=b.h+64;
-    const sc=source.getContext('2d');sc.translate(8-b.x,48-b.y);painter(sc,b.kind==='window'&&b.sectionDamage?{...b,broken:false}:b);
+    const source=document.createElement('canvas');source.width=b.w+16;source.height=b.h+topPad+16;
+    const sc=source.getContext('2d');sc.translate(8-b.x,topPad-b.y);painter(sc,b.kind==='window'&&b.sectionDamage?{...b,broken:false}:b);
     const canvas=document.createElement('canvas');canvas.width=source.width;canvas.height=source.height;canvas.getContext('2d').drawImage(source,0,0);
-    cache={source,canvas,style:key,revision:-1,seen:{},pixels};rasters.set(b,cache);rasterPixels+=pixels;
+    cache={source,canvas,style:key,revision:-1,seen:{},pixels,topPad};rasters.set(b,cache);rasterPixels+=pixels;
   }
   else {rasters.delete(b);rasters.set(b,cache);}
   if(b.sectionDamage&&cache.revision!==b.destructionRevision){
     const cc=cache.canvas.getContext('2d');
     for(const [key,record] of Object.entries(b.sectionDamage)){
-      if(cache.seen[key]===record.damage)continue;const n=Number(key),r=at(b,n),sx=r.x-b.x+8,sy=r.y-b.y+48;
+      if(cache.seen[key]===record.damage)continue;const n=Number(key),r=at(b,n),sx=r.x-b.x+8,sy=r.y-b.y+cache.topPad;
       const height=r.h+(r.y+r.h===b.y+b.h?8:0);
       cc.clearRect(sx,sy,r.w,height);
       if(!record.broken)cc.drawImage(cache.source,sx,sy,r.w,height,sx,sy,r.w,height);
-      cc.save();cc.translate(8-b.x,48-b.y);paintDamage(cc,g,b,n,record);cc.restore();cache.seen[key]=record.damage;
+      cc.save();cc.translate(8-b.x,cache.topPad-b.y);paintDamage(cc,g,b,n,record);cc.restore();cache.seen[key]=record.damage;
     }
     cache.revision=b.destructionRevision;
   }
-  c.drawImage(cache.canvas,b.x-8,b.y-48);drawDebris(c,b);
+  c.drawImage(cache.canvas,b.x-8,b.y-cache.topPad);drawDebris(c,b);
 }
 function drawDebris(c,b){if(!b.debris?.length)return;c.save();for(const p of b.debris){c.fillStyle=p.color;c.fillRect(Math.round(p.x),Math.round(p.y),p.w,p.h);}c.restore();}
-export function drawDestruction(c,g,visible=()=>true){
+export function airborneDestruction(g){return (visuals.get(g)?.particles||[]).filter(p=>p.z>0&&!p.dust);}
+export function drawDestructionFragment(c,p){
+ c.save();c.globalAlpha=Math.min(1,(p.life-p.age)*3);c.fillStyle=p.color;c.fillRect(Math.round(p.x),Math.round(p.y-p.z),p.size,Math.max(1,p.size-1));c.restore();
+}
+export function drawDestruction(c,g,visible=()=>true,{groundOnly=false}={}){
   if(!visuals.has(g))return;const s=state(g);if(!s.particles.length)return;c.save();
-  for(const p of s.particles){if(!visible(p))continue;c.globalAlpha=Math.min(1,(p.life-p.age)*3)*(p.dust?.35:1);c.fillStyle=p.color;
-    c.fillRect(Math.round(p.x),Math.round(p.y-p.z),p.dust?p.size*2:p.size,p.dust?p.size*2:Math.max(1,p.size-1));}
+  for(const p of s.particles){if(!visible(p))continue;const alpha=Math.min(1,(p.life-p.age)*3);if(!p.dust&&p.z>1){c.globalAlpha=alpha*.2;c.fillStyle='#292b26';c.fillRect(Math.round(p.x),Math.round(p.y),p.size+1,1);}c.globalAlpha=alpha*(p.dust?.25:1);c.fillStyle=p.color;
+    if(!groundOnly||p.z<=0||p.dust)c.fillRect(Math.round(p.x),Math.round(p.y-p.z),p.dust?p.size*2:p.size,p.dust?p.size*2:Math.max(1,p.size-1));}
   c.restore();
 }

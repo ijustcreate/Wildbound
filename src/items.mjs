@@ -18,6 +18,7 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  golden_train_ticket:{name:'Golden Train Ticket',base:'treasure',stack:1,rarity:'rare',sellPrice:0,supplyOnly:true,description:'A gift from the train conductor. Gain 10% more experience while this ticket is in your backpack. Extra tickets do not stack.'},
   energy_blade_red:{name:'Red energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#ff3949',artColor:'#ff263f',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#ff263f',lightSource:{radius:190,intensity:.72,color:'#ff263f'},description:'A humming red energy sword. Burns targets and casts a red glow; the blade powers down after ten seconds without an attack.'},
   energy_blade_blue:{name:'Blue energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#43bfff',artColor:'#238dff',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#238dff',lightSource:{radius:190,intensity:.72,color:'#238dff'},description:'A humming blue energy sword. Burns targets and casts a blue glow; the blade powers down after ten seconds without an attack.'},
   energy_blade_green:{name:'Green energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#69f26c',artColor:'#31dc58',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#31dc58',lightSource:{radius:190,intensity:.72,color:'#31dc58'},description:'A humming green energy sword. Burns targets and casts a green glow; the blade powers down after ten seconds without an attack.'},
@@ -31,8 +32,8 @@ export const ITEMS = {
   dark_essence:{name:'Dark Essence',stack:999,color:'#a269cb',material:true,trinket:true,maxMana:0,weaponOnly:true,description:'Socket in a weapon: heal 20% of damage dealt, up to 8 health per hit. Each healing hit consumes one essence; your backpack refills the socket when stocked. Extracted from captured creatures.'},
   trial_letter:{name:'A letter from the living board',stack:1,color:'#eddbad',sellPrice:0,description:'The dice may hurry, feet may flee;\nNo borrowed courage pays the tree.\nThe trials you leave, the gifts forego—\nBrave roots alone make treasure grow.'},
   mosquito_charm:{supplyOnly:true,name:'Oversized mosquito charm',base:'charm',slot:'neck',stack:1,rarity:'unique',color:'#d7a963',artColor:'#b8ce86',maxHp:8,description:'“They used to be smaller.” A tiny brass mosquito with an absurdly large proboscis. +8 maximum health. A playful living-jungle movie nod.'},
-  starter_boomerang:{name:'Starter boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:12,range:210,speed:330,stack:1,supplyOnly:true,color:'#bf9658',artColor:'#bf9658',description:'Throw and catch. Returns to you; no ammunition needed. One throw at a time.'},
-  boomerang:{name:'Trail boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:20,range:260,speed:380,stack:1,rarity:'common',color:'#be9251',artColor:'#be9251',description:'A returning weapon. Hits each enemy once per throw; no ammunition needed.'},
+ starter_boomerang:{name:'Starter boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:12,range:210,speed:330,stack:1,supplyOnly:true,color:'#bf9658',artColor:'#bf9658',description:'Move after throwing to guide it back to your hand. No ammunition needed. One throw at a time.'},
+ boomerang:{name:'Trail boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:20,range:260,speed:380,stack:1,rarity:'common',color:'#be9251',artColor:'#be9251',description:'Move after throwing to sweep a different line on the return. No ammunition needed.'},
   moon_boomerang:{name:'Moonsteel boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:30,range:310,speed:430,stack:1,rarity:'rare',color:'#8cd6e8',artColor:'#8cd6e8',description:'A swift moonsteel returning weapon. One throw at a time; no ammunition needed.'},
   sun_boomerang:{name:'Sunfire boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:42,range:360,speed:480,stack:1,rarity:'unique',color:'#f4b75d',artColor:'#f4b75d',description:'A powerful golden returning weapon. One throw at a time; no ammunition needed.'},
   critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip in either hand and press Attack near a critter. Automatically uses an empty bottle/jar or travel cage from your backpack.'},
@@ -55,6 +56,16 @@ export const ITEMS = {
   raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'A piece of frozen ice. Melts after five minutes outside the ice level.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
   flying_broom:{name:'Witch’s flying broom',stack:1,color:'#bd984f',rarity:'unique',mount:true,sellPrice:90,description:'Use outdoors to mount and fly. B / loot button: dismount and return the broom. A released captured pet can ride behind you.'},
+  nimbus_2000:{name:'Repaired Nimbus 2000',base:'flying_broom',stack:1,color:'#c69a4d',rarity:'unique',mount:true,sellPrice:120,questReward:true,description:'Harry Potter’s old Nimbus 2000, carefully repaired with two brass bindings. Use outdoors to fly; dismount to return it to your backpack.'},
+  standard_book_of_spells:{name:'Standard Book of Spells',base:'trinket',trinket:true,spellDamage:3,stack:1,rarity:'unique',color:'#9c5345',artColor:'#9c5345',questReward:true,description:'Hermione Granger’s spare textbook. Socket into compatible gear: +3 spell damage. No bonus while loose in your backpack.'},
+  chocolate_frog:{name:'Chocolate Frog',base:'potion',food:true,stack:10,color:'#70462f',artColor:'#70462f',rarity:'uncommon',questReward:true,description:'Always grants 5 minutes of sparkles. 50%: refill health. 50%: escape as a brown frog at your feet, with no healing. Catch it with a net and an empty bottle to try again.'},
+  caught_snowy_owl:{name:'Snowy Owl Â· travel cage',stack:1,captureContainer:'critter_cage',color:'#e9eadc',sellPrice:18,description:'Your snowy owl companion. Use outdoors to release it and recover the empty cage.'},
+  diagon_ice_cream:{name:'Fortescueâ€™s ice cream',base:'potion',food:true,stack:10,heal:35,color:'#e9c9af',supplyOnly:true,description:'Strawberry ice cream from Diagon Alley. Restores health.'},
+  caught_chocolate_frog:{name:'Bottled Chocolate Frog',stack:1,captureContainer:'empty_jar',food:true,color:'#8a5a37',sellPrice:8,description:'Use to try the Chocolate Frog again: 50% refill health, 50% escape; always sparkle. Returns the empty bottle.'},
+  hogwarts_student_robes:{name:'Hogwarts school robes',base:'armor',slot:'chest',style:'robe',stack:1,supplyOnly:true,rarity:'rare',armor:4,color:'#34323d',artColor:'#34323d',description:'Hogwarts uniform set: dark school robes over a grey student uniform.'},
+  hogwarts_trousers:{name:'Hogwarts uniform trousers',base:'pants',slot:'pants',stack:1,supplyOnly:true,rarity:'rare',armor:2,color:'#4b4650',artColor:'#4b4650',description:'Hogwarts uniform set: neatly fitted charcoal trousers.'},
+  hogwarts_shoes:{name:'Hogwarts school shoes',base:'boots',slot:'feet',stack:1,supplyOnly:true,rarity:'rare',armor:2,color:'#49372e',artColor:'#49372e',description:'Hogwarts uniform set: polished brown school shoes.'},
+  hogwarts_cuffs:{name:'Hogwarts uniform cuffs',base:'gloves',slot:'gloves',stack:1,supplyOnly:true,rarity:'rare',armor:1,color:'#87828a',artColor:'#87828a',description:'Hogwarts uniform set: grey cuffs beneath the robe sleeves.'},
   mounted_broom:{name:'Broom · in flight',stack:1,color:'#78977a',mountReservation:true,supplyOnly:true,npcOnly:true,description:'Your broom is in flight. B / loot button returns it to this reserved slot.'},
   witch_hat:{name:'Crooked witch hat',slot:'head',stack:1,armor:2,color:'#6d8051',rarity:'rare',style:'witch',description:'A wide green brim, crooked point and a brass buckle. Armor +2.'},
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Picked-up relics go here first. Relics inside grant their passive bonuses while you carry this bag.' },
@@ -294,6 +305,7 @@ export const ITEMS = {
     color: "#cbbc68",
     description: "T / D-pad down: toss to distract a biting plant.",
   },
+  apple: {name:'Apple',food:true,stack:20,color:'#bc4e3c',description:'Eat from your backpack to restore 12 health. Fresh apples can be caught, carried and thrown.'},
   coconut: {
     name: "Coconut",
     stack: 20,
@@ -1060,8 +1072,22 @@ for(const [id,name,base,slot,color,style,stats] of [
  ['banshee_legguards','Queen\u2019s legguards','pants','pants','#352c39','plated',{}],
  ['banshee_boots','Queen\u2019s armored boots','boots','feet','#352c39','tall',{}],
 ])ITEMS[id]={name,base,slot,artColor:color,color,style,stack:1,rarity:'unique',bansheeGear:true,...stats,...(BANSHEE_SET.includes(id)?{bossOnly:true,description:'Banshee set \u00b7 dropped by the Banshee Queen. 2 pieces: arrows have a 20% freeze chance (1.5s). 5 pieces: cosmetic icy footsteps.'}:{npcOnly:true,description:'Custom fitted armor worn by the Banshee Queen.'})};
+// Regional gear added by the loot-progression expansion. Each piece has a
+// distinct native-pixel silhouette and a narrow role so upgrades are legible.
+ITEMS.waykeeper_shield={name:'Waykeeper Buckler',base:'shield',slot:'hand2',stack:1,rarity:'rare',armor:4,speedBonus:.04,style:'waykeeper',color:'#638776',artColor:'#527b68',description:'A light shield with a little extra travel speed. +4% move speed; Hold Block to stop frontal blows and catch arrows.'};
+ITEMS.bastion_shield={name:'Bastion Ward',base:'shield',slot:'hand2',stack:1,rarity:'unique',armor:7,maxHp:8,guardBreakResist:.3,style:'bastion',color:'#627e91',artColor:'#718f9a',description:'A layered stone-and-steel guard. +8 maximum health. A successful block braces you for 0.75 sec; the next hit that gets through deals 30% less damage.'};
+ITEMS.arcanist_circlet={name:'Arcanist Circlet',base:'hat',slot:'head',stack:1,rarity:'rare',armor:2,maxMana:10,style:'circlet',color:'#453c69',artColor:'#7361a6',set:'arcanist',description:'A deep-violet circlet set with a small moonstone. +10 maximum mana.'};
+ITEMS.arcanist_robe={name:'Arcanist Robe',base:'armor',slot:'chest',stack:1,rarity:'rare',armor:3,manaRegen:.4,style:'arcanist',color:'#38334f',artColor:'#554c78',set:'arcanist',description:'A dark blue-violet robe with a teal clasp. +0.4 mana/sec.'};
+ITEMS.arcanist_gloves={name:'Arcanist Gloves',base:'gloves',slot:'gloves',stack:1,rarity:'rare',armor:1,spellDamage:2,style:'arcanist',color:'#655779',artColor:'#74628f',set:'arcanist',description:'Soft gloves with a bright blue stitch at the knuckles. +2 spell damage.'};
+ITEMS.mender_focus={name:'Mender Focus',base:'wand',slot:'hand1',stack:1,rarity:'rare',magic:true,healing:true,healingAmount:30,healingHot:true,healingHotAmount:4,damage:0,manaCost:14,sockets:1,maxHp:0,style:'mender',color:'#66c9af',artColor:'#67bca4',description:'A focused healing bolt restores 30 health (45 fully charged) to an ally and leaves 4 healing/sec for 3 seconds.'};
+ITEMS.groveheart_focus={name:'Groveheart Focus',base:'wand',slot:'hand1',stack:1,rarity:'unique',magic:true,healing:true,healingAmount:30,healingHot:true,healingHotAmount:5,healingSplashRadius:42,healingSplashAmount:16,damage:0,manaCost:18,sockets:1,maxHp:0,style:'groveheart',color:'#5aa783',artColor:'#61bd8a',description:'A charged leaf-crystal focus. Heals the struck ally for 30 (45 fully charged), allies within 42 units for 16, and grants each 5 healing/sec for 3 seconds.'};
+ITEMS.bogglass_charm={name:'Bogglass Charm',base:'charm',slot:'neck',stack:1,rarity:'rare',maxMana:10,manaRegen:.4,poisonResist:.25,style:'bogglass',color:'#4c9589',artColor:'#4d9c8d',description:'A green glass drop set in a reed-wrapped frame. +10 maximum mana, +0.4 mana/sec, and 25% poison resistance.'};
+ITEMS.wayfinder_quiver={name:'Wayfinder Quiver',base:'quiver',slot:'back',stack:1,rarity:'rare',bowDrawSpeed:.1,arrowSpeed:.2,style:'dunewind',color:'#b98b53',artColor:'#ae7946',description:'A narrow desert quiver for long shots. Arrows travel 20% faster; bows draw 10% faster.'};
+export const ARCANIST_SET=Object.freeze(['arcanist_circlet','arcanist_robe','arcanist_gloves']);
 Object.assign(ITEMS,CHRISTMAS_ITEMS,SKELETON_ARMOR_ITEMS);
+for(const [color,base,trim] of [['yellow','#c69e3c','#423c35'],['green','#347256','#b9c4b1'],['red','#943e39','#d1a65d'],['blue','#3e618f','#b59b6e']])ITEMS['hogwarts_scarf_'+color]={name:'Hogwarts scarf · '+color,base:'scarf',slot:'back',scarf:[base,trim],stack:1,supplyOnly:true,rarity:'uncommon',color:base,artColor:base,description:'A '+color+' house scarf worn in the back slot. Two cloth tails sway and flap as you move.'};
 export const GEAR_SETS={
+ hogwarts:{name:'Hogwarts Uniform',groups:[['hogwarts_student_robes'],['hogwarts_trousers'],['hogwarts_shoes'],['hogwarts_cuffs']],three:{maxMana:10},full:{manaRegen:1},threeText:'+10 maximum mana',fullText:'Regenerate 1 mana/sec'},
  santa:{name:'Christmas Spirit',groups:Object.values(SANTA_EQUIPMENT).map(id=>[id]),full:{icySteps:1,christmasSpirit:1},fullText:'Christmas Spirit: icy footprints and an occasional festive sparkle.'},
  alan:{name:'Jumanji Wilderness',groups:Object.values(ALAN_EQUIPMENT).map(id=>[id]),full:{jumanjiVines:1},
    fullText:'Jungle’s call: Jumanji jungle knife hits summon grasping vines every 12 seconds, holding a monster for 2 seconds and healing you for 8.'},
@@ -1072,6 +1098,7 @@ export const GEAR_SETS={
  safari_hunter:{name:'Safari hunter',groups:Object.values(SAFARI_HUNTER_SET).map(id=>[id]),three:{maxHp:25},full:{hpRegen:1,speedBonus:.12},threeText:'+25 maximum health',fullText:'Trail vitality: regenerate 1 health/sec and move 12% faster'},
  sun:{name:'Sunforged',groups:[['sun_crown'],['sun_shoulders'],['sun_plate'],['sun_grips'],['sun_blade','sun_bow','sun_wand','sun_shield']],three:{maxHp:30},full:{damageBonus:8,hpRegen:2},threeText:'+30 maximum health',fullText:'Solar might: +8 attack damage and regenerate 2 health/sec'},
  necromancer:{name:'Necromancer',groups:[['necromancer_dagger'],['necromancer_wand']],skills:['necromancer_pet'],full:{},fullText:'Complete set: your kills raise one skeleton companion. While it lives, no additional skeletons summon. If it dies, your next kill raises another.'},
+ arcanist:{name:'Arcanist',groups:ARCANIST_SET.map(id=>[id]),two:{manaDiscount:.08},full:{manaRegen:1},twoText:'Spells cost 8% less mana',fullText:'Arcane circulation: regenerate 1 mana/sec'},
 };
 for(const [set,def] of Object.entries(GEAR_SETS))for(const group of def.groups)for(const id of group)ITEMS[id].set=set;
 for(const [id,item] of Object.entries(ITEMS))if(item.slot){
@@ -1146,6 +1173,7 @@ export function itemStats(id) {
     i.bowDrawSpeed ? `Bow draw speed +${Math.round(i.bowDrawSpeed*100)}%` : '',
     i.arrowSpeed ? `Arrow speed +${Math.round(i.arrowSpeed*100)}%` : '',
     i.armor ? `Armor +${i.armor}` : "",
+    i.spellDamage ? `Spell damage +${i.spellDamage}` : '',
     i.maxHp ? `Health +${i.maxHp}` : '',
     i.maxMana ? `Mana +${i.maxMana}` : '',
     i.manaRegen ? `Mana regen +${i.manaRegen}/sec` : '',
@@ -1153,7 +1181,9 @@ export function itemStats(id) {
     i.punch ? `Fists +${i.punch}` : "",
     i.magnet ? `Loot reach +${i.magnet}` : "",
     i.rootResist ? "Root resist" : "",
-    i.poisonResist ? "Poison resist" : "",
+    i.poisonResist ? (i.poisonResist<1?`Poison resistance +${Math.round(i.poisonResist*100)}%`:'Poison resist') : "",
+    i.guardBreakResist ? `Guard brace: next hit within 0.75 sec −${Math.round(i.guardBreakResist*100)}% damage after a block` : "",
+    i.healingSplashRadius ? `Healing splash ${i.healingSplashRadius} · ${i.healingSplashAmount} health` : "",
     i.relic ? "Passive in your backpack or carried Reliquary Bag" : "",
   ]
     .filter(Boolean)
@@ -1191,7 +1221,7 @@ export function migrateLegacySupplies(list){
   let target;
   for(let i=0;i<list.length;i++){
     const item=list[i];if(item?.type!=='arrow')continue;
-    if(target&&target.qty<ITEMS.arrow.stack){const n=Math.min(item.qty,ITEMS.arrow.stack-target.qty);target.qty+=n;item.qty-=n;if(!item.qty){clearSlot(list,i);continue;}}
+    if(target&&!!target.starterStock===!!item.starterStock&&target.qty<ITEMS.arrow.stack){const n=Math.min(item.qty,ITEMS.arrow.stack-target.qty);target.qty+=n;item.qty-=n;if(!item.qty){clearSlot(list,i);continue;}}
     target=item;
   }
   for(const type of ['critter_cage']){
@@ -1204,7 +1234,7 @@ export function migrateLegacySupplies(list){
   }
 }
 const itemCaptureContainer=(type,item={})=>critterContainer(type,{captureContainer:item.captureContainer??ITEMS[type]?.captureContainer});
-const matchingStack=(item,type,metadata)=>item?.type===type&&(!type.startsWith('caught_')||itemCaptureContainer(type,item)===itemCaptureContainer(type,metadata));
+const matchingStack=(item,type,metadata)=>item?.type===type&&!!item.starterStock===!!metadata.starterStock&&(!type.startsWith('caught_')||itemCaptureContainer(type,item)===itemCaptureContainer(type,metadata));
 export function canGive(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {}) {
   qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   if (!ITEMS[type] || qty <= 0) return false;
@@ -1228,7 +1258,7 @@ export function give(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {})
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    const item={type,qty:n,...(type.startsWith('caught_')?{captureContainer:itemCaptureContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
+    const item={type,qty:n,...(metadata.starterStock?{starterStock:true}:{}),...(type.startsWith('caught_')?{captureContainer:itemCaptureContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
     if (hole >= 0) list[hole] = item;
     else list.push(item);
     qty -= n;
@@ -1304,7 +1334,9 @@ export function unequip(p, slot) {
 export function transfer(from, to, index, slots = BACKPACK_SLOTS) {
   if(ITEMS[from[index]?.type]?.mountReservation)return false;
   const i = from[index];
-  if (!i || !give(to, i.type, i.qty, slots,i)) return false;
+  if (!i) return false;
+  const {starterStock, ...metadata} = i;
+  if (!give(to, i.type, i.qty, slots,metadata)) return false;
   clearSlot(from, index);
   return true;
 }
@@ -1344,7 +1376,7 @@ export function freshCharacter(id, name) {
 }
 
 export function migrateEquipment(p) {
-  if(!p.broomMount)for(const item of p.inventory||[])if(item?.type==='mounted_broom')item.type='flying_broom';
+  if(!p.broomMount)for(const item of p.inventory||[])if(item?.type==='mounted_broom')item.type=ITEMS[item.broomType]?.mount?item.broomType:'flying_broom';
   for(const list of [p.inventory,...(p.chests||[]),p.starterChest,p.robotStock,p.field?.overflow])migrateLegacySupplies(list);
   if(p.field){delete p.field.quiver;if(p.field.recipes)delete p.field.recipes.ice_arrow;}
   p.equipment ||= {};
@@ -1481,6 +1513,8 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
         return false;
       if (source === dest && from.index === to.index) return true;
       const target = dest[to.index];
+      if (to.mode !== "chest") delete item.starterStock;
+      if (target && from.mode !== "chest") delete target.starterStock;
       if (matchingStack(target,item.type,item) && ITEMS[item.type].stack>1&&!socketCount(item.type)&&!item.sockets?.length&&!target.sockets?.length) {
         const qty = Math.min(item.qty, ITEMS[item.type].stack - target.qty);
         if (!qty) return false;
@@ -1518,3 +1552,5 @@ ITEMS.halo={name:'Halo',base:'hat',slot:'head',healingHalo:true,
 
 
 ITEMS.hot_chocolate={name:'Hot chocolate',base:'potion',stack:10,rarity:'uncommon',color:'#b77a50',artColor:'#e7cba1',food:true,description:'Restore 35 health. Happy for 5 minutes: occasional golden sparkles and +10% damage. A warm treat from the train.'};
+
+ITEMS.caught_snowy_owl.description='Your snowy owl companion in a travel cage. Use outdoors to release it and recover the empty cage. Your released owl follows across visits and saves.';

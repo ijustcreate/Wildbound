@@ -16,7 +16,7 @@ test("Enemy item rolls are one tenth of former rates", () => {
     g.enemyLoot({ kind: "skeleton", id: n, x: 400, y: 400 });
   // Formerly every skeleton dropped a sword; gear had a 40% chance.
   assert.ok(counts["Skeleton drop"] > 900 && counts["Skeleton drop"] < 1100);
-  assert.ok(counts["Enemy gear"] > 320 && counts["Enemy gear"] < 480);
+  assert.ok(counts["Enemy equipment"] > 320 && counts["Enemy equipment"] < 480);
 });
 
 test("XP remains in collectible orbs, survives saving, ignores full bags and is awarded once", () => {

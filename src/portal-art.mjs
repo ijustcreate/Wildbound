@@ -1,3 +1,4 @@
+import {drawPortalFloor,portalPalette} from './portal-floor.mjs';
 import {drawPortalSurface} from './portal-shader.mjs';
 import {drawParticleEffect} from './particles.mjs';
 import {effects} from './particles.mjs';
@@ -29,15 +30,17 @@ function tint(hex, target, amount) {
   return '#' + rgb.map((v, i) => Math.round(v + (target[i] - v) * amount).toString(16).padStart(2, '0')).join('');
 }
 export function drawPortal(ctx, d, time, label = 'PRIVATE STORAGE') {
-  // Storage uses the upstream Portal unchanged: purple spiral, rim, motes and
-  // floor light. Ownership/entry geometry and collapse timing stay in gameplay.
   const storage=!d.forestTravel&&(d.owner!=null||d.lobby||label==='RETURN'||label==='PRIVATE STORAGE');
   if(storage&&typeof document!=='undefined'&&ctx.drawImage){
-    const scale=Number.isFinite(d.closing)?Math.max(.35,Math.min(1,d.closing/1.5)):1;
-    ctx.save();ctx.translate(Math.round(d.x),Math.round(d.y));ctx.save();ctx.scale(scale,1);
-    if(effects['storage-portal'].pixelfx)drawPixelFx(ctx,effects['storage-portal'],Number.isFinite(time)?time:0,4);else drawParticleEffect(ctx,'storage-portal',0,0,Number.isFinite(time)?time:0,4);ctx.restore();
-    ctx.font='6px monospace';ctx.textAlign='center';ctx.fillStyle=Number.isFinite(d.closing)?'#ffe2a1':'#ead4ff';
-    ctx.fillText(Number.isFinite(d.closing)?Math.ceil(Math.max(0,d.closing))+'s TO COLLAPSE':label,0,-85);ctx.restore();return;
+    const collapse=Number.isFinite(d.closing)?Math.max(.35,Math.min(1,d.closing/1.5)):1;
+    const t=Number.isFinite(time)?time:0,color=/^#[0-9a-f]{6}$/i.test(d.color||'')?d.color:'#79d7ba';
+    const effect={...effects['storage-portal'],pxOptions:{...effects['storage-portal'].pxOptions,palette:portalPalette(color),depthFloor:true}};
+    ctx.save();ctx.translate(Math.round(d.x),Math.round(d.y));ctx.save();ctx.scale(.76*collapse,.76);
+    drawPortalFloor(ctx,t,color,false);
+    if(effect.pixelfx)drawPixelFx(ctx,effect,t,4);else drawParticleEffect(ctx,effect,0,0,t,4);
+    drawPortalFloor(ctx,t,color,true);ctx.restore();
+    ctx.font='6px monospace';ctx.textAlign='center';ctx.fillStyle=Number.isFinite(d.closing)?'#ffe2a1':portalPalette(color)[6];
+    ctx.fillText(Number.isFinite(d.closing)?Math.ceil(Math.max(0,d.closing))+'s TO COLLAPSE':label,0,-65);ctx.restore();return;
   }
   const color = /^#[0-9a-f]{6}$/i.test(d.color || '') ? d.color : '#aa65ff';
   const {rim, spiral, scale} = portalVisualSample(d, time);

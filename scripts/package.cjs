@@ -28,6 +28,7 @@ packager({
   prune: false,
   afterCopy: [({buildPath}) => require('./copy-runtime-dependencies.cjs')(path.resolve(__dirname,'..'),buildPath)],
   ignore: [
+    /^\/\.migration-backups(?:\/|$)/,
     /^\/node_modules/,
     /^\/Progress pictures/,
     /^\/docs/,

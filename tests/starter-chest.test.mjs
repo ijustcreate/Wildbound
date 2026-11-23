@@ -65,7 +65,8 @@ test('lobby starter interaction opens the real chest, cancels readiness and rend
 test('entering a new TV World level restocks starter selections without erasing custom deposits',()=>{
   const {g,p,q}=setup(),lobby=Object.create(PlayableLobby.prototype),television={players:new Set([p.id,q.id]),completed:true,seed:42,step(){},leave(){}};
   Object.assign(lobby,{getGame:()=>g,state:new LobbyState(),practice:new LobbyPractice(),television,sync(){},draw(){},root:{querySelector:()=>({textContent:''})},area:{querySelector:()=>({textContent:''})}});
+  g.mapping={interact:6};
   lobby.state.sync(g.players);for(const hero of g.players){Object.assign(lobby.state.members.get(hero.id),{spawned:true,panel:null,x:785,y:165});hero.starterChest=[];}
   p.starterChest.push({type:'moon_blade',qty:1,sockets:['azure_bead']});lobby.update(.05,{});
-  assert.ok(lobby.tvWildbound);assert.equal(p.starterChest.filter(Boolean).length,10);assert.equal(q.starterChest.filter(Boolean).length,9);assert.deepEqual(p.starterChest[0].sockets,['azure_bead']);
+  assert.ok(lobby.tvWildbound);assert.equal(lobby.tvWildbound.interactButton,6);assert.equal(p.starterChest.filter(Boolean).length,10);assert.equal(q.starterChest.filter(Boolean).length,9);assert.deepEqual(p.starterChest[0].sockets,['azure_bead']);
 });

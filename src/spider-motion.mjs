@@ -80,11 +80,14 @@ export function spiderAction(a) {
  if(a.attack>0)return 'attack';if(['windup','charge','recover'].includes(a.state))return a.state;
  return a.moving?(a.walking||(a.locomotionSpeed??a.speed??70)<=85?'walk':'run'):'idle';
 }
-export function drawSpider(c,a,time,m,suppliedPose=null) {
+export function spiderFrame(a,time,m){
  const action=spiderAction(a),cl=m.clips[action]||m.clips.idle;
- const frame=Number.isFinite(a.playerFrame)?a.playerFrame:Number.isFinite(a.poseTime)?a.poseTime*(cl.length-1):
+ return Number.isFinite(a.playerFrame)?a.playerFrame:Number.isFinite(a.poseTime)?a.poseTime*(cl.length-1):
   action==='attack'?Math.max(0,1-(a.attack||0)/.25)*(cl.length-1):action==='hurt'?Math.max(0,1-(a.flash||a.hit||0)/.2)*(cl.length-1):
-  a.moving?(a.step||0)/14*cl.length:(time+(a.id||0)*.071)*cl.fps;
+  a.moving?(a.step||0)/(m.type==='tarantula'?.13*(action==='walk'?18:26):14)*cl.length:(time+(a.id||0)*.071)*cl.fps;
+}
+export function drawSpider(c,a,time,m,suppliedPose=null) {
+ const action=spiderAction(a),frame=spiderFrame(a,time,m);
  const pose=suppliedPose||poseAt(m,action,frame),d=facingIndex(a.faceX,a.faceY),p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)])),pal=m.palette,s=m.shape,layers=[];
  const visible=n=>m.visibility[n]?.[d]!==false;
  for(const side of sides)for(let i=0;i<4;i++){

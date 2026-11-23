@@ -138,7 +138,7 @@ export function draw(p, t, o) {
   });
 
   coals(p, W, H, t, S);
-  for (const L of LOGS) log(p, L, W, H, CROSS, 1, t, S + 11);
+  for (const L of o.gameplay?[]:LOGS) log(p, L, W, H, CROSS, 1, t, S + 11);
   for (let i = 0; i < T.length; i++) if (T[i].back) tongueAt(i);
   // flames licking up off the burning wood
   looped(t, D, 90, S + 210, (r) => ({ x: r.range(-10, 10), y: -r.range(3, 8), vx: r.range(-5, 5), vy: -r.range(20, 40), life: r.range(0.16, 0.3), s: r.range(1, 1.8), f: r.next() }), (q, age) => {
@@ -152,7 +152,7 @@ export function draw(p, t, o) {
     lick(p, tx + q.vx * age, ty - 2 + q.vy * age, 1 - age / q.life, q.s, H);
   });
   for (const [x, y, k, s, f] of puffs) firePuff(p, x, y, k, s, f, H);
-  for (const L of LOGS) log(p, L, W, H, 0, CROSS, t, S + 11);
+  for (const L of o.gameplay?[]:LOGS) log(p, L, W, H, 0, CROSS, t, S + 11);
 
   // pops: a crack, a flash, and a fistful of sparks thrown up out of the wood that bounce on the floor
   looped(t, D, 4, S + 400, (r) => ({ x: r.range(-9, 9), y: -r.range(4, 9), n: r.int(3, 5), seed: r.int(0, 1e6), life: 0.7 }), (q, age) => {

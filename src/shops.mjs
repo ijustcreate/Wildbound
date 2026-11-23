@@ -7,7 +7,7 @@ export function roomBlocked(x, y) {
   return (
     Math.hypot(x - ROOM_STATIONS.robot.x, y - ROOM_STATIONS.robot.y) < 20 ||
     (Math.abs(x - ROOM_STATIONS.vending.x) < 24 && Math.abs(y - (ROOM_STATIONS.vending.y-2)) < 17) ||
-    storageChestPoints().some(p=>Math.abs(x-p.x)<27&&y>p.y-35&&y<p.y+6)
+    storageChestPoints().some(p=>Math.abs(x-p.x)<17&&y>p.y-18&&y<p.y+3)
   );
 }
 export function vendingStock() {

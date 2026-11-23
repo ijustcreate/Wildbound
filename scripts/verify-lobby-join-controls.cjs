@@ -19,6 +19,7 @@ app.whenReady().then(async()=>{
    const set=(pad,key,on)=>pads[pad].buttons[key]={pressed:on,value:on?1:0};
    const tick=()=>{const blocked=ctx.paused||!!document.querySelector('dialog[open]');const inputs=ctx.inputFrame();l.update(.05,inputs,blocked||ctx.paused||!!document.querySelector('dialog[open]'));ctx.heroUI.draw(g,ctx.renderer);return inputs;};
    const press=(pad,key)=>{set(pad,key,true);const input=tick();set(pad,key,false);tick();return input;};
+   ctx.profiles.create('Spare explorer');
    for(let index=0;index<pads.length;index++){
     const hero=ctx.profiles.create('Pad explorer '+index);
     press(index,0);const p=g.players.find(p=>p.device==='pad:'+index);assert(!!p,'Controller joins '+pads[index].id);
@@ -26,7 +27,16 @@ app.whenReady().then(async()=>{
     assert(!card&&cards.length===index,'No placeholder nameplate before choosing explorer '+index);
     const member=l.state.members.get(p.id);member.choice=l.available(p).findIndex(h=>h.id===hero.id);l.renderPanel(p);
     ctx.renderRoster();assert(![...document.querySelectorAll('#roster .roster-card')].some(c=>c.hero===p),'Previewing explorer does not create nameplate '+index);
-    press(index,13);press(index,0);tick();ctx.renderRoster();
+    let picker=l.nodes.get(p.id);
+    const initialChoice=member.choice;
+    assert(picker.querySelector('.lobby-explorer-identity small').textContent.includes(' of '),'Picker exposes current position and explorer count '+index);
+    picker.querySelector('[data-roster-control="next"]').click();
+    assert(member.choice!==initialChoice,'Next advances the visible portrait '+index);
+    picker=l.nodes.get(p.id);picker.querySelector('[data-roster-control="previous"]').click();
+    assert(member.choice===initialChoice,'Previous restores the same visible portrait '+index);
+    for(let step=0;step<12&&l.nodes.get(p.id).querySelector('.lobby-focus')?.textContent!=='Choose';step++)press(index,13);
+    assert(l.nodes.get(p.id).querySelector('.lobby-focus')?.textContent==='Choose','D-pad reaches the picker confirmation '+index);
+    press(index,index===1?1:0);tick();ctx.renderRoster();
     assert(p.profileId===hero.id,'Actual Choose confirms explorer '+index);
     const selected=[...document.querySelectorAll('#roster .roster-card')].find(c=>c.hero===p);
     assert(selected&&selected.closest('.lobby-world')&&selected.getBoundingClientRect().width>0,'Visible nameplate after choosing explorer '+index);

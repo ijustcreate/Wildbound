@@ -3,10 +3,11 @@ import {drawCartoonFX} from './cartoon-fx-render.mjs';
 import {PIXEL_EFFECTS} from './pixel-fx-presets.mjs';
 import {drawPixelFX} from './pixel-fx-render.mjs';
 import {PIXELFX_EFFECTS,validPixelEffect,drawPixelFx,pixelFxExtent} from './pixelfx-runtime.mjs';
+import {GAMEPLAY_FX_PRESETS,GAMEPLAY_FX_ALIASES} from './gameplay-fx-presets.mjs';
 export {loadParticleSprites,particleSpriteStatus} from './particle-sprites.mjs';
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
-export const DEFAULT_EFFECTS={
+const baseEffects={
   'blade-trail-red':{name:'Red energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#fff1ed',end:'#ff263f'},
   'blade-trail-blue':{name:'Blue energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#e9fbff',end:'#238dff'},
   'blade-trail-green':{name:'Green energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#f1ffed',end:'#31dc58'},
@@ -34,11 +35,15 @@ export const DEFAULT_EFFECTS={
   rain:{name:'Rain study (preview only)',count:160,life:.8,speedX:-28,speedY:230,spread:500,gravity:0,size:1,orbit:0,shape:'streak',blend:'source-over',start:'#abcbd8',end:'#608fa8'},
   knockout:{name:'Knocked-out stars',count:7,life:2,speedX:0,speedY:-12,spread:3,gravity:0,size:3,orbit:15,shape:'star',blend:'source-over',start:'#fff5ba',end:'#d6ad5b'},
 };
+const replacements={'torch':'torch','campfire-flame':'campfire','splash':'splash','jump-splash':'splash','swim-wake':'wake','bubbles':'bubbles','salvage-burst':'salvage'};
+export const DEFAULT_EFFECTS={...baseEffects,...GAMEPLAY_FX_PRESETS,...Object.fromEntries(Object.entries(replacements).map(([slot,id])=>[slot,{...GAMEPLAY_FX_PRESETS['game-'+id],...(slot==='jump-splash'?{pxScale:1.35}:{}),loop:['torch','campfire-flame','swim-wake'].includes(slot)}]))};
+// Older editor saves included every stock preset. Upgrade untouched stock copies, preserving authored changes.
+function oldStockCopy(id,value){const base=baseEffects[id];return !!replacements[id]&&base&&Object.keys(base).length===Object.keys(value).length&&Object.keys(base).every(k=>JSON.stringify(base[k])===JSON.stringify(value[k]));}
 export const LIMITS={count:[1,400,1],life:[.1,30,.1],speedX:[-300,300,1],speedY:[-300,300,1],spread:[0,600,1],gravity:[-150,150,1],size:[1,16,.5],orbit:[0,100,1],pxScale:[.1,4,.05],pxAngle:[-360,360,1]};
 export function validEffect(v){return !!v&&typeof v.name==='string'&&v.name.trim().length>0&&v.name.length<=60&&Object.entries(LIMITS).filter(([k])=>!k.startsWith('px')).every(([k,[a,b]])=>Number.isFinite(v[k])&&v[k]>=a&&v[k]<=b)&&(!v.pixelfx||validPixelEffect(v))&&(v.count%1===0)&&['square','star','streak','sprite'].includes(v.shape)&&(!v.fx||FX_STYLES.includes(v.fx))&&(v.shape!=='sprite'||FX_STYLES.includes(v.fx))&&(v.loop===undefined||typeof v.loop==='boolean')&&(!v.description||(typeof v.description==='string'&&v.description.length<=400))&&['source-over','lighter'].includes(v.blend)&&/^#[0-9a-f]{6}$/i.test(v.start)&&/^#[0-9a-f]{6}$/i.test(v.end);}
 export const effects=structuredClone(DEFAULT_EFFECTS);
-try{const data=JSON.parse(globalThis.localStorage?.getItem(PARTICLE_KEY)||'{}');for(const [id,v]of Object.entries(data))if(/^[a-z0-9_-]{1,60}$/.test(id)&&validEffect(v))effects[id]=v;}catch{}
-export function saveEffect(id,value){if(!/^[a-z0-9_-]{1,60}$/.test(id)||!validEffect(value))throw Error('Invalid effect settings');const next={...effects,[id]:structuredClone(value)};globalThis.localStorage?.setItem(PARTICLE_KEY,JSON.stringify(next));effects[id]=next[id];}
+try{const data=JSON.parse(globalThis.localStorage?.getItem(PARTICLE_KEY)||'{}');for(const [id,v]of Object.entries(data))if(/^[a-z0-9_-]{1,60}$/.test(id)&&validEffect(v)&&!oldStockCopy(id,v))effects[id]=v;for(const [alias,slot]of Object.entries(GAMEPLAY_FX_ALIASES)){if(data[slot]&&validEffect(data[slot]))effects[alias]=effects[slot];else if(data[alias]&&validEffect(data[alias])&&!oldStockCopy(alias,data[alias]))effects[slot]=effects[alias];}}catch{}
+export function saveEffect(id,value){if(!/^[a-z0-9_-]{1,60}$/.test(id)||!validEffect(value))throw Error('Invalid effect settings');const slot=GAMEPLAY_FX_ALIASES[id]||id,updates={[id]:structuredClone(value),[slot]:structuredClone(value)};for(const [alias,target]of Object.entries(GAMEPLAY_FX_ALIASES))if(target===slot)updates[alias]=structuredClone(value);const next={...effects,...updates};globalThis.localStorage?.setItem(PARTICLE_KEY,JSON.stringify(next));Object.assign(effects,updates);}
 const noise=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
 const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 export function particleSamples(effect,time,seed=0){
@@ -67,7 +72,7 @@ export function beginParticleFrame(c,{budget=768,maxEmitters=48,maxPixelFx=12,qu
  const state={budget:Math.max(0,Math.min(2000,budget|0)),maxEmitters:Math.max(0,Math.min(100,maxEmitters|0)),quality:Math.max(.2,Math.min(1,quality)),reducedMotion:!!reducedMotion,maxPixelFx:Math.max(0,Math.min(24,maxPixelFx|0)),pixelFxEmitters:0,draws:0,emitters:0,culled:0};frames.set(c,state);return state;
 }
 export const particleFrameStats=c=>({...frames.get(c)});
-export function drawParticleEffect(c,id,x,y,time,seed=0){
+export function drawParticleEffect(c,id,x,y,time,seed=0,context){
  const effect=typeof id==='string'?effects[id]:id;if(!effect)return;
  if(effect.loop&&Number.isFinite(time)&&time>=0)time%=effect.life;
  const frame=frames.get(c);if(frame&&(frame.emitters>=frame.maxEmitters||frame.draws>=frame.budget))return;
@@ -75,7 +80,7 @@ export function drawParticleEffect(c,id,x,y,time,seed=0){
  if(c.getTransform&&c.canvas){const m=c.getTransform(),sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f,extent=(effect.pixelfx?pixelFxExtent(effect):effect.spread+effect.orbit+Math.abs(effect.speedY)*effect.life+Math.abs(effect.gravity)*effect.life**2+180)*Math.max(Math.hypot(m.a,m.b),Math.hypot(m.c,m.d));if(sx+extent<0||sy+extent<0||sx-extent>c.canvas.width||sy-extent>c.canvas.height){if(frame)frame.culled++;return;}}
  if(effect.pixelfx&&frame&&frame.pixelFxEmitters>=frame.maxPixelFx)return;
  if(frame)frame.emitters++;
- if(effect.pixelfx){if(frame){frame.draws++;frame.pixelFxEmitters++;}c.save();c.translate(x,y);c.globalCompositeOperation=effect.blend;if(frame?.reducedMotion){c.globalAlpha*=.55;time=effect.life*.45;}drawPixelFx(c,effect,time,seed,frame?.quality??1);c.restore();return;}
+ if(effect.pixelfx){if(frame){frame.draws++;frame.pixelFxEmitters++;}c.save();c.translate(x,y);c.globalCompositeOperation=effect.blend;if(frame?.reducedMotion){c.globalAlpha*=.55;time=effect.life*.45;}drawPixelFx(c,effect,time,seed,frame?.quality??1,context);c.restore();return;}
  const alpha=c.globalAlpha??1;c.save();c.translate(x,y);c.globalCompositeOperation=frame?.reducedMotion?'source-over':effect.blend;
  const spend=()=>{if(frame){if(frame.draws>=frame.budget)return false;frame.draws++;}return true;};
  if(effect.fx&&effect.shape==='sprite'){

@@ -5,6 +5,7 @@ import {forestNoise,forestHash} from './forest-landscape.mjs';
 import {drawBiomeTile} from './biome-art.mjs';
 import {drawWinterTile,iceMotion,interactIce,iceBase} from './ice-world.mjs';
 import {drawRealmGround} from './realm-art.mjs';
+import {caveFloorEdges,drawCaveFloorCell} from './cave-floor-art.mjs';
 import {drawBeachGround} from './beach-art.mjs';
 import {drawGraveyardGround} from './graveyard-art.mjs';
 import {wildLandsGround,wildLandsSurface,WILD_LANDS_STOPS,WILD_LANDS_GATES} from './wild-lands-world.mjs';
@@ -23,10 +24,28 @@ export function nativeWildWorld(t,x,y,biome=nativeWildBiome(t.design,x,y)){
  record={world,cx,cy,biome,props:world.scenery.map(o=>({...o,id:'wild-native:'+key+':'+o.id,x:o.x+cx*1600,y:o.y+cy*1600,rootY:(o.rootY??o.y+o.size*(o.kind==='snow_tree'||o.kind==='tree'?.35:.19))+cy*1600,_biome:biome,nativeSource:env,...(o.graveyardFootprint?{graveyardFootprint:{...o.graveyardFootprint,x:o.graveyardFootprint.x+cx*1600,y:o.graveyardFootprint.y+cy*1600}}:{})}))};t.wildNativeWorlds.set(key,record);return record;
 }
 export function nativeWildTile(t,x,y){const r=nativeWildWorld(t,x,y);if(!r)return 'snow';const tx=Math.max(0,Math.min(49,Math.floor(x/32)-r.cx*50)),ty=Math.max(0,Math.min(49,Math.floor(y/32)-r.cy*50));return r.world.terrain[ty*50+tx];}
+function nativeCaveFloorOpen(t,r,tx,ty){
+ if(tx>=0&&ty>=0&&tx<50&&ty<50)return r.world.terrain[ty*50+tx]!=='cave_void';
+ const x=(r.cx*50+tx)*32+16,y=(r.cy*50+ty)*32+16;
+ if(x<0||y<0||x>=t.design.width||y>=t.design.height)return false;
+ if(!t.design.activeRoom&&nativeWildBiome(t.design,x,y)!=='caverns')return true;
+ const adjacent=nativeWildWorld(t,x,y,'caverns');
+ if(!adjacent)return true;
+ const ax=Math.floor(x/32)-adjacent.cx*50,ay=Math.floor(y/32)-adjacent.cy*50;
+ return adjacent.world.terrain[ay*50+ax]!=='cave_void';
+}
 export function drawNativeWildTile(c,t,x,y,originX,originY,scale){
  const biome=nativeWildBiome(t.design,x+16,y+16);if(['forest','house','jungle'].includes(biome)||!t.design.activeRoom&&wildLandsPathAt(x+16,y+16)||wildLandsSurface(t.design,x+16,y+16)!=='grass')return;
  const r=nativeWildWorld(t,x+16,y+16,biome);if(!r)return;const lx=x-r.cx*1600,ly=y-r.cy*1600,tx=Math.floor(lx/32),ty=Math.floor(ly/32),kind=r.world.terrain[ty*50+tx];c.save();c.scale(1/scale,1/scale);c.translate(x-originX-lx,y-originY-ly);c.beginPath();c.rect(lx,ly,32,32);c.clip();
- if(biome==='ice'){if(!drawBiomeTile(c,r.world,kind,lx,ly))drawWinterTile(c,kind,lx,ly);}else if(['swamp','caverns','shadow'].includes(biome))drawRealmGround(c,r.world,{sx:tx,sy:ty,ex:tx,ey:ty});else if(biome==='beach')drawBeachGround(c,r.world,{sx:tx,sy:ty,ex:tx+1,ey:ty+1});else if(biome==='graveyard')drawGraveyardGround(c,r.world,{sx:tx,sy:ty,ex:tx+1,ey:ty+1});c.restore();
+ if(biome==='caverns'&&kind==='cave_floor'){
+  const edges=caveFloorEdges(tx,ty,(nx,ny)=>nativeCaveFloorOpen(t,r,nx,ny));
+  // The stone field spans region boundaries, including the walkable portal approach.
+  drawCaveFloorCell(c,lx,ly,32,42,r.cx*50+tx,r.cy*50+ty,edges);
+ }else if(biome==='shadow'){
+  // Sample one continuous stone field while keeping local Shadow geometry.
+  const shadowFloorMaterial={x:r.cx*1600,y:r.cy*1600,seed:42};
+  drawRealmGround(c,r.world,{sx:tx,sy:ty,ex:tx,ey:ty,shadowFloorMaterial});
+ }else if(biome==='ice'){if(!drawBiomeTile(c,r.world,kind,lx,ly))drawWinterTile(c,kind,lx,ly);}else if(['swamp','caverns'].includes(biome))drawRealmGround(c,r.world,{sx:tx,sy:ty,ex:tx,ey:ty});else if(biome==='beach')drawBeachGround(c,r.world,{sx:tx,sy:ty,ex:tx+1,ey:ty+1});else if(biome==='graveyard')drawGraveyardGround(c,r.world,{sx:tx,sy:ty,ex:tx+1,ey:ty+1});c.restore();
 }
 function collisionLayer(t){const layer=t.design.activeRoom||'surface';if(t.nativeCollisionRoom!==layer){t.nativeCollisionRoom=layer;t.nativeCollision=new Map();t.nativePopulated=new Set();t.nativeCollisionAreas=new Set();}}
 export function nativeWildProps(t,bounds){collisionLayer(t);const farView=(t.viewZoom||1)<.3,farKey=farView?[t.design.activeRoom||'surface',(t.viewZoom||1)<.12?256:128,t.terrainStream?.generation||0,...['left','top','right','bottom'].map(k=>Math.floor(bounds[k]/128))].join(':'):null;if(farKey&&t.nativeFarView?.key===farKey){t.visibleForest=t.nativeFarView.props;return t.visibleForest;}

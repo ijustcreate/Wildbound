@@ -1,5 +1,6 @@
 import {clearShot,navigateEnemy,actorRadius,flies} from './navigation.mjs';
 import {creatures} from './definitions.mjs';
+import {triggerEnemyTrap} from './enemy-traps.mjs';
 import {isCharmed} from './succubus-charm.mjs';
 const kinds=new Set(['rhino','zebra','pelican']);
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -35,7 +36,7 @@ export function tickProvokedFauna(g,e,target,dt){
  if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
  if(e.frozen>0||e.stun>0){e.stun=Math.max(0,(e.stun||0)-dt);s.phase='recover';s.timer=.7;e.attack=0;return true;}
  const trap=(g.traps||[]).find(t=>t.life>0&&distance(e,t)<30);
- if(trap){e.attack=0;if(trap.variant==='slow'){e.rooted=Math.max(e.rooted||0,.5);phase(e,s,'recover',.4);return true;}trap.life=0;e.state=trap.variant==='interrupt'?'recover':'snared';e.timer=trap.variant==='interrupt'?1.2:2;s.phase='recover';s.timer=1.2;s.cooldown=1.5;g.onSound?.('trap',e);return true;}
+ if(trap){e.attack=0;if(trap.variant==='slow'){e.rooted=Math.max(e.rooted||0,.5);phase(e,s,'recover',.4);return true;}triggerEnemyTrap(g,e,trap,1.2);s.phase='recover';s.timer=1.2;s.cooldown=1.5;return true;}
  s.timer-=dt;s.cooldown=Math.max(0,s.cooldown-dt);
  const targets=(g.players||[]).filter(p=>valid(e,p));if(valid(e,target)&&!targets.includes(target))targets.push(target);
  const p=targets.find(p=>p.id===s.targetId&&distance(e,p)<800)||targets.reduce((a,b)=>!a||distance(e,b)<distance(e,a)?b:a,null);

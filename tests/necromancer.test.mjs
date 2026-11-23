@@ -7,15 +7,41 @@ import { ITEMS } from '../src/items.mjs';
 test('warlock event spawns a staff necromancer and configurable summon roster', () => {
   const g = new Game(() => .4), p = g.addPlayer('keyboard', 'Tester');
   g.start(); g.openingBoard = false;
-  g.spawnEvent(EVENTS.findIndex(e => e.kind === 'necromancer'));
+  g.spawnEvent(EVENTS.findIndex(e => e.kind === 'necromancer'),{force:true});
   const e = g.enemies[0];
   assert.equal(e.kind, 'necromancer');
   assert.equal(e.equipment.hand1, 'staff');
   assert.deepEqual(e.summonKinds, ['skeleton','skeleton_unarmed','skeleton_wizard','skeleton_caster']);
+  g.scenery=[];g.terrain.fill('grass');g.house=null;
+  Object.assign(p,{x:400,y:400});Object.assign(e,{x:550,y:400});
+  const summon = g.summonNecromancerMinions;
+  g.summonNecromancerMinions = function(caster) {
+    assert.equal(caster, e, 'a freshly summoned skeleton must never complete the warlock’s spell');
+    return summon.call(this, caster);
+  };
   for (let n = 0; n < 90; n++) g.update(.1, {keyboard:{}});
   assert.ok(g.enemies.some(a => a.summonedBy === e.id));
   assert.ok(g.enemies.filter(a => a.summonedBy === e.id).length <= 4);
+  assert.ok(g.enemies.filter(a => a.summonedBy === e.id).every(a => a.skin === a.kind && a.speciesCombat !== e.speciesCombat));
   assert.ok(creatures.skeleton_caster);
+});
+
+test('summons and old copied spell states cannot create another generation', () => {
+  const g = new Game(() => .9);
+  const e = {id: 97, kind: 'necromancer', x: 500, y: 500, hp: 100,
+    group: 4, speciesCombat: {phase: 'windup', remaining: 0, support: 'summon'},
+    groupTurn: {targetId: 1}, enemyMind: {threat: []}};
+  assert.equal(g.summonNecromancerMinions(e), true);
+  const minion = g.enemies.at(-1);
+  assert.equal(minion.kind, 'skeleton_caster');
+  assert.equal(minion.mana, 70);
+  assert.equal(minion.speciesCombat, undefined);
+  assert.equal(minion.groupTurn, undefined);
+  assert.equal(minion.enemyMind, undefined);
+  minion.speciesCombat = e.speciesCombat;
+  const count = g.enemies.length;
+  assert.equal(g.summonNecromancerMinions(minion), false);
+  assert.equal(g.enemies.length, count);
 });
 
 test('necromancer drops at most one missing set piece per player', () => {

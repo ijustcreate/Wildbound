@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {riverCorners,bankCut,riverTileRuns} from '../src/river-edges.mjs';
+import {drawBoardBackground} from '../src/board-background.mjs';
+import {forestWaterLayer} from '../src/forest-water-cache.mjs';
+import {drawWaterSurface} from '../src/water-surface.mjs';
+test('cached shoreline runs preserve every cell of all 256 neighbor configurations',()=>{
+ const neighbors=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+ for(let mask=0;mask<256;mask++){const corners=riverCorners((x,y)=>{const i=neighbors.findIndex(p=>p[0]===x&&p[1]===y);return i>=0&&mask>>i&1?'water':'grass';},0,0),{runs}=riverTileRuns(corners);for(let y=0;y<32;y+=2)for(let x=0;x<32;x+=2){const wanted=!corners.some(k=>bankCut(k.dx<0?x+1:31-x,k.dy<0?y+1:31-y,k));assert.equal(runs.some(([rx,ry,w,h])=>x>=rx&&x<rx+w&&y>=ry&&y<ry+h),wanted);}}
+});
+function surfaces(fn){const old=globalThis.document;let allocations=0,gpuDraws=0;const draws=[];const gl=new Proxy({getShaderParameter:()=>true,getProgramParameter:()=>true,drawArrays:()=>gpuDraws++},{get:(o,k)=>o[k]||(()=>({}))});globalThis.document={createElement(){allocations++;const canvas={width:0,height:0,addEventListener(){}};const pen=new Proxy({drawImage(...args){draws.push({canvas,args});}},{get:(o,k)=>o[k]||(()=>{})});canvas.getContext=kind=>kind==='webgl'?gl:pen;return canvas;}};try{return fn({get allocations(){return allocations;},get gpuDraws(){return gpuDraws;},draws});}finally{if(old===undefined)delete globalThis.document;else globalThis.document=old;}}
+test('board brightness caches stable artwork and invalidates edits without filtering every draw',()=>surfaces(s=>{
+ const c={save(){},restore(){},drawImage(){}};const image={src:'board',naturalWidth:1024,naturalHeight:768};drawBoardBackground(c,image,1);assert.equal(s.allocations,0);drawBoardBackground(c,image,.9);const n=s.allocations;for(let i=0;i<30;i++)drawBoardBackground(c,image,.9);assert.equal(s.allocations,n);drawBoardBackground(c,image,1.1);assert.equal(s.allocations,n+1);image.src='edited';drawBoardBackground(c,image,1.1);assert.equal(s.allocations,n+2);for(let i=0;i<6;i++)drawBoardBackground(c,{...image,src:'extra'+i},.9);const before=s.allocations;drawBoardBackground(c,image,1.1);assert.equal(s.allocations,before+1,'bounded cache evicts old images');
+}));
+test('water atlas shares frames across cameras and invalidates terrain edits and monsoon flooding',()=>surfaces(s=>{
+ const g={seed:42,phase:'play',generatedEnvironment:'forest',terrain:Array(2500).fill('grass'),time:1};for(let y=0;y<50;y++)g.terrain[y*50+20]='water';const a=forestWaterLayer(g);assert.equal(a.tiles.size,50);const gpu=s.gpuDraws;g.time+=1/120;assert.equal(forestWaterLayer(g),a);assert.equal(s.gpuDraws,gpu);g.time=1.1;assert.equal(forestWaterLayer(g).banks,a.banks);assert.equal(s.gpuDraws,gpu+1);g.terrain[25*50+20]='grass';const b=forestWaterLayer(g);assert.notEqual(b,a);assert.ok(!b.tiles.has(25*50+20));g.weather={type:'monsoon'};const flooded=forestWaterLayer(g);assert.ok(flooded.tiles.size>b.tiles.size);assert.equal(flooded.tiles.get(20*50+19).kind,'shallow');g.weather=null;assert.equal(forestWaterLayer(g).tiles.size,49);
+}));
+test('many water tiles use a shared 2D snapshot and issue one shader draw per animation tick',async()=>{const {drawWaterSurface:paint}=await import('../src/water-surface.mjs?staging-test');surfaces(s=>{
+ const g={time:7,terrain:Array(2500).fill('water'),phase:'play'},c={save(){},restore(){},beginPath(){},rect(){},clip(){},stroke(){},lineTo(){},fillRect(){},drawImage(...args){s.draws.push({consumer:true,args});}};const before=s.gpuDraws;for(let i=0;i<100;i++)paint(c,g,i%25*32,Math.floor(i/25)*32,32,32);assert.equal(s.gpuDraws,before+1);const sources=s.draws.filter(d=>d.consumer).map(d=>d.args[0]);assert.equal(new Set(sources).size,1);assert.notEqual(sources[0],s.draws.find(d=>!d.consumer).args[0],'tiles never copy directly from the GPU canvas');
+});});
+
+test('station culling retains every curved platform in all eight headings and rejects distant stations',async()=>{
+ const {defaultTrainDesign}=await import('../src/train-design.mjs'),{railwayStations,stationInView,stationPlatformSamples}=await import('../src/railway-station.mjs');const {buildTrainRoute,sampleTrainRoute}=await import('../src/train-track.mjs');const d=defaultTrainDesign(),route=buildTrainRoute(d);d.wildLands=true;d.wildStops=Array.from({length:8},(_,i)=>({id:'heading-'+i,name:'Station '+i,...sampleTrainRoute(route,route.length*i/8)}));const stations=railwayStations(d);assert.equal(stations.length,8);for(const world of stations){for(const p of stationPlatformSamples(world).flatMap(q=>[q.near,q.far]))assert.ok(stationInView(world,{left:p.x-1,right:p.x+1,top:p.y-1,bottom:p.y+1}));assert.equal(stationInView(world,{left:100000,right:101000,top:100000,bottom:101000}),false);}
+});

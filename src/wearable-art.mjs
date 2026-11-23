@@ -26,39 +26,34 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     // Decoration follows the torso instead of stamping a second torso above it.
     const bottom = p.pelvis;
     const material=gearPalette(gear.chest,cosmetics.dye),style=ITEMS[gear.chest]?.style;
-    const tint = material.base;
-    const steps = Math.max(1, Math.ceil(Math.hypot(bottom.x-chest.x,bottom.y-chest.y)));
-    for(let n=0;n<=steps;n++) {
-      const t=n/steps,x=chest.x+(bottom.x-chest.x)*t,y=chest.y+(bottom.y-chest.y)*t;
-      rect(x-3,y,7,1,material.dark);
-      rect(x-2,y,4,1,t>.8?material.leather:tint);
-      if(t<.8) {
-        rect(x-3,y,1,1,back?material.dark:material.light);
-        if(!side)rect(x+2,y,1,1,material.dark);
-        if(!back)rect(x,y,1,1,material.dark);
-        if(style==='plate'&&n%3===0)rect(x-2,y,5,1,material.light);
-        if((style==='robe'||style==='coat')&&!side)rect(x+2,y,1,1,material.trim);
-        if(style==='shirt'&&n===1)rect(x-2,y,4,1,material.light);
-      }
+    // The torso raster already supplies the clean outer contour and broad
+    // light/shadow planes. Add only one identifying construction detail per
+    // garment family instead of outlining every row of cloth.
+    if(!back&&!side&&style==='plate'){
+      const y=chest.y+2;
+      rect(chest.x-2,y,5,1,material.dark);rect(chest.x-1,y+1,3,2,material.base);
+      rect(chest.x-1,y+1,1,1,material.light);rect(chest.x,y+1,1,2,material.shine);
+    }else if(!back&&!side&&style==='safari'){
+      const y=chest.y+4;
+      rect(chest.x-3,y,2,2,material.dark);rect(chest.x-3,y,1,1,material.light);
+      rect(chest.x+2,y,2,2,material.dark);rect(chest.x+2,y,1,1,material.light);
+    }else if(!back&&!side&&style==='arcanist'){
+      const y=(chest.y+bottom.y)*.5;
+      rect(chest.x-1,y-1,3,3,'#283148');rect(chest.x,y-1,1,2,'#70c7bf');rect(chest.x-1,y+1,2,1,'#bbcf9c');
+    }else if(!back&&!side&&['robe','coat'].includes(style)){
+      const y=chest.y+2;
+      rect(chest.x+2,y,1,4,material.trim);rect(chest.x+1,y,1,1,material.light);
     }
-    rect(bottom.x-1,bottom.y-1,2,1,material.trim);
     if(ITEMS[gear.chest]?.warlockGear){
-      // Split cloth panels follow the hips and knees instead of one square stamp.
+      // Broad split robe panels follow each moving leg; the outer silhouette and
+      // one value break carry the cloth instead of a stack of horizontal rows.
       for(const leg of ['L','R']){
-        const hip=p['hip'+leg],knee=p['knee'+leg],hemY=bottom.y+(knee.y-bottom.y)*.85+2;
-        const rows=Math.max(1,Math.ceil(hemY-bottom.y));
-        for(let n=0;n<=rows;n++){const t=n/rows,x=hip.x+(knee.x-hip.x)*t,y=bottom.y+n,w=side?3:4;
-          rect(x-w/2-1,y,w+2,1,material.ink);rect(x-w/2,y,w,1,leg==='L'?material.base:material.dark);
-          rect(x-w/2,y,1,1,material.light);if(n===rows)rect(x-w/2,y,w,1,'#baa780');
-        }
+        const hip=p['hip'+leg],knee=p['knee'+leg],y0=bottom.y,y1=bottom.y+(knee.y-bottom.y)*.85+2;
+        const x=hip.x+(knee.x-hip.x)*.35,w=side?2:3,h=Math.max(3,Math.round(y1-y0));
+        rect(x-w/2-1,y0,w+2,h,material.ink);rect(x-w/2,y0,w,h-1,leg==='L'?material.base:material.dark);
+        rect(x-w/2,y0,1,Math.max(1,h-2),leg==='L'?material.light:material.trim);rect(x-w/2,y1-1,w+2,1,'#baa780');
       }
       if(!back){rect(chest.x-1,chest.y+2,3,4,'#baa780');rect(chest.x,chest.y+3,1,2,'#d8cfaa');}
-    }
-    if (ITEMS[gear.chest]?.style === "safari" && !back) {
-      const y = (chest.y + bottom.y) / 2;
-      rect(chest.x - 3, y, 2, 2, material.dark);
-      rect(chest.x - 3, y, 2, 1, material.light);
-      if (!side) {rect(chest.x + 1, y, 2, 2, material.dark);rect(chest.x + 1, y, 2, 1, material.light);}
     }
     if(gear.chest==='alan_tunic'){
       const hem=p.pelvis;
@@ -73,12 +68,16 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     for (const side of ["L", "R"]) {
       const k = p["knee" + side];
       const material=gearPalette(gear.pants,cosmetics.dye),style=ITEMS[gear.pants]?.style;
-      rect(k.x-1,k.y-1,3,2,material.dark);
-      rect(k.x-1,k.y-1,2,1,material.light);
-      if(style==='plated'||style==='scales') {rect(k.x-1,k.y+1,3,1,material.light);rect(k.x,k.y,1,1,material.shine);}
-      if(style==='striped')rect(k.x-2,k.y-2,1,5,material.light);
-      if(style==='safari') {rect(k.x-2,k.y-3,4,2,material.dark);rect(k.x-2,k.y-3,4,1,material.light);}
-      if(style==='wilderness'){rect(k.x-2,k.y-3,4,1,'#6e512d');rect(k.x-1,k.y-1,3,1,'#bb9357');}
+      if(style==='plated'||style==='scales') {
+        rect(k.x-1,k.y-1,3,2,material.ink);rect(k.x-1,k.y-1,2,1,material.light);
+        rect(k.x,k.y,2,1,material.base);rect(k.x,k.y+1,2,1,material.dark);
+      }else if(style==='safari'){
+        rect(k.x-2,k.y-2,4,2,material.dark);rect(k.x-2,k.y-2,3,1,material.light);
+      }else{
+        rect(k.x-1,k.y,1,1,material.light);rect(k.x+1,k.y+1,1,1,material.dark);
+      }
+      if(style==='striped')rect(k.x-2,k.y-2,1,4,material.light);
+      if(style==='wilderness')rect(k.x-2,k.y-2,2,1,'#bb9357');
     }
   // Alan's mantle is painted once at the shoulder pivots by fittedGear.
   if (look?.face === "freckles" && !back) {

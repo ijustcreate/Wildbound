@@ -6,7 +6,8 @@ body[data-screen="lobby"] #hero-overlays{inset:44px 0 0}
 #lobby.playable-lobby .party-topbar{position:static;height:44px;padding:4px 10px;display:flex;justify-content:flex-end;align-items:center;border:0}
 #lobby.playable-lobby .party-menu,#party-menu{display:flex;justify-content:flex-end}
 #lobby.playable-lobby #lobby-studio{min-height:32px;padding:5px 20px;font:15px Georgia,serif;letter-spacing:.04em;border:1px solid #9d915c;border-radius:3px;background:#193c2e;color:#f3e4b4}
-#lobby.playable-lobby .party-heading,#lobby.playable-lobby .party-help{display:none!important}
+#lobby.playable-lobby .party-heading,#lobby.playable-lobby .party-help:not(.tv-guide){display:none!important}
+#lobby.playable-lobby .party-help.tv-guide{display:flex!important}
 #lobby.playable-lobby .lobby-world{flex:1 1 0;width:100%;min-height:0;margin:0;border:0;box-shadow:none;overflow:hidden}
 #lobby.playable-lobby .lobby-world>canvas{display:block;width:100%;height:100%;aspect-ratio:auto}
 .lobby-landing{position:absolute;inset:0;z-index:30;display:grid;place-items:center;overflow:hidden;background:#06171b;isolation:isolate}

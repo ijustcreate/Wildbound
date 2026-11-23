@@ -23,7 +23,7 @@ app.whenReady().then(async()=>{
    w.setContentSize(width,height);await pause();
    const layout=await js(`(()=>{const r=document.querySelector('.lobby-world').getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,iw:innerWidth,ih:innerHeight,buttons:[...document.querySelectorAll('#party-menu button')].filter(b=>b.getBoundingClientRect().height).map(b=>b.textContent),heading:getComputedStyle(document.querySelector('.party-heading')).display,help:getComputedStyle(document.querySelector('.party-help')).display,overflow:document.documentElement.scrollHeight>innerHeight};})()`);
    assert(layout.x===0&&layout.y===44&&layout.w===layout.iw&&layout.h===layout.ih-44&&!layout.overflow,'Room fills viewport below toolbar '+width+'x'+height);
-   assert(layout.buttons.join()==='Studio'&&layout.heading==='none'&&layout.help==='none','Only Studio remains above room '+width+'x'+height);
+   assert(layout.buttons.join()==='Continue saved expedition,Continue The Wilds,Save backups,Studio'&&layout.heading==='none'&&layout.help==='none','Title shows expedition checkpoints, backups and Studio above the room '+width+'x'+height);
    await capture('title-'+width+'x'+height);
   }
   w.setContentSize(1280,850);await pause();
@@ -54,7 +54,7 @@ app.whenReady().then(async()=>{
    const shouldJoin=!['left-stick','right-stick'].includes(gesture);
    assert(data.count===(shouldJoin?1:0)&&(!shouldJoin||data.device==='pad:0'&&data.panel==='choose'&&!data.selected&&!data.settings),'Controller '+gesture+(shouldJoin?' button':' analog movement')+(shouldJoin?' joins and consumes held gesture':' does not dismiss title artwork'));
   }
-  await js(`pads[0].buttons[0].pressed=true;tick();pads[0].buttons[0].pressed=false;tick();pads[0].buttons[13].pressed=true;tick();pads[0].buttons[13].pressed=false;tick();pads[0].buttons[0].pressed=true;tick();pads[0].buttons[0].pressed=false;tick();`);
+  await js(`(()=>{const press=index=>{pads[0].buttons[index].pressed=true;tick();pads[0].buttons[index].pressed=false;tick();};press(0);for(let step=0;step<12&&document.querySelector('.character-select .lobby-focus')?.textContent!=='Choose';step++)press(13);press(0);})()`);
   const savedController=await js(`({profileId:c.game.players[0]?.profileId,spawned:c.playableLobby.state.members.get(c.game.players[0]?.id)?.spawned,panel:c.playableLobby.state.members.get(c.game.players[0]?.id)?.panel,heroes:c.profiles.data.heroes.length})`);
   assert(!!savedController.profileId&&savedController.spawned,'Fresh controller press selects saved explorer after release '+JSON.stringify(savedController));
   await capture('selected-explorer');

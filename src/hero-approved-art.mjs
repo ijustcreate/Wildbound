@@ -1,9 +1,11 @@
 // Approved compact hero faces and hair, fitted to the existing editable rig.
 import {facialHairStyle} from './hair-design.mjs';
 import {hairDrawing,NATIVE_HAIR_REVISION} from './hero-hair-native.mjs';
+import {PLAYER_HEAD_PIXELS} from './player-head-pixels.mjs';
 
 const mix=(a,b,t)=>'#'+a.slice(1).match(/../g).map((v,i)=>Math.round(parseInt(v,16)*(1-t)+parseInt(b.slice(1+i*2,3+i*2),16)*t).toString(16).padStart(2,'0')).join('');
 const ink='#352b2a';
+const headPaletteIndex={'.':0,o:1,d:2,s:3,h:4};
 const rasters=new Map();
 export const nativeHeroArtStatus=()=>({revision:NATIVE_HAIR_REVISION,rasters:rasters.size,limit:384});
 function pen(c,h,key){
@@ -18,19 +20,24 @@ function pen(c,h,key){
 
 export function drawNativeHead(c,p,d,skin,look,visible,front,parts='all'){
  const handles=['eyeL','eyeR','earL','earR','nose','mouth'].map(n=>[visible(n),Math.round((p[n].x-p.head.x)*2),Math.round((p[n].y-p.head.y)*2)]);
- const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,d,skin,look.face,look.facialHair,look.facialHairColor,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
+ const r=pen(c,p.head,JSON.stringify(['head',NATIVE_HAIR_REVISION,PLAYER_HEAD_PIXELS.width,PLAYER_HEAD_PIXELS.height,d,skin,look.face,look.facialHair,look.facialHairColor,look.eyeColor,look.hairColor,look.hair,look.eyesClosed,look.laughing,front,parts,handles])),profile=d===2||d===6,back=d>=3&&d<=5,turn=d<4?-1:1;
  if(r.cached)return r.flush();
  const shadow=mix(skin,'#83504b',.30),light=mix(skin,'#fff0d0',.20),blush=mix(skin,'#d87d78',.26);
  if(!front){
-  // Deliberate half-pixel steps: full cheeks and a short rounded chin.
-  const widths=[3,4,4.5,5,5,5,5,5,5,5,5,4.5,4.5,4,3.5,2.5,1.5];
-  widths.forEach((half,i)=>{
-   const w=half*(profile?.86:1),y=-4.5+i*.5;
-   const stubble=!back&&facialHairStyle(look)==='stubble'&&y>=1.5;
-   const tone=stubble?mix(skin,look.facialHairColor||look.hairColor||'#593923',.18):skin;
-   r(-w,y,w*2,.5,y>=1.5?shadow:ink);r(-w+.5,y,Math.max(.5,w*2-1),.5,tone);
-   if(i>2&&i<10){r(-w+.5,y,1,.5,light);r(w-1,y,.5,.5,shadow);}
-  });
+  // Compiled from the editable indexed eight-view art recipe. Face, hair and
+  // headwear stay on separate rig layers and retain their live appearance tints.
+  const sprite=PLAYER_HEAD_PIXELS.frames[d],tones=[null,ink,shadow,skin,light];
+  for(let y=0;y<PLAYER_HEAD_PIXELS.height;y++)for(let x=0;x<PLAYER_HEAD_PIXELS.width;x++){
+   const paletteIndex=headPaletteIndex[sprite[y][x]];
+   if(!paletteIndex)continue;
+   const tone=tones[paletteIndex]||skin;
+   const color=paletteIndex===2?mix(skin,'#754c3d',.38):tone;
+   r(PLAYER_HEAD_PIXELS.x*.5+x*.5,PLAYER_HEAD_PIXELS.y*.5+y*.5,.5,.5,color);
+  }
+  if(!back&&facialHairStyle(look)==='stubble'){
+   const beard=look.facialHairColor||look.hairColor||'#593923';
+   r(-1.5,2,3,.5,mix(skin,beard,.28));r(-2,2.5,1,.5,mix(skin,beard,.22));r(1,2.5,1,.5,mix(skin,beard,.22));
+  }
   return r.flush();
  }
  for(const [name,side]of [['earL',-1],['earR',1]])if(parts!=='face'&&visible(name)){
@@ -79,7 +86,7 @@ export function drawNativeHair(c,h,look,d,frame=0,action='idle',pass='front'){
  const sway=['idle','sleep','death'].includes(action)?0:Math.round(Math.sin(frame*.7)*2)/2;
  const r=pen(c,h,JSON.stringify(['hair',NATIVE_HAIR_REVISION,look.hair,look.hairColor,d,pass,sway])),base=look.hairColor||'#593923';
  if(r.cached)return r.flush();
- const colors=[mix(base,'#211e29',.5),mix(base,'#312630',.22),base,mix(base,'#dca773',.33)];
+ const colors=[mix(base,'#211e29',.48),mix(base,'#382b2d',.24),base,mix(base,'#edb981',.3)];
  const back=d>=3&&d<=5;
  const shapes=pass==='rear'?(back?[]:drawing.rear):[...(back?drawing.rear:[]),...drawing.front,...drawing.crown];
  const contains=(points,x,y)=>{let hit=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])hit=!hit;}return hit;};
@@ -88,7 +95,7 @@ export function drawNativeHair(c,h,look,d,frame=0,action='idle',pass='front'){
   if(!inside(x+.25,y+.25))continue;
   const edge=[[-.5,0],[.5,0],[0,-.5],[0,.5]].some(([dx,dy])=>!inside(x+.25+dx,y+.25+dy));
   // One swept highlight mass and one temple shadow, no strand stripes.
-  const crownLight=y>-5.8&&y<-3.6&&x>-3.5&&x<1.5+(y+5)*.8;
+  const crownLight=y>-5.8&&y<-3.5&&x>-3.5+(y+5)*.12&&x<1.8+(y+5)*.72;
   const flow=['bob','long','waves','locs'].includes(look.hair)&&y>-.5&&y<(look.hair==='bob'?3:7)&&x>(back?-3.5:-5)&&x<(back?-1.5:-4);
   const groove=look.hair==='locs'&&back&&y>0&&y<7&&[-2,1,3.5].some(a=>Math.abs(x-a)<.3);
   r(x,y,.5,.5,colors[edge?0:crownLight||flow?3:groove||x>2||y>3?1:2]);

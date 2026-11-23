@@ -1,5 +1,5 @@
 import { HAIR_STYLES, FACE_STYLES } from './appearance.mjs';
-import { drawCreationPreview, creationFamily, creationButtonLabels, creationHelp } from './creation-preview.mjs';
+import { drawCreationPreview, creationFamily, creationButtonLabels, creationHelp, creationMenuButtons } from './creation-preview.mjs';
 import { openControllerKeyboard } from './controller-keyboard.mjs';
 import { characterNameError, suggestCharacterName } from './profiles.mjs';
 import { spatialMenuNeighbor } from './menu-navigation.mjs';
@@ -26,6 +26,7 @@ export function colorWheelPoint(color) {
 export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreate,onBack}) {
   panel.classList.add('creation-menu');
   panel.dataset.controllerFamily=creationFamily(player||{device:panel.dataset.ownerDevice});
+  let menuButtons=creationMenuButtons(player||{device:panel.dataset.ownerDevice});
   const look=s.creationLook ||= structuredClone(presets[0]);
   s.creationName ??= suggestCharacterName(profiles.data.heroes);
   const body=document.createElement('div');body.className='creation-body';panel.append(body);
@@ -118,9 +119,9 @@ export function buildCreationMenu({panel,state:s,profiles,presets,player,onCreat
   add('Create & join',()=>{const problem=characterNameError(input.value,profiles.data.heroes);if(problem){error.textContent=problem;return;}onCreate(input.value,look);}).className='creation-primary';
   add('Back',onBack);
   const hint=document.createElement('small');hint.dataset.creationHelp='menu';body.append(hint);
-  function updateLabels(){const family=panel.dataset.controllerFamily,n=creationButtonLabels(family);panel.querySelectorAll('[data-creation-help]').forEach(q=>{q.textContent=q.dataset.creationHelp==='wheel'?`${n.move}: color · ${n.choose}: choose · ${n.back}: palette · ${n.adjust}: brightness`:creationHelp(family)+(q.dataset.creationHelp==='detail'?` · ${n.rotate}: rotate`:q.dataset.creationHelp==='menu'?` · ${n.rotate}: rotate`: '');});}
+  function updateLabels(){const family=panel.dataset.controllerFamily,n=creationButtonLabels(family,menuButtons);panel.querySelectorAll('[data-creation-help]').forEach(q=>{q.textContent=q.dataset.creationHelp==='wheel'?`${n.move}: color · ${n.choose}: choose · ${n.back}: palette · ${n.adjust}: brightness`:creationHelp(family,false,menuButtons)+(q.dataset.creationHelp==='detail'?` · ${n.rotate}: rotate`:q.dataset.creationHelp==='menu'?` · ${n.rotate}: rotate`: '');});}
   const rotatePreview=delta=>{previewDirection=(previewDirection+delta+8)%8;refresh();};
-  panel.updateControllerFamily=family=>{panel.dataset.controllerFamily=family;updateLabels();};
+  panel.updateControllerFamily=(family,buttons)=>{panel.dataset.controllerFamily=family;menuButtons=buttons||menuButtons;updateLabels();};
   panel.creationNavigate=({x=0,y=0,accept=false,back=false,adjust=false,rotate=0})=>{
     if(rotate){rotatePreview(rotate);return;}
     if(wheel){if(adjust)popup.querySelector('button').click();else if(back)wheel.back();else if(accept)wheel.accept();else if(x||y)wheel.move(x,y);return;}

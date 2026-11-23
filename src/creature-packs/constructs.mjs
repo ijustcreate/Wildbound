@@ -1,3 +1,5 @@
+import {navigateCreature as navigateEnemy,creatureClearShot as clearShot} from '../creature-navigation.mjs';
+import {requestEnemyGroupTurn} from '../enemy-group-combat.mjs';
 // Native, editor-editable construct and humanoid creature pack.
 // Motion in this pack is Wildbound-authored; it is not presented as a verified
 // Wowhead animation transfer. See motionNotes below for each source limitation.
@@ -709,6 +711,7 @@ function deal(g,target,actor,amount){
   const hp=target.hp;if(typeof g.hurt==='function')g.hurt(target,amount,actor);else target.hp=Math.max(0,target.hp-amount);
   return target.hp<hp;
 }
+function clearConstructShot(g,a,b){if(!g.projectileBlocked)return true;const n=Math.max(1,Math.ceil(distance(a,b)/4));for(let i=1;i<n;i++)if(g.projectileBlocked(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,2))return false;return true;}
 function moveToward(g,actor,target,dt,speed){
   const d=distance(actor,target)||1;actor.faceX=(target.x-actor.x)/d;actor.faceY=(target.y-actor.y)/d;
   if(typeof g.moveActor==='function')g.moveActor(actor,actor.faceX*Math.min(d,speed*dt),actor.faceY*Math.min(d,speed*dt));
@@ -731,7 +734,7 @@ function constructFirePatch(g,x,y,life,damage){
   return patch;
 }
 function shot(g,actor,target,kind,damage,index=0,count=1){
-  const tx=target.x+(index-(count-1)/2)*13,ty=target.y+(index-(count-1)/2)*8,dx=tx-actor.x,dy=ty-actor.y,d=Math.hypot(dx,dy)||1;
+  const tx=(actor.constructAI?.aim?.x??target.x)+(index-(count-1)/2)*13,ty=(actor.constructAI?.aim?.y??target.y)+(index-(count-1)/2)*8,dx=tx-actor.x,dy=ty-actor.y,d=Math.hypot(dx,dy)||1;
   g.fireballs||=[];
   const ice=kind==='shardBurst';
   g.fireballs.push({x:actor.x,y:actor.y-10,vx:dx/d*205,vy:dy/d*205,life:2.4,trail:.02,damage,burnDamage:kind==='fireball'?5:0,ice,friendly:false,controllerOwner:actor.id,room:actor.room||null,constructKind:kind});
@@ -782,9 +785,11 @@ export function tickConstructActor(game,actor,dt,livingTargets=[]){
   if(!Number.isFinite(dt)||dt<=0||game.paused||(game.phase&&game.phase!=='play'))return true;
   const n=actor.constructAI??={phase:'idle',timer:0,cooldown:.6,specialCooldown:2,attacks:0};
   if(actor.hp<=0){actor.animationAction='death';n.phase='dead';return true;}
-  const target=livingTargets.filter(p=>finiteActorTarget(game,p,actor)).sort((a,b)=>distance(actor,a)-distance(actor,b))[0];
+  const candidates=livingTargets.filter(p=>finiteActorTarget(game,p,actor));
+  const committed=['windup','specialWindup'].includes(n.phase);
+  const target=(committed&&n.aim?.targetId!=null?candidates.filter(p=>p.id===n.aim.targetId):candidates).sort((a,b)=>distance(actor,a)-distance(actor,b))[0];
   n.cooldown=Math.max(0,n.cooldown-dt);n.specialCooldown=Math.max(0,n.specialCooldown-dt);
-  if(!target){actor.animationAction='idle';n.phase='idle';return true;}
+  if(!target){actor.animationAction=committed?'recover':'idle';n.phase=committed?'recover':'idle';n.timer=committed?s.stats.recovery:0;return true;}
   const d=distance(actor,target),specialRange=actor.stats?.rangedRange||actor.rangedRange||s.stats.attackRange;
   if(s.behaviors.fireTrail&&actor.moving){n.trailTimer=(n.trailTimer||0)-dt;if(n.trailTimer<=0){constructFirePatch(game,actor.x,actor.y,1.4,Math.max(2,s.stats.damage*.22));spawnParticleEffect(game,'cinder-trail',actor.x,actor.y,actor.id||0);n.trailTimer=.34;}}
   const canSpecial=!!(rangedKind(s)||s.behaviors.curse||s.behaviors.dive||s.behaviors.clubSlam||s.behaviors.feint||s.behaviors.sweep||s.behaviors.rootSnare);
@@ -804,14 +809,17 @@ export function tickConstructActor(game,actor,dt,livingTargets=[]){
     if(n.timer<=0){if(victim&&distance(actor,victim)<=s.stats.attackRange+36){deal(game,victim,actor,s.stats.damage+4);shove(game,actor,victim,10);}n.phase='recover';n.timer=s.stats.recovery*.65;n.attacks++;}
     return true;
   }
-  const range=canSpecial&&d<specialRange?specialRange:s.stats.attackRange;
+  const meleeRange=actor.kind==='enchanted_book'?48:s.stats.attackRange;
+  const range=canSpecial&&d<specialRange?specialRange:meleeRange;
   if(n.phase==='windup'||n.phase==='specialWindup'){
     actor.animationAction=n.phase==='specialWindup'?'special':'windup';
+    if(n.aim&&n.timer>n.aim.duration*.5){const distanceToTarget=distance(actor,target)||1;n.aim={...n.aim,x:target.x,y:target.y,dx:(target.x-actor.x)/distanceToTarget,dy:(target.y-actor.y)/distanceToTarget};}
+    if(n.aim){actor.faceX=n.aim.dx;actor.faceY=n.aim.dy;}
     n.timer-=dt;
-    if(n.phase==='specialWindup'&&n.timer>0&&n.timer<.16&&n.lastCueTimer<=0){pulse(game,rangedKind(s)||(['curse','dive','clubSlam','feint','sweep','rootSnare'].find(k=>s.behaviors[k])||'attack'),target.x,target.y,actor.id||0);n.lastCueTimer=.18;}
+    if(n.phase==='specialWindup'&&n.timer>0&&n.timer<.16&&n.lastCueTimer<=0){n.lastCueTimer=.18;}
     n.lastCueTimer=Math.max(0,(n.lastCueTimer||0)-dt);
     if(n.timer<=0){
-      if(n.phase==='specialWindup')resolveSpecial(game,actor,target,livingTargets,s,n);else deal(game,target,actor,s.stats.damage);
+      if(n.phase==='specialWindup')resolveSpecial(game,actor,target,livingTargets,s,n);else if(distance(actor,target)<=meleeRange+8&&((target.x-actor.x)*actor.faceX+(target.y-actor.y)*actor.faceY)/Math.max(1,distance(actor,target))>.2)deal(game,target,actor,s.stats.damage);
       if(n.phase!=='dive'&&n.phase!=='feint'){n.phase='recover';n.timer=s.stats.recovery;}
       n.cooldown=Math.max(0.35,s.stats.windup*.7);n.attacks++;
     }
@@ -822,13 +830,13 @@ export function tickConstructActor(game,actor,dt,livingTargets=[]){
     if(n.timer<=0){n.phase='idle';actor.animationAction='idle';}
     return true;
   }
-  if(canSpecial&&n.specialCooldown<=0&&d<=specialRange){
+  if(canSpecial&&n.specialCooldown<=0&&d<=specialRange&&(!rangedKind(s)||!game.projectileBlocked||clearConstructShot(game,actor,target))&&requestEnemyGroupTurn(game,actor,target,{rush:!!s.behaviors.dive,flightSpeed:rangedKind(s)?220:0})){
     actor.faceX=(target.x-actor.x)/(d||1);actor.faceY=(target.y-actor.y)/(d||1);
-    n.phase='specialWindup';n.timer=s.stats.windup*1.18;n.lastCueTimer=0;actor.animationAction='special';pulse(game,rangedKind(s)||(['curse','dive','clubSlam','feint','sweep','rootSnare'].find(k=>s.behaviors[k])||'attack'),target.x,target.y,actor.id||0);return true;
+    n.phase='specialWindup';n.timer=s.stats.windup*1.18;n.lastCueTimer=0;actor.animationAction='special';n.aim={targetId:target.id,x:target.x,y:target.y,dx:actor.faceX,dy:actor.faceY,duration:n.timer};return true;
   }
-  if(d>range){moveToward(game,actor,target,dt,s.stats.speed);actor.moving=true;actor.animationAction=s.behaviors.fly||s.behaviors.glide?'run':'walk';return true;}
+  if(d>range||actor.kind==='enchanted_book'&&game.projectileBlocked&&!clearConstructShot(game,actor,target)){if(game.navigateEnemy){actor.speed??=s.stats.speed;game.navigateEnemy(actor,target,dt);}else moveToward(game,actor,target,dt,s.stats.speed);actor.moving=true;actor.animationAction=s.behaviors.fly||s.behaviors.glide?'run':'walk';return true;}
   actor.faceX=(target.x-actor.x)/(d||1);actor.faceY=(target.y-actor.y)/(d||1);actor.moving=false;
-  if(n.cooldown<=0){n.phase='windup';n.timer=s.stats.windup;actor.animationAction='windup';}
+  if(n.cooldown<=0&&d<=meleeRange&&requestEnemyGroupTurn(game,actor,target)){n.phase='windup';n.timer=s.stats.windup;n.aim={targetId:target.id,x:target.x,y:target.y,dx:actor.faceX,dy:actor.faceY,duration:n.timer};actor.animationAction='windup';}
   else actor.animationAction='idle';
   return true;
 }

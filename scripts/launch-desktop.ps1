@@ -1,4 +1,4 @@
-param([switch]$Check)
+param([switch]$Check, [string]$BuildDirectory = '')
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'checkout-identity.ps1')
@@ -19,6 +19,28 @@ try {
       }
     } | Sort-Object { $_.Manifest.builtAt } -Descending)
   $selected = $candidates | Select-Object -First 1
+  if ($BuildDirectory) {
+    $pinnedDir = if ([IO.Path]::IsPathRooted($BuildDirectory)) {
+      [IO.Path]::GetFullPath($BuildDirectory)
+    } else {
+      [IO.Path]::GetFullPath((Join-Path $root $BuildDirectory))
+    }
+    $distPrefix = [IO.Path]::GetFullPath((Join-Path $root 'dist')) + [IO.Path]::DirectorySeparatorChar
+    if (-not $pinnedDir.StartsWith($distPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+      throw 'An explicitly selected build must be inside this checkout''s dist directory.'
+    }
+    $pinnedManifestPath = Join-Path $pinnedDir 'wildbound-build.json'
+    if (-not (Test-Path -LiteralPath $pinnedManifestPath -PathType Leaf)) {
+      throw "Build manifest not found: $pinnedManifestPath"
+    }
+    $pinnedManifest = Get-Content -Raw -LiteralPath $pinnedManifestPath | ConvertFrom-Json
+    if (-not [string]$pinnedManifest.version -or $pinnedManifest.preview -or
+        [string]$pinnedManifest.sourceCommit -ne $commit -or
+        -not (Test-Path -LiteralPath (Join-Path $pinnedDir 'Wildbound.exe') -PathType Leaf)) {
+      throw 'The explicitly selected build must be a normal desktop package from this checkout commit.'
+    }
+    $selected = [pscustomobject]@{ Dir=$pinnedDir; Manifest=$pinnedManifest }
+  }
   if (-not $selected) { throw "No verified desktop build for source version $version and checkout $commit. Run node scripts/package.cjs from $root." }
   $buildDir = $selected.Dir
   $exe = Join-Path $buildDir 'Wildbound.exe'

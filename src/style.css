@@ -2294,6 +2294,14 @@ dialog h2 {
 #defeat-dialog h2{max-width:420px;margin:15px auto 10px;font:clamp(27px,5vw,38px)/1.08 Georgia,serif;color:#263d30;}
 #defeat-dialog #defeat-copy{margin:0 auto 25px;max-width:390px;color:#61563e;font:14px/1.5 system-ui;}
 #defeat-dialog .defeat-actions{display:grid;gap:10px;}
+#defeat-dialog .defeat-actions[hidden],#defeat-dialog button[hidden]{display:none;}
+#defeat-dialog .defeat-actions button{display:grid;justify-items:center;gap:3px;}
+#defeat-dialog .defeat-actions button.primary{background:#294936!important;color:#fff1cc!important;border-color:#d8b776!important;}
+#defeat-dialog .defeat-actions button>strong,#defeat-dialog .defeat-actions button>span{display:block;text-transform:none;}
+#defeat-dialog .defeat-actions button>span{margin-top:4px;font:400 13px/1.35 system-ui;letter-spacing:0;}
+#defeat-dialog .defeat-status:empty{display:none;}
+#defeat-dialog .defeat-status{font-size:13px;color:#ffb3a0;}
+.wilds-start-dialog button{display:block;width:100%;margin:8px 0;}
 #defeat-dialog button{min-height:48px;margin:0;padding:10px 14px;border:2px solid #31543d;border-radius:2px;background:#4c9c70;color:#102d21;font:700 13px system-ui;letter-spacing:.025em;}
 #defeat-dialog button.primary{background:#315d42;color:#fff0c7;border-color:#c1a25e;}
 #defeat-dialog button.text-button{background:transparent;border-color:#8f7a50;color:#3b503b;}

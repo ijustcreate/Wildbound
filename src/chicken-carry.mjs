@@ -8,7 +8,7 @@ function placeChicken(g,p,chicken,{thrown=false}={}){
  chicken.fleeFromX=p.x;chicken.fleeFromY=p.y;chicken.fleeTime=thrown?3.4:0;
  chicken.calmPlacement=!thrown;chicken.wildLastHp=chicken.hp;chicken.homeX=chicken.x;chicken.homeY=chicken.y;chicken.wanderIn=2;
  if(thrown){
-  chicken.state='flee';chicken.jumpHeight=1;chicken.jumpVelocity=118;chicken.jumpGravity=520;chicken.jumpAge=0;chicken.jumpHeld=false;chicken.jumpCut=false;
+  chicken.state='flee';chicken.jumpHeight=30+(p.jumpHeight||0)+(p.groundHeight||0);chicken.jumpVelocity=118;chicken.jumpGravity=520;chicken.jumpAge=0;chicken.jumpHeld=false;chicken.jumpCut=false;
  }else{
   chicken.state='graze';chicken.jumpHeight=0;chicken.jumpVelocity=0;chicken.groundHeight=0;
  }
@@ -17,6 +17,7 @@ function placeChicken(g,p,chicken,{thrown=false}={}){
 }
 
 export function interactChicken(g,p){
+ if(p.chickenThrowTime>0)return false;
  if(p.heldChickenId){const chicken=heldChicken(g,p);if(chicken)return placeChicken(g,p,chicken);delete p.heldChickenId;p.carryingChicken=false;}
  if(p.room||p.ui||p.hp<=0||p.vehicleId)return false;
  let nearest=null,nearestDistance=42;
@@ -32,8 +33,21 @@ export function interactChicken(g,p){
 }
 
 export function throwHeldChicken(g,p){
+ if(p.chickenThrowTime>0||p.hp<=0||p.ui||p.room)return false;
  const chicken=heldChicken(g,p);
  if(!chicken){delete p.heldChickenId;p.carryingChicken=false;return false;}
- return placeChicken(g,p,chicken,{thrown:true});
+ p.chickenThrowTime=.46;p.chickenThrowReleased=false;
+ return true;
 }
 
+
+export function tickChickenCarry(g,p,dt){
+ if(p.heldChickenId&&!heldChicken(g,p)){delete p.heldChickenId;p.carryingChicken=false;}
+ if(!(p.chickenThrowTime>0))return;
+ p.chickenThrowTime=Math.max(0,p.chickenThrowTime-dt);
+ if(!p.chickenThrowReleased&&p.chickenThrowTime<=.30){
+  p.chickenThrowReleased=true;
+  const chicken=heldChicken(g,p);
+  if(chicken)placeChicken(g,p,chicken,{thrown:p.hp>0});
+ }
+}

@@ -1,11 +1,32 @@
+import {BIOME_MIXED_EVENTS,encounterBiome,encounterContext,planBiomeEncounter,biomeEncounterSpot,mixedPressureAllows} from './biome-encounters.mjs';
+import {maintainEnemyGroupCombat,requestEnemyGroupTurn} from './enemy-group-combat.mjs';
+import {tickSpeciesCombat} from './enemy-species-combat.mjs';
+import {chargeRecoveryTime,openChargeCounter} from './counterattack.mjs';
+import {launchMeleeTarget, tickWeaponKnockback} from './weapon-knockback.mjs';
+import {advanceCombatImpacts} from './combat-impact.mjs';
+import {triggerEnemyTrap} from './enemy-traps.mjs';
+import {tickBananaAttack} from './enemy-banana.mjs';
+import {ENEMY_COMBAT_CATALOG,updateEnemyCombatReadability} from './enemy-combat-catalog.mjs';
+import {chooseEnemyTarget,tickEnemyFlinch} from './enemy-systems.mjs';
+import {tickTacticalEnemy,arrangeCrossfire} from './combat-tactics.mjs';
+import {CROSSFIRE_EVENT,initializeTacticalEnemy,swordCanDodge} from './combat-tactics-state.mjs';
+import {startSwordRelease,tickSwordPolish,swordChargedImpact,clearSwordPolish} from './sword-charge-state.mjs';
+import {emitGameplayFx} from './gameplay-fx.mjs';
+import {ensurePlayground,tickPlayground,hitPlayground,throwPlayApple,foragePlayApple} from './playground.mjs';
+import {playShape} from './playground-geometry.mjs';
+import {deliverStudentParcels} from './train-students.mjs';
+import {deliverTvRecovery} from './tv-recovery.mjs';
+import {tickChocolateFrogs} from './chocolate-frogs.mjs';
+import {tickHouseLiving} from './house-living.mjs';
 import {trainWorldBlocked,moveTrainRider} from './train-test.mjs';
+import {tickStationOwls} from './station-owls.mjs';
 import {tickTrainTest} from './train-test.mjs';
 import {BONE_CARVER_EVENT,spawnBoneCarver} from './bone-carver.mjs';
 import {tickBroomFlight} from './broom-mount.mjs';
 import {vehicleRollsOver} from './vehicle-ground.mjs';
 import {awakenCemeteryPumpkins} from './squashling-awakening.mjs';
 import {DRAGON_EVENTS,dragonBreath} from './dragon-events.mjs';
-import {swordLoadout,swordTiming,swordStep,swordChargeReach,swordChargeWidth,tickSwordDash} from './sword-feel.mjs';
+import {swordLoadout,swordTiming,swordStep,swordChargeReach,swordChargeWidth,swordDashContact,tickSwordDash} from './sword-feel.mjs';
 import {REALMS,realmVoidBlocked,realmSafeSpawn,realmEventContext} from './realm-world.mjs';
 import {REALM_EVENTS,startRealmEvent,seedRealmLife} from './realm-life.mjs';
 import {SHORE_GOBLIN_EVENT,tickShoreGoblin} from './shore-goblin-ai.mjs';
@@ -53,7 +74,7 @@ import {IMP_EVENT,initializeImp,tickImp,tickImpHazards} from './imps.mjs';
 import {ZOMBIE_EVENT,initializeZombie,tickZombie} from './zombies.mjs';
 import {isCharmed,clearCharm,tickCharmStatuses,charmInputs,tickCharmedPlayer,charmCanTarget,playerCombatTargets} from './succubus-charm.mjs';
 import {seedWildFauna,tickWildFauna} from './wild-fauna.mjs';
-import {throwHeldChicken} from './chicken-carry.mjs';
+import {throwHeldChicken,tickChickenCarry} from './chicken-carry.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {initializeAnaconda,updateAnacondaBody,anacondaBlocks} from './anaconda-body.mjs';
 import {stumpShape,rockSurface,raisedSurfaceBlocked,supplyChestBlocked} from './terrain-support.mjs';
@@ -116,8 +137,10 @@ import {stationaryCreature} from './stationary-creatures.mjs';
 import {healingAdventureMethods} from './healing-magic.mjs';
 import {OLD_WELL_EVENT,spawnOldWell,oldWellBlocked} from './old-well.mjs';
 import {categorizeEvents} from './event-zones.mjs';
+import {COMBO_ENCOUNTERS,hasEncounterLayout} from './encounter-layout-data.mjs';
+import {encounterLayoutAvailable,findEncounterSite,nextFeaturedEncounter,placeEncounterLayout} from './encounter-layouts.mjs';
 import {SLIME_EVENTS} from './slime-events.mjs';
-import {CREATURE_PACK_EVENTS, initializeCreaturePackEvent, tickCreaturePackActor} from './creature-packs/index.mjs';
+import {CREATURE_PACK_EVENTS, initializeCreaturePackEvent, initializeMixedCreaturePackEvent, tickCreaturePackActor} from './creature-packs/index.mjs';
 import {tickSkunkClouds} from './skunk-behavior.mjs';
 export const TILE = 32,
   MAP_SIZE = 50,
@@ -552,6 +575,9 @@ EVENTS.push(...DRAGON_EVENTS.map(e=>structuredClone(e)));
 EVENTS.push(...NIGHT_EVENTS.filter(e=>['fox','squashling','scorpion_boss','werewolf'].includes(e.kind)));
 // These event cards are appended so saved event indices keep their meaning.
 EVENTS.push(...CREATURE_PACK_EVENTS.map(event=>structuredClone(event)));
+EVENTS.push(structuredClone(CROSSFIRE_EVENT));categorizeEvents([EVENTS.at(-1)]);
+EVENTS.push(...categorizeEvents(structuredClone(COMBO_ENCOUNTERS)));
+EVENTS.push(...BIOME_MIXED_EVENTS.map(e=>structuredClone(e)));categorizeEvents(EVENTS.slice(-BIOME_MIXED_EVENTS.length));
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {
@@ -626,6 +652,7 @@ export function expeditionCameraTarget(game, w, h) {
   );
 }
 export class Game {
+  navigateCreature(actor,target,dt){return navigateEnemy(this,actor,target,dt);}
   constructor(random = Math.random, {deferWorld=false} = {}) {
     initAdventure(this);
     this.random = random;
@@ -664,6 +691,7 @@ export class Game {
   }
   blocked(x, y, radius = 8, flying = false, ignoreWater = false, canOpenDoors = false, footOffset = 14, elevation = 0, projectile = false, from = null) {
     if(this.trainTest)return trainWorldBlocked(this,x,y,radius,flying,ignoreWater,elevation,projectile,from);
+    if(!flying&&(this.playground?.props||[]).some(o=>{const s=playShape(o);return s&&o.kind!=='log'&&elevation<s.height&&raisedSurfaceBlocked(s,x,y+(from&&!from.kind?0:footOffset),radius,from,from&&!from.kind?0:footOffset);}))return true;
     if(!flying&&oldWellBlocked(this,x,y,radius,from))return true;
     if(!flying&&victoryChestBlocked(this,x,y,radius,elevation,from))return true;
     if(!flying&&!projectile&&supplyChestBlocked(this,x,y,radius,elevation,from))return true;
@@ -777,6 +805,7 @@ export class Game {
     if(actor.kind==='anaconda'&&moved)updateAnacondaBody(this,actor);
     return moved;
   }
+  navigateEnemy(actor,target,dt){return navigateEnemy(this,actor,target,dt);}
   addPlayer(device, name) {
     if (
       this.locked ||
@@ -884,7 +913,7 @@ export class Game {
     this.log.unshift(text);
     this.log = this.log.slice(0, 5);
   }
-  hurt(p, amount, source) {
+  hurt(p, amount, source, {charge = false} = {}) {
     if(this.players.includes(p)&&source?.id&&(this.enemies.includes(source)||(this.ghosts||[]).includes(source)))p.reindeerThreatId=source.id;
     if(p.holidayReindeer){if(p.hp>0&&!(p.invuln>0)){p.hp=Math.max(0,p.hp-Math.max(1,amount));p.invuln=.6;p.hit=.2;if(!p.hp){p.defeated=true;this.message('Your reindeer fell protecting you.');}}return;}
     if(this.players.includes(p)){
@@ -895,7 +924,7 @@ export class Game {
         controlled.hp=Math.max(0,controlled.hp-Math.max(1,amount));controlled.invuln=.65;controlled.hit=.2;
         this.effects.push({x:controlled.x,y:controlled.y-25,text:controlled.hp?"−"+Math.round(amount):"DOWN",color:"#ff9c86",life:.8});
         if(!controlled.hp)this.message(`${controlled.name||controlled.kind} fell. Control will return to ${p.name}.`);
-        return;
+        return charge?'hit':undefined;
       }
     }
     if((this.villageFollowers||[]).includes(p)){if(p.hp<=0||p.invuln>0||p.room||source&&!charmCanTarget(this,source,p))return;p.hp=Math.max(0,p.hp-Math.max(1,amount));p.invuln=.65;p.hit=.2;this.effects.push({x:p.x,y:p.y-25,text:p.hp?"−"+Math.round(amount):"DOWN",color:"#ff9c86",life:.8});if(!p.hp)this.message("April fell protecting the party.");return;}
@@ -907,15 +936,19 @@ export class Game {
     if(source?.id&&this.enemies.includes(source))p.ritualAttackerId=source.id;
     if(p.hunterPet===true){hurtPet(this,p,amount);return;}
     if (p.hp <= 0 || p.invuln > 0 || p.room || p.invincible || source&&spawnProtected(source,this.time)) return;
-    if (this.shieldBlocks(p, source)) {
+    const blocked = this.shieldBlocks(p, source, charge && amount > 0);
+    if (blocked) {
       record(p, "damagePrevented", amount);
       if (source?.kind && source.state === "windup") {
         source.state = "recover";
         source.timer = 0.8;
       }
       this.onSound("trap");
-      return;
+      return charge ? (blocked === 'caught' ? 'caught' : 'blocked') : undefined;
     }
+    const guardBrace=p.guardWardTime>0?Math.max(0,Math.min(.5,stat(p,'guardBreakResist'))):0;
+    if(p.guardWardTime>0)p.guardWardTime=0;
+    if(guardBrace)amount*=1-guardBrace;
     petPvPEvent(this,p,source);
     record(p, "damageTaken", amount);
     if (
@@ -957,11 +990,13 @@ export class Game {
       this.message(
         p.name + " is down! Stand nearby and hold Interact to revive.",
       );
+    if(charge && healthLost > 0)return 'hit';
   }
   attack(p, charge = 0) {
     if(p.frozen>0)return false;
     if(this.worldTravel)return false;
     if(p.heldChickenId)return throwHeldChicken(this,p);
+    if(throwPlayApple(this,p))return true;
     // Test-board hits consume the attack, including at the normal table's edge.
     if(canHitEventTestBoard(this,p))return hitEventTestBoard(this,p,EVENTS);
     if(this.openingBoard&&this.generatedEnvironment!=='lobby'&&Math.hypot(p.x-800,p.y-800)<100&&this.phase==='play'&&p.hp>0&&!p.ui&&!p.room){
@@ -978,8 +1013,8 @@ export class Game {
     for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade){p.energyBladeIdle=0;p.energyBladeActive=true;}
     if(!isCharmed(p))startleGraveyardCats(this,p);
     if(throwBoomerang(this,p))return true;
-    if(p.attack>0){p.queuedAttack={charge,until:this.time+.35};return false;}
-    delete p.swordStrike;delete p.swordFacing;delete p.swordDash;
+    if(p.attack>0||(swordLoadout(p)&&p.dashTime>0)){p.queuedAttack={charge,until:this.time+(swordLoadout(p)?Math.max(p.attack||0,p.dashTime||0)+.2:.35)};return false;}
+    delete p.swordStrike;delete p.swordFacing;delete p.swordDash;clearSwordPolish(p);
     // Utility items do no melee damage; rifles have their own aimed shot and reload.
     if(tryEquipmentAttack(this,p,charge)){
       if(this.canHitBoard(p)){this.tableShake=.2;this.hitTable(p);}
@@ -1020,7 +1055,8 @@ export class Game {
       if(p.swordDashRequested){
         const n=Math.hypot(p.faceX,p.faceY)||1;p.faceX/=n;p.faceY/=n;
         p.attackClip='swipe_big';p.attack=p.attackDuration=.46;p.spin=0;
-        p.swordDash={originX:p.x,originY:p.y,x:p.faceX,y:p.faceY,length:swordChargeReach(charge),travelled:0,hits:new Set(),hand1:p.equipment.hand1,hand2:p.equipment.hand2};
+        const swordPreview=startSwordRelease(this,p,charge);
+        p.swordDash={originX:p.x,originY:p.y,x:p.faceX,y:p.faceY,length:swordPreview.length,power:p.swordReleasePower,travelled:0,hits:new Set(),hand1:p.equipment.hand1,hand2:p.equipment.hand2};
       }
       p.swordStrike={charge,combo:{...combo},hand1:p.equipment.hand1,hand2:p.equipment.hand2};
       p.swordFacing={x:p.faceX,y:p.faceY};p.swordHitPause=0;p.swordPrevious=0;
@@ -1029,8 +1065,9 @@ export class Game {
     return this.resolveMelee(p,charge,combo);
   }
   resolveMelee(p,charge,combo){
-    const hands=[ITEMS[p.equipment.hand1],ITEMS[p.equipment.hand2]].filter(i=>i?.damage&&(!i.magic||i.base==='staff')&&!i.ranged);
-    const weapon=hands[0],off=hands[1];
+    const hands=['hand1','hand2'].map(slot=>({slot,item:ITEMS[p.equipment[slot]]}))
+      .filter(({item})=>item?.damage&&(!item.magic||item.base==='staff')&&!item.ranged);
+    const weapon=hands[0]?.item,off=hands[1]?.item;
     const damage = combo.damage * (
       (weapon?.damage || 12 + stat(p, "punch")) + stat(p,'damageBonus') + (p.equipment.hand1==='reaper_scythe'?stat(p,'reaperDamage'):0) +
       (off && off.damage && !off.magic
@@ -1051,12 +1088,15 @@ export class Game {
     p.meleeSweep = spin;
     if (spin) p.spin = 0.38;
     let stickHit=!!grassHit;
+    // Surprises released by this strike join combat on the next strike.
+    const meleeTargets=playerCombatTargets(this,p);
     if(!p.swordDash){
+    const playHit=!isCharmed(p)&&hitPlayground(this,p,spin?96:melee.range,spin);
     const toyHit=!isCharmed(p)&&hitToyTrain(this,p,spin?96:melee.range);
     const structureWeapon=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword');
     const structureHit=!isCharmed(p)&&(damageSupplyChestMelee(this,p,damage,spin?96:melee.range,spin)||structureWeapon&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin));
     stickHit=grassHit||!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
-    if(structureHit||toyHit){stickHit=true;this.persist();}
+    if(structureHit||toyHit||playHit){stickHit=true;this.persist();}
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
     if(!structureHit)for(const pane of this.house?.walls||[]){
@@ -1065,21 +1105,19 @@ export class Game {
       if(d<melee.range&&(spin||(dx*p.faceX+dy*p.faceY)/Math.max(1,d)>.35)){stickHit=true;breakWindow(this,x,y,2);}
     }
     }
-    for (const e of playerCombatTargets(this,p)) {
-      if(p.swordDash){
-        const dash=p.swordDash,dx=e.x-p.x,dy=e.y-p.y,along=dx*dash.x+dy*dash.y,across=Math.abs(dx*dash.y-dy*dash.x);
-        const lane=(e.x-dash.originX)*dash.x+(e.y-dash.originY)*dash.y;
-        if(dash.hits.has(e)||lane<0||lane>dash.length||along < -4||along>meleeBodyRadius(e)+10||across>swordChargeWidth/2)continue;
-      }
+    for (const e of meleeTargets) {
+      if(p.swordDash?.hits.has(e))continue;
       let struckSection=null;
+      const visible=point=>{
+        const clear=!this.projectileBlocked(point.x,point.y,.5)&&clearShot(this,p,point,.5)&&(e.kind==='anaconda'||clearShot(this,e,point,.5));
+        if(clear&&e.kind==='anaconda')struckSection=point;return clear;
+      };
+      const swept=p.swordDash?swordDashContact(p,e):null;
       const dx = e.x - p.x,
         dy = e.y - p.y,
         d = Math.hypot(dx, dy);
       if (
-        e.hp > 0 && meleeCanHit(p,e,spin?{...melee,range:96,arc:360}:melee,point=>{
-          const visible=!this.projectileBlocked(point.x,point.y,.5)&&clearShot(this,p,point,.5)&&(e.kind==='anaconda'||clearShot(this,e,point,.5));
-          if(visible&&e.kind==='anaconda')struckSection=point;return visible;
-        })
+        e.hp > 0 && (p.swordDash ? swept&&visible(swept) : meleeCanHit(p,e,spin?{...melee,range:96,arc:360}:melee,visible))
       ) {
         if(p.swordDash)p.swordDash.hits.add(e);
         stickHit=true;
@@ -1087,16 +1125,19 @@ export class Game {
         e.killedBy=p.id;e.ritualKill=[p.equipment.hand1,p.equipment.hand2].includes('ritual_dagger');
         e.aggro = true;
         const guard =
-          e.kind === "skeleton_boss" &&
+          e.kind === "skeleton_boss" && !e.speciesCombat &&
           e.state !== "recover" &&
           ((p.x - e.x) * (e.faceX || 0) + (p.y - e.y) * (e.faceY || 1)) /
             (d || 1) >
             0.3;
         const appliedDamage=Math.round(
-          damage * (e.state === "recover" ? 1.3 : 1) * (guard ? 0.35 : 1),
+          damage * (!e.combatRole&&!ENEMY_COMBAT_CATALOG[e.kind]&&e.state === "recover" ? 1.3 : 1) * (guard ? 0.35 : 1),
         );
         const livingDamage=e.practiceTarget?0:Math.min(e.hp,appliedDamage);
-        damageEnemy(e,appliedDamage,'physical',{g:this,p,shot:weaponHitContext(p,p.equipmentSockets?.hand1?.includes('dark_essence')?'hand1':'hand2')});
+        const heavy = !!p.swordDash || p.attackClip === 'swipe_big' || charge >= .9;
+        const chargedSlot=hands.find(({slot,item},index)=>(index===0||!item.magic)&&p.equipmentSockets?.[slot]?.includes('dark_essence'))?.slot;
+        const cut=swordLoadout(p)||p.attackClip?.startsWith('scythe');
+        const dealtDamage=damageEnemy(e,appliedDamage,'physical',{g:this,p,heavy,melee:true,cut,glancing:guard,shot:chargedSlot?weaponHitContext(p,chargedSlot):undefined});
         if(p.equipment.hand1==='reaper_scythe'&&livingDamage>0)p.hp=Math.min(p.maxHp||100,p.hp+livingDamage*stat(p,'reaperLifeSteal'));
         if(livingDamage>0&&(p.equipment.hand1==='alan_jungle_knife'||p.equipment.hand2==='alan_jungle_knife')&&stat(p,'jumanjiVines')>0&&(p.jumanjiVineCooldown||0)<=0){
           e.frozen=Math.max(e.frozen||0,2);e.jumanjiVines=2;
@@ -1106,16 +1147,19 @@ export class Game {
         for(const slot of ['hand1','hand2'])flamingMeleeHit(this,p,e,slot);
         for(const slot of ['hand1','hand2'])if(ITEMS[p.equipment?.[slot]]?.energyBlade&&livingDamage>0){e.burning=Math.max(e.burning||0,2.5);this.effects.push({x:e.x,y:e.y-15,particle:'blade-spark',color:ITEMS[p.equipment[slot]].bladeColor,life:.38});}
         applyTorchHit(this,p,e);
-        e.flash = 0.13;
+        e.flash = Math.max(e.flash || 0, 0.13);
         if(p.swordFacing){
+          if(!swordChargedImpact(this,p,e,struckSection)){
           p.swordHitPause=Math.max(p.swordHitPause||0,.035);e.swordHitPause=Math.max(e.swordHitPause||0,.055);
           this.effects.push({swordImpact:true,x:struckSection?.x??e.x,y:(struckSection?.y??e.y)-16-(e.jumpHeight||0),angle:Math.atan2(p.faceY,p.faceX)+.7,life:.16});
+          }
         }
-        if (charge > 0.6) {
+        if (charge > 0.6 && !e.combatRole && !e.speciesCombat && !e.eldritchAim && !e.constructAI && !e.fireAction) {
           e.state = "recover";
           e.timer = 0.7;
         }
-        if (!e.practiceTarget && e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
+        const launched = heavy && dealtDamage > 0 && !guard && !e.tacticalBlocked && launchMeleeTarget(this, p, e, charge);
+        if (!launched && !e.practiceTarget && !e.tacticalBlocked && e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
           this.moveActor(
             e,
             p.faceX * (13 + charge * 50),
@@ -1123,13 +1167,7 @@ export class Game {
             ["bat", "wasp"].includes(e.kind),
           );
         }
-        this.effects.push({
-          x: struckSection?.x??e.x,
-          y: (struckSection?.y??e.y) - 24,
-          text: e.practiceTarget ? '' : String(appliedDamage),
-          color: "#ffe8ad",
-          life: 0.5,
-        });
+        if (e.tacticalBlocked) this.effects.push({x:e.x,y:e.y-38,text:'BLOCK',color:'#b8dce6',life:.5});
       }
     }
     if(stickHit)for(const slot of ['hand1','hand2']){
@@ -1156,17 +1194,23 @@ export class Game {
     return summonNecromancerPet(this, p);
   }
   summonNecromancerMinions(e) {
+    const casterKind = creatures[e.kind]?.aiKind || e.kind;
+    if (casterKind !== 'necromancer' || e.summonedBy != null || e.hp <= 0) return false;
     const alive = this.enemies.filter(q => q.hp > 0 && q.summonedBy === e.id).length;
     if (alive >= 4 || (e.summonCooldown || 0) > 0) return false;
     const kinds = ['skeleton', 'skeleton_unarmed', 'skeleton_wizard', 'skeleton_caster'];
     const kind = kinds[Math.floor(this.random() * kinds.length)], cfg = creatures[kind];
     const angle = this.random() * Math.PI * 2, d = 42 + this.random() * 18;
-    const minion = {...e, ...cfg.stats, kind, aiKind: kind, id: this.nextId++, group: e.group,
-      summonedBy: e.id, x: e.x + Math.cos(angle) * d, y: e.y + Math.sin(angle) * d,
+    // A summon owns its own combat state. Copying the caster's active windup
+    // lets every new skeleton inherit and finish the same summon in this tick.
+    const minion = {...cfg.stats, kind, skin: kind, aiKind: kind, id: this.nextId++, group: e.group,
+      summonedBy: e.id, room: e.room, x: e.x + Math.cos(angle) * d, y: e.y + Math.sin(angle) * d,
       hp: cfg.stats.hp, maxHp: cfg.stats.hp, state: 'hunt', timer: 1, cooldown: 1,
-      flash: 0, step: 0, faceX: Math.cos(angle), faceY: Math.sin(angle), moving: false,
+      attack: 0, flash: 0, step: 0, dx: 0, dy: 0,
+      faceX: Math.cos(angle), faceY: Math.sin(angle), moving: false,
       equipment: {hand1: kind === 'skeleton_caster' ? 'staff' : kind === 'skeleton_wizard' ? 'wand' : kind === 'skeleton_unarmed' ? null : 'sword'},
       faction: 'enemy', summonFootprint: true};
+    if (kind === 'skeleton_caster') minion.mana = minion.maxMana = 70;
     this.configureCreature(minion, false); this.enemies.push(minion);
     e.summonCooldown = 7.5; e.summonPulse = .8; this.onSound('magic', e); return true;
   }
@@ -1237,6 +1281,7 @@ export class Game {
     };
     if (this.enemies.some((e) => e.hp > 0)) {
       p.coins = (p.coins || 0) + 2;
+      emitGameplayFx(this,'coin',p);
       record(p, "boldRolls");
     }
     this.onSound("roll");
@@ -1286,14 +1331,37 @@ export class Game {
   spawnEvent(index,{test=false,force=false}={}) {
     this.eventOnBoard=false;
     if (index === undefined) {
-      index=selectEvent(this,EVENTS,(g,e)=>(!g.localWorld?.pack.events||g.localWorld.pack.events.includes(EVENTS.indexOf(e)))&&eventAvailable(g,e));
+      const available=(g,e)=>(!g.localWorld?.pack.events||g.localWorld.pack.events.includes(EVENTS.indexOf(e)))&&eventAvailable(encounterContext(g),e)&&encounterLayoutAvailable(encounterContext(g),e)&&mixedPressureAllows(g,e);
+      index=nextFeaturedEncounter(this,EVENTS,available)??selectEvent(this,EVENTS,available);
       if(index===null)return;
     }
+    const encounterZone=encounterBiome(this);
     if(!EVENTS[index]||!test&&!force&&!eventHasStartingAreas(this,EVENTS[index]))return false;
-    if(!test&&!force&&this.generatedEnvironment==='graveyard'&&!cemeteryEvent(EVENTS[index]))return false;
-    if(!test&&!force&&EVENTS[index].environments&&!EVENTS[index].environments.includes(this.generatedEnvironment))return false;
+    if(EVENTS[index].biomeMixed&&!test&&!force&&EVENTS[index].environment!==encounterZone)return false;
+    const mixedPlan=EVENTS[index].biomeMixed?planBiomeEncounter(this,EVENTS[index]):null;
+    if(EVENTS[index].biomeMixed&&!mixedPlan)return false;
+    if(mixedPlan){
+      const staging=Object.create(this);staging.enemies=[...this.enemies];mixedPlan.positions=[];
+      const approach=this.random()*Math.PI*2;
+      for(const [i,member]of mixedPlan.members.entries()){
+        const area=unitStartingArea(member.kind),aquatic=['deep_water','shallow_water'].includes(area);let spot=null;
+        for(let retry=0;retry<8&&!spot;retry++){
+          const candidate=biomeEncounterSpot(staging,mixedPlan,{...member,aquatic},i,approach+retry*Math.PI/4);
+          const required=candidate&&(force?candidate:requiredSpawnSpot(staging,member.kind,candidate)||(test?candidate:null));
+          if(!required||distance(this.players.find(p=>p.id===mixedPlan.anchorId),required)>650||this.players.some(p=>p.hp>0&&!p.room&&distance(p,required)<180)||staging.enemies.some(e=>e.hp>0&&distance(e,required)<28)||this.blocked(required.x,required.y,18,false,aquatic,false,0))continue;
+          spot=required;
+        }
+        if(!spot)return false;
+        mixedPlan.positions.push(spot);staging.enemies.push({...member,...spot,hp:1});
+      }
+    }
+    if(!test&&!force&&encounterZone==='graveyard'&&!cemeteryEvent(EVENTS[index]))return false;
+    if(!test&&!force&&EVENTS[index].environments&&!EVENTS[index].environments.includes(encounterZone))return false;
+    const encounterSite = findEncounterSite(this, EVENTS[index], {preview:test||force});
+    if(!encounterSite&&hasEncounterLayout(EVENTS[index].comboLayout))return false;
     this.event = migrateBeeEvent(EVENTS[index]);
-    if(!this.event||!test&&!force&&(this.event.environment&&this.event.environment!==this.generatedEnvironment))return false;
+    if(mixedPlan)this.event={...structuredClone(this.event),enemies:mixedPlan.members,count:mixedPlan.members.length,tip:mixedPlan.tip,encounterScale:{partySize:mixedPlan.partySize,early:mixedPlan.early,capacity:mixedPlan.capacity,existingPressure:mixedPlan.existingPressure,anchorId:mixedPlan.anchorId}};
+    if(!this.event||!test&&!force&&(this.event.environment&&this.event.environment!==encounterZone))return false;
     if(!test)rememberEvent(this,this.event,index);
     this.encounteredEvents ??= Object.create(null);
     if(!test)this.encounteredEvents[this.event.name] = true;
@@ -1366,6 +1434,7 @@ export class Game {
       };
     }
     const usingGroups = this.event.enemies?.length > 0;
+    const encounterLayout = placeEncounterLayout(this, this.event, encounterSite);
     const groups = usingGroups ? this.event.enemies : [{
       kind: this.event.kind, count: this.event.count, hp: this.event.hp,
       speed: this.event.speed, damage: this.event.damage,
@@ -1407,7 +1476,7 @@ export class Game {
         x: clamp(CENTER + Math.cos(a) * d, 70, WORLD - 70),
         y: clamp(CENTER + Math.sin(a) * d, 70, WORLD - 70),
         maxHp: unitStats.hp,
-        spawnReadyAt: test||force?this.time:this.time+1,
+        spawnReadyAt: test||force?this.time:this.time+1+(mixedPlan?i*.16:0),
         state: "hunt",
         timer: 1 + this.random(),
         cooldown: 1,
@@ -1452,9 +1521,11 @@ export class Game {
         lanternAssigned = true;
       }
       this.configureCreature(e, false);
+      initializeTacticalEnemy(e);
       if(enemyGroup.manualOverride)Object.assign(e,unitStats,{maxHp:unitStats.hp});
       const realmOrigin=this.trainTest?this.players.find(p=>p.hp>0&&!p.room):this.mapMode==='boundless'&&REALMS.includes(this.generatedEnvironment)?this.players.find(p=>p.hp>0&&!p.room):null;
-      const preferred=this.trainTest?this.trainEncounterSpot(realmOrigin,a):realmOrigin?realmSafeSpawn(this,{x:realmOrigin.x+Math.cos(a)*280,y:realmOrigin.y+Math.sin(a)*280}):spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned);
+      const layoutPoint=mixedPlan?.positions[i]??encounterLayout?.spawns[i];
+      const preferred=layoutPoint??(this.trainTest?this.trainEncounterSpot(realmOrigin,a):realmOrigin?realmSafeSpawn(this,{x:realmOrigin.x+Math.cos(a)*280,y:realmOrigin.y+Math.sin(a)*280}):spawnSpot(this,a,d, this.house && e.kind === "lion" && !this.houseLionSpawned));
       if(!preferred)continue;
       const spawn=realmOrigin?preferred:force?preferred:requiredSpawnSpot(this,e.kind,preferred)||(test?preferred:null);
       if(!spawn)continue;Object.assign(e,spawn);
@@ -1468,19 +1539,25 @@ export class Game {
         e.y = clamp(e.y + Math.sin(tries * 1.7) * 24, 70, WORLD - 70);
       }
       if(unitStartingArea(e.kind)==='any'){const safe=realmSafeSpawn(this,e);if(!safe)continue;Object.assign(e,safe);}
+      if(encounterLayout&&layoutPoint){
+        const dx=encounterLayout.entry.x-e.x,dy=encounterLayout.entry.y-e.y,length=Math.hypot(dx,dy)||1;
+        e.faceX=dx/length;e.faceY=dy/length;
+      }
       if(e.kind==='anaconda'){
         for(let tries=0;tries<40&&this.blocked(e.x,e.y,16,false,false,false,0);tries++){
           e.x=clamp(e.x+Math.cos(tries*1.7)*24,70,WORLD-70);e.y=clamp(e.y+Math.sin(tries*1.7)*24,70,WORLD-70);
         }
         initializeAnaconda(e,this);
       }
+      if(mixedPlan){const origin=this.players.find(p=>p.id===mixedPlan.anchorId);if(origin){const length=distance(e,origin)||1;e.faceX=(origin.x-e.x)/length;e.faceY=(origin.y-e.y)/length;}e.cooldown=.7+i*.18;}
       this.enemies.push(e);
       if(this.event.graveRise){e.graveEmergence={elapsed:0,duration:GRAVE_EMERGENCE_SECONDS,origin:{x:e.x,y:e.y,groundY:e.y+14}};e.state='emerging';}
       first ??= e;
     }
     for(const e of this.enemies.filter(e=>e.group===group&&e.kind==="wolf"))wolfPack(this,e);
+    if(!encounterLayout&&!mixedPlan)arrangeCrossfire(this,this.enemies.filter(e=>e.group===group));
     startNightEvent(this,this.event,this.enemies.filter(e=>e.group===group));
-    if(first)initializeCreaturePackEvent(this,this.event,this.enemies.filter(e=>e.group===group));
+    if(first)(mixedPlan?initializeMixedCreaturePackEvent:initializeCreaturePackEvent)(this,this.event,this.enemies.filter(e=>e.group===group));
     for(const e of this.enemies)if(e.group===group&&e.kind==='carnivorous_flower'&&e.plantVariant===undefined)e.plantVariant=e.id%3===0?'orchid':'maw';
     if(this.event.spiderNest&&first)spiderNest(this,first,group);
     if(beeEvent(this.event))startBeeHive(this,group,this.enemies.filter(e=>e.group===group&&['bee','wasp'].includes(e.kind)));
@@ -1541,6 +1618,7 @@ export class Game {
         if (helper?.field?.skills?.quick_revive || p.revive >= 1.6) {
           if (helper) record(helper, "rescues");
           p.hp = 55;
+          emitGameplayFx(this,'revive',p,{targetId:p.id});
           p.getUpTime=.4;
           p.revive = 0;
           p.invuln = 2;
@@ -1549,6 +1627,8 @@ export class Game {
         }
   }
   tickPlayerCombatTimers(p,dt){
+      tickChickenCarry(this,p,dt);
+      tickSwordPolish(this,p,dt);
       if(p.swordDash&&(p.hp<=0||p.ui||p.room||p.consumeInput||p.stun||p.frozen||p.sleeping||p.swimming||p.dashTime||!p.swordStrike||p.swordDash.hand1!==p.equipment.hand1||p.swordDash.hand2!==p.equipment.hand2)){
         delete p.swordDash;delete p.swordStrike;delete p.swordFacing;p.charge=0;p.swordChargeAim=false;
       }
@@ -1558,12 +1638,13 @@ export class Game {
       p.pickupTime=Math.max(0,(p.pickupTime||0)-dt);p.foundUnique=Math.max(0,(p.foundUnique||0)-dt);
       p.gatherTime=Math.max(0,(p.gatherTime||0)-dt);if(!p.gatherTime)p.gatherAction=null;
       p.parry=Math.max(0,(p.parry||0)-dt);
+      p.guardWardTime=Math.max(0,(p.guardWardTime||0)-dt);
       const swordPause=Math.min(dt,p.swordHitPause||0);p.swordHitPause=Math.max(0,(p.swordHitPause||0)-dt);
       p.swordPrevious=1-(p.attack||0)/(p.attackDuration||.34);
       p.attack = Math.max(0, p.attack - (dt-swordPause));
       if(!p.attack&&!p.swordStrike)delete p.swordFacing;
       if(p.swordStrike&&p.attack===0&&!p.swordDash){const strike=p.swordStrike;delete p.swordStrike;if(p.hp>0&&!p.room&&!p.ui&&!p.consumeInput&&!p.stun&&!p.frozen&&!p.sleeping&&!p.dashTime&&!p.swimming&&strike.hand1===p.equipment.hand1&&strike.hand2===p.equipment.hand2)this.resolveMelee(p,strike.charge,strike.combo);}
-      if(p.queuedAttack&&p.attack===0){const queued=p.queuedAttack;delete p.queuedAttack;if(queued.until>=this.time&&!p.room&&!p.ui&&p.hp>0)this.attack(p,queued.charge);}
+      if(p.queuedAttack&&p.attack===0&&!(swordLoadout(p)&&p.dashTime>0)){const queued=p.queuedAttack;delete p.queuedAttack;if(queued.until>=this.time&&!p.room&&!p.ui&&p.hp>0)this.attack(p,queued.charge);}
       p.spin = Math.max(0, (p.spin || 0) - dt);
       p.stun = Math.max(0, (p.stun || 0) - dt);
       p.dodge = Math.max(0, (Number.isFinite(p.dodge)?p.dodge:0) - dt);
@@ -1586,7 +1667,11 @@ export class Game {
   }
   playerDashMotion(p,input,dt,mx,my,controlled=null){
       const len=Math.hypot(mx,my);
-      if (!this.openingBoard && !stationaryCreature(controlled) && !p.bowAiming && !p.holdingPosition && input.dodge && !p.dashHeld && p.dodge === 0) {
+      if (!this.openingBoard && !stationaryCreature(controlled) && !p.bowAiming && !p.holdingPosition && swordCanDodge(p,swordLoadout(p)) && input.dodge && !p.dashHeld && p.dodge === 0) {
+        if(swordLoadout(p)){
+          p.attack=0;delete p.swordStrike;delete p.swordFacing;clearSwordPolish(p);
+          if(p.comboId&&this.time<(p.comboUntil||0))p.comboUntil=Math.max(p.comboUntil,this.time+rules.dashDuration+1);
+        }
         p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
         p.dashRecovery=0;
@@ -1610,19 +1695,26 @@ export class Game {
     return {x:mx,y:my,speed};
   }
   tickCombatActors(dt){
+    maintainEnemyGroupCombat(this);
     const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet),...(this.villageFollowers||[]),...this.enemies.filter(e=>e.holidayReindeer)].filter((p) => p.hp > 0 && !p.room);
     tickSkunkClouds(this, dt, damageEnemy);
+    const launched = tickWeaponKnockback(this, dt, damageEnemy);
     for (const e of this.enemies) {
+      if(launched?.has(e))continue;
       if(e.cryptBoss)continue;
       if(e.swordHitPause>0){e.swordHitPause=Math.max(0,e.swordHitPause-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.moving=false;continue;}
       if(e.practiceTarget)continue;
+      if(tickEnemyFlinch(this,e,dt))continue;
       if(e.graveEmergence)continue;
       if(e.hp>0&&tickRaven(this,e,dt))continue;
       const alive = targets.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p)));
+      if(tickTacticalEnemy(this,e,dt,alive))continue;
+      if(tickSpeciesCombat(this,e,dt,alive))continue;
+      if(e.biomeMixed&&e.spawnReadyAt>this.time){e.moving=false;continue;}
       if(e.hp>0&&!e.frozen&&!e.stun&&tickCreaturePackActor(this,e,dt,alive))continue;
       if(e.hp>0&&e.kind==='bee_hive'){tickBeeHive(this,e,dt);continue;}
       if(e.hp>0&&e.kind==='bee'&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickBee(this,e,dt,alive);continue;}
-      if(e.hp>0&&WILD_FAUNA_KINDS.includes(e.kind)&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickJump(e,dt,this,0);tickWildFauna(this,e,dt,alive);continue;}
+      if(e.hp>0&&WILD_FAUNA_KINDS.includes(e.kind)&&e.faction!=='ally'&&creatures[e.kind]?.faction!=='ally'){tickJump(e,dt,this,0);if(!foragePlayApple(this,e,dt))tickWildFauna(this,e,dt,alive);continue;}
       if (!alive.length && e.kind!=='ghost' && e.kind!=='shore_goblin' && e.kind!=='zombie' && e.kind!=='dreadmane_lion' && e.kind!=='oathless_captain' && e.kind!=='grim_reaper' && e.faction!=='ally' && creatures[e.kind]?.faction!=='ally') {
         if(e.kind==='banshee_queen'){cancelBansheeSkill(e);e.bansheeSafeTime=0;}forgetHiddenTarget(e);
         if(e.kind==='snake'){e.state='hunt';e.timer=0;e.dx=e.dy=0;}
@@ -1661,7 +1753,6 @@ export class Game {
       }
       e.attack = Math.max(0, (e.attack || 0) - dt);
       e.healEffect = Math.max(0, (e.healEffect || 0) - dt);
-      e.throwTime = Math.max(0, (e.throwTime || 0) - dt);
       e.cooldown -= dt;
       e.tacticTime -= dt;
       e.moving = false;
@@ -1675,12 +1766,10 @@ export class Game {
         const trap=e.state!=='snared'&&this.traps.find(t=>t.life>0&&distance(t,e)<30);
         if(trap?.variant==='slow')e.rooted=Math.max(e.rooted,.5);
         else if(trap){
-          trap.life=0;e.state=trap.variant==='interrupt'?'recover':'snared';
-          e.timer=trap.variant==='interrupt'?1.8:rules.captureTime*(trap.capture||1);
-          e.humanoidTrapRecovery=trap.variant==='interrupt';e.flash=.2;e.attack=0;
+          e.humanoidTrapRecovery=triggerEnemyTrap(this,e,trap);
           e.succubusAttack=null;e.succubusWindup=0;e.succubusAim=null;e.succubusFlightHeight=0;
           if(e.kind==='banshee_queen')cancelBansheeSkill(e);if(e.kind==='ghost')interruptGhost(e);e.impWindup=0;e.impAim=null;e.zombieWindup=0;e.zombieAim=null;e.zombieTarget=null;
-          this.onSound('trap',e);continue;
+          continue;
         }
       }
       if(e.kind==='succubus'){tickSuccubus(this,e,alive,dt,cfg?.stats,beh);continue;}
@@ -1695,15 +1784,9 @@ export class Game {
       if(e.kind==='ghost'){if(e.happinessDevourer){e.coldPulse=(e.coldPulse||0)+dt;if(e.coldPulse>=.4){e.coldPulse=0;for(const target of alive)if(distance(e,target)<92)target.slowUntil=Math.max(target.slowUntil||0,this.time+.55);this.effects.push({x:e.x,y:e.y-14,particle:'cold-mist',color:'#9ddfff',life:.5});}}tickGhost(this,e,alive,dt,cfg?.stats,beh);continue;}
       if(e.kind==='anaconda'){tickAnaconda(this,e,alive,dt,cfg?.stats,cfg?.behaviors);continue;}
       if(e.kind === "wolf"){tickWolf(this,e,alive,dt);continue;}
-      const nearest = alive.reduce(
-        (best, p) => (!best || distance(e, p) < distance(e, best) ? p : best),
-        null,
-      );
+      const nearest = chooseEnemyTarget(this,e,alive);
       if(tickNightEnemy(this,e,nearest,dt))continue;
-      let p =
-        e.temperament === "restless" && alive.length > 1
-          ? alive[e.id % alive.length]
-          : nearest;
+      let p = nearest;
       if (aiKind === "vine")
         p = this.baits.find((b) => distance(b, e) < 180) || p;
       if (!p) continue;
@@ -1766,6 +1849,7 @@ export class Game {
       }
       if (beh.flameBreath || beh.tailSwipe) {
         e.fireCooldown = (e.fireCooldown || 0) - dt;
+        if(e.state==='recover'){e.timer=Math.max(0,(e.timer||0)-dt);e.moving=false;if(e.timer===0)e.state='hunt';continue;}
         if (e.fireAction) {
           e.fireActionTimer -= dt;
           if (e.fireActionTimer <= 0) {
@@ -1797,7 +1881,7 @@ export class Game {
         }
         e.faceX = aimX;
         e.faceY = aimY;
-        if (e.fireCooldown <= 0) {
+        if (e.fireCooldown <= 0 && rangeToTarget <= (cfg.stats.flameRange || 190) && requestEnemyGroupTurn(this,e,p)) {
           if (rangeToTarget < 90) {
             e.fireAction = "tail";
             e.fireActionTimer = 0.45;
@@ -1814,14 +1898,14 @@ export class Game {
       }
       if (aiKind === "golem") {
         e.rockTimer = (e.rockTimer || 0) - dt;
-        if (e.boulderReady && rangeToTarget < 235) {
+        if (e.boulderReady && rangeToTarget < 235 && requestEnemyGroupTurn(this,e,p,{flightSpeed:190})) {
           this.arrows.push({
             id: this.nextId++,
             x: e.x,
             y: e.y,
             z: 28,
-            vx: aimX * 165,
-            vy: aimY * 165,
+            vx: (e.rockAim?.x??aimX) * 165,
+            vy: (e.rockAim?.y??aimY) * 165,
             vz: 35,
             damage: e.damage,
             hostile: true,
@@ -1838,16 +1922,17 @@ export class Game {
           !e.boulderReady &&
           rangeToTarget > 170 &&
           e.rockTimer <= 0 &&
-          e.state !== "rocklift"
+          e.state !== "rocklift" && requestEnemyGroupTurn(this,e,p,{flightSpeed:190})
         ) {
           e.state = "rocklift";
-          e.timer = 0.8;
+          e.rockAim={x:aimX,y:aimY};e.timer = 0.8;
           e.rockTimer = 5.5;
           e.faceX = aimX;
           e.faceY = aimY;
           continue;
         }
         if (e.state === "rocklift") {
+          if(e.timer>.4)e.rockAim={x:aimX,y:aimY};if(e.rockAim){e.faceX=e.rockAim.x;e.faceY=e.rockAim.y;}
           e.timer -= dt;
           if (e.timer <= 0) {
             e.state = "hunt";
@@ -1949,38 +2034,7 @@ export class Game {
           };
         }
       }
-      if (beh.banana) {
-        e.bananaTimer = (e.bananaTimer || 0) - dt;
-        if (e.pendingBanana && e.throwTime <= 0.28) {
-          if (e.state !== "snared" && e.flash <= 0)
-            this.bananas.push({ ...e.pendingBanana, x: e.x, y: e.y });
-          e.pendingBanana = null;
-        }
-        const range = distance(e, p);
-        if (
-          e.bananaTimer <= 0 &&
-          range > 50 &&
-          range < 300 &&
-          e.state !== "snared" &&
-          e.flash <= 0
-        ) {
-          const d = range || 1;
-          e.pendingBanana = {
-            x: e.x,
-            y: e.y,
-            z: 22,
-            vx: ((p.x - e.x) / d) * (cfg.stats.bananaSpeed || 180),
-            vy: ((p.y - e.y) / d) * (cfg.stats.bananaSpeed || 180),
-            vz: 55,
-            life: 3,
-            damage: 8,
-          };
-          e.bananaTimer = cfg.stats.bananaCooldown || 2.5;
-          e.throwTime = 0.5;
-          e.faceX = (p.x - e.x) / d;
-          e.faceY = (p.y - e.y) / d;
-        }
-      }
+      if (beh.banana) tickBananaAttack(this,e,p,dt,e.state!=='snared',cfg.stats);
       if((e.kind==='beholder'||e.kind==='lesser_beholder')&&beh.ranged){tickBeholder(this,e,p,dt,cfg.stats);continue;}
       if (beh.ranged) {
         enemyQuiver(e);
@@ -2044,14 +2098,7 @@ export class Game {
         this.moveActor(e, (trap.x - e.x) * dt * 0.1, (trap.y - e.y) * dt * 0.1);
       }
       if (trap && trap.variant !== "slow") {
-        trap.life = 0;
-        e.state = trap.variant === "interrupt" ? "recover" : "snared";
-        e.timer =
-          trap.variant === "interrupt"
-            ? 1.8
-            : rules.captureTime * (trap.capture || 1);
-        e.flash = 0.2;
-        this.onSound("trap");
+        triggerEnemyTrap(this,e,trap);
         continue;
       }
       if (e.state === "windup") {
@@ -2108,6 +2155,7 @@ export class Game {
             });
           } else {
             e.state = "charge";
+            e.chargeHits=[];e.chargeContact=false;e.chargeTargetId=e.groupTurn?.targetId??p.id;
             if(beh.jump)startJump(e);
             e.timer = cfg?.stats
               ? cfg.stats.dashDistance / Math.max(1, cfg.stats.dashSpeed)
@@ -2126,18 +2174,27 @@ export class Game {
           ["bat", "wasp"].includes(aiKind),
         );
         if (travel < dt * 80 && !(beh.jump&&e.jumpHeight>0&&e.jumpVelocity>0)) e.timer = 0;
-        for (const q of alive) if (distance(e, q) < 30) {
+        let blocker;
+        e.chargeHits??=[];
+        for (const q of alive) if (distance(e, q) < 30 && !e.chargeHits.includes(q.id)) {
+          e.chargeHits.push(q.id);
           const before = q.hp;
-          this.hurt(q, e.damage, e);
+          const impact=this.hurt(q,e.damage,e,{charge:true});
+          if(impact==='caught'){blocker=q;break;}
+          if(impact==='hit'||impact==='blocked')e.chargeContact=true;
           if (aiKind === "tsetse" && q.hp < before && q.hp > 0 && !(q.sleeping > 0)) q.sleeping = 3;
         }
-        if (e.timer <= 0) {
+        if (e.timer <= 0 || blocker) {
           e.state = "recover";
-          e.timer = cfg?.edited
+          const recovery = cfg?.edited
             ? cfg.stats.recovery
             : aiKind === "crocodile"
               ? 1.3
               : 0.65;
+          const opening=blocker?'caught':!e.chargeContact?'missed':null;
+          e.timer=chargeRecoveryTime(opening,recovery);
+          if(opening)openChargeCounter(this,e,blocker||alive.find(q=>q.id===e.chargeTargetId)||p,opening);
+          delete e.chargeHits;delete e.chargeContact;delete e.chargeTargetId;
           e.cooldown = cfg?.stats.dashCooldown || 1.8;
         }
         continue;
@@ -2176,7 +2233,7 @@ export class Game {
                   : 155) &&
         e.cooldown <= 0 &&
         (!["lion", "panther", "bat", "wasp"].includes(aiKind) ||
-          e.tacticTime <= 0)
+          e.tacticTime <= 0) && requestEnemyGroupTurn(this,e,p,{rush:true})
       ) {
         e.state = "windup";
         e.timer = cfg?.edited
@@ -2243,7 +2300,7 @@ export class Game {
             );
         }
       }
-      if (d < 29 && e.cooldown <= 0) {
+      if (d < 29 && e.cooldown <= 0 && requestEnemyGroupTurn(this,e,p)) {
         if (beh.melee && !["skeleton", "vine"].includes(aiKind)) {
           this.hurt(p, e.damage, e);
           if(aiKind==='beetle')e.attack=.25;
@@ -2307,7 +2364,16 @@ export class Game {
     tickCharmStatuses(this,0); // Owner death/friendship breaks the spell this frame.
   }
   update(dt, inputs = {}) {
+    if(this.combatHitstop>0&&['play','won'].includes(this.phase)){
+      const frozen=Math.min(Math.max(0,dt),this.combatHitstop);
+      this.combatHitstop-=frozen;dt-=frozen;
+      if(dt<=0)return;
+    }
+    deliverStudentParcels(this);
+    if(!this.trainTest&&!this.tvWorld&&!this.remoteAuthoritative)deliverTvRecovery(this);
+    if(!this.trainTest&&['play','won'].includes(this.phase))tickChocolateFrogs(this,dt);
     if(tickTrainTest(this,dt,inputs))return;
+    if(['play','won'].includes(this.phase))tickStationOwls(this,dt);
     if(tickHouseWorldTravel(this,dt,inputs))return;
     if (this.phase === "sealing") {
       this.sealTime += Math.min(dt, 0.05);
@@ -2317,6 +2383,7 @@ export class Game {
     }
     if (!["play", "won"].includes(this.phase)) return;
     dt = Math.min(dt, 0.05);
+    ensurePlayground(this);
     tickChestCritters(this,dt);
     this.rollCooldown=Math.max(0,(this.rollCooldown||0)-dt);
     if(tickBoardSequence(this,dt,inputs))return;
@@ -2324,9 +2391,11 @@ export class Game {
     inputs=charmInputs(this,inputs);
     tickNightCycle(this, dt);
     ensureTemple(this);
+    tickHouseLiving(this,dt,inputs);
     this.tickAdventure(dt, inputs);
     tickNpcQuests(this,dt);tickVillagers(this,dt);tickChristmas(this,dt);
     if(this.roll)return;
+    tickPlayground(this,dt,inputs);
     tickGhosts(this,dt);
     tickHunterPets(this,dt,inputs);
     tickField(this, dt, inputs);
@@ -2347,6 +2416,7 @@ export class Game {
     if (this.phase === "sealing") return;
     this.bloom = Math.min(3, (this.bloom || 0) + dt);
     this.time += dt;
+    advanceCombatImpacts(this, dt);
     this.tableShake = Math.max(0, this.tableShake - dt);
     this.eventTime = Math.max(0, this.eventTime - dt);
     for(const vehicle of this.house?.vehicles||[])tickVehicleEffects(this,vehicle,dt);
@@ -2419,7 +2489,7 @@ export class Game {
       const dashMotion=this.playerDashMotion(p,input,dt,mx,my,controlled);
       const speed=dashMotion.speed;mx=dashMotion.x;my=dashMotion.y;
       if(passenger){p.moving=false;p.walking=false;}
-      else if (p.bowAiming||p.holdingPosition||p.swordChargeAim||p.swordDash) {p.moving=false;p.walking=false;}
+      else if ((p.playLogId&&!(p.jumpHeight>0))||p.bowAiming||p.holdingPosition||p.swordChargeAim||p.swordDash) {p.moving=false;p.walking=false;}
       else if (!this.openingBoard) {
         const oldX=p.x,oldY=p.y,motion=p.vehicleId?vehicleMotion(this,p,input,dt):((!controlled||controlledCat)&&!p.dashTime&&!p.dashRecovery?jumpMotion(p,mx,my,speed*(controlledCat?1.15:1),dt):null)||iceMotion(this,p,mx,my,speed,dt);
         const swordProgress=1-(p.attack||0)/(p.attackDuration||.34),swordDistance=p.swordFacing&&!p.dashTime&&!p.dashRecovery&&!p.swimming&&!(p.jumpHeight>0)?swordStep(p.attackClip,p.swordPrevious,swordProgress):0;
@@ -2462,6 +2532,7 @@ export class Game {
       }
     }
     this.tickCombatActors(dt);
+    updateEnemyCombatReadability(this,dt);
     // An encounter card is an active warning, not a permanent banner. Once
     // its creatures are gone, close it immediately so the tip cannot claim
     // that the party is still fighting that creature type.

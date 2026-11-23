@@ -22,10 +22,10 @@ test('Old saved arrow fields consolidate at their existing anchors',()=>{
 test('An archer stops at zero and resumes after retrieving ammunition',()=>{
  const {g,p}=setup();p.x=400;p.y=400;g.nightCycle={phase:'day',elapsed:0};
  const e={id:900,kind:'archer',x:580,y:400,hp:100,maxHp:100,speed:80,damage:1,state:'hunt',cooldown:0,flash:0,tacticTime:1,faceX:-1,faceY:0,aggro:true,startingArrows:36,arrowsLeft:1};g.enemies=[e];
- g.update(.05,{});assert.equal(e.arrowsLeft,0);assert.equal(g.arrows.filter(a=>a.hostile).length,1);
+ g.update(.05,{});assert.equal(e.arrowsLeft,1,'draw warns before consuming ammunition');for(let i=0;i<30&&e.arrowsLeft===1;i++)g.update(.05,{});assert.equal(e.arrowsLeft,0);assert.equal(g.arrows.filter(a=>a.hostile).length,1);
  g.arrows=[];g.loot=[];e.cooldown=0;g.update(.05,{});assert.equal(g.arrows.length,0);
- arrowDrop(g,{x:e.x+5,y:e.y,ammoType:'ice_arrow'},36);g.update(.05,{});assert.equal(e.arrowsLeft,36);assert.ok(!e.iceArrowsLeft);
- e.cooldown=0;g.update(.05,{});assert.equal(e.arrowsLeft,35);assert.equal(g.arrows[0].ammoType,'arrow');
+ arrowDrop(g,{x:e.x+5,y:e.y,ammoType:'ice_arrow'},36);for(let i=0;i<40&&e.arrowsLeft===0;i++)g.update(.05,{});assert.equal(e.arrowsLeft,36);assert.ok(!e.iceArrowsLeft);
+ e.cooldown=0;for(let i=0;i<30&&e.arrowsLeft===36;i++)g.update(.05,{});assert.equal(e.arrowsLeft,35);assert.equal(g.arrows[0].ammoType,'arrow');
 });
 test('Enemy quivers start generously and retrieve below half, up to starting capacity',()=>{
  const {g}=setup(),e={x:400,y:400};assert.equal(enemyQuiver(e),36);

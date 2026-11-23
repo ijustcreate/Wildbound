@@ -1,6 +1,6 @@
 /* Paper and chrome are materials, not enlarged bitmap buttons. Keep item art
    native-sized; one shared frame language for every player-facing dialog. */
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console) {
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console) {
   box-sizing:border-box;border-image:none!important;border:4px solid #503b29!important;border-radius:4px;
   background:linear-gradient(115deg,#eadcb5,#dcc99a)!important;color:#302d22;
   box-shadow:inset 0 0 0 1px #b9975f,inset 0 0 0 4px #fff5d22b,0 12px 30px #0008;
@@ -9,15 +9,15 @@
   max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;
   scrollbar-color:#947b50 #d9c99f;scrollbar-width:thin;
 }
-:where(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console,.lobby-dialog) button {
+:where(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console,.lobby-dialog) button {
   box-sizing:border-box;border-image:none!important;border:2px solid #36523b;border-bottom:3px solid #243d2e;border-radius:3px;
   background:linear-gradient(#4c9364,#397651);color:#10271c;font-weight:650;line-height:1.2;text-shadow:none;
   min-width:0;padding:7px 10px;white-space:normal;overflow-wrap:break-word;
 }
-:where(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console,.lobby-dialog) button:disabled {
+:where(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console,.lobby-dialog) button:disabled {
   background:#c1bea0;color:#696e5a;border-color:#a2a184;opacity:.65;
 }
-:where(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console,.lobby-dialog) button:is(.selected,.menu-focus,.lobby-focus,.creation-focus,.picker-focus,:focus-visible) {
+:where(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.game-debug-console,.lobby-dialog) button:is(.selected,.menu-focus,.lobby-focus,.creation-focus,.picker-focus,:focus-visible) {
   border-color:#f3ce75!important;outline:2px solid #f3ce75;outline-offset:-2px;
   box-shadow:inset 0 0 0 3px #162d20,0 0 0 1px #684d20;
 }
@@ -112,7 +112,7 @@ body:has(#settings-dialog[open]) #settings-button{visibility:hidden}
 .lobby-player-panel .lobby-level{display:inline-block;margin-left:8px;font:12px system-ui,sans-serif;letter-spacing:.06em;color:#405448}
 .lobby-player-panel.creation-menu{width:min(540px,calc(100vw - 20px))}
 .game-debug-console .debug-tools {align-items:end;gap:10px;}
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) :is(.hero-panel-close,.close-icon,.dialog-close) {background-size:contain!important;aspect-ratio:1;flex:none;}
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog) :is(.hero-panel-close,.close-icon,.dialog-close) {background-size:contain!important;aspect-ratio:1;flex:none;}
 .hero-panel canvas {image-rendering:pixelated;}
 /* A minimum icon area prevents labels from consuming the whole gear cell. */
 .hero-panel.inventory-redesign.inventory-workbench {container-name:inventory;}
@@ -202,7 +202,7 @@ body:has(#settings-dialog[open]) #settings-button{visibility:hidden}
 }
 
 /* The current controller choice must stand apart from idle wells and buttons. */
-:is(.hero-panel,#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.lobby-dialog,.lobby-player-panel,.character-gallery)
+:is(.hero-panel:not(.npc-dialogue-session),#pause-dialog,#settings-dialog,#info-dialog,#victory-results,#field-kit-dialog,.lobby-dialog,.lobby-player-panel,.character-gallery)
  button:is(.selected,.menu-focus,.lobby-focus,.creation-focus,.picker-focus,:focus-visible):not(:disabled):not(.merchant-row):not(.merchant-confirm) {
   z-index:2;
   outline:3px solid #ffe276!important;outline-offset:-3px!important;

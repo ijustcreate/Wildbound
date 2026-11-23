@@ -1,0 +1,17 @@
+# Owl carrier proportions — 1.2.108
+
+Checkout C:/Users/New User/Desktop/Wildbound; Wildbound_worlds; origin https://github.com/ijustcreate/Wildbound.git; base f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 plus modified source. Existing source/artwork/saves/drafts and concurrent work preserved. No commit/push requested.
+
+The user asked for a better owl-to-cage ratio. Native cage coordinates are now resolved on a compact integer grid: 84% previous width and 76% previous height, preserving the brass/wood pixel-art silhouette and door. The caged owl changes from size 35 to 58, placed 9 units above the tray. Its head fits below the arch. Front bars are spaced away from the eyes and the old crossbar no longer cuts across the enlarged face. Released owl size/flight, actor rig, capture rules and saves remain unchanged. A shared drawCagedSnowyOwl helper keeps station units, prop previews and review captures consistent.
+
+Applied the already-read wildbound-pixel-assets workflow. The first enlarged sample put the crown too near the roof, so the perch/size were adjusted before delivery. The final native station view and closed/open carrier board were visually inspected; self-review is not claimed as user approval. No authored rig edits.
+
+Source muted isolated Electron review: 27 passed, failed 0, errors [], muted true (test-output/owl-sizing-electron.log). Existing alley/pet/transaction and station visibility/impact regressions: 22 passed, zero failed (test-output/owl-sizing-regressions.log). This is a visual proportion correction; the entire suite was not repeated. Packaging and exact desktop receipts follow below.
+
+## Desktop receipt
+
+- Package: C:/Users/New User/Desktop/Wildbound/dist/1.2.108-2026-11-23T02-51-29-749Z/Wildbound-win32-x64/Wildbound.exe. Version 1.2.108, builtAt 2026-11-23T02:51:46.485Z (November 22 locally), sourceCommit f0b787ff33c3ac8f3675b48504937ebda4f0dcb5, sourceDirty true, preview false. No commit/push.
+- Packaging passed 894 runtime syntax checks. Exact packaged muted Electron review: 27 passed, failed 0, errors [], muted true (test-output/owl-sizing-packaged.log). Actual packaged executable boot: exit 0, failed 0, ready lobby, errors [], audioMutedTest true. Packaged cage board was inspected. Stable preview: test-output/owl-carrier-size-1.2.108.png.
+- Source comparison: 1,666 checked; 1,662 identical. package.json differs intentionally because packaging strips development metadata. Three unrelated files changed concurrently after the snapshot (pixel-chat.mjs, shadow-atmosphere.mjs, shadow-underworld-art.mjs); those later edits are preserved and are not claimed shipped. All owl/cage art, station integrations and preview changes match byte-for-byte. Receipt: test-output/owl-sizing-content.json. Raw donor/backup exclusions are recorded there.
+- Play Wildbound.cmd --check succeeds and selects this exact build. Desktop C:/Users/New User/Desktop/Wildbound Worlds (1.2.108).lnk targets C:/Users/New User/Desktop/Wildbound/Play Wildbound.cmd with blank arguments, repository working directory, assets/wildbound-icon.ico. Normal save profile, no --preview. No existing player process was terminated or saved audio setting changed.
+- Authored rigs retain SHA-256 9a2c55d1090231ce5ec11cf06091224a9efb1b62a0c1bb0b3eb312a0cdad0be1. Hardware/controller feel, sustained FPS and the user's aesthetic approval remain unverified. Full suite was not repeated for this small art correction; the targeted regressions and actual Electron checks above passed.

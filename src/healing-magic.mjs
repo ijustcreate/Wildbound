@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 import {ITEMS, stat} from './items.mjs';
 import {creatures} from './definitions.mjs';
 import {clearShot} from './navigation.mjs';
@@ -71,19 +72,26 @@ export function applySpellHealing(g, source, target, amount) {
     color:'#75ef93', life:1, spellHealing:true, amount:effective, target:target.id});
   g.effects.push({magicBolt:true, healingRise:true, x:point.x, y:point.y-height+14, room,
     color:HEALING_COLOR, life:.85, duration:.85, target:target.id});
+  emitGameplayFx(g,'heal',target,{targetId:target.id,pxOptions:{palette:['#122c49','#24558c','#47a3dd','#a1eaff','#efffff']}});
   g.onSound?.('heal', target);
   return effective;
 }
 
 export function hitHealingBolt(g, bolt, target) {
   if (!canSpellHeal(g, bolt, target)) return false;
-  applySpellHealing(g, bolt, target, bolt.healingAmount);
-  // At the cap, new hits never replace or extend existing tick schedules.
-  if (bolt.healingHot && Number.isFinite(bolt.healingHotAmount) && bolt.healingHotAmount > 0) {
-    target.healingOverTime ||= [];
-    if (target.healingOverTime.length < HEALING_STACK_LIMIT)
-      target.healingOverTime.push({owner:bolt.owner, room:target.room || null, amount:bolt.healingHotAmount,
+  const point=spellHealingPoint(target),radius=Math.max(0,Number(bolt.healingSplashRadius)||0);
+  const affected=[target,...(radius?spellHealingTargets(g,bolt).filter(actor=>actor!==target&&
+    Math.hypot(spellHealingPoint(actor).x-point.x,spellHealingPoint(actor).y-point.y)<=radius):[])];
+  for(const actor of affected){
+    const amount=actor===target?bolt.healingAmount:Number(bolt.healingSplashAmount)||0;
+    if(amount>0)applySpellHealing(g,bolt,actor,amount);
+    // At the cap, new hits never replace or extend existing tick schedules.
+    if (bolt.healingHot && Number.isFinite(bolt.healingHotAmount) && bolt.healingHotAmount > 0) {
+      actor.healingOverTime ||= [];
+      if (actor.healingOverTime.length < HEALING_STACK_LIMIT)
+        actor.healingOverTime.push({owner:bolt.owner, room:actor.room || null, amount:bolt.healingHotAmount,
         nextTick:1, ticksLeft:HEALING_HOT_TICKS});
+    }
   }
   return true;
 }
@@ -145,7 +153,9 @@ function makeHealingBolt(g,p,slot,origin,aim,cast) {
     visualSeed:(p.id+1)*977+Math.round((g.time||0)*1000)+(slot==='hand2'?479:0),
     ...origin,vx:aim.x*260,vy:aim.y*260,life:3,remaining:chargedProjectileRange(strength*1.2),
     size:6+Math.round(strength*8),damage:0,healing:true,healingAmount:def.healingAmount*(1+strength*.5)*outgoing,
-    healingHot:ITEMS[p.equipment.head]?.healingHalo===true,healingHotAmount:HEALING_HOT_AMOUNT*outgoing,
+    healingHot:!!def.healingHot||ITEMS[p.equipment.head]?.healingHalo===true,
+    healingHotAmount:(Number(def.healingHotAmount)||HEALING_HOT_AMOUNT)*outgoing,
+    healingSplashRadius:Number(def.healingSplashRadius)||0,healingSplashAmount:(Number(def.healingSplashAmount)||0)*outgoing,
     color:HEALING_COLOR,glow:magicBoltGlow(def)};
 }
 

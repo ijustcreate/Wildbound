@@ -1,3 +1,4 @@
+import {catchChocolateFrog} from './chocolate-frogs.mjs';
 import {ITEMS,itemKind,stat,take} from './items.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
@@ -15,6 +16,7 @@ export function templeCombatInput(g,p,input,dt){
   p.templeAttackCooldown=Math.max(0,(p.templeAttackCooldown||0)-dt);
   const aimed=Math.hypot(input.aimX||0,input.aimY||0)>.25;
   if(aimed){const n=Math.hypot(input.aimX,input.aimY);p.faceX=input.aimX/n;p.faceY=input.aimY/n;}
+  if(input.attack&&!p.previousInput?.attack&&catchChocolateFrog(g,p))return;
   const slots=['hand1','hand2'].filter(slot=>ITEMS[p.equipment?.[slot]]?.magic),old=p.previousInput||{};
   const ranged=slots.length||ITEMS[p.equipment?.hand1]?.ranged||['bow','rifle'].includes(itemKind(p.equipment?.hand1));
   if(ranged&&input.attack)p.charge=Math.min(1.2,(p.charge||0)+dt);
@@ -26,7 +28,7 @@ export function templeCombatInput(g,p,input,dt){
     const weapon=ITEMS[p.equipment?.[slot]];
     if(weapon?.utility||weapon?.friendship)continue;
     if(weapon?.healing){const bolt=createRoomHealingBolt(g,p,charge,slot,{aim});if(bolt)(g.templeBolts||=[]).push(bolt);continue;}
-    const damage=Math.max(8,weapon?.damage||12)+stat(p,'damageBonus');
+    const damage=Math.max(8,weapon?.damage||12)+stat(p,'damageBonus')+(weapon?.magic?stat(p,'spellDamage'):0);
     if(weapon?.ranged||weapon?.magic||['bow','rifle'].includes(itemKind(p.equipment?.[slot]))){
       if(itemKind(p.equipment[slot])==='bow'&&!take(p.inventory,'arrow')){g.message('You need an arrow.');continue;}
       const cost=weapon.magic?(weapon.manaCost||8)*(1-Math.min(.75,stat(p,'manaDiscount'))):0;

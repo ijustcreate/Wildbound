@@ -45,13 +45,13 @@ export function drawBack(p, t, o) {
   const q = clip(p, meta), S = o.seed, R3 = ramps(o), C = R3[0];
   // a faint dusk haze, warmer low down, that keeps the sky's stars out of the leaves' way
   const top = hex("#0e0a12"), low = mix(hex("#140c14"), C[0], 0.3);
-  rows(p, meta, -170, 9, (y, R) => {
+  if(!o.gameplay)rows(p, meta, -170, 9, (y, R) => {
     const k = (y + 170) / 180, c = mix(top, low, k * k);
     R.c.fill(c);
     R.a.fill(0.32 + 0.1 * k);
     R.b.fill(1);
   });
-  litter(q, S, R3);
+  if(!o.gameplay)litter(q, S, R3);
   leaves(q, t, S, R3, false);
 }
 

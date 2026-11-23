@@ -1,5 +1,5 @@
-import {creationFamily,creationHelp} from './creation-preview.mjs';
-import {controllerFamily} from './controls.mjs';
+import {creationFamily,creationHelp,creationMenuButtons} from './creation-preview.mjs';
+import {controllerFamily,controllerMenuButtons} from './controls.mjs';
 
 export function openControllerKeyboard(input) {
   if(document.querySelector('#controller-keyboard'))return;
@@ -10,7 +10,7 @@ export function openControllerKeyboard(input) {
   const title=document.createElement('h2');title.textContent='Name your explorer';
   const output=document.createElement('output');output.className='keyboard-text';output.setAttribute('aria-live','polite');
   const hint=document.createElement('p');hint.className='keyboard-help';
-  dialog.updateControllerFamily=family=>{dialog.dataset.controllerFamily=family;hint.textContent=creationHelp(family,true);};dialog.updateControllerFamily(dialog.dataset.controllerFamily);
+  dialog.updateControllerFamily=(family,buttons)=>{dialog.dataset.controllerFamily=family;hint.textContent=creationHelp(family,true,buttons);};dialog.updateControllerFamily(dialog.dataset.controllerFamily,creationMenuButtons({device:dialog.dataset.ownerDevice}));
   const grid=document.createElement('div');grid.className='controller-keyboard-grid';
   const refresh=()=>{output.textContent=text+'▏';grid.querySelectorAll('[data-letter]').forEach(b=>b.textContent=b.dataset.letter===' '?'Space':upper?b.dataset.letter.toUpperCase():b.dataset.letter.toLowerCase());};
   const finish=(apply)=>{if(apply){input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}dialog.close();dialog.remove();input.focus();};
@@ -35,7 +35,7 @@ export function openControllerKeyboard(input) {
 }
 export function navigateControllerKeyboard(dialog,{left,right,up,down,accept,back},pad,previous) {
   if(dialog.dataset.ownerDevice&&dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
-  dialog.updateControllerFamily?.(controllerFamily(pad));
+  dialog.updateControllerFamily?.(controllerFamily(pad),controllerMenuButtons(pad));
   const buttons=[...dialog.querySelectorAll('button')];let index=Math.max(0,buttons.indexOf(document.activeElement));
   if(left)index=(index+buttons.length-1)%buttons.length;
   if(right)index=(index+1)%buttons.length;

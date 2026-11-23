@@ -1,31 +1,53 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {defaultNativePlayerMotion,upgradePlayerToNative,poseAt,playerFrame,playerPose,projectPoint} from '../src/player-motion.mjs';
 import {jointAngle} from '../src/joint-angles.mjs';
 import {LocomotionHistory} from '../src/native-locomotion.mjs';
+import captain from '../src/oathless-captain-data.mjs';
 import {scenePropCasters} from '../src/scene-casters.mjs';
 import {createBoundlessChunk,createBoundlessChunkTask} from '../src/boundless-world.mjs';
 import {generateWorld} from '../src/world.mjs';
 
-test('current native gait has planted, flat soles and fixed limb lengths in every view',()=>{
- const m=defaultNativePlayerMotion();assert.equal(m.locomotionRevision,2);
- for(const action of ['idle','walk','run'])for(let frame=0;frame<24;frame++){
-  const p=poseAt(m,action,frame),stance=action==='run'?.30:action==='walk'?.52:1;
-  for(const side of ['L','R']){
-   const phase=(frame/24+(side==='R'?.5:0))%1,foot='foot'+side;
-   if(phase<stance){
-    assert.ok(Math.abs(p[foot][2]-m.joints[foot].position[2])<1e-5,action+' planted sole');
-    for(let d=0;d<8;d++){
-     const a=projectPoint(p[foot],d),k=projectPoint(p['knee'+side],d),boot=Math.atan2(k.x-a.x,a.y-k.y)*180/Math.PI;
-     assert.ok(Math.abs(boot+jointAngle(m,action,frame,d,foot))<1,action+' flat contact '+d);
+test('the shipped player uses the imported forward walk and run with grounded, forward-bending knees',()=>{
+ const authored=JSON.parse(readFileSync(new URL('../authored/rigs.json',import.meta.url),'utf8')).player;
+ const model=upgradePlayerToNative(authored);
+ assert.equal(model.locomotionRevision,2);
+ for(const [action,stride] of [['walk',32],['run',59]]){
+  const clip=model.clips[action],source=captain.clips[action];
+  assert.equal(clip.length,source.length);
+  assert.equal(clip.fps,source.fps);
+  assert.equal(clip.loop,source.loop);
+  assert.deepEqual(poseAt(model,action,clip.length),poseAt(model,action,0));
+  assert.equal(playerFrame({moving:true,walking:action==='walk',step:stride*.13},0,model),clip.length);
+  let hasContact=false,hasFlight=false;
+  const ground=model.joints.footL.position[2];
+  for(let frame=0;frame<clip.length;frame+=.125){
+   const pose=playerPose({hp:100,moving:true,walking:action==='walk',playerFrame:frame},0,model);
+   hasFlight||=Math.min(pose.footL[2],pose.footR[2])>ground+1;
+   for(const side of ['L','R']){
+    const foot='foot'+side,hip=pose['hip'+side],knee=pose['knee'+side],ankle=pose[foot];
+    const forward=ankle[1]-hip[1],height=hip[2]-ankle[2];
+    const bend=((knee[1]-hip[1])*height+(knee[2]-hip[2])*forward)/Math.hypot(forward,height);
+    assert.ok(bend>.5,action+' knee bends forward at '+frame+' '+side);
+    assert.ok(ankle[2]>=ground-.02,action+' ankle stays above the ground at '+frame);
+    const contact=Number.isInteger(frame)&&ankle[2]<=ground+.02;
+    hasContact||=contact;
+    for(const direction of contact?[0,1,2,3,4,5,6,7]:Number.isInteger(frame)?[0,4]:[]){
+     const a=projectPoint(ankle,direction),k=projectPoint(knee,direction);
+     const shin=Math.atan2(k.x-a.x,a.y-k.y)*180/Math.PI;
+     assert.ok(Math.abs(shin+jointAngle(model,action,frame,direction,foot))<1,action+' boot alignment '+direction);
     }
    }
   }
-  assert.ok(p.handR[2]<p.shoulderR[2]-6,'arm stays relaxed beside ribs');
-  assert.ok(Math.abs(p.head[1]-p.pelvis[1])<1.5,'head balanced above pelvis');
+  assert.ok(hasContact,action+' includes a planted pose');
+  assert.equal(hasFlight,action==='run');
  }
- const a={moving:true,step:5,equipment:{}};
- assert.equal(playerFrame(a,0,m),playerFrame(a,90,m),'distance drives stride');
+ const customRun=structuredClone(authored);
+ customRun.clips.run.keys[0].joints.handR[0]+=.1;
+ const customized=upgradePlayerToNative(customRun);
+ assert.deepEqual(customized.nativeHumanoidSource.preservedClips.run,customRun.clips.run);
+ assert.equal(customized.clips.run.stride,undefined);
 });
 
 test('locomotion migration preserves edited clips, custom geometry and all fitted art',()=>{
@@ -40,6 +62,9 @@ test('locomotion migration preserves edited clips, custom geometry and all fitte
  const custom=structuredClone(legacy);custom.joints.head.position[0]+=.1;
  assert.deepEqual(upgradePlayerToNative(custom).clips.idle,custom.clips.idle);
  assert.deepEqual(upgradePlayerToNative(next),next);
+ const customWalk=structuredClone(m);
+ customWalk.clips.walk.keys[0].angles[6].footL+=.5;
+ assert.deepEqual(upgradePlayerToNative(customWalk).clips.walk,customWalk.clips.walk);
 });
 
 test('start/stop blends and staggered turns are bounded and do not mutate actors',()=>{

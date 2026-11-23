@@ -1,4 +1,4 @@
-import {projectPoint} from './player-motion.mjs';
+import {projectPoint} from './actor-projection.mjs';
 export function pixelLine(c,a,b,color,width=1){c.fillStyle=color;const w=Math.max(1,Math.round(width)),n=Math.ceil(Math.hypot(b.x-a.x,b.y-a.y));for(let i=0;i<=n;i++)c.fillRect(Math.round(a.x+(b.x-a.x)*i/Math.max(1,n)-w/2),Math.round(a.y+(b.y-a.y)*i/Math.max(1,n)-w/2),w,w);}
 export function pixelPolygon(c,points,color){
  if(points.length<3)return;c.fillStyle=color;

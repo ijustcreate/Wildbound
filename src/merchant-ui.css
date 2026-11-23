@@ -11,7 +11,7 @@
 .hero-panel.merchant-session .merchant-ledger button {border-image:none!important;}
 .merchant-ledger {display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;gap:14px;flex:1;min-height:0;min-width:0;font:14px/1.4 system-ui;}
 .merchant-ledger :is(h2,h3,p){margin:0;}
-.merchant-intro {display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:12px;align-items:center;padding-right:30px;}
+.merchant-intro {display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:12px;align-items:center;padding-right:46px;box-sizing:border-box;}
 .merchant-portrait {width:72px;height:72px;border:2px solid #b18b48;border-radius:50%;background:#283f31;}
 .merchant-greeting small {font:700 9px/1.3 system-ui;letter-spacing:.13em;color:#756443;}
 .merchant-greeting .merchant-owner {display:block!important;font:600 11px/1.2 system-ui;letter-spacing:0;color:#66523a;}
@@ -19,6 +19,9 @@
 .merchant-greeting p {font:italic 12px/1.4 Georgia,serif;color:#63513a;margin-top:6px;}
 .merchant-gold {text-align:right;align-self:center;max-width:105px;overflow-wrap:anywhere;}
 .merchant-gold strong {display:block;font:700 24px/1.1 Georgia;color:#72551d;}
+#hero-overlays .merchant-gold strong{color:#f3d38a;}
+#hero-overlays .hero-panel.merchant-session .merchant-row-name small{color:#5f4929!important;}
+#hero-overlays .merchant-controls{color:#e1c9a1;}
 .merchant-gold small {font:700 9px/1.3 system-ui;color:#675638;}
 .merchant-tabs {display:flex;gap:6px;padding-bottom:10px;border-bottom:1px solid #b49a67;}
 .hero-panel.merchant-session .merchant-tabs button {flex:1;border:0!important;border-radius:3px;padding:8px 4px!important;background:transparent!important;color:#3e5138!important;box-shadow:none!important;font:700 14px/1.2 system-ui!important;outline:0;}
@@ -32,7 +35,6 @@
 .merchant-row-name {min-width:0;overflow-wrap:anywhere;}
 .merchant-row-name strong {font-weight:650;}
 .merchant-row-name small {display:block;color:#76654c;font-size:10px;margin-top:4px;}
-.merchant-inline-detail {display:none;}
 .merchant-price {font-weight:700;color:#76571d;white-space:nowrap;}
 .merchant-row.unaffordable .merchant-price {color:#994634;}
 .merchant-detail {min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;border-left:1px solid #b49a6766;padding-left:18px;display:flex;flex-direction:column;gap:10px;}
@@ -102,12 +104,11 @@
  .merchant-actions>* {grid-column:1;}
  .hero-panel.merchant-session .merchant-confirm {padding:7px 3px!important;font-size:12px!important;}
 }
-/* At shared-screen sizes, read details in the selected row rather than
-   compressing two separate columns into every player's shop. */
+/* Compact shops retain a fixed appraisal area below the scrolling ledger. */
 .hero-panel.merchant-session.party-panel {padding:12px!important;}
 @container merchant (max-width:450px) or (max-height:440px) {
  .merchant-ledger {gap:6px;}
- .merchant-intro {grid-template-columns:38px minmax(0,1fr) auto;gap:8px;padding-right:30px;}
+ .merchant-intro {grid-template-columns:38px minmax(0,1fr) auto;gap:8px;padding-right:42px;}
  .merchant-portrait {width:38px;height:38px;}
  .merchant-greeting h2 {font-size:19px!important;}
  .merchant-greeting p,.merchant-greeting>small {display:none;}
@@ -116,15 +117,17 @@
  .merchant-gold small {font-size:10px;}
  .merchant-tabs {gap:5px;padding-bottom:6px;}
  .hero-panel.merchant-session .merchant-tabs button {font-size:13px!important;padding:7px 2px!important;white-space:nowrap;}
- .merchant-body {display:block;overflow:hidden;}
+ .merchant-body {grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(40px,1fr) minmax(38px,64px);gap:5px;overflow:hidden;}
  .merchant-list {height:100%;}
- .merchant-detail {display:none;}
+ .merchant-detail {border-left:0;border-top:1px solid #b49a67;padding:5px 2px 0;gap:2px;}
+ .merchant-detail h3{font-size:15px!important;}
+ .merchant-description,.merchant-stats,.merchant-owned{font-size:12px;}
+ .merchant-display{display:none;}
+ .merchant-owned{padding:0;border:0;}
  .hero-panel.merchant-session .merchant-row {grid-template-columns:8px 36px minmax(0,1fr) auto;gap:5px;padding:8px 5px!important;font-size:13px!important;min-height:54px;}
  .merchant-row .merchant-icon {width:36px;height:36px;grid-column:2;grid-row:1;}
  .merchant-row-name {grid-column:3;}
  .merchant-price {grid-column:4;font-size:12px;}
- .merchant-inline-detail {display:flex;flex-direction:column;gap:8px;grid-column:2/-1;font:400 13px/1.45 system-ui;color:#574831;padding:2px 2px 3px 0;}
- .merchant-inline-detail small {font-size:12px;color:#6a5738;}
  .merchant-actions {grid-template-columns:minmax(0,1fr);gap:3px;}
  .merchant-actions>* {grid-column:1;}
  .hero-panel.merchant-session .merchant-confirm {font-size:14px!important;padding:8px!important;margin:0;}

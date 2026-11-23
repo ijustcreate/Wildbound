@@ -1,4 +1,4 @@
-import {ITEMS,sellValue,MARLOW_EQUIPMENT} from './items.mjs';
+import {ITEMS,BACKPACK_SLOTS,canGive,give,sellValue,MARLOW_EQUIPMENT} from './items.mjs';
 import {protectedItem} from './field-systems.mjs';
 import {drawTorchFlame} from './torch-flame.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
@@ -31,20 +31,26 @@ export function tickMerchant(g,dt){
  const h=m.horse;if(h){const gap=Math.hypot(h.x-m.x,h.y-m.y);if(gap>44)walk(h,m.x-(m.faceX||1)*35,m.y-(m.faceY||0)*35,25,14);else h.moving=false;}
 }
 export function openMerchant(g,p){const m=g.merchant;if(!m||p.room||Math.hypot(p.x-m.x,p.y-m.y)>65)return false;p.ui={shop:'merchant',panel:'stock',index:0,page:0,notice:'“Mind the horse. She counts your change.”'};return true;}
+export const merchantFor=(g,p)=>p.ui?.alleyShop?g.trainTest?.alleyMerchants?.[p.ui.alleyShop]:p.ui?.trainTailor?g.trainTest?.tailor:g.merchant;
 export function merchantRows(g,p){
  const mode=p.ui?.panel,owner=p.profileId||p.id;
- return (mode==='pack'?p.inventory:g.merchant?.stock||[]).flatMap((entry,index)=>{
+ return (mode==='pack'?p.inventory:merchantFor(g,p)?.stock||[]).flatMap((entry,index)=>{
   const item=mode==='pack'?entry:entry?.item;
   if(!item||mode!=='pack'&&(mode==='buyback'?entry.seller!==owner:entry.seller!=null))return [];
   return [{index,item,price:mode==='pack'?sellValue(item.type)*item.qty:entry.price}];
  });
 }
+export function merchantPurchaseReason(p,item,price){
+  if((p.coins||0)<price)return 'You need '+(price-(p.coins||0))+' more gold.';
+  if(!canGive(p.inventory,item.type,item.qty,BACKPACK_SLOTS,item))return 'Not enough backpack space for this purchase.';
+  return '';
+}
 export function merchantAction(g,p,action){
- const u=p.ui;if(u?.shop!=='merchant')return false;const m=g.merchant;
+ const u=p.ui;if(u?.shop!=='merchant')return false;const m=merchantFor(g,p);
  if(!m||action==='close'||p.room||Math.hypot(p.x-m.x,p.y-m.y)>100){p.ui=null;return true;}
  const rows=merchantRows(g,p),at=Math.max(0,rows.findIndex(row=>row.index===u.index));
  if(action.startsWith('panel:')||action==='tab'||action==='panel'||action==='panelNext'||action==='panelPrev'){
-  const tabs=['stock','pack','buyback'];u.panel=action.startsWith('panel:')?action.slice(6):tabs[(tabs.indexOf(u.panel)+(action==='panelPrev'?2:1))%3];
+  const tabs=m.trainTailor?['stock']:['stock','pack','buyback'];u.panel=action.startsWith('panel:')?action.slice(6):tabs[(tabs.indexOf(u.panel)+(action==='panelPrev'?2:1))%3];
   if(!tabs.includes(u.panel))u.panel='stock';u.index=merchantRows(g,p)[0]?.index??0;u.page=0;u.notice='';
  }
  else if(action.startsWith('select:')){const n=Number(action.slice(7));if(rows.some(row=>row.index===n))u.index=n;}
@@ -57,10 +63,10 @@ export function merchantAction(g,p,action){
   }else{
    const entry=m.stock[u.index];if(!entry)return true;
    if(entry.seller&&entry.seller!==(p.profileId||p.id)){u.notice='Reserved for its original owner.';return true;}
-   if((p.coins||0)<entry.price){u.notice='Not enough gold.';return true;}
-   const slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=32){u.notice='Make one free backpack slot.';return true;}
-   if(slot<0)p.inventory.push(structuredClone(entry.item));else p.inventory[slot]=structuredClone(entry.item);
-   p.coins-=entry.price;if(entry.seller)m.stock.splice(u.index,1);u.index=Math.min(u.index,Math.max(0,m.stock.length-1));u.page=Math.floor(u.index/8);u.notice='“A fine trade. Try not to get eaten.”';
+   const reason=merchantPurchaseReason(p,entry.item,entry.price);
+   if(reason){u.notice=reason;return true;}
+   if(!give(p.inventory,entry.item.type,entry.item.qty,BACKPACK_SLOTS,entry.item))return true;
+   p.coins-=entry.price;if(m.alleyShop){const receipt=((g.trainTest.alleyPurchases??={})[p.id]??={spent:0,gold:0,items:[],delta:{}});receipt.baseline??={};receipt.baseline[entry.item.type]??=p.inventory.filter(a=>a?.type===entry.item.type).reduce((n,a)=>n+a.qty,0)-entry.item.qty;receipt.spent+=entry.price;receipt.delta[entry.item.type]=(receipt.delta[entry.item.type]||0)+entry.item.qty;}else if(m.trainTailor){const receipt=((g.trainTest.tailorPurchases??={})[p.id]??={spent:0,items:[]});receipt.spent+=entry.price;receipt.items.push(structuredClone(entry.item));}if(entry.seller)m.stock.splice(u.index,1);u.index=Math.min(u.index,Math.max(0,m.stock.length-1));u.page=Math.floor(u.index/8);u.notice=m.trainTailor?'A fine fit. Safe travels to Hogwarts!':'“A fine trade. Try not to get eaten.”';
   }const remaining=merchantRows(g,p);if(!remaining.some(row=>row.index===u.index))u.index=remaining[Math.min(at,remaining.length-1)]?.index??0;
   u.tradeSerial=(u.tradeSerial||0)+1;m.revision++;g.uiRevision=(g.uiRevision||0)+1;g.onSound?.(u.panel==='pack'?'sell':'purchase',p);g.persist?.();
  }return true;

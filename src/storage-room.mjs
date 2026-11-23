@@ -1,4 +1,5 @@
 import {locationMarker} from './location-designs.mjs';
+import {catchChocolateFrog} from './chocolate-frogs.mjs';
 import {roomBlocked,ROOM_STATIONS,storageChestPoints} from './shops.mjs';
 import {tickRobotRepair,storageOwner,robotOnline,nearStorageRobot,openRobotIntroduction} from './storage-repair.mjs';
 export function nearbyStorageChest(p){
@@ -34,7 +35,7 @@ function tickStorageJump(game,p,input,dt){
 
 // The expedition and lobby use the same room movement and station interactions.
 export function tickStorageRoom(game,p,input,dt,interact=false){
-  if(input.attack&&!p.previousInput?.attack){p.attack=.3;game.onSound?.('swing',p);}
+  if(input.attack&&!p.previousInput?.attack){if(!catchChocolateFrog(game,p)){p.attack=.3;game.onSound?.('swing',p);}}
   tickStorageJump(game,p,input,dt);
   const beforeX=p.roomX,beforeY=p.roomY;
   const nx=Math.max(25,Math.min(295,p.roomX+(input.x||0)*90*dt));

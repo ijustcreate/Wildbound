@@ -24,21 +24,30 @@ export function drawFlyingArrow(c,a={},time=0){
  c.restore();
  c.fillStyle='#ba9763';c.fillRect(-length,-.7,length-2,1.4);drawArrowFletching(c,-length+1);
  c.fillStyle='#c6d2c8';c.beginPath();c.moveTo(0,0);c.lineTo(-5,-2);c.lineTo(-4,0);c.lineTo(-5,2);c.closePath();c.fill();
+ if(a.flameDistance>0){
+  const flicker=Math.floor(time*24+(a.id||0))%3;
+  c.fillStyle='#bc481e';c.fillRect(-13-flicker,-2,16+flicker,4);
+  c.fillStyle='#f58228';c.fillRect(-9,-3,11,2);c.fillRect(-11,1,11,2);
+  c.fillStyle='#ffbf4d';c.fillRect(-8,-1,9,2);c.fillRect(-5,-2,5,1);
+  c.fillStyle='#fff0a0';c.fillRect(-3,-1,5,1);
+  c.fillStyle='#ff9b35';c.fillRect(-18-flicker,-3,3,1);c.fillRect(-21+flicker,2,2,1);
+ }
  if(a.bansheeFrost){c.fillStyle='#80ddff';c.fillRect(-length,-1,length-3,2);c.fillStyle='#e8ffff';c.fillRect(-8,-1,8,2);for(let i=0;i<5;i++){const x=-5-i*7;c.fillStyle=i%2?'#9ce7ff':'#e0fbff';c.fillRect(x,Math.sin(time*18+i*2)*3,2,2);}}
 }
 // World-space history includes projectile height: curved shots leave curved
 // trails, not an arbitrary straight line glued behind the arrow graphic.
 export function recordArrowTrail(a,time){
  if(a.stuck||a.rock||a.ice)return;
- const history=a.flightTrail||=[];history.push({x:a.x,y:a.y-(a.z||0),time});
+ const history=a.flightTrail||=[];history.push({x:a.x,y:a.y-(a.z||0),time,...(a.flameDistance>0?{flame:true}:{})});
  while(history.length>18||history.length&&time-history[0].time>.16)history.shift();
 }
 export function drawArrowTrail(c,a,time){
  const history=a.flightTrail;if(!history?.length||a.rock||a.ice)return;
- c.save();c.strokeStyle=a.bansheeFrost?'#b8eeff':'#eee1bd';c.lineCap='round';
+ c.save();c.lineCap='round';
  for(let i=1;i<history.length;i++){
   const from=history[i-1],to=history[i],fade=Math.max(0,1-(time-to.time)/.16);
-  if(!fade)continue;c.globalAlpha=.38*fade*fade;c.lineWidth=.6+fade;
+  if(!fade)continue;c.strokeStyle=to.flame?'#ff9d42':a.bansheeFrost?'#b8eeff':'#eee1bd';
+  c.globalAlpha=(to.flame ? .67 : .38)*fade*fade;c.lineWidth=(to.flame ? 1.4 : .6)+fade;
   c.beginPath();c.moveTo(from.x,from.y);c.lineTo(to.x,to.y);c.stroke();
  }
  c.restore();

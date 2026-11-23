@@ -58,6 +58,8 @@ export class Assets {
         "Use a name with letters, numbers, spaces, or hyphens (60 characters max).",
       );
     s = ensureFootprint(structuredClone(s), name);
+    delete s.nativeShadowPlant;
+    delete s.nativeShadowTree;
     delete s.nativeSwampTree; // A painted override must never be replaced by procedural layers.
     const next = { ...this.overrides, [name]: structuredClone(s) };
     localStorage.setItem("wildbound-sprites", JSON.stringify(next));
@@ -71,6 +73,8 @@ export class Assets {
       if (!/^[a-zA-Z0-9 _-]{1,60}$/.test(name) || !validateSprite(s))
         throw new Error("Invalid sprite: " + name);
       entries[name] = ensureFootprint(structuredClone(s), name);
+      delete entries[name].nativeShadowPlant;
+      delete entries[name].nativeShadowTree;
       delete entries[name].nativeSwampTree;
       next[name] = entries[name];
     }

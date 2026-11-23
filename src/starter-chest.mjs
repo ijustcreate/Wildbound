@@ -2,22 +2,19 @@ import {ITEMS,give} from './items.mjs';
 
 // Include every starter equipment option, not rare gear or the NPC costumes.
 export const STARTER_GEAR=Object.freeze(Object.keys(ITEMS).filter(id=>id.startsWith('starter_')&&ITEMS[id].slot));
-export const STARTER_SUPPLIES=Object.freeze([...STARTER_GEAR.map(type=>Object.freeze({type,qty:1})),Object.freeze({type:'arrow',qty:8}),Object.freeze({type:'potion',qty:4})]);
+export const STARTER_SUPPLIES=Object.freeze([
+  ...STARTER_GEAR.map(type=>({type,qty:1})),{type:'arrow',qty:8},{type:'potion',qty:4},
+].map(item=>Object.freeze({...item,starterStock:true})));
 
 // Old profiles stored deposits in the supply chest. Return those to the saved
 // owner's overflow once; do not destroy gear or carry it into another selection.
 export function migrateSavedStarterChest(hero){
   if(!Array.isArray(hero.starterChest))return;
-  const allowance=new Map(STARTER_SUPPLIES.map(i=>[i.type,i.qty]));
-  // Potions were deposits before supply version 2; preserve every one.
-  if(hero.starterChestSupplyVersion!==2)allowance.set('potion',0);
+  // Unmarked legacy stacks might be player deposits. Recover them once;
+  // only supplies with recorded stock provenance can safely be retired.
   for(const item of hero.starterChest){
-    if(!item)continue;
-    const copy=structuredClone(item),plain=Object.keys(copy).every(k=>k==='type'||k==='qty');
-    const stock=plain?Math.min(copy.qty,allowance.get(copy.type)||0):0;
-    allowance.set(copy.type,Math.max(0,(allowance.get(copy.type)||0)-stock));
-    copy.qty-=stock;
-    if(copy.qty>0){hero.field||={};(hero.field.overflow||=[]).push(copy);}
+    if(!item||item.starterStock===true)continue;
+    hero.field||={};(hero.field.overflow||=[]).push(structuredClone(item));
   }
   delete hero.starterChest;
 }
@@ -29,7 +26,7 @@ export function restockStarterChest(player){
     const available=chest.reduce((total,item)=>total+(item?.type===type?item.qty:0),0);
     // Top up, never erase deposited equipment, sockets, bags or extra stacks.
     // If all 24 slots are occupied, normal chest pagination holds the refill.
-    if(available<qty)give(chest,type,qty-available,Infinity);
+    if(available<qty)give(chest,type,qty-available,Infinity,{starterStock:true});
   }
   return chest;
 }

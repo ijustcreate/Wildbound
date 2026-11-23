@@ -6,15 +6,22 @@
 #pause-dialog h2{color:#f4e6c3!important;font:30px/1.12 Georgia,serif;margin:0 0 8px;letter-spacing:-.5px;}
 #pause-dialog p{color:#c3cdbb!important;font:12px/1.45 system-ui;margin:0 0 18px;}
 #pause-dialog button{box-sizing:border-box;min-height:38px!important;height:auto!important;margin:0!important;padding:9px 12px!important;border:1px solid #6c8064!important;border-image:none!important;border-radius:3px!important;background:#213e31!important;box-shadow:none!important;color:#eee2bd!important;font:600 12px/1.25 system-ui!important;letter-spacing:0;}
-#pause-dialog button:is(.menu-focus,:focus-visible){outline:2px solid #f0d68c!important;outline-offset:2px;background:#3d5638!important;}
-#pause-dialog #resume-button{display:block;width:100%;min-height:44px!important;background:#dac286!important;border-color:#ebd596!important;color:#203429!important;margin:0 0 16px!important;}
+#pause-dialog :is(button,summary):is(.menu-focus,:focus-visible){outline:2px solid #f0d68c!important;outline-offset:2px;background:#3d5638!important;}
+#pause-dialog #resume-button{position:sticky;top:0;z-index:2;display:block;width:100%;min-height:44px!important;background:#dac286!important;border-color:#ebd596!important;color:#203429!important;margin:0 0 16px!important;}
 #pause-dialog .pause-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
 #pause-dialog .pause-volume-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 42px 1fr;gap:6px;align-items:center;text-align:center;color:#eee2bd;}
-#pause-dialog .pause-secondary{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0 16px;}
+#pause-dialog .pause-secondary{display:flex;margin:8px 0 16px;}
+#pause-dialog #pause-settings{width:100%;}
 #pause-dialog .pause-quick-options{margin:0;color:#cad2bc;}
 #pause-dialog .pause-quick-options summary{cursor:pointer;font:600 12px/1.4 system-ui;padding:10px 12px;border:1px solid #6c8064;border-radius:3px;background:#172e25;}
 #pause-dialog .pause-quick-options[open] .pause-options{margin-top:8px;}
 #pause-dialog .pause-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;border-top:1px solid #a58d4e55;padding-top:14px;}
+#pause-dialog .pause-tools{margin-top:12px;color:#bdd0c3;font:13px/1.4 system-ui;}
+#pause-dialog .pause-tools summary{cursor:pointer;padding:6px 0;}
+#pause-dialog .pause-tools button{margin-top:4px!important;}
+#pause-dialog[data-context="lobby"] #pause-last-encounter{display:none;}
+#pause-dialog #pause-last-encounter strong{color:#f4e6c3;}
+#pause-dialog #pause-last-encounter p{margin:4px 0 0;}
 #pause-dialog #pause-worlds{grid-column:1/-1;}
 #pause-dialog .text-button{background:transparent!important;}
 #pause-dialog #pause-text{color:#c3cdbb!important;}
@@ -26,3 +33,12 @@
 .hero-panel.private-storage-room>canvas.room-view{flex:1 1 0!important;height:0!important;min-height:120px!important;width:100%!important;object-fit:fill!important;image-rendering:pixelated;}
 .hero-panel.private-storage-room>header{font-size:clamp(13px,1.4vw,19px)!important;}
 .hero-panel.private-storage-room>p{font-size:11px;line-height:1.3;}
+
+/* Storage room chrome stays light around the playable room. */
+#hero-overlays .hero-panel.private-storage-room{padding:8px!important;gap:6px;border:1px solid #74867b!important;outline:0!important;border-radius:5px!important;background:#14211f!important;box-shadow:0 10px 32px #0008!important;}
+#hero-overlays .hero-panel.private-storage-room::before,#hero-overlays .hero-panel.private-storage-room::after{display:none!important;}
+#hero-overlays .hero-panel.private-storage-room>header{padding:3px 36px 7px 4px!important;margin:0!important;border-bottom:1px solid #73837940;background:none!important;color:#dce5d9!important;font:600 13px/1.3 system-ui!important;letter-spacing:.06em;text-shadow:none!important;}
+#hero-overlays .hero-panel.private-storage-room>button[data-action="close"]{position:absolute;top:6px;right:7px;width:27px;height:27px;min-height:27px!important;padding:0!important;border:0!important;border-image:none!important;border-radius:3px!important;background:#263c34!important;box-shadow:none!important;color:#dce5d9!important;font:0/1 system-ui!important;}
+#hero-overlays .hero-panel.private-storage-room>button[data-action="close"]::after{content:'×'!important;font:22px/1 system-ui!important;}
+#hero-overlays .hero-panel.private-storage-room>button[data-action="close"]:focus-visible{outline:2px solid #b2d4ba!important;outline-offset:1px;}
+#hero-overlays .hero-panel.private-storage-room>p{margin:0!important;padding:2px 4px!important;color:#aebfb2!important;font:11px/1.35 system-ui!important;text-shadow:none!important;}

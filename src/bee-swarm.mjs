@@ -1,7 +1,9 @@
 import {enemyCanSeeTarget} from './enemy-sight.mjs';
 import {clearShot} from './navigation.mjs';
+import {triggerEnemyTrap} from './enemy-traps.mjs';
 export const BEE_HIVE_CAP=8;
 export const BEE_HIVE_INTERVAL=3.5;
+const insideFloor=(g,x,y)=>(g.house?.floors||[]).some(f=>x>=f.x&&x<f.x+f.w&&y>=f.y&&y<f.y+f.h);
 export function beeEvent(event){return event?.beeHive===true||event?.kind==='bee'||event?.name==='A thousand little wings'&&event?.kind==='wasp';}
 export function migrateBeeEvent(event){return event?.name==='A thousand little wings'&&event.kind==='wasp'?{...event,kind:'bee',beeHive:true,tip:'Break the hive to stop reinforcements. At most eight bees can fly from each hive.'}:event;}
 export function hivePlacement(g,anchor){
@@ -9,7 +11,8 @@ export function hivePlacement(g,anchor){
  for(const q of g.scenery||[]){
   if(q.fallen||q.depleted||!['tree','snow_tree','palm','forest_tree'].includes(q.kind))continue;
   const root=q.rootY??q.y+(q.size||64)*.35,d=Math.hypot(q.x-anchor.x,root-anchor.y);
-  if(d<best){best=d;tree=q;}
+  const sign=(anchor.id||0)%2?-1:1,hiveX=q.x+sign*Math.max(18,(q.size||64)*.2);
+  if(d<best&&!insideFloor(g,hiveX,root+6)){best=d;tree=q;}
  }
  if(tree){
   const sign=(anchor.id||0)%2?-1:1,root=tree.rootY??tree.y+(tree.size||64)*.35;
@@ -20,7 +23,7 @@ export function hivePlacement(g,anchor){
 export function startBeeHive(g,group,bees){
  if(!bees.length||g.enemies.some(e=>e.kind==='bee_hive'&&e.group===group))return null;
  const first=bees[0];let spot={x:first.x,y:first.y};
- for(let i=0;i<16;i++){const a=i*Math.PI/8,x=Math.max(40,Math.min(1560,first.x+Math.cos(a)*55)),y=Math.max(40,Math.min(1560,first.y+Math.sin(a)*55));if(!g.blocked(x,y,16,false,true)){spot={x,y};break;}}
+ for(let i=0;i<16;i++){const a=i*Math.PI/8,x=Math.max(40,Math.min(1560,first.x+Math.cos(a)*55)),y=Math.max(40,Math.min(1560,first.y+Math.sin(a)*55));if(!insideFloor(g,x,y)&&!g.blocked(x,y,16,false,true)){spot={x,y};break;}}
  const hive={id:g.nextId++,kind:'bee_hive',group,...(hivePlacement(g,first)||{...spot,hiveLift:0}),hp:160,maxHp:160,speed:0,damage:0,faceX:0,faceY:1,state:'idle',spawnTimer:BEE_HIVE_INTERVAL,flash:0,step:0,
   beeStats:{hp:first.maxHp??first.hp??27,speed:first.speed??90,damage:first.damage??7}};
  // Store the actual encounter's scaled stats; reinforcements must not double
@@ -29,6 +32,7 @@ export function startBeeHive(g,group,bees){
  g.enemies.push(hive);return hive;
 }
 export function tickBeeHive(g,hive,dt){
+ hive.broodRecovery=Math.max(0,(hive.broodRecovery||0)-dt);
  hive.flash=Math.max(0,(hive.flash||0)-dt);hive.moving=false;
  if(hive.hp<=0||g.phase!=='play'||g.openingBoard)return;
  if(hive.hiveLift>0){const tree=(g.scenery||[]).find(q=>hive.hiveTreeId!=null?q.id===hive.hiveTreeId:q.x===hive.hiveTreeX&&q.y===hive.hiveTreeY);if(!tree||tree.fallen||tree.depleted)hive.hiveLift=0;}
@@ -37,7 +41,7 @@ export function tickBeeHive(g,hive,dt){
  const n=g.nextId,a=(n*.61803398875%1)*Math.PI*2,stats=hive.beeStats||{hp:27,speed:90,damage:7};
  const bee={id:g.nextId++,kind:'bee',group:hive.group,hiveId:hive.id,x:Math.max(24,Math.min(1576,hive.x+Math.cos(a)*24)),y:Math.max(24,Math.min(1576,hive.y+Math.sin(a)*16)),
   hp:stats.hp,maxHp:stats.hp,speed:stats.speed,damage:stats.damage,state:'hunt',step:0,faceX:Math.cos(a),faceY:Math.sin(a),cooldown:1,attack:0,flash:0,moving:false};
- g.enemies.push(bee);hive.spawnTimer=BEE_HIVE_INTERVAL;
+ g.enemies.push(bee);hive.spawnTimer=BEE_HIVE_INTERVAL;hive.broodRecovery=.8;
 }
 export function tickBee(g,e,dt,targets){
  if(e.kind!=='bee')return false;
@@ -45,7 +49,8 @@ export function tickBee(g,e,dt,targets){
  e.moving=false;
  if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
  const trap=g.traps.find(t=>t.life>0&&t.variant!=='slow'&&Math.hypot(t.x-e.x,t.y-e.y)<26);
- if(trap){trap.life=0;e.state='snared';e.timer=2;return true;}
+ if(trap){triggerEnemyTrap(g,e,trap);return true;}
+ if(e.state==='recover'&&e.timer>0){e.timer-=dt;return true;}
  e.state=e.attack>0?'sting':'hunt'; // Old saved windup/charge states migrate here.
  if(e.frozen>0)return true;
  // Preserve the insect/spider rivalry without returning to the old dash AI.

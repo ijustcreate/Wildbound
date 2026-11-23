@@ -1,0 +1,6 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "role": "runtime background plate, side-view TV board",
+  "prompt": "Create a widescreen 2:1 pixel art BACKGROUND PLATE for Wildbound's 2D platformer adventure board map. Original mossy forest kingdom overworld viewed SIDE ON, storybook retro 16-bit chunky square pixel clusters, consistent restrained teal jade moss olive ochre cream palette, crisp nearest neighbor edges no blur no antialias. Left third sunrise forest with small grass ledges and low ancient ruins; center wide tranquil valley, tiny waterfall, layered teal hills and ruin aqueduct; right third a tall golden SUN BEACON on a stone hill, a victory destination, NOT a door or gate. Small rune travel tubes at lower corners. Keep central horizontal 65 percent of image relatively open and low contrast, suitable for overlaying a winding game board path and character markers. No drawn board paths, no squares for spaces, no characters, no typography, no letters, no numbers, no UI, no logos. Decorative golden pixel border very thin only at extreme edge. Rich coherent professional pixel clusters at a logical resolution around 512x256, NOT painterly or high-resolution vector. This is one complete landscape background, not sprite sheet. Flat opaque artwork.",
+  "output": "assets/tv-arena/journey-board-v1.png"
+}

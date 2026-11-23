@@ -1,4 +1,18 @@
 /* One stable shell for every game-editing job. */
+.combat-workshop-editor{display:grid;grid-template-columns:minmax(255px,1fr) minmax(280px,1.35fr);gap:16px;align-items:start}
+.combat-workshop-settings{display:grid;gap:10px;min-width:0}
+.combat-workshop-settings fieldset,.combat-workshop-preview{margin:0;border:1px solid #284c4a;border-radius:8px;background:#102529;padding:12px;min-width:0}
+.combat-workshop-settings legend{padding:0 5px;color:#a8ded0;font-weight:600}
+.combat-workshop-settings label{display:grid;grid-template-columns:minmax(0,1fr) 74px;align-items:center;gap:10px;margin:5px 0}
+.combat-workshop-settings input{width:100%;max-width:74px;justify-self:end}
+.combat-workshop-actions{position:sticky;top:0;z-index:1;display:grid;gap:6px;padding:9px;background:#102529;border:1px solid #284c4a;border-radius:8px}
+.combat-workshop-toolbar{display:flex;flex-wrap:wrap;gap:8px}
+.combat-workshop-status{min-height:20px;margin:0}
+.combat-workshop-preview{position:sticky;top:0}
+.combat-workshop-preview label{display:inline-grid;gap:5px;margin:0 12px 10px 0}
+.combat-workshop-preview canvas{display:block;width:100%;height:auto;border:1px solid #264845;border-radius:5px;image-rendering:pixelated}
+.combat-workshop-preview p{margin:10px 0 0}
+@media(max-width:760px){.combat-workshop-editor{grid-template-columns:minmax(0,1fr)}.combat-workshop-settings{grid-row:2}.combat-workshop-preview{position:static}}
 .designer-dialog,.designer-dialog.player-designer{box-sizing:border-box;width:min(1380px,96vw);height:94vh;max-height:94vh;padding:0;overflow:hidden;background:#111e24;color:#dbe5dc;border:1px solid #496459;border-radius:10px;box-shadow:0 24px 80px #0009;font:13px/1.45 system-ui,sans-serif;color-scheme:dark;}
 .designer-dialog[open]{display:flex;flex-direction:column;}
 .designer-dialog>header{flex:none;margin:0;padding:14px 20px;border-bottom:1px solid #31473e;background:#16272b;gap:12px;}
@@ -150,3 +164,16 @@
 .designer-dialog .world-editor-link{border-color:#987b42!important;color:#f2d38b!important;}
 .designer-dialog .shadow-map-painter,.designer-dialog .shadow-map-preview{display:inline-block;width:min(46%,520px);height:auto;aspect-ratio:1;border:2px solid #537d6b;border-radius:5px;image-rendering:pixelated;background-color:#315542;background-image:linear-gradient(45deg,#3b674f 25%,transparent 25%),linear-gradient(-45deg,#3b674f 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#3b674f 75%),linear-gradient(-45deg,transparent 75%,#3b674f 75%);background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0;touch-action:none;}
 @media(max-width:700px){.designer-dialog .world-editor{padding:0;}.designer-dialog .world-editor-panel,.designer-dialog .world-editor>header{padding:12px;}.designer-dialog .world-editor>footer{align-items:stretch;flex-direction:column;}}
+
+/* Multiplayer camera workspace */
+.camera-editor{padding:20px;max-width:1400px;margin:auto;color:#dceee7}
+.camera-editor h3{font-size:24px;margin:0 0 8px}.camera-editor p{line-height:1.5;color:#adc8be}
+.camera-editor-layout{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:24px}
+.camera-editor label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #335047}
+.camera-editor input[type=number]{width:82px}.camera-editor select{max-width:180px}.camera-editor input,.camera-editor select{background:#102a25;color:#e3f4eb;border:1px solid #527165;border-radius:5px;padding:6px}
+.camera-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.camera-editor canvas{display:block;width:100%;height:auto;border:1px solid #42685b;border-radius:8px}.camera-editor output{display:block;margin-top:12px;color:#a5e4cf}
+@media(max-width:760px){.camera-editor-layout{grid-template-columns:1fr}.camera-editor{padding:12px}}
+
+@keyframes storage-pane-arrive{from{opacity:0;transform:translateY(5px) scale(.992)}to{opacity:1;transform:translateY(0) scale(1)}}
+.private-storage-room{animation:storage-pane-arrive .2s cubic-bezier(.2,.8,.2,1) both}
+@media(prefers-reduced-motion:reduce){.private-storage-room{animation:none}}

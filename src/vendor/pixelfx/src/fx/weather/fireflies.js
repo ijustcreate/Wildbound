@@ -43,21 +43,21 @@ function fly(S, i, t) {
 export function drawBack(p, t, o) {
   const q = clip(p, meta), S = o.seed, C = fit(o.palette, 6), G = fit(o.grass, 6);
   // a cool night haze, so the sky's stars don't read as fireflies
-  rows(p, meta, -170, 9, (y, R) => {
+  if(!o.gameplay)rows(p, meta, -170, 9, (y, R) => {
     const k = (y + 170) / 180;
     R.c.fill(mix(G[0], G[1], k));
     R.a.fill(0.48 + 0.14 * k);
     R.b.fill(1);
   });
   const flies = Array.from({ length: 32 }, (_, i) => fly(S, i, t));
-  grass(q, t, S, G, C, flies, false);
+  if(!o.gameplay)grass(q, t, S, G, C, flies, false);
   for (const f of flies) if (f.depth < 2) firefly(q, t, f, C);
 }
 
 export function draw(p, t, o) {
   const q = clip(p, meta), S = o.seed, C = fit(o.palette, 6), G = fit(o.grass, 6);
   const flies = Array.from({ length: 32 }, (_, i) => fly(S, i, t));
-  grass(q, t, S, G, C, flies, true);
+  if(!o.gameplay)grass(q, t, S, G, C, flies, true);
   for (const f of flies) if (f.depth === 2) firefly(q, t, f, C);
 }
 

@@ -1,11 +1,13 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const {randomUUID} = require("node:crypto");
 const queues = new Map();
 function validate(data, kind) {
   if (data?.version !== 1) throw Error("Unsupported save version");
   if (
     kind === "profiles" &&
     (!Array.isArray(data.heroes) ||
+      data.sharedStash != null && !Array.isArray(data.sharedStash) ||
       data.heroes.some(
         (h) =>
           !h.id ||
@@ -50,6 +52,7 @@ function write(file, data, kind) {
     .catch(() => {})
     .then(async () => {
       await fs.mkdir(path.dirname(file), { recursive: true });
+      if (["profiles", "house", "locations"].includes(kind)) await preserveInvalidFile(file, kind);
       await fs.writeFile(file + ".tmp", body);
       try {
         const old = JSON.parse(await fs.readFile(file, "utf8"));
@@ -62,14 +65,27 @@ function write(file, data, kind) {
   queues.set(file, task);
   return task;
 }
-async function restore(file, kind) {
-  await queues.get(file)?.catch(() => {});
-  const data = validate(
-    JSON.parse(await fs.readFile(file + ".bak", "utf8")),
-    kind,
-  );
-  await fs.writeFile(file + ".tmp", JSON.stringify(data));
-  await fs.rename(file + ".tmp", file);
-  return true;
+async function readBackup(file, kind) {
+  return validate(JSON.parse(await fs.readFile(file + ".bak", "utf8")), kind);
 }
-module.exports = { read, write, restore, validate };
+
+async function preserveInvalidFile(file, kind) {
+  let body;
+  try { body = await fs.readFile(file); }
+  catch (error) { if (error.code === "ENOENT") return; throw error; }
+  try { validate(JSON.parse(body), kind); }
+  catch { await fs.writeFile(file + ".damaged-" + randomUUID(), body, { flag: "wx" }); }
+}
+
+function restore(file, kind) {
+  const task = (queues.get(file) || Promise.resolve()).catch(() => {}).then(async () => {
+    const data = await readBackup(file, kind);
+    await preserveInvalidFile(file, kind);
+    await fs.writeFile(file + ".tmp", JSON.stringify(data));
+    await fs.rename(file + ".tmp", file);
+    return true;
+  });
+  queues.set(file, task);
+  return task;
+}
+module.exports = { read, readBackup, write, restore, validate };

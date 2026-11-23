@@ -1,6 +1,6 @@
 import {creatures} from './definitions.mjs';
 import {spawnMerchant} from './traveling-merchant.mjs';
-import {advanceWorld,visitRegion,simulationTier,hash,REGION_SIZE,WORLD_RATE,recordWorldEvent} from './world-simulation.mjs';
+import {advanceWorld,visitRegion,simulationTier,hash,REGION_SIZE,MAX_REGIONS,WORLD_RATE,recordWorldEvent} from './world-simulation.mjs';
 const runtime=new WeakMap();
 const regionKey=e=>`${Math.floor(e.x/REGION_SIZE)},${Math.floor(e.y/REGION_SIZE)}`;
 const clone=v=>structuredClone(v);
@@ -8,23 +8,36 @@ const companion=e=>e.friendly||e.owner!=null||e.allyOwner!=null||e.faction==='al
 export function noteLocalAnimalRemoved(g,e){
   if(!g.localWorld||!e.localEcology||e.worldRecorded)return;
   e.worldRecorded=true;const region=visitRegion(g.localWorld,...regionKey(e).split(',').map(Number));
+  if(!region)return;
   const role=e.ecologyRole==='predator'?'predators':'prey';region[role]=Math.max(0,region[role]-1);
   recordWorldEvent(g.localWorld,'animal-removed',{x:region.x,y:region.y,kind:e.kind,actor:e.id});
 }
 export function tickLocalWorld(g,dt) {
   const s=g.localWorld;
   if(!s||!['play','won'].includes(g.phase))return;
+  if(g.shadowPassages?.localRoot&&g.generatedEnvironment!==s.pack.environment)return;
   advanceWorld(s,dt*WORLD_RATE);
   let r=runtime.get(g);
   if(!r||r.state!==s){r={state:s,age:5};runtime.set(g,r);}
   r.age+=dt;if(r.age<2)return;r.age=0;
   s.dormantActors||={};
-  for(const p of g.players.filter(p=>p.hp>0&&!p.room))visitRegion(s,Math.floor(p.x/REGION_SIZE),Math.floor(p.y/REGION_SIZE));
+  let beyondJournal=false;
+  for(const p of g.players.filter(p=>p.hp>0&&!p.room)){
+    const region=visitRegion(s,Math.floor(p.x/REGION_SIZE),Math.floor(p.y/REGION_SIZE));
+    beyondJournal||=!region;
+  }
+  if(beyondJournal&&!r.limitShown){
+    g.message('The world journal is full. You can keep exploring, but new regions will not run settlement or wildlife simulation.');
+    r.limitShown=true;
+  }else if(!r.limitShown&&!r.nearLimitShown&&Object.keys(s.regions).length>=MAX_REGIONS-16){
+    g.message('The world journal is nearly full. Recorded regions will stay intact.');
+    r.nearLimitShown=true;
+  }
   // Persist existing animals before unloading. Tamed companions always stay live.
   for(const e of g.enemies){
     if(!e.localEcology||companion(e))continue;
     const region=visitRegion(s,...regionKey(e).split(',').map(Number));
-    if(simulationTier(region,g.players)!=='active'){
+    if(region&&simulationTier(region,g.players)!=='active'){
       const list=s.dormantActors[regionKey(e)]||=[];
       if(e.hp>0)list.push(clone(e));e.worldSleeping=true;
     }

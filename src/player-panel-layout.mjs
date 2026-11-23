@@ -43,9 +43,9 @@ export function planPlayerPanels(players, open, width, height, sizing = {}) {
   // reserving the wide gameplay corridor used by ordinary inventory docks.
   if(open.filter(p=>p.ui?.shop==='merchant').length>=2){
     const ordered=[...open].sort((a,b)=>players.indexOf(a)-players.indexOf(b));
-    const columns=ordered.length>4&&width>=1100?3:2,rows=Math.ceil(ordered.length/columns);
-    const w=Math.max(1,(width-GAP*(columns+1))/columns),h=Math.max(1,(height-GAP*(rows+1))/rows);
-    ordered.forEach((p,i)=>result.set(p.id,{x:GAP+(i%columns)*(w+GAP),y:GAP+Math.floor(i/columns)*(h+GAP),width:w,height:h,side:i%columns===0?'left':'right'}));
+    const columns=ordered.length>4&&width>=1100?3:2,rows=Math.ceil(ordered.length/columns),inset=Math.min(28,Math.max(16,width*.025)),gap=12;
+    const w=Math.max(1,(width-inset*2-gap*(columns-1))/columns),h=Math.max(1,(height-inset*2-gap*(rows-1))/rows);
+    ordered.forEach((p,i)=>result.set(p.id,{x:inset+(i%columns)*(w+gap),y:inset+Math.floor(i/columns)*(h+gap),width:w,height:h,side:i%columns===0?'left':'right'}));
     return result;
   }
   const sides = {left: [], right: []};
@@ -56,6 +56,7 @@ export function planPlayerPanels(players, open, width, height, sizing = {}) {
   const hasBoth = sides.left.length > 0 && sides.right.length > 0;
   // A central strip remains clear even when both sides have large chest menus.
   const clearWidth = Math.max(240, width * .25);
+  const dockInset=open.length>1?Math.min(64,Math.max(GAP,width*.05),(clearWidth+GAP*2-120)/2):GAP;
   const railWidth = Math.max(1, hasBoth ? Math.min((width - clearWidth - GAP * 2) / 2, (width - GAP * 3) / 2) : width - GAP * 2);
   for (const side of ['left', 'right']) {
     const occupants = sides[side].sort((a, b) => a.index - b.index);
@@ -68,7 +69,7 @@ export function planPlayerPanels(players, open, width, height, sizing = {}) {
       const y = bottomDock && row === occupants.length - 1
         ? height - GAP - h
         : GAP + row * (cellHeight + GAP);
-      result.set(player.id, {x: side === 'left' ? GAP : width - w - GAP, y, width: w, height: h, side});
+      result.set(player.id, {x: side === 'left' ? dockInset : width - w - dockInset, y, width: w, height: h, side});
     }
   }
   return result;

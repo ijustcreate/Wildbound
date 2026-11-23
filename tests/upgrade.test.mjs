@@ -97,9 +97,10 @@ test("Cat circles before pounce and recovers after charging", () => {
   const g = new Game(() => 0.5);
   const p = g.addPlayer("keyboard");
   g.start();
+  g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.house=null;
   p.x = 300;
   p.y = 300;
-  g.spawnEvent(0);
+  g.spawnEvent(0,{force:true});
   const e = g.enemies[0];
   e.x = 420;
   e.y = 300;
@@ -107,6 +108,7 @@ test("Cat circles before pounce and recovers after charging", () => {
   e.cooldown = 0;
   g.update(0.05);
   assert.notEqual(e.y, 300);
+  delete e.speciesCombat;
   e.state = "charge";
   e.dx = 1;
   e.dy = 0;

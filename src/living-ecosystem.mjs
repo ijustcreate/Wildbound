@@ -1,4 +1,7 @@
 import {perchReleasedCritter} from './broom-pets.mjs';
+import {drawNativeFrog} from './frog-art.mjs';
+import {catchStationOwl,releaseStationOwl} from './station-owls.mjs';
+import {catchChocolateFrog} from './chocolate-frogs.mjs';
 import { footprintHit, terrainHash } from './world.mjs';
 import {forestDecor} from './forest.mjs';
 import {give,take,clearSlot,ITEMS,migrateLegacySupplies} from './items.mjs';
@@ -278,6 +281,7 @@ function tickFrog(g,a,dt,time){
 }
 export function catchCritter(g,p){
  if(![p.equipment?.hand1,p.equipment?.hand2].includes('critter_net'))return false;
+ if(catchStationOwl(g,p)||catchChocolateFrog(g,p))return true;
  const r=ensure(g),a=r.animals.filter(a=>Math.hypot(a.x-p.x,a.y-p.y)<46&&(a.x-p.x)*(p.faceX||0)+(a.y-p.y)*(p.faceY||0)>=-8).sort((a,b)=>distance(a,p)-distance(b,p))[0];
  if(!a){g.message('No critter within reach.');return true;}
  const preferred=critterContainer(a.kind),copy=structuredClone(p.inventory);migrateLegacySupplies(copy);
@@ -289,6 +293,7 @@ export function catchCritter(g,p){
  p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught '+a.kind+'! Packed in your '+(container==='empty_jar'?'bottle.':'travel cage.'));g.persist?.();return true;
 }
 export function releaseCritter(g,p,index){
+ if(releaseStationOwl(g,p,index))return true;
  if(p.inventory?.[index]?.type==='caught_marsh_firefly')return releaseMarshFirefly(g,p,index);
  const item=p.inventory[index];if(!item?.type?.startsWith('caught_')||p.room)return false;
  const kind=item.type.slice(7),container=critterContainer(item.type,item),copy=structuredClone(p.inventory),water=kind==='fish'?nearbyFishWater(g,p):null;
@@ -310,10 +315,7 @@ export function drawLivingAnimal(c,a,time=0){const pixel=(x,y,w,h,color)=>{c.fil
       pixel(x-6,yy-flap,5,2,fairy?'#dce4ff':'#b8e7d7');pixel(x+2,yy+flap,5,2,fairy?'#f4dcff':'#d1f1e4');
       pixel(x,yy-2,2,7,fairy?'#a992e3':'#467e9b');pixel(x,yy-3,2,2,'#fff0b4');
       if(fairy)pixel(x+7,yy+6,1,1,'#ffffff');
-    } else if(a.kind==='frog') {
-      if(a.swimming&&!a.hop){c.strokeStyle='#a0cac088';c.lineWidth=1;c.beginPath();c.ellipse(x,y+1,8,3,0,0,7);c.stroke();pixel(x-4,y-2,8,3,'#417b52');pixel(x-4,y-4,2,2,'#dee6a2');pixel(x+2,y-4,2,2,'#dee6a2');pixel(x-6,y+2,3,1,'#749968');pixel(x+4,y+2,3,1,'#749968');return;}
-      pixel(x-5,y-2,10,4,'#3c7040');pixel(x-3,y-4,6,4,'#88aa54');
-      pixel(x-4,y-5,2,2,'#e6dc87');pixel(x+2,y-5,2,2,'#e6dc87');pixel(x-6,y+1,3,2,'#628348');pixel(x+3,y+1,3,2,'#628348');
+    } else if(a.kind==='frog') {drawNativeFrog(c,a);
     } else if(a.kind==='bird'&&a.broomPerched) {pixel(x-3,y-6,7,6,'#b08b50');pixel(x-2,y-4,4,3,'#5d6954');pixel(x+3,y-6,2,2,'#efcb78');pixel(x+1,y-7,1,1,'#292e38');
     } else if(a.kind==='bird') {
       pixel(x-3,y-10,7,4,'#b08b50');pixel(x-8,y-11-flap,6,2,'#5d6954');pixel(x+3,y-11-flap,6,2,'#5d6954');pixel(x+4,y-10,3,1,'#efcb78');

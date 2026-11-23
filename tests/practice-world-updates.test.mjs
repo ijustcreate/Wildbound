@@ -24,7 +24,7 @@ test('A lion routes onto a bed and lands on its surface',()=>{
 test('A winding-up lion completes its pounce onto furniture',()=>{
  const g=world(),p=g.addPlayer('keyboard');Object.assign(p,{x:350,y:310,groundHeight:12,invuln:999});
  g.house.furniture=[{kind:'bed',x:300,y:280,w:80,h:64,surfaceHeight:12,jumpable:true}];
- g.spawnEvent(EVENTS.findIndex(e=>e.kind==='lion'));const lion=g.enemies[0];Object.assign(lion,{x:270,y:310,state:'windup',timer:.02,dx:1,dy:0,tacticTime:0});
+ g.spawnEvent(EVENTS.findIndex(e=>e.kind==='lion'),{force:true});const lion=g.enemies[0];Object.assign(lion,{x:270,y:310,state:'windup',timer:.02,dx:1,dy:0,tacticTime:0});
  let onBed=false;for(let n=0;n<60;n++){g.update(.02,{});if(lion.groundHeight===12)onBed=true;}
  assert.ok(onBed,'Pounce lands on the raised bed');
 });

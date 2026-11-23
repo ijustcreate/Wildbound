@@ -23,6 +23,7 @@ export function templeLightSources(g){return templeTorchSpots(g).filter(t=>templ
 export function houseLightSources(g){return [
  ...(g.house?.furniture||[]).filter(f=>isHouseLight(f)&&houseLightOn(g,f)).map(f=>({x:f.x+f.w/2,y:f.y+f.h/2,height:f.lightHeight||(f.kind==='ceiling_light'?70:32),radius:Math.max(40,Math.min(400,Number(f.lightRadius)||200)),intensity:.95,color:f.kind==='ceiling_light'?'#ffe2ad':'#ffd19b',houseFixture:true})),
  ...(g.house?.furniture||[]).filter(f=>!f.destroyed).flatMap(f=>visibleSurfaceItems(g,f).filter(p=>p.kind==='candle'&&p.lit).map(p=>({x:f.x+f.w*(p.u??.5),y:f.y+f.h*(p.v??.5),height:25,radius:105,intensity:.65,color:'#ffbf78',houseFixture:true}))),
+ ...(g.house?.furniture||[]).filter(f=>!f.destroyed&&f.kind==='stove'&&f.applianceOn).map(f=>({x:f.x+f.w/2,y:f.y+f.h*.25,height:18,radius:85,intensity:.5,color:'#ffb66b',houseFixture:true})),
  ...templeLightSources(g),
 ];}
 export function toggleHouseLight(g,p){

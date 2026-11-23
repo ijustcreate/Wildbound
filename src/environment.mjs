@@ -7,7 +7,7 @@ import {drawForestAsset} from './forest-props.mjs';
 import {meadowAllowed} from './pixel-meadow.mjs';
 import {realmTree,realmHarvestable,realmAsset,tickRealmHazards,realmTerrainAt} from './realm-world.mjs';
 import {swampSurface} from './swamp-terrain.mjs';
-import {drawRealmProp} from './realm-art.mjs';
+import {drawRealmProp,drawRealmSprite} from './realm-art.mjs';
 import {tickRealmLife,tickRealmEvent} from './realm-life.mjs';
 import {drawBiomeProp} from './biome-art.mjs';
 import {drawIceProp,iceBase,ICE_PROPS} from './ice-world.mjs';
@@ -264,6 +264,15 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
   if(p.kind==='bush'){drawBush(c,p,time,{...renderOptions,windStrength:vegetationWindStrength(game)});return true;}
   if(p.procedural&&p.kind==='fern'&&(game.generatedEnvironment||game.environment)==='forest'){
     c.save();const base=propBase(p);c.translate(base.x,base.y);c.scale(p.size/48,p.size/48);drawJungleFern(c,{...p,x:0,y:0},time,vegetationWindStrength(game));c.restore();return true;
+  }
+  if(p.kind==='winter_lantern'){
+    const library=renderOptions.spriteLibrary||game.spriteLibrary;
+    if(library?.[p.kind]){
+      const anchor=iceBase(p);
+      return drawRealmSprite(c,p.kind,anchor.x,anchor.y,p.size,library);
+    }
+    // The small flame stays animated when the scenery tier freezes other details.
+    return drawIceProp(c,p,game.time??time);
   }
   if(drawIceProp(c,p,time))return true;
   if (!p.procedural) return false;

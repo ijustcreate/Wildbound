@@ -1,3 +1,6 @@
+import {requestEnemyGroupTurn} from '../enemy-group-combat.mjs';
+import {chooseEnemyTarget} from '../enemy-systems.mjs';
+import {otterMotion,defaultOtterMotion,replaceOtterMotion,drawOtterRig} from '../otter-motion.mjs';
 // Native, editable wildlife additions. Most clips are authored Wildbound
 // motion; selected species use mapped donor M2 tracks on editable parts. The
 // turkey uses donor Stand and retains its native grounded strut/actions.
@@ -707,6 +710,9 @@ function defaultFor(kind){return()=>clone(models[kind]);}
 function replaceFor(kind){return model=>{if(!validateModel(kind,model))throw Error('Invalid wildlife rig: '+kind);for(const key of Object.keys(models[kind]))delete models[kind][key];Object.assign(models[kind],clone(model));};}
 const subject=(kind,s)=>({name:s.name,data:models[kind],defaults:defaultFor(kind),replace:replaceFor(kind),draw:(c,a,t,m=models[kind],pose=null)=>paintWildlife(c,{...a,kind},t,m,pose),sprite:kind==='fox_kit'?'fox':kind,selected:models[kind].joints.head?'head':'pelvis',palette:Object.keys(models[kind].palette),shapeKeys:Object.keys(models[kind].shape),tracks:Object.keys(models[kind].joints).filter(n=>/^(head|tail|frontPaw|rearPaw|foot|claw|horn|shell|wing)/.test(n)).slice(0,8),clip:kind==='fox_kit'?'walk':'run',scale:kind==='squirrel'||kind==='baby_triceratops'?7:kind==='crab'||kind==='snail'?6:5});
 const subjects=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[kind,subject(kind,s)]));
+// Dedicated articulated water/foraging rig replaces the generic wildlife drawing.
+models.river_otter=otterMotion;
+subjects.river_otter={name:'River otter / swimming and foraging',data:otterMotion,defaults:defaultOtterMotion,replace:replaceOtterMotion,draw:drawOtterRig,sprite:'river_otter',selected:'tailTip',palette:Object.keys(otterMotion.palette),shapeKeys:Object.keys(otterMotion.shape),tracks:['tailBase','tailMid','tailTip','tailEnd','frontPawL','frontPawR','head','find'],clip:'swim',scale:6};
 const defaults=Object.fromEntries(Object.entries(specs).map(([kind,s])=>{
   const rigType=s.form==='penguin'||s.form==='turkey'?'winged':'quadruped';
   const enemy=['jumping_spider','crab','triceratops'].includes(kind);
@@ -733,7 +739,7 @@ const eventFlavor={
 };
 const events=Object.entries(specs).map(([kind,s])=>({name:s.behavior==='bond-with-bone-follow'?'A golden friend':kind==='jumping_spider'?'Bouncer in the brush':kind==='territorial-telegraphed-charge'?'The old horned guardian':kind==='side-scuttle-pincher'?'Pinchers at the tide line':s.name+' encounter',kind,count:kind==='crab'?4:kind==='penguin'?3:kind==='sheep'?4:kind==='turkey'?3:1,hp:s.stats[0],speed:s.stats[1],damage:s.stats[2],environment:s.habitat==='house'?'house':s.habitat==='ice-water-edge'?'ice':s.habitat==='beach'?'beach':s.habitat==='swamp'?'swamp':undefined,weight:kind==='crab'?5:kind==='golden_retriever'?3:0,devOnly:kind!=='crab'&&kind!=='golden_retriever',wildlifePackKind:kind,verse:eventFlavor[kind].join('\n'),tip:kind==='jumping_spider'?'Watch its crouch, dodge the leap, and punish its landing. It does not spin webs.':kind==='golden_retriever'?'Offer a bone to earn a loyal house companion.':kind==='penguin'?'These peaceful birds gather along the ice-water edge.':kind==='river_otter'?'Watch it swim and waddle between the bank and the reeds.':kind==='crab'?'Give the pincher room to wind up, then step behind its claws.':kind==='triceratops'?'The head lowers before its charge; sidestep its path.':`Watch how the ${s.name.toLowerCase()} moves, and give its warning behavior room.`}));
 
-function nearestLiving(game,actor,targets){return targets.filter(t=>t&&t!==actor&&t.hp>0&&!t.room).sort((a,b)=>Math.hypot(a.x-actor.x,a.y-actor.y)-Math.hypot(b.x-actor.x,b.y-actor.y))[0]||null;}
+function nearestLiving(game,actor,targets){return chooseEnemyTarget(game,actor,targets);}
 function moveActor(game,actor,dx,dy,dt,speedScale=1){
   const distance=Math.hypot(dx,dy)||1,speed=Math.max(0,Number(actor.speed)||40)*speedScale;
   const step=Math.min(distance,speed*dt),mx=dx/distance*step,my=dy/distance*step;
@@ -772,7 +778,7 @@ function tickPincher(game,actor,target,dt){
   }
   actor.faceX=dx/d;actor.faceY=dy/d;
   if(d>52){moveActor(game,actor,dx,dy,dt,1);actor.animationAction='scuttle';}
-  else if(actor.wildlifeCooldown<=0){actor.wildlifeBehaviorPhase='windup';actor.wildlifeBehaviorTime=.48;actor.moving=false;actor.animationAction='raise-claws';}
+  else if(actor.wildlifeCooldown<=0&&requestEnemyGroupTurn(game,actor,target)){actor.wildlifeBehaviorPhase='windup';actor.wildlifeBehaviorTime=.48;actor.moving=false;actor.animationAction='raise-claws';}
   else {actor.moving=false;actor.animationAction='idle';}
   return true;
 }
@@ -798,7 +804,7 @@ function tickCharge(game,actor,target,dt){
   }
   actor.faceX=dx/d;actor.faceY=dy/d;
   if(d>145){moveActor(game,actor,dx,dy,dt,.82);actor.animationAction='walk';}
-  else if(actor.wildlifeCooldown<=0){actor.wildlifeBehaviorPhase='windup';actor.wildlifeBehaviorTime=.72;actor.animationAction='warn';actor.state='windup';}
+  else if(actor.wildlifeCooldown<=0&&requestEnemyGroupTurn(game,actor,target,{rush:true})){actor.wildlifeBehaviorPhase='windup';actor.wildlifeBehaviorTime=.72;actor.animationAction='warn';actor.state='windup';}
   else {actor.moving=false;actor.animationAction='idle';}
   return true;
 }
@@ -815,7 +821,7 @@ export function tickWildlifeActor(game,actor,dt,livingTargets=[]){
     const distance=Math.hypot(target.x-actor.x,target.y-actor.y),dx=target.x-actor.x,dy=target.y-actor.y;
     if(actor.state==='pounce-recover'){actor.wildlifeMoodTime-=dt;if(actor.wildlifeMoodTime<=0){actor.state='hunt';actor.wildlifeCooldown=1.05;}return true;}
     actor.wildlifeCooldown=Math.max(0,(actor.wildlifeCooldown||0)-dt);
-    if(distance<148&&actor.wildlifeCooldown<=0&&actor.state!=='pounce-windup'){actor.state='pounce-windup';actor.wildlifeMoodTime=.46;actor.faceX=dx/(distance||1);actor.faceY=dy/(distance||1);return true;}
+    if(distance<148&&actor.wildlifeCooldown<=0&&actor.state!=='pounce-windup'&&requestEnemyGroupTurn(game,actor,target,{rush:true})){actor.state='pounce-windup';actor.wildlifeMoodTime=.46;actor.faceX=dx/(distance||1);actor.faceY=dy/(distance||1);return true;}
     if(actor.state==='pounce-windup'){actor.wildlifeMoodTime-=dt;if(actor.wildlifeMoodTime<=0){actor.state='pounce';actor.wildlifeMoodTime=.24;actor.pounceTargetId=target.id;}return true;}
     if(actor.state==='pounce'){actor.wildlifeMoodTime-=dt;const len=Math.min(distance,Math.max(0,actor.speed||58)*dt*2.8);game.moveActor?.(actor,dx/(distance||1)*len,dy/(distance||1)*len);actor.moving=true;if(actor.wildlifeMoodTime<=0){actor.state='pounce-recover';actor.wildlifeMoodTime=.62;actor.wildlifeCooldown=1.2;}return true;}
   }

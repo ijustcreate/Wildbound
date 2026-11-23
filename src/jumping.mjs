@@ -2,9 +2,14 @@ import {furnitureHeight,contains} from './house-design.mjs';
 import {sectionBlocked} from './structure-destruction.mjs';
 import {boardTableSupport} from './board-table.mjs';
 import {terrainSupport} from './terrain-support.mjs';
+import {playgroundSupport} from './playground-geometry.mjs';
+import {trainSupportHeight} from './train-surfaces.mjs';
+export const CHICKEN_GLIDE_FALL_SPEED=32;
+export const chickenGliding=a=>!!a.heldChickenId&&a.hp>0&&a.jumpHeight>0&&a.jumpVelocity<=0&&!a.swimming&&!a.wingHover&&!a.broomMount&&!a.vehicleId&&!a.room;
 export function supportHeight(g,a,offset=0){
- if(a.room||g?.trainTest)return 0;
- return Math.max(boardTableSupport(g,a.x,a.y),terrainSupport(g,a,offset),...(g?.house?.furniture||[]).filter(f=>!f.destroyed&&contains(f,a.x,a.y+offset)&&sectionBlocked(f,a.x,a.y+offset,.1)).map(furnitureHeight));
+ if(a.room)return 0;
+ if(g?.trainTest)return trainSupportHeight(g,a);
+ return Math.max(playgroundSupport(g,a,offset),boardTableSupport(g,a.x,a.y),terrainSupport(g,a,offset),...(g?.house?.furniture||[]).filter(f=>!f.destroyed&&contains(f,a.x,a.y+offset)&&sectionBlocked(f,a.x,a.y+offset,.1)).map(furnitureHeight));
 }
 export function startJump(a){
  // Jumping is gated by contact with the ground/support, never by a timer.
@@ -42,8 +47,10 @@ export function tickJump(a,dt,g=null,offset=0){
   a.jumpReleaseBlend=(a.jumpReleaseBlend||0)+((a.jumpCut?1:0)-(a.jumpReleaseBlend||0))*(1-Math.exp(-24*step));
   const t=Math.min(1,(a.jumpHoldTime||0)/.18),fade=t*t*(3-2*t);
   const lift=rising&&a.jumpHeld&&!a.jumpCut?1-.55*(1-fade):1;
-  const acceleration=gravity*(rising?lift+1.4*a.jumpReleaseBlend:1.25);
-  const nextVelocity=a.jumpVelocity-acceleration*step;
+  const gliding=chickenGliding(a);
+  if(gliding)a.jumpVelocity=Math.max(-CHICKEN_GLIDE_FALL_SPEED,a.jumpVelocity);
+  const acceleration=gliding?180:gravity*(rising?lift+1.4*a.jumpReleaseBlend:1.25);
+  const nextVelocity=gliding?Math.max(-CHICKEN_GLIDE_FALL_SPEED,a.jumpVelocity-acceleration*step):a.jumpVelocity-acceleration*step;
   if(a.jumpAge>=.1&&a.jumpAirStartVelocity===undefined)a.jumpAirStartVelocity=Math.max(1,a.jumpVelocity);
   a.jumpHeight=Math.max(0,a.jumpHeight+(a.jumpVelocity+nextVelocity)*.5*step);a.jumpVelocity=nextVelocity;
   a.jumpPeakHeight=Math.max(a.jumpPeakHeight||0,a.jumpHeight);

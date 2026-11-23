@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {SUCCUBUS_EQUIPMENT} from './items.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
 import {CHARM_KISS_LIMIT,isCharmed,succubusTargets} from './succubus-charm.mjs';
@@ -40,7 +41,7 @@ export function tickSuccubus(g,e,targets,dt,stats={},behaviors={}){
  const los=clearShot(g,e,p);
  if(e.cooldown<=0&&los){
   const kiss=behaviors.ranged!==false&&!isCharmed(p)&&!p.charmGrace&&d>=80&&d<=290&&e.succubusKissCooldown<=0,whip=behaviors.melee!==false&&e.damage>0&&d<=(stats.attackRange||112);
-  if(kiss||whip){e.succubusAttack=kiss?'kiss':'whip';e.succubusWindup=e.succubusWindupDuration=kiss?1:Math.max(.5,stats.windup||.75);e.succubusAim={x:fx,y:fy};e.succubusTarget=p.id;e.moving=false;return;}
+  if((kiss||whip)&&requestEnemyGroupTurn(g,e,p,{flightSpeed:kiss?150:0})){e.succubusAttack=kiss?'kiss':'whip';e.succubusWindup=e.succubusWindupDuration=kiss?1:Math.max(.5,stats.windup||.75);e.succubusAim={x:fx,y:fy};e.succubusTarget=p.id;e.moving=false;return;}
  }
  if(behaviors.hunt===false)return;
  if(d>85){const step=Math.min(d-85,e.speed*(e.succubusFlying?1.3:1)*(e.rooted>0?.45:1)*dt),moved=g.moveActor(e,fx*step,fy*step);if(moved<step*.3)navigateEnemy(g,e,p,dt);}

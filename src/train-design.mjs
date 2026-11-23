@@ -1,3 +1,5 @@
+import {defaultInterior,trainInterior} from './train-interior.mjs';
+export {defaultInterior,trainInterior};
 import {defaultRailwayStation,STATION_FLAVOR} from './railway-station.mjs';
 export const TRAIN_DESIGN_KEY='wildbound-railway-library-v2',TRAIN_DRAFT_KEY='wildbound-railway-draft-v2';
 export const TRAIN_VIEWS=['South','Southwest','West','Northwest','North','Northeast','East','Southeast'];
@@ -7,18 +9,6 @@ export function defaultTrainDesign(){
  const nodes=Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return{id:'rail-'+i,x:3200+2200*Math.cos(a),y:2200+1300*Math.sin(a),z:0};});
  const design={version:2,name:'Scarlet woodland railway',width:6400,height:4400,river:{x:3200,width:230},nodes,routes:[{id:'main',name:'Main oval',nodes:nodes.map(n=>n.id)}],activeRoute:'main',maxSpeed:170,acceleration:18,brakePower:40,gauge:52,spawnDistance:2000,paint:{body:'#9b3546',lining:'#d8b66e',roof:'#34424b',wood:'#ad8055',seats:'#a44250',glass:'#9dc7c6'},cars:[{id:'locomotive',kind:'engine',length:250,width:96},{id:'tender',kind:'tender',length:112,width:96},{id:'compartments',kind:'compartments',length:320,width:100},{id:'saloon',kind:'seats',length:320,width:100},{id:'caboose',kind:'caboose',length:200,width:100}],scenery:defaultRailwayScenery(),nativeForest:true,interiors:{},art:{}};design.station=defaultRailwayStation(design);return design;
 }
-export function defaultInterior(car){
- const L=car.length,W=car.width,out=[],add=(id,kind,x,y,w,h,extra={})=>out.push({id,kind,x,y,w,h,...extra});
- if(car.kind==='seats'){for(let x=-L/2+53,i=0;x<L/2-32;x+=43,i++)for(const side of[-1,1])add('bench-'+i+'-'+side,'seat',x,side*(W/2-23),27,27,{facing:side<0?1:3});}
- if(car.kind==='compartments'){
-  const start=-L/2+35,end=L/2-35,count=4,span=(end-start)/count;
-  for(let i=0;i<count;i++){const x=start+i*span;add('partition-'+i,'wall',x,-10,5,W-30);add('door-'+i,'door',x+span/2,W/2-23,22,5,{open:false});for(const side of[-1,1])add('divider-'+i+'-'+side,'wall',x+span/2+side*(span/4+5.5),W/2-23,span/2-11,5);for(const dx of[-span*.25,span*.25])add('sofa-'+i+'-'+dx,'seat',x+span/2+dx,-W*.22,22,34,{facing:dx<0?0:2});add('table-'+i,'table',x+span/2,-W*.25,14,22);}
- }
- if(car.kind==='caboose'){for(const side of[-1,1])add('caboose-bench-'+side,'seat',-25,side*28,46,23,{facing:side<0?1:3});add('caboose-desk','table',35,-25,28,22);add('caboose-stove','firebox',42,28,18,18);}
- if(car.kind==='engine'){add('controls','console',-L*.34,-W*.23,25,18);add('firebox','firebox',-L*.12,0,22,36);add('cab-bulkhead','wall',-L*.06,0,6,W-18);}
- return out;
-}
-export function trainInterior(d,car){return d.interiors[car.id]||defaultInterior(car);}
 export function validateTrainDesign(raw){
  if(!raw||raw.version!==2)throw Error('Choose a version 2 railway design.');
  const d=clone(raw),finite=(n,a,b)=>Number.isFinite(n)&&n>=a&&n<=b;

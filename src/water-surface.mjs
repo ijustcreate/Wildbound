@@ -23,12 +23,12 @@ function init(){
  gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
  const location=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,2,gl.FLOAT,false,0,0);
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();renderer=null;failed=true;});canvas.addEventListener('webglcontextrestored',()=>{failed=false;});
- return {canvas,gl,time:gl.getUniformLocation(program,'time'),frame:-1};
+ const surface=document.createElement('canvas');surface.width=surface.height=400;return {canvas,surface,pen:surface.getContext('2d'),gl,time:gl.getUniformLocation(program,'time'),frame:-1};
 }
 export function drawWaterSurface(c,g,x,y,w,h,options={}){
  if(!renderer&&!failed)try{renderer=init();}catch(e){failed=true;console.warn('Water shader fallback:',e.message);}
  const t=g.time||0;
- if(renderer){const r=renderer,frame=Math.floor(t*30);if(frame!==r.frame){r.gl.uniform1f(r.time,t);r.gl.drawArrays(r.gl.TRIANGLE_STRIP,0,4);r.frame=frame;}const sx=((x/4)%400+400)%400,sy=((y/4)%400+400)%400;c.drawImage(r.canvas,sx,sy,Math.min(w/4,400-sx),Math.min(h/4,400-sy),x,y,w,h);}
+ if(renderer){const r=renderer,frame=Math.floor(t*30);if(frame!==r.frame){r.gl.uniform1f(r.time,t);r.gl.drawArrays(r.gl.TRIANGLE_STRIP,0,4);r.pen.drawImage(r.canvas,0,0);r.frame=frame;}const sx=((x/4)%400+400)%400,sy=((y/4)%400+400)%400;c.drawImage(r.surface,sx,sy,Math.min(w/4,400-sx),Math.min(h/4,400-sy),x,y,w,h);}
  else{c.fillStyle='#246779';c.fillRect(x,y,w,h);c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.strokeStyle='#88d6d544';for(let row=Math.floor(y/12)*12;row<y+h;row+=12){c.beginPath();for(let px=x;px<=x+w;px+=4)c.lineTo(px,row+Math.sin(px*.08+t+row)*2);c.stroke();}c.restore();}
  const shallow=options.shallow??(waterAt(g,x+w/2,y+h/2)==='shallow');
  c.save();c.fillStyle=shallow?'#8fe5c58c':'#062e4940';c.fillRect(x,y,w,h);

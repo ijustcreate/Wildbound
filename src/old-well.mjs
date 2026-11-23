@@ -1,3 +1,5 @@
+import {spellTransition} from './portal-transition.mjs';
+import {catchChocolateFrog} from './chocolate-frogs.mjs';
 import {drawDungeonDecor} from './dungeon-decor.mjs';
 import {tickCryptWorld,upgradeCryptWorld} from './crypt-world.mjs';
 import {finishDiscovery,trialState} from './expedition-trials.mjs';
@@ -16,6 +18,8 @@ import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
 import {UNDERGROUND_VIEW} from './underground-view.mjs';
 import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
+import {caveEdgeMask,drawCaveWallCell} from './cave-wall-art.mjs';
+import {caveFloorEdges,drawCaveFloorCell} from './cave-floor-art.mjs';
 import {CRYPT_TITLE, generateMausoleumCrypt, cryptEnemyCanBeHit, hitCryptEnemy,
   wakeMausoleumBoss, tickMausoleumCrypt, drawMausoleumRoom, drawMausoleumEntrance,CRYPT_BOSS_KIND} from './mausoleum-crypt.mjs';
 
@@ -225,6 +229,7 @@ export function enterOldWell(g, p, d) {
   p.wellReturn = {portalId: d.id, x: p.x, y: p.y, environment: g.generatedEnvironment};
   const entry = wellArrival(d.well);
   p.nativeCryptActive=!!d.mausoleum;
+  spellTransition(g,p);
   p.room = d.id; p.roomX = entry.x; p.roomY = entry.y;p.wellExitArmed=false;if(d.mausoleum){p.cryptSafePosition={x:entry.x,y:entry.y};delete p.cryptPitFall;}
   arrivalGuarded.add(p); revealWell(d.well, entry.x, entry.y);
   p.roomMoving = false; p.roomStep = 0; p.charge = 0; p.ui = null;
@@ -256,6 +261,7 @@ export function leaveOldWell(g, p) {
     Math.hypot(a.x - d.x, a.y - d.y) >= 36 && !oldWellBlocked(g, a.x, a.y, 10, d));
   if (!spot) {g.message?.(d.mausoleum ? 'The mausoleum stairs are obstructed above.' : 'The rope landing is obstructed. Clear the ground above before climbing.'); return false;}
   delete p.nativeCryptActive;
+  spellTransition(g,p);
   p.room = null; p.ui = null; p.x = spot.x; p.y = spot.y;
   p.roomMoving = false; p.charge = 0; p.consumeInput = true;
   Object.assign(p,{jumpHeight:0,jumpVelocity:0,dashTime:0,wingHover:false,attack:0});
@@ -295,6 +301,7 @@ function hitWellEnemy(g, s, e, damage, p) {
   g.onSound?.('hit', p);
 }
 function attackInWell(g, p, s, input, charge = 0, slot = 'hand1') {
+  if(catchChocolateFrog(g,p))return;
   const weapon = ITEMS[p.equipment?.[slot]];
   if (weapon?.utility) return;
   const aimed = Math.hypot(input.aimX || 0, input.aimY || 0) > .1;
@@ -309,7 +316,7 @@ function attackInWell(g, p, s, input, charge = 0, slot = 'hand1') {
     if (bolt) {s.bolts.push(bolt); p.attack = .28;}
     return;
   }
-  const damage = Math.max(8, weapon?.damage || 12) * (weapon?.magic ? 1 + clamp(charge / 1.2, 0, 1) * .5 : 1) + stat(p, 'damageBonus');
+  const damage = (Math.max(8, weapon?.damage || 12)+(weapon?.magic?stat(p,'spellDamage'):0)) * (weapon?.magic ? 1 + clamp(charge / 1.2, 0, 1) * .5 : 1) + stat(p, 'damageBonus');
   p.wellAttackCooldown = .38; p.attack = .28;
   if (weapon?.ranged || weapon?.magic) {
     if ((weapon.base === 'bow' || p.equipment.hand1 === 'bow') && !take(p.inventory, 'arrow')) {
@@ -520,13 +527,22 @@ export function drawOldWells(c, g) {
     c.restore();
   }
 }
+function shaftFloorLight(c, exit, size, openAt) {
+  c.save(); c.beginPath();
+  for(let ty=Math.floor((exit.y-42)/size);ty<=Math.floor((exit.y+42)/size);ty++)
+    for(let tx=Math.floor((exit.x-54)/size);tx<=Math.floor((exit.x+54)/size);tx++)
+      if(openAt(tx,ty))c.rect(tx*size,ty*size,size,size);
+  c.clip();
+  pixelDisc(c, exit.x, exit.y, 54, 42, '#bfa5720b');
+  pixelDisc(c, exit.x, exit.y, 48, 37, '#c9b17b18');
+  pixelDisc(c, exit.x, exit.y, 41, 31, '#d9c28a24');
+  pixelDisc(c, exit.x, exit.y, 34, 26, '#ebd09a34');
+  pixelDisc(c, exit.x, exit.y, 27, 21, '#ffe9b544');
+  pixelDisc(c, exit.x, exit.y, 19, 15, '#fff1c032');
+  c.restore();
+}
 function shaft(c, exit, time) {
-  pixelDisc(c, exit.x, exit.y, 47, 38, '#413e2d');
-  pixelDisc(c, exit.x, exit.y, 39, 33, '#686648');
-  pixelDisc(c, exit.x, exit.y, 32, 28, '#999472');
-  pixelDisc(c, exit.x, exit.y, 24, 24, '#d1c99a');
-  pixelDisc(c, exit.x, exit.y, 19, 19, '#eee4b7');
-  // Round patch of daylight, with falling dust, rope and the lowered bucket.
+  // Falling dust, rope and the lowered bucket sit above the floor light.
   for (let y = -80; y < 14; y += 3) {
     rect(c, exit.x + 5, exit.y + y, 2, 3, y % 2 ? '#7e653c' : '#b79b63');
     if (y % 9 === 0) rect(c, exit.x + 4, exit.y + y, 4, 1, '#e1bd7d');
@@ -573,21 +589,21 @@ export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
   c.save(); c.imageSmoothingEnabled = false;
   rect(c, 0, 0, w, h, '#101218');
   c.save(); c.beginPath(); c.rect(0, top, w, h-top-bottom); c.clip(); c.translate(0,top);c.scale(zoom,zoom);c.translate(-camera.x,-camera.y);
-  for (let ty = Math.floor(camera.y / (s.tile||WELL_TILE)); ty <= Math.min(s.height - 1, Math.ceil((camera.y + worldH) / (s.tile||WELL_TILE))); ty++)
-    for (let tx = Math.floor(camera.x / (s.tile||WELL_TILE)); tx <= Math.min(s.width - 1, Math.ceil((camera.x + worldW) / (s.tile||WELL_TILE))); tx++) {
-      const index = tileIndex(s, tx, ty), x = tx * (s.tile||WELL_TILE), y = ty * (s.tile||WELL_TILE), h = hash(s.seed, tx, ty);
-      if (!known.has(index) && distance({x: x + 8, y: y + 8}, roomPoint(p)) > 88) continue;
+  const size=s.tile||WELL_TILE;
+  const openAt=(tx,ty)=>tx>=0&&ty>=0&&tx<s.width&&ty<s.height&&!!s.tiles[tileIndex(s,tx,ty)];
+  const playerPoint=roomPoint(p);
+  const visibleAt=(tx,ty)=>known.has(tileIndex(s,tx,ty))||distance({x:(tx+.5)*size,y:(ty+.5)*size},playerPoint)<=88;
+  for(let ty=Math.floor(camera.y/size);ty<=Math.min(s.height-1,Math.ceil((camera.y+worldH)/size));ty++)
+    for(let tx=Math.floor(camera.x/size);tx<=Math.min(s.width-1,Math.ceil((camera.x+worldW)/size));tx++){
+      const index=tileIndex(s,tx,ty),x=tx*size,y=ty*size;
+      if(!visibleAt(tx,ty))continue;
       if (s.tiles[index]) {
-        rect(c, x, y, 16, 16, ['#343331', '#3c3a34', '#3d3832'][h % 3]);
-        rect(c, x + 2 + h % 7, y + 3, 3, 1, '#595344');
-        rect(c, x + 9, y + 11, 2, 2, '#262c2b');
-        if (!s.tiles[index - s.width]) {rect(c, x, y, 16, 4, '#6d6552'); rect(c, x + 2, y + 1, 11, 1, '#9b8867');}
-        if (!s.tiles[index + 1]) rect(c, x + 13, y, 3, 16, '#272b2c');
+        drawCaveFloorCell(c,x,y,size,s.seed,tx,ty,caveFloorEdges(tx,ty,openAt),'well');
       } else {
-        rect(c, x, y, 16, 16, '#191c22'); rect(c, x + 1, y + 1, 13, 10, '#2c3034');
-        rect(c, x + 3, y + 2, 9, 2, '#45433d'); rect(c, x + 1, y + 12, 14, 3, '#10161c');
+        drawCaveWallCell(c,x,y,size,caveEdgeMask(tx,ty,openAt),s.seed,tx,ty,'well');
       }
     }
+  shaftFloorLight(c,s.exit,size,(tx,ty)=>openAt(tx,ty)&&visibleAt(tx,ty));
   // Roots, native crystals and silk in their respective chambers.
   if(s.decorations)drawDungeonDecor(c,[...s.decorations,...s.candles.map(p=>({...p,role:'light'}))],g.time||0);
   else for (const r of s.rooms) {

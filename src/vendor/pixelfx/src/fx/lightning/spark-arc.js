@@ -28,6 +28,7 @@ export function draw(p, t, o) {
   const climbing = t < SNAP, h = height(t), u = clamp(t / SNAP), a = t - SNAP;
   // the floor and the stand: a pool of cold light while it burns, a plate, two ribbed insulators
   p.glow(0, -14, 50, C[3], climbing ? 0.2 + 0.15 * (1 - u) : 0.06);
+  if(!o.gameplay){
   p.rect(-18, -3, 36, 3, STEEL[1]);
   p.line(-18, -3, 17, -3, STEEL[3]);
   for (const s of [-1, 1])
@@ -48,6 +49,7 @@ export function draw(p, t, o) {
     const [tx, ty] = rodAt(s, 60);
     p.circle(tx + s * 0.5, ty, 1.6, STEEL[4]);
     p.px(tx + s * 0.5 - 0.5, ty - 1, STEEL[5]);
+  }
   }
   // the arc: struck white at the foot, flickering as it climbs and stretches, sputtering at the top
   if (climbing) {

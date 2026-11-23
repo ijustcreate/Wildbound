@@ -3,12 +3,22 @@ export function mountWorldsUI({getGame,create,load,save,action,onOpen,onClose,ch
   const dialog=document.createElement('dialog');dialog.id='worlds-dialog';
   dialog.innerHTML=`<header><div><small>WILDBOUND · OFFLINE WORLDS</small><h2>Your living worlds</h2></div><button data-world-close>Close</button></header>
     <p>Worlds live on this computer. No account, internet connection or running server is needed. One real minute advances one world hour, including time away.</p>
-    <div class="worlds-columns"><section><h3>Create an ecosystem</h3><label>World name<input data-world-name maxlength="80" value="My Wildbound World"></label><label>Content pack<select data-world-pack></select></label><p data-pack-description></p><label>World seed<input data-world-seed type="number" step="1" value="8675309"></label><button data-world-create>Create & explore</button><button data-world-party>Choose explorers in lobby</button><button data-world-import>Install content pack…</button><button data-world-folder>Open save folder</button></section>
-    <section><h3>Saved worlds</h3><div data-world-list></div><p data-world-notice role="status" aria-live="polite"></p></section></div>
-    <section data-world-inspector hidden><h3 data-world-title></h3><p data-world-clock></p><div class="worlds-actions"><button data-world-save>Save world now</button><button data-world-nest>Search local nests</button><button data-world-trade>Visit settlement trader</button><button data-world-repair>Repair settlement</button></div><details><summary>Simulation test controls</summary><p>Advance this world by one day to test regrowth, populations and director events. This changes the saved world.</p><button data-world-day>Advance one world day</button></details><div class="worlds-regions"></div><h3>Recent world events</h3><ol data-world-events></ol><p data-world-quests></p></section>`;
+    <div class="worlds-columns">
+      <section class="worlds-saved"><h3>Saved worlds</h3><div data-world-list></div></section>
+      <section class="worlds-create"><h3>Create a world</h3><label>World name<input data-world-name maxlength="80" value="My Wildbound World"></label><label>Content pack<select data-world-pack></select></label><p data-pack-description></p><label>World seed<input data-world-seed type="number" step="1" value="8675309"></label><button data-world-create>Create & explore</button><button data-world-party>Choose explorers in lobby</button></section>
+    </div>
+    <p data-world-notice role="status" aria-live="polite"></p>
+    <details class="worlds-manage"><summary>Manage worlds</summary>
+      <div class="worlds-tools"><button data-world-import>Install content pack…</button><button data-world-folder>Open save folder</button></div>
+      <section data-world-inspector hidden><h3 data-world-title></h3><p data-world-clock></p>
+        <div class="worlds-actions"><button data-world-save>Save world now</button><button data-world-nest>Search local nests</button><button data-world-trade>Visit settlement trader</button><button data-world-repair>Repair settlement</button></div>
+        <details><summary>Simulation test controls</summary><p>Advance this world by one day to test regrowth, populations and director events. This changes the saved world.</p><button data-world-day>Advance one world day</button></details>
+        <div class="worlds-regions"></div><h3>Recent world events</h3><ol data-world-events></ol><p data-world-quests></p>
+      </section>
+    </details>`;
   document.body.append(dialog);const $=s=>dialog.querySelector(s),notice=text=>{$('[data-world-notice]').textContent=text;};
   let packs=BUILTIN_PACKS,busy=false;
-  const run=async fn=>{if(busy)return;busy=true;for(const b of dialog.querySelectorAll('button'))b.disabled=true;try{await fn();}catch(e){notice(e.message);}finally{busy=false;for(const b of dialog.querySelectorAll('button'))b.disabled=false;}};
+  const run=async fn=>{if(busy)return;busy=true;const disabled=new Map([...dialog.querySelectorAll('button')].map(b=>[b,b.disabled]));for(const b of disabled.keys())b.disabled=true;try{await fn();}catch(e){notice(e.message);}finally{busy=false;for(const [b,wasDisabled]of disabled)if(b.isConnected)b.disabled=wasDisabled;}};
   const text=(tag,value)=>{const el=document.createElement(tag);el.textContent=value;return el;};
   async function list(){
     packs=window.desktop?.listWorldPacks?await window.desktop.listWorldPacks():BUILTIN_PACKS;
@@ -18,10 +28,20 @@ export function mountWorldsUI({getGame,create,load,save,action,onOpen,onClose,ch
     const records=window.desktop?.listWorlds?await window.desktop.listWorlds():JSON.parse(localStorage.getItem('wildbound-world-index')||'[]');
     const root=$('[data-world-list]');root.replaceChildren();
     if(!records.length)root.append(text('p','No local worlds yet. Choose explorers, then create your first world.'));
-    for(const record of records){
-      const row=document.createElement('article');row.append(text('strong',record.name));
-      row.append(text('p',record.error?'Save needs recovery: '+record.error:`${record.pack} · seed ${record.seed} · ${record.regions} region(s)`));
-      const button=text('button','Explore saved world');button.disabled=!!record.error;
+    const date=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'});
+    const scenes={graveyard:'map-cemetery-v1.png',beach:'beach-background-v1.png',swamp:'inventory-environment-swamp-v1.png',temple:'board-jungle-inlay.png'};
+    for(const record of [...records].sort((a,b)=>(b.savedAt||0)-(a.savedAt||0))){
+      const row=document.createElement('article');
+      const pack=packs.find(item=>item.name===record.pack);
+      const img=document.createElement('img');img.alt='';
+      img.src=new URL('../assets/'+(scenes[pack?.environment]||'ui/creation/forest-preview-v1.png'),import.meta.url).href;
+      const description=document.createElement('div');description.append(text('strong',record.name));
+      const validDate=new Date(record.savedAt);
+      const when=record.savedAt&&Number.isFinite(validDate.valueOf())?'Last saved '+date.format(validDate):'Save time unavailable';
+      description.append(text('p',record.error?'Save needs recovery · '+record.error:(record.pack||'Living world')+' · '+when));
+      if(!record.error&&records.some(other=>other!==record&&other.name===record.name))description.append(text('small','Seed '+record.seed));
+      row.append(img,description);
+      const button=text('button','Continue');button.setAttribute('aria-label','Continue '+record.name);button.disabled=!!record.error;
       button.onclick=()=>run(async()=>{await load(record.id);notice('World loaded from this computer.');inspect();await list();});row.append(button);root.append(row);
     }
   }

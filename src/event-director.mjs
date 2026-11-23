@@ -1,6 +1,7 @@
 import {realmContexts} from './realm-world.mjs';
 import {santaEncounterChance} from './christmas.mjs';
 import {encounterRole,pacingWeight} from './expedition-trials.mjs';
+import {encounterBiome,encounterContext,mixedEncounterDue,mixedPressureAllows} from './biome-encounters.mjs';
 export const EVENT_HISTORY_LIMIT=24;
 export const EVENT_COVERAGE_LIMIT=256;
 const weather=new Set(['monsoon','sandstorm','thunderstorm','blizzard']);
@@ -34,7 +35,7 @@ export function eventUnitStats(event,group,kind,definitions){
 }
 export function rememberEvent(g,event,index){
  const s=state(g);s.draws++;
- s.recent.push({index,name:event.name,kind:event.kind,type:event.type||'enemy',role:encounterRole(event)});
+ s.recent.push({index,name:event.name,kind:event.kind,type:event.type||'enemy',role:encounterRole(event),zone:encounterBiome(g),mixed:!!event.biomeMixed});
  if(s.recent.length>EVENT_HISTORY_LIMIT)s.recent.shift();
  // Move the entry to the end so exceptionally large edited rosters evict the
  // least recently used key. Normal rosters keep coverage for the whole run.
@@ -46,8 +47,9 @@ export function rememberEvent(g,event,index){
 export function selectEvent(g,events,available){
  const s=state(g),alive=(g.enemies||[]).filter(e=>e.hp>0&&!e.wildlife&&!e.stampede&&e.faction!=='ally'&&e.faction!=='neutral');
  const last=s.recent.at(-1),recentNames=new Set(s.recent.slice(-6).map(e=>e.name));
+ const context=encounterContext(g),zone=encounterBiome(g);
  let eligible=events.flatMap((event,index)=>{
-  if(!available(g,event)||!(event.weight??10)||event.weight<0)return [];
+  if(!available(context,event)||!(event.weight??10)||event.weight<0||!mixedPressureAllows(g,event))return [];
   if(event.devOnly)return [];
   if(event.type==='santa'&&(g.questNpcs||[]).some(n=>n.santa))return [];
   if(event.type==='old_well'&&(g.portals||[]).some(d=>d.oldWell))return [];
@@ -60,10 +62,9 @@ export function selectEvent(g,events,available){
   const combat=!event.type||event.type==='enemy';
   if(combat&&alive.length>=36)return [];
   let weight=Math.max(0,event.weight??10);
-  const zone=g.generatedEnvironment||g.environment;
   weight*=(event.zoneWeights?.[zone]??1)*pacingWeight(g,event);
   // The Reaper roams every zone, but the cemetery favors its harvest.
-  if(event.kind==='grim_reaper'&&(g.generatedEnvironment||g.environment)==='graveyard')weight*=4;
+  if(event.kind==='grim_reaper'&&zone==='graveyard')weight*=4;
   if(eventBoss(event)){weight=Math.min(weight,8);if(s.draws-s.lastBossAt<2)weight*=.6;}
   if(s.draws<2&&combat&&(event.count||1)*(event.hp||60)>260)weight*=.25;
   if(combat&&alive.length)weight*=Math.max(.35,1-alive.length/36);
@@ -86,6 +87,16 @@ export function selectEvent(g,events,available){
  if(!pool.length)pool=eligible.filter(e=>e.seen===leastSeen&&e.event.name!==last?.name);
  if(!pool.length)pool=eligible.filter(e=>e.event.name!==last?.name);
  if(!pool.length)pool=eligible;
+ // Regular mixed patrols recur between other cards without replacing the
+ // coverage bag for ordinary, discovery or peaceful encounters.
+ const mixed=eligible.filter(e=>e.event.biomeMixed);
+ if(mixedEncounterDue(g,s.recent)&&mixed.length){
+  const minimum=Math.min(...mixed.map(e=>e.seen));
+  pool=mixed.filter(e=>e.seen===minimum&&e.event.name!==last?.name);
+  if(!pool.length)pool=mixed.filter(e=>e.seen===minimum);
+ }else if(last?.mixed){
+  let other=pool.filter(e=>!e.event.biomeMixed);if(!other.length)other=eligible.filter(e=>!e.event.biomeMixed);if(other.length)pool=other;
+ }
  // Different cards can still look like the same wave (several skeleton or
  // elemental encounters). Prefer a different lead species when possible.
  const differentKind=pool.filter(e=>e.event.kind!==last?.kind);

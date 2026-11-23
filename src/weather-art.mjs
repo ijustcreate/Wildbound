@@ -1,5 +1,5 @@
 import { nearbyScenery } from "./performance.mjs";
-import {rainActive,sheltered} from './wet-weather.mjs';
+import {rainActive,sheltered,weatherIntensity} from './wet-weather.mjs';
 import { sightRadius,daylight } from './night-cycle.mjs';
 import {houseLightSources} from './house-lights.mjs';
 import { terrainHash } from "./world.mjs";
@@ -36,7 +36,9 @@ export function drawFog(ctx, g, camera, w, h) {
   const c = fogCanvas.getContext("2d");
   c.clearRect(0, 0, w, h);
   c.globalCompositeOperation = "source-over";
-  c.fillStyle = "#070f16";
+  // The underworld's enormous stonework and spectral river remain faintly
+  // visible in the distance. Actor sight/culling and discovery are unchanged.
+  c.fillStyle = g.generatedEnvironment==='shadow' ? '#0715228c' : "#070f16";
   c.fillRect(0, 0, w, h);
   c.globalCompositeOperation = "destination-out";
   c.globalAlpha = g.generatedEnvironment==='house' ? .58+.34*daylight(g) : .58;
@@ -80,11 +82,12 @@ export function drawFog(ctx, g, camera, w, h) {
 }
 export function drawRain(c, g, camera, w, h) {
   if (!rainActive(g)) return;
+  const intensity=weatherIntensity(g);
   const left = camera.x - w / camera.zoom / 2 - 100,
     top = camera.y - h / camera.zoom / 2 - 30;
   const right = left + w / camera.zoom + 200,
     bottom = top + h / camera.zoom + 160;
-  const wind = 8 + Math.sin(g.time * 0.6) * 5;
+  const wind = 8 + Math.sin(g.time * 0.6) * 5 + intensity*7;
   for (let ty = Math.floor(top / 28); ty < bottom / 28; ty++)
     for (let tx = Math.floor(left / 28); tx < right / 28; tx++) {
       const seed = terrainHash(tx, ty),
@@ -94,6 +97,7 @@ export function drawRain(c, g, camera, w, h) {
       const x = tx * 28 + terrainHash(tx + Math.floor(cycle), ty) * 28,
         y = ty * 28 + seed * 28;
       if(sheltered(g,{x,y}))continue;
+      if(seed>intensity)continue;
       let hitY = y,
         canopy = false;
       for (const p of nearbyScenery(g.scenery, x, y, 0)) {

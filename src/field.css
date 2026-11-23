@@ -142,6 +142,52 @@ summary:focus-visible {
   margin: 0;
   color: #d5dfc4;
 }
+#field-kit-dialog .field-combo-count {
+  margin: 0;
+  font-weight: 750;
+}
+.field-combo-list {
+  display: grid;
+  gap: 7px;
+}
+.field-combo-entry {
+  min-width: 0;
+  border: 1px solid #9d8657;
+  border-radius: 5px;
+  background: #f8eac1;
+}
+.field-combo-entry summary {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: #24392c;
+  list-style: none;
+}
+.field-combo-entry summary::-webkit-details-marker { display: none; }
+.field-combo-entry summary:focus-visible { outline-offset: -3px; }
+.field-combo-entry[open] summary { background: #efdda7; }
+.field-combo-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: #315a43;
+  color: #ffe6a4;
+  image-rendering: pixelated;
+  font-weight: 800;
+}
+.field-combo-label { font-size: 12px; }
+.field-combo-label::after { content: ' ▸'; }
+.field-combo-entry[open] .field-combo-label::after { content: ' ▾'; }
+body #field-kit-dialog .field-combo-entry p {
+  margin: 0;
+  padding: 8px 11px 10px;
+  color: #302819 !important;
+}
 .field-items {
   display: grid;
   grid-template-columns: 1fr 1fr;

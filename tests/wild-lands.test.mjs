@@ -32,8 +32,8 @@ test('exploration supplies are session-only, grant once per site, and rooms stay
 test('station geometry cache follows replaced stop layouts and explicit editor revisions',()=>{
  const d=wildLandsDesign();d.wildStops=[{id:'test',name:'Test',x:3000,y:1800}];
  const first=railwayStations(d);assert.equal(railwayStations(d),first);
- d.wildStops=[{...d.wildStops[0],x:4000}];assert.notEqual(railwayStations(d),first);assert.equal(railwayStations(d)[0].station.x,4000);
- d.wildStops[0].x=4500;d.wildStopsRevision=1;assert.equal(railwayStations(d)[0].station.x,4500);
+ d.wildStops=[{...d.wildStops[0],x:4000}];assert.notEqual(railwayStations(d),first);assert.equal(railwayStations(d)[0]._stationContext.x,4000);
+ d.wildStops[0].x=4500;d.wildStopsRevision=1;assert.equal(railwayStations(d)[0]._stationContext.x,4500);
  d.activeRoom='caverns';assert.deepEqual(railwayStations(d),[]);
 });
 test('the single closed circuit carries all five native train parts at every position',()=>{

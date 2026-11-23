@@ -1,6 +1,7 @@
 import {raisedSurfaceBlocked,VICTORY_CHEST} from './terrain-support.mjs';
 export {VICTORY_CHEST} from './terrain-support.mjs';
 import {ITEMS,rollGear} from './items.mjs';
+import {lootStageForParty,rollProgressionGear} from './loot-progression.mjs';
 export function victoryRewards(players,random=Math.random,earned=null){
  if(earned){
   const score=Math.max(0,earned.score||0),party=players.slice(0,6);
@@ -10,18 +11,20 @@ export function victoryRewards(players,random=Math.random,earned=null){
   for(let i=0;i<count;i++){
    const tier=score>=16&&i===0?'legendary':score>=6&&i<party.length?'rare':'common';
    const hero=party[i%Math.max(1,party.length)],weapon=ITEMS[hero?.equipment?.hand1]?.base;
-   let pool=Object.keys(ITEMS).filter(id=>{const d=ITEMS[id];return d.slot&&!d.devOnly&&!d.supplyOnly&&!d.npcOnly&&!d.bossOnly&&!d.questReward&&d.rarity===tier&&!seen.has(id);});
-   if(i<party.length){const relevant=pool.filter(id=>ITEMS[id].base===weapon||ITEMS[id].slot==='chest');if(relevant.length)pool=relevant;}
-   const type=pool.length?pool[Math.min(pool.length-1,Math.floor(random()*pool.length))]:rollGear(random,tier)||'potion';
+   const type=rollProgressionGear(random,{party,biome:'general',minRarity:tier,exclude:[...seen],preferredBase:i<party.length?weapon:null})||rollGear(random,tier)||'potion';
    seen.add(type);rewards.push({type,qty:1});
   }
   if(earned.skipped>earned.cleared)rewards.push({type:'trial_letter',qty:1});
   return rewards;
  }
- const party=players.slice(0,6),level=party.reduce((sum,p)=>sum+Math.max(1,p.level||1),0)/Math.max(1,party.length),count=3+party.length*2;
- const tiers=level>=10?['rare','rare','legendary']:level>=5?['common','unique','rare']:['rare'];
- while(tiers.length<count)tiers.push(level>=10?'rare':'common');
- return tiers.map(tier=>({type:rollGear(random,tier)||Object.keys(ITEMS).find(id=>ITEMS[id].slot&&!ITEMS[id].devOnly&&ITEMS[id].rarity==='common'),qty:1}));
+ const party=players.slice(0,6),count=3+party.length*2,top=lootStageForParty(party),rank={common:0,uncommon:1,rare:2,unique:3,legendary:4},rarity=['common','uncommon','rare','unique','legendary'];
+ const seen=new Set(),rewards=[];
+ for(let i=0;i<count;i++){
+  const tier=rarity[Math.max(0,rank[top]-(i%3===0?0:i%3===1?1:2))];
+  const type=rollProgressionGear(random,{party,biome:'general',minRarity:tier,exclude:[...seen]})||rollGear(random,tier)||Object.keys(ITEMS).find(id=>ITEMS[id].slot&&!ITEMS[id].devOnly&&ITEMS[id].rarity==='common');
+  if(type){seen.add(type);rewards.push({type,qty:1});}
+ }
+ return rewards;
 }
 
 export function victoryChestBlocked(g,x,y,radius,elevation,from){return !!g.victoryChest&&elevation<20&&raisedSurfaceBlocked(VICTORY_CHEST,x,y,radius,from,0);}

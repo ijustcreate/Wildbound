@@ -17,7 +17,15 @@ test('retreat dash travels away, obeys walls, fires three spread arrows and has 
 });
 test('safe ranged Queen holds still to charge; only full release is frost and interruption consumes cooldown',()=>{
  const {g,p}=field(),e=queen(g);e.bansheeSafeTime=2;tickBansheeQueen(g,e,p,.01);assert.ok(e.bansheeFrostCharge);const x=e.x,y=e.y;tickBansheeQueen(g,e,p,1.7);assert.equal(g.arrows.length,0);assert.deepEqual([e.x,e.y],[x,y]);tickBansheeQueen(g,e,p,.1);assert.equal(g.arrows.length,1);assert.ok(g.arrows[0].bansheeFrost);assert.ok(e.bansheeFrostCooldown>10);
- const second=queen(g);second.bansheeSafeTime=2;tickBansheeQueen(g,second,p,.01);second.flash=.2;tickBansheeQueen(g,second,p,.2);assert.ok(!second.bansheeFrostCharge);assert.ok(second.bansheeFrostCooldown>11);assert.equal(g.arrows.length,1);
+ const {g:interruptGame,p:interruptTarget}=field(),second=queen(interruptGame);
+ second.bansheeSafeTime=2;
+ tickBansheeQueen(interruptGame,second,interruptTarget,.01);
+ assert.equal(second.bansheeFrostCharge,true);
+ second.flash=.2;
+ tickBansheeQueen(interruptGame,second,interruptTarget,.2);
+ assert.equal(second.bansheeFrostCharge,false);
+ assert.ok(second.bansheeFrostCooldown>11);
+ assert.equal(interruptGame.arrows.length,0);
 });
 test('a real frost projectile only freezes on successful damage; shield and invulnerability prevent it',()=>{
  for(const blocked of ['none','invuln','shield']){const {g,p}=field();p.invuln=blocked==='invuln'?1:0;if(blocked==='shield')g.shieldBlocks=()=>true;

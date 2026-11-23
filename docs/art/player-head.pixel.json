@@ -1,0 +1,284 @@
+{
+  "width": 24,
+  "height": 20,
+  "x": -12,
+  "y": -7,
+  "palette": {
+    "o": "#352b2a",
+    "d": "#8a5d48",
+    "s": "#d09a66",
+    "h": "#f0c995"
+  },
+  "rows": [
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................"
+  ],
+  "frames": [
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "..........oooo..........",
+            ".......odhhssssso.......",
+            "....odddhhhsssssssdo....",
+            "..odddhhhhhssssssssddo..",
+            ".oddddhhhhhsssssssssddo.",
+            ".oddddhhhhhsssssssssddo.",
+            ".oddddhhhhhsssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            "..odddsssssssssssssddo..",
+            "...oddddddddddddddddo...",
+            ".....oddddddddddddo.....",
+            "........oddddddo........",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "..........ooooo.........",
+            ".......oddhhssssdo......",
+            "....odddhhhhssssssddo...",
+            "..oddddhhhhsssssssssddo.",
+            ".oddddhhhhhsssssssssdddo",
+            ".oddddhhhhhsssssssssdddo",
+            ".oddddhhhhhsssssssssdddo",
+            ".oddddssssssssssssssdddo",
+            ".oddddssssssssssssssdddo",
+            ".oddddssssssssssssssdddo",
+            "..oddddsssssssssssssddo.",
+            "..oddddsssssssssssssddo.",
+            "...oddddsssssssssssddo..",
+            "....odddddddddddddddo...",
+            "......odddddddddddo.....",
+            ".........odddddo........",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "............oo..........",
+            ".........odhhssso.......",
+            "......oddhhhssssssdo....",
+            ".....odddhhhsssssssdo...",
+            ".....odddhhhsssssssdo...",
+            ".....odddhhhsssssssdo...",
+            ".....odddhhhsssssssdo...",
+            ".....odddssssssssssdo...",
+            ".....odddssssssssssdo...",
+            "......oddsssssssssdo....",
+            "......oddsssssssssdo....",
+            ".......oddsssssssdo.....",
+            "........odssssssso......",
+            ".........oddddddo.......",
+            "...........oddo.........",
+            "........................",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "..........ooooo.........",
+            ".......oddhhssssdo......",
+            "....odddhhhhssssssddo...",
+            "..oddddhhhhsssssssssddo.",
+            ".oddddhhhhhsssssssssdddo",
+            ".oddddhhhhhsssssssssdddo",
+            ".oddddhhhhhsssssssssdddo",
+            ".oddddssssssssssssssdddo",
+            ".oddddssssssssssssssdddo",
+            ".oddddssssssssssssssdddo",
+            "..oddddsssssssssssssddo.",
+            "..oddddsssssssssssssddo.",
+            "...oddddsssssssssssddo..",
+            "....odddddddddddddddo...",
+            "......odddddddddddo.....",
+            ".........odddddo........",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "..........oooo..........",
+            ".......odhhssssso.......",
+            "....odddhhhsssssssdo....",
+            "..odddhhhhhssssssssddo..",
+            ".oddddhhhhhsssssssssddo.",
+            ".oddddhhhhhsssssssssddo.",
+            ".oddddhhhhhsssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            ".oddddssssssssssssssddo.",
+            "..odddsssssssssssssddo..",
+            "...oddddddddddddddddo...",
+            ".....oddddddddddddo.....",
+            "........oddddddo........",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            ".........ooooo..........",
+            "......oddhhssssdo.......",
+            "...odddhhhhssssssddo....",
+            ".oddddhhhhsssssssssddo..",
+            "oddddhhhhhsssssssssdddo.",
+            "oddddhhhhhsssssssssdddo.",
+            "oddddhhhhhsssssssssdddo.",
+            "oddddssssssssssssssdddo.",
+            "oddddssssssssssssssdddo.",
+            "oddddssssssssssssssdddo.",
+            ".oddddsssssssssssssddo..",
+            ".oddddsssssssssssssddo..",
+            "..oddddsssssssssssddo...",
+            "...odddddddddddddddo....",
+            ".....odddddddddddo......",
+            "........odddddo.........",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "..........oo............",
+            ".......odhhssso.........",
+            "....oddhhhssssssdo......",
+            "...odddhhhsssssssdo.....",
+            "...odddhhhsssssssdo.....",
+            "...odddhhhsssssssdo.....",
+            "...odddhhhsssssssdo.....",
+            "...odddssssssssssdo.....",
+            "...odddssssssssssdo.....",
+            "....oddsssssssssdo......",
+            "....oddsssssssssdo......",
+            ".....oddsssssssdo.......",
+            "......odssssssso........",
+            ".......oddddddo.........",
+            ".........oddo...........",
+            "........................",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 100,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            ".........ooooo..........",
+            "......oddhhssssdo.......",
+            "...odddhhhhssssssddo....",
+            ".oddddhhhhsssssssssddo..",
+            "oddddhhhhhsssssssssdddo.",
+            "oddddhhhhhsssssssssdddo.",
+            "oddddhhhhhsssssssssdddo.",
+            "oddddssssssssssssssdddo.",
+            "oddddssssssssssssssdddo.",
+            "oddddssssssssssssssdddo.",
+            ".oddddsssssssssssssddo..",
+            ".oddddsssssssssssssddo..",
+            "..oddddsssssssssssddo...",
+            "...odddddddddddddddo....",
+            ".....odddddddddddo......",
+            "........odddddo.........",
+            "........................",
+            "........................",
+            "........................",
+            "........................"
+          ]
+        }
+      ]
+    }
+  ]
+}

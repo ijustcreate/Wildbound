@@ -95,6 +95,11 @@ body[data-screen="lobby"] #hero-overlays{position:fixed;inset:104px 24px 28px}
 .lobby-character-stage{position:relative;flex:1 1 auto;min-height:145px;max-height:225px;overflow:hidden;border:2px solid #97774a;border-radius:48% 48% 12px 12px/22% 22% 12px 12px;background:radial-gradient(ellipse at 50% 64%,#233a32 0,#0c1e1b 74%);box-shadow:inset 0 0 0 3px #1b251e,inset 0 0 0 5px #a1895c,0 4px 10px #0008}
 .lobby-character-stage::before{content:'';position:absolute;inset:7px 8px 10px;border:1px solid #9e896152;border-radius:48% 48% 9px 9px/22% 22% 9px 9px;pointer-events:none}
 .lobby-character-stage::after{content:'';position:absolute;left:50%;bottom:8px;width:108px;height:17px;transform:translateX(-50%);background:linear-gradient(#90958e 0 28%,#4f5651 30% 58%,#343c39 60%);border:1px solid #b0b5a1;border-radius:50% 50% 5px 5px/35% 35% 5px 5px;box-shadow:0 4px 4px #0009;pointer-events:none}
+#lobby.playable-lobby .party-help.tv-guide{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;padding:8px;color:#eae4c6;font-size:13px}
+.tv-guide>strong{font:700 15px Georgia,serif;color:#f3de9e}
+.tv-guide-steps,.tv-guide-steps>span{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tv-guide-steps{gap:8px 14px}
+.tv-guide kbd{display:inline-block;padding:2px 5px;border:1px solid #748c70;border-radius:4px;background:#142c26;color:#fff2cf;font:700 12px system-ui}
 .lobby-player-panel .lobby-character-stage canvas{position:relative;z-index:1;display:block;width:100%;height:100%;max-height:none;object-fit:contain;image-rendering:pixelated}
 .lobby-player-panel.delete-confirmation{justify-content:center;gap:12px}
 .lobby-player-panel.delete-confirmation p{color:#e7d8ba;font-size:15px;line-height:1.5}
@@ -130,12 +135,12 @@ body[data-screen="lobby"] #hero-overlays{position:fixed;inset:104px 24px 28px}
 .lobby-player-panel.board-ready-menu .board-ready-actions{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(130px,.8fr);gap:8px}
 .lobby-player-panel.board-ready-menu .board-ready-actions button{min-height:44px;font:600 14px Georgia,serif}
 .lobby-player-panel.board-ready-menu .board-ready-actions button{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;line-height:1.2}
-.board-ready-actions .controller-glyph{width:38px;height:38px;flex:0 0 38px;image-rendering:auto}
+.board-ready-actions .controller-glyph{width:32px;height:32px;flex:0 0 32px;image-rendering:auto}
 .board-ready-keyboard-key{padding:3px 7px;border:1px solid #76623d;border-radius:3px;background:#f4e5bd;color:#302f24;font:600 12px system-ui}
 .lobby-player-panel.board-ready-menu .board-ready-confirm{background:linear-gradient(#f2e4b8,#d6c17e)}
 .lobby-player-panel.board-ready-menu .board-ready-back{background:linear-gradient(#d1c39e,#b9a87e)}
 .lobby-player-panel.board-ready-menu .board-ready-help{margin:0;text-align:center;color:#c6d2c5;font:11px/1.35 system-ui}
-.board-ready-help .controller-glyph{width:26px;height:26px;vertical-align:middle;image-rendering:auto}
+.board-ready-help .controller-glyph{width:22px;height:22px;vertical-align:middle;image-rendering:auto}
 @media(max-width:520px){.board-ready-settings,.board-ready-roster{grid-template-columns:1fr}.lobby-player-panel.board-ready-menu .board-ready-actions{grid-template-columns:1fr}.board-ready-setting-copy>span{font-size:10px}}
 
 /* Selected explorers use the full room; keep join instructions for an empty party. */

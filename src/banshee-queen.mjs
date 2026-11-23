@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {BANSHEE_EQUIPMENT,stat} from './items.mjs';
 import {enemyQuiver,retrieveEnemyArrows} from './arrow-supplies.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
@@ -42,7 +43,7 @@ export function tickBansheeQueen(g,e,p,dt,stats={},beh={}){
   if(e.bansheeDashLeft===0){e.bansheeAim={x:e.faceX,y:e.faceY};if(clearShot(g,e,p)&&beh.ranged!==false)releaseQueenArrows(g,e,true);else e.bansheeAim=null;}
   return;
  }
- if(closeD<125&&e.bansheeDashCooldown<=0&&beh.dash!==false){
+ if(closeD<125&&e.bansheeDashCooldown<=0&&beh.dash!==false&&requestEnemyGroupTurn(g,e,close,{flightSpeed:270})){
   cancelBansheeSkill(e);e.bansheeDashCooldown=stats.dashCooldown||BANSHEE_DASH_COOLDOWN;e.bansheeDashLeft=.32;
   e.faceX=(close.x-e.x)/closeD;e.faceY=(close.y-e.y)/closeD;e.bansheeRetreat={x:-e.faceX,y:-e.faceY};e.bansheeSafeTime=0;return;
  }
@@ -54,7 +55,7 @@ export function tickBansheeQueen(g,e,p,dt,stats={},beh={}){
  }
  if(retrieveEnemyArrows(g,e,dt)){cancelBansheeSkill(e);return;}
  e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d;
- if(e.cooldown<=0&&e.arrowsLeft>0&&beh.ranged!==false){
+ if(e.cooldown<=0&&e.arrowsLeft>0&&beh.ranged!==false&&requestEnemyGroupTurn(g,e,p,{flightSpeed:270})){
   const frost=e.bansheeSafeTime>=2&&e.bansheeFrostCooldown<=0&&beh.frostShot!==false;
   e.bansheeFrostCharge=frost;if(frost)e.bansheeFrostCooldown=stats.frostCooldown||BANSHEE_FROST_COOLDOWN;
   e.bansheeDrawDuration=frost?BANSHEE_FROST_CHARGE:stats.windup||.8;e.bansheeDrawLeft=e.bansheeDrawDuration;e.bansheeAim={x:e.faceX,y:e.faceY};return;

@@ -1,10 +1,13 @@
+import {CameraEditor} from './camera-editor.mjs';
 import {ForestEditor} from './forest-editor.mjs';
 import {START_AREAS,START_AREA_LABELS,eventStartingAreas} from './starting-area.mjs';
+import {drawEncounterLayoutInspector} from './encounter-layout-editor.mjs';
 import {NpcQuestEditor} from './npc-quest-editor.mjs';
 import {MYSTERY_EVENTS} from './mysteries.mjs';
 import {RealmEditor} from './realm-editor.mjs';
 import {BoardEditor} from './board-editor.mjs';
 import {ComboEditor} from './combo-editor.mjs';
+import {CombatWorkshopEditor} from './combat-workshop-editor.mjs';
 import {forestSettings,saveForestSettings,TREE_TYPES,drawForestTree} from './forest.mjs';
 import {ParticleEditor} from './particle-editor.mjs';
 import {HouseBuilder} from './house-builder.mjs';
@@ -55,6 +58,7 @@ export class Designer {
     });
     this.dialog = element("dialog");
     this.dialog.className = "designer-dialog";
+    this.dialog.addEventListener("close",()=>this.cameraEditor?.stop());
     document.body.append(this.dialog);
     this.render();
   }
@@ -241,13 +245,15 @@ export class Designer {
     const header=this.dialog.querySelector(':scope > header'),nav=this.dialog.querySelector(':scope > nav'),body=element('main');body.className='studio-body';body.id='studio-panel';body.setAttribute('role','tabpanel');body.setAttribute('aria-label',this.tab);
     for(const child of [...this.dialog.children])if(child!==header&&child!==nav)body.append(child);this.dialog.append(body);
     nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor jobs');
-    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Forest','Environments','Worlds','Board'];
+    const labels=['Players','Creature','Rules','Items','Events','NPC & quests','House Builder','Particles','Combos','Combat','Forest','Environments','Worlds','Board','Camera'];
     [...nav.children].forEach((b,i)=>{const active=labels[i]===this.tab;b.setAttribute('role','tab');b.setAttribute('aria-selected',String(active));b.setAttribute('aria-controls','studio-panel');b.tabIndex=active?0:-1;b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?labels.length-1:(i+(e.key==='ArrowLeft'?-1:1)+labels.length)%labels.length;this.tab=labels[next];this.render();this.dialog.querySelector('[aria-selected="true"]')?.focus();};});
   }
   render() {
+    this.cameraEditor?.stop();
     this.particleEditor?.stop();
     this.boardEditor?.stop();
     this.comboEditor?.stop();
+    this.combatWorkshop?.stop();
     if (rigSubject(this.kind) && this.tab === "Rig & animation") {
       this.tab = "Players";
       this.playerStudio.setSubject(
@@ -274,10 +280,12 @@ export class Designer {
       "House Builder",
       "Particles",
       "Combos",
+      "Combat",
       "Forest",
       "Environments",
       "Worlds",
       "Board",
+      "Camera",
     ])
       this.button(
         nav,
@@ -297,6 +305,7 @@ export class Designer {
       this.playerStudio.mount(root);
       this.shell();return;
     }
+    if(this.tab==='Camera'){this.cameraEditor ||= new CameraEditor();const root=element('section');this.dialog.append(root);this.cameraEditor.mount(root);this.shell();return;}
     if(this.tab==='Environments'){this.realmEditor ||= new RealmEditor(this.assets);const root=element('section');this.dialog.append(root);this.realmEditor.mount(root);this.shell();return;}
     if(this.tab==='Board'){this.boardEditor ||= new BoardEditor(this.events);const root=element('section');this.dialog.append(root);this.boardEditor.mount(root);this.shell();return;}
     if(this.tab==='Forest'){this.forestEditor ||= new ForestEditor();const root=element('section');this.dialog.append(root);this.forestEditor.mount(root);this.shell();return;}
@@ -309,6 +318,7 @@ export class Designer {
       const root=element('section');this.dialog.append(root);this.worldEditor.mount(root);this.shell();return;
     }
     if(this.tab==='Combos'){this.comboEditor ||= new ComboEditor();const root=element('section');this.dialog.append(root);this.comboEditor.mount(root);this.shell();return;}
+    if(this.tab==='Combat'){this.combatWorkshop ||= new CombatWorkshopEditor();const root=element('section');this.dialog.append(root);this.combatWorkshop.mount(root);this.shell();return;}
     if(this.tab==='Particles'){this.particleEditor ||= new ParticleEditor();const root=element('section');this.dialog.append(root);this.particleEditor.mount(root);this.shell();return;}
     if(this.tab==='House Builder'){this.houseBuilder ||= new HouseBuilder();const root=element('section');this.dialog.append(root);this.houseBuilder.mount(root);this.shell();return;}
     this.status = element(
@@ -836,7 +846,8 @@ export class Designer {
       for (const k of ["weight", "duration", "spread", "intensity"])
         this.field(fields, k, event, k, { min: 0, max: 1000 });
       for (const k of ["name", "verse", "tip"]) this.field(fields, k, event, k);
-      this.field(fields,'Location restriction',event,'environment',{options:['','forest','desert','ice','house','temple','beach','graveyard','swamp','caverns','shadow']});
+      this.field(fields,'Location restriction',event,'environment',{options:event.comboLayout?['forest']:['','forest','desert','ice','house','temple','beach','graveyard','swamp','caverns','shadow']});
+      drawEncounterLayoutInspector(fields,event,()=>this.render());
       if(event.type==='realm_expedition'){this.field(fields,'Time limit (seconds)',event,'deadline',{min:30,max:600});this.field(fields,'Reward item',event,'reward',{options:Object.keys(this.items)});}
       if(event.type==='mystery'){
         const m=event.mystery??=structuredClone(MYSTERY_EVENTS[0].mystery);

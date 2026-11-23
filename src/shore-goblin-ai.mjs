@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {clearShot,navigateEnemy} from './navigation.mjs';
 import {rules} from './definitions.mjs';
 import {shoreGoblinMotion} from './shore-goblin-motion.mjs';
@@ -25,7 +26,7 @@ export function tickShoreGoblin(g,e,targets,dt,stats={}){
  }
  if(e.shoreRole==='healer'){
   const injured=squad.filter(q=>q.hp<q.maxHp-8&&dist(e,q)<190&&clearShot(g,e,q)).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
-  if(injured&&!e.shoreHealCooldown){begin(e,'cast',injured);return;}
+  if(injured&&!e.shoreHealCooldown&&(!target||requestEnemyGroupTurn(g,e,target,{mode:'support'}))){begin(e,'cast',injured);return;}
   if(target&&dist(e,target)<120){const d=dist(e,target)||1,goal={x:e.x+(e.x-target.x)/d*85,y:e.y+(e.y-target.y)/d*85};e.moving=move(g,e,goal,dt);}
   else{const guard=squad.find(q=>q.shoreRole!=='healer');if(guard&&dist(e,guard)>145)e.moving=move(g,e,guard,dt);}
   e.animationAction=e.moving?'run':'spell_prepare';e.poseTime=null;return;
@@ -35,7 +36,7 @@ export function tickShoreGoblin(g,e,targets,dt,stats={}){
  // Screen the approach to the healer; do not chase a distant player away from it.
  e.shoreProtecting=!!healer;e.shoreGuardTarget=healer?.id??null;
  if(healer&&dist(target,healer)>190){const d=dist(target,healer)||1,side=e.shoreRole==='spear'?1:-1;const goal={x:healer.x+(target.x-healer.x)/d*65-(target.y-healer.y)/d*side*25,y:healer.y+(target.y-healer.y)/d*65+(target.x-healer.x)/d*side*25};if(dist(e,goal)>12)e.moving=move(g,e,goal,dt);else face(e,target);}
- else if(dist(e,target)<=reach&&clearShot(g,e,target)){begin(e,e.shoreRole==='spear'?'spear':'attack',target);return;}
+ else if(dist(e,target)<=reach&&clearShot(g,e,target)&&requestEnemyGroupTurn(g,e,target)){begin(e,e.shoreRole==='spear'?'spear':'attack',target);return;}
  else e.moving=move(g,e,target,dt);
  e.animationAction=e.moving?'run':'guard';e.poseTime=null;
 }

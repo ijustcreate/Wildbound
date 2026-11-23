@@ -5,6 +5,7 @@ import {applyIK} from './ik.mjs';
 import {refineNativeSword} from './sword-feel.mjs';
 import {refineNativeLocomotion} from './native-locomotion.mjs';
 import {refineNativeJumpPolish,isSharedBaseJump} from './native-jump-polish.mjs';
+import {wrapAngle} from './joint-angles.mjs';
 
 const copy=v=>structuredClone(v);
 const add=(a,b)=>a.map((v,i)=>v+b[i]);
@@ -45,6 +46,44 @@ export function retargetHumanoidClip(source,target,clip) {
   return {...copy(clip),keys};
 }
 
+// Match distance-driven playback to the imported stance travel at player scale.
+// Studio retains the original clip duration and source sampling.
+const importedStride={walk:32,run:59};
+
+function fitImportedGait(model,action){
+ const source=captain.clips[action];
+ const fitted=retargetHumanoidClip(captain,model,source);
+ const ground=Math.min(model.joints.footL.position[2],model.joints.footR.position[2]);
+ const keys=fitted.keys.map((key,index)=>{
+  const pose=applyIK(model,Object.fromEntries(Object.entries(key.joints).map(([name,delta])=>[name,add(model.joints[name].position,delta)])));
+  // Correct ground penetration from limb proportions with a whole-pose offset.
+  // The imported run still has flight frames where both feet are above ground.
+  const rise=Math.max(0,ground-Math.min(pose.footL[2],pose.footR[2]));
+  const joints=Object.fromEntries(Object.entries(key.joints).map(([name,[x,y,z]])=>[name,[x,y,z+rise]]));
+  const angles=Object.fromEntries(Array.from({length:8},(_,direction)=>[direction,{}]));
+  const donor=source.keys[index].joints;
+  for(const side of ['L','R']){
+   const foot='foot'+side,toe='toe'+side,knee='knee'+side;
+   const restToe=sub(captain.joints[toe].position,captain.joints[foot].position);
+   const posedToe=add(restToe,sub(donor[toe],donor[foot]));
+   const toePitch=Math.atan2(posedToe[2],posedToe[1])-Math.atan2(restToe[2],restToe[1]);
+   const swing=Math.max(0,Math.min(1,(pose[foot][2]+rise-ground)/.7));
+   for(let direction=0;direction<8;direction++){
+    if(Object.hasOwn(model.jointAngles?.[direction]||{},foot))continue;
+    const rotation=direction*Math.PI/4,cos=Math.cos(rotation),sin=Math.sin(rotation);
+    const project=([x,y,z])=>[x*cos-y*sin,(x*sin+y*cos)*.5-z];
+    const [ax,ay]=project(pose[foot]),[kx,ky]=project(pose[knee]);
+    // Sagittal pitch is visible side-on. Turning the whole boot in a front or
+    // rear view would flip its cuff when the toe passes the ankle in depth.
+    const toeAngle=toePitch*swing*sin;
+    angles[direction][foot]=wrapAngle((toeAngle-Math.atan2(kx-ax,ay-ky))*180/Math.PI);
+   }
+  }
+  return {...key,joints,angles};
+ });
+ return {...fitted,keys,stride:importedStride[action]};
+}
+
 // Fill the Captain/April action library from the complete player library.
 // Existing named clips and custom poses always take precedence.
 export function completeHumanoidActions(target,source) {
@@ -77,7 +116,7 @@ export function upgradeNativeHumanoid(model,shipping){
    shared[name]=expected;
   }
  }
- return refineNativeJumpPolish(refineNativeSword(refineNativeLocomotion(result,locomotionShipping),locomotionShipping),locomotionShipping,shared);
+ return refineNativeJumpPolish(refineNativeSword(refineNativeLocomotion(result,locomotionShipping,fitImportedGait),locomotionShipping),locomotionShipping,shared);
 }
 function upgradeNativeHumanoidBase(model,shipping) {
   if(model.nativeHumanoidRevision===1)model=recoverPreservedBaseClips(model);

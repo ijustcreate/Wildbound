@@ -1,4 +1,3 @@
-import {take} from './items.mjs';
 export const SURFACE_PROPS=['recipe_book','cutting_board','fruit_bowl','kettle','mug','plate','candle','vase','bread_board'];
 export const SURFACE_FURNITURE=['table','desk','counter','dresser','bookcase','stove'];
 const contains=(r,x,y,pad=0)=>x>=r.x-pad&&x<r.x+r.w+pad&&y>=r.y-pad&&y<r.y+r.h+pad;
@@ -19,6 +18,7 @@ export function furnishSurface(f){
 export function surfaceAction(g,p){
  const targets=[];
  for(const f of g.house?.furniture||[])if(!f.destroyed)for(const prop of visibleSurfaceItems(g,f)){
+  if(prop.kind!=='candle')continue;
   const x=f.x+f.w*(prop.u??.5),y=f.y+f.h*(prop.v??.5),d=Math.hypot(p.x-x,p.y-y);
   if(d<65)targets.push({f,prop,x,y,d});
  }
@@ -29,20 +29,7 @@ export function visibleSurfaceItems(g,f){
 }
 export function interactHouseSurface(g,p){
  const target=surfaceAction(g,p);if(!target)return false;const {f,prop}=target;
- if(prop.kind==='recipe_book'){
-  const complete=(g.house.furniture||[]).some(f=>f.kitchenQuestComplete);
-  g.message(complete?'Camp recipe completed. You can still cook broth at the kettle.':'Camp recipe: bring 1 raw meat and 1 sweet fruit to a kettle. Cook broth to restore health and earn 15 gold once.');
- }else if(prop.kind==='kettle'){
-  const has=type=>(p.inventory||[]).some(i=>i?.type===type&&i.qty>0);
-  if(!has('meat')||!has('fruit')){g.message('Cook broth: needs 1 raw meat and 1 sweet fruit.');return true;}
-  const needsHealing=p.hp<(p.maxHp||100),rewarded=(g.house.furniture||[]).some(q=>q.kitchenQuestComplete);
-  if(rewarded&&!needsHealing){g.message('You are already healthy. Save the ingredients for later.');return true;}
-  take(p.inventory,'meat');take(p.inventory,'fruit');p.hp=Math.min(p.maxHp||100,p.hp+55);
-  if(!rewarded){f.kitchenQuestComplete=true;p.coins=(p.coins||0)+15;}
-  g.message(rewarded?'Warm broth restores 55 health.':'Camp recipe complete! +15 gold. Warm broth restores 55 health.');g.onSound?.('heal',p);g.persist?.();
- }else if(prop.kind==='cutting_board'||prop.kind==='fruit_bowl'||prop.kind==='bread_board')g.message('Kitchen supplies. Read the recipe book and bring meat and fruit to the kettle.');
- else if(prop.kind==='candle'){f.surfaceItems=structuredClone(furnishSurface(f));const stored=f.surfaceItems.find(q=>q.kind===prop.kind&&q.u===prop.u&&q.v===prop.v);stored.lit=!prop.lit;g.message(stored.lit?'Table candle lit.':'Table candle extinguished.');g.persist?.();}
- else g.message(({mug:'A warm camp mug.',plate:'A place set for a shared meal.',vase:'Fresh flowers from the garden.'})[prop.kind]||'A well-used household item.');
+ f.surfaceItems=structuredClone(furnishSurface(f));const stored=f.surfaceItems.find(q=>q.kind===prop.kind&&q.u===prop.u&&q.v===prop.v);stored.lit=!prop.lit;g.message(stored.lit?'Table candle lit.':'Table candle extinguished.');g.persist?.();
  return true;
 }
 export function drawSurfaceProp(c,item,x,y){

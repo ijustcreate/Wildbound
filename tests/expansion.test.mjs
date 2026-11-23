@@ -5,7 +5,7 @@ import {generateWorld} from '../src/world.mjs';
 import {insideHouse,toggleDoor,resolveEnvironment,tickSpider,spiderNest,webSlow,structureBlocked} from '../src/expansion.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {defaultBeastMotion,validateBeastMotion} from '../src/beast-motion.mjs';
-const game=env=>{const g=new Game();g.environment=env;g.addPlayer('keyboard');g.start();g.openingBoard=false;return g;};
+const game=(env,random)=>{const g=new Game(random);g.environment=env;g.addPlayer('keyboard');g.start();g.openingBoard=false;return g;};
 test('all four random maps are reachable and ice terrain is snowy',()=>{
  assert.deepEqual(new Set([0,1,2,3].map(n=>resolveEnvironment('random',n))),new Set(['forest','desert','ice','house']));
  const w=generateWorld(42,'ice');assert.ok(w.terrain.every(t=>['snow','ice'].includes(t)));assert.ok(w.scenery.some(p=>p.kind==='snow_tree'));
@@ -26,10 +26,12 @@ test('house starts players and first lion indoors, other encounters outdoors; do
  assert.equal(g.projectileBlocked(480,600),true);
 });
 test('controller attack does not open a door; Interact does',()=>{
- const g=game('house'),p=g.players[0];
- // A randomly placed supply chest can consume Interact before the door.
+ const g=game('house',()=>.5),p=g.players[0];
+ // Random supplies or playground props can consume Interact before the door.
  // This test isolates controller-to-door input, not competing interactions.
  g.supplyChests=[];
+ g.playground={key:`${g.seed}:${g.generatedEnvironment||g.environment}`,version:1,props:[],apples:[],frogs:[],coins:[],serial:0};
+ g.enemies=[];g.loot=[];g.arrows=[];
  p.device='pad:0';const d=g.house.doors[0];Object.assign(p,{x:d.x+d.w/2,y:d.y-40});
  g.update(.05,{'pad:0':{attack:true}});assert.equal(d.open,false);
  g.update(.05,{'pad:0':{attack:false}});g.update(.05,{'pad:0':{interact:true}});assert.equal(d.open,true);

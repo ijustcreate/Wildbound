@@ -1,11 +1,18 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
+import {drawHouseAppliances} from './house-living.mjs';
+import {drawGroundWeb} from './spider-web-art.mjs';
+export {drawTreeWeb} from './spider-tree-web-art.mjs';
+import {nearbyScenery} from './performance.mjs';
 import {drawFurniture,drawWindow} from './house-render.mjs';
 import {surfaceAction,visibleSurfaceItems} from './house-surfaces.mjs';
 import {drawHouseFloor,drawHouseWall,drawHouseDoor} from './house-architecture-art.mjs';
+import {drawHouseInteriorWalls} from './house-interior-art.mjs';
 import {boardTableBlocked} from './board-table.mjs';
 import {raisedSurfaceBlocked} from './terrain-support.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {activeHouse, contains, furnitureHeight} from './house-design.mjs';
 import {navigateEnemy} from './navigation.mjs';
+import {triggerEnemyTrap} from './enemy-traps.mjs';
 import {creatures} from './definitions.mjs';
 import {sectionBlocked,drawBreakable,breakDamagedWindow} from './structure-destruction.mjs';
 import {controlledFollower} from './follower-control.mjs';
@@ -46,19 +53,25 @@ export const webSlow=(g,a)=>{
  const owner=(g.players||[]).find(p=>p===a),controlled=owner?.controlledFollowerId?controlledFollower(g,owner):null;
  return !isSpider(a)&&!isSpider(controlled)&&!airborne(a)&&g.webs?.some(w=>Math.hypot(a.x-w.x,a.y-w.y)<w.radius);
 };
+const webMaintenance=new WeakMap();
+const webAnchorKind=kind=>['tree','palm','snow_tree','mangrove','old_cypress','grave_forest_tree','leafless_tree','gravestone','mausoleum','cemetery_fence','cemetery_gate'].includes(kind);
 export function maintainSpiderWebs(g, dt = 0) {
+  let state=webMaintenance.get(g);if(!state||state.scenery!==g.scenery){state={scenery:g.scenery,marked:new Set(),cleared:false,clock:0};webMaintenance.set(g,state);}
   const adults = (g.enemies || []).filter(e => e.hp > 0 && adultSpider(e));
   if (!adults.length) {
-    for (const tree of g.scenery || []) tree.webbed = false;
+    if(!state.cleared)for(const prop of g.scenery||[])if(prop.webbed)prop.webbed=false;
+    state.marked.clear();state.cleared=true;
     g.webs = [];
     return;
   }
+  state.cleared=false;state.clock-=dt;
   for (const w of g.webs || []) {
     const nearby = adults.some(e => Math.hypot(e.x - w.x, e.y - w.y) < w.radius + 80);
     if (nearby) w.radius = Math.min(220, w.radius + dt * 0.8);
-    for (const tree of g.scenery || [])
-      if (['tree','palm','snow_tree'].includes(tree.kind) && Math.hypot(tree.x-w.x, tree.y-w.y) < w.radius) tree.webbed = true;
+    if(state.clock<=0)for (const prop of nearbyScenery(g.scenery||[],w.x,w.y,w.radius+100))
+      if (webAnchorKind(prop.kind) && Math.hypot(prop.x-w.x,prop.y-w.y)<w.radius+(prop.size||0)*.32){prop.webbed=true;state.marked.add(prop);}
   }
+  if(state.clock<=0)state.clock=.25;
 }
 function layWebEgg(g, adult, web) {
   const angle = Math.atan2(adult.y - web.y, adult.x - web.x) + Math.PI * 0.35;
@@ -105,6 +118,7 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   }
   const spider=isSpider(e),insect=['wasp','bee','beetle'].includes(e.kind);
   if(!spider&&!insect)return false;
+  if(e.frozen>0||e.stun>0){e.frozen=Math.max(0,(e.frozen||0)-dt);e.stun=Math.max(0,(e.stun||0)-dt);e.moving=false;return true;}
   const opponents=g.enemies.filter(q=>q!==e&&q.hp>0&&(spider?['wasp','bee','beetle'].includes(q.kind):isSpider(q))&&Math.hypot(q.x-e.x,q.y-e.y)<300&&lineClear(g,e,q));
   const detection=creatures[e.kind]?.stats?.detection??600;
   const targets=opponents.length?opponents:spider?visiblePlayers.filter(p=>p.hp>0&&!p.room&&(!adultSpider(e)||Math.hypot(p.x-e.x,p.y-e.y)<=detection)):[];
@@ -112,7 +126,8 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   e.cooldown=Math.max(0,(e.cooldown||0)-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.attack=Math.max(0,(e.attack||0)-dt);e.moving=false;
   if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
   const trap=g.traps.find(t=>t.life>0&&Math.hypot(t.x-e.x,t.y-e.y)<30);
-  if(trap&&trap.variant!=='slow'){trap.life=0;e.state='snared';e.timer=2;return true;}
+  if(trap&&trap.variant!=='slow'){triggerEnemyTrap(g,e,trap);return true;}
+  if(e.state==='recover'&&e.timer>0){e.timer-=dt;return true;}
   let target=targets.sort((a,b)=>Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y))[0];
   if (adultSpider(e)) {
     const web = (g.webs || []).filter(w => w.group === e.group || Math.hypot(e.x-w.x,e.y-w.y)<w.radius+30).sort((a,b)=>Math.hypot(e.x-a.x,e.y-a.y)-Math.hypot(e.x-b.x,e.y-b.y))[0];
@@ -135,7 +150,7 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   const d=Math.hypot(target.x-e.x,target.y-e.y)||1;e.faceX=(target.x-e.x)/d;e.faceY=(target.y-e.y)/d;
   if(g.house&&!lineClear(g,e,target)){navigateEnemy(g,e,target,dt);return true;}
   if(d>28){const moved=g.moveActor(e,e.faceX*e.speed*dt,e.faceY*e.speed*dt,insect&&e.kind!=='beetle');if(moved<e.speed*dt*.2){if(spider)navigateEnemy(g,e,target,dt);else g.moveActor(e,-e.faceY*e.speed*dt,e.faceX*e.speed*dt);}}
-  if(d<42&&e.cooldown<=0&&lineClear(g,e,target)){
+  if(d<42&&e.cooldown<=0&&lineClear(g,e,target)&&requestEnemyGroupTurn(g,e,target)){
     if(g.players.includes(target))g.hurt(target,e.damage,e);else {target.hp-=e.damage;target.flash=.2;}
     e.cooldown=spider?.9:1.2;e.attack=.25;
   }
@@ -143,18 +158,18 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
 }
 export function drawExpansion(c,g,visible=()=>true,{floorOnly=false,structuresOnly=false,lightPaint=null}={}){
  if(!structuresOnly){
-  for(const w of g.webs||[]){c.save();c.translate(w.x,w.y);c.scale(1,.66);
-    const gradient=c.createRadialGradient(0,0,8,0,0,w.radius);gradient.addColorStop(0,'#a9bdad12');gradient.addColorStop(.7,'#d3ddd51a');gradient.addColorStop(1,'#e7e6d526');c.fillStyle=gradient;c.beginPath();c.arc(0,0,w.radius,0,Math.PI*2);c.fill();
-    for(let ring=1;ring<=7;ring++){c.beginPath();const radius=w.radius*ring/7;for(let j=0;j<=72;j++){const a=j*Math.PI/36,warp=1+Math.sin(a*5+ring*.8)*.025,r=radius*warp;j?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}c.strokeStyle=ring%2?'#dce6d755':'#aebfb04a';c.lineWidth=ring===7?1.5:.85;c.stroke();}
-    for(let j=0;j<20;j++){const a=j*Math.PI/10;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*w.radius,Math.sin(a)*w.radius);c.strokeStyle='#e5e9df55';c.lineWidth=.8;c.stroke();}c.restore();
-  }
+  for(const w of g.webs||[])if(visible(w,w.radius+12))drawGroundWeb(c,w);
   if(!g.house)return;
-  if(g.generatedEnvironment==='house')drawHouseFloor(c,g.house);
+  if(g.generatedEnvironment==='house'){
+    drawHouseFloor(c,g.house);
+    drawHouseInteriorWalls(c,g.house,g.players,visible);
+  }else if(g.house.temple)drawHouseInteriorWalls(c,g.house,g.players,visible,{always:true});
   for(const p of g.house.pools||[]){drawWaterSurface(c,g,p.x,p.y,p.w,p.h);c.strokeStyle='#bcece488';c.lineWidth=2;c.strokeRect(p.x+5,p.y+5,p.w-10,p.h-10);c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);}
  }
  if(!g.house||floorOnly)return;
  const paint=(shape,draw,key)=>{const run=ctx=>drawBreakable(ctx,g,shape,draw,key);if(lightPaint)lightPaint(c,key.startsWith('furniture:')?{...shape,surfaceArtKey:key}:shape,run);else run(c);};
   for(const f of g.house.furniture||[]){if(!visible({x:f.x+f.w/2,y:f.y+f.h/2},Math.max(f.w,f.h)+64))continue;paint(f,(pen,shape)=>drawFurniture(pen,shape,g),'furniture:'+JSON.stringify(visibleSurfaceItems(g,f)));}
+  drawHouseAppliances(c,g);
   const nearby=(g.players||[]).filter(p=>p.hp>0&&!p.room&&!p.vehicleId&&!p.ui).map(p=>surfaceAction(g,p)).filter(Boolean).sort((a,b)=>a.d-b.d)[0];
   if(nearby){const {f,prop}=nearby,label='Interact · '+({kettle:'Cook broth',recipe_book:'Read recipe',candle:prop.lit?'Extinguish candle':'Light candle'}[prop.kind]||'Inspect '+prop.kind.replaceAll('_',' '));
     c.save();c.font='8px sans-serif';c.textAlign='center';const width=c.measureText(label).width+12;c.fillStyle='#142c27ed';c.fillRect(f.x+f.w/2-width/2,f.y-28,width,14);c.fillStyle='#f0dfb7';c.fillText(label,f.x+f.w/2,f.y-18);c.restore();}
@@ -163,4 +178,3 @@ export function drawExpansion(c,g,visible=()=>true,{floorOnly=false,structuresOn
     if(g.players.some(p=>!p.room&&Math.hypot(p.x-d.x-d.w/2,p.y-d.y)<65)){c.fillStyle='#fff3c5';c.font='9px sans-serif';c.textAlign='center';c.fillText(d.open?'Interact: close':'Interact: open',d.x+d.w/2,d.y-8);}}
 
 }
-export function drawTreeWeb(c,p){if(!p.webbed)return;c.save();c.strokeStyle='#dbe6dbaa';c.lineWidth=1;c.beginPath();const top=p.y-p.size*.65,bottom=p.y+p.size*.38,left=p.x-p.size*.38,right=p.x+p.size*.38;for(let i=0;i<8;i++){const t=i/7;c.moveTo(left+(right-left)*t,top);c.lineTo(left+(right-left)*(1-t),bottom);}for(let i=1;i<6;i++){const t=i/6,y=top+(bottom-top)*t;c.beginPath();c.ellipse(p.x,y,p.size*(.16+t*.28),p.size*.035,0,0,Math.PI*2);c.stroke();}c.restore();}

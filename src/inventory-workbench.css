@@ -218,7 +218,7 @@
 .hero-panel.scrap-shop .robot-buyback-pager {display:flex;align-items:center;gap:4px;flex:none;font:11px system-ui;}
 .hero-panel.scrap-shop .robot-buyback-pager button {border-image:none!important;border:1px solid #6d7753!important;background:#355540!important;color:#f3e8c7!important;min-height:24px!important;height:24px;width:24px;margin:0;padding:0!important;font:700 16px system-ui!important;}
 .hero-panel.scrap-shop :is(.robot-buyback-slots,.robot-backpack-slots) {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;min-height:0;}
-.hero-panel.scrap-shop .robot-backpack-slots {grid-template-rows:repeat(4,minmax(0,1fr));}
+.hero-panel.scrap-shop .robot-backpack-slots {grid-template-columns:repeat(var(--robot-columns,6),minmax(0,1fr));grid-auto-rows:minmax(34px,1fr);overflow:auto;scrollbar-width:thin;}
 .hero-panel.scrap-shop button.robot-item-slot {position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0!important;height:100%;margin:0;padding:4px!important;border-image:none!important;border:1px solid #7a8766!important;border-bottom:3px solid var(--rarity,#7a8766)!important;border-radius:2px;background:#1a3027!important;overflow:hidden;}
 .hero-panel.scrap-shop .robot-item-slot .item-icon {width:48px;height:48px;max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated;}
 .hero-panel.scrap-shop .robot-item-slot.empty-slot {border-bottom-width:1px!important;background:#20362b!important;opacity:1;}

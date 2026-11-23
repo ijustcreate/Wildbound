@@ -1,4 +1,4 @@
-import {projectPoint, facingIndex} from './player-motion.mjs';
+import {projectPoint, facingIndex} from './actor-projection.mjs';
 import {pixelLine, pixelPolygon, pixelVolume} from './pixel-shapes.mjs';
 
 const ink='#080b10', black='#111720', shade='#0b0f17', sheen='#293947', glint='#455b67';
@@ -26,7 +26,8 @@ export function ravenPose(e,time=0) {
     feet:phase==='landing'?6:flight?-3:0,tail:flight?beat*2:idle*.5,
     beakOpen:phase==='attack'?3:phase==='perch' && sample%53===0?1:0};
 }
-function wing(c,p,side,pose,near) {
+export function drawRavenWing(c,p,side,pose,near,colors=null) {
+  const {ink,black,shade,sheen,glint}=colors||{ink:"#080b10",black:"#111720",shade:"#0b0f17",sheen:"#293947",glint:"#455b67"};
   const spread=pose.spread;
   if (spread<.05) {
     // Folded coverts overlap the long, pointed primaries along the flanks.
@@ -35,7 +36,7 @@ function wing(c,p,side,pose,near) {
     pixelPolygon(c,[p(root),p(elbow),p(tip)],near?black:shade);
     for (let i=0;i<5;i++) {
       const start=[side*(4+i*.35),2-i*1.5,14-i*.55],end=[side*(4.5+i*.2),-9-i,9-i*.15];
-      pixelLine(c,p(start),p(end),i<2?sheen:'#1b2531');
+      pixelLine(c,p(start),p(end),i<2?sheen:(colors?shade:'#1b2531'));
     }
     pixelLine(c,p([side*4,2,15]),p([side*6,-2,13]),glint);
     return;
@@ -51,7 +52,7 @@ function wing(c,p,side,pose,near) {
     const base=mix(elbow,wrist,i/7),tip=[side*(15+spread*(17+i*.9)),-5-i*2.3,11+pose.lift*(.75+i*.035)];
     const inner=[base[0],base[1]-2,base[2]-1],edge=[tip[0]-side*2,tip[1]-2,tip[2]-1];
     pixelPolygon(c,[p(base),p(tip),p(edge),p(inner)],ink);
-    pixelPolygon(c,[p(base),p([tip[0]-side,tip[1],tip[2]]),p(inner)],i%2?black:'#17202b');
+    pixelPolygon(c,[p(base),p([tip[0]-side,tip[1],tip[2]]),p(inner)],i%2?black:(colors?shade:'#17202b'));
     pixelLine(c,p(base),p(mix(base,tip,.82)),i%3===0?glint:sheen);
   }
   for (let i=0;i<4;i++) {
@@ -81,7 +82,7 @@ export function drawRavenPose(c,e,time=0) {
     pixelLine(c,p([x,-8,10]),p([x,-length+3+pose.tail,7]),sheen);
   }
   const nearSide=d<=3?-1:1;
-  wing(c,p,-nearSide,pose,false);
+  drawRavenWing(c,p,-nearSide,pose,false);
   for (const side of [-1,1]) {
     const hip=[side*2.5,0,8],knee=[side*3,2,4+pose.feet],foot=[side*3.5,3,pose.flight?4+pose.feet:0];
     pixelLine(c,p(hip),p(knee),'#1f252e',2);
@@ -90,7 +91,7 @@ export function drawRavenPose(c,e,time=0) {
     pixelLine(c,p(foot),p([foot[0]-side,foot[1]-2,foot[2]]),'#29323a');
   }
   pixelVolume(c,[0,0,12+pose.pitch*.2],5,8,6,d,palette);
-  wing(c,p,nearSide,pose,true);
+  drawRavenWing(c,p,nearSide,pose,true);
   const neckY=pose.flight?7:5,headZ=(pose.flight?15:21)+pose.headTilt,headY=neckY+4;
   pixelVolume(c,[0,neckY,headZ-4],3.5,4,5,d,palette);
   for (let i=-2;i<=2;i++) pixelPolygon(c,[p([i*1.1,neckY+1,headZ-3]),p([i*1.4,neckY+4,headZ-8-Math.abs(i)]),p([i*1.1+1,neckY+2,headZ-4])],black);

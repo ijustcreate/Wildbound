@@ -1,15 +1,21 @@
+import {drawCagedSnowyOwl,drawOwlCage} from './snowy-owl-art.mjs';
 import {railwayStream,streamImage} from './railway-stream.mjs';
 import {wildLandmarkBuildings} from './wild-landmark-buildings.mjs';
 import {drawStationCargo} from './station-prop-art.mjs';
 import {buildTrainRoute,nearestTrainTrack,sampleTrainRoute} from './train-track.mjs';
-import {stationAssetHouse} from './station-building.mjs';
+import {
+ drawStationBackwall, drawStationBuilding, drawStationFloorDetails, drawStationForecourt,
+ drawStationFurniture, drawStationLightPool, drawStationPlatform, drawStationWallBase, stationEntranceLights,
+ stationVisualTheme,
+} from './station-polish.mjs';
+import {stationAssetHouse,stationEntrance} from './station-building.mjs';
 import {sectionBlocked,drawBreakable} from './structure-destruction.mjs';
 import {furnitureHeight} from './house-design.mjs';
 import {wildLandsBridgeDeck} from './wild-lands-geography.mjs';
 import {railwaySurface} from './railway-water.mjs';
 import {drawWallClock} from './wall-clock.mjs';
-import {drawHouseFloor,drawHouseWall} from './house-architecture-art.mjs';
-import {drawFurniture,drawWindow} from './house-render.mjs';
+import {drawHouseFloor} from './house-architecture-art.mjs';
+import {drawFurniture} from './house-render.mjs';
 // Shared editable station layout and thirteen native environmental subjects.
 export const STATION_FLAVOR=Object.freeze([
  {kind:'clock',name:'Ticking station clock',animated:true},{kind:'pennants',name:'Wind-tossed pennants',animated:true},{kind:'weathercock',name:'Turning weathercock',animated:true},{kind:'newspaper',name:'Fluttering newspaper',animated:true},{kind:'luggage_cart',name:'Rocking luggage cart',animated:true},
@@ -22,12 +28,26 @@ const stationThemes=[['clock','pennants','owl_crate','trunks','luggage_cart','la
 function stationArrangement(id,x,y,index=0,all=false){const points=[[-225,45],[-105,130],[165,130],[212,155],[-300,155],[300,150],[-150,-115],[160,-115],[-245,-60],[245,-45],[345,110],[-355,85],[290,-80]];return (all?STATION_FLAVOR.map(f=>f.kind):stationThemes[index%stationThemes.length]).map((kind,i)=>({id:id+'-'+kind+'-'+i,kind,x:x+points[(i+index*2)%points.length][0],y:y+points[(i+index*2)%points.length][1]}));}
 const stationRoutes=new WeakMap(),platformCache=new WeakMap();
 function stationRoute(d){let saved=stationRoutes.get(d);if(!saved||saved.revision!==(d.trackRevision||0)){saved={revision:d.trackRevision||0,route:buildTrainRoute(d)};stationRoutes.set(d,saved);}return saved.route;}
-export function platformSamples(d){const s=d.station,key=[d.trackRevision||0,s.platformLength,s.platformWidth,d.gauge].join(':');const cached=platformCache.get(d);if(cached?.key===key)return cached.points;const route=stationRoute(d),origin=d._stationContext?{x:d._stationContext.x,y:d._stationContext.y}:s,at=nearestTrainTrack(route,origin.x,origin.y),side=Math.sign(-(stationPoint(d,{x:s.x,y:s.y}).x-at.x)*Math.sin(at.a)+(stationPoint(d,{x:s.x,y:s.y}).y-at.y)*Math.cos(at.a))||-1,result=[];for(let z=-s.platformLength/2;z<=s.platformLength/2;z+=24){const q=sampleTrainRoute(route,at.s+z),normal={x:-Math.sin(q.a)*side,y:Math.cos(q.a)*side},near=d.gauge/2+38;result.push({near:{x:q.x+normal.x*near,y:q.y+normal.y*near},far:{x:q.x+normal.x*(near+s.platformWidth),y:q.y+normal.y*(near+s.platformWidth)}});}platformCache.set(d,{key,points:result});return result;}
-function drawCurvedPlatform(c,d){const points=platformSamples(d);for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];c.fillStyle=i%2?'#b9ad88':'#c5b892';c.beginPath();[a.near,b.near,b.far,a.far].forEach((p,j)=>j?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();c.fill();c.strokeStyle='#817a62';c.lineWidth=2;c.beginPath();c.moveTo(a.near.x,a.near.y);c.lineTo(a.far.x,a.far.y);c.stroke();c.strokeStyle='#ead5a0';c.lineWidth=4;c.beginPath();c.moveTo(a.near.x,a.near.y);c.lineTo(b.near.x,b.near.y);c.stroke();}}
+export function platformSamples(d){const s=d.station,key=[d.trackRevision||0,s.platformLength,s.platformWidth,d.gauge,s.x,s.y,d._stationContext?.x,d._stationContext?.y].join(':');const cached=platformCache.get(d);if(cached?.key===key)return cached.points;const route=stationRoute(d),origin=d._stationContext?{x:d._stationContext.x,y:d._stationContext.y}:s,at=nearestTrainTrack(route,origin.x,origin.y),side=Math.sign(-(stationPoint(d,{x:s.x,y:s.y}).x-at.x)*Math.sin(at.a)+(stationPoint(d,{x:s.x,y:s.y}).y-at.y)*Math.cos(at.a))||-1,result=[];for(let z=-s.platformLength/2;z<=s.platformLength/2;z+=24){const q=sampleTrainRoute(route,at.s+z),normal={x:-Math.sin(q.a)*side,y:Math.cos(q.a)*side},near=d.gauge/2+38;result.push({near:{x:q.x+normal.x*near,y:q.y+normal.y*near},far:{x:q.x+normal.x*(near+s.platformWidth),y:q.y+normal.y*(near+s.platformWidth)}});}platformCache.set(d,{key,points:result});return result;}
 const houses=new WeakMap();
-export function stationHouse(d){const s=d.station;let h=houses.get(s);const key=[s.x,s.y,s.w,s.h,s.layoutVariant||0].join(':');if(h?.key===key)return h;const x=s.x-s.w/2,y=s.y-s.h/2;h={key,name:'Lakewood waiting room',floors:[{x,y,w:s.w,h:s.h}],floorZones:[{x:s.x-20,y:y+8,w:40,h:s.h-16,material:'checker'},{x:x+16,y:y+20,w:135,h:100,material:'carpet'}],furniture:[{kind:'sofa',x:x+22,y:y+36,w:38,h:70},{kind:'sofa',x:x+104,y:y+36,w:38,h:70},{kind:'table',x:x+65,y:y+50,w:34,h:40},{kind:'counter',x:s.x+75,y:s.y-15,w:80,h:24},{kind:'bookcase',x:s.x+130,y:y+12,w:60,h:26},{kind:'plant',x:x+15,y:y+125,w:24,h:24},{kind:'plant',x:x+s.w-40,y:y+125,w:24,h:24}]};const variant=s.layoutVariant||0;if(variant&2){for(const [i,f]of h.furniture.entries())if(f.kind==='sofa')Object.assign(f,{kind:'bench',x:x+22,y:y+36+(i?78:0),w:120,h:24});const table=h.furniture.find(f=>f.kind==='table');table.y=y+70;table.h=28;}if(variant&4){const counter=h.furniture.find(f=>f.kind==='counter');counter.x=s.x+58;counter.y=s.y+39;counter.w=94;h.furniture.push({kind:'chair',x:s.x+96,y:s.y+10,w:24,h:24});}if(variant&1){for(const f of [...h.furniture,...h.floorZones.filter(z=>z.material==='carpet')])f.x=s.x*2-f.x-f.w;}houses.set(s,h);return h;}
+export function stationHouse(d){const s=d.station;let h=houses.get(s);const key=[s.x,s.y,s.w,s.h,s.layoutVariant||0,s.doorSide||'south'].join(':');if(h?.key===key)return h;const x=s.x-s.w/2,y=s.y-s.h/2;h={key,name:'Lakewood waiting room',floors:[{x,y,w:s.w,h:s.h}],floorZones:[{x:s.x-20,y:y+8,w:40,h:s.h-16,material:'checker'},{x:x+16,y:y+20,w:135,h:100,material:'carpet'}],furniture:[{kind:'sofa',x:x+22,y:y+36,w:38,h:70},{kind:'sofa',x:x+104,y:y+36,w:38,h:70},{kind:'table',x:x+65,y:y+50,w:34,h:40},{kind:'counter',x:s.x+75,y:s.y-15,w:80,h:24},{kind:'bookcase',x:s.x+130,y:y+12,w:60,h:26},{kind:'plant',x:x+15,y:y+125,w:24,h:24},{kind:'plant',x:x+s.w-40,y:y+125,w:24,h:24}]};const variant=s.layoutVariant||0;if(variant&2){for(const [i,f]of h.furniture.entries())if(f.kind==='sofa')Object.assign(f,{kind:'bench',x:x+22,y:y+36+(i?78:0),w:120,h:24});const table=h.furniture.find(f=>f.kind==='table');table.y=y+70;table.h=28;}if(variant&4){const counter=h.furniture.find(f=>f.kind==='counter');counter.x=s.x+58;counter.y=s.y+39;counter.w=94;h.furniture.push({kind:'chair',x:s.x+96,y:s.y+10,w:24,h:24});}if(variant&1){for(const f of [...h.furniture,...h.floorZones.filter(z=>z.material==='carpet')])f.x=s.x*2-f.x-f.w;}if(['west','east'].includes(s.doorSide)){
+ const v=s.layoutVariant||0,shift=(v&1)?20:0;
+ h.floorZones=[{x:x+12,y:s.y-22,w:s.w-24,h:44,material:'checker'}];
+ h.furniture=[{kind:'bench',x:x+35+shift,y:y+23,w:110,h:24},{kind:'bench',x:x+35,y:y+s.h-47,w:110+(v&2?18:0),h:24},{kind:'counter',x:x+s.w-126,y:y+27,w:90,h:24},{kind:'table',x:x+166,y:y+(v&4?s.h-56:23),w:40,h:30},{kind:'plant',x:x+s.w-45,y:y+s.h-43,w:24,h:24}];
+ if(v&4)h.furniture.push({kind:'chair',x:x+230,y:y+s.h-43,w:24,h:24});
+ }
+ houses.set(s,h);return h;}
 function baseStationDeckAt(d,x,y){const s=d.station;if(!s)return 0;return Math.abs(x-s.x)<s.w/2&&Math.abs(y-s.y)<s.h/2+25||Math.abs(x-s.platformX)<s.platformLength/2&&Math.abs(y-s.platformY)<s.platformWidth/2?s.floorHeight:0;}
 export function stationInside(d,p){const s=d.station;return !!s&&Math.abs(p.x-s.x)<s.w/2-10&&Math.abs(p.y-s.y)<s.h/2-8;}
+function stationCutaway(d,player){
+ if(player.trainRide)return false;
+ if(stationInside(d,player))return true;
+ const entry=stationEntrance(d.station),dx=player.x-entry.x,dy=player.y-entry.y;
+ const approach=dx*entry.nx+dy*entry.ny,across=dx*entry.ny-dy*entry.nx;
+ // Select the low art layer before the player would pass behind its jamb.
+ // This condition does not participate in doorway collision.
+ return Math.abs(across)<32&&approach>-17&&approach<(entry.side==='north'?47:22);
+}
 function baseStationBlocked(d,x,y,r=7){const s=d.station;if(!s)return false;const left=s.x-s.w/2,right=s.x+s.w/2,top=s.y-s.h/2,bottom=s.y+s.h/2;const boxes=[{x:left,y:top,w:s.w,h:9},{x:left,y:top,w:9,h:s.h},{x:right-9,y:top,w:9,h:s.h},{x:left,y:bottom-9,w:s.w/2-38,h:9},{x:s.x+38,y:bottom-9,w:s.w/2-38,h:9},{x:s.x+75,y:s.y-15,w:80,h:24}];return [...boxes,...stationHouse(d).furniture.filter(f=>f.kind!=='rug')].some(b=>x>b.x-r&&x<b.x+b.w+r&&y>b.y-r&&y<b.y+b.h+r);}
 const catRandom=a=>{a.randomState=(Math.imul(a.randomState,1664525)+1013904223)>>>0;return a.randomState/4294967296;};
 function catBlocked(d,x,y){const water=stationPoint(d,{x,y});return nearestTrainTrack(stationRoute(d),water.x,water.y).distance<d.gauge/2+29||stationBlocked(d,x,y,5)||(railwaySurface(d,water.x,water.y)!=='grass'&&!stationDeckAt(d,x,y))||d.station.props.some(p=>['trunks','parcels','owl_crate','flower_tub','brazier','luggage_cart'].includes(p.kind)&&Math.abs(x-p.x)<22&&y>p.y-14&&y<p.y+8);}
@@ -40,15 +60,52 @@ function baseTickStationCats(t,dt){const d=t.design,s=d.station;if(!s)return;t.s
  else{a.wait-=dt;if(a.wait<=0){if(t.streamRuntime&&railwayStream(t.streamRuntime)){a.pathRequest??={key:'cat-path:'+a.id+':'+(a.routeSerial=(a.routeSerial||0)+1),choice:catRandom(a),actor:{x:a.x,y:a.y}};const request=a.pathRequest,result=streamImage(t.streamRuntime,'cat-path',request.key,{id:a.id,actor:request.actor,choice:request.choice},30);if(result){t.streamRuntime.terrainStream.ready.delete(request.key);a.path=result.path;a.walkSpeed=18+catRandom(a)*9;a.wait=a.path.length?0:2;delete a.pathRequest;}continue;}const spots=catWaypoints(d).filter(p=>Math.hypot(p.x-a.x,p.y-a.y)>35);if(!spots.length){a.wait=3;continue;}const target=spots[Math.floor(catRandom(a)*spots.length)];a.path=catRoute(d,a,target,catWaypoints(d));a.walkSpeed=18+catRandom(a)*9;a.wait=a.path.length?0:2;}}
  }}
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
-function baseStationLamps(d,time){const s=d.station;if(!s)return[];const lights=[{x:s.x-140,y:s.y+20,r:100},{x:s.x+140,y:s.y+20,r:100},...[-400,-180,40,260,460].map(dx=>({x:s.platformX+dx,y:s.platformY,r:105}))];for(const p of s.props)if(p.kind==='lantern'||p.kind==='brazier')lights.push({x:p.x,y:p.y-20,r:p.kind==='brazier'?90:110});return lights.map((l,i)=>({...l,gain:.65+Math.sin(time*4+i)*.05}));}
-function baseDrawStationGround(c,d,time){const s=d.station;if(!s)return;
- rect(c,s.x-s.w/2-38,s.y-s.h/2-30,s.w+76,s.h+150,'#788374');for(let y=s.y-s.h/2-22;y<s.y+s.h/2+95;y+=17)for(let x=s.x-s.w/2-30;x<s.x+s.w/2+30;x+=27)rect(c,x+(y%2?12:0),y,24,14,'#999c80');
-
+const platformFixtures=new WeakMap();
+function platformLanterns(d) {
+ const s=d.station,samples=platformSamples(d);
+ let lamps=platformFixtures.get(samples);
+ if(lamps)return lamps;
+ const landing=s.platformLanding||{x:s.x,y:s.platformY};
+ lamps=[];
+ for(const fraction of [.11,.3,.64,.85]){
+  const p=samples[Math.floor((samples.length-1)*fraction)]?.far;
+  if(!p||Math.hypot(p.x-landing.x,p.y-landing.y)<70)continue;
+  const local=stationPoint(d,p,true);
+  lamps.push({x:local.x,y:local.y,kind:'lantern',r:74,raise:31});
+ }
+ platformFixtures.set(samples,lamps);
+ return lamps;
 }
-function stationWall(c,x,y,w,h,height,fade=false){rect(c,x+10,y+12,w,h,'#172d2944');for(let z=0;z<height;z+=4){c.save();if(fade)c.globalAlpha=z<8?1:Math.max(.12,.85-z/height*.75);rect(c,x,y-z,w,h,z%12?'#9c674e':'#c68b64');for(let xx=x+((z/4)%2)*10;xx<x+w;xx+=24)rect(c,xx,y-z,1,3,'#684c40');c.restore();}rect(c,x,y-height,w,h,'#e0bd7e');}
-function baseStationSubjects(d,t,cats){const s=d.station;if(!s)return[];const h=stationAssetHouse(d,stationHouse(d));return [{stationBuilding:true,x:s.x,y:s.y+s.h/2,depth:s.y+s.h/2},...s.props.filter(p=>!h.furniture.some(f=>f.stationDecor?.id===p.id)).map(p=>({...p,stationProp:true,depth:p.y})),...s.cats.map(p=>({...cats?.get(p.id)||p,stationCat:true,depth:(cats?.get(p.id)||p).y}))];}
-function baseDrawStationSubject(c,d,o,time,renderer,players){const s=d.station;if(o.stationBuilding){const x=s.x-s.w/2,y=s.y-s.h/2,inside=players.some(p=>!p.trainRide&&stationInside(d,p));
- if(!inside){const ry=y-72;rect(c,x-18,ry+8,s.w+36,s.h+25,'#1d303644');rect(c,x-15,ry,s.w+30,s.h+24,'#243a40');for(let row=0;row<Math.ceil((s.h+16)/9);row++)for(let col=-1;col<Math.ceil((s.w+30)/22);col++){const xx=x-12+col*22+(row%2)*11,yy=ry+row*9;rect(c,Math.max(x-12,xx),yy,Math.min(21,x+s.w+12-Math.max(x-12,xx)),8,['#38525a','#3d5960','#304a53'][(row+col+6)%3]);rect(c,Math.max(x-12,xx)+1,yy,Math.min(19,x+s.w+10-Math.max(x-12,xx)),1,'#638078');}rect(c,x-18,ry+s.h+18,s.w+36,6,'#b9a67c');rect(c,x-18,ry+s.h+23,s.w+36,4,'#425a51');rect(c,x-12,ry+Math.floor(s.h/2),s.w+24,6,'#718378');for(const side of[-1,1]){rect(c,s.x+side*(s.w/2-20),ry+s.h+27,5,40,'#4d5b4b');rect(c,s.x+side*(s.w/2-20)+1,ry+s.h+27,2,36,'#b1a77d');}rect(c,s.x+s.w*.32,ry-14,28,34,'#815e4b');for(let z=0;z<30;z+=7)rect(c,s.x+s.w*.32,ry-12+z,28,1,'#b29772');rect(c,s.x+s.w*.32-3,ry-17,34,5,'#c1b18d');rect(c,s.x-110,ry-8,220,27,'#2e4946');rect(c,s.x-107,ry-6,214,2,'#bba677');c.fillStyle='#ecdcad';c.font='bold 13px Georgia';c.textAlign='center';c.fillText(s.name?.toUpperCase()||'LAKEWOOD STATION',s.x,ry+11);c.textAlign='left';}return;}
+function baseStationLamps(d,time){
+ const s=d.station;
+ if(!s)return [];
+ const lights=[...stationEntranceLights(s),...platformLanterns(d)];
+ for(const p of s.props) {
+  if(p.kind==='lantern')lights.push({x:p.x,y:p.y,r:72,raise:31});
+  if(p.kind==='brazier')lights.push({x:p.x,y:p.y,r:61,raise:21});
+ }
+ return lights.map((l,i)=>({...l,gain:.65+Math.sin(time*4+i)*.05}));
+}
+function baseStationSubjects(d,t,cats){
+ const s=d.station;
+ if(!s)return [];
+ const h=stationAssetHouse(d,stationHouse(d)),back=s.y-s.h/2-2;
+ return [
+  {stationBackwall:true,x:s.x,y:back,depth:back},
+  {stationBuilding:true,x:s.x,y:s.y+s.h/2,depth:s.y+s.h/2},
+  ...platformLanterns(d).map(p=>({...p,stationProp:true,depth:p.y})),
+  ...s.props.filter(p=>!h.furniture.some(f=>f.stationDecor?.id===p.id)).map(p=>({...p,stationProp:true,depth:p.y})),
+  ...s.cats.map(p=>({...cats?.get(p.id)||p,stationCat:true,depth:(cats?.get(p.id)||p).y})),
+ ];
+}
+function baseDrawStationSubject(c,d,o,time,renderer,players){const s=d.station;
+ if(o.stationBuilding||o.stationBackwall){
+  const inside=players.some(p=>stationCutaway(d,p));
+  const house=stationAssetHouse(d,stationHouse(d));
+  if(o.stationBuilding)drawStationBuilding(c,s,inside,house);
+  else if(inside)drawStationBackwall(c,s,house);
+  return;
+ }
  if(o.stationCat){renderer.animator.draw(c,{...o,kind:'graveyard_cat',hp:20,idle:o.idle||'idle',moving:!!o.moving,step:o.step||0},time,34);return;}
  const x=o.x,y=o.y,a=Math.sin(time*2+o.x),shadow=(w=28)=>rect(c,x-w/2+5,y+3,w,8,'#263a2d44');shadow();if(drawStationCargo(c,o.kind,x,y,time))return;
  if(o.kind==='clock'){rect(c,x-3,y-48,6,48,'#31423a');rect(c,x-1,y-46,2,43,'#b3a270');drawWallClock(c,x,y-58,30);}
@@ -63,26 +120,132 @@ function baseDrawStationSubject(c,d,o,time,renderer,players){const s=d.station;i
  drawStationCargo(c,o.kind,x,y,time);
 
 }
-export function drawStationLights(c,d,time,night){for(const l of stationLamps(d,time)){c.save();c.globalCompositeOperation='screen';const gradient=c.createRadialGradient(l.x,l.y-35,1,l.x,l.y-35,l.r);gradient.addColorStop(0,`rgba(255,200,100,${night?.28:.1})`);gradient.addColorStop(1,'rgba(255,190,90,0)');c.fillStyle=gradient;c.fillRect(l.x-l.r,l.y-35-l.r,l.r*2,l.r*2);c.restore();}}
+export function drawStationLights(c,d,time,night){
+ const m=c.getTransform?.();
+ const view=m&&m.a>0&&m.d>0&&!m.b&&!m.c?{
+  left:-m.e/m.a,top:-m.f/m.d,right:(c.canvas.width-m.e)/m.a,bottom:(c.canvas.height-m.f)/m.d,
+ }:null;
+ for(const world of railwayStations(d)){
+  if(!stationInView(world,view))continue;
+  for(const local of baseStationLamps(world,time)) {
+   const l=stationPoint(world,local);
+   if(view&&(l.x+l.r<view.left||l.x-l.r>view.right||l.y+l.r<view.top||l.y-l.r>view.bottom))continue;
+   drawStationLightPool(c,l,night);
+  }
+ }
+}
 
 const stationSets=new WeakMap();
 export function railwayStations(d){
  if(d._stationContext||!d.wildLands)return d.station?[d]:[];
  if(d.activeRoom)return [];
  const stops=d.wildStops||[];let saved=stationSets.get(d);if(saved?.stops===stops&&saved.revision===(d.wildStopsRevision||0))return saved.worlds;
- const worlds=stops.map((stop,index)=>{const x=stop.x,angle=Math.abs(Math.sin(stop.a||0))>.7?Math.PI/2:0,delta=(stop.a||0)-angle,setback=230+210*Math.abs(Math.tan(delta)),y=stop.y-Math.min(450,setback);
- const station={name:stop.name,layoutVariant:index,x,y,w:420,h:170,platformX:stop.x,platformY:stop.y-82,platformLength:1080,platformWidth:92,floorHeight:10,lake:{x:stop.x,y:stop.y-500,rx:100,ry:80},props:stationArrangement(stop.id,x,y,index),cats:[{id:stop.id+'-cat-1',x:x-65,y:y+40},{id:stop.id+'-cat-2',x:x+105,y:y+25}]};
- const world={...d,_stationContext:{x:stop.x,y:stop.y,angle},station};for(const p of station.props){for(let attempt=0;attempt<20;attempt++){const q=stationPoint(world,p);if(nearestTrainTrack(stationRoute(world),q.x,q.y).distance>d.gauge/2+65)break;p.y-=18;}}return world;});stationSets.set(d,{stops,revision:d.wildStopsRevision||0,worlds});return worlds;
+ const worlds=stops.map((stop,index)=>{
+ const angle=stop.a||0,nx=Math.sin(angle),ny=-Math.cos(angle),setback=Math.abs(nx)*210+Math.abs(ny)*85+d.gauge/2+38+92+36;
+ const x=stop.x+nx*setback,y=stop.y+ny*setback,toX=stop.x-x,toY=stop.y-y,doorSide=Math.abs(toX)>Math.abs(toY)?(toX<0?'west':'east'):(toY<0?'north':'south');
+ const station={name:stop.name,visualId:stop.id,layoutVariant:index,x,y,doorSide,w:420,h:170,platformX:stop.x,platformY:stop.y-82,platformLength:1080,platformWidth:92,floorHeight:10,lake:{x:stop.x,y:stop.y-500,rx:100,ry:80},props:stationArrangement(stop.id,x,y,index),cats:[{id:stop.id+'-cat-1',x:x-65,y:y+40},{id:stop.id+'-cat-2',x:x+105,y:y+25}]};
+ const world={...d,_stationContext:{x:stop.x,y:stop.y,angle:0,upright:true},station},entry=stationEntrance(station);
+ const samples=platformSamples(world);station.platformLanding=samples.map(p=>p.far).reduce((a,b)=>Math.hypot(a.x-entry.x,a.y-entry.y)<Math.hypot(b.x-entry.x,b.y-entry.y)?a:b);
+ const land=station.platformLanding,dx=land.x-entry.x,dy=land.y-entry.y,len=Math.hypot(dx,dy)||1;
+ for(const p of station.props){for(let attempt=0;attempt<20;attempt++){
+   const q=stationPoint(world,p),t=Math.max(0,Math.min(1,((q.x-entry.x)*dx+(q.y-entry.y)*dy)/(len*len))),aisle=Math.hypot(q.x-entry.x-dx*t,q.y-entry.y-dy*t)<48;
+   if(nearestTrainTrack(stationRoute(world),q.x,q.y).distance>d.gauge/2+65&&!aisle)break;
+   if(aisle){p.x-=dy/len*24;p.y+=dx/len*24;}else p.y-=18;
+ }}return world;});stationSets.set(d,{stops,revision:d.wildStopsRevision||0,worlds});return worlds;
 }
-function stationPoint(d,p,inverse=false){const t=d._stationContext;if(!t)return {...p};const a=t.angle*(inverse?-1:1),dx=p.x-t.x,dy=p.y-t.y;return {...p,x:t.x+Math.cos(a)*dx-Math.sin(a)*dy,y:t.y+Math.sin(a)*dx+Math.cos(a)*dy};}
+export function stationPoint(d,p,inverse=false){const t=d._stationContext;if(!t)return {...p};const a=t.angle*(inverse?-1:1),dx=p.x-t.x,dy=p.y-t.y;return {...p,x:t.x+Math.cos(a)*dx-Math.sin(a)*dy,y:t.y+Math.sin(a)*dx+Math.cos(a)*dy};}
 function stationCanvas(c,d,paint){const t=d._stationContext;c.save();if(t){c.translate(t.x,t.y);c.rotate(t.angle);c.translate(-t.x,-t.y);}paint();c.restore();}
 export function stationDeckAt(d,x,y){if(d._stationContext){const p=stationPoint(d,{x,y});x=p.x;y=p.y;}let height=wildLandsBridgeDeck(d,x,y);for(const world of railwayStations(d)){const h=stationAssetHouse(world,stationHouse(world)),s=world.station;if(h.floors.some(f=>x>=f.x&&x<=f.x+f.w&&y>=f.y&&y<=f.y+f.h))height=Math.max(height,s.floorHeight);const samples=platformSamples(world);for(let i=1;i<samples.length;i++){const a=samples[i-1],b=samples[i],cross=(p,q)=>(q.x-p.x)*(y-p.y)-(q.y-p.y)*(x-p.x),v=[cross(a.near,b.near),cross(b.near,b.far),cross(b.far,a.far),cross(a.far,a.near)];if(v.every(n=>n>=-1)||v.every(n=>n<=1)){height=Math.max(height,s.floorHeight);break;}}}return height;}
 export function stationBlocked(d,x,y,r=7,elevation=0){if(d._stationContext){const p=stationPoint(d,{x,y});x=p.x;y=p.y;}return railwayStations(d).some(world=>{const h=stationAssetHouse(world,stationHouse(world));return h.walls.some(b=>sectionBlocked(b,x,y,r))||h.furniture.some(f=>!f.wallMounted&&(!furnitureHeight(f)||elevation<furnitureHeight(f))&&sectionBlocked(f,x,y,r));});}
 export function syncStationAssets(g){const t=g.trainTest,worlds=railwayStations(t.design);if(t.stationAssetWorlds?.length===worlds.length&&worlds.every((w,i)=>t.stationAssetWorlds[i]===w))return;t.stationAssetWorlds=worlds;const houses=[...worlds.map(w=>stationAssetHouse(w,stationHouse(w))),...wildLandmarkBuildings(t.design)];g.house={name:'Railway stations',floors:[],walls:houses.flatMap(h=>h.walls),doors:houses.flatMap(h=>h.doors),furniture:houses.flatMap(h=>h.furniture),vehicles:[],pools:[]};}
 export function tickStationCats(t,dt){for(const world of railwayStations(t.design)){const local={design:world,stationCats:t.stationCats,streamRuntime:t};baseTickStationCats(local,dt);t.stationCats=local.stationCats;}}
 export function stationLamps(d,time){return railwayStations(d).flatMap(world=>baseStationLamps(world,time).map(p=>stationPoint(world,p)));}
-export function drawStationGround(c,d,time){for(const world of railwayStations(d)){stationCanvas(c,world,()=>baseDrawStationGround(c,world,time));drawCurvedPlatform(c,world);drawHouseFloor(c,stationAssetHouse(world,stationHouse(world)));}}
-export function stationSubjects(d,time,cats){return railwayStations(d).flatMap(world=>{const house=stationAssetHouse(world,stationHouse(world)),assets=[...house.walls,...house.furniture].map(asset=>({stationAsset:asset,x:asset.x+asset.w/2,y:asset.y+asset.h,depth:asset.y+asset.h,stationWorld:world}));return [...assets,...baseStationSubjects(world,time,cats).map(local=>{const p=stationPoint(world,local);return {...p,depth:p.y,stationWorld:world,stationLocal:local};})];});}
-export function drawStationSubject(c,d,o,time,renderer,players,game={}){if(o.stationAsset){const b=o.stationAsset;if(b.destroyed)return;drawBreakable(c,game,b,(pen,asset)=>{if(asset.stationDecor){stationCanvas(pen,o.stationWorld,()=>baseDrawStationSubject(pen,o.stationWorld,asset.stationDecor,time,renderer,players));}else if(asset.kind==='window')drawWindow(pen,asset);else if(['wall','fence'].includes(asset.kind))drawHouseWall(pen,asset);else drawFurniture(pen,asset,{});},'railway-native:'+((b.kind==='wall_clock')?Math.floor(Date.now()/60000):(b.stationDecor&&STATION_FLAVOR.find(f=>f.kind===b.stationDecor.kind)?.animated||b.stationDecor?.kind==='brazier'||b.stationDecor?.kind==='steam_vent')?Math.floor(time*8):0));return;}const world=o.stationWorld||d,local=o.stationLocal||o;if(local.stationBuilding){const h=stationAssetHouse(world,stationHouse(world));if(h.walls.filter(b=>b.destroyed).length>h.walls.length/2)return;}if(local.stationCat){const a=world._stationContext?.angle||0,p=stationPoint(world,local);p.faceX=Math.cos(a)*(local.faceX||0)-Math.sin(a)*(local.faceY||0);p.faceY=Math.sin(a)*(local.faceX||0)+Math.cos(a)*(local.faceY||0);baseDrawStationSubject(c,world,p,time,renderer,players);return;}stationCanvas(c,world,()=>baseDrawStationSubject(c,world,local,time,renderer,players.map(p=>stationPoint(world,p,true))));}
+// Conservative bounds include the curved platform, rotated forecourt and all props.
+const stationViewBounds=new WeakMap();
+export function stationInView(world,bounds){
+ if(!bounds)return true;const points=platformSamples(world);let box=stationViewBounds.get(world);
+ if(!box||box.points!==points){const s=world.station,house=stationAssetHouse(world,stationHouse(world)),samples=points.flatMap(p=>[p.near,p.far]);for(const f of [...house.floors,...house.walls,...house.furniture])for(const [x,y]of [[f.x,f.y],[f.x+f.w,f.y+f.h]])samples.push({x,y},stationPoint(world,{x,y}));for(const p of s.props||[])samples.push(stationPoint(world,p));box={points,left:Math.min(...samples.map(p=>p.x))-220,top:Math.min(...samples.map(p=>p.y))-300,right:Math.max(...samples.map(p=>p.x))+220,bottom:Math.max(...samples.map(p=>p.y))+160};stationViewBounds.set(world,box);}
+ return box.right>=bounds.left&&box.left<=bounds.right&&box.bottom>=bounds.top&&box.top<=bounds.bottom;
+}
+const visualFloors=new WeakMap();
+function stationVisualFloor(house) {
+ let saved=visualFloors.get(house);
+ if(!saved){
+  // The approach is still a physical floor in the live house. Its visible
+  // masonry follows the landing vector instead of the old cement rectangle.
+  saved={
+   floors:house.floors.slice(0,-1),
+   floorZones:house.floorZones.filter(zone=>zone.material!=='checker'&&zone.material!=='cement'),
+  };
+  visualFloors.set(house,saved);
+ }
+ return saved;
+}
+export function drawStationGround(c,d,time,bounds=null){
+ for(const world of railwayStations(d)){
+  if(!stationInView(world,bounds))continue;
+  const house=stationAssetHouse(world,stationHouse(world));
+  stationCanvas(c,world,()=>drawStationForecourt(c,world.station));
+  drawStationPlatform(c,world.station,platformSamples(world),bounds);
+  drawHouseFloor(c,stationVisualFloor(house));
+  stationCanvas(c,world,()=>drawStationFloorDetails(c,world.station));
+ }
+}
+export function stationSubjects(d,time,cats,bounds=null){
+ return railwayStations(d).filter(world=>stationInView(world,bounds)).flatMap(world=>{
+  const house=stationAssetHouse(world,stationHouse(world));
+  const assets=[...house.walls,...house.furniture].map(asset=>({
+   stationAsset:asset,x:asset.x+asset.w/2,y:asset.y+asset.h,depth:asset.y+asset.h,stationWorld:world,
+  }));
+  const figures=baseStationSubjects(world,time,cats).map(local=>{
+   const p=stationPoint(world,local);
+   return {...p,depth:p.y,stationWorld:world,stationLocal:local};
+  });
+  return [...assets,...figures];
+ });
+}
+
+export function drawStationSubject(c,d,o,time,renderer,players,game={}){
+ const world=o.stationWorld||d;
+ if(o.stationAsset) {
+  const b=o.stationAsset;
+  if(b.destroyed)return;
+  if(b.stationDecor?.kind==='owl_crate'){
+   const p=stationPoint(world,b.stationDecor),open=game.trainTest?.openOwlCages?.has(b.stationDecor.id);
+   drawOwlCage(c,p,open,'back');
+   if(!open)drawCagedSnowyOwl(c,p,time);
+   drawOwlCage(c,p,open);
+   return;
+  }
+  const decor=b.stationDecor?.kind;
+  const animated=decor&&(STATION_FLAVOR.find(f=>f.kind===decor)?.animated||decor==='brazier'||decor==='steam_vent');
+  const frame=b.kind==='wall_clock'?Math.floor(Date.now()/60000):animated?Math.floor(time*8):0;
+  const wall=['window','wall','fence'].includes(b.kind);
+  const inside=wall&&players.some(p=>stationCutaway(world,stationPoint(world,p,true)));
+  drawBreakable(c,game,b,(pen,asset)=>{
+   if(asset.stationDecor) {
+    stationCanvas(pen,world,()=>baseDrawStationSubject(pen,world,asset.stationDecor,time,renderer,players));
+   } else if (wall) {
+    drawStationWallBase(pen,asset,world.station,inside);
+   } else if(!drawStationFurniture(pen,asset,world.station)) {
+    drawFurniture(pen,asset,{});
+   }
+  },'railway-native:'+stationVisualTheme(world.station).id+':'+frame+':'+(inside?'lined':'plain'));
+  return;
+ }
+ const local=o.stationLocal||o;
+ if(local.stationBuilding) {
+  const h=stationAssetHouse(world,stationHouse(world));
+  if(h.walls.filter(b=>b.destroyed).length>h.walls.length/2)return;
+ }
+ if(local.stationCat) {
+  const a=world._stationContext?.angle||0,p=stationPoint(world,local);
+  p.faceX=Math.cos(a)*(local.faceX||0)-Math.sin(a)*(local.faceY||0);
+  p.faceY=Math.sin(a)*(local.faceX||0)+Math.cos(a)*(local.faceY||0);
+  baseDrawStationSubject(c,world,p,time,renderer,players);
+  return;
+ }
+ stationCanvas(c,world,()=>baseDrawStationSubject(c,world,local,time,renderer,players.map(p=>stationPoint(world,p,true))));
+}
 
 export {platformSamples as stationPlatformSamples};

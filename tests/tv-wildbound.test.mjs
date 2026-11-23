@@ -41,11 +41,11 @@ test('Question blocks release one mushroom and bounded, expiring break shards',(
   mode.step(.05,{[hero.id]:{jump:true}});assert.equal(mode.loot.length,0);assert.equal(mode.blockParticles.length,0,'used blocks cannot duplicate rewards');
   const particles=Array.from({length:128},()=>({x:0,y:0,vx:1,vy:1,age:0,life:.1}));tickBlockParticles(particles,.2);assert.equal(particles.length,0);
 });
-test('Board rolls require a facing grounded strike; holding attack through the reveal cannot reroll',()=>{
-  const mode=new TvWildbound([{id:1}],5),p=mode.players.get(1);mode.intro=2.8;mode.enemies=[];p.x=TV_BOARD_X-50;p.face=-1;
-  mode.step(.05,{1:{attack:true}});assert.equal(mode.progress,0);mode.step(.05,{});p.face=1;mode.step(.05,{1:{attack:true}});const progress=mode.progress;assert.ok(progress>0);
-  for(let i=0;i<100;i++)mode.step(.05,{1:{attack:true}});assert.equal(mode.progress,progress);
-  mode.step(.05,{});mode.step(.05,{1:{attack:true}});assert.ok(mode.progress>progress);
+test('board accepts either facing and held attacks do not reroll',()=>{
+ const mode=new TvWildbound([{id:1}],5),p=mode.players.get(1);mode.intro=2.8;p.x=TV_BOARD_X-50;p.face=-1;
+ mode.step(.05,{1:{attack:true}});assert.equal(mode.wave,1);assert.equal(mode.progress,mode.lastRoll);
+ for(let i=0;i<100;i++)mode.step(.05,{1:{attack:true}});assert.equal(mode.wave,1);
+ mode.step(.05,{});mode.step(.05,{1:{attack:true}});assert.equal(mode.wave,2);
 });
 
 test('Finishing the 2D world creates one level-scaled party treasure chest without changing expedition rewards',()=>{
@@ -106,16 +106,16 @@ test('2D board rolls on a fresh hit and remains isolated from the normal game',(
   for(let i=0;i<56;i++)mode.step(.05);
   assert.equal(mode.ready,true);
   p.x=TV_BOARD_X;mode.step(.016,{one:{attack:true}});
-  assert.ok(mode.progress>=1&&mode.progress<=6);const progress=mode.progress;
-  mode.step(.016,{one:{attack:true}});assert.equal(mode.progress,progress,'holding hit does not reroll');
+  assert.ok(mode.lastRoll>=1&&mode.lastRoll<=6);assert.equal(mode.progress,mode.lastRoll);const wave=mode.wave;
+  mode.step(.016,{one:{attack:true}});assert.equal(mode.wave,wave,'holding hit does not reroll');
   for(let i=0;i<90;i++)mode.step(.05,{one:{attack:false}});
   mode.step(.016,{one:{attack:true}});
-  assert.ok(mode.progress>progress);
-  assert.deepEqual(new Set(mode.enemyRoster),new Set(['bramblecap','mossback']));assert.ok(mode.waveQueue.length>0);
+  assert.equal(mode.wave,wave+1,'fresh attacks advance during active encounters');
+  assert.deepEqual(new Set(mode.enemyRoster),new Set(['bramblecap','mossback','sporecap','thornwing','slime','bat','spider','beetle','frog','boar','snake','imp','skeleton','archer']));assert.ok(mode.enemies.length+mode.waveQueue.length>0);
   assert.equal(hero.progress,undefined);
 });
 
-test('2D movement scrolls, Bramblecaps stomp, and the exit requires board progress',()=>{
+test('2D movement scrolls, Bramblecaps stomp, and victory requires final board progress',()=>{
   const mode=new TvWildbound([{id:'one',name:'Scout'}],12),p=mode.players.get('one');
   for(let i=0;i<57;i++)mode.step(.05);
   const goomba=mode.spawnAt({x:1400,y:437,face:1},'bramblecap');goomba.emerging=0;
@@ -154,17 +154,17 @@ test('TV Wildbound dodge triggers a directional burst with a cooldown',()=>{
  assert.ok(Math.abs(p.dashCooldown-(cooldown-.1))<1e-8);assert.equal(p.dashTime,0,'dash cannot retrigger during cooldown');
 });
 
-test('equipped bows spend arrows and wands spend mana to hit enemies at range',()=>{
+test('equipped bows and wands spend finite arena supplies to hit enemies at range',()=>{
  const enemy=()=>({kind:'goomba',home:160,x:160,y:437,w:28,h:25,speed:38,hp:1,face:-1,phase:0,alive:true,hit:0,cooldown:0});
  const archer={id:'archer',name:'Archer',inventory:[{type:'arrow',qty:2}],equipment:{hand1:'starter_bow'},mana:100,maxMana:100};
  const bowMode=new TvWildbound([archer],7),bowPlayer=bowMode.players.get(archer.id);bowMode.intro=2.8;bowMode.camera=0;bowMode.enemies=[enemy()];Object.assign(bowPlayer,{x:80,y:437,face:1});
- bowMode.step(.01,{archer:{attack:true}});assert.equal(count(archer,'arrow'),1);assert.equal(bowMode.projectiles[0].kind,'arrow');
+  bowMode.step(.01,{archer:{attack:true}});assert.equal(count(archer,'arrow'),2);assert.equal(bowPlayer.arenaAmmo,3);assert.equal(bowMode.projectiles[0].kind,'arrow');
  for(let i=0;i<6&&bowMode.enemies[0].alive;i++)bowMode.step(.05,{archer:{attack:false}});
  assert.equal(bowMode.enemies[0].alive,false,'arrow hits defeat a one-health enemy');
 
  const mage={id:'mage',name:'Mage',inventory:[],equipment:{hand1:'starter_wand'},mana:100,maxMana:100};
  const wandMode=new TvWildbound([mage],8),wandPlayer=wandMode.players.get(mage.id);wandMode.intro=2.8;wandMode.camera=0;wandMode.enemies=[enemy()];Object.assign(wandPlayer,{x:80,y:437,face:1});
- wandMode.step(.01,{mage:{attack:true}});assert.equal(wandMode.projectiles[0].kind,'magic');assert.ok(mage.mana<100);
+  wandMode.step(.01,{mage:{attack:true}});assert.equal(wandMode.projectiles[0].kind,'magic');assert.equal(wandPlayer.charges,2);assert.equal(mage.mana,100);
  for(let i=0;i<8&&wandMode.enemies[0].alive;i++)wandMode.step(.05,{mage:{attack:false}});
  assert.equal(wandMode.enemies[0].alive,false,'wand bolts hit at range');
 });
@@ -181,7 +181,7 @@ test('lobby switches to the TV world without starting or mutating its regular ga
   state.sync(game.players);Object.assign(state.members.get(hero.id),{spawned:true,panel:null,x:785,y:165});
   television.join(hero.id);television.completed=true;
   const lobby=Object.create(PlayableLobby.prototype);
-  Object.assign(lobby,{getGame:()=>game,state,television,practice:{stepPractice(){}},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});
+  Object.assign(lobby,{getGame:()=>game,state,television,practice:{stepPractice(){}},showTvGuide(){},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});
   lobby.update(.016,{});
   assert.ok(lobby.tvWildbound instanceof TvWildbound);
   const firstScenes=lobby.tvWildbound.scenes.map(scene=>scene.name);

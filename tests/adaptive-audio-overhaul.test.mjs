@@ -136,6 +136,8 @@ test('decoder cache is bounded, rejects non-library paths and does not amplify q
 });
 test('observed movement/jump/landing/death/repair cues fire once and skip airborne footsteps',()=>{
  const a=fakeAudio(),g=world(),p=g.players[0],events=[];a.play=(name)=>events.push(typeof name==='object'?name.key:name);a.ambient=()=>{};
+ // This fixture observes discrete events, not the procedural ambience graph.
+ a.updateWorldAmbience=()=>{};a.updateWeatherBed=()=>{};
  a.update(g,true);p.x+=31;a.update(g,true);assert.ok(events.includes('grass'));events.length=0;
  p.jumpHeight=5;p.jumpVelocity=100;p.x+=40;a.update(g,true);assert.deepEqual(events,['jump']);events.length=0;
  p.jumpHeight=0;p.landTime=.22;a.update(g,true);assert.deepEqual(events,['land:grass']);events.length=0;

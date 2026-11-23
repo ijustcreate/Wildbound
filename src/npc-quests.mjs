@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 import {openBoneCarver,boneCarverView,boneCarverAction,tickBoneCarver,drawBoneCarver} from './bone-carver.mjs';
 import {openVillagerDialogue,villagerDialogueView,villagerDialogueAction} from './villagers.mjs';
 import {getNpcQuestConfig} from './npc-quest-data.mjs';
@@ -192,6 +193,7 @@ export function npcDialogueAction(g,p,action){
     if(!ITEMS[a.reward]){u.notice='The saved reward item is unavailable. Progress has been kept.';return true;}
     let slot=p.inventory.findIndex(i=>!i);if(slot<0&&p.inventory.length>=32){u.notice='Free one backpack slot. Your reward will stay with me.';return true;}if(slot<0)slot=p.inventory.length;
     if(a.contract.objective.type==='collect'){let left=a.contract.objective.count;for(let n=0;n<p.inventory.length&&left>0;n++){const item=p.inventory[n];if(item?.type!==a.contract.objective.item)continue;const take=Math.min(left,item.qty||1);left-=take;item.qty=(item.qty||1)-take;if(item.qty<=0)p.inventory[n]=null;}}
+    emitGameplayFx(g,'quest',p,{targetId:p.id});
     p.inventory[slot]={type:a.reward,qty:1};s.completed.push({stageId:a.stageId,branchId:a.branchId,reward:a.reward});s.lastRewardEncounter=s.encounters;s.active=null;
     u.node='quests';u.index=0;u.notice=`${ITEMS[a.reward].name} received. We’ll continue when our paths cross again.`;g.onSound?.('questUpdate',p);g.onSound?.('loot',p);g.persist?.();
   }else if(action==='route'){if(s.active?.target)g.reveal={...s.active.target,life:6};u.notice=s.active?.contract.objective.type==='collect'?'Gather the supplies listed in your quest, then bring them back.':'Follow the teal quest marker. Your party can help with this task.';}

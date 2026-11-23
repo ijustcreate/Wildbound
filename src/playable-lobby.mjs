@@ -25,13 +25,14 @@ import {LobbyPractice} from './lobby-practice.mjs';
 import {lobbyPracticeInput} from './lobby-input-release.mjs';
 import { drawPlayer } from './player-motion.mjs';
 import {drawBowAim} from './bow-aim.mjs';
-import { controllerButtonNames, controllerFamily } from './controls.mjs';
+import { controllerButtonNames, controllerFamily, controllerMenuButtons } from './controls.mjs';
 import { controllerGlyph } from './controller-glyphs.mjs';
 import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision,drawLobbyControllers} from './lobby-tv.mjs';
 import {lobbyObjectNearby,lobbyLabelY,lobbyPropDepth,lobbyActorDepth,targetReportAlpha,drawSeatedLobbyPlayer,canUseLobbyTV} from './lobby-scene.mjs';
 import {TvWildbound} from './tv-wildbound.mjs';
+import {deliverTvRecovery} from './tv-recovery.mjs';
 import {tickSalvage} from './salvage.mjs';
 import {tickLobbyStorage} from './lobby-storage.mjs';
 import {spatialMenuNeighbor} from './menu-navigation.mjs';
@@ -120,8 +121,8 @@ export class LobbyState {
 }
 
 export class PlayableLobby {
-  constructor({root,game,profiles,start,sound}){
-    Object.assign(this,{root,getGame:game,profiles,start,sound});this.state=new LobbyState();this.nodes=new Map();this.practice=new LobbyPractice();this.practice.onSound=sound;this.television=new LobbyTelevision();
+  constructor({root,game,profiles,start,sound,startWilds=()=>{},onTrainEnter=()=>{}}){
+    Object.assign(this,{root,getGame:game,profiles,start,sound,startWilds,onTrainEnter});this.state=new LobbyState();this.nodes=new Map();this.practice=new LobbyPractice();this.practice.onSound=sound;this.television=new LobbyTelevision();
     this.boardReadyMenuOpen=false;this.boardReadyNode=null;
     this.animator=new Animator();this.labels=[];
     this.configurePractice();
@@ -154,10 +155,11 @@ export class PlayableLobby {
     this.getGame().canDropLobbyItem=p=>!!this.state.members.get(p.id)?.spawned;
     this.getGame().dropLobbyItem=(p,type,qty,metadata)=>this.dropItem(p,type,qty,metadata);
   }
-  reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.state=new LobbyState();this.configurePractice();this.television.reset();this.tvWildbound=null;this.starterChestArt=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help)help.textContent=this.defaultHelp;}
+  reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.state=new LobbyState();this.configurePractice();this.television.reset();this.tvWildbound=null;this.starterChestArt=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help){help.classList.remove('tv-guide');help.textContent=this.defaultHelp;}}
   dropItem(player,type,qty,metadata={}){const member=this.state.members.get(player.id);if(!member?.spawned)return false;return this.practice.dropLoot(member.x,member.y,type,qty,player.name+' dropped',true,metadata);}
   returnFromTv(){
     const game=this.getGame();
+    this.tvWildbound?.releaseOwnedDrops();
     for(const p of game.players)if(this.tvWildbound?.players.has(p.id))p.ui=null;
     game.persist();this.reset();this.keepSelectedPlayers();this.draw();
   }
@@ -193,10 +195,19 @@ export class PlayableLobby {
     const key=[viewportKey,players.length,...open.map(p=>`${p.id}:${this.state.members.get(p.id)?.panel}`)].join('|');
     if(key===this.panelLayoutKey)return;
     this.panelViewportKey=viewportKey;
+    const expeditionGrid=open.length>1&&open.every(p=>this.state.members.get(p.id)?.panel==='environment');
+    this.panels.classList.toggle('expedition-grid',expeditionGrid);
     const layout=planPlayerPanels(players,open,bounds.width,bounds.height,{
       width:p=>this.state.members.get(p.id)?.panel==='environment'?440:this.state.members.get(p.id)?.panel==='board'?300:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?340:this.state.members.get(p.id)?.panel==='create'?540:280,
       height:p=>this.state.members.get(p.id)?.panel==='dice-count'?280:this.state.members.get(p.id)?.panel==='environment'?780:this.state.members.get(p.id)?.panel==='board'?310:this.state.members.get(p.id)?.panel==='create'?560:this.state.members.get(p.id)?.panel==='choose'&&!this.available(p).length?410:['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)?520:390,
     });
+    if(expeditionGrid){
+      const columns=bounds.width>=720?2:1,rows=Math.ceil(open.length/columns),gap=10,rosterHeight=78;
+      const width=Math.min(540,(bounds.width-(columns+1)*gap)/columns);
+      const height=Math.max(160,(bounds.height-rosterHeight-(rows+1)*gap)/rows);
+      const left=(bounds.width-columns*width-(columns-1)*gap)/2;
+      open.forEach((p,i)=>layout.set(p.id,{width,height,x:left+(i%columns)*(width+gap),y:rosterHeight+gap+Math.floor(i/columns)*(height+gap)}));
+    }
     for(const p of open){
       const box=layout.get(p.id),panel=this.nodes.get(p.id);
       const chooser=['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel);
@@ -212,7 +223,7 @@ export class PlayableLobby {
       if(players.length===1&&open.length===1&&['choose','confirm-delete'].includes(this.state.members.get(p.id)?.panel)){
         box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;
       }
-      if(this.state.members.get(p.id)?.panel==='environment'){box.width=Math.min(box.width,box.height*.57);box.height=box.width/.57;if(players.length===1){box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;}}
+      if(this.state.members.get(p.id)?.panel==='environment'&&players.length===1){box.x=(bounds.width-box.width)/2;box.y=(bounds.height-box.height)/2;}
       if(['difficulty','dice-count'].includes(this.state.members.get(p.id)?.panel)){
         panel.style.transition='none';
         const menu=this.state.members.get(p.id)?.panel;
@@ -227,7 +238,7 @@ export class PlayableLobby {
       }
       panel.style.position='absolute';panel.style.boxSizing='border-box';
       // A viewport resize must be immediate; party joins may still animate docks.
-      if(resized)panel.style.transition='none';else panel.style.removeProperty('transition');
+      if(resized||expeditionGrid)panel.style.transition='none';else panel.style.removeProperty('transition');
       panel.style.zoom=String(scale);
       panel.style.left=box.x/scale+'px';panel.style.top=box.y/scale+'px';
       panel.style.width=box.width/scale+'px';panel.style.height=box.height/scale+'px';panel.style.maxHeight=box.height/scale+'px';
@@ -311,23 +322,29 @@ export class PlayableLobby {
     const roster=document.createElement('div');roster.className='board-ready-roster';roster.setAttribute('aria-live','polite');panel.append(roster);
     const actions=document.createElement('div');actions.className='board-ready-actions';
     const keyboard=game.players.find(p=>p.device==='keyboard'),pad=game.players.find(p=>p.device?.startsWith('pad:'));
-    const family=pad?.controllerFamily==='switch'?'switch':'xbox';
+    const device=pad&&navigator.getGamepads?.()?.[Number(pad.device.slice(4))];
+    const family=device?controllerFamily(device):pad?.controllerFamily==='switch'?'switch':'xbox';
+    const menuButtons=controllerMenuButtons(device||family);
+    const menuGlyph=action=>controllerGlyph(document.createElement('canvas'),family,'button',{action,index:menuButtons[action]});
+    const menuNames=controllerButtonNames(family);
     const keyHint=(direction,label)=>{
       const hint=document.createDocumentFragment();
       if(keyboard){const key=document.createElement('span');key.className='board-ready-keyboard-key';key.textContent=label;hint.append(key);}
-      if(pad||!keyboard){if(keyboard)hint.append(document.createTextNode(' / '));hint.append(controllerGlyph(document.createElement('canvas'),family,'face',direction));}
+      if(pad||!keyboard){if(keyboard)hint.append(document.createTextNode(' / '));hint.append(menuGlyph(direction));}
       return hint;
     };
     const ready=panel.ownerDocument.createElement('button');
     ready.className='board-ready-confirm';ready.onclick=()=>this.toggleBoardPlayerReady(keyboard||game.players.find(p=>!p.ready)||game.players[0]);
-    ready.append(keyHint('down','Enter'),document.createTextNode(' · '));const readyText=document.createElement('span');readyText.className='board-ready-action-label';ready.append(readyText);
+    ready.dataset.controllerKey=menuNames[menuButtons.confirm];
+    ready.append(keyHint('confirm','Enter'));const readyText=document.createElement('span');readyText.className='board-ready-action-label';ready.append(readyText);
     const back=panel.ownerDocument.createElement('button');back.className='board-ready-back';back.onclick=()=>this.closeBoardReadyMenu();
-    back.append(keyHint('right','Esc'),document.createTextNode(' · '));const backText=document.createElement('span');backText.className='board-ready-action-label';back.append(backText);
+    back.dataset.controllerKey=menuNames[menuButtons.back];
+    back.append(keyHint('back','Esc'));const backText=document.createElement('span');backText.className='board-ready-action-label';back.append(backText);
     actions.append(ready,back);panel.append(actions);
     const help=document.createElement('p');help.className='board-ready-help';
     const readyCount=document.createElement('span');readyCount.className='board-ready-count';help.append(readyCount);
     if(keyboard)help.append('Enter to ready · Esc to back out. ');
-    if(pad||!keyboard)help.append('Controllers: ',controllerGlyph(document.createElement('canvas'),family,'face','down'),' ready · ',controllerGlyph(document.createElement('canvas'),family,'face','right'),' back out.');
+    if(pad||!keyboard)help.append('Controllers: ',menuGlyph('confirm'),' ready · ',menuGlyph('back'),' back out.');
     panel.append(help);
     this.boardReadyNode=panel;this.panels.append(panel);
     const dismissInvalidIcons=()=>{if(this.boardReadyMenuOpen&&this.boardReadyNode===panel)this.renderBoardReadyMenu();};
@@ -345,12 +362,12 @@ export class PlayableLobby {
       name.textContent=p.name||'Player '+(i+1);device.textContent=p.device==='keyboard'?'Keyboard':`Player ${i+1} controller`;
       copy.append(name,device);const status=document.createElement('b');status.textContent=p.ready?'READY':'WAITING';row.append(marker,copy,status);roster.append(row);
     }
-    const keyboard=game.players.find(p=>p.device==='keyboard'),ready=panel.querySelector('.board-ready-confirm');
-    ready.setAttribute('aria-label',`${keyboard?'Enter':'Bottom face button'}${keyboard&&pad?' or bottom face button':''} · ${keyboard?.ready?'Cancel ready':'Confirm ready'}`);
+    const keyboard=game.players.find(p=>p.device==='keyboard'),pad=game.players.find(p=>p.device?.startsWith('pad:')),ready=panel.querySelector('.board-ready-confirm');
+    ready.setAttribute('aria-label',`${[keyboard?'Enter':'',pad||!keyboard?ready.dataset.controllerKey:''].filter(Boolean).join(' or ')} · ${keyboard?.ready?'Cancel ready':'Confirm ready'}`);
     ready.querySelector('.board-ready-action-label').textContent=keyboard?.ready?'Cancel ready':'Confirm ready';
     ready.disabled=!game.players.some(p=>p.profileId&&!p.lobbyDisconnected);
     const back=panel.querySelector('.board-ready-back');
-    back.setAttribute('aria-label',`${keyboard?'Escape':'Right face button'}${keyboard&&pad?' or right face button':''} · Back to lobby`);
+    back.setAttribute('aria-label',`${[keyboard?'Escape':'',pad||!keyboard?back.dataset.controllerKey:''].filter(Boolean).join(' or ')} · Back to lobby`);
     back.querySelector('.board-ready-action-label').textContent='Back to lobby';
     const help=panel.querySelector('.board-ready-help');
     help.querySelector('.board-ready-count').textContent=game.players.length?`${game.players.filter(p=>p.ready).length} of ${game.players.length} players ready · `:'Join with a controller or press Enter. ';
@@ -420,10 +437,26 @@ export class PlayableLobby {
       button(p.ready?'Cancel readiness':'Ready',()=>{p.ready=!p.ready;this.close(p);});
       button('Not yet',()=>this.close(p));
     }else if(s.panel==='environment'){
-      buildExpeditionMenu({panel,member:s,game:this.getGame(),select:document.getElementById('environment'),mode:document.getElementById('map-mode'),onModeChange:enabled=>this.setWildboundMode(enabled),details:MAP_DETAILS,tooltip:b=>this.mapTooltip(panel,b),drawIcon:(...args)=>this.drawMapIcon(...args),highlight:()=>{if(panel.isConnected)this.highlight(p);},close:()=>this.close(p),accept:draft=>{
-        this.setWildboundMode(draft.wild);
-        const env=document.getElementById('environment'),mode=document.getElementById('map-mode');env.value=draft.wild?'house':draft.map;mode.value=draft.boundless&&!draft.wild?'boundless':'bounded';
-        for(const input of [env,mode])input.dispatchEvent(new Event('change'));
+      buildExpeditionMenu({panel,member:s,player:p,game:this.getGame(),select:document.getElementById('environment'),mode:document.getElementById('map-mode'),details:MAP_DETAILS,drawIcon:(...args)=>this.drawMapIcon(...args),highlight:()=>{if(panel.isConnected)this.highlight(p);},close:()=>this.close(p),accept:draft=>{
+        const game=this.getGame();
+        if(draft.wilds)return this.startWilds(p,()=>this.close(p));
+        const env=document.getElementById('environment'),mode=document.getElementById('map-mode');
+        const environment=draft.wild?'house':draft.map,mapMode=draft.boundless?'boundless':'bounded';
+        const modeChanged=game.houseWorldsEnabled!==draft.wild;
+        const environmentChanged=env.value!==environment, mapModeChanged=mode.value!==mapMode;
+        const dailyChanged=draft.daily?game.dailyExpedition?.day!==draft.dailyDay:!!game.dailyExpedition;
+        if(dailyChanged){
+          game.seed=draft.daily?draft.dailySeed:Math.floor(game.random()*1000000);
+          game.dailyExpedition=draft.daily?{day:draft.dailyDay,seed:draft.dailySeed}:null;
+          game.generatedEnvironment=null;
+        }
+        game.houseWorldsEnabled=draft.wild;
+        game.environment=env.value=environment;
+        game.mapMode=mode.value=mapMode;
+        localStorage.setItem('wildbound-mode',draft.wild?'on':'off');
+        if(environmentChanged)env.dispatchEvent(new Event('change'));
+        if(mapModeChanged)mode.dispatchEvent(new Event('change'));
+        if((modeChanged||dailyChanged)&&!environmentChanged&&!mapModeChanged)this.state.invalidate(game.players);
         this.close(p);this.refreshMapMenus();this.sync();
       }});
     }else{
@@ -523,11 +556,12 @@ export class PlayableLobby {
     const buttons=[...panel.querySelectorAll('button')];
     if(x&&s.panel==='choose'&&buttons[s.focus]?.dataset.cycle){s.choice+=x;this.renderPanel(p);return;}
     if(x||y){
+      const oldFocus=s.focus;
       if(s.panel==='environment'){
         const next=spatialMenuNeighbor(buttons,buttons[s.focus],x,y);
         s.focus=Math.max(0,buttons.indexOf(next));
       }else s.focus=(s.focus+(y||x)+buttons.length)%buttons.length;
-      const oldFocus=s.focus;this.highlight(p);if(s.focus!==oldFocus)this.sound?.('focus');
+      this.highlight(p);if(s.focus!==oldFocus)this.sound?.('focus');
     }
     if(accept)buttons[s.focus]?.click();
   }
@@ -565,14 +599,14 @@ export class PlayableLobby {
     // Standard Gamepad button indices follow physical positions. On a
     // Nintendo pad, index 1 is the right-side A button and index 0 is the
     // bottom B button; the other families use index 0 for Confirm.
-    const switchPad=controllerFamily(pad)==='switch',confirmButton=switchPad?1:0,backButton=switchPad?0:1;
+    const {confirm:confirmButton,back:backButton}=controllerMenuButtons(pad);
     if(this.boardReadyMenuOpen){
       if(pad.buttons[confirmButton]?.pressed&&!previous[confirmButton])this.toggleBoardPlayerReady(p);
       else if(pad.buttons[backButton]?.pressed&&!previous[backButton])this.closeBoardReadyMenu();
       return;
     }
     if(!s.panel&&!s.spawned&&pad.buttons[confirmButton]?.pressed&&!previous[confirmButton]){s.panel='choose';s.focus=0;this.renderPanel(p);return;}
-    this.nodes.get(p.id)?.updateControllerFamily?.(controllerFamily(pad));
+    this.nodes.get(p.id)?.updateControllerFamily?.(controllerFamily(pad),{confirm:confirmButton,back:backButton});
     if(s.panel)s.held.lobbyInteract=!!pad.buttons[3]?.pressed;
     const x=Math.abs(pad.axes[0]||0)>.6?Math.sign(pad.axes[0]):0,y=Math.abs(pad.axes[1]||0)>.6?Math.sign(pad.axes[1]):0;
     const repeat=s.panel==='create'&&performance.now()>(s.nextCreationMove||0);
@@ -592,7 +626,7 @@ export class PlayableLobby {
       if(game.tvWorld!==this.tvWildbound)Object.defineProperty(game,'tvWorld',{value:this.tvWildbound,writable:true,configurable:true});
       const commands={};
       for(const [id] of this.tvWildbound.players){
-        const hero=players.find(p=>p.id===id);if(!hero)continue;
+        const hero=players.find(p=>p.id===id);if(!hero){commands[id]={disconnected:true,paused:true};continue;}
         const s=this.state.members.get(id),input=playerInput(players,hero,inputs),edge=key=>!!input[key]&&!s.held[key];
         if(!blocked&&!hero.lobbyDisconnected){
           if(edge('inventory')){if(hero.ui)hero.ui=null;else game.openInventory(hero);s.inventoryRelease=true;}
@@ -618,6 +652,7 @@ export class PlayableLobby {
       if(!blocked)this.tvWildbound.step(dt,commands);
       this.draw();return;
     }
+    deliverTvRecovery(this.getGame());
     if(!blocked){
       // The TV minigame owns directional input while a hero is playing. Keep
       // their mapped lobby portal/bait actions from firing through the shared
@@ -700,14 +735,16 @@ export class PlayableLobby {
     if(!blocked)this.television?.step(dt,tvCommands);
     if(this.television?.completed){
       const party=players.filter(p=>this.television.players.has(p.id));
-      restockStarterChests(this.getGame());
+      const game=this.getGame();
+      restockStarterChests(game);
       // Arena geometry is authored; each visit gets a fresh dice/spawn seed.
       this.tvWorldRun=(this.tvWorldRun||0)+1;
       const worldSeed=(this.television.seed+Math.imul(this.tvWorldRun,0x9e3779b9))>>>0;
       this.tvWildbound=new TvWildbound(party,worldSeed);
+      this.tvWildbound.interactButton=game.mapping?.interact??3;
       this.tvWildbound.onLoot=()=>this.getGame().persist();
       this.panels?.replaceChildren();
-      const help=this.root?.querySelector('.party-help');if(help)help.textContent='MOSSROOT COLISEUM · Left/right: move · bottom face / Z: jump · Dodge: dash · left face / F or X: strike · E / top face: linked tubes, hearths & dropped items · I / Back: inventory · Strike the central board to roll and summon enemies; at 48 spaces, interact there to call WILDBOUND.';
+      this.showTvGuide(party);
     }
     this.petHudClock=(this.petHudClock||0)+dt;
     if(this.petHudClock>.25&&this.area&&typeof document!=='undefined'){
@@ -718,6 +755,20 @@ export class PlayableLobby {
     if(!this.tvWildbound&&!blocked&&this.state.tick(dt,players))this.start();
     this.draw();
     this.area.querySelector('.lobby-countdown').textContent=this.state.countdown!==null?`The board opens in ${Math.max(1,Math.ceil(this.state.countdown))}…`:'';
+  }
+  showTvGuide(party){
+    const help=this.root?.querySelector('.party-help');
+    const document=help?.ownerDocument;
+    if(!document)return;
+    const names=(index,key)=>[...new Set(party.map(hero=>hero.device==='keyboard'?key:controllerButtonNames(hero.controllerFamily)[index]))].filter(Boolean).join(' / ');
+    const controls={jump:names(0,'Z'),strike:names(2,'X'),use:names(this.tvWildbound.interactButton??3,'E')};
+    help.classList.add('tv-guide');
+    const title=document.createElement('strong');title.textContent='Mossroot Coliseum';
+    const steps=document.createElement('div');steps.className='tv-guide-steps';
+    for(const [key,task] of [[controls.jump,'Jump'],[controls.strike,'Strike the board to roll'],[controls.use,'Use linked tubes']]){
+      const step=document.createElement('span'),kbd=document.createElement('kbd');kbd.textContent=key;step.append(kbd,document.createTextNode(task));steps.append(step);
+    }
+    help.replaceChildren(title,steps);
   }
   drawPracticeGround(c){
     c.save();

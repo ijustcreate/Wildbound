@@ -1,5 +1,5 @@
 import {tickSnow,drawBlizzard} from './ice-world.mjs';
-import {tickWetWeather,clearWetWeather} from './wet-weather.mjs';
+import {tickWetWeather,clearWetWeather,weatherIntensity} from './wet-weather.mjs';
 import {spawnMerchant,tickMerchant} from './traveling-merchant.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
 import {isCharmed} from './succubus-charm.mjs';
@@ -381,19 +381,22 @@ export function tickHazards(g, dt) {
   g.enemies = g.enemies.filter((e) => !e.escaped);
 }
 export function drawWeather(ctx, g, w, h) {
-  if (!g.weather) return;
   if(drawBlizzard(ctx,g,w,h))return;
+  if (!g.weather) return;
   if(g.weather.type==='sandstorm'){
-    ctx.save();ctx.fillStyle='#b28c4830';ctx.fillRect(0,0,w,h);
-    for(let i=0;i<180;i++){const x=(terrainHash(i,31)*w+g.time*(75+i%37))%w,y=terrainHash(i,71)*h+Math.sin(g.time*2+i)*5;ctx.globalAlpha=.15+terrainHash(i,9)*.35;ctx.fillStyle=i%3?'#dfbf7c':'#8a693f';ctx.fillRect(x,y,3+i%5,1);}ctx.restore();return;
+    const strength=weatherIntensity(g);ctx.save();ctx.globalAlpha=.35+strength*.45;ctx.fillStyle='#b28c4830';ctx.fillRect(0,0,w,h);
+    for(let i=0;i<Math.floor(70+strength*150);i++){const x=(terrainHash(i,31)*w+g.time*(55+strength*90+i%37))%w,y=terrainHash(i,71)*h+Math.sin(g.time*(1+strength)+i)*5;ctx.globalAlpha=(.1+terrainHash(i,9)*.35)*strength;ctx.fillStyle=i%3?'#dfbf7c':'#8a693f';ctx.fillRect(x,y,3+i%5,1);}ctx.restore();return;
   }
-  const intensity = Math.min(2, g.weather.intensity);
+  const intensity = Math.min(2, g.weather.intensity||1),strength=weatherIntensity(g);
+  ctx.globalAlpha=.48+strength*.32;
   ctx.fillStyle = "#10283544";
   ctx.fillRect(0, 0, w, h);
+  ctx.globalAlpha=1;
   ctx.fillStyle = "#c7e5ea";
   ctx.font = "7px monospace";
   ctx.textAlign = "left";
-  ctx.fillText((g.weather.type==='thunderstorm'?'THUNDERSTORM':'MONSOON')+" · " + Math.ceil(g.weather.life) + "s", 12, 65);
+  const severity=intensity>1.45?'HEAVY':strength<.38?'BUILDING':'STEADY';
+  ctx.fillText((g.weather.type==='thunderstorm'?'THUNDERSTORM':'MONSOON')+" · "+severity+" · "+Math.ceil(g.weather.life)+"s", 12, 65);
   if(g.weather.type==='thunderstorm'&&(g.time%9<.08||(g.time%9>.2&&g.time%9<.25))){ctx.fillStyle='#e9f5ff30';ctx.fillRect(0,0,w,h);}
 }
 export function drawHazards(ctx, g) {

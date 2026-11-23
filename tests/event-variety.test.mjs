@@ -86,11 +86,13 @@ test('Small custom pools alternate safely, all-disabled pools return null and se
  assert.equal(selectEvent(g,events.map(e=>({...e,weight:0})),()=>true),null);
 });
 
-test('First actual rolls now honor variety instead of forcing the same lion or tiger opener',()=>{
+test('Non-featured actual rolls honor variety instead of forcing the same lion or tiger opener',()=>{
  for(const env of ['forest','temple','desert','ice','house','beach']){
   const starts=new Set();
   for(const random of [0,.25,.5,.75,.99]){
    const g=make(env);g.random=()=>random;const p=g.players[0];
+   // Authored layout introductions are deliberate one-time cards, tested separately.
+   g.encounteredEvents??={};for(const e of EVENTS)if(e.comboLayout)g.encounteredEvents[e.name]=true;
    g.roll={playerId:p.id,total:2,resolved:false};g.resolveRoll();
    assert.ok(g.event);assert.ok(eventAvailable(g,g.event));
    starts.add(g.event.name);

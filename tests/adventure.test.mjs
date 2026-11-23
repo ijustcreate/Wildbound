@@ -198,6 +198,7 @@ test("Charge attack interrupts windup and pushes toward trap", () => {
   p.faceY = 0;
   g.attack(p, 1);
   assert.equal(e.state, "recover");
+  for(let i=0;i<16&&e.x<=480;i++)g.update(.02,{});
   assert.ok(e.x > 480);
   assert.ok(e.hp < 75);
 });

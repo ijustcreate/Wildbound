@@ -32,14 +32,14 @@ function alive(t) {
 
 // the water: dark and see-through, shading with the slope of the swell each ring carries, so the rings read as
 // waves catching the light from the far left, not just lines
-function surface(p, C, t) {
+function surface(p, C, t, o) {
   const rs = alive(t).map(([a]) => [radius(a), power(a), 3 + a * 2.2]);
   for (let Y = Math.floor(-PATCH * SY); Y < PATCH * SY; Y++)
     for (let X = -PATCH; X < PATCH; X++) {
       const x = X + 0.5, y = Y + 0.5, z = y / SY, r = Math.hypot(x, z), e = r / PATCH;
       if (e > 1) continue;
       const edge = 1 - smooth(0.6, 1, e);
-      p.blend(x, y, C[1], 0.55 * edge);
+      if(!o.gameplay)p.blend(x, y, C[1], 0.55 * edge);
       let slope = 0;
       for (const [R, k, w] of rs) {
         const d = r - R;
@@ -63,7 +63,7 @@ function rings(p, C, t, half) {
 
 export function drawBack(p, t, o) {
   const C = fit(o.palette, 8);
-  surface(p, C, t);
+  surface(p, C, t, o);
   rings(p, C, t, -1);
 }
 

@@ -1,0 +1,59 @@
+const path=require('node:path'),fs=require('node:fs'),root=path.resolve(__dirname,'..');
+if(!process.versions.electron){const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;const child=require('node:child_process').spawnSync(path.join(root,'node_modules/electron/dist/electron.exe'),[__filename,'--mute-audio',...process.argv.slice(2)],{cwd:root,env,encoding:'utf8',timeout:120000});process.stdout.write(child.stdout||'');process.stderr.write(child.stderr||'');process.exit(child.status??1);}
+const {app,BrowserWindow}=require('electron'),out=path.join(root,'test-output/otter-art');fs.mkdirSync(out,{recursive:true});app.setPath('userData',path.join(out,'isolated-profile'));app.commandLine.appendSwitch('mute-audio');
+const deadline=setTimeout(()=>app.exit(1),110000);
+app.whenReady().then(async()=>{const w=new BrowserWindow({show:false,width:1400,height:900,webPreferences:{backgroundThrottling:false}}),errors=[];w.webContents.setAudioMuted(true);w.webContents.on('console-message',e=>{if(e.level==='error')errors.push(e.message);});
+try{await w.loadFile(path.join(process.env.WILDBOUND_VERIFY_APP||root,'index.html'));await w.webContents.executeJavaScript('wildboundBoot.ready');const images=await w.webContents.executeJavaScript(`(async()=>{
+ window.requestAnimationFrame=()=>0;
+ const {Assets}=await import('./src/assets.mjs'),{Animator}=await import('./src/animation.mjs'),{directionVector}=await import('./src/player-motion.mjs');
+ const assets=new Assets();await assets.load();const animator=new Animator(assets),checks=[],ok=(v,m)=>{if(!v)throw Error(m);checks.push(m);};
+ const {drawWildFauna}=await import('./src/wild-fauna-art.mjs');
+ const probe=document.createElement('canvas');probe.width=140;probe.height=120;const pc=probe.getContext('2d');
+ const pixels=(actor,time)=>{pc.clearRect(0,0,140,120);drawWildFauna(pc,{id:1,kind:'river_otter',hp:44,x:70,y:65,faceX:0,faceY:1,...actor},time,47);return probe.toDataURL();};
+ const facings=[];for(let d=0;d<8;d++){const [faceX,faceY]=directionVector(d);facings.push(pixels({faceX,faceY},0));const data=pc.getImageData(0,0,140,120).data;let count=0;for(let n=3;n<data.length;n+=4)if(data[n])count++;ok(count>85,'complete otter silhouette in direction '+d);}
+ ok(new Set(facings).size===8,'all eight facings are distinct');
+ ok(new Set(Array.from({length:8},(_,i)=>pixels({moving:true,step:i*Math.PI/4,faceX:1,faceY:0},i))).size>=6,'land gait has distinct articulated foot and tail positions');
+ ok(pixels({moving:true,step:1},1)!==pixels({moving:true,step:1,swimming:true},1),'water pose differs from land pose');
+ ok(pixels({moving:true,step:1,frozen:2},0)===pixels({moving:true,step:9,frozen:2},12),'frozen otter stays motionless');
+ ok(pixels({hp:0},0)===pixels({hp:0},9),'fallen otter stays still');
+ const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=620;const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;
+ c.fillStyle='#233532';c.fillRect(0,0,canvas.width,canvas.height);c.font='18px sans-serif';c.fillStyle='#efe0be';c.fillText('BAYOU RIVER OTTER - DRAFT',22,30);
+ const views=[0,7,6,5,4],names=['Front','Front diagonal','Profile','Rear diagonal','Rear'];
+ for(let row=0;row<2;row++)for(let i=0;i<views.length;i++){
+  const d=views[i],[faceX,faceY]=directionVector(d),actor={id:100+row*8+d,kind:'river_otter',hp:44,x:0,y:0,faceX,faceY,moving:true,step:1.1,swimming:!!row,animationAction:row?'swim':'walk'};
+  const x=108+i*215,y=130+row*240;c.fillStyle=row?'#345758':'#40533b';c.fillRect(x-100,y-55,200,205);
+  c.fillStyle='#d7d4b6';c.font='14px sans-serif';c.fillText(names[i],x-70,y-42);
+  for(const [scale,yy]of [[1,y],[3,y+135]]){c.save();c.translate(x,yy);c.scale(scale,scale);animator.draw(c,actor,.6,47);c.restore();}
+ }
+ c.fillStyle='#d7d4b6';c.fillText('Land: native + 3x',22,58);c.fillText('Swim: native + 3x',22,298);
+ const strip=document.createElement('canvas');strip.width=1000;strip.height=270;const sc=strip.getContext('2d');sc.fillStyle='#345758';sc.fillRect(0,0,1000,270);sc.fillStyle='#efe0be';sc.font='16px sans-serif';sc.fillText('Walk / swim cycle - profile',16,24);
+ for(let row=0;row<2;row++)for(let i=0;i<6;i++){sc.save();sc.translate(85+i*165,120+row*125);sc.scale(2,2);animator.draw(sc,{id:400+row*6+i,kind:'river_otter',hp:44,x:0,y:0,faceX:1,faceY:0,moving:true,step:i*Math.PI/3,swimming:!!row,animationAction:row?'swim':'walk'},i*.12,47);sc.restore();}
+ const {Game}=await import('./src/core.mjs'),{Renderer}=await import('./src/render.mjs'),{seedWildFauna,tickWildFauna}=await import('./src/wild-fauna.mjs'),{waterAt}=await import('./src/environment.mjs');
+ const g=new Game(()=>.5);g.environment='swamp';g.seed=1234;const player=g.addPlayer('keyboard','Otter art review');g.start();g.openingBoard=false;g.persist=()=>{};g.onSound=()=>{};g.spriteLibrary=assets.library;
+ seedWildFauna(g,true);const otters=g.enemies.filter(e=>e.kind==='river_otter');ok(otters.length===2,'Bayou generates two real river otters');g.enemies=otters;
+ const bank=otters[0];let wet=null;for(let dy=-128;dy<=128;dy+=16)for(let dx=-128;dx<=128;dx+=16){const x=bank.x+dx,y=bank.y+dy,distance=Math.hypot(dx,dy);if(distance>=64&&waterAt(g,x,y)==='water'&&(!wet||distance<wet.distance))wet={x,y,distance};}
+ ok(!!wet,'bank otter has nearby deep water');Object.assign(otters[1],wet,{homeX:wet.x,homeY:wet.y,wanderIn:99,faceX:1,faceY:0});Object.assign(bank,{wanderIn:99,faceX:1,faceY:0});for(const e of otters)tickWildFauna(g,e,0);ok(otters[1].swimming&&otters[1].animationAction==='swim','real water terrain selects swim animation');ok(!bank.swimming,'bank otter uses land pose');
+ let dry=null;for(let dy=32;dy<=96;dy+=16)for(let dx=32;dx<=96;dx+=16){const x=bank.x+dx,y=bank.y+dy;if(!dry&&!['water','shallow'].includes(waterAt(g,x,y))&&!g.blocked(x,y,10,false,false,false,0))dry={x,y};}Object.assign(player,dry||{x:bank.x+160,y:bank.y+80},{invuln:999});
+ const world=document.createElement('canvas');world.width=1080;world.height=700;world.style.cssText='width:1080px;height:700px';document.body.replaceChildren(world);const renderer=new Renderer(world,assets);renderer.camera={x:bank.x,y:bank.y,zoom:2};renderer.draw(g,0);
+ const {rigSubject}=await import('./src/rig-subjects.mjs'),{poseAt,projectPoint}=await import('./src/player-motion.mjs'),{drawOtterWater}=await import('./src/otter-water.mjs');const subject=rigSubject('river_otter');
+ ok(!!subject.data.joints.find&&!!subject.data.joints.tailEnd,'Animation Studio exposes find and complete tail chain');
+ const forage=document.createElement('canvas');forage.width=1200;forage.height=570;const fc=forage.getContext('2d');fc.fillStyle='#294744';fc.fillRect(0,0,1200,570);fc.font='18px sans-serif';fc.fillStyle='#f0ddbb';fc.fillText('OTTER RIG DRAFT - SWIM / DIVE / FIND / BELLY FLOAT',20,28);
+ const actions=['swim','dive','surface','roll','belly_float','eat'];
+ for(let i=0;i<actions.length;i++){
+  const action=actions[i],clip=subject.data.clips[action],frame=action==='dive'?clip.length*.55:action==='roll'?clip.length*.6:action==='surface'?clip.length*.8:5,actor={id:900+i,kind:'river_otter',hp:44,x:0,y:0,faceX:1,faceY:0,swimming:true,animationAction:action,playerFrame:frame,otterFind:i>=2?'clam':null,otterDiveDepth:action==='dive'?.5:0};
+  fc.fillStyle='#d9ddc3';fc.font='14px sans-serif';fc.fillText(action,20+i*200,65);
+  fc.save();fc.translate(105+i*200,180);fc.scale(3,3);drawOtterWater(fc,actor,.4,a=>animator.draw(fc,a,.4,47));fc.restore();
+  fc.save();fc.translate(105+i*200,360);fc.scale(3,3);animator.draw(fc,actor,.4,47);fc.restore();
+ }
+ fc.fillStyle='#d9ddc3';fc.fillText('Top: actual waterline. Below: full articulated pose.',20,410);
+ const studio=document.createElement('canvas');studio.width=1050;studio.height=440;const st=studio.getContext('2d');st.fillStyle='#293833';st.fillRect(0,0,1050,440);st.fillStyle='#e9d6b8';st.font='18px sans-serif';st.fillText('EDITABLE NATIVE RIG - 30 JOINTS / 12 CLIPS',20,28);
+ for(let i=0;i<3;i++){const action=['walk','swim','belly_float'][i],pose=poseAt(subject.data,action,5);st.save();st.translate(195+i*345,235);st.scale(3.5,3.5);subject.draw(st,{kind:'river_otter',hp:44,faceX:1,faceY:0,animationAction:action,otterFind:i===2?'clam':null},0,subject.data,pose);st.strokeStyle='#80e1c699';st.lineWidth=.35;for(const [name,j]of Object.entries(subject.data.joints)){const p=projectPoint(pose[name],6);if(j.parent){const parent=projectPoint(pose[j.parent],6);st.beginPath();st.moveTo(parent.x,parent.y);st.lineTo(p.x,p.y);st.stroke();}st.fillStyle='#b7f7df';st.fillRect(p.x-.5,p.y-.5,1,1);}st.restore();st.fillStyle='#e9d6b8';st.fillText(action,60+i*345,330);}
+ const original=structuredClone(subject.data),custom=structuredClone(original),modelReference=subject.data;custom.joints.tailEnd.position[0]+=8;try{subject.replace(custom);ok(subject.data===modelReference&&subject.data.joints.tailEnd.position[0]===custom.joints.tailEnd.position[0],'studio tail edit changes the live rig without replacing its identity');const edited=poseAt(subject.data,'swim',0),before=poseAt(original,'swim',0);ok(edited.tailEnd[0]===before.tailEnd[0]+8,'custom tail pivot survives pose sampling');}finally{subject.replace(original);}
+ const runtime=[];Object.assign(player,{equipment:{}});Object.assign(otters[1],{wildlifePackKind:'river_otter',otterForage:{stage:0,age:0,wait:0},homeX:wet.x,homeY:wet.y});g.persist=()=>{};g.onSound=()=>{};
+ for(let i=0;i<850;i++){g.update(1/60,{});if(otters[1].animationAction)runtime.push(otters[1].animationAction);}
+ for(const action of ['dive','underwater','surface','roll','belly_float','eat','return'])ok(runtime.includes(action),'actual Game.update reaches '+action);
+ const {saveSession,restoreSession}=await import('./src/session.mjs');const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),resumed=restored.enemies.find(e=>e.id===otters[1].id);ok(JSON.stringify(resumed.otterForage)===JSON.stringify(otters[1].otterForage),'real session reload preserves forage stage and elapsed time');
+ const {RigStudio}=await import('./src/player-studio.mjs');const studioRoot=document.createElement('div');studioRoot.style.cssText='width:1300px;height:850px';document.body.replaceChildren(studioRoot);const editor=new RigStudio(()=>{});editor.setSubject('river_otter');editor.mount(studioRoot);editor.clip='belly_float';editor.direction=6;editor.frame=5;editor.refresh();editor.animate(0);ok(studioRoot.querySelectorAll('[data-joint]').length===30,'real Animation Studio mounts all 30 otter handles');ok(studioRoot.textContent.includes('belly_float')&&studioRoot.textContent.includes('dive'),'studio exposes belly and dive clips');editor.setSubject('chicken');editor.mount(studioRoot);editor.setSubject('river_otter');editor.mount(studioRoot);editor.animate(0);ok(editor.clip==='belly_float'&&editor.selected==='tailTip','switching chicken to otter restores its clip and tail selection');
+ return {images:{views:canvas.toDataURL(),cycle:strip.toDataURL(),bayou:world.toDataURL(),forage:forage.toDataURL(),rig:studio.toDataURL(),studioCanvas:editor.$('.ps-canvas').toDataURL()},checks};})()`);
+await new Promise(resolve=>setTimeout(resolve,250));fs.writeFileSync(path.join(out,'draft-studio-window.png'),(await w.webContents.capturePage()).toPNG());const suffix=process.argv.includes('--baseline')?'baseline':'draft';for(const [name,data]of Object.entries(images.images))fs.writeFileSync(path.join(out,`${suffix}-${name}.png`),Buffer.from(data.split(',')[1],'base64'));if(errors.length)throw Error(errors.join('\n'));const report={passed:images.checks.length,failed:0,checks:images.checks,muted:w.webContents.isAudioMuted(),errors,out,suffix,app:process.env.WILDBOUND_VERIFY_APP||root};fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));clearTimeout(deadline);app.exit(0);
+}catch(e){console.error(e.stack);clearTimeout(deadline);app.exit(1);}});

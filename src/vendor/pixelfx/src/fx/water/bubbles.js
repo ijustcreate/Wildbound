@@ -67,6 +67,7 @@ function each(t, S, fn) {
 }
 
 export function drawBack(p, t, o) {
+  if(o.gameplay)return;
   const C = fit(o.palette, 8), ph = t / D;
   // the water: deeper toward the floor, light falling through it in shafts
   for (let Y = TOP - 2; Y < 0; Y++)
@@ -129,7 +130,7 @@ export function draw(p, t, o) {
     }
   });
   // the surface: a lit line with glints running along it, a darker band under it
-  for (let X = -HALF; X < HALF; X++) {
+  for (let X = -HALF; !o.gameplay && X < HALF; X++) {
     const x = X + 0.5, y = surfaceY(x, ph), e = 1 - smooth(HALF - 12, HALF, Math.abs(x));
     const glint = Math.sin(x * 0.37 - ph * TAU * 3) * Math.sin(x * 0.13 + ph * TAU) > 0.55;
     p.dot(X, y, glint ? WHITE : C[5], e * 1.3);

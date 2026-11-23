@@ -1,3 +1,4 @@
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import { rules } from "./definitions.mjs";
 import { clearShot, navigateEnemy } from "./navigation.mjs";
 import {
@@ -195,7 +196,7 @@ export function tickCaptain(g, e, targets, dt, stats = {}, beh = {}) {
     visible &&
     beh.melee !== false &&
     d < 61 &&
-    e.captainBashCooldown <= 0 &&
+    e.captainBashCooldown <= 0 && requestEnemyGroupTurn(g,e,target) &&
     e.equipment.hand2
   ) {
     e.captainBashCooldown = stats.bashCooldown || 6;
@@ -206,7 +207,7 @@ export function tickCaptain(g, e, targets, dt, stats = {}, beh = {}) {
     visible &&
     beh.melee !== false &&
     d < (stats.attackRange || 72) &&
-    (e.cooldown || 0) <= 0
+    (e.cooldown || 0) <= 0 && requestEnemyGroupTurn(g,e,target)
   ) {
     e.cooldown = 1;
     e.captainCombo = (e.captainCombo || 0) + 1;
@@ -218,7 +219,7 @@ export function tickCaptain(g, e, targets, dt, stats = {}, beh = {}) {
     beh.dash !== false &&
     d > 120 &&
     d < 240 &&
-    e.captainChargeCooldown <= 0
+    e.captainChargeCooldown <= 0 && requestEnemyGroupTurn(g,e,target,{rush:true})
   ) {
     e.captainChargeCooldown = stats.dashCooldown || 6;
     start(e, "guard");

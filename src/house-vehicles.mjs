@@ -19,6 +19,19 @@ const hoodPoint=v=>({x:v.x+Math.sin(v.heading||0)*(v.h||128)*.62,y:v.y-Math.cos(
 export function houseChestFor(g,p){return (g.house?.furniture||[]).find(f=>f.kind==='chest'&&!f.opened&&distance(p,{x:f.x+f.w/2,y:f.y+f.h/2})<62)||null;}
 export function openHouseChest(g,p){const chest=houseChestFor(g,p);if(!chest)return false;chest.opened=true;for(const item of chest.loot||[])g.dropLoot(chest.x+chest.w/2,chest.y+chest.h+14,item.type,item.qty||1,chest.chestId,true);g.onSound?.('loot',chest);g.message(chest.chestId==='house-engine-part'?'Garage chest opened. You found spare supplies.':'Bedroom chest opened. You found a car key.');g.persist?.();return true;}
 export function vehicleForPoint(g,p){return (g.house?.vehicles||[]).find(v=>distance(p,v)<Math.max(72,(v.w||80)*.8)||distance(p,hoodPoint(v))<70)||null;}
+// Door selection is shared by entry and its visible prompt. A point at the
+// car centre retains legacy entry for restored saves and scripted spawns.
+export function vehicleDoorPoint(v,seat){const a=v.heading||0,x=(seat.side==='left'?-1:1)*(v.w||96)*.54,y=seat.y*(v.h||144)/144;return {x:v.x+Math.cos(a)*x-Math.sin(a)*y,y:v.y+Math.sin(a)*x+Math.cos(a)*y};}
+export function houseVehicleEntry(g,p){
+ const candidates=[];
+ for(const v of g.house?.vehicles||[]){if(v.occupiable===false||v.submerging||v.sink>0)continue;
+  for(const seat of VEHICLE_SEATS){if((v.seats||{})[seat.id]||(seat.id==='driver'&&v.occupiedBy!=null))continue;
+   const point=vehicleDoorPoint(v,seat),d=distance(p,point);if(d<54)candidates.push({vehicle:v,seat,point,distance:d});
+  }
+  if(distance(p,v)<24||distance(p,hoodPoint(v))<36){const seat=VEHICLE_SEATS.find(s=>!(v.seats||{})[s.id]&&!(s.id==='driver'&&v.occupiedBy!=null));if(seat)candidates.push({vehicle:v,seat,point:vehicleDoorPoint(v,seat),distance:-1});}
+ }
+ return candidates.sort((a,b)=>a.distance-b.distance)[0]||null;
+}
 export function interactHouseVehicle(g,p){return enterOrExitHouseVehicle(g,p);}
 export function tryInstallVehiclePart(g,p,index){const item=p.inventory?.[index],v=vehicleForPoint(g,p);if(item?.type!=='car_engine_part'||!v||!v.hoodOpen||v.enginePartInstalled)return false;item.qty--;if(item.qty<=0)p.inventory[index]=null;v.enginePartInstalled=true;g.message('Optional engine spare fitted. The car is ready to drive.');g.onSound?.('repairDone',v);g.persist?.();return true;}
 export function houseVehicleForPlayer(g,p){return (g.house?.vehicles||[]).find(v=>Object.values(v.seats||{}).includes(p.id)||v.occupiedBy===p.id)||null;}
@@ -27,9 +40,20 @@ export function vehicleSeatForPlayer(v,p){return Object.entries(v.seats||{}).fin
 export function vehiclePassengers(g,v){return Object.entries(v.seats||{}).filter(([seat])=>seat!=='driver').map(([,id])=>g.players.find(p=>p.id===id)).filter(Boolean);}
 export function enterOrExitHouseVehicle(g,p){
  const current=houseVehicleForPlayer(g,p);
- if(current?.submerging){g.message('The car is going under…');return true;}
- if(current){const seat=vehicleSeatForPlayer(current,p)||'driver',v=seatPoint(current,seat),a=current.heading||0;const preferred=seat.includes('right')?Math.PI/2:-Math.PI/2,exitAngle=[preferred,preferred+Math.PI].find(angle=>!g.blocked(v.x+Math.cos(a+angle)*42,v.y+Math.sin(a+angle)*42,10,false,false,false,14));if(current.speed&&Math.abs(current.speed)>18){g.message('Stop the car before getting out.');return true;}if(exitAngle===undefined){g.message('There is no room to get out here.');return true;}const exit={x:v.x+Math.cos(a+exitAngle)*42,y:v.y+Math.sin(a+exitAngle)*42};delete occupiedSeats(current)[seat];p.vehicleId=null;p.vehicleSeat=null;p.x=exit.x;p.y=exit.y;p.moving=false;current.occupiedBy=occupiedSeats(current).driver||null;g.message('You got out of the car.');return true;}
- const vehicle=(g.house?.vehicles||[]).find(v=>v.occupiable!==false&&!v.submerging&&!(v.sink>0)&&(distance(p,v)<Math.max(72,(v.w||80)*.8)||distance(p,hoodPoint(v))<70)&&VEHICLE_SEATS.some(s=>!(v.seats||{})[s.id]));if(!vehicle)return false;const seats=occupiedSeats(vehicle),seat=VEHICLE_SEATS.find(s=>!seats[s.id])?.id;if(!seat)return false;seats[seat]=p.id;p.vehicleId=vehicle.id;p.vehicleSeat=seat;p.x=vehicle.x;p.y=vehicle.y;p.moving=false;vehicle.occupiedBy=seats.driver||null;if(seat==='driver'){vehicle.hoodOpen=false;vehicle.engineOn=true;vehicle.engineWarning=false;vehicle.keyWarning=false;vehicle.engineStart=.35;g.onSound?.('engineStart',vehicle);}p.jumpHeight=0;p.jumpVelocity=0;p.jumpHeld=false;p.dashTime=0;p.dashRecovery=0;p.charge=0;p.bowAiming=false;p.swimming=false;delete p.queuedAttack;g.message(seat==='driver'?'You are driving. Stick left/right: steer. Bottom face: gas. Left face: reverse gas. Opposite pedal brakes before changing direction. Keyboard: W/S gas and brake/reverse; A/D steer.':'Passenger seat occupied. Aim and fire through the window.');return true;
+ if(current?.submerging){g.message('The car is going underâ€¦');return true;}
+ if(current){
+  if(Math.abs(current.speed||0)>18){g.message('Stop the car before getting out.');return true;}
+  const seat=VEHICLE_SEATS.find(s=>s.id===vehicleSeatForPlayer(current,p))||VEHICLE_SEATS[0],a=current.heading||0;
+  const preferred=seat.side==='left'?-1:1;
+  const exit=[preferred,-preferred].map(side=>{const point=seatPoint(current,seat.id),x=side*((current.w||96)*.5+20);return {x:point.x+Math.cos(a)*(x-seat.x),y:point.y+Math.sin(a)*(x-seat.x)};}).find(q=>!g.blocked(q.x,q.y,10,false,false,false,14));
+  if(!exit){g.message('There is no room to get out here.');return true;}
+  delete occupiedSeats(current)[seat.id];current.occupants={...current.seats};
+  Object.assign(p,{vehicleId:null,vehicleSeat:null,x:exit.x,y:exit.y,moving:false,interactTime:0,interactUsed:true});
+  current.occupiedBy=occupiedSeats(current).driver||null;g.message('You got out of the car.');return true;
+ }
+ const entry=houseVehicleEntry(g,p);if(!entry)return false;
+ const vehicle=entry.vehicle,seats=occupiedSeats(vehicle),seat=entry.seat.id;
+ seats[seat]=p.id;p.vehicleId=vehicle.id;p.vehicleSeat=seat;p.x=vehicle.x;p.y=vehicle.y;p.moving=false;vehicle.occupiedBy=seats.driver||null;if(seat==='driver'){vehicle.hoodOpen=false;vehicle.engineOn=true;vehicle.engineWarning=false;vehicle.keyWarning=false;vehicle.engineStart=.35;g.onSound?.('engineStart',vehicle);}p.jumpHeight=0;p.jumpVelocity=0;p.jumpHeld=false;p.dashTime=0;p.dashRecovery=0;p.charge=0;p.bowAiming=false;p.swimming=false;delete p.queuedAttack;g.message(seat==='driver'?'You are driving. Stick left/right: steer. Bottom face: gas. Left face: reverse gas. Opposite pedal brakes before changing direction. Keyboard: W/S gas and brake/reverse; A/D steer.':'Passenger seat occupied. Aim and fire through the window.');return true;
 }
 export function toggleGarageDoor(g,p){const b=(g.house?.furniture||[]).find(f=>f.kind==='garage_button'&&distance(p,{x:f.x+f.w/2,y:f.y+f.h/2})<58);if(!b)return false;const d=(g.house?.doors||[]).find(d=>d.kind==='garage');if(!d)return false;d.open=!d.open;g.message(d.open?'Garage door opened.':'Garage door closed.');g.onSound?.(d.open?'doorOpen':'doorClose',p);return true;}
 export function vehicleMotion(g,p,input,dt){
@@ -66,7 +90,7 @@ export function vehicleMotion(g,p,input,dt){
  // reconstruct the body center: the rear follows the steered front wheels.
  const wheelBase=v.wheelBase||((v.h||144)*.58),oldHeading=v.heading;
  const travel=(oldSpeed+v.speed)*.5*Math.cos(v.wheelAngle)*dt;
- v.wheelRotation=(v.wheelRotation||0)+travel/12;
+ v.wheelRotation=(v.wheelRotation||0)+travel/10;
  const turn=travel/wheelBase*Math.tan(v.wheelAngle),mid=oldHeading+turn*.5;
  v.heading=oldHeading+turn;v.steer=steer;v.moving=Math.abs(v.speed)>5;v.wet=shallow;
  if(Math.abs(v.speed)>125&&Math.abs(steer)>.72&&(v.skidSoundCooldown||0)<=0){g.onSound?.('vehicleSkid',v);v.skidSoundCooldown=.62;}
@@ -94,7 +118,7 @@ export function tickVehicleEffects(g,v,dt){
  v.waterProbe=Math.max(0,(v.waterProbe||0)-dt);
  if(v.waterProbe===0&&v.occupiable!==false&&(v.submerging||waterAt(g,v.x,v.y)==='water')){
   const target=vehicleWaterTarget(g,v);v.waterProbe=.3;if(target){v.waterEntry={fromX:v.x,fromY:v.y,fromHeading:v.heading||0,...target,progress:0};v.submerging=true;v.occupiable=false;v.engineOn=false;v.moving=false;}
-  if(v.submerging)g.message?.('The car is sinking…');
+  if(v.submerging)g.message?.('The car is sinkingâ€¦');
  }
  let sinkingDt=dt;
  if(v.waterEntry&&v.waterEntry.progress<1){const e=v.waterEntry,remaining=(1-e.progress)*.55;e.progress=Math.min(1,e.progress+dt/.55);const t=e.progress*e.progress*(3-2*e.progress);v.x=e.fromX+(e.x-e.fromX)*t;v.y=e.fromY+(e.y-e.fromY)*t;const turn=Math.atan2(Math.sin(e.heading-e.fromHeading),Math.cos(e.heading-e.fromHeading));v.heading=e.fromHeading+turn*t;for(const id of Object.values(v.seats||{})){const rider=g.players?.find(p=>p.id===id);if(rider){rider.x=v.x;rider.y=v.y;}}sinkingDt=Math.max(0,dt-remaining);if(e.progress===1){startVehicleSplash(v);g.onSound?.('splash',v);}}
@@ -105,7 +129,7 @@ export function tickVehicleEffects(g,v,dt){
   v.seats={};v.occupants={};v.occupiedBy=null;g.message?.('The car has gone under. Swim to safety!');v.ridersEjected=true;
   }
  }
- v.effects??={tracks:[],splashes:[],hitCooldown:0};v.effects.hitCooldown=Math.max(0,v.effects.hitCooldown-dt);v.effects.structureCooldown=Math.max(0,(v.effects.structureCooldown||0)-dt);v.engineStart=Math.max(0,(v.engineStart||0)-dt);if(!v.submerging)v.sink=Math.max(0,(v.sink||0)-dt*.35);if(v.submerging&&v.sink<1){v.effects.sinkRipple=(v.effects.sinkRipple||0)-dt;if(v.effects.sinkRipple<=0){v.effects.sinkRipple=.3;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}const rear=(side)=>{const a=v.heading||0,lx=side*(v.w||96)*.47,ly=(v.h||144)*.28;return {x:v.x+Math.cos(a)*lx-Math.sin(a)*ly,y:v.y+(Math.sin(a)*lx+Math.cos(a)*ly)*.72};};const wheels=[rear(-1),rear(1)];v.effects.trackTimer=(v.effects.trackTimer||0)-dt;if(Math.abs(v.speed||0)>8&&!v.wet&&!v.submerging&&v.effects.trackTimer<=0){v.effects.trackTimer=.06;for(let i=0;i<2;i++){const now=wheels[i],old=v.effects.lastWheels?.[i];if(old&&distance(old,now)>1&&distance(old,now)<90)v.effects.tracks.push({x:old.x,y:old.y,x2:now.x,y2:now.y,angle:v.heading||0,life:6,skid:Math.abs(v.steer||0)>.55});}v.effects.lastWheels=wheels;}else if(Math.abs(v.speed||0)<=8||v.wet||v.submerging)v.effects.lastWheels=wheels;if(v.wet&&Math.abs(v.speed||0)>12){v.effects.splashTimer=(v.effects.splashTimer||0)-dt;if(v.effects.splashTimer<=0){v.effects.splashTimer=.12;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}for(const t of v.effects.tracks)t.life-=dt;v.effects.tracks=v.effects.tracks.filter(t=>t.life>0).slice(-480);tickVehicleWaterParticles(v,dt);for(const s of v.effects.splashes)s.life-=dt;v.effects.splashes=v.effects.splashes.filter(s=>s.life>0).slice(-60);}
+ v.effects??={tracks:[],splashes:[],hitCooldown:0};v.effects.hitCooldown=Math.max(0,v.effects.hitCooldown-dt);v.effects.structureCooldown=Math.max(0,(v.effects.structureCooldown||0)-dt);v.engineStart=Math.max(0,(v.engineStart||0)-dt);if(!v.submerging)v.sink=Math.max(0,(v.sink||0)-dt*.35);if(v.submerging&&v.sink<1){v.effects.sinkRipple=(v.effects.sinkRipple||0)-dt;if(v.effects.sinkRipple<=0){v.effects.sinkRipple=.3;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}const rear=(side)=>{const a=v.heading||0,lx=side*(v.w||96)*.40,ly=(v.h||144)*.28;return {x:v.x+Math.cos(a)*lx-Math.sin(a)*ly,y:v.y+(Math.sin(a)*lx+Math.cos(a)*ly)*.72};};const wheels=[rear(-1),rear(1)];v.effects.trackTimer=(v.effects.trackTimer||0)-dt;if(Math.abs(v.speed||0)>8&&!v.wet&&!v.submerging&&v.effects.trackTimer<=0){v.effects.trackTimer=.06;for(let i=0;i<2;i++){const now=wheels[i],old=v.effects.lastWheels?.[i];if(old&&distance(old,now)>1&&distance(old,now)<90)v.effects.tracks.push({x:old.x,y:old.y,x2:now.x,y2:now.y,angle:v.heading||0,life:6,skid:Math.abs(v.steer||0)>.55});}v.effects.lastWheels=wheels;}else if(Math.abs(v.speed||0)<=8||v.wet||v.submerging)v.effects.lastWheels=wheels;if(v.wet&&Math.abs(v.speed||0)>12){v.effects.splashTimer=(v.effects.splashTimer||0)-dt;if(v.effects.splashTimer<=0){v.effects.splashTimer=.12;v.effects.splashes.push({x:v.x,y:v.y,life:.6});}}for(const t of v.effects.tracks)t.life-=dt;v.effects.tracks=v.effects.tracks.filter(t=>t.life>0).slice(-480);tickVehicleWaterParticles(v,dt);for(const s of v.effects.splashes)s.life-=dt;v.effects.splashes=v.effects.splashes.filter(s=>s.life>0).slice(-60);}
 export function vehicleBumper(v,sign=Math.sign(v.speed)||1){
  const fx=Math.sin(v.heading||0)*sign,fy=-Math.cos(v.heading||0)*sign;
  return {x:v.x+fx*(v.h||144)*.5,y:v.y+fy*(v.h||144)*.5,faceX:fx,faceY:fy};

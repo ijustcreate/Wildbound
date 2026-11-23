@@ -1,3 +1,4 @@
+import {emitGameplayFx} from './gameplay-fx.mjs';
 import {ITEMS,take} from './items.mjs';
 export const essenceWeapon=type=>!!ITEMS[type]?.slot&&['sword','dagger','bow','wand','staff','boomerang','rifle','scythe'].includes(ITEMS[type].base||type);
 export function weaponHitContext(p,slot='hand1'){
@@ -9,6 +10,7 @@ export function consumeLifeSteal(g,p,target,damage,shot){
   if(index<0)return 0;
   const healing=Math.min(8,damage*.2,p.maxHp-p.hp);if(healing<=0)return 0;
   sockets.splice(index,1);p.hp+=healing;
+  emitGameplayFx(g,'life-steal',p,{targetId:p.id,fromX:target.x,fromY:target.y-18});
   if(take(p.inventory||[],'dark_essence',1))sockets.splice(index,0,'dark_essence');
   g.effects?.push({x:p.x,y:p.y,life:.6,radius:12,color:'#b996ed',text:'+'+(Math.round(healing*10)/10)});
   return healing;

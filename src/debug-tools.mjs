@@ -1,4 +1,4 @@
-import {SLOTS} from './items.mjs';
+import {SLOTS,BACKPACK_SLOTS} from './items.mjs';
 // Loaded only for smoke tests or an explicit tools preview.
 export function installDebugTools(ctx) {
   window.verifyVendingUI=async(family='xbox')=>{
@@ -102,7 +102,7 @@ export function installDebugTools(ctx) {
       p.inventory=[{type:'moon_blade',qty:1,sockets:['azure_bead']}];step();a.querySelector('[data-action="pack-slot-0"]').click();step();a.querySelector('[data-action="storage-transfer"]').click();step();
       const at=p.starterChest.findIndex(i=>i?.type==='moon_blade');if(at<0)throw Error('Starter deposit failed');a.querySelector('[data-action="chest-slot-'+at+'"]').click();step();a.querySelector('[data-action="storage-transfer"]').click();step();
       if(!p.inventory.some(i=>i?.sockets?.[0]==='azure_bead'))throw Error('Starter deposit lost sockets');
-      p.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:0');step();const stock=JSON.stringify(p.starterChest);a.querySelector('[data-action="storage-transfer"]').click();step();if(JSON.stringify(p.starterChest)!==stock||!p.ui.notice.includes('full'))throw Error('Full pack lost starter supplies');
+      p.inventory=Array.from({length:BACKPACK_SLOTS},()=>({type:'hat',qty:1}));g.inventoryAction(p,'panel:chest');g.inventoryAction(p,'select:0');step();const stock=JSON.stringify(p.starterChest);a.querySelector('[data-action="storage-transfer"]').click();step();if(JSON.stringify(p.starterChest)!==stock||!p.ui.notice.includes('full'))throw Error('Full pack lost starter supplies');
       p.inventory=[];g.inventoryAction(p,'lootAll');step();if(p.starterChest.some(Boolean))throw Error('Starter Withdraw all failed');g.start();if(p.starterChest.filter(Boolean).length!==9)throw Error('Next level failed to restock');
       g.phase='lobby';g.openInventory(p,'starter');step();lobby.draw();
       window.starterVerification={g,lobby,p,q};
@@ -172,7 +172,7 @@ export function installDebugTools(ctx) {
         const hero=heroes[i];press(i,4);hero.ui.index=SLOTS.indexOf('hand1');step();
         const before=hero.inventory.filter(item=>item?.type==='sword').length;press(i,0);
         if(hero.equipment.hand1||hero.inventory.filter(item=>item?.type==='sword').length!==before+1)throw Error('Controller primary button did not unequip sword');
-        hero.equipment.hand1='bow';hero.equipment.hand2='occupied';hero.equipmentSockets={hand1:['azure_bead']};hero.inventory=Array.from({length:24},()=>({type:'hat',qty:1}));hero.ui.index=SLOTS.indexOf('hand2');g.uiRevision++;step();
+        hero.equipment.hand1='bow';hero.equipment.hand2='occupied';hero.equipmentSockets={hand1:['azure_bead']};hero.inventory=Array.from({length:BACKPACK_SLOTS},()=>({type:'hat',qty:1}));hero.ui.index=SLOTS.indexOf('hand2');g.uiRevision++;step();
         press(i,0);if(hero.equipment.hand1!=='bow'||hero.equipment.hand2!=='occupied'||!hero.ui.notice.includes('Backpack full'))throw Error('Full pack must keep linked weapon equipped');
         hero.inventory[7]=null;press(i,0);
         if(hero.equipment.hand1||hero.equipment.hand2||hero.inventory[7]?.type!=='bow'||hero.inventory[7]?.sockets?.[0]!=='azure_bead')throw Error('Primary unequip from linked hand lost weapon or sockets');

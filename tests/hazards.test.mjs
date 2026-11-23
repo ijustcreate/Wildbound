@@ -53,7 +53,10 @@ test("Stampede spawns twenty runners and only a struck rhino becomes aggressive"
 test("Monkeys throw a separate banana projectile while pursuing", () => {
   const { g, p } = setup();
   g.generatedEnvironment="temple"; // Isolate monkey behavior without the temple walls.
-  g.spawnEvent(EVENTS.findIndex((e) => e.kind === "monkey"));
+  g.spawnEvent(EVENTS.findIndex((e) => e.kind === "monkey"),{force:true});
+  g.scenery=[];
+  g.terrain.fill("grass");
+  Object.assign(p,{x:400,y:400});
   const e = g.enemies[0];
   g.enemies = [e];
   e.x = p.x + 150;

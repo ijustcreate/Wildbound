@@ -5,11 +5,18 @@ import { defaultPlayerMotion, poseAt, validatePlayerMotion } from '../src/player
 import { insertFrame, removeFrame, moveGraphKey } from '../src/animation-graph.mjs';
 import { paintLayers, renderLayers } from '../src/render-order.mjs';
 import { drawPortal } from '../src/portal-art.mjs';
-test('First and fourth-space rolls do not manufacture loot',()=>{
- const g=new Game(()=>0.1),p=g.addPlayer('keyboard');g.start();
+test('First and fourth-space rolls grant no loot apart from authored encounter supplies',()=>{
+ const g=new Game(()=>0.1),p=g.addPlayer('keyboard');g.start();g.diceCount=1;
+ const initialInventory=structuredClone(p.inventory);
  assert.equal(g.loot.length,0);
- g.hitTable(p);g.resolveRoll();assert.equal(g.loot.length,0);
- p.progress=2;g.roll=null;g.turnOrder=[];g.hitTable(p);g.resolveRoll();assert.equal(p.progress,4);assert.equal(g.loot.length,0);
+ assert.ok(g.hitTable(p));g.resolveRoll();assert.equal(p.progress,1);
+ assert.ok(g.loot.every(item=>item.source==='Ember Clearing supplies'&&item.manualPickup));
+ assert.deepEqual(p.inventory,initialInventory);
+ const firstRollLoot=structuredClone(g.loot);
+ p.progress=3;g.roll=null;g.turnOrder=[];
+ assert.ok(g.hitTable(p));g.resolveRoll();assert.equal(p.progress,4);
+ assert.deepEqual(g.loot,firstRollLoot);
+ assert.deepEqual(p.inventory,initialInventory);
 });
 test('Victory chest preserves its earned reward set',()=>{
  const g=new Game(),p=g.addPlayer('keyboard');g.start();

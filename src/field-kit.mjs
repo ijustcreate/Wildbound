@@ -1,4 +1,4 @@
-import { PAD_NAMES, renderPlayerMappings, controllerButtonNames } from "./controls.mjs";
+import { PAD_NAMES, renderPlayerMappings, controllerButtonNames, controllerMenuButtons } from "./controls.mjs";
 import { ITEMS, SLOTS, give, take, equip, itemStats } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
 import { drawPlayer, directionVector } from "./player-motion.mjs";
@@ -7,6 +7,7 @@ import {trainingPoints} from './training-points.mjs';
 import {hasSetSkill} from './items.mjs';
 import {tamePet} from './hunter-pets.mjs';
 import {openPetCare} from './hunter-pet-ui.mjs';
+import { knownWeaponCombos, weaponComboCatalog } from './weapon-combo-discovery.mjs';
 import { appearanceControls, DEFAULT_APPEARANCE } from "./appearance.mjs";
 import {
   SYMBOLS,
@@ -32,6 +33,7 @@ const node = (tag, text, cls) => {
   if (cls) n.className = cls;
   return n;
 };
+const FIELD_TABS = ["Craft", "Skills", "Combos"];
 export class FieldKit {
   constructor({ game, profiles, metrics, mapping, onPause, onResume }) {
     Object.assign(this, {
@@ -94,19 +96,55 @@ export class FieldKit {
     this.dialog.showModal();
     this.dialog.querySelector("button")?.focus();
   }
+  openBackups(device = "keyboard") {
+    if (!this.dialog.open) {
+      this.dialog.dataset.ownerDevice = device;
+      this.onPause();
+      this.backupsOpen = true;
+      this.notice = "";
+      this.render();
+      this.dialog.showModal();
+    } else {
+      this.backupsFromField = true;
+      this.backupsOpen = true;
+      this.notice = "";
+      this.render();
+    }
+    this.dialog.querySelector("button")?.focus();
+  }
   close() {
     this.hideCardTooltip();
+    if (this.backupsFromField) {
+      this.backupsFromField = this.backupsOpen = false;
+      this.notice = "";
+      this.render();
+      this.dialog.querySelector('[data-focus="backups"]')?.focus();
+      return;
+    }
+    this.backupsOpen = false;
     this.dialog.close();
     this.onResume();
   }
   moveFocus(step) {
     const nodes = [
-      ...this.dialog.querySelectorAll("button:not(:disabled),select,input"),
+      ...this.dialog.querySelectorAll("button:not(:disabled),select,input,summary"),
     ].filter((n) => n.getClientRects().length);
     nodes[
       (nodes.indexOf(document.activeElement) + step + nodes.length) %
         nodes.length
     ]?.focus();
+  }
+  selectTab(tab, focusBody = false) {
+    this.tab = tab;
+    this.page = 0;
+    this.notice = "";
+    if (this.body) this.body.scrollTop = 0;
+    this.render();
+    if (focusBody) this.body.querySelector("button:not(:disabled),select,summary")?.focus();
+  }
+  cycleTab(step) {
+    const next = (FIELD_TABS.indexOf(this.tab) + step + FIELD_TABS.length) % FIELD_TABS.length;
+    this.selectTab(FIELD_TABS[next], true);
   }
   action(text, fn, parent = this.body) {
     const b = node("button", text);
@@ -116,7 +154,7 @@ export class FieldKit {
       try {
         const result = await fn();
         if (result) this.notice = result;
-        if (!this.recovering && !text.toLowerCase().includes("recover"))
+        if (!this.backupsOpen && !this.recovering && !text.toLowerCase().includes("recover"))
           this.game().persist();
       } catch (e) {
         this.notice = e.message;
@@ -141,34 +179,43 @@ export class FieldKit {
     return s;
   }
   render() {
+    if (this.backupsOpen) {
+      this.renderBackups();
+      return;
+    }
     this.hideCardTooltip();
     const focused = document.activeElement?.dataset.focus;
     const scroll = this.body?.scrollTop || 0;
     const g = this.game(),
       p = this.player,
       f = initializeField(p);
+    const names = controllerButtonNames(p.controllerFamily || 'generic');
+    const keyboard = p.device === 'keyboard';
     this.dialog.replaceChildren();
     const header = node("header");
     header.append(
       node("span", "FIELD KIT", "eyebrow"),
       node("h2", p.name),
     );
-    const close = node("button", "Close · B / Esc");
+    const pad = Array.from(globalThis.navigator?.getGamepads?.() || []).find(pad => pad && p.device === 'pad:' + pad.index);
+    const {confirm, back} = controllerMenuButtons(pad || p.controllerFamily || 'generic');
+    const close = node("button", `Close · ${keyboard ? 'Esc' : names[back]}`);
     close.dataset.focus = "close";
     close.onclick = () => this.close();
-    header.append(close);
+    const backup = node("button", "Save backups");
+    backup.dataset.focus = "backups";
+    backup.onclick = () => this.openBackups(this.dialog.dataset.ownerDevice);
+    header.append(backup, close);
     this.dialog.append(header);
     const nav = node("nav");
-    for (const tab of ["Craft", "Skills"]) {
+    nav.setAttribute('aria-label', 'Field Kit sections');
+    for (const tab of FIELD_TABS) {
       const b = node("button", tab);
       b.dataset.focus = "tab:" + tab;
       b.classList.toggle("active", tab === this.tab);
-      b.onclick = () => {
-        this.tab = tab;
-        this.page = 0;
-        this.notice = "";
-        this.render();
-      };
+      b.classList.toggle("selected", tab === this.tab);
+      b.setAttribute('aria-pressed', String(tab === this.tab));
+      b.onclick = () => this.selectTab(tab);
       nav.append(b);
     }
     this.dialog.append(nav);
@@ -176,16 +223,15 @@ export class FieldKit {
     this.dialog.append(this.body);
     if (this.tab === "Craft") this.crafting(g, p, f);
     if (this.tab === "Skills") this.skills(g, p, f);
+    if (this.tab === "Combos") this.comboGuide(p);
     const footer = node("footer");
-    const buttons = p.device === 'keyboard' ? { tab:'LB/RB', select:'A / Enter', close:'B / Esc' } : (() => {
-      const names = controllerButtonNames(p.controllerFamily || 'generic');
-      return { tab:`${names[4]}/${names[5]}`, select:names[0], close:names[1] };
-    })();
+    const help = keyboard
+      ? '↑ / ↓: focus · Enter: select · Esc: close'
+      : `${names[4]} / ${names[5]}: change tab · D-pad: focus · ${names[confirm]}: select · ${names[back]}: close`;
     footer.append(
       node(
         "p",
-        this.notice ||
-          `${buttons.tab}: tab · D-pad: focus · left/right: choice · ${buttons.select}: select · ${buttons.close}: close`,
+        this.notice || help,
         "field-notice",
       ),
     );
@@ -195,6 +241,35 @@ export class FieldKit {
       [...this.dialog.querySelectorAll("[data-focus]")]
         .find((b) => b.dataset.focus === focused)
         ?.focus({ preventScroll: true });
+  }
+  comboGuide(player) {
+    const profile = this.profiles.data?.heroes?.find(hero => hero.id === player.profileId);
+    const known = new Set(knownWeaponCombos(player, profile));
+    const entries = Object.entries(weaponComboCatalog);
+    this.body.append(node('p', `${known.size} of ${entries.length} discovered`, 'field-combo-count'));
+
+    const list = node('div', null, 'field-combo-list');
+    for (const [id, combo] of entries) {
+      const discovered = known.has(id);
+      const entry = node('details', null, 'field-combo-entry');
+      entry.dataset.combo = id;
+      const summary = node('summary');
+      summary.dataset.focus = `combo:${id}`;
+
+      const icon = node('span', discovered ? null : '?', 'field-combo-icon');
+      icon.setAttribute('aria-hidden', 'true');
+      if (discovered) {
+        const canvas = node('canvas');
+        canvas.width = canvas.height = 24;
+        drawItem(canvas.getContext('2d'), combo.icon, 12, 12, 24);
+        icon.append(canvas);
+      }
+      summary.append(icon, node('strong', discovered ? combo.name : 'Undiscovered'),
+        node('span', discovered ? 'Technique' : 'Hint', 'field-combo-label'));
+      entry.append(summary, node('p', discovered ? combo.how : combo.hint));
+      list.append(entry);
+    }
+    this.body.append(list);
   }
   hideCardTooltip() {
     if (this.cardTooltip?.matches(':popover-open')) this.cardTooltip.hidePopover();
@@ -819,6 +894,24 @@ export class FieldKit {
       g.persist();
       return "Save requested.";
     });
+  }
+  renderBackups() {
+    const focused = document.activeElement?.dataset.focus;
+    this.dialog.replaceChildren();
+    const header = node("header");
+    const back = node("button", this.backupsFromField ? "Back to Field Kit" : "Close");
+    back.dataset.focus = "close";
+    back.onclick = () => this.close();
+    header.append(node("h2", "Save backups"), back);
+    this.body = node("section", null, "field-body");
+    const status = node("p", this.notice);
+    status.setAttribute("role", "status");
+    this.dialog.append(header, this.body, status);
+    this.backups(this.game());
+    if (focused) [...this.dialog.querySelectorAll('[data-focus]')]
+      .find(node => node.dataset.focus === focused)?.focus({ preventScroll: true });
+  }
+  backups(g) {
     this.action("Export character backup", () => {
       const blob = new Blob([JSON.stringify(this.profiles.data, null, 2)], {
           type: "application/json",
@@ -830,79 +923,66 @@ export class FieldKit {
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       return "Backup exported.";
     });
+    const restoreStash = node("input");
+    restoreStash.type = "checkbox";
+    restoreStash.checked = this.restoreBackupStash ?? !this.profiles.data.sharedStash.length;
+    restoreStash.onchange = () => { this.restoreBackupStash = restoreStash.checked; };
+    const stashLabel = node("label");
+    stashLabel.append(restoreStash, " Restore the backup’s shared stash and replace the current stash");
+    this.body.append(stashLabel);
     const file = node("input");
     file.type = "file";
     file.accept = ".json";
     file.setAttribute("aria-label", "Import character backup");
+    file.dataset.focus = "import-backup";
     file.onchange = async () => {
       try {
-        const data = JSON.parse(await file.files[0].text());
-        if (
-          data.version !== 1 ||
-          !Array.isArray(data.heroes) ||
-          data.heroes.length > 200
-        )
-          throw Error("Invalid character backup");
-        for (const h of data.heroes) {
-          if (
-            typeof h.id !== "string" ||
-            typeof h.name !== "string" ||
-            h.name.length < 2 ||
-            h.name.length > 20 ||
-            !Array.isArray(h.inventory) ||
-            !Array.isArray(h.chests) ||
-            h.chests.length !== 3 ||
-            !h.equipment
-          )
-            throw Error("Invalid character");
-          for (const list of [h.inventory, ...h.chests])
-            if (
-              !Array.isArray(list) ||
-              list.length > 24 ||
-              list.some(
-                (i) =>
-                  i &&
-                  (!ITEMS[i.type] || !Number.isInteger(i.qty) || i.qty < 1),
-              )
-            )
-              throw Error("Invalid inventory");
-        }
-        let added = 0;
-        for (const h of data.heroes) {
-          if (!this.profiles.data.heroes.some((x) => x.id === h.id)) {
-            if (
-              this.profiles.data.heroes.some(
-                (x) => x.name.toLowerCase() === h.name.toLowerCase(),
-              )
-            )
-              h.name = h.name.slice(0, 12) + " " + h.id.slice(-6);
-            this.profiles.data.heroes.push(h);
-            added++;
-          }
-        }
-        await this.profiles.save();
-        this.notice = `Imported ${added} new characters. Existing heroes were preserved.`;
+        const selected = file.files[0];
+        if (!selected) return;
+        file.disabled = true;
+        const { added, stashRestored } = await this.profiles.importBackup(
+          JSON.parse(await selected.text()), { restoreStash: restoreStash.checked },
+        );
+        if (stashRestored) g.sharedStash = structuredClone(this.profiles.data.sharedStash);
+        this.notice = `Imported ${added} new ${added === 1 ? "character" : "characters"}. Existing heroes were preserved.` +
+          (stashRestored ? " Shared stash restored." : "");
       } catch (e) {
-        this.notice = e.message;
+        this.notice = "Backup not imported. " + e.message;
+      } finally {
+        file.value = "";
+        file.disabled = false;
+        this.render();
       }
-      this.render();
     };
     this.body.append(file);
-    if (window.desktop?.restoreBackup)
-      this.action(
-        this.confirmRecovery
-          ? "Confirm recovery · replace current progress"
-          : "Recover previous save",
-        async () => {
-          if (!this.confirmRecovery) {
-            this.confirmRecovery = true;
-            return "This replaces saved progress with the previous backup. Select Confirm recovery to continue.";
+    if (!window.desktop?.restoreBackup) return;
+    this.action("Check recovery backups", async () => {
+      this.recoveryStatus = await window.desktop.restoreBackup("status");
+      return "Choose a backup to recover. Your current files are still active.";
+    });
+    if (this.recoveryStatus) {
+      for (const [kind, name] of [["profiles", "character library"], ["session", "expedition"]]) {
+        if (!this.recoveryStatus[kind]) {
+          this.body.append(node("p", "No usable " + name + " backup."));
+          continue;
+        }
+        const confirming = this.confirmRecovery === kind;
+        this.action((confirming ? "Confirm recovery of " : "Recover ") + name, async () => {
+          if (!confirming) {
+            this.confirmRecovery = kind;
+            return "Confirm to replace the current " + name + " with its previous backup.";
           }
           this.recovering = true;
-          await window.desktop.restoreBackup();
-          location.reload();
-        },
-      );
+          try {
+            await window.desktop.restoreBackup(kind);
+            location.reload();
+          } catch (error) {
+            this.recovering = false;
+            throw error;
+          }
+        });
+      }
+    }
   }
   tick(time) {
     this.button.textContent =
@@ -912,7 +992,9 @@ export class FieldKit {
     if (!this.lastStatus || time - this.lastStatus > 0.12) {
       this.lastStatus = time;
       this.status.textContent = [
-        g.realm
+        g.trainTest
+          ? (g.trainTest.persistent?'The Wild Lands · explore on foot or by train':'Railway test · explore freely')
+          : g.realm
           ? 'Persistent Forest · explore freely'
           : g.current
           ? `${g.current.name} · roll next`

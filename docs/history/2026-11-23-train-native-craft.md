@@ -1,0 +1,23 @@
+# Train native craft refinement
+
+User request: bring the train to the standard of the car and newer Diagon Alley assets. Checkout Wildbound_worlds at f0b787ff33c3ac8f3675b48504937ebda4f0dcb5, origin https://github.com/ijustcreate/Wildbound.git, with substantial preserved unrelated modified and new files. No commit, push or web publication requested for this assignment.
+
+The train now uses the native shop pixel contour helpers on an integer world grid. Rounded smokebox/chimney/fittings replace block silhouettes. Added recessed coach body panels, slate roof gutters/vents, framed reflective glass, cab-front windows, timber compartment panels, cloth seat details and clipped-corner timber table tops. The helper module train-craft.mjs isolates materials and shapes; train-art.mjs integrates them, and train-occlusion-geometry.mjs shares the integer projection.
+
+Existing support heights, door/collision geometry, train paint choices, authored overrides, bounded raster/mesh caches, saved profiles and rigs are preserved. The car and shop reference sources were not edited. Art contract: docs/art/2026-11-23-train-native-craft.md. Visual acceptance remains pending; self-review is not user approval.
+
+Before captures: test-output/train-layer-matrix/art-before (280 frames). First revision passed 280 native scene captures and 136 desktop overlap probes. Focused tests: 74 passed. An initial test invocation was interrupted by an unrelated concurrent frost-shatter API change; the focused re-run passed once those combat files were coherent. No combat source was changed for this train task.
+
+Final packaged checks, output path and launcher identity will be appended after completion. Physical hardware playtesting and sustained FPS are not established by these checks.
+
+## Final desktop delivery
+
+Version 1.2.113: `dist/1.2.113-2026-11-23T19-28-09-373Z/Wildbound-win32-x64/Wildbound.exe`. Packaging passed 980 runtime syntax checks. Three train artwork modules were finalized in the generated package after packaging, then verified by SHA-256 against source. The manifest records the exact files under verifiedTrainArtPatch, retains packagedAt and uses the finalization time as builtAt. Base commit f0b787ff33c3ac8f3675b48504937ebda4f0dcb5 with modified source. Final runtime files were separately syntax checked. This is a verified snapshot; nine unrelated source modules changed concurrently after packaging. They were not copied into this tested snapshot. Exact paths and hashes: test-output/train-craft-content-receipt.json.
+
+The actual packaged EXE passed muted `--boot-smoke-test`, exit 0, lobby ready with no renderer errors. Final packaged native checks passed: 136 pixel/occlusion probes, 280 scene captures across five cars/eight directions/seven states, and 20 close-up review scenes. Native reports: test-output/train-layer-probes/craft-packaged/report.json, train-layer-matrix/craft-packaged/report.json and train-craft-review/craft-packaged/report.json. The focused source suite passed 74 tests; the full repository suite was not rerun for this art task. Player/custom-art masks, tabletop jumps, doors and roof fades remain covered.
+
+Decorative inset panels and stitching are drawn normally but omitted from the rider mesh where existing opaque physical faces already cover them. Actual armrest cores remain in the mesh. The final warm 100-frame/four-player component sample reports median 52.3ms and p95 92.7ms under shared-machine load, with 123,400 accumulated mask faces. This is not sustained FPS or a hardware performance claim. The earlier unoptimized art sample accumulated 229,300 faces and median 59ms; timings varied with concurrent work, so only the redundant geometry reduction is established.
+
+Inspected the locomotive, tender, coach roof and caboose eight-direction sheets and the compartment/saloon/caboose close views. Enlarged nearest-neighbor before/after proofs: test-output/train-craft-engine-comparison.png and train-craft-interior-comparison.png. These are native screenshot crops, not replacement asset rasters. Full native packaged screenshots are in train-craft-review/craft-packaged. Visual user review remains pending.
+
+Shortcut `C:/Users/New User/Desktop/Wildbound Worlds (1.2.113).lnk` targets `C:/Users/New User/Desktop/Wildbound/Play Wildbound.cmd`, with blank arguments, repository working directory and assets/wildbound-icon.ico. Shortcut and launcher --check select the exact verified train-art snapshot above. Normal save profile, no --preview. Saved characters, rigs, sound settings and editor drafts were not changed. No commit, push or web publication performed.

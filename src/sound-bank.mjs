@@ -1,6 +1,7 @@
 import {ENCOUNTER_CUES} from './encounter-cues.mjs';
 // Recorded CC0 sources; provenance and transformations: assets/sfx/CREDITS.md.
 const files=(dir,names)=>names.split(',').map(n=>`assets/sfx/${dir}/${n}.ogg`);
+const oga=(names)=>names.split(',').map(n=>`assets/sfx/oga-rpg/${n}.ogg`);
 const ui=(names)=>({files:files('ui',names),bus:'ui',gain:.18,priority:70,group:'ui',polyphony:4,cooldown:70,maxDuration:1.6,spatial:false});
 const rpg=(names,gain=.28)=>({files:files('rpg',names),gain,priority:45,group:'action',polyphony:8,cooldown:110,distance:650});
 const impact=(name,gain=.26)=>({files:files('impact',`${name}_000,${name}_001,${name}_002`),gain,priority:50,group:'impact',polyphony:6,cooldown:110,distance:620});
@@ -9,6 +10,7 @@ export const CUES={
  stalkerBreath:{files:['assets/sfx/creatures/snarl.ogg'],gain:.09,rate:.55,maxDuration:1.1},
  focus:ui('select_001,select_002'),click:ui('click_001,click_002'),back:ui('back_001'),error:ui('error_003'),join:ui('confirmation_001'),ready:ui('confirmation_002'),save:ui('confirmation_003'),
  attack:rpg('knifeSlice,knifeSlice2'),bow:rpg('cloth1,cloth2'),magic:ui('glass_001,glass_002'),hit:impact('impactPunch_medium'),shield:impact('impactMetal_medium'),hurt:impact('impactPunch_heavy'),
+ bladeContact:{files:oga('blade_01,blade_02'),gain:.19,priority:55,group:'impact',polyphony:4,cooldown:100,distance:590,maxDuration:.55},
  roll:impact('impactWood_light'),event:ui('bong_001'),trap:rpg('metalLatch'),heal:ui('glass_003'),defeat:impact('impactSoft_heavy'),dodge:rpg('cloth3,cloth4'),dashWhoosh:{files:files('rpg','cloth3,cloth4'),gain:.18,rate:.62,maxDuration:.32,bus:'sfx',priority:52,group:'movement',polyphony:4,cooldown:140,distance:620},win:ui('confirmation_004'),lose:ui('error_008'),
  loot:rpg('handleCoins,handleCoins2'),drop:rpg('dropLeather'),equip:rpg('beltHandle1,beltHandle2'),inventory:rpg('bookOpen'),close:rpg('bookClose'),doorOpen:rpg('doorOpen_1,doorOpen_2'),doorClose:rpg('doorClose_1,doorClose_2'),
  harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),wallBreak:impact('impactWood_heavy',.34),treeBreak:impact('impactWood_heavy',.42),rockBreak:impact('impactMining',.4),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),level:ui('confirmation_003'),
@@ -68,10 +70,29 @@ Object.assign(CUES.repair,{group:'repair',priority:30,cooldown:420,maxDuration:.
 Object.assign(CUES,ENCOUNTER_CUES);
 CUES.dragonBreath={files:['assets/sfx/dragon2/breath.ogg'],gain:.3,priority:65,cooldown:400,distance:750};
 CUES.swing=CUES.attack;
+// Twenty-three newly integrated CC0 clips add material and creature variation.
+CUES.attack.files.push(...oga('blade_01,blade_02,blade_03'));
+CUES.inventory.files.push(...oga('book_01'));
+CUES.doorOpen.files.push(...oga('chain_01,lock_01'));
+CUES.doorClose.files.push(...oga('lock_02'));
+CUES.loot.files.push(...oga('item_gem_01,item_gem_02'));
+CUES.mine.files.push(...oga('item_stone_01'));
+CUES.wallBreak.files.push(...oga('item_wood_01'));
+CUES.treeBreak.files.push(...oga('wood_01'));
+CUES.shield.files.push(...oga('metal_01'));
+CUES.magic.files.push(...oga('spell_fire_01'));
+CUES.coin={files:oga('item_coins_01,item_coins_02'),bus:'sfx',gain:.24,group:'reward',priority:55,polyphony:6,cooldown:90,distance:520,maxDuration:.9};
+CUES.pickup={files:oga('item_misc_01'),bus:'sfx',gain:.22,group:'reward',priority:45,polyphony:6,cooldown:100,distance:520,maxDuration:.9};
+CUES.chestOpen={files:oga('item_wood_01,lock_01,lock_02'),bus:'sfx',gain:.24,group:'interaction',priority:50,polyphony:4,cooldown:220,distance:520,maxDuration:1.1};
+CUES.woodBreak={files:oga('item_wood_01,wood_01'),bus:'sfx',gain:.3,group:'impact',priority:50,polyphony:5,cooldown:100,distance:620,maxDuration:.8};
+CUES.creatureStep={files:oga('creature_misc_01'),bus:'sfx',gain:.11,group:'footstep',priority:12,polyphony:4,cooldown:180,distance:360,maxDuration:.45};
 export const FAMILIES={gorilla:[9,.65],lion:[1,.75],tiger:[1,.7],white_lion:[1,.66],panther:[2,.85],snow_leopard:[2,.78],wolf:[3,1],crocodile:[4,.65],boar:[5,.9],snake:[6,1.5],bat:[7,1.9],beetle:[8,1.6],wasp:[8,2.2],bee:[8,2.3],vine:[6,.65],golem:[9,.5],monkey:[0,1],skeleton:[10,1.1],skeleton_unarmed:[10,1.2],skeleton_boss:[10,.65],archer:[10,1.05],skeleton_wizard:[10,.85],rhino:[5,.6],dragon:[9,.55],fire_elemental:[6,.65],spider:[8,1.25],baby_spider:[8,1.8],spider_egg:[8,.8]};
 Object.assign(FAMILIES,{fox:[3,1.6],shore_goblin:[6,1.35],dreadmane_lion:[1,.6],oathless_captain:[10,.8],grim_reaper:[10,.55],banshee_queen:[6,.72],succubus:[6,.9],imp:[0,1.45],zombie:[9,.8],tarantula:[8,.85],anaconda:[6,.5],tsetse:[8,2.5],water_elemental:[6,1.1],frost_skeleton_mage:[10,.8],hunter:[10,1],night_stalker:[2,.75],carrion_pack:[3,.85],burrower:[9,.65],mimic_vine:[6,.8],carnivorous_flower:[6,.7],poison_pod:[8,.7],elephant:[9,.45],zebra:[5,1.1],pelican:[7,1.1],bee_hive:[8,.65]});
 export function creatureCue(kind,action){
  const cue=creatureRecording(kind,action);
+ const supplemental=action==='death'?oga('creature_die_01'):action==='hurt'?oga('creature_hurt_01,creature_hurt_02'):action==='spawn'?oga('creature_misc_01'):action==='attack'?oga('creature_monster_01'):[];
+ if(/slime|squashling/i.test(kind))supplemental.push(...oga('creature_slime_01'));
+ cue.files.push(...supplemental);
  return {...cue,bus:'sfx',group:action==='death'?'critical':'creature',priority:action==='death'?85:action==='spawn'?25:action==='hurt'?60:55,
    polyphony:action==='death'?6:4,cooldown:action==='spawn'?1800:action==='hurt'?240:360,distance:action==='spawn'?420:620,key:`creature:${kind}:${action}`};
 }

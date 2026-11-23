@@ -1,3 +1,7 @@
+import {tooltipPlacement} from './inventory-tooltip-layout.mjs';
+import {drawActorGameplayFx} from './gameplay-fx.mjs';
+import {beginParticleFrame} from './particles.mjs';
+import {drawRoomVending} from './vending-art.mjs';
 import {locationMarker} from './location-designs.mjs';
 import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {drawDeathSteps} from './death-steps.mjs';
@@ -56,6 +60,22 @@ export class HeroUI {
     this.root = root;
     this.panels = new Map();
     this.panelAnchors = new Map();
+    const refreshTips=()=>{for(const panel of this.panels.values()){const anchor=panel.tooltipAnchor||panel.lastTooltipAnchor;if(panel.contains(anchor))anchor.showItemTooltip?.();}};
+    globalThis.addEventListener?.('keydown',event=>{
+      if(document.querySelector('dialog[open]'))return;
+      if(!root.isConnected)return;
+      const panels=[...this.panels.values()].filter(panel=>panel.hero?.ui);
+      if(event.key==='Alt'&&!event.repeat){
+        const panel=panels.find(panel=>panel.contains(panel.tooltipHover))||panels.find(panel=>panel.contains(panel.tooltipFocus));
+        if(!panel)return;
+        event.preventDefault();event.stopImmediatePropagation();this.tooltipAlt=true;this.tooltipAltOwner=panel.hero.id;refreshTips();
+      }
+      if(event.key==='Escape'&&(this.tooltipAlt||panels.some(panel=>panel.tooltipExpanded))){
+        event.preventDefault();event.stopImmediatePropagation();this.tooltipAlt=false;for(const panel of panels)panel.tooltipExpanded=false;refreshTips();
+      }
+    },true);
+    globalThis.addEventListener?.('keyup',event=>{if(event.key==='Alt'){this.tooltipAlt=false;refreshTips();}},true);
+    globalThis.addEventListener?.('blur',()=>{this.tooltipAlt=false;refreshTips();});
     root.addEventListener('keydown',guardInventoryKeys,true);
     // Storage slots can be replaced when selection changes while the pointer
     // remains over the same screen position. Reconcile on movement so the new
@@ -80,7 +100,12 @@ export class HeroUI {
     const show = () => {
       let tip = panel.querySelector('.item-tooltip');
       if (!tip) { tip = el('div', null, 'item-tooltip'); panel.append(tip); }
-      panel.tooltipAnchor=button;
+      if(p.ui?.carry||(p.ui?.socket||p.ui?.bag||p.ui?.split)&&!button.closest('.inventory-popover')){tip.hidden=true;panel.tooltipExpanded=false;if(this.tooltipAltOwner===p.id)this.tooltipAlt=false;return;}
+      panel.tooltipAnchor?.removeAttribute('aria-describedby');
+      panel.tooltipAnchor=button;panel.lastTooltipAnchor=button;
+      const expanded=!!(panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===p.id));
+      tip.classList.toggle('tooltip-compact',!expanded);tip.classList.toggle('tooltip-expanded',expanded);tip.classList.remove('tooltip-docked');
+      const toggle=panel.querySelector('.inventory-details-toggle');if(toggle){toggle.disabled=false;toggle.setAttribute('aria-expanded',String(expanded));toggle.textContent=expanded?'Less':'Details';}
       tip.id=`item-tooltip-${p.id}`;
       tip.setAttribute('role','tooltip');
       button.setAttribute('aria-describedby',tip.id);
@@ -116,43 +141,29 @@ export class HeroUI {
         if (set.threeText) checklist.append(el('p', '3 pieces · ' + set.threeText, set.count >= 3 ? 'set-active' : 'set-missing'));
         if(set.twoText)checklist.append(el('p','2 pieces · '+set.twoText,set.count>=2?'set-active':'set-missing'));
         checklist.append(el('p', 'Complete · ' + set.fullText, set.complete ? 'set-active' : 'set-missing'));
-        tip.append(checklist);
+        tip.append(checklist);tip.append(el('small',set.name+' · '+set.count+'/'+set.checks.length+' pieces','item-tooltip-set-summary'));
       }
+      tip.append(el('small',expanded?'Escape / Less: compact view':'Details'+(p.device==='keyboard'?' · hold Alt':''),'item-tooltip-hint'));
       tip.hidden = false;
       const r = button.getBoundingClientRect(), pr = panel.getBoundingClientRect();
       const scale=pr.width/panel.offsetWidth||1;
       const panelWidth=panel.clientWidth,panelHeight=panel.clientHeight;
-      const gap=8,tw=tip.offsetWidth,th=tip.offsetHeight;
-      const left=(r.left-pr.left)/scale-panel.clientLeft,right=(r.right-pr.left)/scale-panel.clientLeft,top=(r.top-pr.top)/scale-panel.clientTop,bottom=(r.bottom-pr.top)/scale-panel.clientTop;
-      const sideRight=right+gap,sideLeft=left-tw-gap;
-      const centeredX=Math.max(4,Math.min(panelWidth-tw-4,(left+right-tw)/2));
-      const belowY=bottom+gap,aboveY=top-th-gap;
-      const candidates=[
-        {x:sideRight,y:Math.max(4,Math.min(panelHeight-th-4,(top+bottom-th)/2)),side:'right',fits:sideRight+tw<=panelWidth-4},
-        {x:sideLeft,y:Math.max(4,Math.min(panelHeight-th-4,(top+bottom-th)/2)),side:'left',fits:sideLeft>=4},
-        {x:centeredX,y:belowY,side:'bottom',fits:belowY+th<=panelHeight-4},
-        {x:centeredX,y:aboveY,side:'top',fits:aboveY>=4},
-      ];
-      // Gear details sit over the bag, leaving the live character preview visible.
-      if(button.dataset.mode==='gear'&&panel.classList.contains('inventory-workbench')){
-        const sheet=button.closest('.equipment-window').getBoundingClientRect(),gearBottom=(sheet.bottom-pr.top)/scale-panel.clientTop+gap;
-        candidates.unshift({x:centeredX,y:gearBottom,side:'bottom',fits:gearBottom+th<=panelHeight-4});
+      const local=rect=>({x:(rect.left-pr.left)/scale-panel.clientLeft,y:(rect.top-pr.top)/scale-panel.clientTop,w:rect.width/scale,h:rect.height/scale});
+      const shelf=panel.classList.contains('inventory-workbench')&&panel.querySelector('.inventory-selection');
+      if(shelf&&!expanded){
+        const box=local(shelf.getBoundingClientRect());if(p.ui?.notice)box.h=Math.max(34,box.h-14);tip.classList.add('tooltip-docked');tip.classList.remove('tooltip-above');
+        Object.assign(tip.style,{left:box.x+'px',top:box.y+'px',width:box.w+'px',height:box.h+'px'});
+      }else{
+        tip.style.width='';tip.style.height='';
+        const protectedAreas=[...panel.querySelectorAll('.item-grid,.paper-doll,.inventory-character,.current-inventory-actions,.storage-popup-actions')].map(node=>local(node.getBoundingClientRect()));
+        const placement=tooltipPlacement({width:panelWidth,height:panelHeight,tipWidth:tip.offsetWidth,tipHeight:tip.offsetHeight,anchor:local(r),protectedAreas});
+        tip.style.left=placement.x+'px';tip.style.top=placement.y+'px';tip.classList.toggle('tooltip-above',placement.side==='top');
+        tip.style.setProperty('--tether-x',Math.max(4,Math.min(placement.w-4,local(r).x-placement.x))+'px');
       }
-      // Keep bag contents visible when inspecting backpack/chest items.
-      if(button.dataset.mode==='pack'||button.dataset.mode==='chest') candidates.sort((a,b)=>(a.side==='top'?-1:0)-(b.side==='top'?-1:0));
-      const placement=candidates.find(candidate=>candidate.fits)||candidates.reduce((best,candidate)=>{
-        const visible=Math.max(0,Math.min(panelWidth,candidate.x+tw)-Math.max(0,candidate.x))*Math.max(0,Math.min(panelHeight,candidate.y+th)-Math.max(0,candidate.y));
-        return !best||visible>best.visible?{...candidate,visible}:best;
-      },null);
-      const x=Math.max(4,Math.min(panelWidth-tw-4,placement.x));
-      const y=Math.max(4,Math.min(panelHeight-th-4,placement.y));
-      tip.style.left=x+'px';tip.style.top=y+'px';
-      tip.style.setProperty('--tether-x',Math.max(4,Math.min(tw-4,r.right-pr.left-x))+'px');
-      tip.classList.toggle('tooltip-above',placement.side==='top');
       tip.hidden = false;
     };
     const reconcile = () => {
-      const anchor=panel.contains(panel.tooltipHover)?panel.tooltipHover:panel.contains(panel.tooltipFocus)?panel.tooltipFocus:null;
+      const anchor=panel.contains(panel.tooltipHover)?panel.tooltipHover:panel.contains(panel.tooltipFocus)?panel.tooltipFocus:(panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===panel.hero?.id))&&panel.contains(panel.lastTooltipAnchor)?panel.lastTooltipAnchor:null;
       if(anchor?.showItemTooltip)anchor.showItemTooltip();
       else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;panel.tooltipAnchor=null;}
     };
@@ -164,6 +175,7 @@ export class HeroUI {
   }
   draw(game, renderer, onlyId = null) {
     const wanted = new Set();
+    this.drawStorageBackdrops(game,renderer,onlyId);
     // Rooms are rendered by the main game canvas now. HeroUI only owns actual
     // inventory/shop panels, so underground spaces no longer become a small
     // secondary map card.
@@ -271,6 +283,7 @@ export class HeroUI {
       panel.classList.toggle('socket-session',!!p.ui?.socket);
       panel.classList.toggle('inventory-workbench',!!p.ui&&!p.ui.shop&&!p.ui.socket&&!game.storageFor(p));
       panel.classList.toggle('scrap-shop',p.ui?.shop==='robot');
+      panel.classList.toggle('storage-shop',!!(privateStorageRoom(game,p)&&['robot','robot-intro','vending'].includes(p.ui?.shop)));
       panel.classList.toggle('robot-intro-session',p.ui?.shop==='robot-intro');
       panel.classList.toggle('vending-refresh',p.ui?.shop==='vending');
       panel.replaceChildren();
@@ -291,7 +304,9 @@ export class HeroUI {
       const fill=el('span','','inventory-xp-fill');fill.style.width=Math.min(100,Math.max(0,(p.xp||0)/needed*100))+'%';
       xp.append(fill,el('span',`${p.xp||0} / ${needed} XP`, 'inventory-xp-label'));
       progressRow.append(el('span',(p.coins||0)+' GOLD','coin-balance'),xp);
-      if(p.ui?.shop!=='merchant')panel.append(head,progressRow);
+      if(panel.classList.contains('private-storage-room')){head.textContent=p.name+' · STORAGE';panel.append(head);}
+      else if(['robot','robot-intro','vending'].includes(p.ui?.shop)){head.textContent=p.ui.shop==='vending'?'BETWEEN-MART':'SCRAP-9';panel.append(head);if(p.ui.shop!=='robot-intro')panel.append(el('span',(p.coins||0)+' GOLD','shop-wallet'));}
+      else if(p.ui?.shop!=='merchant')panel.append(head,progressRow);
       const button = (text, action, fn) => {
         const b = el("button", text);
         b.dataset.action = action;
@@ -381,15 +396,21 @@ export class HeroUI {
       renderer.uiPlayArea={x:area.x/Math.max(1,bounds.width),y:area.y/Math.max(1,bounds.height),width:area.width/Math.max(1,bounds.width)};
     }
     for(const panel of this.panels.values()){
+      if(panel.hero?.ui&&(panel.hero.ui.carry||(panel.hero.ui.socket||panel.hero.ui.bag||panel.hero.ui.split)&&!panel.tooltipAnchor?.closest('.inventory-popover'))){
+        panel.tooltipExpanded=false;if(this.tooltipAltOwner===panel.hero.id)this.tooltipAlt=false;const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;
+      }
       const selected=panel.querySelector('.storage-sheet.active .selected,.robot-item-slot.selected,.npc-dialogue-choice.selected,.merchant-row.selected,.vending-slots .selected,.vending-tray .selected,.vending-collect-all.selected');
-      if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest'});
+      if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest',container:'nearest'});
+      if(panel.revealSelection&&panel.classList.contains('inventory-workbench')){
+        const grid=selected?.closest('.item-grid');if(grid&&grid.scrollHeight>grid.clientHeight+1)selected.scrollIntoView({block:'nearest',inline:'nearest'});
+      }
       if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split){
         if(panel.revealSelection){panel.tooltipHover=null;panel.tooltipFocus=null;}
         // A hovered/focused item can differ from the controller's selected
         // slot. Keep its tooltip until the pointer/focus leaves that item.
         const hovered=panel.contains(panel.tooltipHover)?panel.tooltipHover:null;
         const focused=panel.contains(panel.tooltipFocus)?panel.tooltipFocus:null;
-        const anchor=hovered||focused||((panel.hero?.device!=='keyboard'||panel.revealSelection)?selected:null);
+        const anchor=hovered||focused||((panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===panel.hero?.id))&&panel.contains(panel.lastTooltipAnchor)?panel.lastTooltipAnchor:null)||(!panel.classList.contains('storage-shop')&&(panel.hero?.device!=='keyboard'||panel.revealSelection)?selected:null);
         if(anchor?.showItemTooltip){if(panel.tooltipAnchor!==anchor||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)anchor.showItemTooltip();}
         else if(panel.classList.contains('chest-redesign')||panel.hero?.device!=='keyboard'||panel.revealSelection){const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
       }
@@ -667,7 +688,7 @@ export class HeroUI {
         b.style.setProperty("--item", def?.color || "#405047");
         if (gear) {
           b.dataset.slot=item.slot;b.textContent='';
-          const name=item.slot==='back'&&itemKind(item.type)==='quiver'?'QUIVER':item.slot==='hand1'?'R HAND':item.slot==='hand2'?'L HAND':item.slot.toUpperCase();
+          const name=item.slot==='back'&&itemKind(item.type)==='quiver'?'QUIVER':item.slot==='hand1'?'Right hand':item.slot==='hand2'?'Left hand':item.slot.toUpperCase();
           const label=el('span',null,'equipment-slot-label');label.append(el('span',name,'equipment-label-full'),el('span',item.slot==='shoulders'?'SHLDRS':name,'equipment-label-compact'));b.append(label);
           b.setAttribute('aria-label',(item.slot==='hand1'?'Right hand (Hand 1)':item.slot==='hand2'?'Left hand (Hand 2)':item.slot==='back'?'Back / quiver':item.slot)+': '+(def?.name||'Empty slot'));
         }
@@ -776,7 +797,10 @@ export class HeroUI {
     const summary=el('div',null,'inventory-selection');summary.setAttribute('role','status');
     const detail=p.ui.notice||(p.ui.carry?'Choose a destination, then Place. Close cancels the move.':'');
     summary.classList.toggle('status-empty',!detail);
-    const notice=el('small',detail,'storage-notice');summary.append(notice);panel.append(summary);
+    const notice=el('small',detail,'storage-notice');summary.append(notice);
+    const details=el('button','Details','inventory-details-toggle');details.type='button';details.disabled=true;details.setAttribute('aria-label','Toggle full item details');details.setAttribute('aria-keyshortcuts','Alt');details.setAttribute('aria-expanded',String(!!panel.tooltipExpanded));
+    details.title=p.device==='keyboard'?'Inspect selected item · hold Alt':'Inspect selected item · press the right stick';
+    details.onclick=()=>{panel.tooltipExpanded=!panel.tooltipExpanded;const anchor=panel.tooltipAnchor||panel.lastTooltipAnchor;if(panel.contains(anchor))anchor.showItemTooltip?.();};summary.append(details);panel.append(summary);
     const actions=el('nav',null,'inventory-actions current-inventory-actions');actions.setAttribute('aria-label','Selected item actions');
     for(const option of options){
       const b=button('',option.id,()=>game.inventoryAction(p,option.action));
@@ -910,6 +934,20 @@ export class HeroUI {
     );}
     c.restore();
   }
+  drawStorageBackdrops(game,renderer,onlyId){
+    this.storageBackdrops??=new Map();const wanted=new Set(),bounds=this.root.getBoundingClientRect();
+    for(const p of game.players){
+      if(onlyId!==null&&p.id!==onlyId||!p.ui||!privateStorageRoom(game,p))continue;
+      if(game.players.some(q=>q.room===p.room&&!q.ui))continue;
+      if(wanted.has(p.room))continue;wanted.add(p.room);
+      let panel=this.storageBackdrops.get(p.room);
+      if(!panel){panel=el('section',null,'hero-panel private-storage-room storage-room-backdrop');const canvas=el('canvas',null,'room-view');canvas.setAttribute('aria-label','Storage room behind shop');panel.append(el('header','STORAGE'),canvas,el('p','Storage remains open'));this.root.prepend(panel);this.storageBackdrops.set(p.room,panel);}
+      const box=storagePanelBox(game,p,bounds,{width:420,height:bounds.height-36,side:'left'});
+      Object.assign(panel.style,{position:'absolute',left:box.x+'px',top:box.y+'px',width:box.width+'px',height:box.height+'px',zIndex:'0',pointerEvents:'none'});
+      this.room(panel.querySelector('canvas'),game,p,game.portals.find(d=>d.id===p.room),renderer);
+    }
+    for(const [id,panel]of this.storageBackdrops)if(!wanted.has(id)){panel.remove();this.storageBackdrops.delete(id);}
+  }
   place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), layout = planPlayerPanels(game.players, game.players.filter(q => q.ui || q.room), bounds.width, bounds.height)) {
     let box = layout.get(p.id);
     if (!box) return;
@@ -921,6 +959,10 @@ export class HeroUI {
       box={...centeredPopupBox(bounds.width,bounds.height,480,620,18),side:'center'};
     else if(layout.size===1&&panel.classList.contains('chest-redesign'))
       box={...centeredPopupBox(bounds.width,bounds.height,520,620,18),side:'center'};
+    if(panel.classList.contains('npc-dialogue-session')){
+      if(layout.size===1){const width=Math.min(860,Math.max(240,bounds.width-32)),height=Math.min(bounds.height-32,310);box={x:(bounds.width-width)/2,y:bounds.height-height-16,width,height,side:'bottom'};}
+      else{const height=Math.min(box.height,390);box={...box,y:box.y+box.height-height,height};}
+    }
     if(panel.classList.contains('private-storage-room'))box=storagePanelBox(game,p,bounds,box);
     const {x, y, width, height, side} = box;
     panel.dataset.anchor = side;
@@ -959,7 +1001,7 @@ export class HeroUI {
     if(privateStorageRoom(g,p)){
       const width=Math.max(1,(canvas.clientWidth||640)/2),height=Math.max(1,(canvas.clientHeight||480)/2),density=2*Math.min(2,globalThis.devicePixelRatio||1);
       const w=Math.round(width*density),h=Math.round(height*density);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-      const zoom=renderer?.camera?.zoom||1.2,camera=storageRoomCamera(g,p,width,height,zoom);
+      const camera=storageRoomCamera(g,p,width,height,renderer?.camera?.zoom||1.2),zoom=camera.zoom;
       canvas.dataset.worldZoom=String(zoom);c.setTransform(density,0,0,density,0,0);c.fillStyle='#171426';c.fillRect(0,0,width,height);
       c.save();c.translate(width/2-camera.x*zoom,height/2-camera.y*zoom);c.scale(zoom,zoom);this.paintRoom(c,g,p,d,renderer);c.restore();return;
     }
@@ -967,12 +1009,14 @@ export class HeroUI {
     return this.paintRoom(c,g,p,d,renderer,view);
   }
   paintRoom(c,g,p,d,renderer,view){
+    beginParticleFrame(c,{budget:256,maxPixelFx:12});
     // Lobby storage can open before the main expedition renderer exists.
     const animator=renderer?.animator||(this.roomAnimator||=new Animator());
     if(d?.oldWell){drawOldWellRoom(c,g,p,animator,view);return;}
     if(d?.temple){drawTempleRoom(c,g,p,animator);drawRoomSpellEffects(c,g,p.room);drawWetDrips(c,g,p.room);return;}
     c.imageSmoothingEnabled = false;
     drawStorageBackdrop(c);
+    drawRoomSpellEffects(c,g,p.room);
     const roomTime=g.phase==='lobby'?performance.now()/1000:g.time,owner=g.players.find(q=>q.id===d.owner),online=robotOnline(owner);
     drawBansheeSteps(c,g,{room:p.room,time:roomTime,spacing:10});drawDeathSteps(c,g,{room:p.room,time:roomTime,spacing:10});
     // Fixed room coordinates show every chest, shop and exit at once.
@@ -1023,15 +1067,7 @@ export class HeroUI {
     if(p.robotRepair?.progress>0){c.fillStyle='#263d35';c.fillRect(robot.x-23,robot.y-54,46,5);c.fillStyle='#d9c081';c.fillRect(robot.x-22,robot.y-53,Math.max(1,Math.round(44*p.robotRepair.progress/ROBOT_REPAIR_SECONDS)),3);}
     c.save();
     c.translate(ROOM_STATIONS.vending.x-255,23+ROOM_STATIONS.vending.y-158);
-    c.fillStyle = "#7a527f";
-    c.fillRect(244, 105, 23, 36);
-    c.fillStyle = "#263442";
-    c.fillRect(247, 109, 13, 19);
-    c.fillStyle = "#ef698b";
-    c.fillRect(251, 114, 5, 9);
-    c.fillStyle = "#ffdb78";
-    c.fillRect(262, 114, 2, 3);
-    c.fillRect(248, 132, 13, 3);
+    drawRoomVending(c,255,141,roomTime);
     c.font = "7px monospace";
     c.textAlign = "center";
     c.fillStyle = "#ebd9b3";
@@ -1060,6 +1096,7 @@ export class HeroUI {
       c.beginPath();
       c.ellipse(q.roomX, q.roomY + 1, 18, 8, 0, 0, Math.PI * 2);
       c.stroke();
+      drawActorGameplayFx(c,g,q,43,'back');
       animator.draw(
         c,
         {
@@ -1069,6 +1106,7 @@ export class HeroUI {
         roomTime,
         43,
       );
+      drawActorGameplayFx(c,g,q,43,'front');
       c.fillStyle = q.color;
       c.textAlign = "center";
       c.font = "8px monospace";

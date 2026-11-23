@@ -11,7 +11,14 @@ import {saveSession,restoreSession} from '../src/session.mjs';
 import {footprintHit} from '../src/world.mjs';
 import {terrainSupport} from '../src/terrain-support.mjs';
 const game=env=>{const g=new Game(()=>.5);g.environment=env;g.seed=42;g.addPlayer('keyboard');g.start();g.bloom=3;return g;};
-test('native realm catalogs and articulated fauna are valid editable indexed sprites',()=>{for(const [k,s]of Object.entries({...REALM_SPRITES,...FAUNA_SPRITES})){assert.ok(validateSprite(s),k);assert.ok(s.pixels.some(Boolean),k);}for(const env of REALMS)assert.equal(Object.keys(REALM_ASSETS[env]).length,env==='swamp'?12:8);});
+test('older shadow expeditions gain candle dressing once without moving their scenery or changing terrain',()=>{
+ const g=game('shadow'),oldKinds=new Set(['wither_tree','root_arch','shadow_obsidian','thorn_fan','echo_fungus','shadow_bloom','ashen_log','veil_stone']);g.scenery=g.scenery.filter(p=>oldKinds.has(p.kind)&&!p.shadowThicket);delete g.realmState.underworldDressingVersion;
+ const before=structuredClone(g.scenery),terrain=[...g.terrain];tickRealmLife(g,.02);assert.deepEqual(g.scenery.slice(0,before.length),before);assert.deepEqual(g.terrain,terrain);assert.ok(g.scenery.filter(p=>p.kind==='soul_candles').length>=8);assert.ok(g.scenery.length<=430);const count=g.scenery.length;tickRealmLife(g,.02);assert.equal(g.scenery.length,count);
+});
+test('fixed authored shadow scenery opts out of the automatic dressing upgrade',()=>{
+ const g=game('shadow'),prop=realmProp('wither_tree',420,480,'authored',{size:173}),world=realmWorld(42,'shadow',{layout:{scenery:[prop],tiles:{0:'shadow_soil'}}});Object.assign(g,world);const before=structuredClone(g.scenery);tickRealmLife(g,.02);assert.deepEqual(g.scenery,before);assert.equal(g.terrain[0],'shadow_soil');
+});
+test('native realm catalogs and articulated fauna are valid editable indexed sprites',()=>{for(const [k,s]of Object.entries({...REALM_SPRITES,...FAUNA_SPRITES})){assert.ok(validateSprite(s),k);assert.ok(s.pixels.some(Boolean),k);}for(const env of REALMS)assert.equal(Object.keys(REALM_ASSETS[env]).length,env==='swamp'?12:env==='shadow'?24:8);});
 test('nutria uses eight readable native views and separate animated paws instead of the boxy placeholder',()=>{
  const views=Array.from({length:8},(_,view)=>FAUNA_SPRITES['nutria_body_'+view]);
  assert.ok(views.every(validateSprite));assert.ok(views.every(sprite=>sprite.palette.includes('#d4b88c')));
@@ -34,7 +41,7 @@ test('seeded layouts keep every chamber connected on walkable ground across 12 s
   const blocked=k=>['water','cave_void','shadow_void'].includes(k),seen=new Set([25*50+25]),queue=[25*50+25];
   for(let head=0;head<queue.length;head++){const id=queue[head],x=id%50,y=Math.floor(id/50);for(const [dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,n=ny*50+nx;if(nx>=0&&nx<50&&ny>=0&&ny<50&&!seen.has(n)&&!blocked(w.terrain[n])){seen.add(n);queue.push(n);}}}
   for(const room of w.realmState.chambers)assert.ok([...seen].some(i=>Math.hypot(i%50*32+16-room.x,Math.floor(i/50)*32+16-room.y)<100),`${env} seed ${seed} room ${room.x},${room.y}`);
-  assert.ok(w.scenery.length<=158);assert.equal(w.scenery.filter(p=>p.kind==='ceiling_stalactite').length,env==='caverns'?5:0);
+  assert.ok(w.scenery.length<=(env==='shadow'?430:158));assert.equal(w.scenery.filter(p=>p.kind==='ceiling_stalactite').length,env==='caverns'?5:0);
  }
 });
 test('cave and shadow void blocks flying, swimming and projectiles through Game.blocked',()=>{for(const env of ['caverns','shadow']){const g=game(env);assert.ok(g.blocked(32,32,8,true,true,false,0));assert.ok(realmVoidBlocked(g,32,32));assert.ok(!realmVoidBlocked(g,800,960,5));}});

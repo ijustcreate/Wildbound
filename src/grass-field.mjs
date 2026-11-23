@@ -12,7 +12,7 @@ layout(location=0) in vec2 segment;
 layout(location=1) in vec4 blade;
 layout(location=2) in vec4 variation;
 uniform vec2 camera,view;
-uniform float zoom,time,bloom,front,windStrength,wakeSpan;
+uniform float zoom,time,bloom,front,windStrength,wakeSpan,shadowRealm;
 uniform vec2 wakeOrigin;
 uniform vec4 actors[8],vehicles[8];
 uniform sampler2D patchStates;
@@ -55,10 +55,11 @@ void main(){
  gl_Position=vec4(screen.x/(view.x*.5),-screen.y/(view.y*.5),0.,1.);
  if(front>.5&&inFront<.5)gl_Position=vec4(2.,2.,0.,1.);
  vec3 low=vec3(.25,.39,.20),mid=vec3(.40,.54,.25),tip=vec3(.57,.65,.32);
+ if(shadowRealm>.5){low=vec3(.21,.17,.28);mid=vec3(.36,.29,.43);tip=vec3(.51,.43,.57);}
  color=t<.34?low:t<.82?mid:tip;
  float patches=valueNoise(root*.018),accent=step(.94,hash21(floor(root/3.)));
  color*=.9+floor(patches*3.)*.08;
- color=mix(color,vec3(.58,.64,.35),accent*.28);
+ color=mix(color,shadowRealm>.5?vec3(.59,.48,.62):vec3(.58,.64,.35),accent*.28);
  if(dot(patchProperties.gba,vec3(1.))>0.)color=mix(color,patchProperties.gba,.26);
 }`;
 const fragment=`#version 300 es
@@ -67,14 +68,14 @@ in vec3 color;out vec4 pixel;
 void main(){pixel=vec4(color,1.);}`;
 
 export function grassFieldInstances(g,bounds={sx:0,sy:0,ex:1600,ey:1600},patches=(g.scenery||[]).filter(p=>p.kind==='tall_grass'),slot=p=>patches.indexOf(p)+1){
- const rows=[],{sx,sy,ex,ey}=bounds;
+ const rows=[],{sx,sy,ex,ey}=bounds,shadow=g.generatedEnvironment==='shadow',spacing=shadow?10:12;
  const add=(x,y,h,w,lean,shade,tall,patch=0)=>{if(x>=sx&&x<ex&&y>=sy&&y<ey)rows.push([x,y,h,w,lean,shade,patch,tall]);};
- for(let y=Math.ceil(sy/12)*12;y<ey;y+=12)for(let x=Math.ceil(sx/12)*12;x<ex;x+=12){
-  const n=forestHash(x+g.seed,y);if(n>.72)continue;
+ for(let y=Math.ceil(sy/spacing)*spacing;y<ey;y+=spacing)for(let x=Math.ceil(sx/spacing)*spacing;x<ex;x+=spacing){
+  const n=forestHash(x+g.seed,y);if(n>(shadow?.93:.72))continue;
   for(let i=0;i<4;i++){
    const px=x+(n-.5)*8+i*2,py=y+forestHash(y+i,x)*7;
    if(!meadowAllowed(g,px,py,2))continue;
-   add(px,py,5+forestHash(x+i,y)*6,1.5+forestHash(y,x+i)*.8,(i-1.5)*1.2,.9,0);
+   add(px,py,(shadow?15:5)+forestHash(x+i,y)*(shadow?15:6),1.5+forestHash(y,x+i)*.8,(i-1.5)*1.2,.9,shadow?1:0);
   }
  }
  for(const p of patches){
@@ -109,7 +110,7 @@ export class GrassFieldRenderer{
    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
    this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
    for(let i=1;i<=2;i++){gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,4,gl.FLOAT,false,32,(i-1)*16);gl.vertexAttribDivisor(i,1);}
-   this.uniforms=Object.fromEntries(['camera','view','zoom','time','bloom','front','actors','vehicles','patchStates','windStrength','wakeSpan','wakeOrigin','wakeField'].map(k=>[k,gl.getUniformLocation(program,k)]));
+   this.uniforms=Object.fromEntries(['camera','view','zoom','time','bloom','front','actors','vehicles','patchStates','windStrength','wakeSpan','wakeOrigin','wakeField','shadowRealm'].map(k=>[k,gl.getUniformLocation(program,k)]));
    this.wakeTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.wakeTexture);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
@@ -122,25 +123,26 @@ export class GrassFieldRenderer{
    return true;
   }catch(error){console.warn('Grass field unavailable:',error.message);this.failed=true;return false;}
  }
- draw(c,g,camera,w,h,front=false){
+ draw(c,g,camera,w,h,front=false,viewKey=c.canvas){
   // Overview cameras use the existing cached prop fallback. Never evict GPU
   // buffers still referenced by an exceptionally wide visible batch list.
   const columns=Math.ceil((w/camera.zoom+180)/256)+2,rows=Math.ceil((h/camera.zoom+220)/256)+2;
   if(columns*rows>128){this.active=false;return false;}
-  if((g.generatedEnvironment||g.environment)!=='forest'||!g.forestLandscape||g.phase==='won'||!this.init()||this.failed){this.active=false;return false;}
+  const env=g.generatedEnvironment||g.environment,plan=env==='shadow'?g.realmState:env==='house'?g.house:g.forestLandscape;
+  if(!['forest','house','shadow'].includes(env)||!plan||g.phase==='won'&&env!=='house'||!this.init()||this.failed){this.active=false;return false;}
   const gl=this.gl,u=this.uniforms;
-  if(this.game!==g||this.seed!==g.seed||this.plan!==g.forestLandscape){
+  if(this.game!==g||this.seed!==g.seed||this.plan!==plan){
    for(const b of this.chunks?.values()||[])gl.deleteBuffer(b.buffer);
-   this.game=g;this.seed=g.seed;this.plan=g.forestLandscape;this.chunks=new Map();this.patchSlots=new Map();this.nextSlot=0;
+   this.game=g;this.seed=g.seed;this.plan=plan;this.chunks=new Map();this.patchSlots=new Map();this.nextSlot=0;
    this.wake=new GrassWake();this.wakeKey=null;
-   this.stateRevision=0;this.geometryRevision=0;this.backRaster=null;this.frontRaster=null;this.states=new Uint8Array(1024*8*4);gl.bindTexture(gl.TEXTURE_2D,this.stateTexture);
-   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,1024,8,0,gl.RGBA,gl.UNSIGNED_BYTE,this.states);
+   this.stateRevision=0;this.geometryRevision=0;this.backRaster=null;this.frontRaster=null;this.rasterViews=new WeakMap();this.states=new Uint8Array(1024*32*4);gl.bindTexture(gl.TEXTURE_2D,this.stateTexture);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,1024,32,0,gl.RGBA,gl.UNSIGNED_BYTE,this.states);
   }
   if(!front){
    const halfX=w/(2*camera.zoom)+90,halfY=h/(2*camera.zoom)+110;
    const nearby=nearbyScenery(g.scenery||[],camera.x,camera.y,Math.hypot(halfX,halfY));
    const patches=nearby.filter(p=>p.kind==='tall_grass'&&Math.abs(p.x-camera.x)<halfX+80&&Math.abs((p.rootY??p.y)-camera.y)<halfY+40);
-   if(this.nextSlot+patches.length>=8192){for(const b of this.chunks.values())gl.deleteBuffer(b.buffer);this.chunks.clear();this.patchSlots.clear();this.nextSlot=0;}
+   if(this.nextSlot+patches.length>=32768){for(const b of this.chunks.values())gl.deleteBuffer(b.buffer);this.chunks.clear();this.patchSlots.clear();this.nextSlot=0;}
    this.visiblePatches=patches;
    const slot=p=>{let i=this.patchSlots.get(p.id??p);if(i===undefined){i=this.nextSlot++;this.patchSlots.set(p.id??p,i);}return i+1;};
    for(const p of patches){
@@ -166,11 +168,13 @@ export class GrassFieldRenderer{
     if(g.mapMode!=='boundless'&&g.bloom<3){c.beginPath();c.arc(800,800,g.bloom*430,0,Math.PI*2);c.clip();}
     if(!g.trainTest?.design.wildLands||g.trainTest.streamDisabled)c.drawImage(entry.ground,x,y,256,256);c.restore();
    }
-   while(this.chunks.size>128){const key=this.chunks.keys().next().value;gl.deleteBuffer(this.chunks.get(key).buffer);this.chunks.delete(key);}
+   while(this.chunks.size>512){const key=this.chunks.keys().next().value;gl.deleteBuffer(this.chunks.get(key).buffer);this.chunks.delete(key);}
    for(const p of patches)if(p.grassBurnMarks?.length)drawGrassBurnMarks(c,p);
   }
-  const activeActors=[...(g.players||[]),...(g.enemies||[])].filter(a=>!a.room&&a.hp>0&&!a.swimming&&!(a.jumpHeight>8));
-  if(front&&!(this.visiblePatches||[]).some(p=>!p.cut&&!p.charred&&activeActors.some(a=>Math.abs(p.x-a.x)<65&&Math.abs((p.rootY??p.y)-a.y)<50))){this.active=true;return true;}
+  const realmAnimals=env==='shadow'?[g.realmState,...(g.boundlessLoadedChunks||[]).map(r=>r.realmState)].filter(Boolean).flatMap(s=>(s.animals||[]).filter(a=>a.kind==='shadow_stag').map(a=>({...a,hp:1,realmGrassActor:true}))):[];
+  const allActors=[...(g.players||[]),...(g.enemies||[]),...realmAnimals];
+  const activeActors=allActors.filter(a=>!a.room&&a.hp>0&&!a.swimming&&!(a.jumpHeight>8));
+  if(front&&env!=='shadow'&&!(this.visiblePatches||[]).some(p=>!p.cut&&!p.charred&&activeActors.some(a=>Math.abs(p.x-a.x)<65&&Math.abs((p.rootY??p.y)-a.y)<50))){this.active=true;return true;}
   const {pixelStep,width,height}=grassRasterLayout(w,h,camera.zoom);
   const rasterCamera={x:Math.round(camera.x/32)*32,y:Math.round(camera.y/32)*32,zoom:camera.zoom};
   const viewW=width*pixelStep*camera.zoom,viewH=height*pixelStep*camera.zoom;
@@ -181,9 +185,9 @@ export class GrassFieldRenderer{
   if(this.wakeKey!==wakeKey){
    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.wakeTexture);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,128,128,gl.RGBA,gl.UNSIGNED_BYTE,this.wake.raster(wakeX,wakeY,wakeSpan));this.wakeKey=wakeKey;
   }
-  const actorKey=activeActors.filter(a=>Math.abs(a.x-camera.x)<w/camera.zoom&&Math.abs(a.y-camera.y)<h/camera.zoom&&meadowAllowed(g,a.x,a.y+(a.kind?14:1))).slice(0,8).map(a=>Math.round(a.x/2)+','+Math.round(a.y/2)).join(';');
+  const actorKey=activeActors.filter(a=>Math.abs(a.x-camera.x)<w/camera.zoom&&Math.abs(a.y-camera.y)<h/camera.zoom&&meadowAllowed(g,a.x,a.y+(a.realmGrassActor?0:a.kind?14:1))).slice(0,8).map(a=>Math.round(a.x/2)+','+Math.round(a.y/2)).join(';');
   const rasterKey=[rasterCamera.x,rasterCamera.y,width,height,pixelStep,Math.floor((g.time||0)*20),this.stateRevision,this.geometryRevision,actorKey,g.bloom,vegetationWindStrength(g)].join(':');
-  const slotName=front?'frontRaster':'backRaster';let raster=this[slotName];
+  const slotName=front?'frontRaster':'backRaster';this.rasterViews??=new WeakMap();let view=this.rasterViews.get(viewKey);if(!view){view={};this.rasterViews.set(viewKey,view);}let raster=view[slotName];
   const composite=()=>{c.save();c.imageSmoothingEnabled=false;c.globalAlpha*=g.trainTest?.floorLod?.detailAlpha??1;c.drawImage(raster.canvas,rasterCamera.x-width*pixelStep/2,rasterCamera.y-height*pixelStep/2,width*pixelStep,height*pixelStep);c.restore();};
   if(raster?.key===rasterKey){composite();this.active=true;return true;}
   if(this.canvas.width<GRASS_BUFFER_WIDTH||this.canvas.height<GRASS_BUFFER_HEIGHT){this.canvas.width=GRASS_BUFFER_WIDTH;this.canvas.height=GRASS_BUFFER_HEIGHT;}
@@ -191,11 +195,12 @@ export class GrassFieldRenderer{
   gl.uniform2f(u.camera,rasterCamera.x,rasterCamera.y);gl.uniform2f(u.view,viewW,viewH);gl.uniform1f(u.zoom,camera.zoom);
   gl.uniform1f(u.time,Math.floor((g.time||0)*20)/20);gl.uniform1f(u.bloom,g.mapMode==='boundless'?3:g.bloom??3);gl.uniform1f(u.front,front?1:0);
   gl.uniform1f(u.windStrength,vegetationWindStrength(g));gl.uniform2f(u.wakeOrigin,wakeX,wakeY);gl.uniform1f(u.wakeSpan,wakeSpan);
+  gl.uniform1f(u.shadowRealm,env==='shadow'?1:0);
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.wakeTexture);gl.uniform1i(u.wakeField,1);
   const actors=new Float32Array(32),active=[];let count=0;
-  for(const a of [...(g.players||[]),...(g.enemies||[])]){
+  for(const a of allActors){
    if(count===8)break;if(a.vehicleId||a.room||a.hp<=0||a.swimming||a.jumpHeight>8||Math.abs(a.x-camera.x)>w/camera.zoom||Math.abs(a.y-camera.y)>h/camera.zoom)continue;
-   actors.set([a.x,a.y+(a.kind?14:1),1,a.kind?24:34],count++*4);active.push(a);
+   actors.set([a.x,a.y+(a.realmGrassActor?0:a.kind?14:1),1,a.kind?24:34],count++*4);active.push(a);
   }
   for(let i=count;i<8;i++)actors[i*4+3]=34;
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.stateTexture);gl.uniform1i(u.patchStates,0);gl.uniform4fv(u.actors,actors);
@@ -207,7 +212,7 @@ export class GrassFieldRenderer{
    for(let i=1;i<=2;i++)gl.vertexAttribPointer(i,4,gl.FLOAT,false,32,(i-1)*16);
    gl.drawArraysInstanced(gl.TRIANGLES,0,18,b.count);this.submittedInstances+=b.count;
   }
-  if(!raster){const canvas=document.createElement('canvas');raster={canvas,key:null};this[slotName]=raster;}
+  if(!raster){const canvas=document.createElement('canvas');raster={canvas,key:null};view[slotName]=raster;}
   if(raster.canvas.width!==width||raster.canvas.height!==height){raster.canvas.width=width;raster.canvas.height=height;}
   const pen=raster.canvas.getContext('2d');pen.clearRect(0,0,width,height);pen.drawImage(this.canvas,0,this.canvas.height-height,width,height,0,0,width,height);raster.key=rasterKey;composite();
   this.active=true;return true;

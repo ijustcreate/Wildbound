@@ -1,3 +1,5 @@
+import {enemyPursuitGoal} from './enemy-systems.mjs';
+import {requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {defeatTrialMember} from './expedition-trials.mjs';
 import {tickProvokedFauna,drawProvokedFaunaTells} from './provoked-fauna.mjs';
 import { clearShot, navigateEnemy } from './navigation.mjs';
@@ -68,9 +70,9 @@ function brain(e) { return e.night??={phase:'idle',timer:0,cooldown:0,trail:[],t
 function face(e,p) { const d=distance(e,p)||1;e.faceX=(p.x-e.x)/d;e.faceY=(p.y-e.y)/d; }
 function move(g,e,p,dt,speed=e.speed||60) {
   if(!enabled(e,'hunt'))return;
-  face(e,p);
-  if(visible(g,e,p)) {
-    const step=Math.min(distance(e,p),speed*dt);g.moveActor(e,e.faceX*step,e.faceY*step);
+  const goal=enemyPursuitGoal(g,e,p);face(e,goal);
+  if(visible(g,e,goal)) {
+    const step=Math.min(distance(e,goal),speed*dt);g.moveActor(e,e.faceX*step,e.faceY*step);
   } else { const old=e.speed;e.speed=speed;navigateEnemy(g,e,p,dt);e.speed=old; }
 }
 function damage(g,p,source,amount) {
@@ -98,7 +100,8 @@ function trail(e,dt) {
   const n=brain(e);n.trail=n.trail.filter(t=>(t.life-=dt)>0);n.trailTimer-=dt;
   if(n.trailTimer<=0){n.trail.push({x:e.x,y:e.y,life:1.3});n.trailTimer=.16;}
 }
-function windup(e,p,seconds,phase='windup') {
+function windup(g,e,p,seconds,phase='windup') {
+  if(!requestEnemyGroupTurn(g,e,p,{rush:e.kind==='werewolf',flightSpeed:phase==='aim'?600:phase==='barbs'?180:0}))return;
   const n=brain(e);face(e,p);n.phase=phase;n.timer=seconds;n.duration=seconds;n.aim={x:p.x,y:p.y,room:p.room||null};n.targetId=p.id;
   e.state='windup';e.attack=seconds;
 }
@@ -111,7 +114,7 @@ function melee(g,e,p,dt,{range=42,warning=.6,recovery=1,speed=e.speed||60}={}) {
   }
   if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';return;}
   if(!valid(e,p))return;
-  if(distance(e,p)<=range&&visible(g,e,p))windup(e,p,warning);
+  if(distance(e,p)<=range&&visible(g,e,p))windup(g,e,p,warning);
   else move(g,e,p,dt,speed);
 }
 function shoot(g,e,p,kind,speed,range) {
@@ -157,12 +160,12 @@ function hunter(g,e,p,dt) {
   if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';}
   if(!valid(e,p))return;
   const d=distance(e,p)||1;
-  if(n.phase==='idle'&&d<145&&n.retreatCooldown<=0&&enabled(e,'hunt')){
+  if(n.phase==='idle'&&d<145&&n.retreatCooldown<=0&&enabled(e,'hunt')&&requestEnemyGroupTurn(g,e,p,{flightSpeed:600})){
     face(e,p);n.retreat={x:-e.faceX,y:-e.faceY};n.phase='dash';n.timer=.35;n.retreatCooldown=8;e.state='dash';return;
   }
   if(d<180&&enabled(e,'hunt')){face(e,p);g.moveActor(e,-e.faceX*(e.speed||68)*dt,-e.faceY*(e.speed||68)*dt);}
   else if(d>400||!visible(g,e,p))move(g,e,p,dt);
-  if(n.phase==='idle'&&d<=items.ITEMS.rifle.shot.range&&visible(g,e,p))windup(e,p,1.15,'aim');
+  if(n.phase==='idle'&&d<=items.ITEMS.rifle.shot.range&&visible(g,e,p))windup(g,e,p,1.15,'aim');
 }
 
 function stepNightEnemy(g,e,target,dt) {
@@ -202,7 +205,7 @@ function stepNightEnemy(g,e,target,dt) {
       else if(n.timer<=0){n.phase='recover';n.timer=n.duration=1.2;e.jumpHeight=0;}return true;
     }
     if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';return true;}
-    if(p&&enabled(e,'melee')&&distance(e,p)<150&&visible(g,e,p))windup(e,p,enraged?.55:.8);
+    if(p&&enabled(e,'melee')&&distance(e,p)<150&&visible(g,e,p))windup(g,e,p,enraged?.55:.8);
     else if(p)move(g,e,p,dt,enraged?105:85);return true;
   }
   if(e.kind==='scorpion_boss'){
@@ -219,7 +222,7 @@ function stepNightEnemy(g,e,target,dt) {
       }return true;
     }
     if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';return true;}
-    if(p&&enabled(e,'melee')&&distance(e,p)<125&&visible(g,e,p)){n.strike=(n.strikeCount=(n.strikeCount||0)+1)%2?'sting':'pincer';if(n.strike==='pincer'&&distance(e,p)>70)move(g,e,p,dt,enraged?64:46);else windup(e,p,n.strike==='sting'?(enraged?.7:1):.65);}
+    if(p&&enabled(e,'melee')&&distance(e,p)<125&&visible(g,e,p)){n.strike=(n.strikeCount=(n.strikeCount||0)+1)%2?'sting':'pincer';if(n.strike==='pincer'&&distance(e,p)>70)move(g,e,p,dt,enraged?64:46);else windup(g,e,p,n.strike==='sting'?(enraged?.7:1):.65);}
     else if(p)move(g,e,p,dt,enraged?64:46);return true;
   }
   if(e.kind==='carrion_pack') {
@@ -251,13 +254,13 @@ function stepNightEnemy(g,e,target,dt) {
           n.captiveId=p.id;n.phase='holding';n.timer=3;
         }else release(e);
       }
-    }else if(n.cooldown<=0&&p&&distance(e,p)<=105&&visible(g,e,p))windup(e,p,.8,'grab');
+    }else if(n.cooldown<=0&&p&&distance(e,p)<=105&&visible(g,e,p))windup(g,e,p,.8,'grab');
     n.lastHp=e.hp;return true;
   }
   if(e.kind==='poison_pod') {
     if(n.phase==='barbs'){
       if(n.timer<=0){if(p&&distance(e,p)<=160)shoot(g,e,n.aim,'barb',180,160);n.phase='idle';n.cooldown=2.4;}
-    }else if(p&&n.cooldown<=0&&distance(e,p)<=160&&visible(g,e,p))windup(e,p,.75,'barbs');
+    }else if(p&&n.cooldown<=0&&distance(e,p)<=160&&visible(g,e,p))windup(g,e,p,.75,'barbs');
     return true;
   }
   if(e.kind==='burrower') {
@@ -266,7 +269,7 @@ function stepNightEnemy(g,e,target,dt) {
     if(n.phase==='burrow'){
       // The timer is a minimum underground duration, never a movement deadline.
       if(p)move(g,e,p,dt);
-      if(enabled(e,'melee')&&n.timer<=0&&p&&distance(e,p)<80&&visible(g,e,p))windup(e,p,.85,'emerge');
+      if(enabled(e,'melee')&&n.timer<=0&&p&&distance(e,p)<80&&visible(g,e,p))windup(g,e,p,.85,'emerge');
     }else if(n.phase==='emerge'&&n.timer<=0){
       if(enabled(e,'melee')&&p&&distance(e,p)<48)damage(g,p,e,e.damage||18);
       n.phase='exposed';n.timer=1;
@@ -292,7 +295,7 @@ function stepNightEnemy(g,e,target,dt) {
       if(n.timer<=0){n.phase='pounce';n.timer=.38;}
     }else if(n.phase==='recover'){retreat(g,e,p,dt);if(n.timer<=0)n.phase='idle';}
     else if(lightAt(g,e)>.4){n.phase='recover';n.timer=.8;retreat(g,e,p,dt);}
-    else if(enabled(e,'melee')&&p&&distance(e,p)<100&&visible(g,e,p)){windup(e,p,.7);g.onSound?.(creatureCue('lion','attack'),e);}
+    else if(enabled(e,'melee')&&p&&distance(e,p)<100&&visible(g,e,p)){windup(g,e,p,.7);g.onSound?.(creatureCue('lion','attack'),e);}
     else if(n.memory>0&&n.investigate)move(g,e,n.investigate,dt);
     else if(p&&distance(e,p)<220&&visible(g,e,p))move(g,e,p,dt,35);
     e.opacity=nightEnemyOpacity(g,e);return true;

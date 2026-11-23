@@ -1,0 +1,10 @@
+# Bayou board art
+
+The shared board templates are `assets/board-minimal.png` (Forest), `board-desert-v1.png`, `board-beach-v1.png`, `board-temple-v1.png`, `board-house-v1.png`, `board-cemetery-v1.png`, `board-caverns-v1.png` and `board-shadow-v1.png`. All paths are relative to `assets/`. `board-jungle-inlay.png` is a decorative wood inlay, not the calibrated playable board.
+
+New artwork: `assets/board-bayou-v1.png`, selected for the internal `swamp` environment in `src/board-art.mjs`. Existing authored pack overrides retain precedence. Shared route coordinates and live magic are unchanged.
+
+Created with the built-in imagegen tool, using Cemetery as the edit target and Beach as a style reference. Final generation prompt:
+
+Use case: style-transfer. Create a production game-board texture for Wildbound's Bayou Marsh level by editing reference image 1 (the cemetery board). Reference image 2 (beach) confirms the shared style. Preserve EXACT image framing, aspect ratio, outer dark wood/gold frame, WILDBOUND title, every ivory and pale blue stone tile's shape and position, the complete winding route, central octagonal stone well and turquoise spiral. These are calibrated pawn landing positions: do not move, resize, obscure, add or remove any tiles. Replace ONLY the cemetery scenery between and around the tiles with a richly illustrated Louisiana fantasy bayou: shallow dark teal and olive swamp channels, muddy moss-covered islets, cypress knees and buttressed cypress trunks around the margins, hanging Spanish moss at the upper corners, reeds, lily pads with a few pale flowers, old mossy stone ruin fragments and a small warm lantern on weathered timber. Replace mausoleum and gravestones/fences with bayou scenery; no graves or crosses. Keep scenery small and below path prominence, never over the tiles. Same crisp chunky pixel-cluster fantasy illustration, soft bevel lighting on ivory stones, restrained moss/olive/teal palette, warm gold wooden frame. Top-down game board, not a landscape. Output the full complete board without cropping, UI, dice, pawns, extra text or watermarks.
+

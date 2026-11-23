@@ -1,4 +1,7 @@
+import {drawGoldenTicketIcon} from './train-conductor-art.mjs';
 import {drawCarvedBoneIcon,drawCarverCrown} from './bone-carver-art.mjs';
+import {drawChocolateFrogIcon} from './frog-art.mjs';
+import {paintSchoolUniformIcon} from './train-students-art.mjs';
 import {drawBroomIcon,drawBroom,drawWitchHat} from './broom-art.mjs';
 import {paintSkeletonItem} from './skeleton-item-art.mjs';
 import {paintReaperItem} from './reaper-art.mjs';
@@ -17,6 +20,7 @@ export const ITEM_ART_TYPES = [
   "arrow",
     "fruit",
   "coconut",
+  "apple",
   "meat",
   "sword",
   "dagger",
@@ -141,6 +145,21 @@ export function paintItem(c, type) {
 }
 function iconPart(c,paint,sx,sy,ox,oy){const pen={fillStyle:'',fillRect(x,y,w,h){const left=Math.max(0,Math.round(ox+x*sx)),top=Math.max(0,Math.round(oy+y*sy)),right=Math.min(24,Math.max(left+1,Math.round(ox+(x+w)*sx))),bottom=Math.min(24,Math.max(top+1,Math.round(oy+(y+h)*sy)));if(right>left&&bottom>top){c.fillStyle=this.fillStyle;c.fillRect(left,top,right-left,bottom-top);}}};paint(pen);}
 function paintItemBase(c, type) {
+  if(type==='golden_train_ticket'){drawGoldenTicketIcon(c);return;}
+  if(paintSchoolUniformIcon(c,type))return;
+  if(ITEMS[type]?.scarf){const [base,trim]=ITEMS[type].scarf;c.fillStyle='#302b31';c.fillRect(5,3,14,6);c.fillRect(6,7,5,15);c.fillRect(14,7,5,12);c.fillStyle=base;c.fillRect(6,4,12,4);c.fillRect(7,8,3,13);c.fillRect(15,8,3,10);c.fillStyle=trim;for(const y of [5,11,17]){c.fillRect(7,y,3,2);if(y<17)c.fillRect(15,y,3,2);}return;}
+  if(type==='chocolate_frog'){drawChocolateFrogIcon(c);return;}
+  if(type==='caught_snowy_owl'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(4,8,18,14,'#343b33');r(5,4,15,5,'#343b33');r(8,2,9,3,'#343b33');r(10,0,5,2,'#af935f');
+    r(5,8,15,12,'#29403d');r(8,10,10,9,'#e3e7d9');r(7,8,12,6,'#f5eed9');r(9,10,2,2,'#dcb95c');r(15,10,2,2,'#dcb95c');r(10,10,1,2,'#2a3435');r(15,10,1,2,'#2a3435');
+    for(const x of [4,11,20]){r(x,8,2,13,'#9a7a4b');r(x,9,1,11,'#dcc185');}r(5,5,3,4,'#ba9b65');r(8,3,9,2,'#d5ba82');r(18,5,3,4,'#9a7a4b');
+    r(2,20,21,4,'#413c2d');r(3,20,19,1,'#dcc185');r(3,21,18,2,'#88603c');r(14,14,4,4,'#d3ad61');r(15,15,1,2,'#675038');return;
+  }
+  if(type==='diagon_ice_cream'){c.fillStyle='#584331';c.fillRect(8,12,9,3);c.fillRect(10,15,5,5);c.fillRect(11,20,3,3);c.fillStyle='#bc8e60';c.fillRect(9,13,7,2);c.fillRect(11,16,3,4);c.fillStyle='#ce9da3';c.fillRect(5,6,15,7);c.fillRect(7,3,11,4);c.fillStyle='#f3d4bc';c.fillRect(7,5,8,3);return;}
+  if(type==='caught_chocolate_frog'){c.fillStyle='#253c3b';c.fillRect(3,3,18,20);c.fillStyle='#84aaa1';c.fillRect(4,6,16,15);c.fillStyle='#b4d5c0';c.fillRect(5,7,2,12);c.fillStyle='#98723f';c.fillRect(6,2,12,4);iconPart(c,pen=>drawChocolateFrogIcon(pen),.7,.7,4,7);return;}
+  if(type==='nimbus_2000'){iconPart(c,p=>drawBroom(p,{pelvis:{x:0,y:0}},6,type),.32,.9,14,10);return;}
+  if(type==='standard_book_of_spells'){c.fillStyle='#352e37';c.fillRect(4,3,16,19);c.fillStyle='#9c5345';c.fillRect(5,3,14,17);c.fillStyle='#633b39';c.fillRect(5,3,3,17);c.fillStyle='#e9d6ac';c.fillRect(8,20,11,2);c.fillStyle='#d9b66b';c.fillRect(10,6,6,1);c.fillRect(11,10,1,6);c.fillRect(9,12,5,1);c.fillRect(14,14,2,1);return;}
   if(type==='gravemysts_idol'){
     c.fillStyle='#342b3c';c.fillRect(6,7,12,13);c.fillRect(5,4,5,6);c.fillRect(14,4,5,6);c.fillStyle='#837496';c.fillRect(7,8,10,10);c.fillStyle='#c7bad2';c.fillRect(7,5,2,3);c.fillRect(15,5,2,3);c.fillRect(9,11,2,2);c.fillRect(14,11,2,2);c.fillStyle='#e5c4bc';c.fillRect(11,14,2,1);c.fillRect(9,17,6,2);c.fillStyle='#cba766';c.fillRect(3,20,18,2);c.fillRect(5,22,14,1);return;
   }
@@ -576,6 +595,9 @@ function paintItemBase(c, type) {
       r(11, 4, 2, 5, "#735131");
       r(13, 3, 6, 3, green);
       r(14, 3, 3, 1, "#bbd088");
+      break;
+    case "apple":
+      r(5,9,14,11,'#563529');r(7,7,10,15,'#8f3834');r(6,9,12,10,'#bc4e3c');r(8,9,4,3,'#e38a59');r(11,4,2,5,'#6c4c30');r(13,4,6,3,'#80914b');
       break;
     case "coconut":
       r(5, 7, 14, 13, dark);

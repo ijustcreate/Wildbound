@@ -5,9 +5,9 @@ import {creationButtonLabels,drawCreationPreview} from '../src/creation-preview.
 import {drawHumanHead} from '../src/human-head.mjs';
 import {drawFaceAccessories} from '../src/face-accessories.mjs';
 const raster=()=>{const pixels=new Map();return {pixels,save(){},restore(){},clearRect(){},translate(){},scale(){},fillRect(x,y,w,h){assert.ok([x,y,w,h].every(Number.isFinite));for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)pixels.set(`${xx},${yy}`,this.fillStyle);}};};
-test('Creator labels follow physical menu positions on Xbox, Switch and PlayStation',()=>{
- assert.equal(creationButtonLabels('xbox').choose,'A');assert.equal(creationButtonLabels('switch').choose,'B');
- assert.equal(creationButtonLabels('switch').back,'A');assert.equal(creationButtonLabels('switch').delete,'Y');
+test('Creator labels follow the menu controls on Xbox, Switch and PlayStation',()=>{
+ assert.equal(creationButtonLabels('xbox').choose,'A');assert.equal(creationButtonLabels('switch').choose,'A');
+ assert.equal(creationButtonLabels('switch').back,'B');assert.equal(creationButtonLabels('switch').delete,'Y');
  assert.equal(creationButtonLabels('switch').shift,'X');assert.equal(creationButtonLabels('switch').done,'+');
  assert.equal(creationButtonLabels('playstation').choose,'Cross');
 });

@@ -13,7 +13,7 @@ import fs from 'node:fs';
 
 const expected = [
   'snail','jumping_spider','fox_kit','llama','penguin','crab','golden_retriever',
-  'skunk','triceratops','sheep','squirrel','baby_triceratops','turkey',
+  'skunk','triceratops','sheep','squirrel','baby_triceratops','turkey','river_otter',
 ];
 
 test('wildlife pack satisfies the isolated catalog contract', () => {
