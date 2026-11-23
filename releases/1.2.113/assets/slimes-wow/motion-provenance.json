@@ -1,0 +1,76 @@
+{
+  "reference": "https://www.wowhead.com/npc=222603/slime#modelviewer",
+  "npcId": 222603,
+  "displayId": 114801,
+  "modelFileId": 3457112,
+  "sourceUrl": "https://wow.zamimg.com/modelviewer/live/m2/3457112.m2",
+  "sourceSha256": "92312377bb951f53c2ad0fd5e3dac1baf518ed9b9901158f44bca7d9466fad77",
+  "sourceBones": 72,
+  "sourceSequences": 7,
+  "distinctSequences": 7,
+  "mappedBones": {
+    "core": 26,
+    "crest": 48,
+    "rimL": 28,
+    "rimR": 31,
+    "eyeL": 70,
+    "eyeR": 71,
+    "gelL": 35,
+    "gelR": 36
+  },
+  "scale": 20,
+  "axes": "WoW (X forward,Y left,Z up) -> Wildbound (Y,X,Z)",
+  "rootMotion": "Native shape handles are relative to the body control; game locomotion owns horizontal travel.",
+  "clips": {
+    "idle": {
+      "sequence": 0,
+      "animationId": 0,
+      "duration": 2.667,
+      "loop": true,
+      "sourceName": "Stand"
+    },
+    "run": {
+      "sequence": 1,
+      "animationId": 5,
+      "duration": 0.867,
+      "loop": true,
+      "sourceName": "Run"
+    },
+    "walk": {
+      "sequence": 2,
+      "animationId": 4,
+      "duration": 2.267,
+      "loop": true,
+      "sourceName": "Walk"
+    },
+    "hurt": {
+      "sequence": 3,
+      "animationId": 9,
+      "duration": 0.833,
+      "loop": false,
+      "sourceName": "CombatWound"
+    },
+    "attack": {
+      "sequence": 4,
+      "animationId": 16,
+      "duration": 1,
+      "loop": false,
+      "sourceName": "AttackUnarmed"
+    },
+    "attack_alt": {
+      "sequence": 5,
+      "animationId": 16,
+      "duration": 1,
+      "loop": false,
+      "sourceName": "AttackUnarmed"
+    },
+    "death": {
+      "sequence": 6,
+      "animationId": 1,
+      "duration": 5.333,
+      "loop": false,
+      "sourceName": "Death"
+    }
+  },
+  "rights": "Blizzard source motion tracks; original Wildbound pixel artwork. The source mesh and texture are not bundled into the game."
+}

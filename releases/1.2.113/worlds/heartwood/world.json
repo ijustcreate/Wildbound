@@ -1,0 +1,1 @@
+{"version":1,"id":"heartwood","name":"Heartwood","environment":"forest","description":"A local forest ecosystem with deer herds, grazing pigs and prowling panthers.","prey":["mother_deer","stag","baby_deer","pig"],"predators":["panther"],"food":0.8,"water":0.7,"factions":["Heartwood Wayfarers"],"quests":[{"id":"forest-surveyor","name":"Discover five forest regions","target":5}]}
