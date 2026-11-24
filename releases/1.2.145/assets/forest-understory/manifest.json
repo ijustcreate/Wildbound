@@ -1,0 +1,251 @@
+{
+  "nativeModule": "src/forest-props.mjs",
+  "assets": {
+    "forest_limestone_boulder": {
+      "name": "Limestone boulder",
+      "family": "stone",
+      "scale": 1,
+      "file": "forest_limestone_boulder.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_limestone_rock": {
+      "name": "Limestone rock",
+      "family": "stone",
+      "scale": 0.72,
+      "file": "forest_limestone_rock.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_limestone_stone": {
+      "name": "Limestone stone",
+      "family": "stone",
+      "scale": 0.48,
+      "file": "forest_limestone_stone.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_limestone_pebble": {
+      "name": "Limestone pebble",
+      "family": "stone",
+      "scale": 0.26,
+      "file": "forest_limestone_pebble.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_round_shrub_large": {
+      "name": "Rounded woodland shrub · large",
+      "family": "shrub",
+      "scale": 1,
+      "file": "forest_round_shrub_large.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_round_shrub_medium": {
+      "name": "Rounded woodland shrub · medium",
+      "family": "shrub",
+      "scale": 0.76,
+      "file": "forest_round_shrub_medium.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_round_shrub_small": {
+      "name": "Rounded woodland shrub · small",
+      "family": "shrub",
+      "scale": 0.54,
+      "file": "forest_round_shrub_small.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_round_shrub_dwarf": {
+      "name": "Rounded woodland shrub · dwarf",
+      "family": "shrub",
+      "scale": 0.35,
+      "file": "forest_round_shrub_dwarf.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_moss_rock_cluster": {
+      "name": "Mossy rock cluster",
+      "family": "moss",
+      "scale": 1,
+      "file": "forest_moss_rock_cluster.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_moss_rock_pair": {
+      "name": "Mossy rock pair",
+      "family": "moss",
+      "scale": 0.74,
+      "file": "forest_moss_rock_pair.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_moss_rock_scatter": {
+      "name": "Mossy stone scatter",
+      "family": "moss",
+      "scale": 0.46,
+      "file": "forest_moss_rock_scatter.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_porcini_trio": {
+      "name": "Porcini mushroom trio",
+      "family": "porcini",
+      "count": 3,
+      "scale": 1,
+      "file": "forest_porcini_trio.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_porcini_pair": {
+      "name": "Porcini mushroom pair",
+      "family": "porcini",
+      "count": 2,
+      "scale": 1,
+      "file": "forest_porcini_pair.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_porcini_single": {
+      "name": "Porcini mushroom",
+      "family": "porcini",
+      "count": 1,
+      "scale": 0.9,
+      "file": "forest_porcini_single.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_fly_agaric_patch": {
+      "name": "Fly agaric mushroom patch",
+      "family": "agaric",
+      "count": 3,
+      "scale": 1,
+      "file": "forest_fly_agaric_patch.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_fly_agaric_pair": {
+      "name": "Fly agaric mushroom pair",
+      "family": "agaric",
+      "count": 2,
+      "scale": 1,
+      "file": "forest_fly_agaric_pair.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_fly_agaric_single": {
+      "name": "Fly agaric mushroom",
+      "family": "agaric",
+      "count": 1,
+      "scale": 0.9,
+      "file": "forest_fly_agaric_single.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_woodland_daisy": {
+      "name": "Woodland daisy clump",
+      "family": "flower",
+      "scale": 1,
+      "file": "forest_woodland_daisy.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_cattail_tuft": {
+      "name": "Cattail reed tuft",
+      "family": "cattail",
+      "scale": 1,
+      "file": "forest_cattail_tuft.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    },
+    "forest_meadow_tuft": {
+      "name": "Broad meadow tuft",
+      "family": "tuft",
+      "scale": 1,
+      "file": "forest_meadow_tuft.png",
+      "width": 64,
+      "height": 64,
+      "pivot": [
+        32,
+        55
+      ]
+    }
+  }
+}
