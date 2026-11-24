@@ -1,0 +1,119 @@
+{
+  "width": 52,
+  "height": 47,
+  "x": -26,
+  "y": -44,
+  "palette": {
+    "a": "#25322f",
+    "b": "#ecc28a",
+    "c": "#b98453",
+    "d": "#89614a",
+    "e": "#553b33",
+    "f": "#e8d6a3",
+    "g": "#9b6b4a",
+    "h": "#e6b883",
+    "i": "#76543d",
+    "j": "#bf9368"
+  },
+  "rows": [
+    "....................................................",
+    ".....................aaaaaaa........................",
+    "....................aabbbbaa........................",
+    "....................acbbbbcaa.......................",
+    "...................aaccccccaa.......................",
+    "..................aaaccccccaaa......................",
+    "................aaaaadaaaaaaaa......................",
+    "..............aaaaaddddddddcddaa....................",
+    ".............aaaaadbdddbbbcccddaaa..................",
+    ".............aaaddeebbbccceeeeeddaaa................",
+    "............aadddccceeeeeeccccccddaaa...............",
+    "...........aaddbbbcccccccbbbbbccccdda...............",
+    "...........aadeeeebbbbbbbccceeeeeeedda..............",
+    "..........aaddcccceeeeeeeeeeccccddddda..............",
+    ".....ff...aadcccccccccccccccccccdddddda.............",
+    "....dbd..aaddbbbbcccccccccbbbbbbddddddaa............",
+    "....dbd..aadeeeeebbbbbbbbbccceeeeeeeedda............",
+    ".........addccccceeeeeeeeeeeecdddddddddaa...........",
+    ".........adcccccccccccccccccccdddddddddda...........",
+    "........aadbbbbbcccccccccccbbbbbbbdddddda....ff.....",
+    "........adeeeeeebbbbbbbbbbbccdeeeeeeeeedaa..dbd.....",
+    "........adcccccceeeeeeeeeeeeeeddddddddddda..dbd.....",
+    ".........cccccccccccccccccaaaaaaddddddddda..........",
+    ".........ccbbbbbcccccccccaaaaaaaabbbddddda..........",
+    "........dceeeeeebbbbbbbbaaaaaaaaaaeeeeeeea..........",
+    "........dccccccceeeeeeeeaaaeeeeeaadddddddda.........",
+    ".........cccccbbbbccccccaaaeeeeeaadddddddda.........",
+    ".........cccceeeeebbbbbbaaaeeeeeaaeedddddda.........",
+    "........aaagcccccceeeeeeaaaaaaaaaadddddggaaaa.......",
+    ".......agggggddcddddddddddddddddddddgggggggggaaa....",
+    ".....aggggggggdddddddddddddddddddhhhhhhhhhhhhhhgaa..",
+    "...hhhhhhhhhhhhhhhhhhhhhhggggggggggggggggggggggaaa..",
+    "..aaggggggggggggggggggggggggggggggggggggggggggaaaa..",
+    "..aaaagggggggggggggggggggggggggggggggggggggggaaaa...",
+    "..aaaaagggggggggggggggggggggggggggggggggggggaaaaa...",
+    "..aaaaaaiiiiiiiiaaaaaaaaaaaaaaaaaaiiiiiiiiaaaaaaa...",
+    ".......aiijiiiiiaaaaaaaaaaaaaaaaaaiijiiiiaa.........",
+    ".......aiijiiiiia................aiijiiiia..........",
+    ".......aaijiiiiaa................aaijiiiia..........",
+    ".......aaijiiiiaa................aaijiiiia..........",
+    "........aijjjjjjjjjjjjjjjjjjjjjjjjjjjjjjia..........",
+    "........aijiiiia..................aijiiia...........",
+    "........aijiiiia..................aijiiia...........",
+    "........aiiiiiia..................aiiiiia...........",
+    "........aaaaaaaa..................a.................",
+    "....................................................",
+    "...................................................."
+  ],
+  "frames": [
+    {
+      "duration": 260
+    },
+    {
+      "duration": 260,
+      "patches": [
+        {
+          "x": 4,
+          "y": 12,
+          "rows": [
+            "..........................................ff",
+            ".........................................dbd",
+            ".__......................................dbd",
+            "___.........................................",
+            "___.........................................",
+            "............................................",
+            "............................................",
+            ".........................................__.",
+            "........................................___.",
+            "........................................___."
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 260,
+      "patches": [
+        {
+          "x": 4,
+          "y": 10,
+          "rows": [
+            ".....ff....................................",
+            "....dbd....................................",
+            "....dbd....................................",
+            "...........................................",
+            ".__........................................",
+            "___........................................",
+            "___........................................",
+            "...........................................",
+            "...........................................",
+            ".........................................__",
+            "........................................___",
+            "........................................___"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 260
+    }
+  ]
+}

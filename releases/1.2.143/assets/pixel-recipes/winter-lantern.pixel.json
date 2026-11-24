@@ -1,0 +1,213 @@
+{
+  "width": 25,
+  "height": 65,
+  "x": -11,
+  "y": -62,
+  "palette": {
+    "o": "#293342",
+    "i": "#506479",
+    "j": "#91aab8",
+    "n": "#758fa6",
+    "s": "#aec9db",
+    "S": "#e9f4f0",
+    "c": "#665143",
+    "b": "#9f7352",
+    "h": "#d4a16e",
+    "g": "#755441",
+    "d": "#77492f",
+    "a": "#ac6b3c",
+    "e": "#dd8944",
+    "E": "#ffc158",
+    "F": "#fff1b1",
+    "w": "#56372f"
+  },
+  "rows": [
+    "...........SSS...........",
+    ".........SSSSSSss........",
+    ".......SSSSSSSssss.......",
+    "......SSSSSssssnssn......",
+    ".....SSSssssnnnnnnn......",
+    "....nnnnnnnnnccccccn.....",
+    "...occbbbbbbcccccccco....",
+    "...obbbbbbcccccccooo.....",
+    "....oohhbbbbbbccooo......",
+    ".....ohgddddddggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdaaaadggo........",
+    ".....ohgdawwddggo........",
+    "....oohbbbbbbbccoo.......",
+    "....obbcccccccccco.......",
+    ".....occccccccoo.........",
+    "......ooooooooo..........",
+    ".........obco............",
+    "..........obco...........",
+    "..........obco...........",
+    ".........ojijo...........",
+    ".........oijio...........",
+    ".........oiiio...........",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ijio............",
+    ".........oijjo...........",
+    ".........ojjio...........",
+    ".........oiiio...........",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........ojio............",
+    ".........oiiio...........",
+    "........oijiio...........",
+    ".......oijiiio...........",
+    "......oijiiiioo..........",
+    "....ooooiiiiiooooo.......",
+    "...oooiiiiiiiiiiioo......",
+    "..ooiissssssiiiiiooo.....",
+    ".oiisssssssssssniiiio....",
+    ".iisssSSSSssssnnniiii....",
+    "...nsssSssssnnnnnnn......",
+    ".....nnnnnnnnnnnnn......."
+  ],
+  "frames": [
+    {
+      "duration": 130,
+      "patches": [
+        {
+          "x": 8,
+          "y": 10,
+          "rows": [
+            "daaaad",
+            "daaead",
+            "daaead",
+            "daeEad",
+            "daeEed",
+            "deEEed",
+            "deEFed",
+            "deFFed",
+            "deeEed"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 105,
+      "patches": [
+        {
+          "x": 8,
+          "y": 10,
+          "rows": [
+            "daaaad",
+            "daeaad",
+            "daeEad",
+            "daeEad",
+            "deEFad",
+            "deEFed",
+            "dEFFed",
+            "deEFed",
+            "deeEed"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 120,
+      "patches": [
+        {
+          "x": 8,
+          "y": 10,
+          "rows": [
+            "daaaad",
+            "daaaad",
+            "daaaad",
+            "daaead",
+            "daeEad",
+            "daeEed",
+            "deEFed",
+            "deFFed",
+            "deEEed"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 80,
+      "patches": [
+        {
+          "x": 8,
+          "y": 10,
+          "rows": [
+            "daaead",
+            "daaead",
+            "daaEad",
+            "daeEed",
+            "daeFEe",
+            "deEFFe",
+            "dEFFFe",
+            "deFFed",
+            "deeEed"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 160,
+      "patches": [
+        {
+          "x": 8,
+          "y": 10,
+          "rows": [
+            "daaaad",
+            "daaaad",
+            "daaead",
+            "daaEad",
+            "daeEed",
+            "daeFEd",
+            "deEFed",
+            "deFFed",
+            "deEEed"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 115,
+      "patches": [
+        {
+          "x": 8,
+          "y": 10,
+          "rows": [
+            "daaaad",
+            "daaaad",
+            "daaaad",
+            "daeaad",
+            "daeEad",
+            "deEEad",
+            "deEFed",
+            "deFFed",
+            "deeEed"
+          ]
+        }
+      ]
+    }
+  ]
+}

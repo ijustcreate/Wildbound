@@ -1,0 +1,13 @@
+.progress-save-panel{grid-column:1/-1;display:grid;grid-template-columns:1fr;gap:6px;padding:9px;border:1px solid #a18b5366;border-radius:3px;background:#12251f99}
+#settings-dialog #progress-save-status,#pause-dialog #progress-save-status{color:#efe5c7;font:12px/1.4 system-ui,sans-serif;letter-spacing:0;margin:0;overflow-wrap:anywhere}
+#settings-dialog #progress-save-status[data-failed=true],#pause-dialog #progress-save-status[data-failed=true]{color:#ffcf9e}
+#settings-dialog #progress-save-now,#pause-dialog #progress-save-now{width:100%;margin:0;min-height:34px}
+#recover-ground{grid-column:1/-1}
+#recovery-dialog{width:min(440px,calc(100vw - 32px));box-sizing:border-box;max-height:calc(100dvh - 24px);overflow:auto;background:#172c24;color:#f1e4bd;border:2px solid #bba365;border-radius:5px;padding:20px;font:14px/1.5 system-ui,sans-serif}
+#recovery-dialog h2{font:24px Georgia,serif;margin:0 0 12px}
+.recovery-actions{display:grid;gap:9px}
+#recovery-dialog button{min-height:42px;white-space:normal;padding:8px;background:#dfc48e;color:#203b2a;border:1px solid #bca36c}
+#recovery-dialog button:disabled{opacity:.5}
+#recovery-dialog button:focus{outline:3px solid #8ae6c8;outline-offset:2px}
+#recovery-dialog::backdrop{background:#06100cc9}
+#recovery-dialog [data-recovery-result]{color:#f0dd9c}
