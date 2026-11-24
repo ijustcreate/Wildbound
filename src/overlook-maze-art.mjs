@@ -2,11 +2,14 @@ import {drawOverlookHedge, drawOverlookHedgeGround} from './overlook-hedge-art.m
 import {nearOverlookChest,overlookPartArt} from './overlook-maze.mjs';
 import {drawStarterChest} from './starter-chest.mjs';
 import {pixelPolygon} from './pixel-shapes.mjs';
+import {overlookSnowCoverage} from './overlook-maze-layout.mjs';
 
 const STEP = 8, PAD = 80, SOUTH = 76;
 const grass = ['#405c3e', '#445f40', '#486242', '#4b6442'];
 const dirt = ['#73684d', '#7b7052', '#807454', '#877a59'];
 const paving = ['#7d8072', '#8b8b79', '#95927e', '#828573'];
+const snowSoil=['#9fb6b8','#aec5c6','#bed1d2','#ccdddc'];
+const frostPaving=['#849a9c','#94a7a6','#a7b4ad','#8e9e9a'];
 let groundRaster;
 
 const hash = (x, y) => {
@@ -32,7 +35,7 @@ function walkDistance(points, x, y) {
   return distance;
 }
 
-function paintCourtyard(c, x, y) {
+function paintCourtyard(c, x, y, snowAt) {
   const outline = [[-42,-48],[-29,-62],[29,-62],[42,-48],[42,48],[29,62],[-29,62],[-42,48]];
   const corners = outline.map(([dx, dy]) => ({x: x + dx, y: y + dy}));
   pixelPolygon(c, corners, '#555b49');
@@ -41,10 +44,11 @@ function paintCourtyard(c, x, y) {
   c.closePath(); c.clip();
   for (let row = 0; row < 8; row++) for (let col = -1; col < 4; col++) {
     const px = x - 42 + col * 25 + (row % 2) * 12, py = y - 62 + row * 16, t = hash(col, row);
-    rect(c, px + 1, py + 1, 24, 15, paving[Math.floor(t * 4)]);
-    rect(c, px + 3, py + 2, 18, 1, '#a8a38b');
-    rect(c, px + 2, py + 13, 20, 2, '#6e7463');
-    if (t > .58) rect(c, px + 9, py + 9, 5, 2, '#6a785b');
+    const frosted=snowAt(px+9,py+3)>.32+t*.22;
+    rect(c, px + 1, py + 1, 24, 15, (frosted?frostPaving:paving)[Math.floor(t * 4)]);
+    rect(c, px + 3, py + 2, 18, 1, frosted?'#c1d0ca':'#a8a38b');
+    rect(c, px + 2, py + 13, 20, 2, frosted?'#748b89':'#6e7463');
+    if (t > .58) rect(c, px + 9, py + 9, 5, 2, frosted?'#afc4c2':'#6a785b');
   }
   c.restore();
   const base = [[-26, -19], [26, -19], [34, -10], [34, 15], [24, 26], [-24, 26], [-34, 15], [-34, -10]];
@@ -59,25 +63,44 @@ function paintCourtyard(c, x, y) {
   }
 }
 
-function paintThreshold(c, x, y, width) {
+function paintThreshold(c, x, y, width, frost=false) {
   const half = Math.floor(width / 2) - 2;
   pixelPolygon(c, [{x:x-half+9,y:y-69},{x:x+half-9,y:y-69},{x:x+half,y:y-56},
-    {x:x+half,y:y+16},{x:x-half,y:y+16},{x:x-half,y:y-56}], '#655f47');
+    {x:x+half,y:y+16},{x:x-half,y:y+16},{x:x-half,y:y-56}], frost?'#657d80':'#655f47');
   for (let row = 0; row < 5; row++) {
     const py = y - 66 + row * 16;
     const inset = row === 0 ? 10 : 2;
     const first = x - half + inset, last = x + half - inset;
     for (let col = 0, px = first; px < last; col++, px += 19) {
       const w = Math.min(18, last - px);
-      rect(c, px, py, w, 15, paving[(row * 3 + col * 5) % paving.length]);
-      rect(c, px + 1, py + 1, Math.max(0,w - 3), 2, '#b1a88b');
-      rect(c, px + 1, py + 12, Math.max(0,w - 2), 2, '#6c705e');
-      if (hash(row,col) > .63) rect(c, px + 3, py + 9, Math.min(4,w - 3), 1, '#637854');
+      rect(c, px, py, w, 15, (frost?frostPaving:paving)[(row * 3 + col * 5) % paving.length]);
+      rect(c, px + 1, py + 1, Math.max(0,w - 3), 2, frost?'#c8d5d0':'#b1a88b');
+      rect(c, px + 1, py + 12, Math.max(0,w - 2), 2, frost?'#72898a':'#6c705e');
+      if (hash(row,col) > .63) rect(c, px + 3, py + 9, Math.min(4,w - 3), 1, frost?'#afc4c2':'#637854');
     }
   }
-  rect(c, x - half + 2, y + 12, half * 2 - 4, 2, '#b7ad8e');
-  rect(c, x - half, y + 15, half * 2, 2, '#595e4e');
+  rect(c, x - half + 2, y + 12, half * 2 - 4, 2, frost?'#c8d8d6':'#b7ad8e');
+  rect(c, x - half, y + 15, half * 2, 2, frost?'#698184':'#595e4e');
 }
+
+function paintSnowPatch(c,px,py,x,y,coverage,pick) {
+  const r=earthTone(px,py,snowSoil);
+  if(coverage>.88){
+    rect(c,x,y,STEP,STEP,r);
+  }else{
+    for(let dy=0;dy<STEP;dy+=4)for(let dx=0;dx<STEP;dx+=4){
+      const wx=px+dx,wy=py+dy;
+      const drift=Math.sin(wx*.031+wy*.07)*.18+Math.cos(wx*.053-wy*.041)*.13;
+      const dust=hash(wx,wy)*.25;
+      if(coverage+drift+dust>.51)rect(c,x+dx,y+dy,4,4,coverage>.52?r:'#9bafab');
+    }
+  }
+  if(coverage>.28&&pick>.83){
+    rect(c,x+1,y+4,3,1,'#d8e4df');
+    if(pick>.97)rect(c,x+2,y+3,1,1,'#e5ede8');
+  }
+}
+
 function drawGardenRaster(c, maze, offsetX, offsetY) {
   const {w, h} = maze;
   const trail = maze.walk.map(p => ({x:p.x-maze.x,y:p.y-maze.y}));
@@ -92,19 +115,22 @@ function drawGardenRaster(c, maze, offsetX, offsetY) {
     c.globalAlpha = alpha;
     rect(c, offsetX + px, offsetY + py, STEP, STEP, earthTone(cx, cy, path ? dirt : grass));
     const pick = hash(py, px);
-    if (pick > .53) {
+    const snow=overlookSnowCoverage(maze,maze.x+cx,maze.y+cy);
+    if(snow>.07)paintSnowPatch(c,px,py,offsetX+px,offsetY+py,snow,pick);
+    if (snow < .36 && pick > .53) {
       const ax = offsetX + px + 1 + Math.floor(pick * 4), ay = offsetY + py + 1 + Math.floor(hash(px + 2,py) * 5);
       rect(c, ax, ay, pick > .82 ? 4 : 2, 1, path ? '#9b8963' : '#607650');
       if (pick > .75) rect(c, ax + 1, ay + 1, 2, 1, path ? '#6e684b' : '#354e39');
     }
   }
   c.globalAlpha = 1;
-  paintThreshold(c, offsetX + maze.entrance.x - maze.x, offsetY + maze.opening.y - maze.y, maze.opening.right - maze.opening.left);
+  paintThreshold(c, offsetX + maze.entrance.x - maze.x, offsetY + maze.opening.y - maze.y, maze.opening.right - maze.opening.left,true);
   const southY=offsetY+maze.southOpening.y-maze.y;
   c.save();c.translate(0,southY*2);c.scale(1,-1);
   paintThreshold(c,offsetX+maze.southEntrance.x-maze.x,southY,maze.southOpening.right-maze.southOpening.left);
   c.restore();
-  paintCourtyard(c, offsetX + maze.chest.x - maze.x, offsetY + maze.chest.y - maze.y);
+  paintCourtyard(c, offsetX + maze.chest.x - maze.x, offsetY + maze.chest.y - maze.y,
+    (x,y)=>overlookSnowCoverage(maze,maze.x+x-offsetX,maze.y+y-offsetY));
 }
 
 function gardenVisible(maze, visible) {
@@ -124,7 +150,7 @@ export function drawOverlookGarden(c, maze, visible, detail = true) {
   for (const part of maze.parts) if (!part.entranceGap&&visible({x: part.x + part.w / 2, y: part.y + part.h / 2}, 40)) {
     const art = overlookPartArt(maze, part);
     if(detail)drawOverlookHedgeGround(c, art);
-    else if(!art.broken)rect(c, part.x, part.y, part.w, part.h, '#355338');
+    else if(!art.broken)rect(c, part.x, part.y, part.w, part.h, art.snow>=2?'#8ba4a1':'#355338');
   }
 }
 
@@ -146,7 +172,7 @@ export function overlookSubjects(maze, visible, game) {
     subjects.push({overlookChest: maze.chest, depth: maze.chest.y + 10, opened: maze.state.opened, prompt});
   }
   const sign = {x: maze.entrance.x + 97, y: maze.entrance.y - 19};
-  if (visible(sign, 80)) subjects.push({overlookSign: sign, depth: sign.y + 2});
+  if (visible(sign, 80)) subjects.push({overlookSign: sign, snow:overlookSnowCoverage(maze,sign.x,sign.y)>.4, depth: sign.y + 2});
   return subjects;
 }
 
@@ -173,6 +199,10 @@ export function drawOverlookSubject(c, subject) {
     rect(c, x - 31, y - 40, 18, 1, '#bba16e');
     rect(c, x + 13, y - 40, 18, 1, '#bba16e');
     rect(c, x - 7, y - 43, 14, 1, '#ba9c66');
+    if(subject.snow){
+      rect(c,x-30,y-42,19,2,'#a5babb');rect(c,x-7,y-45,12,2,'#d4e4e1');
+      rect(c,x+8,y-43,20,2,'#b9cdcb');rect(c,x+21,y-41,4,1,'#8ba2a7');
+    }
     rect(c, x - 30, y - 23, 60, 2, '#493d2d');
     for(const dx of [-30,29])rect(c, x + dx, y - 32, 2, 2, '#ccb17a');
     c.save(); c.textAlign = 'center'; c.font = 'bold 9px Georgia'; c.fillStyle = '#ead7a0';

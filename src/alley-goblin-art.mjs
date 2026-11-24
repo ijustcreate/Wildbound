@@ -5,6 +5,7 @@ const skin={ink:'#313b2a',shade:'#52613a',base:'#738653',light:'#a3b378',ear:'#8
 const outfits={
  banker:{ink:'#282b36',shade:'#383d51',cloth:'#50586d',light:'#748096',linen:'#d6c4a1',accent:'#855449',metal:'#bca46a',pants:'#424956',boots:'#393334'},
  bartender:{ink:'#39342e',shade:'#675146',cloth:'#936e52',light:'#bfa57a',linen:'#bcac80',accent:'#86714b',metal:'#b89a57',pants:'#555345',boots:'#4c4036'},
+ 'bayou-sage':{ink:'#302c20',shade:'#504832',cloth:'#776848',light:'#9a885f',linen:'#bdb18a',accent:'#7d623d',metal:'#bca36e',pants:'#5c5741',boots:'#443b2e'},
 };
 export const goblinOutfit=role=>outfits[role]||outfits.banker;
 const poly=(c,color,points)=>pixelPolygon(c,points.map(([x,y])=>({x,y})),color);
@@ -20,7 +21,7 @@ function ear(c,x,y,side){
 }
 
 export function drawGoblinHead(c,h,d,role){
- const rear=d>=3&&d<=5,front=d===0,back=d===4,profile=d===2||d===6,banker=role!=='bartender';
+ const rear=d>=3&&d<=5,front=d===0,back=d===4,profile=d===2||d===6,sage=role==='bayou-sage',banker=role!=='bartender'&&!sage;
  c.save();c.translate(Math.round(h.x),Math.round(h.y));
  if(d>4)c.scale(-1,1);
  // The ears root in the temples, behind the near cheek as the head turns.
@@ -49,7 +50,15 @@ export function drawGoblinHead(c,h,d,role){
    rect(c,skin.crease,-4,4,3);rect(c,skin.light,-3,5,2);
   }
  }
- if(banker){
+ if(sage){
+  poly(c,'#535f49',[[-5,-5],[-3,-7],[3,-7],[5,-5],[3,-4],[-3,-4]]);
+  rect(c,'#b2b39a',-3,-6,6,1);
+  if(!rear){
+   const vx=front?0:-2;
+   poly(c,'#7e8368',[[vx-4,3],[vx-2,5],[vx+3,4],[vx+4,6],[vx+1,10],[vx-2,9],[vx-4,7]]);
+   rect(c,'#c7c4a6',vx-2,6,4,1);rect(c,'#afb393',vx-1,8,2,1);
+  }
+ }else if(banker){
   const hair=rear?'#777b67':'#a6a591',dark='#505744';
   poly(c,dark,[[-5,-4],[-4,-6],[-1,-8],[2,-8],[5,-6],[6,-4],[3,-3],[3,-6],[0,-5],[-3,-4]]);
   rect(c,hair,-3,-6,4);rect(c,hair,1,-7,2);
@@ -71,7 +80,12 @@ export function drawGoblinTorso(c,p,d,role,cloth,width=1){
  poly(c,cloth.ink,[[x-breadth,y-1],[x-2,y-3],[x+2,y-3],[x+breadth,y-1],[px+waist,py],[px-waist,py]]);
  poly(c,cloth.cloth,[[x-breadth+1,y-1],[x-2,y-2],[x+2,y-2],[x+breadth-1,y],[px+waist-1,py-1],[px-waist+1,py-1]]);
  poly(c,cloth.shade,[[x+breadth-2,y],[x+breadth-1,y+1],[px+waist-1,py-1],[px+1,py-1]]);
- if(role==='bartender'){
+ if(role==='bayou-sage'){
+  const side=d===0||d===4?0:d<4?-1:1;
+  limb(c,{x:x-3,y:y-2},{x:px+side+2,y:py-2},2,back?cloth.shade:cloth.linen);
+  limb(c,{x:px-waist,y:py-2},{x:px+waist,y:py-2},1.5,cloth.accent);
+  if(!back)rect(c,cloth.metal,px+side,py-3,2,2);
+ }else if(role==='bartender'){
   if(back){
    limb(c,{x:x-3,y},{x:px+2,y:py-2},1,cloth.linen);
    limb(c,{x:x+3,y},{x:px-2,y:py-2},1,cloth.linen);

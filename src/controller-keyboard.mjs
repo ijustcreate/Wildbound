@@ -1,19 +1,19 @@
 import {creationFamily,creationHelp,creationMenuButtons} from './creation-preview.mjs';
 import {controllerFamily,controllerMenuButtons} from './controls.mjs';
 
-export function openControllerKeyboard(input) {
+export function openControllerKeyboard(input,{title:label='Name your explorer',returnFocus=input}={}) {
   if(document.querySelector('#controller-keyboard'))return;
   let text=input.value, upper=true;
   const dialog=document.createElement('dialog');dialog.id='controller-keyboard';
   dialog.dataset.ownerDevice=input.closest('dialog')?.dataset.ownerDevice || input.closest('[data-owner-device]')?.dataset.ownerDevice || input.closest('.player-slot')?.dataset.device || '';
   dialog.dataset.controllerFamily=input.closest('[data-controller-family]')?.dataset.controllerFamily||creationFamily({device:dialog.dataset.ownerDevice});
-  const title=document.createElement('h2');title.textContent='Name your explorer';
+  const title=document.createElement('h2');title.textContent=label;
   const output=document.createElement('output');output.className='keyboard-text';output.setAttribute('aria-live','polite');
   const hint=document.createElement('p');hint.className='keyboard-help';
   dialog.updateControllerFamily=(family,buttons)=>{dialog.dataset.controllerFamily=family;hint.textContent=creationHelp(family,true,buttons);};dialog.updateControllerFamily(dialog.dataset.controllerFamily,creationMenuButtons({device:dialog.dataset.ownerDevice}));
   const grid=document.createElement('div');grid.className='controller-keyboard-grid';
   const refresh=()=>{output.textContent=text+'▏';grid.querySelectorAll('[data-letter]').forEach(b=>b.textContent=b.dataset.letter===' '?'Space':upper?b.dataset.letter.toUpperCase():b.dataset.letter.toLowerCase());};
-  const finish=(apply)=>{if(apply){input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}dialog.close();dialog.remove();input.focus();};
+  const finish=(apply)=>{if(apply){input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));}dialog.close();dialog.remove();returnFocus.focus();};
   const actions={Shift:()=>{upper=!upper;},Space:()=>{text=(text+' ').slice(0,input.maxLength>0?input.maxLength:20);},Delete:()=>{text=text.slice(0,-1);},Clear:()=>{text='';},Done:()=>finish(true),Cancel:()=>finish(false)};
   const highlight=target=>grid.querySelectorAll('button').forEach(b=>{b.classList.toggle('keyboard-selected',b===target);b.setAttribute('aria-current',b===target?'true':'false');});
   dialog.highlightCursor=highlight;

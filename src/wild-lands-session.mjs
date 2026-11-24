@@ -10,7 +10,9 @@ const TRAIN_PROGRESS=[
  'conductorSpeech','studentConversations','studentSpeech','studentFrogs','alleyActors','alleyMerchants',
  'alleyOpened','alleyOpenedAt','alleyReturn','wildLandsReturn','hollowActors','hollowSurfaceActors','hollowEncounter','mountainEncounter','damagedBuildings','destructionRevision','overlookMaze','quidditch','quidditchReturn','alleyQuidditchResult','nocturneDarkWizards','nocturneDarkWizardDrops',
  'wildBiomeSpawns','wildBiomeRoomActors','diagonCritterState','nativeGravestoneDamage','nocturneCemetery','hogsmeade','wrongTurnDoors',
- 'arena','arenaSerial','wildCoastalCaught',
+ 'pirateCrew','pirateWreckCrew',
+ 'arena','arenaSerial','wildCoastalCaught','alleyGroundLoot','arenaGroundLoot','pitchGroundLoot','pitchEntranceLoot','nocturneBoss','homesteadBoard','tickTockDefeated','hollowStalactites',
+ 'borginMirrorFight','borginMirrorClaims','borginMirrorReturns',
 ];
 
 export function snapshotWildLands(train) {

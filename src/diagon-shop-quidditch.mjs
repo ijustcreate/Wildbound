@@ -220,6 +220,20 @@ function salesCounter(c) {
   b(c,-35,-30,58,1,vermilion[4]);
 }
 
+function teamKitDisplay(c) {
+  b(c,-23,-3,46,4,'#3e2d30');
+  b(c,-21,-38,42,3,teak[1]);b(c,-20,-39,39,1,teak[3]);
+  for(const x of [-20,18]){b(c,x,-38,3,38,teak[1]);b(c,x,-33,1,32,teak[2]);}
+  for(const [x,edge,body,trim] of [[-11,'#634630','#ad773f','#ecc982'],[10,'#42364d','#7f6198','#c6a1e3']]){
+    b(c,x,-36,1,5,teak[3]);
+    p(c,edge,[[x-6,-31],[x+5,-31],[x+10,-20],[x+6,-18],[x+5,-20],[x+7,-8],[x-8,-8],[x-6,-20],[x-8,-18],[x-10,-20]]);
+    p(c,body,[[x-5,-30],[x+4,-30],[x+5,-23],[x+4,-21],[x+5,-10],[x-6,-10],[x-4,-21]]);
+    b(c,x-3,-30,7,2,trim);b(c,x+2,-30,2,10,trim);b(c,x+1,-24,3,2,edge);
+    b(c,x-5,-11,9,1,trim);b(c,x-3,-21,2,2,'#f4d8a0');
+  }
+  b(c,-18,-5,35,2,teak[2]);
+}
+
 export default {
   props: [
     define('standing-broom-rack',52,69,-64,-56,standingRack,{solid:{width:48,depth:14}}),
@@ -238,5 +252,6 @@ export default {
     define('pitch-portkey',38,51,QUIDDITCH_SHOP_PORTKEY_LOCAL.x,QUIDDITCH_SHOP_PORTKEY_LOCAL.y,
       (c,time)=>{warmQuidditchGround();drawQuidditchPortkey(c,0,0,time,{outbound:true});},{animated:true}),
     define('quidditch-till',92,32,-7,-5,salesCounter,{solid:{width:92,depth:18}}),
+    define('team-kit-display',48,41,20,72,teamKitDisplay,{solid:{width:43,depth:10}}),
   ],
 };

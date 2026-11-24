@@ -91,8 +91,10 @@ export class TvWildbound {
   dropItem(playerId,type,qty=1,metadata={}){
     const p=this.players.get(playerId),owner=this.owners.get(playerId);if(!p||!owner)return;
     const recoveryId=recordTvDrop(owner,type,qty,metadata);
-    this.loot.push({...structuredClone(metadata),type,qty,x:p.x+p.face*40,y:p.y-20,vy:-100,age:0,manualPickup:true,dropOwner:playerId,recoveryId});
+    const item={...structuredClone(metadata),type,qty,x:p.x+p.face*40,y:p.y-20,vy:-100,age:0,manualPickup:true,dropOwner:playerId,recoveryId};
+    this.loot.push(item);
     this.message='Item dropped in the TV world. Interact nearby to pick it up.';
+    return item;
   }
   releaseOwnedDrops(){
     this.loot=this.loot.filter(item=>item.recoveryId===undefined);

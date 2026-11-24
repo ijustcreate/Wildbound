@@ -1,5 +1,7 @@
 import {sketchSurfaceAt} from './wild-lands-geography.mjs';
 import {HOLLOW_ROOM,hollowSurface} from './wild-mountain-layout.mjs';
+import {interactPirateCrew,pirateCrewPrompt,tickPirateCrew} from './pirate-crew.mjs';
+import {inspectWreckTreasure,wreckTreasureBlocked,wreckTreasurePrompt} from './pirate-wreck-treasure.mjs';
 
 export const PIRATE_SHIP_BERTH=Object.freeze({id:'portal-island',x:14900,y:7970,a:-.42});
 export const PIRATE_CAVE_BERTH=Object.freeze({id:HOLLOW_ROOM,x:8050,y:5050,a:-.42});
@@ -68,7 +70,8 @@ function insideHold(x,y,radius){
 }
 
 function surfaceBlocked(ride,x,y,radius=PLAYER_RADIUS){
- if(ride.level==='hold')return !insideHold(x,y,radius)||touchesFixture(holdFixtures,x,y,radius);
+ if(ride.level==='hold')return !insideHold(x,y,radius)||touchesFixture(holdFixtures,x,y,radius)||
+  ride.shipId===PIRATE_CAVE_BERTH.id&&wreckTreasureBlocked(x,y,radius);
  if(ride.level==='nest'){
   const nest=layout.nests.find(n=>n.id===ride.nest);
   return !nest||distance(nest,{x,y})>nest.radius-radius||distance(nest,{x,y})<5+radius;
@@ -162,7 +165,12 @@ export function pirateShipPrompt(g,p){
  if(!ship||p.hp<=0||p.ui)return '';
  if(!r)return boardable(p,ship,32)?'BOARD PIRATE SHIP':'';
  if(r.level==='plank')return '';
+ const treasure=wreckTreasurePrompt(g,p);
+ if(treasure)return treasure;
  const action=nearAction(ship,r);
+ if(!['deck','hold','cannon','up','reverse'].includes(action?.kind)){
+  const crew=pirateCrewPrompt(g,p);if(crew)return crew;
+ }
  return ({deck:'RETURN TO MAIN DECK',hold:'GO BELOW DECK',up:'CLIMB ROPE',down:'CLIMB DOWN',reverse:'REVERSE CLIMB',cannon:'FIRE CANNON',reloading:'CANNON RELOADING'})[action?.kind]||'';
 }
 
@@ -175,7 +183,9 @@ export function interactPirateShip(g,p){
   board(g,p,ship,point);
   return true;
  }
+ if(inspectWreckTreasure(g,p))return true;
  const action=nearAction(ship,r);
+ if(!['deck','hold','cannon','up','reverse'].includes(action?.kind)&&interactPirateCrew(g,p))return true;
  if(!action)return true;
  if(action.kind==='cannon'){
   const c=action.cannon;
@@ -267,5 +277,6 @@ export function tickPirateShip(g,dt){
   return true;
  });
  for(const p of g.players)syncPirateShipPlayer(g,p);
+ tickPirateCrew(g,ship,dt);
  ship.openHold=g.players.some(p=>p.pirateRide?.shipId===ship.id&&p.pirateRide.level==='hold');
 }

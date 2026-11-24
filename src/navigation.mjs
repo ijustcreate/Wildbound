@@ -5,13 +5,14 @@ import {creatures} from './definitions.mjs';
 import {startJump} from './jumping.mjs';
 import {furnitureHeight} from './house-design.mjs';
 import {nearbyEnemyTrap,triggerEnemyTrap} from './enemy-traps.mjs';
+import {TICK_TOCK_BODY} from './tick-tock-crocodile.mjs';
 export const collisionOffset=(g,e)=>!e.kind||e.villagerId||rigSubject(e.kind)?0:e.kind==='slime'||e.kind==='shore_goblin'||e.kind==='anaconda'||e.kind==='dreadmane_lion'||e.kind==='oathless_captain'||e.kind==='grim_reaper'||e.kind==='succubus'||e.kind==='imp'||e.kind==='zombie'||e.kind==='ghost'||WILD_FAUNA_KINDS.includes(e.kind)?0:(g.house||g.generatedEnvironment==='ice')?(!e.kind||rigSubject(e.kind)?0:14):14;
-export const actorRadius=e=>e.villagerId?10:e.kind==='dreadmane_lion'?14:e.kind==='anaconda'?16:e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
+export const actorRadius=e=>e.tickTockCrocodile?TICK_TOCK_BODY:e.villagerId?10:e.kind==='dreadmane_lion'?14:e.kind==='anaconda'?16:e.kind==='dragon'?42:e.kind==='elephant'?38:e.kind==='rhino'?34:['golem','gorilla'].includes(e.kind)?26:e.kind==='zebra'?16:e.kind==='baby_spider'?6:8;
 export const usesDoors=e=>e.heroFollower===true||['shore_goblin','grim_reaper','oathless_captain','hunter','banshee_queen','succubus','imp','zombie','ghost','monkey','skeleton','skeleton_unarmed','skeleton_boss','archer','skeleton_wizard'].includes(e.kind);
 export const flies=e=>e.flying===true||['pelican','bat','wasp','bee','tsetse','dragon','raven','crow','bird','dragonfly','fairy','grave_moth','butterfly'].includes(e.kind)||e.succubusFlightHeight>0||e.impFlightHeight>0;
 const swims=e=>e.heroFollower===true||['snake','anaconda','oathless_captain'].includes(e.kind)||e.villagerId==='april';
-export function clearShot(g,a,b,r=2){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.max(1,Math.ceil(d/4));for(let i=1;i<n;i++)if(g.projectileBlocked(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,r))return false;return true;}
-export function advanceShot(g,b,dt,r=2){const dx=b.vx*dt,dy=b.vy*dt,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));for(let i=0;i<n;i++){const x=b.x+dx/n,y=b.y+dy/n;if(g.projectileBlocked(x,y,r,true)){b.life=0;return false;}b.x=x;b.y=y;}return true;}
+export function clearShot(g,a,b,r=2){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.max(1,Math.ceil(d/4));for(let i=1;i<n;i++)if(g.projectileBlocked(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,r,false,a))return false;return true;}
+export function advanceShot(g,b,dt,r=2){const dx=b.vx*dt,dy=b.vy*dt,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));for(let i=0;i<n;i++){const x=b.x+dx/n,y=b.y+dy/n;if(g.projectileBlocked(x,y,r,true,b)){b.life=0;return false;}b.x=x;b.y=y;}return true;}
 const caches=new WeakMap(),routes=new WeakMap();
 function gridFor(g,e){
  const endless=g.mapMode==='boundless',width=endless?64:50,height=width,ox=endless?Math.floor(e.x/256)*8-24:0,oy=endless?Math.floor(e.y/256)*8-24:0;

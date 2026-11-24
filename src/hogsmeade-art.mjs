@@ -1,7 +1,13 @@
 import {block as b,shape as p,line as l,casework} from './diagon-shop-brush.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
-import {HOGSMEADE_BUILDINGS,HOGSMEADE_PROPS,HOGSMEADE_LANE,hogsmeadeDoor,inHogsmeadeBuilding} from './hogsmeade-layout.mjs';
+import {HOGSMEADE_BUILDINGS,HOGSMEADE_PROPS,HOGSMEADE_LANE,HOGSMEADE_SHACK,hogsmeadeDoor,inHogsmeadeBuilding} from './hogsmeade-layout.mjs';
 import {HOGSMEADE_NPCS,hogsmeadeDoors} from './hogsmeade.mjs';
+import {lupinNpc} from './remus-lupin.mjs';
+import {BOGGART_CABINET,shackBoggartState} from './hogsmeade-boggart.mjs';
+import {boggartBunnyPoint,drawBoggartBunny,drawBoggartCabinet,drawBoggartRelease,drawShackTrapdoor} from './hogsmeade-boggart-art.mjs';
+import {flooFireGreen} from './floo-travel.mjs';
+import {drawThreeBroomsticksFacade,drawThreeBroomsticksHearth,drawThreeBroomsticksRoof,drawThreeBroomsticksThreshold,drawThreeBroomsticksWalls,paintThreeBroomsticksFloor,paintThreeBroomsticksProp} from './three-broomsticks-art.mjs';
+import {drawTavernPatronStool,THREE_BROOMSTICKS_PATRONS} from './three-broomsticks-patrons.mjs';
 
 const materials={
  oak:['#3a2c24','#5e4330','#855c3d','#ab8253','#dcc18a'],rust:['#402c2b','#694542','#975d4b','#bc7f63','#e9b586'],
@@ -27,6 +33,7 @@ function text(c,value,x,y,tone='#efdab5'){
 }
 
 function paintFloor(c,z,f){
+ if(z.tone==='inn'){paintThreeBroomsticksFloor(c,z);return;}
  const x=z.x-z.w/2,y=z.y-z.h/2;
  b(c,x,y,z.w,z.h,f.floor);
  for(let row=0;row<z.h;row+=9){
@@ -71,7 +78,10 @@ export function drawHogsmeadeGround(c,g,bounds){
   const path=Math.max(18,top+31-door.y);
   b(c,door.x-23,door.y-2,46,path,'#adbdba');
   for(let i=3;i<path-1;i+=8){b(c,door.x-20,door.y+i,40,6,'#8f9690');b(c,door.x-17,door.y+i,34,1,'#bfc3b6');}
-  if(lit(g,site))cachedArt(c,floorCache,site,{x,y,w:site.w,h:site.h},pen=>paintFloor(pen,site,f));
+  if(lit(g,site)){
+   cachedArt(c,floorCache,site,{x,y,w:site.w,h:site.h},pen=>paintFloor(pen,site,f));
+   if(site===HOGSMEADE_SHACK)drawShackTrapdoor(c);
+  }
  }
 }
 
@@ -106,6 +116,11 @@ function entrance(c,g,z,f){
 }
 
 function facade(c,g,z,f,interior){
+ if(z.tone==='inn'){
+  if(interior)drawThreeBroomsticksWalls(c,z);
+  else {drawThreeBroomsticksFacade(c,z);entrance(c,g,z,f);}
+  return;
+ }
  const x=z.x-z.w/2,y=z.y-z.h/2,front=z.y+z.h/2;
  if(interior){
   b(c,x,y-39,z.w,40,f.wall);b(c,x+4,y-36,z.w-8,29,f.plaster);
@@ -125,6 +140,7 @@ function facade(c,g,z,f,interior){
 }
 
 function roof(c,z,f){
+ if(z.tone==='inn'){drawThreeBroomsticksRoof(c,z);return;}
  const x=z.x,w=z.w/2+10,front=z.y+z.h/2-61,back=z.y-z.h/2-35,peak=z.y-z.h/2-76;
  const sway=z.tone==='shack'?16:0;
  const outline=[[x-w,front],[x-w+2,back],[x+sway,peak],[x+w-2,back+2],[x+w,front+3]];
@@ -145,6 +161,8 @@ function roof(c,z,f){
 }
 
 function propPaint(c,prop){
+ if(prop.building.tone==='inn'&&paintThreeBroomsticksProp(c,prop))return;
+ if(prop.id==='clawed-wardrobe'){drawBoggartCabinet(c);return;}
  const x=prop.x+prop.building.x,y=prop.y+prop.building.y,w=prop.w,h=prop.h,r=materials[prop.palette],left=x-w/2;
  const [edge,shadow,body,lit,shine]=r;
  if(prop.id==='nose-biting-teacup-tray'){
@@ -234,7 +252,10 @@ export function hogsmeadeSubjects(g,visible){
   const inside=lit(g,site),f=fronts[site.tone],door=hogsmeadeDoor(site);
   if(inside){
    result.push({depth:site.y-site.h/2,paint:c=>facade(c,g,site,f,true)});
-   result.push({depth:door.y,paint:c=>entrance(c,g,site,f)});
+   result.push({depth:door.y,paint:c=>{
+    if(site.tone==='inn')drawThreeBroomsticksThreshold(c,door.x,door.y,hogsmeadeDoors(g,site).open);
+    else entrance(c,g,site,f);
+   }});
   }else{
    result.push({depth:door.y,paint:c=>{
     const x=site.x-site.w/2-16,y=site.y-site.h/2-82;
@@ -243,12 +264,49 @@ export function hogsmeadeSubjects(g,visible){
    }});
   }
   for(const prop of HOGSMEADE_PROPS)if(prop.building===site&&(inside?!prop.outside:prop.outside)){
-   const width=prop.w+32,height=prop.h+48;
+   if(prop.id==='stone-hearth'){
+    const x=site.x+prop.x,y=site.y+prop.y,time=g.time,green=flooFireGreen(g,site.id);
+    if(visible({x,y},72))result.push({depth:y,paint:c=>drawThreeBroomsticksHearth(c,x,y,time,green)});
+    continue;
+   }
+   const width=prop.w+(prop.outside?78:32),height=prop.h+48;
    const rect={x:site.x+prop.x-Math.ceil(width/2),y:site.y+prop.y-height+19,w:width,h:height};
    result.push({depth:site.y+(countertopDepth[prop.id]??prop.y),paint:c=>cachedArt(c,propCache,prop,rect,pen=>propPaint(pen,prop))});
   }
+  if(inside&&site===HOGSMEADE_SHACK)queueShackBoggart(result,g);
+  if(inside&&site.tone==='inn')queueTavernPatrons(result,g,visible);
   if(inside)for(const npc of HOGSMEADE_NPCS)if(npc.building===site.id)result.push({depth:npc.y,npc});
  }
  for(const npc of HOGSMEADE_NPCS)if(!npc.building&&visible(npc,75))result.push({depth:npc.y,npc});
+ const lupin=lupinNpc(g);
+ if(lupin&&visible(lupin,75)&&(!lupin.building||lit(g,HOGSMEADE_BUILDINGS.find(site=>site.id===lupin.building))))result.push({depth:lupin.y,npc:lupin});
  return result.map(o=>({depth:o.depth,hogsmeade:o}));
+}
+
+function queueTavernPatrons(result,g,visible){
+ const party=g.players.filter(player=>player.hp>0&&!player.room&&!player.trainRide);
+ for(const npc of THREE_BROOMSTICKS_PATRONS){
+  if(!visible(npc,64))continue;
+  if(npc.seat!=='bench')result.push({depth:npc.y-1,paint:c=>drawTavernPatronStool(c,npc)});
+  result.push({depth:npc.y,npc});
+  if(party.some(player=>Math.hypot(player.x-npc.x,player.y-npc.y)<25)){
+   result.push({depth:npc.y+.2,paint:c=>text(c,npc.name,npc.x,npc.y-36,'#f1dbb0')});
+  }
+ }
+}
+
+function queueShackBoggart(result,g){
+ const state=shackBoggartState(g),now=g.trainTest.time;
+ if(!state)return;
+ const elapsed=now-state.openedAt;
+ if(elapsed>=0&&elapsed<.9)result.push({depth:BOGGART_CABINET.y+.2,paint:c=>drawBoggartRelease(c,elapsed)});
+ if(now<state.bunnyUntil){
+  const point=boggartBunnyPoint(elapsed);
+  result.push({depth:point.y+.1,paint:c=>{
+   drawBoggartBunny(c,point,elapsed);text(c,'Boggart',point.x,point.y-27,'#e5c1f0');
+  }});
+ }
+ if(state.activeId===undefined)return;
+ const actor=g.enemies.find(e=>e.id===state.activeId&&e.shackBoggart&&e.hp>0);
+ if(actor)result.push({depth:actor.y+.2,paint:c=>text(c,actor.name,actor.x,actor.y-(actor.shackBoggart==='spider'?44:actor.boggartSize+6),'#e5c1f0')});
 }

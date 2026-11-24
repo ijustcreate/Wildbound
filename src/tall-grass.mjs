@@ -212,13 +212,13 @@ export function igniteTallGrassAt(g,x,y,{trail=false}={}){
  const burned=burnTallGrass(target);if(burned)g.persist?.();return burned;
 }
 
-export function strikeTallGrass(g,p,range,{blade=false,fire=false}={}){
- const length=Math.hypot(p.faceX||0,p.faceY||0)||1,fx=(p.faceX||1)/length,fy=(p.faceY||0)/length;
+export function strikeTallGrass(g,p,range,{blade=false,fire=false,onContact}={}){
+ const faceX=p.faceX??0,faceY=p.faceY??1,length=Math.hypot(faceX,faceY)||1,fx=faceX/length,fy=faceY/length;
  const target=nearbyScenery(g.scenery||[],p.x+fx*range*.5,p.y+fy*range*.5,range).filter(s=>s.kind==='tall_grass'&&!s.cut).map(s=>({s,y:s.rootY??s.y+s.size*.4}))
   .filter(({s,y})=>{const dx=s.x-p.x,dy=y-(p.y+14),d=Math.hypot(dx,dy);return d<range+14&&d>0&&(dx*fx+dy*fy)/(d)>=Math.cos(Math.PI/4);})
   .sort((a,b)=>Math.hypot(a.s.x-p.x,a.y-p.y)-Math.hypot(b.s.x-p.x,b.y-p.y))[0]?.s;
  if(!target)return false;
- if(fire){burnTallGrass(target);return true;}
+ if(fire){burnTallGrass(target);onContact?.(target);return true;}
  if(!blade)return false;
  target.cut=true;target.grassCutAt=g.time;
  g.environmentParticles||=[];

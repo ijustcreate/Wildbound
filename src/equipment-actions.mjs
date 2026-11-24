@@ -8,11 +8,11 @@ export function equipmentAction(g,p,action){
  const type=p.equipment[slot],def=ITEMS[type];
  if(!def){u.notice='This equipment slot is empty.';return true;}
  if(action==='use'||action==='equip'){
-  u.notice=unequip(p,slot)?def.name+' unequipped.':'Backpack full — free one slot to unequip'+(!p.room&&['lobby','play'].includes(g.phase)?', or choose Drop equipped.':'.');
+  u.notice=unequip(p,slot)?def.name+' unequipped.':'Backpack full — free one slot to unequip'+(canDropInventoryItem(g,p)?', or choose Drop equipped.':'.');
  }else{
-  if(!canDropInventoryItem(g,p)){u.notice='Free a backpack slot to unequip here. Equipped items can only be dropped in the lobby or during an expedition.';return true;}
+  if(!canDropInventoryItem(g,p)){u.notice='Free a backpack slot to unequip here.';return true;}
   if(protectedItem(p,type)){u.notice='Unlock this item in Field Kit before dropping it.';return true;}
-  dropInventoryItem(g,p,type,1,{sockets:[...(p.equipmentSockets?.[slot]||[])]});
+  if(!dropInventoryItem(g,p,type,1,{sockets:[...(p.equipmentSockets?.[slot]||[])]}))return true;
   p.equipment[slot]=null;if(p.equipmentSockets)delete p.equipmentSockets[slot];
   if(def.twoHanded)p.equipment.hand2=null;
   refreshVitals(p);u.notice=def.name+' dropped on the ground.';

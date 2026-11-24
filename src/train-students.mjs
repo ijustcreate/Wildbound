@@ -1,13 +1,15 @@
 import {drawPixelChat} from './pixel-chat.mjs';
 import {trainChatPlacement,rememberTrainChat} from './train-chat-placement.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
-import {ITEMS,give,take} from './items.mjs';
+import {BACKPACK_SLOTS,ITEMS,clearSlot,give,take} from './items.mjs';
 import {trainInterior} from './train-design.mjs';
 import {nativeCompartmentAisle} from './train-interior.mjs';
 import {trainCars,trainWorld} from './train-track.mjs';
 import {TRAIN_SEAT_HEIGHT} from './train-surfaces.mjs';
 import {TRAIN_SEATED_PELVIS_HEIGHT} from './train-clips.mjs';
 import {spawnChocolateFrog,CHOCOLATE_FROG_LIMIT} from './chocolate-frogs.mjs';
+import {WIZARD_CARDS} from './wizard-cards.mjs';
+import {WIZARD_CARD_COLLECTION,mergeWizardCardCollection,wizardCardIds} from './wizard-card-collection.mjs';
 
 export const TRAIN_STUDENT_RENDER_SIZE=52;
 export const TRAIN_STUDENTS=Object.freeze([
@@ -116,11 +118,45 @@ export function deliverStudentParcels(g){
   p.npcQuests.train_students.pending=pending.filter(item=>{if(give(p.inventory,item.type,item.qty)){delivered=true;g.message?.('Received '+ITEMS[item.type].name+'.');return false;}return true;});if(delivered)g.persist?.();
  }
 }
+
+function cardAlbums(p){
+ return [p.inventory,p.field?.overflow,...(p.chests||[])].flatMap(list=>list?.filter(item=>item?.type===WIZARD_CARD_COLLECTION)||[]);
+}
+
+function recordChocolateCard(p,id){
+ const card={contents:[{type:id,qty:1}]};
+ const carried=p.inventory.find(item=>item?.type===WIZARD_CARD_COLLECTION);
+ const overflow=(p.field??={}).overflow??=[];
+ const recoveryIndex=overflow.findIndex(item=>item?.type===WIZARD_CARD_COLLECTION);
+ const album=carried||overflow[recoveryIndex]||cardAlbums(p)[0];
+ if(album){
+  mergeWizardCardCollection(album,card);
+  if(album!==overflow[recoveryIndex])return false;
+  if(!give(p.inventory,WIZARD_CARD_COLLECTION,1,BACKPACK_SLOTS,album))return true;
+  clearSlot(overflow,recoveryIndex);
+  return false;
+ }
+ if(give(p.inventory,WIZARD_CARD_COLLECTION,1,BACKPACK_SLOTS,card))return false;
+ give(overflow,WIZARD_CARD_COLLECTION,1,Infinity,card);
+ return true;
+}
+
+function revealChocolateCard(g,p){
+ const owned=new Set(cardAlbums(p).flatMap(wizardCardIds));
+ const unowned=WIZARD_CARDS.filter(card=>!owned.has(card.id));
+ if(!unowned.length)return null;
+ const index=Math.min(unowned.length-1,Math.floor((g.random?.()??Math.random())*unowned.length));
+ const card=unowned[index];
+ return {card,recovery:recordChocolateCard(p,card.id)};
+}
+
 export function transferTrainStudentGifts(g,t){
  let changed=false;
  for(const original of t.returnPlayers){const rewards=t.studentRewards?.[original.id]||[],used=t.studentFrogs?.[original.id];if(!rewards.length&&!used)continue;changed=true;const s=state(original);s.received??={};s.pending??=[];
   for(const reward of rewards){s.received[reward.id]=true;if(reward.qty>0&&!give(original.inventory,reward.type,reward.qty))s.pending.push({type:reward.type,qty:reward.qty});}
-  if(used){for(const [type,delta]of Object.entries(used.deltas||{}).filter(([,n])=>n<0)){let remaining=-delta;for(const parcel of s.pending.filter(i=>i.type===type)){const n=Math.min(remaining,parcel.qty);parcel.qty-=n;remaining-=n;}s.pending=s.pending.filter(i=>i.qty>0);if(remaining)take(original.inventory,type,remaining);}for(const [type,delta]of Object.entries(used.deltas||{}).filter(([,n])=>n>0))if(!give(original.inventory,type,delta))s.pending.push({type,qty:delta});original.hp=Math.min(original.maxHp,original.hp+used.healed);const active=g.players.find(p=>p.id===original.id);if(active?.chocolateSparkleUntil>g.time)original.chocolateSparkleUntil=t.returnTime+active.chocolateSparkleUntil-g.time;}
+  if(used){for(const [type,delta]of Object.entries(used.deltas||{}).filter(([,n])=>n<0)){let remaining=-delta;for(const parcel of s.pending.filter(i=>i.type===type)){const n=Math.min(remaining,parcel.qty);parcel.qty-=n;remaining-=n;}s.pending=s.pending.filter(i=>i.qty>0);if(remaining)take(original.inventory,type,remaining);}for(const [type,delta]of Object.entries(used.deltas||{}).filter(([,n])=>n>0))if(!give(original.inventory,type,delta))s.pending.push({type,qty:delta});original.hp=Math.min(original.maxHp,original.hp+used.healed);const active=g.players.find(p=>p.id===original.id);if(active?.chocolateSparkleUntil>g.time)original.chocolateSparkleUntil=t.returnTime+active.chocolateSparkleUntil-g.time;
+   for(const id of used.cards||[])recordChocolateCard(original,id);
+  }
  }return changed;
 }
 export function useChocolateFrog(g,p){
@@ -129,8 +165,12 @@ export function useChocolateFrog(g,p){
  const escapes=(g.random?.()??Math.random())<.5;
  if(escapes&&(g.chocolateFrogs||[]).length>=CHOCOLATE_FROG_LIMIT){if(p.ui)p.ui.notice='Catch a few escaped Chocolate Frogs first.';return false;}
  p.inventory=copy;const healed=escapes?0:Math.max(0,p.maxHp-p.hp);p.hp+=healed;p.chocolateSparkleUntil=(g.time||0)+300;if(escapes)spawnChocolateFrog(g,p);
- if(g.trainTest){const t=g.trainTest,r=(t.studentFrogs??={})[p.id]??={deltas:{},healed:0};r.deltas[type]=(r.deltas[type]||0)-1;if(type==='caught_chocolate_frog')r.deltas.empty_jar=(r.deltas.empty_jar||0)+1;r.healed+=healed;}
- if(p.ui)p.ui.notice=escapes?'It escaped! You still sparkle. Catch the brown frog with a net and an empty bottle.':'Health refilled! You sparkle for 5 minutes.';g.message?.(p.ui?.notice|| (escapes?'The Chocolate Frog escaped!':'Chocolate Frog: health refilled.'));g.onSound?.(escapes?'pickup':'heal',p);g.persist?.();return true;
+ const reward=revealChocolateCard(g,p);
+ if(g.trainTest){const t=g.trainTest,r=(t.studentFrogs??={})[p.id]??={deltas:{},healed:0};r.deltas[type]=(r.deltas[type]||0)-1;if(type==='caught_chocolate_frog')r.deltas.empty_jar=(r.deltas.empty_jar||0)+1;r.healed+=healed;if(reward)(r.cards??=[]).push(reward.card.id);}
+ const outcome=escapes?'It escaped! You still sparkle. Catch the brown frog with a net and an empty bottle.':'Health refilled! You sparkle for 5 minutes.';
+ const card=reward?` Card: ${reward.card.name}.${reward.recovery?' The album is in Field Kit Recovery.':''}`:' Your card collection is complete.';
+ if(p.ui)p.ui.notice=outcome+card;
+ g.message?.(outcome+card);g.onSound?.(escapes?'pickup':'heal',p);g.persist?.();return true;
 }
 export function studentSpeech(g,cs){
  const students=trainStudents(g,cs),t=g.trainTest;if(!students.length)return null;

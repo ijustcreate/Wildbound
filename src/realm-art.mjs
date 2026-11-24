@@ -10,6 +10,7 @@ import {makeUnderworldSprite,drawUnderworldGround,drawUnderworldAtmosphere} from
 import {drawShadowSceneryReflections} from './shadow-water-reflections.mjs';
 import {caveEdgeMask,drawCaveWallCell} from './cave-wall-art.mjs';
 import {caveFloorEdges,drawCaveFloorCell} from './cave-floor-art.mjs';
+import {drawCeilingHazard} from './ceiling-hazards.mjs';
 // Same indexed-pixel format as the sprite editor. No external raster dependency.
 function painter(){
  const s={width:64,height:64,palette:['transparent'],pixels:Array(4096).fill(0),footprint:Array(4096).fill(0),occludes:false};
@@ -190,9 +191,10 @@ export function drawRealmAtmosphere(c,g,bounds={}){
  const time=g.time||0;
  for(const p of g.scenery||[]){
   if(p.kind==='cave_drip'){const t=(time*.65+realmHash(p.x,p.y))%1;c.fillStyle='#b3d2d399';c.fillRect(p.x,p.rootY-60+t*60,2,4);c.strokeStyle='#8db1bc66';c.beginPath();c.ellipse(p.x,p.rootY,t*10,t*3,0,0,Math.PI*2);c.stroke();}
-  if(p.kind!=='ceiling_stalactite'||p.hazardState!=='warning')continue;
-  const t=p.hazardTime||0,w=p.warning||1.6;c.fillStyle='#090b16aa';c.beginPath();c.ellipse(p.x,p.rootY,8+Math.min(1,t/w)*15,5+Math.min(1,t/w)*7,0,0,Math.PI*2);c.fill();c.strokeStyle='#d7c9a1';c.lineWidth=2;c.stroke();
-  for(let i=0;i<9;i++){const fall=(t*44+i*9)%60;c.fillStyle=i%2?'#c0bba777':'#e3d8adbb';c.fillRect(p.x-16+realmHash(i,p.x)*32,p.rootY-65+fall,2,3);}
-  if(t>w)drawRealmSprite(c,'ceiling_stalactite',p.x,p.rootY-100+(t-w)/.35*100,46,g.spriteLibrary);
+  if(p.kind==='ceiling_stalactite')drawRealmCeilingHazard(c,g,p);
  }
+}
+
+export function drawRealmCeilingHazard(c,g,p){
+ drawCeilingHazard(c,p,(x,y)=>drawRealmSprite(c,'ceiling_stalactite',x,y,46,g.spriteLibrary),realmHash);
 }

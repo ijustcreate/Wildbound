@@ -1,6 +1,8 @@
+import {DIAGON_STREET_INSET} from './alley-street-layout.mjs';
+
 export const GARDEN_LAWN={x:7110,y:3780,w:500,h:514};
 export const GARDEN_SHOP_APPROACH={x:6948,y:4000,w:254,h:44};
-export const MAGE_GARDEN_AREAS=[GARDEN_LAWN,{x:7542,y:3976,w:270,h:88},GARDEN_SHOP_APPROACH];
+export const MAGE_GARDEN_AREAS=[GARDEN_LAWN,{x:7542,y:3976,w:270+DIAGON_STREET_INSET,h:88},GARDEN_SHOP_APPROACH];
 export const GARDEN_PERIMETER_FRONTAGES=[
  {x:6970,y:3735,theme:'garden-glazier',halfWidth:88,halfDepth:69},
  {x:6998,y:4150,theme:'garden-spindle',halfWidth:91,halfDepth:75},
@@ -11,7 +13,7 @@ export const GARDEN_PERIMETER_FRONTAGES=[
 export const GARDEN_POOL={x:7401,y:4070,rx:69,ry:44};
 export const GARDEN_POOL_WATER={rx:GARDEN_POOL.rx-11,ry:GARDEN_POOL.ry-9};
 export const GARDEN_PATHS=[
- {width:54,points:[[7814,4020],[7624,4020],[7538,4020],[7484,4010]]},
+ {width:54,points:[[7814+DIAGON_STREET_INSET,4020],[7624,4020],[7538,4020],[7484,4010]]},
  {width:44,points:[[7484,4010],[7417,3979],[7346,3984],[7293,4017],[7266,4072],[7280,4134],[7336,4171],[7426,4181],[7471,4150],[7481,4108],[7492,4053],[7484,4010]]},
  {width:38,points:[[7417,3979],[7395,3920],[7367,3872],[7311,3858],[7257,3891]]},
  {width:34,points:[[7293,4017],[7243,3977],[7196,3982]]},

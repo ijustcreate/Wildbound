@@ -5,6 +5,7 @@ import {FACE_STYLES,DEFAULT_APPEARANCE} from '../src/appearance.mjs';
 import {drawFaceAccessories} from '../src/face-accessories.mjs';
 import {drawPlayer,defaultPlayerMotion,directionVector} from '../src/player-motion.mjs';
 import {drawResolvedHeadwear,headwearStyle} from '../src/resolved-headwear.mjs';
+import {directionalHelmet} from '../src/wearable-art.mjs';
 import {gearPalette} from '../src/gear-art.mjs';
 import {Profiles} from '../src/profiles.mjs';
 import {coveredHairOpening,hairShapes} from '../src/hair-design.mjs';
@@ -25,8 +26,13 @@ test('hood hair continues behind the upper opening, while ordinary hat bands kee
 test('every head item resolves all eight views with four-region art and stable pivots',()=>{
  const hats=Object.entries(ITEMS).filter(([,v])=>v.slot==='head'&&!v.boneArmor);assert.ok(hats.length>=25);
  for(const [id,def]of hats)for(let d=0;d<8;d++){
-  const render=(x,y)=>{const out=[];const c={fillRect(...r){out.push([this.fillStyle,...r]);}};assert.equal(drawResolvedHeadwear(c,{x,y},d,headwearStyle(id,def),gearPalette(id),id),true,id);return out;};
-  const a=render(0,0),b=render(11,-8);assert.ok(a.length>8,id);
+  const custom=['pirate_bicorne','eyepatch'].includes(def.style);
+  const render=(x,y)=>{
+   const out=[],c={fillRect(...r){out.push([this.fillStyle,...r]);}};
+   const drawn=custom?directionalHelmet(c,id,{x,y},d):drawResolvedHeadwear(c,{x,y},d,headwearStyle(id,def),gearPalette(id),id);
+   assert.equal(drawn,true,id);return out;
+  };
+  const a=render(0,0),b=render(11,-8);assert.ok(a.length>=(def.style==='eyepatch'?3:9),id);
   assert.deepEqual(b,a.map(([color,x,y,w,h])=>[color,x+11,y-8,w,h]),id);
   assert.ok(new Set(a.map(v=>v[0])).size>=2,id);
  }

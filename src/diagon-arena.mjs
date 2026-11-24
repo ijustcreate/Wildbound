@@ -12,10 +12,11 @@ import {clearCharm} from './succubus-charm.mjs';
 import {spellTransition} from './portal-transition.mjs';
 import {tickNightEquipment} from './night-equipment.mjs';
 import {tickPlayerIce} from './frost-prison.mjs';
+import {collectNearbyWorldLoot} from './inventory-world.mjs';
 
 const POOLED_ACTORS=['enemies','loot','pickups','baits','spells','arrows','traps','effects',
  'xpOrbs','ghosts','villageFollowers','boomerangs','rifleShots','scenery','succubusKisses','barricades'];
-const PANEL_ACTIONS=['close','next','prev','down','up','panel','use','offhand','sockets','pick','split'];
+const PANEL_ACTIONS=['close','next','prev','down','up','panel','use','offhand','sockets','store','drop','dropOne','pick','split'];
 const within=(p,q,r)=>Math.hypot(p.x-q.x,p.y-q.y)<=r;
 const RESET_FIELDS=['trainRide','gardenBench','pirateRide','swordStrike','swordFacing','swordDash',
  'swordDashRequested','queuedAttack','attackClip','locomotionTransition','locomotionTurning','playerFrame','poseTime'];
@@ -33,7 +34,7 @@ function settle(p,point,row=0){
 export function enterDiagonArena(g,p,entranceId){
  const t=g.trainTest,door=ARENA_ENTRANCES[entranceId];
  if(!door||t?.design.activeRoom!=='diagon'||p.hp<=0||p.room||!within(p,door,24))return false;
- if(g.players.some(q=>q.trainRide||q.pirateRide||q.vehicleId||q.controlledFollowerId)){
+ if(g.players.some(q=>q.room||q.trainRide||q.pirateRide||q.vehicleId||q.controlledFollowerId)){
   g.message?.('Meet at the stairs on foot before entering the vault.');return true;
  }
  if(g.players.some(q=>q.broomMount&&!q.inventory?.some(slot=>slot?.type==='mounted_broom'))){
@@ -45,6 +46,8 @@ export function enterDiagonArena(g,p,entranceId){
  t.arena={visit,entranceId,enteredAt:g.time,house:g.house||null,actors:Object.fromEntries(POOLED_ACTORS.map(key=>[key,g[key]||[]])),
   entryHealth:Object.fromEntries(g.players.map(q=>[q.id,q.hp])),talk:{},combatEvents:[],nextCombatEvent:1};
  for(const key of POOLED_ACTORS)g[key]=[];
+ g.loot=t.arenaGroundLoot||[];
+ delete t.arenaGroundLoot;
  g.house=null;
  t.design.activeRoom=DIAGON_ARENA_ROOM;
  t.wildLandsOverview=false;
@@ -62,6 +65,7 @@ export function enterDiagonArena(g,p,entranceId){
 export function leaveDiagonArena(g){
  const t=g.trainTest,state=t?.arena,door=state&&ARENA_ENTRANCES[state.entranceId];
  if(!inDiagonArena(g)||!door)return false;
+ t.arenaGroundLoot=g.loot;
  Object.assign(g,state.actors,{house:state.house});
  t.design.activeRoom='diagon';
  delete t.arena;
@@ -184,6 +188,7 @@ export function tickDiagonArena(g,dt,inputs){
  const t=g.trainTest;
  if(!t.arena||!['play','won'].includes(g.phase))return true;
  dt=Math.max(0,Math.min(.05,dt));t.time+=dt;g.time+=dt;
+ g.tickWorldLoot?.(dt);
  for(const p of g.players){
   const input=playerInput(g.players,p,inputs),previous=t.previous.get(p.id)||{};
   const use=input.interact&&!previous.interact,jump=input.jump&&!previous.jump;
@@ -201,8 +206,12 @@ export function tickDiagonArena(g,dt,inputs){
    for(const action of PANEL_ACTIONS)if(p.ui&&input[action]&&!previous[action])g.inventoryAction?.(p,action);
    continue;
   }
-  if(use){interactDiagonArena(g,p);if(!inDiagonArena(g))return true;}
   if(p.stun>0||p.frozen>0||p.sleeping>0){p.moving=false;continue;}
+  if(input.loot&&!previous.loot)collectNearbyWorldLoot(g,p);
+  else if(use&&!collectNearbyWorldLoot(g,p,true)){
+   if(!interactDiagonArena(g,p))collectNearbyWorldLoot(g,p);
+   if(!inDiagonArena(g))return true;
+  }
   const fighter=arenaFighter(g,p);
   updateAimFacing(p,input);
   p.bowAiming=!!(fighter&&input.block&&hasAimWeapon(p));
@@ -232,10 +241,7 @@ export function tickDiagonArena(g,dt,inputs){
   g.tickMeleeContact?.(p);
   p.moving=moved>.02;p.walking=p.moving&&length<.75;p.step=(p.step||0)+moved*.13;
   p.moveSpeed=moved/Math.max(.001,dt);p.movementGait=p.moving?p.walking?'walk':'run':'idle';
-  if(input.loot&&!previous.loot){
-   const arrow=g.nearbyArrow?.(p);
-   if(arrow)g.collectArrow?.(p,arrow);
-  }
+  g.tickAutomaticLoot?.(p);
  }
  tickNightEquipment(g,dt);
  g.tickProjectiles?.(dt);

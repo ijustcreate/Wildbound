@@ -6,12 +6,18 @@ import {SKELETON_ARMOR_ITEMS} from './skeleton-equipment.mjs';
 import {critterContainer} from './critter-containers.mjs';
 import {WIZARDING_SHOP_GOODS} from './wizarding-shop-goods.mjs';
 import {DEATH_EATER_MASKS} from './death-eater-masks.mjs';
+import {PIRATE_CAPTAIN_GEAR} from './pirate-captain-gear.mjs';
 import {DIAGON_CRITTER_ITEMS} from './diagon-critter-species.mjs';
 import {ARENA_COSTUMES} from './diagon-arena-wardrobe.mjs';
 import {EMPORIUM_OWL_ITEMS} from './owl-emporium.mjs';
 import {GARDEN_MANA_BONUS,gardenManaWardRemaining} from './garden-mana-state.mjs';
 import {ARENA_DRINK_ITEMS} from './arena-drink-state.mjs';
 import {WRONG_TURN_KEY,WRONG_TURN_KEY_ITEM} from './wrong-turn-key.mjs';
+import {QUIDDITCH_TEAMS} from './quidditch-layout.mjs';
+import {BROOM_SPEED_POTION,BROOM_SPEED_POTION_ITEM} from './broom-speed-potion.mjs';
+import {fortescueIceCreamBonus} from './fortescue-ice-cream.mjs';
+import {STOLEN_HEART,storedHeartMetadata} from './stolen-heart.mjs';
+import {WIZARD_CARD_COLLECTION,WIZARD_CARD_COLLECTION_ITEM,mergeWizardCardCollection,mergeWizardCardCollectionSlots} from './wizard-card-collection.mjs';
 export const SLOTS = [
   "head",
   "neck",
@@ -30,6 +36,16 @@ export const ITEMS = {
   ...ARENA_COSTUMES,
   ...EMPORIUM_OWL_ITEMS,
   ...DIAGON_CRITTER_ITEMS,
+  [BROOM_SPEED_POTION]:BROOM_SPEED_POTION_ITEM,
+  [WIZARD_CARD_COLLECTION]:WIZARD_CARD_COLLECTION_ITEM,
+  ...Object.fromEntries(Object.entries(QUIDDITCH_TEAMS).flatMap(([id,team])=>[
+    [`quidditch_${id}_robe`,{name:`${team.name} Quidditch Robe`,base:'armor',slot:'chest',style:'robe',tailoredRobe:true,
+      stack:1,supplyOnly:true,rarity:'uncommon',color:team.color,artColor:team.dark,trimColor:team.color,
+      description:`A split-hem flying robe in ${team.name} team colors.`}],
+    [`quidditch_${id}_scarf`,{name:`${team.name} Quidditch Scarf`,base:'scarf',slot:'back',scarf:[team.color,team.dark],
+      stack:1,supplyOnly:true,rarity:'uncommon',color:team.color,artColor:team.color,
+      description:`A ${team.name} team scarf with striped tails that move in flight. Worn in the back slot.`}],
+  ])),
   golden_train_ticket:{name:'Golden Train Ticket',base:'treasure',stack:1,rarity:'rare',sellPrice:0,supplyOnly:true,description:'A gift from the train conductor. Gain 10% more experience while this ticket is in your backpack. Extra tickets do not stack.'},
   cursed_axe:{name:'Cursed Axe',base:'sword',slot:'hand1',stack:1,damage:29,reach:84,rarity:'unique',supplyOnly:true,color:'#a64655',artColor:'#68767e',curseEyeColor:'#f64256',description:'An iron axe from the heart of the Overlook Maze. Its crimson inlay turns your eyes red while you hold it.'},
   energy_blade_red:{name:'Red energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#ff3949',artColor:'#ff263f',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#ff263f',lightSource:{radius:190,intensity:.72,color:'#ff263f'},description:'A humming red energy sword. Burns targets and casts a red glow; the blade powers down after ten seconds without an attack.'},
@@ -44,12 +60,15 @@ export const ITEMS = {
   jack_o_lantern:{name:'Jack-o’-lantern',base:'hat',slot:'head',stack:1,armor:2,sockets:0,supplyOnly:true,color:'#ed962f',artColor:'#ed962f',style:'pumpkin',description:'A carved pumpkin helmet with flickering fiery eyes. Armor +2. Drop it to decorate the ground.'},
   unknown_mushroom:{name:'Strange mushroom',stack:999,rarity:'unique',color:'#c58bfa',sellPrice:0,description:'A mysterious mushroom found inside a question block in the TV world. Purple quality. Its purpose is unknown; no use yet.'},
   dark_essence:{name:'Dark Essence',stack:999,color:'#a269cb',material:true,trinket:true,maxMana:0,weaponOnly:true,description:'Socket in a weapon: heal 20% of damage dealt, up to 8 health per hit. Each healing hit consumes one essence; your backpack refills the socket when stocked. Extracted from captured creatures.'},
+  [STOLEN_HEART]:{name:'Stolen Heart',stack:1,color:'#b94e64',rarity:'unique',questReward:true,supplyOnly:true,
+    description:'A heart stolen by Borgin’s mirror. Mr. Borgin will only buy it from the explorer it belongs to.'},
   trial_letter:{name:'A letter from the living board',stack:1,color:'#eddbad',sellPrice:0,description:'The dice may hurry, feet may flee;\nNo borrowed courage pays the tree.\nThe trials you leave, the gifts forego—\nBrave roots alone make treasure grow.'},
   mosquito_charm:{supplyOnly:true,name:'Oversized mosquito charm',base:'charm',slot:'neck',stack:1,rarity:'unique',color:'#d7a963',artColor:'#b8ce86',maxHp:8,description:'“They used to be smaller.” A tiny brass mosquito with an absurdly large proboscis. +8 maximum health. A playful living-jungle movie nod.'},
  starter_boomerang:{name:'Starter boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:12,range:210,speed:330,stack:1,supplyOnly:true,color:'#bf9658',artColor:'#bf9658',description:'Move after throwing to guide it back to your hand. No ammunition needed. One throw at a time.'},
  boomerang:{name:'Trail boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:20,range:260,speed:380,stack:1,rarity:'common',color:'#be9251',artColor:'#be9251',description:'Move after throwing to sweep a different line on the return. No ammunition needed.'},
   moon_boomerang:{name:'Moonsteel boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:30,range:310,speed:430,stack:1,rarity:'rare',color:'#8cd6e8',artColor:'#8cd6e8',description:'A swift moonsteel returning weapon. One throw at a time; no ammunition needed.'},
   sun_boomerang:{name:'Sunfire boomerang',base:'boomerang',slot:'hand1',boomerang:true,ranged:true,damage:42,range:360,speed:480,stack:1,rarity:'unique',color:'#f4b75d',artColor:'#f4b75d',description:'A powerful golden returning weapon. One throw at a time; no ammunition needed.'},
+  glaive:{name:'Glaive',base:'boomerang',slot:'hand1',eitherHand:true,boomerang:true,glaive:true,ranged:true,damage:28,range:280,speed:395,stack:1,supplyOnly:true,rarity:'unique',color:'#ebc37a',artColor:'#d6ab64',description:'A five-bladed thrower that seeks nearby enemies before returning. Hold Attack to build speed, range and sparks. Attack with your other weapon while the Glaive is in flight.'},
   critter_net:{name:'Trail catcher net',slot:'hand1',eitherHand:true,utility:true,damage:0,stack:1,color:'#b8c9a6',description:'Equip in either hand and press Attack near a critter. Automatically uses an empty bottle/jar or travel cage from your backpack.'},
   empty_jar:{name:'Empty critter bottle',stack:12,color:'#abdcd9',sellPrice:2,description:'An empty bottle/jar for catching critters, including fish. Use a catcher net nearby.'},
   critter_cage:{name:'Empty travel cage',stack:999,color:'#b69b67',sellPrice:4,description:'An empty cage for catching critters. The net automatically uses an available empty container.'},
@@ -73,10 +92,9 @@ export const ITEMS = {
   nimbus_2000:{name:'Repaired Nimbus 2000',base:'flying_broom',stack:1,color:'#c69a4d',rarity:'unique',mount:true,sellPrice:120,questReward:true,description:'Harry Potter’s old Nimbus 2000, carefully repaired with two brass bindings. Use outdoors to fly; dismount to return it to your backpack.'},
   standard_book_of_spells:{name:'Standard Book of Spells',base:'trinket',trinket:true,spellDamage:3,stack:1,rarity:'unique',color:'#9c5345',artColor:'#9c5345',questReward:true,description:'Hermione Granger’s spare textbook. Socket into compatible gear: +3 spell damage. No bonus while loose in your backpack.'},
   ...Object.fromEntries(Object.entries(WIZARDING_SHOP_GOODS).map(([id,item])=>[id,{...item}])),
-  chocolate_frog:{name:'Chocolate Frog',base:'potion',food:true,stack:10,color:'#70462f',artColor:'#70462f',rarity:'uncommon',questReward:true,description:'Always grants 5 minutes of sparkles. 50%: refill health. 50%: escape as a brown frog at your feet, with no healing. Catch it with a net and an empty bottle to try again.'},
+  chocolate_frog:{name:'Chocolate Frog',base:'potion',food:true,stack:10,color:'#70462f',artColor:'#70462f',rarity:'uncommon',questReward:true,description:'Adds an unowned wizard card until your collection is complete. Grants 5 minutes of sparkles. 50%: refill health. 50%: it hops away and can be caught with a net and a bottle.'},
   caught_snowy_owl:{name:'Snowy Owl Â· travel cage',stack:1,captureContainer:'critter_cage',color:'#e9eadc',sellPrice:18,description:'Your snowy owl companion. Use outdoors to release it and recover the empty cage.'},
-  diagon_ice_cream:{name:'Fortescueâ€™s ice cream',base:'potion',food:true,stack:10,heal:35,color:'#e9c9af',supplyOnly:true,description:'Strawberry ice cream from Diagon Alley. Restores health.'},
-  caught_chocolate_frog:{name:'Bottled Chocolate Frog',stack:1,captureContainer:'empty_jar',food:true,color:'#8a5a37',sellPrice:8,description:'Use to try the Chocolate Frog again: 50% refill health, 50% escape; always sparkle. Returns the empty bottle.'},
+  caught_chocolate_frog:{name:'Bottled Chocolate Frog',stack:1,captureContainer:'empty_jar',food:true,color:'#8a5a37',sellPrice:8,description:'Adds an unowned wizard card until your collection is complete and returns the empty bottle. Always grants sparkles. 50%: refill health. 50%: it hops away.'},
   hogwarts_student_robes:{name:'Hogwarts school robes',base:'armor',slot:'chest',style:'robe',stack:1,supplyOnly:true,rarity:'rare',armor:4,color:'#34323d',artColor:'#34323d',description:'Hogwarts uniform set: dark school robes over a grey student uniform.'},
   hogwarts_trousers:{name:'Hogwarts uniform trousers',base:'pants',slot:'pants',stack:1,supplyOnly:true,rarity:'rare',armor:2,color:'#4b4650',artColor:'#4b4650',description:'Hogwarts uniform set: neatly fitted charcoal trousers.'},
   hogwarts_shoes:{name:'Hogwarts school shoes',base:'boots',slot:'feet',stack:1,supplyOnly:true,rarity:'rare',armor:2,color:'#49372e',artColor:'#49372e',description:'Hogwarts uniform set: polished brown school shoes.'},
@@ -88,7 +106,7 @@ export const ITEMS = {
   alley_ashwood_wand:{name:'Silver-vein ash wand',base:'wand',slot:'hand1',eitherHand:true,magic:true,damage:23,manaCost:11,stack:1,supplyOnly:true,rarity:'rare',color:'#afd392',artColor:'#796050',description:'A dark ash shaft with a silver band and a pale green focus. Casts 23 damage for 11 mana.'},
   alley_lodestone_brooch:{name:'Lodestone brooch',base:'trinket',trinket:true,manaRegen:1,stack:1,supplyOnly:true,rarity:'rare',color:'#75aba3',artColor:'#75aba3',description:'A sea-green stone held by four brass claws. Socket into compatible gear for +1 mana regenerated per second.'},
   alley_moonmint_tonic:{name:'Moonmint tonic',base:'potion',food:true,heal:45,stack:10,supplyOnly:true,rarity:'uncommon',color:'#7bbfaf',artColor:'#7bbfaf',description:'A cool mint tonic that restores up to 45 health when used from your backpack.'},
-  floo_powder:{name:'Floo Powder',stack:20,supplyOnly:true,rarity:'uncommon',color:'#71bc83',description:'Stand inside a linked fireplace and Interact. Each journey uses one pinch.'},
+  floo_powder:{name:'Floo Powder',stack:20,supplyOnly:true,rarity:'uncommon',color:'#71bc83',description:'Use beside a linked fireplace to choose a destination. Each journey uses one pinch.'},
   mounted_broom:{name:'Broom · in flight',stack:1,color:'#78977a',mountReservation:true,supplyOnly:true,npcOnly:true,description:'Your broom is in flight. B / loot button returns it to this reserved slot.'},
   witch_hat:{name:'Crooked witch hat',slot:'head',stack:1,armor:2,color:'#5c734b',rarity:'rare',style:'witch',description:'Moss-green cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
   witch_hat_plum:{name:'Crooked witch hat (Ink Plum)',base:'hat',slot:'head',stack:1,armor:2,color:'#725783',rarity:'rare',style:'witch',supplyOnly:true,description:'Ink-plum cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
@@ -307,6 +325,10 @@ export const ITEMS = {
     color: "#7fdb87",
     description: "Halves dash cooldown for 30 seconds. Use from backpack.",
   },
+  butterbeer:{name:'Butterbeer',food:true,heal:20,stack:10,color:'#d79b4e',rarity:'common',supplyOnly:true,
+    description:'A warm, frothy drink from the Three Broomsticks. Drink from your backpack to restore up to 20 health.'},
+  shrinking_candy:{name:'Shrinking Candy',food:true,stack:10,color:'#a99ada',rarity:'uncommon',supplyOnly:true,
+    description:'Zonko’s sweet halves your visible size and physical attack damage for 60 seconds. Spells keep their usual damage.'},
   potion: {
     name: "Health potion",
     stack: 20,
@@ -541,6 +563,17 @@ export const ITEMS = {
     spellType: "ice", damage: 24, manaCost: 14, color: "#9beaff",
     artColor: "#7edcff", rarity: "unique", variant: 2,
     description: "Ice bolts have a chance to freeze enemies on hit.",
+  },
+  dark_lord_wand: {
+    base: 'wand', name: 'He Who Shall Not Be Named’s Wand', slot: 'hand1',
+    magic: true, damage: 40, manaCost: 18, stack: 1, sockets: 2, rarity: 'unique', bossOnly: true,
+    color: '#74ec3b', spellColor: '#74ec3b', artColor: '#eee8ce', curseEyeColor: '#f64256',
+    description: 'A pale wand with a carved grip. Its green curses turn your eyes red while you hold it.',
+  },
+  nocturne_lord_robe: {
+    base: 'armor', name: 'Dark Lord’s robes', slot: 'chest', style: 'robe', stack: 1,
+    npcOnly: true, bossOnly: true, rarity: 'unique', artColor: '#222e30', color: '#222e30', trimColor: '#637770',
+    description: 'Weathered dark robes edged in moss-gray binding.',
   },
   charm: {
     name: "Amber charm",
@@ -1110,7 +1143,7 @@ ITEMS.groveheart_focus={name:'Groveheart Focus',base:'wand',slot:'hand1',stack:1
 ITEMS.bogglass_charm={name:'Bogglass Charm',base:'charm',slot:'neck',stack:1,rarity:'rare',maxMana:10,manaRegen:.4,poisonResist:.25,style:'bogglass',color:'#4c9589',artColor:'#4d9c8d',description:'A green glass drop set in a reed-wrapped frame. +10 maximum mana, +0.4 mana/sec, and 25% poison resistance.'};
 ITEMS.wayfinder_quiver={name:'Wayfinder Quiver',base:'quiver',slot:'back',stack:1,rarity:'rare',bowDrawSpeed:.1,arrowSpeed:.2,style:'dunewind',color:'#b98b53',artColor:'#ae7946',description:'A narrow desert quiver for long shots. Arrows travel 20% faster; bows draw 10% faster.'};
 export const ARCANIST_SET=Object.freeze(['arcanist_circlet','arcanist_robe','arcanist_gloves']);
-Object.assign(ITEMS,CHRISTMAS_ITEMS,SKELETON_ARMOR_ITEMS,DEATH_EATER_MASKS);
+Object.assign(ITEMS,CHRISTMAS_ITEMS,SKELETON_ARMOR_ITEMS,DEATH_EATER_MASKS,PIRATE_CAPTAIN_GEAR);
 for(const [color,base,trim] of [['yellow','#c69e3c','#423c35'],['green','#347256','#b9c4b1'],['red','#943e39','#d1a65d'],['blue','#3e618f','#b59b6e']])ITEMS['hogwarts_scarf_'+color]={name:'Hogwarts scarf · '+color,base:'scarf',slot:'back',scarf:[base,trim],stack:1,supplyOnly:true,rarity:'uncommon',color:base,artColor:base,description:'A '+color+' house scarf worn in the back slot. Two cloth tails sway and flap as you move.'};
 export const GEAR_SETS={
  hogwarts:{name:'Hogwarts Uniform',groups:[['hogwarts_student_robes'],['hogwarts_trousers'],['hogwarts_shoes'],['hogwarts_cuffs']],three:{maxMana:10},full:{manaRegen:1},threeText:'+10 maximum mana',fullText:'Regenerate 1 mana/sec'},
@@ -1272,6 +1305,8 @@ const matchingStack=(item,type,metadata)=>item?.type===type&&!!item.starterStock
 export function canGive(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {}) {
   qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
   if (!ITEMS[type] || qty <= 0) return false;
+  if(type===STOLEN_HEART&&(qty!==1||!storedHeartMetadata(type,metadata).stolenHeart))return false;
+  if(type===WIZARD_CARD_COLLECTION)return qty===1&&(list.some(item=>item?.type===type)||list.filter(Boolean).length<slots);
   const max = socketCount(type)?1:ITEMS[type].stack || 1;
   const capacity =
     list.reduce((n, i) => n + (matchingStack(i,type,metadata) ? Math.max(0,max - i.qty) : 0), 0) +
@@ -1281,6 +1316,10 @@ export function canGive(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = 
 export function give(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {}) {
   if (!canGive(list, type, qty, slots,metadata)) return false;
   qty=canonicalQuantity(type,qty);type=canonicalItemType(type);
+  if(type===WIZARD_CARD_COLLECTION){
+    const album=mergeWizardCardCollectionSlots(list);
+    if(album){mergeWizardCardCollection(album,metadata);return true;}
+  }
   const max = socketCount(type)?1:ITEMS[type].stack || 1;
   for (const i of list)
     if (matchingStack(i,type,metadata) && i.qty < max) {
@@ -1292,7 +1331,7 @@ export function give(list, type, qty = 1, slots = BACKPACK_SLOTS, metadata = {})
   while (qty > 0) {
     const n = Math.min(qty, max);
     const hole = list.findIndex((i) => !i);
-    const item={type,qty:n,...(metadata.starterStock?{starterStock:true}:{}),...(type.startsWith('caught_')?{captureContainer:itemCaptureContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
+    const item={type,qty:n,...storedHeartMetadata(type,metadata),...(metadata.starterStock?{starterStock:true}:{}),...(type.startsWith('caught_')?{captureContainer:itemCaptureContainer(type,metadata)}:{}),...(type==='raw_ice'?{meltRemaining:metadata.meltRemaining??300}:{}),...(metadata.sockets?.length?{sockets:[...metadata.sockets]}:{}),...(ITEMS[type].bag?{contents:structuredClone(metadata.contents||[])}:{})};
     if (hole >= 0) list[hole] = item;
     else list.push(item);
     qty -= n;
@@ -1382,7 +1421,7 @@ export function stat(p, key) {
     0,
   );
   const carriedRelics = (p.inventory || []).reduce((n,item)=>n+carriedRelicStat(item,key),0);
-  return equipped + carriedRelics + setStat(p,key);
+  return equipped + carriedRelics + setStat(p,key) + fortescueIceCreamBonus(p,key);
 }
 export function freshCharacter(id, name) {
   return {
@@ -1449,7 +1488,7 @@ export function splitStack(list, index, amount, slots = BACKPACK_SLOTS) {
 export function sellStack(p, index, stock = (p.robotStock ||= [])) {
   if(ITEMS[p.inventory[index]?.type]?.mountReservation)return false;
   const item = p.inventory[index];
-  if (!item || p.field?.favorites?.includes(item.type)) return false;
+  if (!item || item.type===STOLEN_HEART || p.field?.favorites?.includes(item.type)) return false;
   if (!give(stock, item.type, item.qty, 120,item)) return false;
   p.coins = (p.coins || 0) + sellValue(item.type) * item.qty;
   clearSlot(p.inventory, index);
@@ -1563,6 +1602,8 @@ export function moveInventoryItem(p, storage, from, to, capacity = 24) {
     }
   }
   if (actor.inventory.length > BACKPACK_SLOTS) return false;
+  mergeWizardCardCollectionSlots(actor.inventory);
+  mergeWizardCardCollectionSlots(chest);
   p.inventory = actor.inventory;
   p.equipment = actor.equipment;
   p.equipmentSockets=actor.equipmentSockets;refreshVitals(p);
@@ -1586,5 +1627,7 @@ ITEMS.halo={name:'Halo',base:'hat',slot:'head',healingHalo:true,
 
 
 ITEMS.hot_chocolate={name:'Hot chocolate',base:'potion',stack:10,rarity:'uncommon',color:'#b77a50',artColor:'#e7cba1',food:true,description:'Restore 35 health. Happy for 5 minutes: occasional golden sparkles and +10% damage. A warm treat from the train.'};
+ITEMS.zonko_firework={name:'Zonko’s Whizz-Bang Firework',base:'potion',stack:10,rarity:'uncommon',color:'#da764d',artColor:'#f1a361',supplyOnly:true,description:'Use from firm footing to send up a rocket that bursts in glittering stars.'};
+ITEMS.flaming_footprints={name:'Flaming Footprints',base:'potion',stack:10,rarity:'uncommon',color:'#d8804e',artColor:'#f7b064',food:true,supplyOnly:true,description:'Candy that leaves fading flames as you walk or run for 60 seconds. Grass retains a temporary scorch.'};
 
 ITEMS.caught_snowy_owl.description='Your snowy owl companion in a travel cage. Use outdoors to release it and recover the empty cage. Your released owl follows across visits and saves.';

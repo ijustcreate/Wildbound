@@ -293,7 +293,7 @@ function paintSkull(state) {
 function paintRing(state, icon) {
   const { view, turn, pixels } = state;
   const wide = icon ? 10 : view === 2 ? 6 : 7;
-  const top = icon ? -4 : -12;
+  const top = icon ? -4 : view === 1 ? -13 : -12;
   const tilt = view === 1 ? 1 : view === 3 ? -1 : 0;
   // Rounded hollow shape with a one-pixel far rim and stronger near edge.
   const ring = polygonPixels(turn([[-wide,top+2],[-wide+2,top],[wide-2,top+tilt],

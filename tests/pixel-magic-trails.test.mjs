@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {drawMagicBolt,visitMagicTrail,MAGIC_TRAIL_LIMIT,MAGIC_TRAIL_SECONDS} from '../src/magic-bolt-render.mjs';
+import {drawMagicBolt,magicBoltColor,magicChargePalette,visitMagicTrail,MAGIC_TRAIL_LIMIT,MAGIC_TRAIL_SECONDS} from '../src/magic-bolt-render.mjs';
 import {drawMagicBurst} from '../src/magic-bolt-effects.mjs';
+import {ITEMS} from '../src/items.mjs';
 function canvas(){const calls=[];return {calls,globalAlpha:1,save(){},restore(){},fillRect(x,y,w,h){assert.ok([x,y,w,h].every(Number.isInteger));calls.push([x,y,w,h,this.fillStyle]);},createRadialGradient(){throw Error('Blurred glow forbidden');},ellipse(){throw Error('Smooth orb forbidden');},stroke(){throw Error('Antialiased streak forbidden');}};}
 test('magic trail is dense, deterministic, finite, and bounded without live particle actors',()=>{
  for(const age of [0,.001,.02,.1,.5,3,9999]){
@@ -23,4 +24,13 @@ test('newborn bolts cannot draw pre-emission particles and zero range cannot dra
 });
 test('spell impact uses small pixel chips rather than smooth lines',()=>{
  const c=canvas();drawMagicBurst(c,{x:90,y:70,color:'#ff7938',life:.2,duration:.32,hit:true});assert.ok(c.calls.length>=13&&c.calls.length<=20);assert.ok(c.calls.every(p=>p[2]===p[3]&&p[4]==='#ff7938'));
+});
+test('the ivory wand uses the same green base for a bolt and its charge',()=>{
+ const wand=ITEMS.dark_lord_wand,color=magicBoltColor(wand),c=canvas();
+ assert.equal(wand.artColor,'#eee8ce');
+ assert.equal(color,'#74ec3b');
+ assert.ok(magicChargePalette(color).includes(color));
+ drawMagicBolt(c,{x:100,y:60,vx:260,vy:0,color,age:.5,size:8});
+ assert.ok(c.calls.some(pixel=>pixel[4]===color));
+ assert.equal(magicBoltColor(ITEMS.ice_wand),ITEMS.ice_wand.artColor);
 });

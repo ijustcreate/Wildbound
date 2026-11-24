@@ -168,7 +168,7 @@ function hunter(g,e,p,dt) {
   if(n.phase==='idle'&&d<=items.ITEMS.rifle.shot.range&&visible(g,e,p))windup(g,e,p,1.15,'aim');
 }
 
-function stepNightEnemy(g,e,target,dt) {
+function stepNightEnemy(g,e,target,dt,werewolfStrike) {
   if(!kinds.has(e.kind))return false;
   if(!active(g,dt))return true;
   if(e.state==='stampede'&&!e.aggro)return true; // Hazard system owns peaceful runners.
@@ -201,7 +201,9 @@ function stepNightEnemy(g,e,target,dt) {
     }
     if(n.phase==='pounce'){
       if(n.aim)move(g,e,n.aim,dt,225);e.jumpHeight=Math.max(0,Math.sin((1-n.timer/.42)*Math.PI)*12);
-      if(p&&distance(e,p)<38&&damage(g,p,e,e.damage||17)){n.phase='recover';n.timer=n.duration=1.2;e.jumpHeight=0;}
+      if(p&&distance(e,p)<38&&(werewolfStrike?visible(g,e,p)&&werewolfStrike(p,e,e.damage||17):damage(g,p,e,e.damage||17))){
+        n.phase='recover';n.timer=n.duration=1.2;e.jumpHeight=0;
+      }
       else if(n.timer<=0){n.phase='recover';n.timer=n.duration=1.2;e.jumpHeight=0;}return true;
     }
     if(n.phase==='recover'){if(n.timer<=0)n.phase='idle';return true;}
@@ -316,9 +318,9 @@ function stepNightEnemy(g,e,target,dt) {
 }
 
 // Match night-rigs.mjs's state selector without overriding death/hit clips.
-export function tickNightEnemy(g,e,target,dt) {
+export function tickNightEnemy(g,e,target,dt,werewolfStrike) {
   if(tickProvokedFauna(g,e,target,dt))return true;
-  const handled=stepNightEnemy(g,e,target,dt);
+  const handled=stepNightEnemy(g,e,target,dt,werewolfStrike);
   if(!handled||!active(g,dt)||e.state==='snared'||(e.state==='stampede'&&!e.aggro)||e.hp<=0||!e.night)return handled;
   const n=e.night;
   if(e.kind==='night_stalker'&&e.moving){n.footTimer=(n.footTimer||0)-dt;if(n.footTimer<=0){g.onSound?.(g.house?'wood':'grass',e);n.footTimer=.42;}}

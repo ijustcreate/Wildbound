@@ -64,11 +64,12 @@ function cotteredShelves(c){
  b(c,-21,-7,42,3,blackwood[3]);
 }
 
+const mirrorGlass=[[-13,-29],[-16,-38],[-13,-58],[-9,-66],[-2,-68],[8,-67],[13,-60],[15,-44],[10,-31],[3,-27]];
 function mirror(c,time=0){
  const outer=[[-16,-20],[-22,-35],[-21,-57],[-14,-70],[-5,-74],[10,-73],[20,-62],[21,-43],[15,-26],[5,-20]];
  p(c,oak[0],outer);p(c,brass[1],[[-16,-24],[-19,-37],[-17,-59],[-11,-69],[-4,-71],[8,-70],
   [16,-62],[18,-44],[13,-29],[3,-23]]);
- p(c,'#273d43',[[-13,-29],[-16,-38],[-13,-58],[-9,-66],[-2,-68],[8,-67],[13,-60],[15,-44],[10,-31],[3,-27]]);
+ p(c,'#273d43',mirrorGlass);
  l(c,brass[3],-14,-57,-11,-66,2);l(c,brass[4],-7,-68,2,-70);l(c,brass[2],17,-44,11,-29,2);
  const phase=Math.sin(time*1.2);
  p(c,'#496265',[[-12,-49],[-5,-58],[3,-65],[9,-63],[3,-56],[-4,-51],[-9,-43]]);
@@ -167,7 +168,7 @@ export default {keeper:{x:-9,y:-36},props:[
  prop('borgin-cabinet','locked glass book cabinet',-74,-56,49,70,cabinet,{solid:solid(43,12)}),
  prop('borgin-chained-lexicons','chained lexicons',-20,-58,48,61,cotteredShelves,{solid:solid(44,12)}),
  prop('borgin-hand-reliquary','relic hand in a green glass case',35,-56,36,62,handCase,{solid:solid(34,12)}),
- prop('borgin-uneasy-mirror','uneasy silver mirror',82,-54,45,77,mirror,{solid:solid(28,9),animated:true}),
+ prop('borgin-uneasy-mirror','uneasy silver mirror',82,-54,45,77,mirror,{solid:solid(28,9),animated:true,mirrorGlass}),
  prop('borgin-counter-lantern','witch-glass counter lantern',23,-5,22,66,(c,time)=>{c.translate(0,-30);nightLamp(c,time,29);},{surface:counter,animated:true}),
  prop('borgin-brass-balance','antique brass balance',-44,-5,39,59,c=>{c.translate(0,-30);balance(c);},{surface:counter}),
  prop('borgin-blue-ledger','chained provenance ledger',-15,-5,35,48,c=>{c.translate(0,-30);chainedLedger(c);},{surface:counter}),

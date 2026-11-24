@@ -1,6 +1,7 @@
 import {BACKPACK_SLOTS,ITEMS,clearSlot,give,migrateLegacySupplies,take} from './items.mjs';
 import {critterContainer} from './critter-containers.mjs';
 import {DIAGON_CRITTER_SPECIES as SPECIES} from './diagon-critter-species.mjs';
+import {NOCTURNE_LANE,nocturneLaneX} from './alley-street-layout.mjs';
 
 const WILD_CRITTERS=[
  {id:'moonvein-west',kind:'moonvein_butterfly',stops:[[7312,4001],[7345,4023],[7356,3997],[7325,3983]]},
@@ -11,7 +12,8 @@ const WILD_CRITTERS=[
  {id:'cobble-signpost',kind:'cobble_jumper',stops:[[9031,4742],[9064,4777],[9085,4775],[9088,4693]]},
  {id:'cobble-threadneedle',kind:'cobble_jumper',stops:[[9131,5339],[9084,5382],[9061,5361],[9075,5310]]},
  {id:'cobble-nightglass',kind:'cobble_jumper',stops:[[9081,5502],[9119,5539],[9134,5505],[9122,5471]]},
-];
+].map(crit=>['gloamwhisker','cobble-signpost','cobble-threadneedle','cobble-nightglass'].includes(crit.id)?
+ {...crit,stops:crit.stops.map(([x,y])=>[x>=8970?nocturneLaneX(x):x,y])}:crit);
 const RESPAWN_SECONDS=360,RELEASE_LIMIT=12;
 const active=g=>g.trainTest?.design?.activeRoom==='diagon';
 const playable=(g,p)=>active(g)&&['play','won'].includes(g.phase)&&!g.paused&&p.hp>0&&!p.room&&!p.trainRide&&!p.vehicleId;
@@ -166,7 +168,8 @@ export function catchDiagonCritter(g,p){
 
 function habitat(kind,x,y){
  const garden=x>=7110&&x<=7608&&y>=3780&&y<=4294&&(x<7490||y<4100);
- const nocturne=(x>=8970&&x<=9216&&y>=4535&&y<=5608)||(x>=8670&&x<=9210&&y>=5161&&y<=5303);
+ const lane=NOCTURNE_LANE;
+ const nocturne=(x>=lane.x&&x<=lane.x+lane.w&&y>=lane.y&&y<=lane.y+lane.h)||(x>=8670&&x<=9210&&y>=5161&&y<=5303);
  return SPECIES[kind].habitat==='either'?garden||nocturne:SPECIES[kind].habitat==='garden'?garden:nocturne;
 }
 

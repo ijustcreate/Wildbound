@@ -1,6 +1,7 @@
 import {activeHouse} from './house-design.mjs';
 import {houseFloorZones} from './house-surfaces.mjs';
 import {WILD_HOMESTEAD} from './overlook-maze-layout.mjs';
+import {BOARD_TABLE} from './board-table-geometry.mjs';
 
 const size=800;
 export const HOMESTEAD_HEARTH=Object.freeze({
@@ -40,6 +41,19 @@ function chooseHearth(house){
  return {...HOMESTEAD_HEARTH,...(candidates[0]||WILD_HOMESTEAD)};
 }
 
+function chooseBoard(house){
+ const {w,h}=BOARD_TABLE, px=WILD_HOMESTEAD.x+36, py=WILD_HOMESTEAD.y+34;
+ const fixtures=[...house.walls,...house.doors,...house.furniture.filter(f=>!['rug','plant'].includes(f.kind)),
+  {x:house.hearth.x-37,y:house.hearth.y-42,w:74,h:72}];
+ const clear=(x,y,sx,sy)=>!fixtures.some(f=>f.x<x+sx&&f.x+f.w>x&&f.y<y+sy&&f.y+f.h>y);
+ const spots=[];
+ for(const f of house.floors)for(let y=f.y+48;y+h+48<f.y+f.h;y+=16)for(let x=f.x+24;x+w+24<f.x+f.w;x+=16){
+  if(clear(x-8,y-8,w+16,h+16)&&clear(x+16,y+h,w-32,41))spots.push({x,y});
+ }
+ spots.sort((a,b)=>Math.hypot(a.x-px,a.y-py)-Math.hypot(b.x-px,b.y-py));
+ return spots[0]?{...BOARD_TABLE,...spots[0]}:null;
+}
+
 export function wildHomestead(design){
  const source=wildHomesteadSource(design);if(!source)return null;
  let house=houses.get(design);
@@ -62,7 +76,7 @@ export function wildHomestead(design){
    car.x=garage.x+garage.w/2;
    car.y+=40;
   }
-  house.hearth=chooseHearth(house);houses.set(design,house);
+  house.hearth=chooseHearth(house);house.board=chooseBoard(house);houses.set(design,house);
  }
  return house;
 }
@@ -84,6 +98,7 @@ export function wildHomesteadYardAt(design,x,y,padding=0){
 }
 
 export function wildHomesteadHearth(design){return wildHomestead(design)?.hearth||HOMESTEAD_HEARTH;}
+export function wildHomesteadBoardTable(design){return design&&!design.activeRoom?wildHomestead(design)?.board||null:null;}
 
 export function snapshotWildHomestead(design){
  const home=wildHomestead(design);if(!home)return undefined;

@@ -8,8 +8,10 @@ import {applyDungeonDesign} from './location-designs.mjs';
 import {tickGhostTrail} from './ghost-ai.mjs';
 import {ITEMS, stat, itemKind} from './items.mjs';
 import {damageEnemy} from './enemy-damage.mjs';
+import {activePatronuses} from './patronus.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {nearbyRoomLoot,roomLootPrompt} from './room-loot.mjs';
 import {paintSwordImpact} from './sword-feel.mjs';
 import {drawFlyingArrow,drawArrowTrail} from './embedded-arrow.mjs';
 import {merchantSites} from './traveling-merchant.mjs';
@@ -535,8 +537,9 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
   }
   const ch=s.chest;
   if(s.theme==='mausoleum')for(const drop of s.drops||[])if(knownPoint(drop)){if(c.drawImage)drawItem(c,drop.type,drop.x,drop.y,18);else rect(c,drop.x-3,drop.y-3,6,6,ITEMS[drop.type]?.color||'#eac093');}
-  const actors=[...s.enemies.filter(e=>(e.hp>0||e.defeated&&(e.deathTimer||0)<3.5)&&e.state!=='dormant'&&knownPoint(e)).map(e=>({...e,cryptEnemy:true})),...g.players.filter(q=>q.room===d.id).map(q=>({...q,x:q.roomX,y:q.roomY,kind:q.kind,sprite:'player'}))].sort((a,b)=>a.y-b.y);
+  const actors=[...s.enemies.filter(e=>(e.hp>0||e.defeated&&(e.deathTimer||0)<3.5)&&e.state!=='dormant'&&knownPoint(e)).map(e=>({...e,cryptEnemy:true})),...g.players.filter(q=>q.room===d.id).map(q=>({...q,x:q.roomX,y:q.roomY,kind:q.kind,sprite:'player'})),...activePatronuses(g,d.id).filter(knownPoint)].sort((a,b)=>a.y-b.y);
   for(const actor of actors){
+    if(actor.patronus){animator?.draw(c,actor,time,43);continue;}
     c.save();c.globalAlpha=.4;disc(c,actor.x,actor.y+1,8,3,'#080a14');c.restore();
     if(animator){const boss=actor.kind===CRYPT_BOSS_KIND;
       if(actor.cryptPitFall){const t=Math.min(1,actor.cryptPitFall.time/.85),scale=1-t*.85;c.save();c.globalAlpha*=1-t;c.translate(actor.x,actor.y+t*t*42);c.scale(scale,scale);animator.draw(c,{...actor,x:0,y:0,jumpHeight:0,groundHeight:0,animationAction:'jump_fall'},time,PLAYER_RENDER_SIZE);c.restore();continue;}
@@ -568,10 +571,11 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
   c.restore();
   c.textAlign = 'center'; c.font = 'bold 11px sans-serif'; c.fillStyle = '#d7c9cd'; c.fillText(CRYPT_TITLE, w/2, 15);
   c.font = '9px sans-serif'; c.fillStyle = '#c0b5b2';
-  const prompt = distance(point(p), s.exit) < 36 ? 'USE / INTERACT · STAIRS TO GRAVEYARD' :
+  const prompt = roomLootPrompt(g,p,nearbyRoomLoot(s.drops,p,65,item=>item.manualPickup&&knownPoint(item))) ||
+    (distance(point(p), s.exit) < 36 ? 'USE / INTERACT · STAIRS TO GRAVEYARD' :
     distance(point(p), ch) < 38 ? 'USE / INTERACT · ' + (ch.items.some(Boolean) ? 'OPEN LANTERN CHEST' : 'EMPTY CHEST') :
     distance(point(p), s.coffin) < 42 && !s.coffin.awakened ? 'USE / INTERACT · OPEN COFFIN' :
-    'Follow the catacombs · Candles and lanterns light the dark';
+    'Follow the catacombs · Candles and lanterns light the dark');
   c.fillText(prompt, w/2, h-9);
   const boss = s.enemies.find(e => e.kind === CRYPT_BOSS_KIND);
   if (boss && boss.hp > 0 && !['dormant'].includes(boss.state) && knownPoint(boss)) {

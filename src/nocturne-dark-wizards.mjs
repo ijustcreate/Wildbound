@@ -1,5 +1,7 @@
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {DEATH_EATER_MASKS} from './death-eater-masks.mjs';
+import {collectNocturneBossLoot,dropNocturneBossLoot} from './nocturne-boss.mjs';
+import {nocturneLaneX} from './alley-street-layout.mjs';
 
 const masks=Object.keys(DEATH_EATER_MASKS);
 const DUEL_LOOT='Nocturne duel spoils';
@@ -8,7 +10,7 @@ const choices=(question,challenge)=>[
  CLOSE,{label:question,action:'question'},{label:challenge,action:'provoke'},
 ];
 const resident=(id,name,x,y,hp,damage,appearance,clothes,line,answer,question,challenge)=>({
- id,name,x,y,maxHp:hp,damage,kind:'player',sprite:'player',hp:1,unattackable:true,faceX:0,faceY:1,
+ id,name,x:nocturneLaneX(x),y,maxHp:hp,damage,kind:'player',sprite:'player',hp:1,unattackable:true,faceX:0,faceY:1,
  title:'Nocturne Alley',appearance:{...DEFAULT_APPEARANCE,...appearance},equipment:clothes,
  line,answer,choices:choices(question,challenge),
 });
@@ -124,6 +126,7 @@ export const isNocturneDarkWizardLoot=loot=>loot?.source===DUEL_LOOT&&
  (loot.type==='dark_essence'||Object.hasOwn(DEATH_EATER_MASKS,loot.type));
 
 export function dropNocturneDarkWizardLoot(g,enemy){
+ if(dropNocturneBossLoot(g,enemy))return true;
  const duel=duelFor(g,enemy.darkWizardId);
  if(!duel||!inAlley(g)||!wizardById(enemy.darkWizardId)||enemy.hp>0)return false;
  if(duel.status==='defeated')return true;
@@ -142,6 +145,7 @@ export function dropNocturneDarkWizardLoot(g,enemy){
 }
 
 export function collectNocturneDarkWizardLoot(g,p,loot){
+ if(collectNocturneBossLoot(g,p,loot))return true;
  if(!inAlley(g)||!isNocturneDarkWizardLoot(loot))return false;
  const t=g.trainTest,drops=t.nocturneDarkWizardDrops||[];
  if(!drops.some(d=>d.id===loot.id&&d.type===loot.type))return false;

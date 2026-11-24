@@ -7,6 +7,7 @@ import {
  vehicleDriver,vehicleMotion,
 } from './house-vehicles.mjs';
 import {wildHomesteadAt} from './wild-homestead-layout.mjs';
+import {homesteadBoardPrompt,interactHomesteadBoard,tickHomesteadBoard} from './homestead-board.mjs';
 
 const available=g=>g.trainTest?.design.wildLands&&!g.trainTest.design.activeRoom;
 const nearby=(p,b,radius=60)=>Math.hypot(p.x-b.x-b.w/2,p.y-b.y-b.h/2)<radius;
@@ -24,7 +25,7 @@ export function interactWildHomestead(g,p){
  if(nearHome&&toggleGarageDoor(g,p))return true;
  if(houseVehicleEntry(g,p))return interactHouseVehicle(g,p);
  if(!nearHome)return false;
- return openHouseChest(g,p)||interactHouseLiving(g,p)
+ return interactHomesteadBoard(g,p)||openHouseChest(g,p)||interactHouseLiving(g,p)
   ||interactHouseSurface(g,p)||toggleWorldLight(g,p);
 }
 
@@ -37,6 +38,7 @@ export function wildHomesteadPrompt(g,p){
  if(nearHome&&furniture.some(f=>f.kind==='garage_button'&&nearby(p,f,58)))return 'GARAGE DOOR';
  if(houseVehicleEntry(g,p))return 'ENTER CAR';
  if(!nearHome)return '';
+ const board=homesteadBoardPrompt(g,p);if(board)return board;
  if(houseChestFor(g,p))return 'OPEN CHEST';
  const living=houseLivingTarget(g,p);
  if(living?.kind==='bed')return 'REST';
@@ -52,6 +54,7 @@ export function wildHomesteadPrompt(g,p){
 
 export function tickWildHomestead(g,dt,inputs){
  if(!available(g))return;
+ tickHomesteadBoard(g,dt);
  tickHouseLiving(g,dt,inputs);
  for(const vehicle of g.house?.vehicles||[])tickVehicleEffects(g,vehicle,dt);
 }

@@ -2,7 +2,9 @@ import {groundShop, drawShopShell, shopArchitectureAssets, paintShopArchitecture
 import {ALLEY_SHOP_ROOMS, shopEntrySide, shopCutawayOpen, mirroredShopPoint} from './diagon-shop-rooms.mjs';
 import {alleyMerchantActor} from './diagon-alley.mjs';
 import {drawForestAsset} from './forest-props.mjs';
-import {drawShopMirror} from './shop-mirror.mjs';
+import {drawBorginMirror,drawShopMirror} from './shop-mirror.mjs';
+import {BORGIN_MIRROR_ASSET,borginMirrorView} from './borgin-mirror.mjs';
+import {quidditchKitMerchantActor} from './quidditch-team-shop.mjs';
 
 const rasters=new WeakMap();
 let rasterCount=0;
@@ -35,7 +37,9 @@ export function drawAlleyShopAsset(c,shop,asset,x,y,time=0,g=null,animator=null)
     c.drawImage(sprite,-half,-top);
   }
   c.restore();
-  if(asset.mirrorGlass)drawShopMirror(c,shop,asset.mirrorGlass,x,y,g,animator);
+  if(asset.id===BORGIN_MIRROR_ASSET){
+    if(g)drawBorginMirror(c,shop,asset.mirrorGlass,x,y,g,animator,borginMirrorView(g,shop,asset));
+  }else if(asset.mirrorGlass)drawShopMirror(c,shop,asset.mirrorGlass,x,y,g,animator);
 }
 
 function mountProps(shop) {
@@ -86,7 +90,7 @@ function garden(shop){
 
 export function assembleAlleyShop(c,shop,g,objects,animator=null) {
   const side=shopEntrySide(shop),room=ALLEY_SHOP_ROOMS[shop.id];
-  const open=shopCutawayOpen(shop,g.players);
+  const open=shopCutawayOpen(shop,g.players)||shop.id==='floreans'&&shopCutawayOpen(shop,g.trainTest?.alleyVisitors||[]);
   groundShop(c,shop,side,open,room.props);
   for(const plant of garden(shop))objects.push({depth:plant.rootY,paint:()=>drawForestAsset(c,plant,g.time,g)});
   if(!open){
@@ -101,6 +105,10 @@ export function assembleAlleyShop(c,shop,g,objects,animator=null) {
   }
   const actor=alleyMerchantActor(shop);
   objects.push({depth:actor.y,player:actor});
+  if(shop.id==='quidditch'){
+    const outfitter=quidditchKitMerchantActor(shop);
+    objects.push({depth:outfitter.y,player:outfitter});
+  }
 }
 
 export function alleyShopPropRasterCount(){return rasterCount;}

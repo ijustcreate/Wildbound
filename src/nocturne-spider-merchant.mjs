@@ -3,6 +3,7 @@ import {take} from './items.mjs';
 import {ADOPTABLE_SPIDER_KINDS,petRecord,restoreHunterPet} from './hunter-pets.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {rigSubject} from './rig-subjects.mjs';
+import {nocturneLaneX} from './alley-street-layout.mjs';
 
 export const NOCTURNE_SPIDER_STOCK=[
  {kind:'spider',name:'Inkleg',price:4,detail:'A charcoal spider with blue-gray legs.'},
@@ -11,7 +12,7 @@ export const NOCTURNE_SPIDER_STOCK=[
 ];
 export const NOCTURNE_SPIDER_MERCHANT={
  id:'nocturne-spider-merchant',name:'Silas Threadneedle',title:'Spider keeper',kind:'player',sprite:'player',
- x:9180,y:5308,hp:1,faceX:-.8,faceY:.6,unattackable:true,
+ x:nocturneLaneX(9180),y:5308,hp:1,faceX:-.8,faceY:.6,unattackable:true,
  appearance:{...DEFAULT_APPEARANCE,skin:'#b48672',hair:'waves',hairColor:'#c4bec4',shirt:'#543b55',pants:'#3c394a'},
  equipment:{head:'alley_inkcap',chest:'warlock_robe',back:'alley_lantern_mantle'},
 };
@@ -110,7 +111,7 @@ export function queueNocturneSpiderStall(c,g,visible,objects){
  if(visible(actor.x,actor.y,65,90)){
   objects.push({depth:actor.y,player:actor});
   for(const [index,s] of NOCTURNE_SPIDER_STOCK.entries()){
-   const x=9200,y=5277+index*25;
+   const x=nocturneLaneX(9200),y=5277+index*25;
    objects.push({depth:y,paint:()=>drawTerrarium(c,x,y,g.time,s,index)});
   }
  }

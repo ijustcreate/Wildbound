@@ -13,7 +13,7 @@ export const inHogsmeade=(x,y,pad=0)=>x>=HOGSMEADE_LANE.left-pad&&x<=HOGSMEADE_L
 
 const plans=[[
  ['oak-bar','case',-49,-20,100,24,'oak'],['brass-taps','rack',-54,-47,66,31,'brass'],
- ['butterbeer-tankards','display',-50,-27,40,13,'amber'],['butterbeer-keg','crate',95,-42,25,27,'oak'],
+ ['butterbeer-tankards','display',-50,-27,40,13,'amber'],['butterbeer-keg','crate',105,-24,24,27,'oak'],
  ['three-crossed-broomsticks','brooms',0,95,49,41,'amber'],['stone-hearth','hearth',79,-59,42,46,'moss'],
  ['long-window-bench','bench',-76,43,39,14,'oak'],['fireside-settle','bench',92,13,33,15,'rust'],
  ['round-tavern-table','table',60,37,41,24,'oak'],['scuffed-drinks-table','table',-77,31,34,21,'rust'],

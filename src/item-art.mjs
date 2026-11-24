@@ -16,13 +16,17 @@ import {detailRaster,materialIndex,humanoidArtStatus} from './humanoid-hd.mjs';
 import {paintKeeperItem} from './keeper-gear-art.mjs';
 import {paintPumpkinItem} from './pumpkin-art.mjs';
 import {paintCursedAxeIcon} from './cursed-axe-art.mjs';
+import {paintDarkLordWand} from './dark-lord-wand-art.mjs';
+import {paintPirateCaptainItem} from './pirate-captain-gear.mjs';
+import {paintGlaiveIcon} from './glaive-art.mjs';
 import {overlookNorth} from './overlook-maze-layout.mjs';
 import {paintWizardingItem} from './wizarding-item-art.mjs';
 import {paintWizardingShopIcon} from './wizarding-shop-art.mjs';
 import {paintDeathEaterMaskIcon} from './death-eater-masks.mjs';
 import {paintDiagonCritterIcon} from './diagon-critter-art.mjs';
-import {EMPORIUM_OWLS} from './owl-emporium.mjs';
+import {BIRD_CAGES} from './owl-emporium.mjs';
 import {WRONG_TURN_KEY,drawWrongTurnKeyIcon} from './wrong-turn-key.mjs';
+import {paintZonkoConsumableIcon} from './zonko-item-art.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -49,6 +53,9 @@ for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
   const custom=ITEMS[type]?.artPixels;if(Array.isArray(custom)&&custom.length===576){custom.forEach((color,i)=>{if(typeof color==='string'&&/^#[0-9a-f]{6}$/i.test(color)){c.fillStyle=color;c.fillRect(i%24,Math.floor(i/24),1,1);}});return;}
+  if(paintZonkoConsumableIcon(c,type))return;
+  if(paintPirateCaptainItem(c,type))return;
+  if(type==='glaive')return paintGlaiveIcon(c);
   if(ITEMS[type]?.style==='witch')return drawWitchHatIcon(c,type);
   if(ITEMS[type]?.slot==='head'&&drawHeadwearIcon(c,type,gearPalette(type)))return;
   if(ITEMS[type]?.blankExplorer){
@@ -56,6 +63,7 @@ export function paintItem(c, type) {
     r(8,2,8,7,'#414b4d');r(9,3,6,5,'#8b9596');r(5,9,14,8,'#414b4d');r(6,10,12,6,'#858f90');r(7,16,4,6,'#697476');r(13,16,4,6,'#697476');r(11,4,2,1,'#b7c0bf');r(12,5,1,1,'#b7c0bf');r(11,7,1,1,'#b7c0bf');return;
   }
   if(type==='cursed_axe')return paintCursedAxeIcon(c);
+  if(type==='dark_lord_wand')return paintDarkLordWand(c,{x:8,y:17},{x:19,y:3});
   if(paintSkeletonItem(c,type))return;
   if (type === 'skeleton_long_axe') {
     c.fillStyle = '#342d2d'; c.fillRect(9, 1, 6, 13);
@@ -159,6 +167,34 @@ export function paintItem(c, type) {
 }
 function iconPart(c,paint,sx,sy,ox,oy){const pen={fillStyle:'',fillRect(x,y,w,h){const left=Math.max(0,Math.round(ox+x*sx)),top=Math.max(0,Math.round(oy+y*sy)),right=Math.min(24,Math.max(left+1,Math.round(ox+(x+w)*sx))),bottom=Math.min(24,Math.max(top+1,Math.round(oy+(y+h)*sy)));if(right>left&&bottom>top){c.fillStyle=this.fillStyle;c.fillRect(left,top,right-left,bottom-top);}}};paint(pen);}
 function paintItemBase(c, type) {
+  if(type==='stolen_heart'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(5,5,6,2,'#462b3d');r(13,5,6,2,'#462b3d');r(3,7,18,7,'#462b3d');
+    r(5,14,14,2,'#462b3d');r(7,16,10,2,'#462b3d');r(9,18,6,2,'#462b3d');r(11,20,2,2,'#462b3d');
+    r(5,7,5,2,'#dc936f');r(14,7,4,2,'#b87563');r(4,9,16,4,'#bd5260');
+    r(6,13,12,2,'#a34456');r(8,15,8,2,'#a34456');r(10,17,4,2,'#85394e');r(11,19,2,1,'#85394e');
+    r(5,9,3,2,'#f4a78a');r(5,11,2,2,'#e57c79');r(17,11,2,3,'#8e3d51');
+    r(11,9,2,1,'#f4d697');r(11,10,1,3,'#f4d697');r(10,13,2,1,'#e5a978');r(11,14,1,2,'#e5a978');
+    return;
+  }
+  if(type==='vault_smoke_cider'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(9,2,6,3,'#453833');r(10,2,4,2,'#b48759');
+    r(9,5,6,4,'#3f3237');r(7,8,10,3,'#3f3237');r(6,10,12,11,'#3f3237');r(7,21,10,1,'#3f3237');
+    r(10,6,3,3,'#9f8c82');r(8,9,8,2,'#a4776b');r(7,11,10,9,'#9b5635');
+    r(8,11,2,8,'#d59761');r(9,11,7,1,'#d1a17e');r(15,12,2,8,'#6f3b37');r(8,20,8,1,'#673c39');
+    r(9,14,6,4,'#e5bd8d');r(11,14,2,3,'#ac4d4b');r(10,15,4,2,'#ac4d4b');r(12,13,2,1,'#667b59');
+    return;
+  }
+  if(type==='vault_ember_mead'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(5,4,14,3,'#4b3338');r(6,7,12,6,'#4b3338');r(7,13,10,2,'#4b3338');r(9,15,6,2,'#4b3338');
+    r(11,17,2,3,'#4b3338');r(8,20,8,2,'#4b3338');r(6,22,12,1,'#4b3338');
+    r(6,5,12,2,'#f2d08e');r(7,7,10,4,'#d89847');r(8,11,8,2,'#ae6139');r(9,13,6,1,'#d38a49');
+    r(7,6,8,1,'#fff1be');r(8,7,2,3,'#f9ce73');r(14,8,2,4,'#b36d43');
+    r(10,15,4,1,'#ce9b63');r(11,17,1,4,'#c09264');r(9,20,6,1,'#b48056');r(7,22,9,1,'#916041');
+    return;
+  }
   if(type==='vault_champion_draught'){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     r(9,1,6,5,'#41342c');r(10,2,4,3,'#b68554');r(9,6,6,2,'#b5a283');
@@ -176,20 +212,45 @@ function paintItemBase(c, type) {
   if(type==='chocolate_frog'){drawChocolateFrogIcon(c);return;}
   if(type==='caught_snowy_owl'||ITEMS[type]?.owlCage){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
-    const owl=EMPORIUM_OWLS[type],small=owl?.variant==='pigwidgeon',horned=owl?.variant==='archimedes';
+    const owl=BIRD_CAGES[type],small=owl?.variant==='pigwidgeon',horned=owl?.variant==='archimedes';
     const feather=owl?.color||'#e3e7d9',mask=small?'#d6b68b':horned?'#cda16a':'#f5eed9';
     r(4,8,18,14,'#343b33');r(5,4,15,5,'#343b33');r(8,2,9,3,'#343b33');r(10,0,5,2,'#af935f');
     r(5,8,15,12,'#29403d');
-    r(small?9:8,small?13:10,small?8:10,small?6:9,feather);
-    if(horned){r(7,6,2,4,feather);r(17,6,2,4,feather);}
-    r(small?8:7,small?12:8,small?10:12,small?5:6,mask);
-    const eyes=small?13:10;
-    r(9,eyes,2,2,'#e8b558');r(15,eyes,2,2,'#e8b558');r(10,eyes,1,2,'#2a3435');r(15,eyes,1,2,'#2a3435');
+    if(owl?.variant==='parrot'){
+      r(7,15,4,4,'#398778');r(8,14,7,3,'#426b7e');r(10,9,7,6,feather);
+      r(12,7,5,4,'#dc6452');r(15,9,4,3,'#f4d4a3');r(15,9,1,1,'#412b36');r(18,11,1,2,'#ae834d');
+    }else{
+      r(small?9:8,small?13:10,small?8:10,small?6:9,feather);
+      if(horned){r(7,6,2,4,feather);r(17,6,2,4,feather);}
+      r(small?8:7,small?12:8,small?10:12,small?5:6,mask);
+      const eyes=small?13:10;
+      r(9,eyes,2,2,'#e8b558');r(15,eyes,2,2,'#e8b558');r(10,eyes,1,2,'#2a3435');r(15,eyes,1,2,'#2a3435');
+    }
     for(const x of [4,11,20]){r(x,8,2,13,'#9a7a4b');r(x,9,1,11,'#dcc185');}r(5,5,3,4,'#ba9b65');r(8,3,9,2,'#d5ba82');r(18,5,3,4,'#9a7a4b');
     r(2,20,21,4,'#413c2d');r(3,20,19,1,'#dcc185');r(3,21,18,2,'#88603c');r(14,14,4,4,'#d3ad61');r(15,15,1,2,'#675038');return;
   }
-  if(type==='diagon_ice_cream'){c.fillStyle='#584331';c.fillRect(8,12,9,3);c.fillRect(10,15,5,5);c.fillRect(11,20,3,3);c.fillStyle='#bc8e60';c.fillRect(9,13,7,2);c.fillRect(11,16,3,4);c.fillStyle='#ce9da3';c.fillRect(5,6,15,7);c.fillRect(7,3,11,4);c.fillStyle='#f3d4bc';c.fillRect(7,5,8,3);return;}
+  if(type==='diagon_ice_cream'||ITEMS[type]?.iceCream){
+    const scoop=ITEMS[type];
+    c.fillStyle='#584331';c.fillRect(8,12,9,3);c.fillRect(10,15,5,5);c.fillRect(11,20,3,3);
+    c.fillStyle='#bc8e60';c.fillRect(9,13,7,2);c.fillRect(11,16,3,4);
+    c.fillStyle=scoop?.artColor||'#ce9da3';c.fillRect(5,6,15,7);c.fillRect(7,3,11,4);
+    c.fillStyle=scoop?.highlightColor||'#f3d4bc';c.fillRect(7,5,8,3);
+    if(scoop?.iceCreamTopping){
+      c.fillStyle=scoop.iceCreamTopping;c.fillRect(8,6,2,1);c.fillRect(15,5,2,2);c.fillRect(12,10,2,1);
+    }
+    return;
+  }
   if(type==='caught_chocolate_frog'){c.fillStyle='#253c3b';c.fillRect(3,3,18,20);c.fillStyle='#84aaa1';c.fillRect(4,6,16,15);c.fillStyle='#b4d5c0';c.fillRect(5,7,2,12);c.fillStyle='#98723f';c.fillRect(6,2,12,4);iconPart(c,pen=>drawChocolateFrogIcon(pen),.7,.7,4,7);return;}
+  if(ITEMS[type]?.wizardCardCollection){
+    c.fillStyle='#372639';c.fillRect(4,3,17,20);
+    c.fillStyle='#b69a65';c.fillRect(6,4,14,17);
+    c.fillStyle='#59405f';c.fillRect(7,5,12,15);
+    c.fillStyle='#ebd6a3';c.fillRect(10,7,6,8);
+    c.fillStyle='#79647e';c.fillRect(11,8,4,6);
+    c.fillStyle='#e1cc9c';c.fillRect(12,9,2,2);c.fillRect(11,12,4,2);
+    c.fillRect(9,17,8,1);c.fillRect(8,21,11,1);
+    return;
+  }
   if(type==='nimbus_2000'){iconPart(c,p=>drawBroom(p,{pelvis:{x:0,y:0}},6,type),.32,.9,14,10);return;}
   if(type==='standard_book_of_spells'){c.fillStyle='#352e37';c.fillRect(4,3,16,19);c.fillStyle='#9c5345';c.fillRect(5,3,14,17);c.fillStyle='#633b39';c.fillRect(5,3,3,17);c.fillStyle='#e9d6ac';c.fillRect(8,20,11,2);c.fillStyle='#d9b66b';c.fillRect(10,6,6,1);c.fillRect(11,10,1,6);c.fillRect(9,12,5,1);c.fillRect(14,14,2,1);return;}
   if(type==='gravemysts_idol'){
@@ -247,6 +308,22 @@ function paintItemBase(c, type) {
   if(ITEMS[type]?.bansheeGear&&paintGearIcon(c,type))return;
   if(type==='raw_ice'){
     c.fillStyle='#559bb9';c.fillRect(5,9,14,12);c.fillRect(8,5,9,4);c.fillStyle='#91d5e9';c.fillRect(6,10,11,9);c.fillRect(9,6,7,4);c.fillStyle='#defbff';c.fillRect(7,10,3,7);c.fillRect(10,6,2,4);return;
+  }
+  if(type==='butterbeer'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(14,8,6,10,'#554137');r(17,10,2,5,'#c0b094');r(16,11,2,4,'#b8966e');r(17,10,2,2,'#e5cfaa');
+    r(5,7,11,12,'#543a2d');r(6,19,9,2,'#543a2d');r(7,20,7,1,'#7e5738');
+    r(6,8,8,11,'#be762d');r(7,10,5,8,'#d69948');r(7,11,2,6,'#f2bc6a');r(13,11,2,7,'#925220');
+    r(6,17,9,2,'#9f713a');r(7,17,6,1,'#e5b471');
+    r(5,6,12,4,'#e0c390');r(6,5,4,4,'#fff1c9');r(9,3,5,6,'#f8e5b7');r(13,5,3,4,'#fff1ca');
+    r(5,7,10,1,'#fff4d6');r(10,9,2,3,'#edd4a1');r(7,10,1,2,'#f3e2b6');return;
+  }
+  if(type==='shrinking_candy'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(3,6,3,12,'#4b3b67');r(6,8,2,8,'#4b3b67');r(2,7,2,3,'#7c629d');r(3,9,3,6,'#c8aadd');r(3,15,2,2,'#9274b2');
+    r(17,8,2,8,'#4b3b67');r(19,6,3,12,'#4b3b67');r(20,7,2,3,'#9b80b7');r(19,10,3,5,'#c8aadd');r(20,15,2,2,'#9274b2');
+    r(8,6,8,12,'#413652');r(7,8,10,8,'#413652');r(8,8,8,8,'#769783');r(9,7,6,3,'#cce6ac');r(9,10,6,5,'#aed092');
+    r(10,10,4,1,'#f5f3c8');r(11,12,2,2,'#f5f3c8');r(8,16,8,1,'#577962');return;
   }
   if(ITEMS[type]?.supplyOnly){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},color=ITEMS[type].artColor;

@@ -1,9 +1,10 @@
 import {block as b, shape as p} from './diagon-shop-brush.mjs';
 import {frontageBay,frontageRoof,SHOP_FRONTAGES} from './diagon-shop-frontages.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
+import {DIAGON_PAVER_LANE} from './alley-street-layout.mjs';
 export {streetLamp,DIAGON_STREET_LAMPS,NOCTURNE_WALL_CANDLES,drawNocturneWallCandles} from './diagon-street-lights.mjs';
 
-const span=168, left=7810, width=380;
+const span=168,{x:left,w:width}=DIAGON_PAVER_LANE;
 const sidewalkWidth=136;
 const segments=new Map();
 const roadPalettes={
@@ -29,6 +30,9 @@ const themes={
     roof:['#342f40','#473a50','#584764','#765b76'],wall:['#393644','#494454','#66596b','#82717d'],glass:'#7c9b8e'},
   undertaker:{...SHOP_FRONTAGES['borgin-burkes'],
     roof:['#292d3a','#3c4453','#505465','#6a6d75'],wall:['#33383f','#4b5058','#61686b','#7b8280'],glass:'#708f87'},
+  'tallow-workshop':{...SHOP_FRONTAGES.nightglass,
+    roof:['#30303d','#414553','#575667','#747587'],wall:['#373e43','#4d5457','#68706a','#848881'],
+    trim:['#36343a','#55605c','#879584'],glass:'#839989',lampTint:['#506c67','#7c9c85','#b6bf99']},
 };
 const frontageRasters=new Map();
 

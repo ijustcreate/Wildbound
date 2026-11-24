@@ -15,6 +15,7 @@ import {flooFireGreen} from './floo-travel.mjs';
 import {drawFlooHearth} from './floo-art.mjs';
 import {wildHomestead,wildHomesteadAt} from './wild-homestead-layout.mjs';
 import {inHogsmeade} from './hogsmeade-layout.mjs';
+import {inBayouGoblinHut} from './bayou-goblin-hut-layout.mjs';
 const cache=new WeakMap();
 export function wildLandmarkBuildings(d){
  if(!d.wildLands||d.activeRoom)return [];let result=cache.get(d);if(result)return result;
@@ -26,7 +27,7 @@ export function wildLandmarkBuildings(d){
  result=[wildHomestead(d),h].filter(Boolean);cache.set(d,result);return result;
 }
 export function inWildLandmark(d,x,y,padding=0){return d.wildLands&&!d.activeRoom&&
- (inOverlookGround(WILDS_OVERLOOK,x,y,padding)||wildHomesteadAt(d,x,y,padding)||inHogsmeade(x,y,padding)||
+ (inOverlookGround(WILDS_OVERLOOK,x,y,padding)||wildHomesteadAt(d,x,y,padding)||inHogsmeade(x,y,padding)||inBayouGoblinHut(x,y,padding)||
   wildLandmarkBuildings(d).some(h=>h.temple&&h.floors.some(f=>x>f.x-padding&&x<f.x+f.w+padding&&y>f.y-padding&&y<f.y+f.h+padding)));
 }
 const templeFloors=new WeakMap();

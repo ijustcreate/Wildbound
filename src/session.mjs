@@ -17,6 +17,7 @@ import {ensureOldWells} from './old-well.mjs';
 import {houseKeepsWorld} from './house-victory.mjs';
 import {upgradeCemeteryFeatures} from './graveyard-world.mjs';
 import {trialState} from './expedition-trials.mjs';
+import {migrateEmporiumOwl} from './hunter-pets.mjs';
 export function saveSession(game) {
   if(game.trainTest?.persistent){
     const state=snapshot(game);
@@ -98,6 +99,7 @@ export function restoreSession(saved) {
     if (p.jumpImpulse === undefined || p.jumpImpulse === 125 || p.jumpImpulse === 180 || p.jumpImpulse === 205) p.jumpImpulse = 230;
     if (p.jumpGravity === undefined || p.jumpGravity === 360 || p.jumpGravity === 720) p.jumpGravity = 1200;
     migrateEquipment(p);
+    migrateEmporiumOwl(p);
     if(p.field?.gardenManaWard!==undefined)refreshVitals(p);
     p.previousInput = {};
     p.charge = 0;clearSwordPolish(p);

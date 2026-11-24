@@ -6,16 +6,19 @@ import { QUIDDITCH_TEAMS } from './quidditch-layout.mjs';
 import flourishRecipe from '../assets/pixel-recipes/diagon-alley/garden-ward-flourish.pixel.json' with {type:'json'};
 import { compilePixelRecipe } from './pixel-recipe.mjs';
 import { drawPixelRecipe } from './pixel-recipe-canvas.mjs';
+import { DARK_WIZARD_WARNING,maskWearers,stationaryWizardWarning,tickDarkWizardAlarm,tickStationaryWizardAlarms } from './dark-wizard-reactions.mjs';
+import {clearFortescuePose,fortescueResidentStart,tickFortescueResident,visitingFortescue} from './diagon-ice-cream-residents.mjs';
+import {diagonLaneX,nocturneLaneX} from './alley-street-layout.mjs';
 
 export const ALLEY_RESIDENT_DAY = 480;
 const TALK_REACH = 68, TALK_HOLD = 100, RESIDENT_RADIUS = 7;
-const WEST_LANE = 7870, EAST_LANE = 8120, CROSS_STREET = 4330;
-const BRANCH_GATE = {x:8140,y:5225}, BRANCH_CORNER = {x:9040,y:5225};
+const WEST_LANE = diagonLaneX(7870), EAST_LANE = diagonLaneX(8120), CROSS_STREET = 4330;
+const BRANCH_GATE = {x:diagonLaneX(8140),y:5225}, BRANCH_CORNER = {x:nocturneLaneX(9040),y:5225};
 const dist = (a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const inAlley = g=>g.trainTest?.design.activeRoom==='diagon';
 export const alleyResidentsFor = g=>[...(g.trainTest?.alleyVisitors||[]),...(g.trainTest?.gardenVisitors||[])];
 const places = {...ALLEY_RESIDENT_PLACES,...GARDEN_RESIDENT_PLACES,
- flourishStudy:{x:8210,y:4246,name:'Flourish & Blotts',routine:'read',faceX:1,faceY:0,fixed:true},
+ flourishStudy:{x:diagonLaneX(8210),y:4246,name:'Flourish & Blotts',routine:'read',faceX:1,faceY:0,fixed:true},
 };
 const byId = new Map([...ALLEY_RESIDENTS,...GARDEN_RESIDENTS].map(resident=>[resident.id,resident]));
 const exchangeKey=(a,b)=>[a.residentId,b.residentId].sort().join('|');
@@ -109,14 +112,17 @@ function residentRoute(actor,destination,to,blocked){
  return entry.length&&exit.length?[...entry,...exit]:[];
 }
 
-function makeResident(resident,index,time,blocked,gardenResident=false){
- const place=resident.stops[scheduledShift(resident,time)],position=placePoint(index,place,blocked);
+function makeResident(resident,index,time,blocked,gardenResident=false,iceCreamShop){
+ const place=resident.stops[scheduledShift(resident,time)];
+ const stroll=place==='sweets'&&iceCreamShop&&fortescueResidentStart(iceCreamShop,resident.id,blocked);
+ const position=stroll||placePoint(index,place,blocked);
  const {faceX,faceY}=places[place];
  return {
   id:'alley-resident:'+resident.id,residentId:resident.id,name:resident.name,title:resident.title,
   sprite:'player',kind:'player',hp:1,appearance:{...DEFAULT_APPEARANCE,...resident.look},equipment:{...resident.equipment},
   x:position.x,y:position.y,faceX,faceY,place,targetPlace:place,path:[],step:0,walking:true,moving:false,
   movementGait:'idle',moveSpeed:0,lastSocialAt:-Infinity,
+  ...(resident.shoulderBroom?{shoulderBroom:resident.shoulderBroom}:{}),
   ...(gardenResident?{gardenResident:true}:{}),
  };
 }
@@ -144,13 +150,19 @@ function walkResident(actor,resident,index,destination,time,dt,blocked){
   }
   return;
  }
- const waypoint=actor.path[0],travel=Math.min(dist(actor,waypoint),resident.speed*dt);
+ followResidentPath(actor,resident.speed,dt,blocked);
+}
+
+function followResidentPath(actor,speed,dt,blocked){
+ while(actor.path.length&&dist(actor,actor.path[0])<.15)actor.path.shift();
+ if(!actor.path.length)return;
+ const waypoint=actor.path[0],travel=Math.min(dist(actor,waypoint),speed*dt);
  lookToward(actor,waypoint);
  const x=actor.x+(waypoint.x-actor.x)*travel/Math.max(.01,dist(actor,waypoint));
  const y=actor.y+(waypoint.y-actor.y)*travel/Math.max(.01,dist(actor,waypoint));
  if(blocked(x,y,RESIDENT_RADIUS)){actor.path=[];return;}
- actor.x=x;actor.y=y;actor.moving=travel>0;actor.movementGait=travel>0?'walk':'idle';
- actor.moveSpeed=travel>0?resident.speed:0;actor.step+=travel*.13;
+ actor.x=x;actor.y=y;actor.moving=travel>0;actor.walking=true;actor.movementGait=travel>0?'walk':'idle';
+ actor.moveSpeed=travel>0?speed:0;actor.step+=travel*.13;
 }
 
 function clearGardenRoutine(actor){
@@ -183,21 +195,23 @@ function gardenRoutine(actor,time){
 
 function matchingTalk(g,p,reach=TALK_HOLD){
  if(!inAlley(g)||p.hp<=0||p.room||p.trainRide||!p.ui?.alleyResident||p.ui.ownerDevice!==p.device)return null;
- return alleyResidentsFor(g).find(actor=>actor.id===p.ui.alleyResident&&dist(actor,p)<=reach);
+ return alleyResidentsFor(g).find(actor=>actor.id===p.ui.alleyResident&&!actor.darkWizardAlarm&&dist(actor,p)<=reach);
 }
 
-export function tickAlleyResidents(g,dt,blocked){
+export function tickAlleyResidents(g,dt,blocked,nearStationaryWizard,iceCreamShop){
  if(!inAlley(g))return;
  const railway=g.trainTest,time=railway.time||0,dayTime=alleyDayTime(g);
  if(railway.alleyVisitors?.length!==ALLEY_RESIDENTS.length||
   ALLEY_RESIDENTS.some((resident,index)=>railway.alleyVisitors[index]?.residentId!==resident.id)){
-  railway.alleyVisitors=ALLEY_RESIDENTS.map((resident,index)=>makeResident(resident,index,dayTime,blocked));
+  railway.alleyVisitors=ALLEY_RESIDENTS.map((resident,index)=>makeResident(resident,index,dayTime,blocked,false,iceCreamShop));
  }
  if(railway.gardenVisitors?.length!==GARDEN_RESIDENTS.length||
   GARDEN_RESIDENTS.some((resident,index)=>railway.gardenVisitors[index]?.residentId!==resident.id)){
   railway.gardenVisitors=GARDEN_RESIDENTS.map((resident,index)=>makeResident(resident,index,dayTime,blocked,true));
  }
- const companions=new Map();
+ const companions=new Map(),wearers=maskWearers(g.players);
+ const fortescue={shop:iceCreamShop,visitors:railway.alleyVisitors,routeTo,segmentClear,follow:followResidentPath};
+ tickStationaryWizardAlarms(railway,wearers,time,nearStationaryWizard);
  for(const p of g.players){
   if(!p.ui?.alleyResident)continue;
   const actor=matchingTalk(g,p);
@@ -208,9 +222,15 @@ export function tickAlleyResidents(g,dt,blocked){
   for(const [index,actor]of group.entries()){
    const resident=byId.get(actor.residentId),destination=resident.stops[scheduledShift(resident,dayTime)];
    actor.moving=false;actor.moveSpeed=0;actor.movementGait='idle';
+   clearFortescuePose(actor,time);
    if(actor.gardenResident)clearGardenRoutine(actor);
+   if((wearers.length||actor.darkWizardAlarm)&&tickDarkWizardAlarm(actor,wearers,time,dt,blocked,RESIDENT_RADIUS,p=>segmentClear(actor,p,blocked))){
+    if(companions.has(actor.id))for(const p of g.players)if(p.ui?.alleyResident===actor.id){p.ui=null;p.consumeInput=true;}
+    continue;
+   }
    const conversation=companions.get(actor.id);
    if(conversation){lookToward(actor,conversation);continue;}
+   if(iceCreamShop&&!actor.gardenResident&&tickFortescueResident(actor,resident,destination,time,dt,blocked,fortescue))continue;
    if(time<(actor.socialUntil||0)&&actor.place===destination)continue;
    walkResident(actor,resident,index,destination,time,dt,blocked);
    if(actor.gardenResident&&!actor.moving&&actor.place===destination)gardenRoutine(actor,time);
@@ -218,7 +238,7 @@ export function tickAlleyResidents(g,dt,blocked){
  }
  if(time<(railway.nextAlleySocialCheck||0))return;
  railway.nextAlleySocialCheck=time+.35;
- const available=railway.alleyVisitors.filter(a=>!a.moving&&a.place===a.targetPlace&&!a.path.length&&!companions.has(a.id)&&time-a.lastSocialAt>16)
+ const available=railway.alleyVisitors.filter(a=>!a.darkWizardAlarm&&!visitingFortescue(a)&&!a.moving&&a.place===a.targetPlace&&!a.path.length&&!companions.has(a.id)&&time-a.lastSocialAt>16)
   .sort((a,b)=>a.lastSocialAt-b.lastSocialAt);
  const pairs=[];
  for(const [i,a] of available.entries())for(const b of available.slice(i+1)){
@@ -243,6 +263,7 @@ export function nearbyAlleyResident(g,p,blocked){
  if(!inAlley(g)||p.hp<=0||p.room||p.trainRide||p.ui)return null;
  let nearest=null,reach=TALK_REACH;
  for(const actor of alleyResidentsFor(g)){
+  if(actor.darkWizardAlarm)continue;
   const distance=dist(actor,p);
   if(distance<reach&&segmentClear(p,actor,blocked)){nearest=actor;reach=distance;}
  }
@@ -250,7 +271,7 @@ export function nearbyAlleyResident(g,p,blocked){
 }
 
 export function openAlleyResidentDialogue(g,p,actor){
- if(!actor||p.ui)return false;
+ if(!actor||actor.darkWizardAlarm||p.ui)return false;
  p.ui={shop:'npc-dialogue',ownerDevice:p.device,npcId:actor.id,alleyResident:actor.id,node:'hello',index:0};
  p.consumeInput=true;p.charge=0;p.interactUsed=true;p.moving=false;p.menuRepeat=0;
  if(actor.gardenResident)clearGardenRoutine(actor);
@@ -281,6 +302,7 @@ export function alleyResidentDialogueView(g,p){
  let route=`I’m stopping at ${place}. After that I’m due at ${next}.`;
  if(npc.place!==destination)route=`I’m on my way to ${place}. Catch me there if you need me.`;
  else if(destination===nextStop)route=`I’m staying at ${place} awhile. Come find me here.`;
+ if(npc.fortescueCone)route=`I’m taking my cone for a walk. After that I’m due at ${next}.`;
  const topic=resident.topic;
  const matchLine=resident.id==='lee'?leeResult(g.trainTest.alleyQuidditchResult):'';
  if(node==='hello'){
@@ -289,8 +311,10 @@ export function alleyResidentDialogueView(g,p){
    {label:'Where are you headed?',action:'resident:route'},
   ];
   if(topic)choices.push({label:topic.label,action:'resident:topic'});
+  if(resident.lore)choices.push({label:resident.lore.label,action:'resident:lore'});
   return {npc,text:matchLine||resident.greeting,choices:[...choices,goodbye]};
  }
+ if(node==='lore'&&resident.lore)return {npc,text:resident.lore.text,choices:followupChoices};
  if(topic&&node==='topic'){
   const replies=topic.replies.map(({label},index)=>({label,action:'resident:reply:'+index}));
   return {npc,text:topic.text,choices:[...replies,backToGreeting,goodbye]};
@@ -349,8 +373,10 @@ export function drawAlleyResidentActivity(c,g,visible){
   if(!(age>=0&&age<.35)||!visible(actor.x,actor.y,28,60))continue;
   drawPixelRecipe(c,flourish,age*1000,actor.x+actor.faceX*13,actor.y-35-age*16);
  }
- const actor=actors.find(a=>a.activity&&time>=(a.activityFrom||0)&&time<a.activityUntil&&visible(a.x,a.y,80,100)&&g.players.some(p=>!p.ui&&dist(a,p)<160));
+ const alarm=actors.find(a=>time<a.darkWizardAlarm?.warningUntil&&visible(a.x,a.y,80,100))||stationaryWizardWarning(g.trainTest,time,visible);
+ const actor=alarm||actors.find(a=>a.activity&&time>=(a.activityFrom||0)&&time<a.activityUntil&&visible(a.x,a.y,80,100)&&g.players.some(p=>!p.ui&&dist(a,p)<160));
  if(!actor)return;
+ const line=alarm?DARK_WIZARD_WARNING:actor.activity;
  c.save();c.font='600 10px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#251c24';c.fillStyle='#f2d9aa';
- c.strokeText(actor.activity,actor.x,actor.y-57);c.fillText(actor.activity,actor.x,actor.y-57);c.restore();
+ c.strokeText(line,actor.x,actor.y-57);c.fillText(line,actor.x,actor.y-57);c.restore();
 }

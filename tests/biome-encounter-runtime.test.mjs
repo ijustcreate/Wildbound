@@ -54,7 +54,7 @@ test('all members get a safe arrival delay, including native pack casters',()=>{
 test('normal Wild Lands rolls use the actual ice and swamp regions, including local crocodile water',async()=>{
  const {enterWildLands}=await import('../src/wild-lands.mjs'),{waterAt}=await import('../src/environment.mjs');
  const g=setup();assert.ok(enterWildLands(g).ok);g.enemies=[];
- for(const [x,y,name]of [[8200,5200,'Hunters of the white drift'],[13200,2900,'Hunters of the reedbank']]){
+ for(const [x,y,name]of [[9050,5380,'Hunters of the white drift'],[13200,2900,'Hunters of the reedbank']]){
   const p=g.players[0];delete p.trainRide;Object.assign(p,{x,y,ui:null,progress:20,trainGround:0,groundHeight:0});g.enemies=[];g.event=null;g.roll={playerId:p.id,resolved:true};
   const index=EVENTS.findIndex(e=>e.name===name);g.localWorld={pack:{events:[index]}};g.spawnEvent();g.localWorld=null;g.roll=null;
   assert.equal(g.event?.name,name);assert.equal(g.enemies.length,3);assert.equal(g.generatedEnvironment,'forest','the world itself is not rewritten');

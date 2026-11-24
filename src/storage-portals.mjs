@@ -46,7 +46,7 @@ export function tickRailwayStoragePlayer(g,p,input,old,dt){
  if(p.room){
   p.consumeInput=true;p.moving=false;p.charge=0;
   if(pressed)g.portal(p);
-  else tickStorageRoom(g,p,input,dt,input.interact&&!old.interact);
+  else tickStorageRoom(g,p,input,dt,input.interact&&!old.interact,input.loot&&!old.loot);
   p.previousInput={...input};
   return true;
  }

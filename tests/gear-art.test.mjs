@@ -45,7 +45,7 @@ test('Held items depth-sort independently of arms and relics are not worn in all
 
 test('Every fitted gear piece follows its joint in eight directions without changing item definitions',()=>{
   const before=JSON.stringify(ITEMS);
-  const extendedHeadwear={bone_carver_crown:{x:18,y:22},alley_inkcap:{x:12,y:19},horned_helm:{x:11,y:14},halo:{x:10,y:13}};
+  const extendedHeadwear={bone_carver_crown:{x:18,y:22},alley_inkcap:{x:12,y:19},horned_helm:{x:11,y:14},halo:{x:10,y:13},pirate_captain_hat:{x:14,y:14}};
   for(const [id,def] of Object.entries(ITEMS)) {
     const kind=itemKind(id);
     const headwear=kind==='hat'||def.style==='witch';
@@ -54,7 +54,7 @@ test('Every fitted gear piece follows its joint in eight directions without chan
       const draw=(c,anchor)=>headwear?directionalHelmet(c,id,anchor,d):kind==='shield'?fittedShield(c,id,anchor,d,false):fittedGear(c,id,anchor,d,side);
       const original=raster(c=>draw(c,{x:0,y:0}));
       const moved=raster(c=>draw(c,{x:9,y:-12}));
-      assert.ok(original.size>8,id);
+      assert.ok(original.size>=(def.style==='eyepatch'?8:9),id);
       assert.equal(original.size,moved.size,id);
       for(const [key,color] of original) {
         const [x,y]=key.split(',').map(Number);

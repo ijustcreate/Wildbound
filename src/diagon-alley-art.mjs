@@ -15,7 +15,8 @@ import {drawAlleyStreetLighting,drawAlleyDust,drawAlleyReflectedLight,drawNoctur
 import {queueAlleyWayfinding,drawNocturneRatHoles,drawOllivandersPassage,drawNocturneThreshold,queueNocturneConnectorWall} from './diagon-wayfinding.mjs';
 import {DIAGON_PORTAL_COLOR,paintDiagonBrickWing,queueDiagonEntryPlaza} from './diagon-entry-plaza.mjs';
 import {inGardenPond} from './diagon-garden-ward.mjs';
-import {drawManaWardSparkles} from './diagon-garden-ward-art.mjs';
+import {drawActorGameplayFx} from './gameplay-fx.mjs';
+import {activePatronuses} from './patronus.mjs';
 import {drawSwimmer,drawBreath} from './swim-render.mjs';
 import {drawPortalFlash} from './portal-transition.mjs';
 import {queueAlleyStreetProps} from './diagon-alley-props.mjs';
@@ -25,6 +26,8 @@ import {drawDiagonFootprints} from './diagon-footprints.mjs';
 import {drawMageGardenGround,queueMageGarden,insideMageGarden} from './diagon-mage-garden.mjs';
 import {queueNocturneSpiderStall} from './nocturne-spider-merchant.mjs';
 import {nocturneDuelLootHint,queueNocturneDarkWizards} from './nocturne-dark-wizard-art.mjs';
+import {NOCTURNE_EDGE_FRONTAGES} from './nocturne-edge-frontages.mjs';
+import {queueHunterOwlPets} from './hunter-pet-render.mjs';
 import {queueAlleyGardenProps} from './diagon-garden-props.mjs';
 import {queueDiagonCritters} from './diagon-critter-art.mjs';
 import {nocturneCatFor,NOCTURNE_RAT_HOLES} from './diagon-garden-cats.mjs';
@@ -66,6 +69,8 @@ export function drawAlleyGate(c,g){const a=alleyGate(g);if(!a)return;const t=g.t
  if(!open&&g.players.some(p=>holdingWand(p)&&Math.hypot(p.x-a.x,p.y-a.y)<180)){for(let i=0;i<6;i++){const f=(t.time*.6+i/6)%1;rect(c,a.x-50+i*18,a.y-20-f*50,2,2,'#f1d48c');}}
  text(c,open?'Diagon Alley':'An ordinary brick wall?',a.x,a.y+54,11);
 }
+const alleyFrontages=[...ALLEY_CLOSED_FRONTAGES,...NOCTURNE_EDGE_FRONTAGES];
+
 export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTest,cam=renderer.camera;
  const halfWidth=w/(2*cam.zoom),halfHeight=h/(2*cam.zoom);
  const bounds={left:cam.x-halfWidth,right:cam.x+halfWidth,top:cam.y-halfHeight,bottom:cam.y+halfHeight};
@@ -101,13 +106,14 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
  if(visible(8000,4163,90,115))objects.push({depth:4183,paint:()=>drawAlleyFountain(c,g.time)});
  queueAlleyStreetProps(c,g.time,visible,objects);
  queueNocturneSpiderStall(c,g,visible,objects);
- queueNocturneDarkWizards(c,g,visible,objects);
+ queueHunterOwlPets(c,g,visible,objects);
+ queueNocturneDarkWizards(c,g,visible,objects,renderer.animator,bounds);
  queueNocturneGraves(c,g,visible,objects);
  queueAlleyWayfinding(c,visible,objects);
  queueNocturneConnectorWall(c,NOCTURNE_CONNECTOR,visible,objects);
  queueDiagonEntryPlaza(c,visible,objects);
- for(const frontage of ALLEY_CLOSED_FRONTAGES){
-  if(!visible(frontage.x,frontage.y,128,155))continue;
+ for(const frontage of alleyFrontages){
+  if(!visible(frontage.x,frontage.y,frontage.halfWidth+23,frontage.halfDepth+80))continue;
   drawClosedFrontageGround(c,frontage);
   objects.push({depth:frontage.y+frontage.halfDepth,paint:()=>drawClosedFrontage(c,frontage)});
  }
@@ -115,6 +121,7 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
   if(s.id==='ollivanders')assembleOllivanders(c,s,g,objects);
   else assembleAlleyShop(c,s,g,objects,renderer.animator);
  }
+ renderer.drawWorldLoot(g,w,h);
  if(visible(NIGHTGLASS_REAR_DOOR.x,NIGHTGLASS_REAR_DOOR.y,38,70))
   objects.push({depth:NIGHTGLASS_REAR_DOOR.y+NIGHTGLASS_REAR_DOOR.halfSpan,paint:()=>drawNightglassRearDoor(c,!!t.nocturneCemetery?.door)});
  for(const {x,y,district} of DIAGON_STREET_LAMPS)
@@ -123,10 +130,14 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
   if(visible(candle.x,candle.y,24,52))objects.push({depth:candle.y+4,paint:()=>drawNocturneWallCandles(c,candle,g.time)});
  const actors=[...g.players,...alleyResidentsFor(g)];
  for(const p of actors)if(visible(p.x,p.y,80,100))objects.push({depth:p.y,player:gardenBenchActor(g,p)});
+ for(const e of g.enemies||[])if(e.borginReflection&&(e.hp>0||(e.deathTimer||0)<1.7)&&visible(e.x,e.y,64,85)){
+  objects.push({depth:e.y,player:e,size:PLAYER_RENDER_SIZE});
+ }
+ for(const a of activePatronuses(g))if(visible(a.x,a.y,80,100))objects.push({depth:a.y,player:a,size:43});
  for(const a of g.stationOwls||[])if(!a.hidden&&visible(a.x,a.y,80,100))objects.push({depth:a.y,owl:a});
  const lighting=drawAlleyStreetLighting(c,renderer,g,bounds,visible,{
   lamps:DIAGON_STREET_LAMPS,candles:NOCTURNE_WALL_CANDLES,
-  shops,facades:ALLEY_CLOSED_FRONTAGES,nocturnePaths:nocturnePaving,actors,paths:ALLEY_PATHS,
+  shops,facades:alleyFrontages,nocturnePaths:nocturnePaving,actors,paths:ALLEY_PATHS,
  });
  const priorLight=renderer.animator.lighting;
  renderer.animator.lighting=lighting;
@@ -135,13 +146,16 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
   if(a.paint)a.paint();
   if(a.shopAsset)drawOllivandersSubject(c,a);
   if(a.player){
-   const paint=p=>renderer.animator.draw(c,p,g.time,a.size||PLAYER_RENDER_SIZE);
+   const size=a.size||PLAYER_RENDER_SIZE;
+   const paint=p=>renderer.animator.draw(c,p,g.time,size);
    if(inGardenPond(a.player))drawSwimmer(c,a.player,g.time,paint);
-   else {paint(a.player);drawManaWardSparkles(c,a.player,g.time);}
+   else paint(a.player);
+   drawActorGameplayFx(c,g,a.player,size,'front');
   }
   if(a.owl)drawSnowyOwl(c,a.owl,g.time);
  }
  }finally{renderer.animator.lighting=priorLight;}
+ renderer.drawCombatEffects(g);
  drawAlleyReflectedLight(c,renderer,lighting,visible);
  drawNocturneStreetFog(c,g,bounds,nocturnePaving);
  drawAlleyDust(c,g.time,bounds,{paths:ALLEY_PATHS,insideNocturne,zoom:cam.zoom});

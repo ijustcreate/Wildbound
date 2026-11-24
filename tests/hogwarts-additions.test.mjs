@@ -2,6 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';import {give,ITEMS,stat,setProgress} from '../src/items.mjs';
 import {useChocolateFrog} from '../src/train-students.mjs';import {escapedChocolateFrogs,tickChocolateFrogs} from '../src/chocolate-frogs.mjs';
 import {enterTrainTest,leaveTrainTest,trainInteraction} from '../src/train-test.mjs';import {trainCars,trainWorld} from '../src/train-track.mjs';import {trainTailor,HOGWARTS_CATALOG} from '../src/train-tailor.mjs';import {merchantAction,merchantRows} from '../src/traveling-merchant.mjs';import {ScarfInertia} from '../src/school-scarves.mjs';
+import {WIZARD_CARD_COLLECTION,wizardCardCount} from '../src/wizard-card-collection.mjs';
 const count=(p,t)=>p.inventory.filter(i=>i?.type===t).reduce((n,i)=>n+i.qty,0);
 const setup=()=>{const g=new Game(()=>.75),p=g.addPlayer('keyboard');g.phase='play';g.openingBoard=false;g.scenery=[];g.terrain.fill('grass');g.onSound=()=>{};g.persist=()=>{};return {g,p};};
 test('half the uniform probability range heals fully and half escapes; both branches always sparkle',()=>{
@@ -26,6 +27,7 @@ test('the robe pieces form a real gear set, while each scarf has two independent
 
 test('a frog bottled on the train and its consumed bottle transfer once to the returning hero',()=>{
  const {g,p:original}=setup();give(original.inventory,'chocolate_frog');give(original.inventory,'empty_jar');enterTrainTest(g);const p=g.players[0];g.random=()=>0;p.hp=15;useChocolateFrog(g,p);p.equipment.hand1='critter_net';assert.ok(g.attack(p));assert.equal(count(p,'caught_chocolate_frog'),1);leaveTrainTest(g);assert.equal(count(original,'chocolate_frog'),0);assert.equal(count(original,'empty_jar'),0);assert.equal(count(original,'caught_chocolate_frog'),1);assert.ok(original.chocolateSparkleUntil>g.time);
+ assert.equal(wizardCardCount(original.inventory.find(item=>item?.type===WIZARD_CARD_COLLECTION)),1);
 });
 
 test('the outfitter does not charge for an unaffordable or full-backpack purchase',()=>{

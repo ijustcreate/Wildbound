@@ -5,9 +5,10 @@ import {nativeWildProps,drawNativeWildTile,nativeWildBiome} from './wild-native-
 import {drawPortal} from './portal-art.mjs';
 import {drawProp} from './environment.mjs';
 import {sketchBiome,sketchUniformSurfaceTile,wildLandsPathAt,WILD_BRIDGES,REGION_SHAPES} from './wild-lands-geography.mjs';
-import {WILD_LANDS_SITES,wildSiteVisible} from './wild-lands-content.mjs';
+import {WILD_LANDS_SITES,wildSiteVisible,VEIL_GLAIVE_CHEST} from './wild-lands-content.mjs';
 import {drawStarterChest} from './starter-chest.mjs';
 import {drawIceChest} from './ice-chest-art.mjs';
+import {drawVeilkeeperChest} from './glaive-art.mjs';
 import {forestGroundTone} from './forest-art.mjs';
 import {drawWaterSurface} from './water-surface.mjs';
 import {drawWildSandTile,wildSandTone} from './wild-sand-art.mjs';
@@ -225,19 +226,28 @@ export function drawFrozenExplorerCache(c,t){
  drawIceChest(c,x,y,t.wildExploration?.opened.has(id),.9);
  if((t.viewZoom||1)>.25){c.fillStyle='#ded5b2';c.font='11px system-ui';c.textAlign='center';c.fillText(name,x,y-100);c.textAlign='left';}
 }
+export function veilGlaiveChestSubject(t,visible){
+ if(!t.design.wildLands||t.wildLandsOverview||!wildSiteVisible(t.design,VEIL_GLAIVE_CHEST)||!visible(VEIL_GLAIVE_CHEST,80))return null;
+ return {veilGlaiveChest:true,depth:VEIL_GLAIVE_CHEST.y+5};
+}
+export function drawVeilGlaiveChest(c,t){
+ const {x,y,id}=VEIL_GLAIVE_CHEST;
+ drawVeilkeeperChest(c,x,y,t.wildExploration?.opened.has(id));
+}
 function drawExplorationSites(c,t,bounds,depthSortedCache=false){
  for(const site of WILD_LANDS_SITES){if(!wildSiteVisible(t.design,site)||!visiblePoint(bounds,site,500))continue;const x=site.x,y=site.y;
   if(site.kind==='boardwalk'){rect(c,x-220,y-160,440,320,'#716448');for(let i=-210;i<220;i+=20)rect(c,x+i,y-156,3,312,'#a38b61');}
   if(site.kind==='stones')for(let i=0;i<7;i++){const a=i*Math.PI*2/7,px=x+Math.cos(a)*190,py=y+Math.sin(a)*150;const kind=site.room==='shadow'?'veil_stone':site.room?'limestone_shelf':'ice_rock';drawProp(c,{kind,x:px,y:py,rootY:py,size:55,...(site.room?{realm:site.room}:{}),variant:i%4,procedural:true},t.time,{environment:'ice',generatedEnvironment:'ice',phase:'play',scenery:[]},{dynamicShadows:true});}
   if(site.kind==='camp'){rect(c,x-110,y-85,80,55,'#4d6041');for(let i=0;i<4;i++)rect(c,x-105+i*18,y-90-i%2*8,20,12,'#a49970');rect(c,x+100,y-15,100,18,'#6f553b');rect(c,x+112,y-12,85,3,'#ad8b59');}
   if(site===frozenExplorerCache){if(!depthSortedCache)drawFrozenExplorerCache(c,t);continue;}
+  if(site===VEIL_GLAIVE_CHEST){if(!depthSortedCache)drawVeilGlaiveChest(c,t);continue;}
   const opened=t.wildExploration?.opened.has(site.id);c.save();c.translate(x,y);c.scale(.35,.35);drawStarterChest(c,{x:0,y:0},opened?1:0);c.restore();
   if((t.viewZoom||1)>.25){c.fillStyle='#ded5b2';c.font='11px system-ui';c.textAlign='center';c.fillText(site.name,x,y-100);c.textAlign='left';}
  }
 }
 export function drawWildLandsLandmarks(c,t,bounds,g=null){
  const d=t.design;if(!d.activeRoom){if(!g)drawWildLandsCrossings(c,d,bounds);drawCemeteryFence(c,bounds);}if(d.activeRoom){
-  drawPortal(c,{...WILD_LANDS_EXIT,color:d.activeRoom==='shadow'?'#aa55ff':'#66c6d7'},t.time,'');drawExplorationSites(c,t,bounds);return;
+  drawPortal(c,{...WILD_LANDS_EXIT,color:d.activeRoom==='shadow'?'#aa55ff':'#66c6d7'},t.time,'');drawExplorationSites(c,t,bounds,!!g&&(t.viewZoom||1)>=.3&&!t.wildLandsOverview);return;
  }
  if((t.viewZoom||1)<.3&&railwayStream(t)){const image=streamImage(t,'landmarks','landmarks:'+(t.destructionRevision||0),{size:1200,height:720,span:d.width,x:0,y:0,damaged:t.damagedBuildings||[]},40);if(image)c.drawImage(image,0,0,d.width,d.height);}else drawWildBuildingGround(c,d,bounds,g);
  drawExplorationSites(c,t,bounds,!!g&&(t.viewZoom||1)>=.3&&!t.wildLandsOverview);

@@ -10,6 +10,7 @@ import { poseAt, projectPoint, facingIndex, ellipse } from '../player-motion.mjs
 import { pixelLine, pixelPolygon, pixelVolume } from '../pixel-shapes.mjs';
 import { paintLayers } from '../render-order.mjs';
 import { spawnParticleEffect } from '../particles.mjs';
+import {drawWreckPirateHat} from '../pirate-wreck-hat.mjs';
 
 const HUMANOID_JOINTS = [
   'pelvis','chest','neck','head','jaw','eyeL','eyeR','shoulderL','elbowL','handL',
@@ -598,6 +599,7 @@ function drawConstruct(c,actor,time,model,providedPose=null){
       case 'skeleton_deckhand':
         add('Deckhand ribcage','chest',()=>{for(let i=-4;i<=4;i+=2){pixelLine(c,{x:p.chest.x-6,y:p.chest.y+i},{x:p.chest.x+6,y:p.chest.y+i},pal.outline,2);pixelLine(c,{x:p.chest.x-4,y:p.chest.y+i},{x:p.chest.x+4,y:p.chest.y+i},pal.face,1);}},p.chest.depth+1);
         add('Deckhand bandana','bandana',()=>{const a=p.bandana,x=Math.round(a.x),y=Math.round(a.y);c.fillStyle=pal.detail;c.fillRect(x-7,y-5,14,4);c.fillRect(x+4,y-2,5,2);c.fillStyle=pal.light;c.fillRect(x-5,y-4,7,1);},p.head.depth+3);
+        if(actor.pirateWreckHat)add('Wreck tricorn','head',()=>drawWreckPirateHat(c,p.head,d,actor.pirateWreckHat),p.head.depth+4);
         add('Deckhand cutlass','cutlassTip',()=>{line('handR','cutlassTip',4,pal.outline);line('handR','cutlassTip',2,pal.light);c.fillStyle=pal.detail;c.fillRect(Math.round(p.handR.x)-3,Math.round(p.handR.y)-1,6,2);},p.cutlassTip.depth+2);
         break;
       case 'ogre':

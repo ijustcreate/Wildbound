@@ -8,6 +8,11 @@ import {wildLandsGround,wildLandsSurface,wildLandsSurfaceAt} from '../src/wild-l
 import {nativeWaterRuns} from '../src/wild-lands-art.mjs';
 import {mountainPursuitRoute,tickMountainPursuit} from '../src/wild-mountain-encounters.mjs';
 import {EAST_WILDS_WIDTH,HOLLOW_ROOM,HOLLOW_GATE,HOLLOW_EXIT,HOLLOW_NAV,MOUNTAIN_ASCENT,MOUNTAIN_CAVE_TRAIL,MOUNTAIN_DESCENTS,MOUNTAIN_SUMMIT,hollowSurface,mountainHeight,mountainLineOpen,mountainMovementScale} from '../src/wild-mountain-layout.mjs';
+import {mysteryVisitors} from '../src/mystery-inc.mjs';
+import {npcDialogueView,npcDialogueAction} from '../src/npc-quests.mjs';
+import {PIRATE_SHIP_LAYOUT,pirateShip,movePirateShipPlayer,syncPirateShipPlayer} from '../src/pirate-ship.mjs';
+import {WILLY_CHAIR,WILLY_EYEPATCH,WRECK_TREASURE_TABLE} from '../src/pirate-wreck-treasure.mjs';
+import {count} from '../src/items.mjs';
 
 function wilds(){
  const g=new Game(()=>.5);g.addPlayer('keyboard');g.persist=()=>{};
@@ -25,6 +30,45 @@ function walk(g,p,target){
  }
  assert.fail(`cannot walk to ${target.x},${target.y} from ${p.x},${p.y}`);
 }
+
+test('Mystery Inc. investigates the coast, and any explorer can inspect Willy once below the wreck deck',()=>{
+ const {g,p}=wilds();
+ assert.equal(mysteryVisitors(g).length,5);
+ for(const npc of mysteryVisitors(g)){
+  Object.assign(p,{x:npc.x,y:npc.y+8});
+  assert.match(trainPrompt(g,p),/TALK TO/);
+  assert.equal(wildLandsSurface(g.trainTest.design,p.x,p.y),'grass');
+  step(g,{interact:true});step(g);
+  assert.equal(npcDialogueView(g,p).npc.name,npc.name);
+  npcDialogueAction(g,p,'choice:0');
+  assert.equal(npcDialogueView(g,p).text,npc.clue);
+  npcDialogueAction(g,p,'close');
+  step(g);
+ }
+ Object.assign(p,{x:HOLLOW_GATE.x,y:HOLLOW_GATE.y,invuln:999});
+ step(g,{interact:true});step(g);
+ assert.equal(g.trainTest.design.activeRoom,HOLLOW_ROOM);
+ assert.equal(mysteryVisitors(g).length,0);
+ const ship=pirateShip(g),hatch=PIRATE_SHIP_LAYOUT.hatch;
+ p.pirateRide={shipId:ship.id,level:'deck',x:hatch.x,y:hatch.y+17};
+ syncPirateShipPlayer(g,p);
+ assert.match(trainPrompt(g,p),/GO BELOW DECK/);
+ step(g,{interact:true});step(g);
+ const walkLocal=(dx,dy)=>movePirateShipPlayer(g,p,Math.cos(ship.a)*dx-Math.sin(ship.a)*dy,Math.sin(ship.a)*dx+Math.cos(ship.a)*dy);
+ assert.equal(p.pirateRide.level,'hold');
+ walkLocal(0,-47);walkLocal(87,0);walkLocal(0,43);walkLocal(177,0);
+ assert.ok(p.pirateRide.x>WRECK_TREASURE_TABLE.x+WRECK_TREASURE_TABLE.width/2);
+ walkLocal(0,-15);
+ assert.match(trainPrompt(g,p),/INSPECT ONE-EYED WILLY/);
+ assert.ok(Math.hypot(p.pirateRide.x-WILLY_CHAIR.x,p.pirateRide.y-WILLY_CHAIR.y)<=37);
+ step(g,{interact:true});step(g);
+ assert.equal(count(p,WILLY_EYEPATCH),1);
+ const reload=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),hero=reload.players[0];
+ reload.trainTest.preparing=false;
+ step(reload,{interact:true});step(reload);
+ assert.equal(count(hero,WILLY_EYEPATCH),1);
+ assert.equal(hero.npcQuests.willyTreasure.recovered,true);
+});
 
 test('the east expansion preserves old world coordinates and an older save opens at the larger width',()=>{
  const {g,p,d}=wilds();
@@ -63,7 +107,7 @@ test('the coastal entrance reaches its own cove, preserves both worlds and retur
  step(g,{interact:true});step(g);
  assert.equal(d.activeRoom,HOLLOW_ROOM);
  assert.ok(!g.loot.includes(dryLoot));
- assert.ok(g.enemies.length>0&&g.enemies.every(e=>e.wildMountain));
+ assert.ok(g.enemies.some(e=>e.wildMountain)&&g.enemies.every(e=>e.wildMountain||e.pirateRole?.startsWith('wreck-')));
  assert.equal(hollowSurface(p.x,p.y),'grass');
  assert.equal(wildLandsSurface(d,8050,5050),'water');
  assert.equal(wildLandsSurface(d,7933,5327),'grass');
@@ -74,7 +118,7 @@ test('the coastal entrance reaches its own cove, preserves both worlds and retur
  assert.equal(d.activeRoom,undefined);
  assert.ok(g.loot.includes(dryLoot));
  assert.ok(Math.hypot(p.x-HOLLOW_GATE.x,p.y-HOLLOW_GATE.y)<36);
- assert.equal(g.trainTest.hollowActors.enemies.length,3);
+ assert.equal(g.trainTest.hollowActors.enemies.filter(e=>e.wildMountain).length,3);
 });
 
 test('Greywake sand carries a dry route from the western foothill to the Smugglers’ Hollow door',()=>{

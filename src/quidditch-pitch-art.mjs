@@ -1,5 +1,5 @@
 import {
- QUIDDITCH_PITCH,QUIDDITCH_TEAMS,QUIDDITCH_HOOPS,QUIDDITCH_TRUNK,QUIDDITCH_RETURN,QUIDDITCH_RACK,QUIDDITCH_SCOREBOARD,
+ QUIDDITCH_PITCH,QUIDDITCH_TEAMS,QUIDDITCH_HOOPS,QUIDDITCH_TRUNK,QUIDDITCH_RETURN,QUIDDITCH_RACK,QUIDDITCH_SCOREBOARD,quidditchTrunkVisible,
 } from './quidditch-layout.mjs';
 import {drawPitchSpectator} from './quidditch-spectators.mjs';
 import {compilePixelRecipe} from './pixel-recipe.mjs';
@@ -7,13 +7,12 @@ import {drawPixelRecipe} from './pixel-recipe-canvas.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
 import {block as b,shape as p,line} from './diagon-shop-brush.mjs';
 import closedTrunk from '../assets/pixel-recipes/quidditch/match-trunk-closed.pixel.json' with {type:'json'};
-import openTrunk from '../assets/pixel-recipes/quidditch/match-trunk-open.pixel.json' with {type:'json'};
 import whistle from '../assets/pixel-recipes/quidditch/brass-whistle-portkey.pixel.json' with {type:'json'};
 import quaffle from '../assets/pixel-recipes/quidditch/quaffle.pixel.json' with {type:'json'};
 import bludger from '../assets/pixel-recipes/quidditch/bludger.pixel.json' with {type:'json'};
 import snitch from '../assets/pixel-recipes/quidditch/golden-snitch.pixel.json' with {type:'json'};
 
-const sprites=Object.fromEntries(Object.entries({closedTrunk,openTrunk,whistle,quaffle,bludger,snitch})
+const sprites=Object.fromEntries(Object.entries({closedTrunk,whistle,quaffle,bludger,snitch})
  .map(([id,recipe])=>[id,compilePixelRecipe(recipe)]));
 const {left,right,top,bottom,cx,cy}=QUIDDITCH_PITCH;
 const teamEntries=Object.entries(QUIDDITCH_TEAMS);
@@ -29,6 +28,8 @@ let groundImage,groundWarmScheduled=false;
 const canopyImages=[];
 const turfImages=[];
 const turfSize=96;
+const snitchTrails=new WeakMap();
+const snitchTrailLife=.28,snitchTrailInterval=.045;
 
 function noise(x,y){
  let n=Math.imul(x,0x45d9f3b)^Math.imul(y,0x27d4eb2d);
@@ -337,11 +338,11 @@ export function drawQuidditchPortkey(c,x,y,time,{outbound=false,live=true}={}){
  }
 }
 
-function trunk(c,time,open){
+function trunk(c,time){
  const {x,y}=QUIDDITCH_TRUNK;
  groundEllipse(c,x+7,y+5,44,15,'#3b5b466e');
- drawPixelRecipe(c,open?sprites.openTrunk:sprites.closedTrunk,time*1000,Math.round(x),Math.round(y));
- if(!open){const glint=Math.floor(time*6)%18;if(glint<3)b(c,x+glint-1,y-20,2,2,ivory);}
+ drawPixelRecipe(c,sprites.closedTrunk,time*1000,Math.round(x),Math.round(y));
+ const glint=Math.floor(time*6)%18;if(glint<3)b(c,x+glint-1,y-20,2,2,ivory);
 }
 
 function recentEffects(c,match,time,visible){
@@ -380,7 +381,7 @@ export function queueQuidditchPitch(c,match,time,visible,objects,crowd=null,view
   add(x,y,54,z+radius+22,()=>goalRing(c,hoop,true,time),y+6);
  }
  for(const [team,{home:{x,y}}] of teamEntries)add(x,y,56,90,()=>stand(c,x,y,team,match,time));
- add(QUIDDITCH_TRUNK.x,QUIDDITCH_TRUNK.y,50,70,()=>trunk(c,time,!!match&&match.phase!=='waiting'));
+ if(quidditchTrunkVisible(match))add(QUIDDITCH_TRUNK.x,QUIDDITCH_TRUNK.y,50,70,()=>trunk(c,time));
  add(QUIDDITCH_RACK.x,QUIDDITCH_RACK.y,39,63,()=>pitchRack(c,QUIDDITCH_RACK));
  add(QUIDDITCH_RETURN.x,QUIDDITCH_RETURN.y,45,72,()=>drawQuidditchPortkey(c,QUIDDITCH_RETURN.x,QUIDDITCH_RETURN.y,time));
  objects.push({depth:bottom-3,paint:()=>recentEffects(c,match,time,visible)});
@@ -390,6 +391,36 @@ export function drawQuidditchBallShadow(c,kind,ball){
  if(!ball)return;
  const radius=kind==='snitch'?5:8;
  groundEllipse(c,ball.x,(ball.y||0)+1,radius,3,(ball.z||0)>46?'#34554042':'#2d483a80');
+}
+
+export function sampleQuidditchSnitchTrail(ball,time){
+ if(ball.holderId!=null){snitchTrails.delete(ball);return [];}
+ const x=ball.x,y=ball.y-(ball.z||0);
+ let points=snitchTrails.get(ball);
+ if(!points){points=[];snitchTrails.set(ball,points);}
+ const last=points.at(-1),travel=last?Math.hypot(x-last.x,y-last.y):0;
+ if(last&&(time<last.time||travel>86))points.length=0;
+ while(points.length&&time-points[0].time>=snitchTrailLife)points.shift();
+ if(!points.length||time-last.time>=snitchTrailInterval&&travel>=4)points.push({x,y,time});
+ return points;
+}
+
+export function drawQuidditchSnitchTrail(c,points,time,visible){
+ c.save();
+ for(const point of points){
+  const age=time-point.time;
+  if(age<snitchTrailInterval||!visible(point.x,point.y,6))continue;
+  const life=1-age/snitchTrailLife;
+  if(life<=0)continue;
+  const x=point.x+Math.sin(point.time*31)*(1+age*10),y=point.y-age*12,size=life>.38?2:1;
+  c.globalAlpha=life*.62;
+  b(c,x,y,size,size,life>.58?'#ffe4a2':'#e2b76b');
+  if(life>.5){
+   c.globalAlpha=life*.33;
+   b(c,x-3,y+4,1,1,'#f5d694');
+  }
+ }
+ c.restore();
 }
 
 export function drawQuidditchBall(c,kind,ball,time){

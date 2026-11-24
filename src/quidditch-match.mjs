@@ -77,6 +77,13 @@ function stowBalls(match){
  match.ballsStowed=true;
 }
 
+export function resetQuidditchMatch(match){
+ const {teamAssignments,round,seed,nextEvent}=match;
+ const next=createQuidditchMatch({teamAssignments,seed:seed+round});
+ Object.assign(match,next,{round:round+1,seed,nextEvent});
+ stowBalls(match);
+}
+
 function handIn(match,player,team){
  const snitch=match.snitch;
  if(snitch.holderId!==idOf(player)||!near(player,QUIDDITCH_TEAMS[team].home,RETURN_REACH))return false;
@@ -106,8 +113,8 @@ function canCatchSnitch(match,p,r=SNITCH_REACH){
  return flying(p)&&b.holderId===null&&match.time>=b.availableAt&&!(match.stagger[idOf(p)]>match.time)&&near(p,b,r)&&Math.abs(height(p)+3-b.z)<24;
 }
 
-function stealTarget(match,p,team,players){
- const {holderId,stealUntil}=match.quaffle,id=idOf(p);
+function stealTarget(match,ball,p,team,players){
+ const {holderId,stealUntil}=ball,id=idOf(p);
  if(!holderId||holderId===id||stealUntil>match.time||!flying(p)||match.stagger[id]>match.time||match.snitch.holderId===id)return null;
  const carrier=players.find(q=>idOf(q)===holderId)||match.ai.find(q=>idOf(q)===holderId);
  if(!flying(carrier)||quidditchTeam(match,carrier)!==opposite(team)||!near(p,carrier,STEAL_REACH)||
@@ -134,11 +141,38 @@ function takeQuaffle(match,p,team){
  record(match,'quaffle-caught',{team,playerId:idOf(p),x:b.x,y:b.y,z:b.z});
 }
 
-function takeSnitch(match,p,team){
+function takeSnitch(match,p,team,carrier=null){
  const id=idOf(p),b=match.snitch;
  if(match.quaffle.holderId===id)dropQuaffle(match,p);
  Object.assign(b,carrierPoint(p),{holderId:id,vx:0,vy:0,vz:0});
- record(match,'snitch-caught',{team,playerId:id,x:b.x,y:b.y,z:b.z});
+ const detail={team,playerId:id,x:b.x,y:b.y,z:b.z};
+ if(carrier){
+  b.stealUntil=match.time+STEAL_LOCK;
+  record(match,'snitch-stolen',{...detail,fromId:idOf(carrier)});
+ }else record(match,'snitch-caught',detail);
+}
+
+function stealSnitch(match,p,team,players){
+ const carrier=stealTarget(match,match.snitch,p,team,players);
+ if(!carrier)return false;
+ takeSnitch(match,p,team,carrier);
+ return true;
+}
+
+function knockQuaffleLoose(match,p,team,players,aim){
+ const carrier=stealTarget(match,match.quaffle,p,team,players);
+ if(!carrier)return false;
+ let x=carrier.x-p.x,y=carrier.y-p.y;
+ if(Math.hypot(x,y)<1){
+  const aiming=Math.hypot(aim.aimX||0,aim.aimY||0)>.1;
+  x=aiming?aim.aimX||0:p.faceX||-QUIDDITCH_TEAMS[team].side;
+  y=aiming?aim.aimY||0:p.faceY||0;
+ }
+ const length=Math.hypot(x,y);
+ dropQuaffle(match,carrier,x/length*145,y/length*145,44);
+ const {x:bx,y:by,z}=match.quaffle;
+ record(match,'quaffle-knocked-loose',{team,playerId:idOf(p),fromId:idOf(carrier),x:bx,y:by,z});
+ return true;
 }
 
 function aimAtHoop(team,position,x,y){
@@ -180,16 +214,18 @@ export function quidditchAction(match,player,action='interact',aim={},players=[]
  }
  if(match.phase==='finished'){
   if((action!=='interact'&&action!=='rematch')||!near(player,QUIDDITCH_TRUNK,TRUNK_REACH))return false;
-  const next=createQuidditchMatch({teamAssignments:match.teamAssignments,seed:match.seed+match.round});
-  Object.assign(match,next,{round:match.round+1,seed:match.seed,nextEvent:match.nextEvent});
+  resetQuidditchMatch(match);
   open(match);return true;
  }
  if(action==='throw')return throwQuaffle(match,player,team,aim);
+ if(action==='check')return knockQuaffleLoose(match,player,team,players,aim);
+ if(action==='steal-snitch')return stealSnitch(match,player,team,players);
  if(action==='ball'){
   if(canCatchSnitch(match,player)){takeSnitch(match,player,team);return true;}
+  if(stealSnitch(match,player,team,players))return true;
   if(match.quaffle.holderId===idOf(player))return throwQuaffle(match,player,team,aim);
   if(canCatchQuaffle(match,player)){takeQuaffle(match,player,team);return true;}
-  const carrier=stealTarget(match,player,team,players);
+  const carrier=stealTarget(match,match.quaffle,player,team,players);
   if(carrier){
    takeQuaffle(match,player,team);
    match.quaffle.stealUntil=match.time+STEAL_LOCK;
@@ -216,10 +252,17 @@ export function quidditchPrompt(match,player,players=[]){
  if(match.phase==='finished')return near(player,QUIDDITCH_TRUNK,TRUNK_REACH)?'START REMATCH':'';
  if(match.snitch.holderId===idOf(player))return near(player,QUIDDITCH_TEAMS[team].home,RETURN_REACH)?'TURN IN SNITCH':'RETURN TO '+team.toUpperCase()+' STAND';
  if(canCatchSnitch(match,player))return 'CATCH SNITCH';
+ if(stealTarget(match,match.snitch,player,team,players))return 'STEAL SNITCH';
  if(match.quaffle.holderId===idOf(player))return 'THROW QUAFFLE';
  if(canCatchQuaffle(match,player))return 'CATCH QUAFFLE';
- if(stealTarget(match,player,team,players))return 'STEAL QUAFFLE';
+ if(stealTarget(match,match.quaffle,player,team,players))return 'STEAL QUAFFLE';
  return swatTarget(match,player)?'SWAT BLUDGER':'';
+}
+
+export function quidditchCheckPrompt(match,player,players=[]){
+ if(match.phase!=='playing'||!flying(player))return '';
+ const team=quidditchTeam(match,player);
+ return team&&stealTarget(match,match.quaffle,player,team,players)?'KNOCK QUAFFLE LOOSE':'';
 }
 
 function fillSides(match,humans){

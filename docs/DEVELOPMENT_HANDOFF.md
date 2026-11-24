@@ -1,3 +1,7 @@
+# Wild Lands content and the garden pond — [Gameplay handoff](history/2026-11-24-shrieking-shack-and-homestead-board.md)
+
+The November 24 source update includes the Shrieking Shack, Homestead board, pirate ships, local weather, both Alley streets, the Three Broomsticks, Zonko’s and Borgin’s mirror. The handoff describes the entry points, rewards, and player-specific checkpoint behavior.
+
 # Latest Wandmaker’s Garden seating — [Desktop build 1.2.128](history/2026-11-23-wandmakers-garden-benches.md)
 
 All four garden benches support sitting and occasional cat visits. The handoff records the normal-profile shortcut, co-op and save checks, and verification of the exact package.

@@ -19,6 +19,10 @@ const active=g=>g.enemies.filter(e=>e.wildSpawnKey&&e.hp>0);
 const update=(g,n=44)=>{for(let i=0;i<n;i++)g.update(.05,{keyboard:{}});};
 const travel=(g,p,x,y,n)=>{Object.assign(p,{x,y,ui:null});update(g,n);};
 const serialize=g=>JSON.parse(JSON.stringify(saveSession(g)));
+function wakeAt(g,p,x,y){
+ Object.assign(p,{x,y,ui:null});g.trainTest.streamDisabled=true;
+ for(let i=0;i<19;i++){g.trainTest.time+=.36;tickWildBiomeSpawns(g);}
+}
 
 test('surface habitat populations wake around explorers on valid ground, away from the railway and landmarks',()=>{
  const {g,p,t}=fixture();
@@ -53,6 +57,50 @@ test('an occupied train does not wake packs and protected actors are outside the
  assert.deepEqual(wildBiomeTargets(g,e,[{...candidate,x:e.homeX+540}]),[]);
 });
 
+test('native wolf packs use nearby homes and a five-wolf pack follows its fifth member as alpha',()=>{
+ const {g,p,t}=fixture();wakeAt(g,p,6000,4800);
+ const wolves=active(g).filter(e=>e.wildWolfPackSize);
+ const packs=Object.values(Object.groupBy(wolves,e=>e.group)),large=packs.find(pack=>pack.length===5);
+ assert.ok(large&&packs.some(pack=>pack.length===3));
+ for(const pack of packs){
+  assert.ok(pack.length>=2&&pack.length<=5);
+  for(const e of pack)for(const mate of pack)assert.ok(Math.hypot(e.homeX-mate.homeX,e.homeY-mate.homeY)<=135);
+  assert.equal(pack.filter(e=>e.wildAlphaWolf).length,pack.length===5?1:0);
+ }
+ const alpha=large.find(e=>e.wildAlphaWolf);
+ assert.equal(alpha.name,'Alpha Wolf');assert.match(alpha.wildSpawnKey,/:4$/);
+ const origin={x:p.x,y:p.y};
+ p.x=large.reduce((sum,e)=>sum+e.x,0)/large.length;p.y=large.reduce((sum,e)=>sum+e.y,0)/large.length;
+ assert.ok(!wildBiomeSafe(t,p.x,p.y));
+ for(let i=0;i<8;i++){g.time+=.05;g.tickCombatActors(.05);}
+ assert.ok(large.every(e=>e.alphaId===alpha.id&&e.packTargetId===p.id));
+ assert.ok(large.filter(e=>e.state==='windup').length<=1);
+ alpha.hp-=10;
+ wakeAt(g,p,4100,2600);
+ assert.equal(t.wildBiomeSpawns[alpha.wildSpawnKey].hp,alpha.hp);
+ const loaded=restoreSession(serialize(g));loaded.trainTest.preparing=false;
+ wakeAt(loaded,loaded.players[0],origin.x,origin.y);
+ const returned=active(loaded).find(e=>e.wildSpawnKey===alpha.wildSpawnKey);
+ assert.equal(returned?.wildAlphaWolf,true);
+ assert.equal(returned.hp,alpha.hp);
+ assert.deepEqual([returned.homeX,returned.homeY],[alpha.homeX,alpha.homeY]);
+});
+
+test('ambient slimes use native enemy rigs and habitat colors across the Wild Lands',()=>{
+ const habitatRoutes=[['forest',6000,4800,'forest'],['jungle',4100,2600,'forest'],['ice',9050,5380,'ice'],
+  ['graveyard',4550,6600,'graveyard'],['swamp',12800,2600,'graveyard'],['beach',11200,8890,'beach']];
+ for(const [biome,x,y,palette] of habitatRoutes){
+  const {g,p,t}=fixture();wakeAt(g,p,x,y);
+  const slimes=active(g).filter(e=>e.kind==='slime'&&e.wildSpawnBiome===biome);
+  assert.ok(slimes.length,biome+' spawns slimes');
+  for(const slime of slimes){
+   assert.equal(slime.slimeBiome,palette);assert.equal(slime.faction,'enemy');
+   assert.ok(!wildBiomeSafe(t,slime.homeX,slime.homeY));
+   assert.equal(wildLandsSurfaceAt(t.design,slime.homeX,slime.homeY),'grass');
+  }
+ }
+});
+
 test('Bayou ambient elementals are occasional and recorded individuals still wake at their old home',()=>{
  const place=(seed)=>{
   const state=fixture(),{p,t}=state;
@@ -65,7 +113,7 @@ test('Bayou ambient elementals are occasional and recorded individuals still wak
   for(let i=0;i<20;i++){t.time+=.36;tickWildBiomeSpawns(g);}
   return active(g).filter(enemy=>enemy.wildSpawnBiome==='swamp'&&enemy.kind==='water_elemental');
  };
- const rare=place(1);
+ const rare=place(4);
  assert.equal(wake(rare).length,1);
  assert.ok(active(rare.g).some(enemy=>enemy.wildSpawnBiome==='swamp'&&enemy.kind==='zombie'));
 

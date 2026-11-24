@@ -19,6 +19,7 @@ import lilies from '../assets/pixel-recipes/diagon-garden/dusk-lilies.pixel.json
 import {compilePixelRecipe,pixelRecipeFrameAt} from './pixel-recipe.mjs';
 import {spriteToRgba} from './pixels.mjs';
 import {shape} from './diagon-shop-brush.mjs';
+import {diagonLaneX,nocturneLaneX} from './alley-street-layout.mjs';
 
 const art={armillary,chimes,lectern,coldFrame,birdbath,skep,foxglove,aurelia,terrarium,cabinet,watering,tea,shelter,
  amethyst,fern,inkcaps,silverthorn,lilies};
@@ -28,6 +29,8 @@ const footprints={armillary:[12,5],chimes:[19,5],lectern:[12,5],coldFrame:[23,10
 
 function place([id,x,y],district){
  const [w,d]=footprints[id];
+ if(district==='diagon')x=diagonLaneX(x);
+ if(district==='nocturne'&&x>=8970)x=nocturneLaneX(x);
  return {id,x,y,district,halfWidth:w,halfDepth:d,phase:(x*13+y*19)%1703};
 }
 

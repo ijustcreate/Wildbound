@@ -41,6 +41,7 @@ export function tickCryptWorld(parent,door,players,inputs,dt){
  for(const key of ['arrows','spells','traps','effects','xpOrbs','baits','pickups','healingOverTime'])world[key]=runtime[key]||=[];
  world.loot=s.drops;world.enemies=s.enemies.filter(e=>(e.hp>0||e.defeated&&(e.deathTimer||0)<3.5)&&!(e.kind===CRYPT_BOSS_KIND&&['dormant','rising'].includes(e.state)));
  world.players=players;world.time=parent.time;world.difficulty=parent.difficulty;world.pvp=parent.pvp;
+ world.patronusRoom=door.id;
  let dirty=false;const sounds=[],messages=[];
  world.persist=()=>{dirty=true;};world.onSound=(...args)=>sounds.push(args);world.message=text=>messages.push(text);
  const originals=players.map(p=>({p,x:p.x,y:p.y,room:p.room,input:p.previousInput,consume:p.consumeInput}));
@@ -49,7 +50,10 @@ export function tickCryptWorld(parent,door,players,inputs,dt){
   for(const stack of p.healingOverTime||[])if(stack.room===door.id)stack.room=null;
   p.x=p.roomX;p.y=p.roomY;p.room=null;p.consumeInput=!!p.ui;p.nativeCryptActive=false;
   const input=inputs[p.device]||{};
-  commands[p.device]={...input,...(p.cryptPitFall?{x:0,y:0,attack:false,jump:false,dodge:false,block:false,loot:false}:{}),inventory:false,portal:false,interact:false,use:false,close:false,controlCycle:false};
+  // The outer game owns room inventory. Forwarding panel input to both games
+  // can execute a drop or transfer twice in the same frame.
+  commands[p.device]=p.ui?{}:{...input,...(p.cryptPitFall?{x:0,y:0,attack:false,jump:false,dodge:false,block:false,loot:false}:{}),
+   inventory:false,portal:false,interact:false,use:false,close:false,controlCycle:false};
  }
  const boss=s.enemies.find(e=>e.kind===CRYPT_BOSS_KIND);
  for(const e of world.enemies){e.room=null;if(e===boss){e.kind='skeleton';e.cryptBoss=true;e.equipment||={hand1:'crypt_flame_sword',hand2:'coffin_lid_shield'};}}

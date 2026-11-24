@@ -16,8 +16,10 @@ fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.mkdirSync(output);
 for (const file of ['index.html', 'app.mjs']) fs.copyFileSync(path.join(root, file), path.join(output, file));
 const webIndex = path.join(output, 'index.html');
+const feedbackOrigin = 'https://wildbound-playtest-feedback.felix13.chatgpt.site';
 const html = fs.readFileSync(webIndex, 'utf8')
-  .replace('<head>', '<head>\n    <script src="src/web-storage.js"></script>')
+  .replace('<head>', `<head>\n    <script src="src/web-storage.js"></script>\n    <meta name="wildbound-playtest-feedback" content="${feedbackOrigin}/api/feedback" data-version="${version}">`)
+  .replace("connect-src 'self';", `connect-src 'self' ${feedbackOrigin};`)
   .replace('<title>Wildbound — The Living Board</title>', `<title>Wildbound — The Living Board · v${version}</title>`);
 fs.writeFileSync(webIndex, html);
 for (const folder of ['src', 'assets', 'worlds']) fs.cpSync(path.join(root, folder), path.join(output, folder), {recursive: true});

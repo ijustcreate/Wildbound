@@ -3,7 +3,8 @@ import {Game} from '../src/core.mjs';import {enterWildLands} from '../src/wild-l
 import {alleyGate,interactAlley,ALLEY_SHOPS,ALLEY_CLOSED_FRONTAGES,DIAGON_STREET,alleyBlocked,inDiagon,insideNocturne} from '../src/diagon-alley.mjs';import {merchantAction,merchantRows} from '../src/traveling-merchant.mjs';
 import {ALLEY_SHOP_ROOMS, mirroredShopPoint, shopCutawayOpen} from '../src/diagon-shop-rooms.mjs';
 import {alleyShopAssets} from '../src/diagon-shop-scenes.mjs';
-import {NOCTURNE_GRAVES} from '../src/diagon-nocturne-rear.mjs';
+import {NIGHTGLASS_REAR_DOOR,NOCTURNE_GRAVES} from '../src/diagon-nocturne-rear.mjs';
+import {DIAGON_PAVER_LANE,NOCTURNE_LANE} from '../src/alley-street-layout.mjs';
 import {GARDEN_PERIMETER_FRONTAGES,GARDEN_PATHS,gardenPathAt} from '../src/diagon-garden-layout.mjs';
 import {LOCKSMITH_SHOP} from '../src/diagon-locksmith.mjs';
 import {stationOwlCages,openOwlCage,tickStationOwls,catchStationOwl,releaseStationOwl} from '../src/station-owls.mjs';import {give,take,ITEMS} from '../src/items.mjs';import {snapPortalCamera,spellTransition} from '../src/portal-transition.mjs';import {wildLandsInteract} from '../src/wild-lands-world.mjs';
@@ -38,6 +39,26 @@ test('Madam Malkin stocks all three new hat colors in existing expeditions',()=>
 });
 test('station brick wall requires a held wand, opens, and transfers the whole party instantly',()=>{const {g,p}=setup(),gate=alleyGate(g);Object.assign(p,{x:gate.x,y:gate.y+55});p.equipment.hand1='sword';assert.ok(interactAlley(g,p));assert.ok(!g.trainTest.alleyOpened);assert.ok(alleyBlocked(g,gate.x,gate.y));enter(g,p);assert.equal(p.x,8000);assert.equal(p.y,5560);assert.ok(g.portalTransition.serial);assert.equal(wildLandsInteract(g,p),false);Object.assign(p,{x:8000,y:5660});assert.ok(interactAlley(g,p));assert.ok(!inDiagon(g));assert.equal(p.x,gate.x);assert.equal(p.y,gate.y+65);});
 test('all fourteen businesses have reachable interiors, valid goods, and solid walls',()=>{const {g,p}=setup();enter(g,p);assert.equal(ALLEY_SHOPS.length,14);for(const s of ALLEY_SHOPS){const point=shopApproach(s);assert.equal(alleyBlocked(g,point.x,point.y),false,s.id);assert.equal(alleyBlocked(g,s.frontEntrance?s.x:s.x+(s.x<8000?108:-108),s.frontEntrance?s.y+82:s.y),false);assert.equal(alleyBlocked(g,s.x,s.y-82),true);for(const [type]of s.stock)assert.ok(ITEMS[type],type);Object.assign(p,s.frontEntrance?bankCounter(s):point);assert.ok(interactAlley(g,p));if(s.id==='bellglass')g.inventoryAction(p,'choice:1');if(s.stock.length)assert.equal(merchantRows(g,p).length,s.stock.length);p.ui=null;}assert.equal(trainWorldBlocked(g,7000,4500),true);});
+
+test('the Quidditch outfitter sells both team uniforms alongside the existing broom vendor',()=>{
+ const {g,p,original}=setup();original.coins=p.coins=850;enter(g,p);
+ const shop=ALLEY_SHOPS.find(s=>s.id==='quidditch');
+ Object.assign(p,shopApproach(shop));assert.ok(interactAlley(g,p));
+ assert.equal(p.ui.alleyShop,'quidditch');
+ assert.ok(merchantRows(g,p).some(row=>row.item.type==='firebolt'));
+ p.ui=null;
+ const approach=mirroredShopPoint(shop,{x:7,y:43});
+ assert.equal(alleyBlocked(g,approach.x,approach.y,7),false);
+ Object.assign(p,approach);assert.ok(interactAlley(g,p));
+ assert.equal(p.ui.alleyShop,'quidditch-team-kit');
+ const rows=merchantRows(g,p);
+ assert.deepEqual(rows.map(row=>row.item.type),['quidditch_gold_robe','quidditch_gold_scarf',
+  'quidditch_violet_robe','quidditch_violet_scarf','broom_speed_potion']);
+ assert.ok(rows.every(row=>ITEMS[row.item.type]));
+ for(const row of rows){merchantAction(g,p,`select:${row.index}`);merchantAction(g,p,'use');}
+ leaveTrainTest(g);
+ for(const row of rows)assert.equal(count(original,row.item.type),1);
+});
 
 test('the west garden spur reaches the locksmith counter and leaves the north thresholds and pond route clear',()=>{
  const {g,p}=setup();enter(g,p);
@@ -112,7 +133,7 @@ test('expanded rooms have distinct drawables, mirrored doors and an unobstructed
  const {g,p}=setup();enter(g,p);
  for(const shop of ALLEY_SHOPS.filter(s=>s.id!=='ollivanders')){
   const assets=alleyShopAssets(shop), props=ALLEY_SHOP_ROOMS[shop.id].props;
-  const counts={quidditch:21,'nocturne-curios':19};
+  const counts={quidditch:22,'nocturne-curios':19};
   assert.equal(assets.length,counts[shop.id]??(shop.district==='garden'?11:20),shop.id);
   assert.equal(new Set(assets.map(a=>a.id)).size,assets.length,shop.id);
   for(const prop of props.filter(a=>a.surface)){
@@ -133,7 +154,7 @@ test('expanded rooms have distinct drawables, mirrored doors and an unobstructed
  }
 });
 
-test('the street leads to Gringotts at its far end and both Nocturne shops through the east connector',()=>{
+test('the street leads to Gringotts at its far end and Nocturne shops through the east connector',()=>{
  const {g,p,original}=setup();original.coins=p.coins=300;enter(g,p);
  const walk=(x,y)=>{
   g.moveActor(p,x-p.x,y-p.y);
@@ -142,7 +163,9 @@ test('the street leads to Gringotts at its far end and both Nocturne shops throu
  const bank=ALLEY_SHOPS.find(s=>s.id==='gringotts');
  assert.ok(ALLEY_SHOPS.every(shop=>shop===bank||shop.district==='garden'||bank.y<shop.y));
  assert.equal(bank.x,DIAGON_STREET.x+DIAGON_STREET.w/2);
- assert.equal(DIAGON_STREET.w,480);
+ assert.equal(DIAGON_STREET.w,480*.7);
+ assert.equal(DIAGON_PAVER_LANE.w,380*.7);
+ assert.equal(NOCTURNE_LANE.w,Math.round(246*.7));
  walk(8080,5560);walk(8080,bank.y+112);walk(bank.x,bank.y+112);walk(bank.x,bank.y+24);
  give(original.inventory,'dark_essence',5);give(p.inventory,'dark_essence',5);
  assert.equal(interactAlley(g,p),true);
@@ -156,6 +179,8 @@ test('the street leads to Gringotts at its far end and both Nocturne shops throu
   assert.equal(shopCutawayOpen(shop,[p]),true);
   assert.equal(interactAlley(g,p),true);
   assert.equal(p.ui?.alleyShop,shop.id);
+  if(shop.id==='borgin-burkes')g.inventoryAction(p,'borgin:shop');
+  assert.equal(p.ui?.shop,'merchant');
   assert.equal(merchantAction(g,p,'use'),true);
   assert.equal(count(p,shop.stock[0][0]),1);
   p.ui=null;walk(9050,shop.y+12);
@@ -176,8 +201,26 @@ test('Nocturne rear lane connects both public courts and preserves shop walls',(
   assert.ok(insideNocturne(x,y));
  }
  for(const grave of NOCTURNE_GRAVES)assert.ok(alleyBlocked(g,grave.x,grave.y));
- assert.ok(alleyBlocked(g,9408,4930),'Nocturne Curios remains closed along its back');
- assert.ok(alleyBlocked(g,9408,5500),'Nightglass remains closed along its back');
+ assert.ok(alleyBlocked(g,NIGHTGLASS_REAR_DOOR.x,4930),'Nocturne Curios remains closed along its back');
+ assert.ok(alleyBlocked(g,NIGHTGLASS_REAR_DOOR.x,NIGHTGLASS_REAR_DOOR.y),'Nightglass remains closed along its back');
+ Object.assign(p,{x:NIGHTGLASS_REAR_DOOR.x+20,y:NIGHTGLASS_REAR_DOOR.y});
+ assert.ok(interactAlley(g,p),'the extended porch reaches the moved Nightglass rear door');
+ assert.equal(alleyBlocked(g,NIGHTGLASS_REAR_DOOR.x,NIGHTGLASS_REAR_DOOR.y),false);
+});
+
+test('old lane shoulders are solid and the narrower streets recover saved explorers onto visible paving',()=>{
+ const {g,p}=setup();enter(g,p);
+ const shoulders=[{x:7780,y:4110},{x:8220,y:4110},{x:8982,y:5140}];
+ for(const spot of shoulders){
+  Object.assign(p,spot);p.coins=97;
+  assert.equal(alleyBlocked(g,p.x,p.y),true);
+  g.update(.016,{});
+  assert.equal(alleyBlocked(g,p.x,p.y),false);
+  assert.ok(Math.hypot(p.x-spot.x,p.y-spot.y)<88);
+  assert.equal(p.coins,97);
+ }
+ assert.equal(alleyBlocked(g,8000,4110),false);
+ assert.equal(alleyBlocked(g,9093,5140),false);
 });
 
 test('legacy explorers standing in a dark service yard are moved to the nearest open route',()=>{

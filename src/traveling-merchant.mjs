@@ -4,6 +4,7 @@ import {drawTorchFlame} from './torch-flame.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {locationClearing} from './location-clearing.mjs';
 import {drawCampfire,drawCampfireLabel} from './campfire-art.mjs';
+import {emporiumOwlOffer,owlAdoptionReason,purchaseEmporiumOwl} from './owl-companions.mjs';
 export function merchantSites(g){
  const queue=[[25,25]],seen=new Set(['25:25']),sites=[];
  for(let i=0;i<queue.length;i++){const [tx,ty]=queue[i],x=tx*32+16,y=ty*32+16;
@@ -40,7 +41,9 @@ export function merchantRows(g,p){
   return [{index,item,price:mode==='pack'?sellValue(item.type)*item.qty:entry.price}];
  });
 }
-export function merchantPurchaseReason(p,item,price){
+export function merchantPurchaseReason(p,item,price,g){
+  const owl=emporiumOwlOffer(p,item);
+  if(owl)return owlAdoptionReason(g,p,owl,price);
   if((p.coins||0)<price)return 'You need '+(price-(p.coins||0))+' more gold.';
   if(!canGive(p.inventory,item.type,item.qty,BACKPACK_SLOTS,item))return 'Not enough backpack space for this purchase.';
   return '';
@@ -67,10 +70,16 @@ export function merchantAction(g,p,action){
   }else{
    const entry=m.stock[u.index];if(!entry)return true;
    if(entry.seller&&entry.seller!==(p.profileId||p.id)){u.notice='Reserved for its original owner.';return true;}
-   const reason=merchantPurchaseReason(p,entry.item,entry.price);
+   const reason=merchantPurchaseReason(p,entry.item,entry.price,g);
    if(reason){u.notice=reason;return true;}
+   const owl=emporiumOwlOffer(p,entry.item);
+   if(owl){
+    if(!purchaseEmporiumOwl(g,p,entry.item.type,entry.price))return true;
+    u.notice=`${owl.name} is your companion. Open Companion care to give it a name.`;
+   }else{
    if(!give(p.inventory,entry.item.type,entry.item.qty,BACKPACK_SLOTS,entry.item))return true;
    p.coins-=entry.price;if(m.alleyShop){const receipt=((g.trainTest.alleyPurchases??={})[p.id]??={spent:0,gold:0,items:[],delta:{}});receipt.baseline??={};receipt.baseline[entry.item.type]??=p.inventory.filter(a=>a?.type===entry.item.type).reduce((n,a)=>n+a.qty,0)-entry.item.qty;receipt.spent+=entry.price;receipt.delta[entry.item.type]=(receipt.delta[entry.item.type]||0)+entry.item.qty;}else if(m.trainTailor){const receipt=((g.trainTest.tailorPurchases??={})[p.id]??={spent:0,items:[]});receipt.spent+=entry.price;receipt.items.push(structuredClone(entry.item));}if(entry.seller)m.stock.splice(u.index,1);u.index=Math.min(u.index,Math.max(0,m.stock.length-1));u.page=Math.floor(u.index/8);u.notice=m.trainTailor?'A fine fit. Safe travels to Hogwarts!':'“A fine trade. Try not to get eaten.”';
+   }
   }const remaining=merchantRows(g,p);if(!remaining.some(row=>row.index===u.index))u.index=remaining[Math.min(at,remaining.length-1)]?.index??0;
   u.tradeSerial=(u.tradeSerial||0)+1;m.revision++;g.uiRevision=(g.uiRevision||0)+1;g.onSound?.(u.panel==='pack'?'sell':'purchase',p);g.persist?.();
  }return true;

@@ -10,6 +10,7 @@ const INK = '#203a29', CORE = '#2b4933', SHADE = '#34563a';
 const FROND = '#426841', FACE = '#517747', CROWN = '#61844d';
 const LIT = '#7c9a56', TIP = '#96ab68', MUTED = '#59754a';
 const WOOD = '#514633', BARK = '#745b3c', CUT = '#b28a52';
+const SNOW_SHADE='#89a5a7',SNOW='#b8cfd2',SNOW_LIT='#d8e9e7';
 const stamps = new Map();
 
 // Contiguous, uneven scales keep each patch legible in the broad green planes.
@@ -61,7 +62,31 @@ function paintCut(c, w, d, variant) {
   rect(c, x + 4, y + 4, 3, 1, BARK);
 }
 
-function paintHedge(c, w, d, mask, variant, damage) {
+function paintPackedSnow(c,left,rear,right,front,variant,coverage){
+  const span=right-left,depth=front-rear;
+  if(span<4||depth<3)return;
+  if(coverage===1){
+    leaf(c,left+1,rear+1,variant,SNOW,SNOW_SHADE);
+    if(span>9)leaf(c,right-5,front-5,variant+2,SNOW_LIT,SNOW_SHADE);
+    return;
+  }
+  const x=coverage===3?left:left+1;
+  const end=coverage===3?right:right-2;
+  const middle=x+(end-x)*(.37+(variant%3)*.09);
+  const fall=coverage===3?front:rear+Math.max(3,Math.floor(depth*.64));
+  polygon(c,[[x,rear+1],[x+2,rear],[end-1,rear],[end,rear+2],[end,fall-2],
+    [end-2,fall],[middle+2,fall-1],[middle,fall+1],[x+1,fall-1],[x,fall-3]],SNOW_SHADE);
+  polygon(c,[[x,rear+1],[end-1,rear+1],[end-1,fall-3],[end-3,fall-2],
+    [middle+1,fall-3],[middle-1,fall-1],[x+1,fall-2],[x,fall-3]],SNOW);
+  rect(c,x+1,rear+1,Math.max(1,Math.floor(span*.46)),1,SNOW_LIT);
+  if(depth>7)leaf(c,Math.round(middle),rear+2,variant+1,SNOW_LIT,SNOW);
+  if(coverage===3&&depth>6){
+    rect(c,Math.round(middle+1),fall,2,2,SNOW_SHADE);
+    if(variant%2)rect(c,end-3,fall-1,2,2,SNOW);
+  }
+}
+
+function paintHedge(c, w, d, mask, variant, damage, snow) {
   if (damage === 3) return paintCut(c, w, d, variant);
   const west = Boolean(mask & WEST), east = Boolean(mask & EAST);
   const north = Boolean(mask & NORTH), south = Boolean(mask & SOUTH);
@@ -147,6 +172,20 @@ function paintHedge(c, w, d, mask, variant, damage) {
     rect(c, foot, bottom - length, 2, length, WOOD);
     if (variant % 3 !== 1) rect(c, foot, bottom - length + 1, 1, length - 1, BARK);
   }
+  if(snow===3&&!south){
+    const l=faceL+1,r=faceR-1,span=r-l;
+    const first=l+Math.max(2,Math.round(span*.27)),last=r-Math.max(2,Math.round(span*.24));
+    const drift=Math.min(bottom-3,front+13+variant%4);
+    polygon(c,[[l,front-3],[r,front-3],[r,drift-4],[last+1,drift-4],
+      [last,drift+1],[first+1,drift-2],[first,drift],[l,drift-5]],SNOW_SHADE);
+    polygon(c,[[l,front-3],[r-1,front-3],[r-1,drift-7],[last,drift-5],
+      [last-1,drift-3],[first,drift-5],[l,drift-7]],SNOW);
+    if(span>10){
+      leaf(c,first+1,front+3,variant,SNOW_LIT,SNOW);
+      rect(c,last-2,drift-6,3,1,SNOW_LIT);
+    }
+  }
+  if(snow)paintPackedSnow(c,topLeft,rear,topRight,Math.max(rear+3,front-2),variant,snow);
   if (damage > 0) {
     const leftCut = variant % 2 === 0, width = Math.max(2, Math.floor(w / 4));
     const x = leftCut ? faceL + 1 : faceR - width;
@@ -165,7 +204,7 @@ function paintHedge(c, w, d, mask, variant, damage) {
 
 // The two hand-trimmed entrance ends curve toward the gap. Keep the lighting
 // anchored on the screen's upper left even when the pruning pattern turns.
-function paintEntryHedge(c, w, d, side, variant, damage) {
+function paintEntryHedge(c, w, d, side, variant, damage, snow) {
   const bottom = d + HEIGHT, reverse = side === 'right';
   const profile = (points, color) => polygon(c, points.map(([u, y]) => {
     const x = Math.round(u * (w - 1));
@@ -201,6 +240,14 @@ function paintEntryHedge(c, w, d, side, variant, damage) {
   leaf(c, leafX, d + 17, variant, FROND, CORE);
   rect(c, litX + 1, 1, 2, 1, TIP);
   rect(c, leafX + 1, bottom - 4, 2, 3, WOOD);
+  if(snow){
+    const spill=snow===3?d-4:Math.max(3,Math.floor(d*.52));
+    profile([[.08,1],[.27,-1],[.49,-5],[.69,-5],[.85,-3],[.92,2],[.89,spill-1],
+      [.76,spill+2],[.57,spill],[.39,spill+2],[.18,spill],[.08,spill-2]],SNOW_SHADE);
+    profile([[.12,1],[.28,-1],[.5,-4],[.69,-4],[.83,-2],[.9,2],[.86,spill-2],
+      [.68,spill],[.53,spill-2],[.35,spill],[.15,spill-2]],SNOW);
+    profile([[.32,-1],[.48,-4],[.7,-4],[.71,-3],[.47,-2],[.34,1]],SNOW_LIT);
+  }
   if (damage > 0) {
     rect(c, leafX, d + 6, 4, damage + 4, INK);
     rect(c, leafX + 1, d + 7, 1, damage + 2, BARK);
@@ -214,11 +261,12 @@ function drawStamp(c, part, damage) {
   const mixed = Math.imul((seed | 0) ^ 0x9e3779b9, 0x45d9f3b);
   const entry = damage !== 3 && (part.entryEnd === 'left' || part.entryEnd === 'right') ? part.entryEnd : '';
   const cap = MARGIN + (entry ? ENTRY_CROWN : 0);
-  const variant = (mixed ^ (mixed >>> 16)) & 7, key = `${width}:${depth}:${mask & 15}:${variant}:${damage}:${entry}`;
+  const snow=damage===3?0:Math.max(0,(part.snow||0)-(damage===2?1:0));
+  const variant = (mixed ^ (mixed >>> 16)) & 7, key = `${width}:${depth}:${mask & 15}:${variant}:${damage}:${entry}:${snow}`;
   let stamp = stamps.get(key);
   if (!stamp) {
-    const paint = pen => entry ? paintEntryHedge(pen, width, depth, entry, variant, damage) :
-      paintHedge(pen, width, depth, mask & 15, variant, damage);
+    const paint = pen => entry ? paintEntryHedge(pen, width, depth, entry, variant, damage, snow) :
+      paintHedge(pen, width, depth, mask & 15, variant, damage, snow);
     if (typeof OffscreenCanvas === 'undefined' && typeof document === 'undefined') {
       c.save();
       if (entry) {
@@ -252,7 +300,7 @@ function drawStamp(c, part, damage) {
 }
 
 export function drawOverlookHedgeGround(c, part) {
-  const {x, y, w = 32, h = 32, mask = 0, broken = false} = part;
+  const {x, y, w = 32, h = 32, mask = 0, broken = false,snow=0} = part;
   if (broken) {
     rect(c, x + 5, y + h - 14, w - 6, 13, '#152b2349');
     drawStamp(c, part, 3);
@@ -269,7 +317,8 @@ export function drawOverlookHedgeGround(c, part) {
     rect(c, x + 5, y + h + 4, w - 4 - inner, 3, '#162a203a');
     for(let i=0;i<2;i++){
       const px=x+4+((part.seed||0)+i*13)%Math.max(1,w-9),py=y+h+3+i*3;
-      rect(c,px,py,4,2,'#4f633b');rect(c,px+1,py-1,2,1,'#718052');
+      rect(c,px,py,snow>1?6:4,2,snow?'#9caeb0':'#4f633b');
+      rect(c,px+1,py-1,snow>1?4:2,1,snow?'#c7dcdd':'#718052');
     }
   }
 }

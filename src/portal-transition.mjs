@@ -15,8 +15,8 @@ export function snapPortalCamera(renderer,g,target){
 export function drawPortalFlash(c,g,w,h,owners=null){
  const transition=g.portalTransition;if(owners&&transition?.ids&&!owners.some(id=>transition.ids.includes(id)))return;
  const elapsed=(performance.now()-(transition?.at??-10000))/1000;
- if(transition?.effect==='portkey'){
-  if(elapsed>=0&&elapsed<.56)drawPortkeyWarp(c,w,h,elapsed/.56);
+ if(transition?.effect==='portkey'||transition?.effect==='floo'){
+  if(elapsed>=0&&elapsed<.56)drawPortkeyWarp(c,w,h,elapsed/.56,transition.effect==='floo');
   return;
  }
  if(elapsed<0||elapsed>.22)return;
@@ -24,16 +24,16 @@ export function drawPortalFlash(c,g,w,h,owners=null){
  c.save();c.fillStyle=`rgba(20,30,36,${.16*(1-elapsed/.22)**2})`;c.fillRect(0,0,w,h);c.restore();
 }
 
-function drawPortkeyWarp(c,w,h,progress){
+function drawPortkeyWarp(c,w,h,progress,floo=false){
  const reduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  const fade=(1-progress)**2,cx=w/2,cy=h*.49;
  c.save();
- c.fillStyle=`rgba(18,34,41,${fade*(reduced?.23:.58)})`;c.fillRect(0,0,w,h);
+ c.fillStyle=`rgba(${floo?'14,49,34':'18,34,41'},${fade*(reduced?.23:.58)})`;c.fillRect(0,0,w,h);
  if(!reduced){
   // Screen-space rays uncoil during arrival. Integer endpoints and narrow
   // strips keep the transition in the same pixel vocabulary as the world.
   const span=Math.min(w,h),radius=(.16+progress*.81)*span;
-  const colors=['#f7e5aa','#dfb86a','#8dd8ba','#bce4ce'];
+  const colors=floo?['#f3ffd4','#b6ea87','#75dca1','#d9ffd7']:['#f7e5aa','#dfb86a','#8dd8ba','#bce4ce'];
   for(let i=0;i<24;i++){
    const phase=i*2.3999632297+progress*1.54;
    const dx=Math.cos(phase),dy=Math.sin(phase);

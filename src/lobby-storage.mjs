@@ -38,7 +38,7 @@ export function tickLobbyStorage(game,practice,state,inputs,dt){
         for(const door of context.portals)door.lobby=true;
         state.invalidate(game.players);
       }
-      if(p.room&&!p.ui){tickStorageRoom(context,p,input,dt,edge('interact')||edge('lobbyInteract'));if(p.ui){s.storageUiOpened=true;s.inventoryRelease=true;}}
+      if(p.room&&!p.ui){tickStorageRoom(context,p,input,dt,edge('interact')||edge('lobbyInteract'),edge('loot'));if(p.ui){s.storageUiOpened=true;s.inventoryRelease=true;}}
       for(const order of p.vendingOrders||[])if(!order.ready){order.elapsed+=dt;if(order.elapsed>=1.6){order.ready=true;changed=true;}}
     }
   }finally{

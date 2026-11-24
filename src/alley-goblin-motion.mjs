@@ -56,7 +56,7 @@ export function drawAlleyGoblin(c,actor,time,model=alleyGoblinMotion,suppliedPos
  const p=Object.fromEntries(Object.entries(pose).map(([name,point])=>[name,projectPoint(point,angle)]));
  const parts=[];
  const layer=(id,bone,bones,fn,depth=p[bone].depth)=>parts.push({id,bone,bones,fn,depth});
- const trousers=role==='bartender'?cloth.pants:model.palette.legs;
+ const trousers=role==='bartender'||role==='bayou-sage'?cloth.pants:model.palette.legs;
  for(const side of ['L','R']){
   const hip='hip'+side,knee='knee'+side,foot='foot'+side,toe='toe'+side;
   const shoulder='shoulder'+side,elbow='elbow'+side,hand='hand'+side;

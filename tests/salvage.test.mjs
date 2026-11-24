@@ -5,6 +5,9 @@ import {salvageYield,tickSalvage,salvageProgress} from '../src/salvage.mjs';
 import {cleanInput} from '../src/rooms.mjs';
 import {category} from '../src/field-systems.mjs';
 import {playerAction,playerPose,defaultPlayerMotion,upgradePlayerMotion} from '../src/player-motion.mjs';
+import {enterWildLands} from '../src/wild-lands.mjs';
+import {trainCars,trainRiderWorld} from '../src/train-track.mjs';
+import {visitQuidditchPitch,leaveQuidditchPitch} from '../src/quidditch-scene.mjs';
 const setup=(type='sword')=>{const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.openingBoard=false;g.loot=[];p.inventory=[{type,qty:1}];p.x=600;p.y=600;g.openInventory(p);return {g,p};};
 const hold=(g,p,n=26)=>{for(let i=0;i<n;i++)tickSalvage(g,p,true,.05);};
 test('salvage yields common dust, magic essence, and separate legendary essence',()=>{
@@ -58,4 +61,57 @@ test('lobby salvage returns materials and sockets directly, and full backpacks f
  assert.equal(g.loot.length,0);assert.ok(p.inventory.some(i=>i?.type==='relic_dust'));assert.ok(p.inventory.some(i=>i?.type==='magic_essence'));assert.ok(p.inventory.some(i=>i?.type==='azure_bead'));
  const second=setup('moon_blade');second.g.phase='lobby';second.p.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));second.p.inventory[0]={type:'moon_blade',qty:1,sockets:['starheart']};const before=structuredClone(second.p.inventory);
  hold(second.g,second.p);assert.deepEqual(second.p.inventory,before);assert.equal(second.g.loot.length,0);assert.match(second.p.ui.notice,/space|full/i);
+});
+
+function wildsSalvage(){
+ const g=new Game(()=>.5,{deferWorld:true}),p=g.addPlayer('keyboard');
+ assert.ok(enterWildLands(g,{persistent:true,homeStart:true}).ok);
+ g.trainTest.preparing=false;g.persist=()=>{};
+ return {g,p};
+}
+const updateSalvage=(g,input,frames)=>{for(let i=0;i<frames;i++)g.update(.05,input);};
+
+test('Wild Lands inventory advances holds, cancels selection changes, and finishes with manual loot',()=>{
+ const {g,p}=wildsSalvage();p.inventory=[{type:'sword',qty:1},{type:'wand',qty:1}];g.openInventory(p);
+ const held={keyboard:{salvage:true}};
+ updateSalvage(g,held,10);assert.ok(salvageProgress(p)>.35);
+ g.update(.05,{keyboard:{salvage:true,next:true}});
+ updateSalvage(g,held,27);
+ assert.deepEqual(p.inventory.map(item=>item.type),['sword','wand']);
+ assert.equal(g.loot.length,0);
+ g.update(.05,{});updateSalvage(g,held,25);
+ assert.ok(!p.inventory[1]);
+ assert.ok(g.loot.some(l=>l.type==='magic_essence'&&l.manualPickup));
+ assert.equal(playerAction(p),'salvage');
+ updateSalvage(g,{},7);assert.notEqual(playerAction(p),'salvage');
+});
+
+test('a rider can collect salvage and socketed items on a moving train',()=>{
+ const {g,p}=wildsSalvage(),t=g.trainTest;
+ p.trainRide={car:2,x:0,y:34};p.inventory=[{type:'moon_blade',qty:1,sockets:['starheart']}];
+ Object.assign(p,trainRiderWorld(trainCars(t),p.trainRide));
+ Object.assign(t,{engine:true,throttle:.4,speed:70});g.openInventory(p);
+ const start=t.distance;
+ p.ui.salvagePointer=true;updateSalvage(g,{},25);
+ assert.ok(t.distance>start+20);
+ assert.ok(!p.inventory[0]);
+ const loot=g.loot.slice();assert.deepEqual(loot.map(l=>l.type),['relic_dust','magic_essence','starheart']);
+ assert.ok(loot.every(l=>l.manualPickup&&l.railwaySurface?.car===2));
+ const position=loot[0].x;updateSalvage(g,{},10);assert.ok(Math.abs(loot[0].x-position)>2);
+ assert.ok(loot.every(item=>g.collect(p,item)));
+ assert.ok(p.inventory.some(item=>item?.type==='starheart'));
+});
+
+test('salvage works from the pitch inventory and keeps the yard’s loot separate',()=>{
+ const {g,p}=wildsSalvage(),t=g.trainTest;
+ t.design.activeRoom='diagon';
+ const alleyLoot=g.loot;assert.ok(visitQuidditchPitch(g,p,{x:8240,y:4820}));
+ p.inventory=[{type:'sword',qty:1}];g.openInventory(p);
+ updateSalvage(g,{keyboard:{salvage:true}},25);
+ assert.ok(!p.inventory[0]);
+ assert.ok(g.loot.some(l=>l.type==='relic_dust'));
+ assert.equal(alleyLoot.length,0);
+ assert.ok(leaveQuidditchPitch(g));
+ assert.equal(g.loot,alleyLoot);
+ assert.ok(t.pitchGroundLoot.some(l=>l.type==='relic_dust'&&l.manualPickup));
 });

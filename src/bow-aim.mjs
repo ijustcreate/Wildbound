@@ -3,15 +3,15 @@ import {rangedLaunchOrigin} from './ranged-launch.mjs';
 import {chargedProjectileRange,arrowFlightGravity,arrowBeyondWorld,chargedSpellDiameter} from './projectile-range.mjs';
 import {rules} from './definitions.mjs';
 import {drawProjectileHoldPath} from './hold-telegraphs.mjs';
-import {boomerangDirection,projectBoomerangTurn} from './boomerang-flight.mjs';
+import {boomerangDirection,boomerangRange,equippedGlaiveSlot,projectBoomerangTurn} from './boomerang-flight.mjs';
 import {drawBoomerangReturnGuide} from './boomerang.mjs';
 import {combatTuning} from './combat-workshop-settings.mjs';
 import {magicBoltColor} from './magic-bolt-render.mjs';
-export function projectedAimTrajectory(actor,{origin,direction,kind,charge=0,world=null,maxDistance=560}={}){
+export function projectedAimTrajectory(actor,{origin,direction,kind,slot='hand1',charge=0,world=null,maxDistance=560}={}){
  if(!origin||!direction||!['bow','magic','boomerang'].includes(kind))return [];
  if(kind==='boomerang'){
-  const range=Math.min(maxDistance,ITEMS[actor.equipment?.hand1]?.range||330);
-  const blocked=world?.projectileBlocked?(x,y)=>world.projectileBlocked(x,y,1,false):null;
+  const range=Math.min(maxDistance,boomerangRange(ITEMS[actor.equipment?.[slot]],charge));
+  const blocked=world?.projectileBlocked?(x,y)=>world.projectileBlocked(x,y,1,false,actor):null;
   const turn=projectBoomerangTurn(origin,direction,range,blocked),heading=boomerangDirection(direction.x,direction.y);
   const distance=Math.hypot(turn.x-origin.x,turn.y-origin.y),z=16;
   const points=[];
@@ -33,7 +33,7 @@ export function projectedAimTrajectory(actor,{origin,direction,kind,charge=0,wor
   return {x:origin.x+dx*d,y:origin.y+dy*d,z:Math.max(0,height+vz*t-.5*gravity*t*t),distance:d};
  };
  // Collision probes use the flight plane and radius. Display projection happens after clipping.
- const blocked=({x,y})=>world?.projectileBlocked?.(x,y,radius,false)||
+ const blocked=({x,y})=>world?.projectileBlocked?.(x,y,radius,false,actor)||
   kind==='bow'&&world&&arrowBeyondWorld(world,x,y);
  const points=[pointAt(0)];
  let clear=0;
@@ -55,16 +55,18 @@ export function projectedAimTrajectory(actor,{origin,direction,kind,charge=0,wor
 }
 
 export function drawBowAim(ctx,actor,scale=1,time=0,world=null,visualLift=actor.trainVisualLift||0){
- const slots=['hand1','hand2'].filter(slot=>ITEMS[actor.equipment?.[slot]]?.magic);
+ const glaive=actor.glaiveInFlight?null:equippedGlaiveSlot(actor);
+ const slots=glaive?[]:['hand1','hand2'].filter(slot=>ITEMS[actor.equipment?.[slot]]?.magic);
  const heldMagic=slots.length>0&&actor.holdingPosition&&actor.charge>0;
  if((!actor.bowAiming&&!heldMagic)||actor.hp<=0||actor.room||actor.ui||actor.stun>0||actor.frozen>0||actor.sleeping>0||actor.swimming||actor.sink>18)return [];
  const size=scale===1?43:48*scale,charge=actor.charge||0;
  const points=[];
- for(const slot of slots.length?slots:['hand1']){
-  const def=ITEMS[actor.equipment?.[slot]],equipped=itemKind(actor.equipment?.hand1),kind=slots.length?'magic':equipped==='bow'?'bow':equipped==='boomerang'?'boomerang':null;
+ for(const slot of glaive?[glaive]:slots.length?slots:['hand1']){
+  const def=ITEMS[actor.equipment?.[slot]],equipped=itemKind(actor.equipment?.[slot]);
+  const kind=slots.length?'magic':equipped==='bow'?'bow':equipped==='boomerang'&&(!def?.glaive||glaive)?'boomerang':null;
   if(!kind)continue;
   const origin=rangedLaunchOrigin(actor,time,kind,{slot,size}),direction={x:actor.faceX??0,y:actor.faceY??1};
-  const path=projectedAimTrajectory(actor,{origin,direction,kind,charge,world});
+  const path=projectedAimTrajectory(actor,{origin,direction,kind,slot,charge,world});
   const color=kind==='magic'?magicBoltColor(def):kind==='boomerang'?(def?.artColor||def?.color||'#c9e7b0'):'#c9e7b0';
   const lift=visualLift-(kind==='bow'?(actor.trainVisualLift||0):0);
   drawProjectileHoldPath(ctx,path,{color,charge,lift});

@@ -45,8 +45,9 @@ export function drawWolf(c, actor, time, model=wolfMotion, suppliedPose=null) {
   const p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)]));
   const pal=model.palette, q=[];
   const add=(bone,id,fn)=>q.push({bone,id,depth:p[bone].depth,fn});
+ const alpha=actor.wildWolfPackSize?actor.wildAlphaWolf:actor.alpha;
   c.save();
-  if(actor.alpha)c.scale(1.18,1.18);
+ if(alpha){const size=actor.wildAlphaWolf?1.3:1.18;c.scale(size,size);}
   add('tailBase','Bushy tail',()=>drawWolfTail(c,p,pal));
   for(const side of ['L','R'])for(const front of [true,false]) {
     const a=(front?'shoulder':'hip')+side,b=(front?'elbow':'hock')+side,end=(front?'frontPaw':'rearPaw')+side;
@@ -59,7 +60,7 @@ export function drawWolf(c, actor, time, model=wolfMotion, suppliedPose=null) {
     limb(c,p.head,p.muzzle,4,pal.cream);limb(c,p.muzzle,p.nose,2.5,pal.cream);
     ellipse(c,p.nose.x,p.nose.y,1.6,1.2,'#202d36');
     if(d<3||d>5)for(const side of ['L','R']){const e=p['eye'+side];c.fillStyle=pal.shade;c.fillRect(Math.round(e.x)-1,Math.round(e.y),3,2);c.fillStyle=pal.eyes;c.fillRect(Math.round(e.x),Math.round(e.y),1,1);}
-    if(actor.alpha){limb(c,p.neck,p.chest,2,pal.cream);}
+    if(alpha){limb(c,p.neck,p.chest,2,pal.cream);}
     if(actor.attack>0){c.fillStyle='#eadfd2';c.fillRect(Math.round(p.muzzle.x)-1,Math.round(p.muzzle.y)+2,2,2);}
   });
   paintLayers(q,model,d,c,p);

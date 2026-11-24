@@ -1,4 +1,6 @@
 import {npcDialogueView, npcDialogueAction} from './npc-quests.mjs';
+import {drawMysteryDog} from './mystery-inc-art.mjs';
+import {drawFlooHearth} from './floo-art.mjs';
 import {controllerButtonNames} from './controls.mjs';
 import {ITEMS} from './items.mjs';
 
@@ -38,7 +40,7 @@ export function npcDialoguePanel(panel, g, p, button) {
   }
   const box = el('section', '', 'npc-dialogue');
   box.setAttribute('role', 'dialog');
-  box.setAttribute('aria-label', `Conversation with ${npc?.name || 'a friend'}`);
+  box.setAttribute('aria-label', u.flooHearth?'Choose a fireplace':`Conversation with ${npc?.name || 'a friend'}`);
   const cast = el('div', '', 'npc-dialogue-cast');
   for (const [side, actor] of [
     ['npc', npc],
@@ -73,7 +75,7 @@ export function npcDialoguePanel(panel, g, p, button) {
     body.append(card);
   }
   const choices = el('nav', '', 'npc-dialogue-choices');
-  choices.setAttribute('aria-label', 'Conversation choices');
+  choices.setAttribute('aria-label', u.flooHearth?'Floo destinations':'Conversation choices');
   const node = u.node;
   for (const [index, choice] of (view?.choices || []).entries()) {
     const selected = index === (u.index ?? 0);
@@ -97,7 +99,7 @@ export function npcDialoguePanel(panel, g, p, button) {
   const notice = el('p', view?.notice || u.notice || '', 'npc-dialogue-notice');
   notice.setAttribute('role', 'status'); notice.hidden = !notice.textContent;
   body.append(notice);
-  box.append(cast, body, el('small', `${controls.select}: Choose · ${controls.accept}: Reply · ${controls.close}: Close`, 'npc-dialogue-help'));
+  box.append(cast, body, el('small', `${controls.select}: Choose · ${controls.accept}: ${u.flooHearth?'Travel':'Reply'} · ${controls.close}: Close`, 'npc-dialogue-help'));
   panel.append(box);
 }
 
@@ -112,6 +114,14 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
     if (!c) continue;
     c.clearRect(0, 0, canvas.width, canvas.height);
     if (!source) continue;
+    if(!player&&p.ui.flooHearth){
+      c.save();c.imageSmoothingEnabled=false;c.translate(canvas.width/2,canvas.height-14);c.scale(3.3,3.3);
+      drawFlooHearth(c,time,true);c.restore();continue;
+    }
+    if(!player&&source.dog&&p.ui.mysteryVisitor){
+      drawMysteryDog(c,{...source,x:canvas.width/2,y:canvas.height-17,faceX:1,faceY:1},time,185);
+      continue;
+    }
     const nativeNpc=!player&&['alan','alley_goblin'].includes(source.sprite);
     c.save(); c.imageSmoothingEnabled = false;
     // The humanoid's origin is at its feet. Enlarge and move the legs below

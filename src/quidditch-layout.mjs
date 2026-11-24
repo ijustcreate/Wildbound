@@ -19,12 +19,16 @@ export const SNITCH_POINTS=3;
 export const PITCH_FLIGHT_MIN=25;
 export const PITCH_FLIGHT_MAX=128;
 
-export function quidditchFieldBlocked(x,y,r=0,height=0){
+export const quidditchTrunkVisible=match=>match?.phase!=='playing';
+const trunkFootprint={...QUIDDITCH_TRUNK,w:23,h:10};
+const pitchFixtures=[{...QUIDDITCH_RETURN,w:13,h:8},{...QUIDDITCH_RACK,w:25,h:9},
+ ...Object.values(QUIDDITCH_TEAMS).map(team=>({...team.home,w:14,h:9}))];
+
+export function quidditchFieldBlocked(x,y,r=0,height=0,match=null){
  const b=QUIDDITCH_PITCH;
  if(x<b.left+r||x>b.right-r||y<b.top+r||y>b.bottom-r)return true;
  if(height>35)return false;
- const fixtures=[{...QUIDDITCH_TRUNK,w:23,h:10},{...QUIDDITCH_RETURN,w:13,h:8},
-  {...QUIDDITCH_RACK,w:25,h:9},...Object.values(QUIDDITCH_TEAMS).map(team=>({...team.home,w:14,h:9}))];
- return fixtures.some(p=>Math.abs(x-p.x)<p.w+r&&Math.abs(y-p.y)<p.h+r)||
+ const overlaps=p=>Math.abs(x-p.x)<p.w+r&&Math.abs(y-p.y)<p.h+r;
+ return (quidditchTrunkVisible(match)&&overlaps(trunkFootprint))||pitchFixtures.some(overlaps)||
   QUIDDITCH_HOOPS.some(p=>Math.hypot(x-p.x,y-p.y)<4+r);
 }

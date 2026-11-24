@@ -1,17 +1,20 @@
 import {projectPoint,facingIndex} from './actor-projection.mjs';
 import {pixelLine,pixelPolygon,pixelVolume} from './pixel-shapes.mjs';
 import {ravenPose,drawRavenWing} from './raven-art.mjs';
+import {drawPirateParrot} from './pirate-parrot-art.mjs';
 import {STATION_OWL_CAGE_SCALE,STATION_OWL_CAGE_FOOT_Y,STATION_OWL_CAGE_PERCH_HEIGHT} from './station-building.mjs';
 const colors={ink:'#424c56',black:'#e9eadc',shade:'#a5b6bc',sheen:'#cbd6d0',glint:'#fff9e9'};
 const owlLooks={
  snowy:{...colors,disk:'#fff9e9',feet:'#8f8470',eye:'#d8b84c',mark:'#82959c',beak:'#565447',size:1},
  hedwig:{...colors,disk:'#fff9e9',feet:'#8f8470',eye:'#e3ad51',mark:'#81919b',beak:'#565447',size:.9},
  pigwidgeon:{ink:'#41352d',black:'#9a7956',shade:'#675449',sheen:'#bb9970',glint:'#e9c493',
-  disk:'#e6caa0',feet:'#94775c',eye:'#dba74d',mark:'#6d5344',beak:'#6f5947',size:.67},
+  disk:'#f0dec0',feet:'#94775c',eye:'#dba74d',mark:'#6d5344',beak:'#6f5947',barn:true,size:.67},
  archimedes:{ink:'#41322c',black:'#95663f',shade:'#654833',sheen:'#b58555',glint:'#e1b881',
   disk:'#d5ad78',feet:'#957555',eye:'#ecab4b',mark:'#583e32',beak:'#584435',horns:true,size:1},
 };
-export function drawSnowyOwl(c,a,time=0,size=38){const d=facingIndex(a.faceX||0,a.faceY??1),pose=ravenPose({...a,id:Number(a.visualSeed)||1,faction:null,raven:{phase:a.owlPhase||'perch',phaseTime:a.owlPhaseTime||0}},time),p=v=>projectPoint(v,d),near=d<=3?-1:1;
+export function drawSnowyOwl(c,a,time=0,size=38){
+ if(a.owlVariant==='parrot')return drawPirateParrot(c,a,time,size);
+ const d=facingIndex(a.faceX||0,a.faceY??1),pose=ravenPose({...a,id:Number(a.visualSeed)||Number(a.id)||1,faction:null,hunterPet:false,raven:{phase:a.owlPhase||'perch',phaseTime:a.owlPhaseTime||0}},time),p=v=>projectPoint(v,d),near=d<=3?-1:1;
  const look=owlLooks[a.owlVariant]||owlLooks.snowy;
  const palette={body:look.black,shade:look.shade,light:look.glint,outline:look.ink};
  const shadow=Math.max(4,Math.round(7*size/38*look.size));
@@ -28,7 +31,12 @@ export function drawSnowyOwl(c,a,time=0,size=38){const d=facingIndex(a.faceX||0,
   pixelLine(c,p([side*5,hy+1,z+5]),p([side*7,hy-2,z+8]),look.sheen,2);
  }
  pixelVolume(c,[0,hy,z],7,5,6,d,palette);
- if(d!==4){const disk=[p([-5,hy+4,z+3]),p([5,hy+4,z+3]),p([6,hy+4,z-2]),p([2,hy+5,z-5]),p([-2,hy+5,z-5]),p([-6,hy+4,z-2])];pixelPolygon(c,disk,look.disk);
+ if(a.hunterPet&&a.collar&&d!==4){
+  pixelLine(c,p([-4,hy+4,z-6]),p([0,hy+5,z-7]),a.collar,2);
+  pixelLine(c,p([0,hy+5,z-7]),p([4,hy+4,z-6]),a.collar,2);
+ }
+ if(d!==4){const disk=look.barn?[[-6,3],[-3,5],[0,3],[3,5],[6,3],[6,0],[0,-6],[-6,0]].map(([x,height])=>p([x,hy+4,z+height])):
+  [p([-5,hy+4,z+3]),p([5,hy+4,z+3]),p([6,hy+4,z-2]),p([2,hy+5,z-5]),p([-2,hy+5,z-5]),p([-6,hy+4,z-2])];pixelPolygon(c,disk,look.disk);
  for(const side of [-1,1]){if((d===2||d===3)&&side>0||(d===5||d===6)&&side<0)continue;const eye=p([side*3,hy+5,z+1]);c.fillStyle=look.eye;c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,3,3);c.fillStyle='#242f39';c.fillRect(Math.round(eye.x),Math.round(eye.y)-1,1,3);}
  pixelPolygon(c,[p([-1,hy+5,z-1]),p([1,hy+5,z-1]),p([0,hy+7,z-4])],look.beak);}
  for(const [x,y,z]of [[-4,-2,17],[3,-4,14],[-3,-2,10],[3,0,9]])pixelLine(c,p([x-1,y,z]),p([x+1,y,z-1]),look.mark);

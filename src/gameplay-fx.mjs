@@ -4,6 +4,7 @@ import {ITEMS} from './items.mjs';
 import {magicBoltColor,magicChargePalette} from './magic-bolt-render.mjs';
 import {wandTipWorld} from './player-motion.mjs';
 import {drawManaWardSparkles} from './diagon-garden-ward-art.mjs';
+import {drawReturnedHeartGlow} from './returned-heart-glow.mjs';
 export {GAMEPLAY_FX};
 const limits=new WeakMap();
 export function emitGameplayFx(g,id,point,options={}){
@@ -39,6 +40,7 @@ export function actorGameplayStatuses(a,time){
 }
 export function drawActorGameplayFx(c,g,a,size,layer='front'){
  const x=a.room?(a.roomX??a.x):a.x,y=(a.room?(a.roomY??a.y):a.y)-(a.jumpHeight||0)-(a.groundHeight||0),context={actor:a,time:g.time,size,layer};
+ drawReturnedHeartGlow(c,a,g.time,x,y,size,layer);
  for(const id of actorGameplayStatuses(a,g.time))drawGameplayFx(c,id,x,y,g.time,Number(a.id)||0,context);
  if(layer==='front')drawManaWardSparkles(c,a,g.time,x,y);
  if(layer!=='front'||a.hp<=0||!(a.charge>0))return;

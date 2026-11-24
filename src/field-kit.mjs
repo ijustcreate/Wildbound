@@ -5,7 +5,7 @@ import { drawPlayer, directionVector } from "./player-motion.mjs";
 import {skillAvailable,trainSkill} from './field-skills.mjs';
 import {trainingPoints} from './training-points.mjs';
 import {hasSetSkill} from './items.mjs';
-import {tamePet} from './hunter-pets.mjs';
+import {companionReserve,tamePet} from './hunter-pets.mjs';
 import {openPetCare} from './hunter-pet-ui.mjs';
 import { knownWeaponCombos, weaponComboCatalog } from './weapon-combo-discovery.mjs';
 import { appearanceControls, DEFAULT_APPEARANCE } from "./appearance.mjs";
@@ -679,7 +679,7 @@ export class FieldKit {
     const rangerIcon=node('span','♧','field-skill-icon');rangerHead.append(rangerIcon,node('span','Ranger · Tame companion'),node('small',hasSetSkill(p,'tame_pet')?'Unlocked':'Requires Ranger set',hasSetSkill(p,'tame_pet')?'is-ready':'is-missing'));
     const rangerDetail=node('div',null,'field-expanded-detail');rangerDetail.append(node('p','Wear all five Ranger pieces, approach a lion, wolf, bat, panther, or tiger, then press R / RB. Your one companion stays after removing the gear.','field-expanded-copy'));
     const tame=this.action('Tame nearby animal',()=>{if(g.remoteAuthoritative)return g.serverAction(p,'tamePet');tamePet(g,p);return 'Use R / RB while near a wild animal.';},rangerDetail);tame.disabled=!hasSetSkill(p,'tame_pet')||!!p.hunterPet;
-    if(p.hunterPet)this.action('Companion care',()=>{openPetCare(g,p);return '';},rangerDetail);ranger.classList.remove('is-expanded');this.cardTooltipFor(ranger,rangerHead,rangerDetail,'skill:ranger');skillGrid.append(ranger);
+    if(p.hunterPet||companionReserve(p).length)this.action('Companion care',()=>{openPetCare(g,p);return '';},rangerDetail);ranger.classList.remove('is-expanded');this.cardTooltipFor(ranger,rangerHead,rangerDetail,'skill:ranger');skillGrid.append(ranger);
     this.body.append(node("p", `Training points · ${trainingPoints(p)} available · Earn one per level. XP: ${p.xp || 0} · Level ${p.level || 1} · ${((p.level || 1) * 50) - (p.xp || 0)} XP to go.`, "field-training-summary"));
     const skillIcons={second_wind:'potion',long_jump:'boots',quick_revive:'potion',pack_mule:'crafting_bag',scavenger:'bone_shard',steady_hand:'arrow'};
     for (const s of SKILLS) {

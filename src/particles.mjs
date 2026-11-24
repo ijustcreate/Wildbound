@@ -8,6 +8,7 @@ export {loadParticleSprites,particleSpriteStatus} from './particle-sprites.mjs';
 // Seeded, time-sampled particles: bounded cost, no simulation state in saved games.
 export const PARTICLE_KEY='wildbound-particles-v1';
 const baseEffects={
+  'blade-spark':{name:'Energy blade contact sparks',count:8,life:.38,speedX:0,speedY:-22,spread:13,gravity:67,size:2,orbit:1,shape:'streak',blend:'lighter',start:'#fff1cd',end:'#ec8144'},
   'blade-trail-red':{name:'Red energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#fff1ed',end:'#ff263f'},
   'blade-trail-blue':{name:'Blue energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#e9fbff',end:'#238dff'},
   'blade-trail-green':{name:'Green energy blade movement trail',count:9,life:.38,speedX:0,speedY:-2,spread:8,gravity:0,size:2,orbit:5,shape:'square',blend:'lighter',start:'#f1ffed',end:'#31dc58'},

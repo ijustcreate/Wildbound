@@ -1,6 +1,6 @@
 import {drawFriendshipHeart} from './friendship-hearts.mjs';
 export const HEALING_COLOR='#9cddff';
-export const magicBoltColor=def=>def?.healing?HEALING_COLOR:def?.artColor||def?.color||'#90baff';
+export const magicBoltColor=def=>def?.healing?HEALING_COLOR:def?.spellColor||def?.artColor||def?.color||'#90baff';
 export const magicBoltGlow=def=>def?.friendship ? .04 : ({common:.055,rare:.11,unique:.16,legendary:.21,gm:.12}[def?.rarity]??.055);
 export const MAGIC_TRAIL_LIMIT=48;
 export const MAGIC_TRAIL_SECONDS=.42;

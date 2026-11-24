@@ -1,6 +1,7 @@
 import {compilePixelRecipe} from './pixel-recipe.mjs';
 import {drawPixelRecipe} from './pixel-recipe-canvas.mjs';
 import {block,shape} from './diagon-shop-brush.mjs';
+import {diagonLaneX} from './alley-street-layout.mjs';
 import fingerpost from '../assets/pixel-recipes/diagon-alley/brass-fingerpost.pixel.json' with {type:'json'};
 import clock from '../assets/pixel-recipes/diagon-alley/street-clock.pixel.json' with {type:'json'};
 import barrel from '../assets/pixel-recipes/diagon-alley/brass-bound-barrel.pixel.json' with {type:'json'};
@@ -25,7 +26,7 @@ export const ALLEY_STREET_PROPS=[
   ['planter',planter,7764,4954,12,7],['letterbox',letterbox,8233,5104,6,5],
   ['cart',cart,7770,5145,15,8],['basin',basin,7763,5460,10,8],
   ['brazier',brazier,8223,5557,8,7],
-].map(([id,source,x,y,halfWidth,halfDepth])=>({id,x:x+(x<8000?49:-49),y,halfWidth,halfDepth,recipe:compilePixelRecipe(source)}));
+].map(([id,source,x,y,halfWidth,halfDepth])=>({id,x:diagonLaneX(x+(x<8000?49:-49)),y,halfWidth,halfDepth,recipe:compilePixelRecipe(source)}));
 
 export function alleyStreetPropBlocked(x,y,radius){
   return ALLEY_STREET_PROPS.some(prop=>Math.abs(x-prop.x)<prop.halfWidth+radius&&Math.abs(y-prop.y)<prop.halfDepth+radius);

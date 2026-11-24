@@ -1,4 +1,5 @@
 import {emitGameplayFx} from './gameplay-fx.mjs';
+import {shrinkingScale} from './shrinking-candy.mjs';
 import {setTreeFallDirection} from './tree-fall.mjs';
 import {weaponHitContext} from './dark-essence.mjs';
 import { ITEMS, take } from "./items.mjs";
@@ -37,7 +38,7 @@ export function tryEquipmentAttack(g, p, charge = 0) {
   (g.rifleShots ||= []).push({ x: p.x, y: p.y, prevX: p.x, prevY: p.y,
     ...charmShot(p),...weaponHitContext(p),
     vx: x * cfg.speed, vy: y * cfg.speed, remaining: cfg.range,
-    owner: p.id, playerOwned: !!g.players?.includes(p), damage: def.damage,
+    owner: p.id, playerOwned: !!g.players?.includes(p), damage: def.damage*shrinkingScale(p),
     aimed: Number.isFinite(charge) && charge >= cfg.aimTime });
   emitGameplayFx(g,'muzzle',{x:p.x+x*25,y:p.y+y*15-20},{angle:Math.atan2(y,x),life:.25});
   emitNoise(g, p, "rifle", 700);

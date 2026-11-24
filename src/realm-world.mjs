@@ -1,6 +1,7 @@
 import {REALMS,realmAsset,BAYOU_SHRINE_BASE} from './realm-layout.mjs';
 export * from './realm-layout.mjs';
 import {boundlessGeneratedTile} from './boundless-generation.mjs';
+import {ceilingHazardTarget,tickCeilingHazards} from './ceiling-hazards.mjs';
 export function realmVoidBlocked(g,x,y,r=8){
  if(!REALMS.includes(g.generatedEnvironment)||g.phase==='won')return false;
  for(const [dx,dy]of [[0,0],[r,0],[-r,0],[0,r],[0,-r]]){const tx=Math.floor((x+dx)/32),ty=Math.floor((y+dy)/32);if(g.mapMode!=='boundless'&&(tx<0||ty<0||tx>=50||ty>=50))return true;if(['cave_void','shadow_void'].includes(realmTerrainAt(g,tx,ty)))return true;}
@@ -33,13 +34,7 @@ export function realmSafeSpawn(g,actor){
 }
 export function tickRealmHazards(g,dt){
  if(g.generatedEnvironment!=='caverns'||g.phase!=='play'||g.paused)return;
- for(const p of g.scenery.filter(p=>p.kind==='ceiling_stalactite')){
-  if(p.hazardState==='spent')continue;
-  const players=(g.players||[]).filter(a=>a.hp>0&&!a.room&&!a.ghost&&!a.spiritGhost);
-  if(!p.hazardState||p.hazardState==='idle'){if(!players.some(a=>Math.hypot(a.x-p.x,a.y-p.rootY)<42))continue;p.hazardState='warning';p.hazardTime=0;g.onSound?.('mine',p);}
-  p.hazardTime=(p.hazardTime||0)+Math.min(dt,.1);
-  if(p.hazardTime>=(p.warning||1.6)+.35){p.hazardState='spent';for(const a of players)if(Math.hypot(a.x-p.x,a.y-p.rootY)<24)g.hurt?.(a,p.damage||5,{x:p.x,y:p.rootY,kind:'falling_stone'});g.persist?.();}
- }
+ tickCeilingHazards(g,g.scenery.filter(p=>p.kind==='ceiling_stalactite'),dt,(g.players||[]).filter(ceilingHazardTarget));
 }
 
 export function realmTerrainAt(g,tx,ty){const outside=tx<0||ty<0||tx>=50||ty>=50;return outside?(g.mapMode==='boundless'?boundlessGeneratedTile(g,tx,ty):undefined):g.terrain?.[ty*50+tx];}

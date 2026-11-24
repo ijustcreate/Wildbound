@@ -1,4 +1,5 @@
 import {ITEMS, itemKind} from './items.mjs';
+import {equippedGlaiveSlot} from './boomerang-flight.mjs';
 
 // Radial dead zone preserves the ratio of both axes, including tiny angles
 // near the cardinal directions. Axis-by-axis clipping made those angles sticky.
@@ -8,7 +9,8 @@ export function aimStick(x=0,y=0,deadZone=.18){
  return {x:x/Math.max(1,length),y:y/Math.max(1,length)};
 }
 
-export const hasAimWeapon = actor => ['bow','boomerang'].includes(itemKind(actor.equipment?.hand1)) ||
+export const hasAimWeapon = actor => (!actor.glaiveInFlight&&!!equippedGlaiveSlot(actor)) ||
+  actor.equipment?.hand1!=='glaive'&&['bow','boomerang'].includes(itemKind(actor.equipment?.hand1)) ||
   ['hand1','hand2'].some(slot => ITEMS[actor.equipment?.[slot]]?.magic);
 
 // Visual-only blend: never delays aim direction, firing or damage.

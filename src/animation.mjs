@@ -10,6 +10,7 @@ import {drawAnaconda} from './anaconda-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
 import {drawOtter} from './otter-motion.mjs';
 import {championPower} from './arena-drink-state.mjs';
+import {shrinkingScale} from './shrinking-candy.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {companionVisualActor} from './companion-locomotion.mjs';
 import {creaturePackVisualActor} from './creature-pack-animation-routing.mjs';
@@ -54,6 +55,7 @@ import {
   rhinoMotionRevision,
 } from "./rhino-motion.mjs";
 import { facingIndex } from "./player-motion.mjs";
+import {drawPatronus} from './patronus-art.mjs';
 // Poses are independent of frame rate. Rasterize articulated parts at 64px,
 // then scale with nearest-neighbour sampling to retain actual pixel edges.
 export class Animator {
@@ -78,7 +80,8 @@ export class Animator {
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
-    size*=championPower(actor);
+    if(actor.patronus)return drawPatronus(ctx,actor,time,(pen,pose)=>this.draw(pen,pose,time,size));
+    size=(actor.shackBoggart?actor.boggartSize??size:size)*championPower(actor)*shrinkingScale(actor);
     if(actor.kind==='baby_spider'&&!actor.sprite)actor={...actor,sprite:'spider'};
     actor=enemyCombatAnimation(actor,rigSubject(actor.sprite||actor.kind)?.data);
     if(typeof actor.id==='string')actor={...actor,id:visualActorId(actor.id)};
@@ -214,6 +217,7 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
+        !actor.shoulderBroom &&
         !ITEMS[actor.equipment?.back||actor.field?.cosmetics?.back]?.scarf &&
         actor.equipment?.head !== 'jack_o_lantern' && actor.equipment?.head !== 'bone_carver_crown' && actor.equipment?.gloves !== 'bone_carver_claws' &&
         playerAction(actor) === "idle" && !playerLayers(actor,time).length && !actor.locomotionTransition && !actor.locomotionTurning

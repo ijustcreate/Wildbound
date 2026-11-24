@@ -2,12 +2,13 @@ import {spellTransition} from './portal-transition.mjs';
 import {catchChocolateFrog} from './chocolate-frogs.mjs';
 import {drawDungeonDecor} from './dungeon-decor.mjs';
 import {tickCryptWorld,upgradeCryptWorld} from './crypt-world.mjs';
+import {activePatronuses,isPatronusWand,patronusOnWandHit,tickRoomPatronuses} from './patronus.mjs';
 import {finishDiscovery,trialState} from './expedition-trials.mjs';
 import {locationClearing} from './location-clearing.mjs';
 import {applyDungeonDesign} from './location-designs.mjs';
 import {drawRoomVillagerFollowers} from './villager-followers-render.mjs';
 import {OLD_WELL_EVENT} from './definitions.mjs';
-import {ITEMS, give, take, stat, itemKind} from './items.mjs';
+import {ITEMS, take, stat, itemKind} from './items.mjs';
 import {waterAt} from './environment.mjs';
 import {graveyardBlocked} from './graveyard-world.mjs';
 import {ignite} from './hazards.mjs';
@@ -16,6 +17,7 @@ import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {collectRoomLoot,drawRoomLootItem,nearbyRoomLoot,roomLootPrompt} from './room-loot.mjs';
 import {UNDERGROUND_VIEW} from './underground-view.mjs';
 import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
 import {caveEdgeMask,drawCaveWallCell} from './cave-wall-art.mjs';
@@ -118,6 +120,10 @@ function tunnelSight(s, a, b) {
   for (let n = 1; n <= steps; n++)
     if (wellTunnelBlocked(s, a.x + (b.x - a.x) * n / steps, a.y + (b.y - a.y) * n / steps, 0)) return false;
   return true;
+}
+function nearbyWellLoot(well,p,reach=26) {
+  const point=roomPoint(p);
+  return nearbyRoomLoot(well.drops,p,reach,item=>item.manualPickup&&tunnelSight(well,point,item));
 }
 function revealWell(s, x, y) {
   const known = new Set(s.explored), source = {x, y};
@@ -328,7 +334,7 @@ function attackInWell(g, p, s, input, charge = 0, slot = 'hand1') {
       p.mana -= cost;
     }
     s.bolts.push({x: p.roomX, y: p.roomY - 4, vx: aimX / len * 170, vy: aimY / len * 170,
-      life: 1.1, damage, owner: p.id, room: p.room, slot, magic: !!weapon.magic});
+      life: 1.1, damage, owner: p.id, room: p.room, slot, magic: !!weapon.magic, patronusWand:isPatronusWand(p.equipment?.[slot])});
   } else for (const e of s.enemies) {
     const from = roomPoint(p), dx = e.x - from.x, dy = e.y - from.y, d = Math.hypot(dx, dy);
     if (e.hp > 0 && (s.theme !== 'mausoleum' || cryptEnemyCanBeHit(e)) && d < 40 && (d < 12 || (dx * aimX + dy * aimY) / (d * len) > .1) && tunnelSight(s, from, e)) {
@@ -350,6 +356,7 @@ export function oldWellRoomStep(g, p, input, dt) {
     if(!input.interact&&!input.use)p.wellExitArmed=true;
     revealWell(s,p.roomX,p.roomY);
     if(edge('interact')||edge('use')){
+      if(!edge('loot')&&!p.cryptPitFall&&collectRoomLoot(g,p,s.drops,nearbyWellLoot(s,p,65)))return true;
       if(p.wellExitArmed!==false&&distance(roomPoint(p),s.exit)<36){leaveOldWell(g,p);return true;}
       const gate=(s.gates||[]).find(a=>distance(roomPoint(p),a)<(s.tile||16)*2);if(gate){const occupied=gate.opened&&(g.players||[]).some(q=>q.room===d.id&&Math.abs(q.roomX-gate.x)<(s.tile||16)*1.3+10&&Math.abs(q.roomY-gate.y)<(s.tile||16)*.25+10);if(occupied){g.message?.('Step clear of the doorway first.');return true;}gate.opened=!gate.opened;g.message?.(gate.opened?'Crypt door opened.':'Crypt door closed.');g.onSound?.('doorOpen',p);g.persist?.();}
       else if(distance(roomPoint(p),s.chest)<38)lootOldWellChest(g,p);else wakeMausoleumBoss(g,p,d);
@@ -379,14 +386,12 @@ export function oldWellRoomStep(g, p, input, dt) {
     }
   } else if (edge('attack') && !p.wellAttackCooldown) attackInWell(g, p, s, input);
   if (edge('potion')) g.usePotion?.(p);
-  if (edge('interact') || d.mausoleum && edge('use')) {
+  if((edge('interact')||edge('loot'))&&collectRoomLoot(g,p,s.drops,nearbyWellLoot(s,p)))return true;
+  if (edge('interact')) {
     if (p.wellExitArmed!==false&&distance(a, s.exit) < 36) {leaveOldWell(g, p); return true;}
     if (distance(a, s.chest) < 38) lootOldWellChest(g, p);
-    else if (d.mausoleum) wakeMausoleumBoss(g, p, d);
   }
-  for (const drop of [...s.drops]) if (distance(a, drop) < 20 && give(p.inventory, drop.type, drop.qty)) {
-    s.drops.splice(s.drops.indexOf(drop), 1); g.persist?.();
-  }
+  for (const drop of [...s.drops]) if (!drop.manualPickup&&distance(a, drop) < 20) collectRoomLoot(g,p,s.drops,drop);
   for (const pet of [p.hunterPet, p.ritualPet].filter(a => a?.spiritGhost))
     Object.assign(pet, {room: d.id, roomX: p.roomX + 12, roomY: p.roomY + 8});
   return true;
@@ -443,12 +448,20 @@ export function tickOldWells(g, dt, inputs={}) {
           continue;
         }
         const e = s.enemies.find(e => e.hp > 0 && (s.theme !== 'mausoleum' || cryptEnemyCanBeHit(e)) && distance(e, b) < 13);
-        if (e) {const p = g.players.find(p => p.id === b.owner); if (p) hitWellEnemy(g, s, e, b.damage, p); b.life = 0;}
+        if (e) {
+          const p=g.players.find(p=>p.id===b.owner&&p.room===d.id);
+          if(p){
+            if(b.patronusWand)patronusOnWandHit(g,p,e);
+            hitWellEnemy(g,s,e,b.damage,p);
+          }
+          b.life=0;
+        }
         if (b.remaining <= 0) b.life = 0;
       }
       if (b.healing && b.life <= 0) finishMagicBolt(g, b, false);
     }
     s.bolts = s.bolts.filter(b => b.life > 0);
+    tickRoomPatronuses(g,d.id,dt,s.enemies,(from,to)=>tunnelSight(s,from,to),(target,owner)=>hitWellEnemy(g,s,target,17,owner));
     if (d.mausoleum) {
       tickMausoleumCrypt(g, d, occupants, dt,
         {move: moveInTunnels, sight: tunnelSight, waypoint: tunnelWaypoint, blocked: wellTunnelBlocked, leave: leaveOldWell});
@@ -627,10 +640,14 @@ export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
   rect(c, ch.x - 12, ch.y - (ch.opened ? 22 : 13), 24, 6, '#c19456');
   rect(c, ch.x - 8, ch.y - 11, 2, 14, '#d2ba79'); rect(c, ch.x + 6, ch.y - 11, 2, 14, '#d2ba79');
   rect(c, ch.x - 2, ch.y - 6, 4, 4, '#edcf80');
-  for (const drop of s.drops) rect(c, drop.x - 2, drop.y - 2, 4, 4, ITEMS[drop.type].color);
+  for (const drop of s.drops) {
+    if(drop.manualPickup&&c.drawImage)drawRoomLootItem(c,drop);
+    else rect(c,drop.x-2,drop.y-2,4,4,ITEMS[drop.type]?.color||'#eac093');
+  }
   for (const e of s.enemies.filter(e => e.hp > 0)) if (known.has(tileIndex(s, Math.floor(e.x / 16), Math.floor(e.y / 16)))) {
     if(animator)animator.draw(c,{...e,room:d.id},g.time||0,creatureRenderSize(e.kind));else drawCaveCreature(c,e,g.time||0);
   }
+  if(animator)for(const a of activePatronuses(g,d.id))animator.draw(c,a,g.time,40);
   for (const b of s.bolts) {
     if (b.healing) drawMagicBolt(c, b);
     else rect(c, b.x - 2, b.y - 2, b.magic ? 4 : 5, 2, b.magic ? '#b9eadd' : '#e7c47d');
@@ -650,9 +667,9 @@ export function drawOldWellRoom(c, g, p, animator = null, view=WELL_VIEW) {
   c.restore();
   c.textAlign = 'center'; c.font = 'bold 11px sans-serif'; c.fillStyle = '#eddbb3'; c.fillText(WELL_TITLE, w/2, 15);
   c.font = '9px sans-serif'; c.fillStyle = '#c7b68c';
-  const prompt = distance(roomPoint(p), s.exit) < 36 ? 'E / Y · CLIMB ROPE TO RETURN' :
+  const prompt = roomLootPrompt(g,p,nearbyWellLoot(s,p)) || (distance(roomPoint(p), s.exit) < 36 ? 'E / Y · CLIMB ROPE TO RETURN' :
     distance(roomPoint(p), ch) < 38 ? 'E / Y · ' + (ch.items.some(Boolean) ? 'OPEN TREASURE CHEST' : 'EMPTY CHEST') :
-    'Explore the tunnels · Attack spiders and bats';
+    'Explore the tunnels · Attack spiders and bats');
   c.fillText(prompt, w/2, h-9);
   // Shared exploration, separate camera for every co-op room panel.
   for (const index of s.explored) if (s.tiles[index]) rect(c, w-46 + index % s.width, top+3 + Math.floor(index / s.width), 1, 1, '#8c876f');

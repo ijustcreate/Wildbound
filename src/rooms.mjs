@@ -64,6 +64,7 @@ export function cleanInput(input) {
         "dodge",
         "jump",
         "loot",
+        "quidditchBall",
         "trap",
         "interact",
         "potion",
@@ -134,7 +135,8 @@ export class Rooms {
         Object.entries(inputs).find(
           ([k, v]) =>
             k.startsWith("pad:") &&
-            (v.x || v.y || v.attack || v.block || v.dodge || v.interact || v.inventory || v.portal),
+            (v.x || v.y || v.attack || v.block || v.dodge || v.interact || v.inventory ||
+              v.portal || v.loot || v.drop || v.dropOne || v.quidditchBall),
         )?.[1] || inputs.keyboard;
       this.send({ type: "input", input: local });
       return {};

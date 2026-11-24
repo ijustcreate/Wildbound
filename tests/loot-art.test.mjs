@@ -3,25 +3,65 @@ import assert from "node:assert/strict";
 import { ITEMS } from "../src/items.mjs";
 import { ITEM_ART_TYPES, paintItem } from "../src/item-art.mjs";
 import { Game, CENTER } from "../src/core.mjs";
-test("Every item has a unique transparent pixel silhouette within its 24px cell", () => {
+test("Every item has a unique transparent pixel silhouette within its 24px cell", (t) => {
+  const Canvas = globalThis.OffscreenCanvas, Data = globalThis.ImageData;
+  t.after(() => {
+    if (Canvas) globalThis.OffscreenCanvas = Canvas; else delete globalThis.OffscreenCanvas;
+    if (Data) globalThis.ImageData = Data; else delete globalThis.ImageData;
+  });
+  globalThis.ImageData = class {
+    constructor(data) { this.data = data; }
+  };
+  globalThis.OffscreenCanvas = class {
+    constructor(width, height) { this.width = width; this.height = height; }
+    getContext() { return { putImageData: ({ data }) => { this.data = data; } }; }
+  };
   assert.deepEqual([...ITEM_ART_TYPES].sort(), Object.keys(ITEMS).sort());
-  const shapes = new Set();
+  const shapes = new Map();
   for (const type of ITEM_ART_TYPES) {
     const pixels = Array(576).fill("");
+    const stack = [];
+    let sx = 1, sy = 1, tx = 0, ty = 0;
     const c = {
       fillStyle: "",
+      save() { stack.push([sx, sy, tx, ty, this.fillStyle]); },
+      restore() {
+        assert.ok(stack.length, type);
+        [sx, sy, tx, ty, this.fillStyle] = stack.pop();
+      },
+      translate(x, y) { tx += x * sx; ty += y * sy; },
+      scale(x, y) { sx *= x; sy *= y; },
+      drawImage(image, x, y) {
+        const fill = this.fillStyle;
+        for (let row = 0; row < image.height; row++) {
+          for (let col = 0; col < image.width; col++) {
+            const i = 4 * (row * image.width + col);
+            if (!image.data[i + 3]) continue;
+            this.fillStyle = "#" + Buffer.from(image.data.subarray(i, i + 3)).toString("hex");
+            this.fillRect(x + col, y + row, 1, 1);
+          }
+        }
+        this.fillStyle = fill;
+      },
       fillRect(x, y, w, h) {
-        assert.ok([x, y, w, h].every(Number.isInteger));
-        assert.ok(x >= 0 && y >= 0 && x + w <= 24 && y + h <= 24, type);
-        for (let py = y; py < y + h; py++)
-          for (let px = x; px < x + w; px++)
+        assert.ok([x, y, w, h].every(Number.isInteger), type);
+        const left = Math.floor(Math.min(x * sx, (x + w) * sx) + tx);
+        const right = Math.ceil(Math.max(x * sx, (x + w) * sx) + tx);
+        const top = Math.floor(Math.min(y * sy, (y + h) * sy) + ty);
+        const bottom = Math.ceil(Math.max(y * sy, (y + h) * sy) + ty);
+        assert.ok(left >= 0 && top >= 0 && right <= 24 && bottom <= 24, type);
+        for (let py = top; py < bottom; py++)
+          for (let px = left; px < right; px++)
             pixels[py * 24 + px] = this.fillStyle;
       },
     };
     paintItem(c, type);
-    assert.ok(pixels.filter(Boolean).length > 20);
-    assert.ok(pixels.filter(Boolean).length < 400);
-    shapes.add(JSON.stringify(pixels));
+    assert.equal(stack.length, 0, type);
+    const opaque = pixels.filter(Boolean).length;
+    assert.ok(opaque > 20 && opaque < 400, `${type}: ${opaque} painted pixels`);
+    const signature = JSON.stringify(pixels);
+    assert.ok(!shapes.has(signature), `${type} shares its icon with ${shapes.get(signature)}`);
+    shapes.set(signature, type);
   }
   assert.equal(shapes.size, ITEM_ART_TYPES.length);
 });

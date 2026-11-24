@@ -318,7 +318,7 @@ function paintWildlife(c,actor,time,model,suppliedPose){
   const action=actor.animationAction||actor.state,clip=model.clips[action]||model.clips[actor.moving?'run':'idle']||model.clips.idle;
   const frame=Number.isFinite(actor.playerFrame)?actor.playerFrame:Number.isFinite(actor.poseTime)?actor.poseTime*(clip.length-1):actor.moving?(actor.step||0)/14*clip.length:time*clip.fps;
   const pose=suppliedPose||poseAt(model,model.clips[action]?action:actor.moving?'run':'idle',frame),d=facingIndex(actor.faceX,actor.faceY),p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)])),pal=model.palette,shape=model.shape,layers=[];
-  const volume=(id,bone,rx,ry,rz,colors=pal)=>layers.push({id,bone,bones:[bone],depth:p[bone]?.depth||0,fn:()=>pixelVolume(c,pose[bone],rx,ry,rz,d,colors)});
+  const volume=(id,bone,rx,ry,rz,colors=pal,markings)=>layers.push({id,bone,bones:[bone],depth:p[bone]?.depth||0,fn:()=>pixelVolume(c,pose[bone],rx,ry,rz,d,colors,markings)});
   const line=(id,bones,points,color,width)=>layers.push({id,bone:bones[0],bones,depth:points[0].depth,fn:()=>pixelLine(c,points[0],points[1],color,width)});
   if(kind==='golden_retriever'){
     // A compact dog-specific build: the four legs are continuous, stroked
@@ -337,10 +337,15 @@ function paintWildlife(c,actor,time,model,suppliedPose){
       volume('paw '+side,'frontPaw'+side,2.5,3,1.6,{...pal,body:pal.shade,light:pal.body,shade:pal.outline,outline:pal.outline});
       volume('hind paw '+side,'rearPaw'+side,2.6,3.2,1.6,{...pal,body:pal.shade,light:pal.body,shade:pal.outline,outline:pal.outline});
     }
-    volume('rounded torso','pelvis',shape.bodyWidth,shape.bodyLength,shape.bodyHeight);
+    volume('rounded torso','pelvis',shape.bodyWidth,shape.bodyLength,shape.bodyHeight,pal,model.coatMarkings);
     volume('soft hind haunch','pelvis',shape.bodyWidth*.78,6.5,shape.bodyHeight*.86,{...pal,body:pal.body,light:pal.light,shade:pal.shade,outline:pal.body});
     volume('broad shoulder chest','chest',shape.bodyWidth*.9,7,shape.bodyHeight*.94,{...pal,body:pal.mane,light:pal.light,shade:pal.body,outline:pal.body});
     volume('connected neck','neck',5.2,5.5,6.5,{...pal,body:pal.mane,light:pal.light,shade:pal.body,outline:pal.body});
+    if(pal.collar)layers.push({id:'collar',bone:'neck',bones:['neck'],depth:p.neck.depth+.12,fn:()=>{
+      const center=p.neck;
+      pixelLine(c,{x:center.x-4,y:center.y+3},{x:center.x+4,y:center.y+3},pal.collar,2);
+      if(d!==4){c.fillStyle='#d9af60';c.fillRect(Math.round(center.x),Math.round(center.y)+4,2,2);}
+    }});
     volume('rounded head','head',5,4.6,5,{...pal,body:pal.face,light:pal.light,shade:pal.body,outline:pal.outline});
     for(const side of ['L','R'])if(p['ear'+side])volume('soft dropped ear '+side,'ear'+side,2.8,3.2,3.4,{...pal,body:pal.ear,light:pal.face,shade:pal.shade,outline:pal.outline});
     volume('cream muzzle','muzzle',3.1,3.8,2.7,{...pal,body:pal.muzzle,light:'#fff0ce',shade:pal.muzzleShade,outline:pal.body});

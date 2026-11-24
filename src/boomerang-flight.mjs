@@ -1,5 +1,9 @@
 export const BOOMERANG_SWEEP_STEP = 4;
 
+export const equippedGlaiveSlot=p=>p.equipment?.hand1==='glaive'?'hand1':p.equipment?.hand2==='glaive'?'hand2':null;
+export const glaiveCharge=(charge=0)=>Math.max(0,Math.min(1,charge/1.2));
+export const boomerangRange=(weapon,charge)=>weapon?.glaive?weapon.range*(1+.81*glaiveCharge(charge)):weapon?.range||330;
+
 export function boomerangDirection(x, y) {
   const length = Math.hypot(x, y);
   return length ? {x: x / length, y: y / length} : {x: 0, y: 1};

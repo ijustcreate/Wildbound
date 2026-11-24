@@ -1,4 +1,5 @@
 import {ITEMS,itemKind} from './items.mjs';
+import {pirateShotFloor,samePirateCombatFloor} from './pirate-combat-floor.mjs';
 import {friendlyIceTarget} from './frost-prison.mjs';
 import {clearShot} from './navigation.mjs';
 import {arenaCanFight,arenaShotPermit,inDiagonArena} from './diagon-arena-layout.mjs';
@@ -45,9 +46,9 @@ export function charmCanTarget(g,source,target){
 export function playerCombatTargets(g,source){
  const owner=source?.owner??source?.id;
   return [...(g.enemies||[]),...(g.ghosts||[]).filter(a=>a.wildTiger&&a.faction==='hostile'&&!a.room&&a.hp>0),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&
-   (inDiagonArena(g)?arenaCanFight(g,source,p):friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
+   (inDiagonArena(g)?arenaCanFight(g,source,p):friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>samePirateCombatFloor(source,e)&&charmCanTarget(g,source,e));
 }
-export const charmShot=p=>({charmShot:isCharmed(p),...arenaShotPermit(p)});
+export const charmShot=p=>({charmShot:isCharmed(p),...arenaShotPermit(p),...pirateShotFloor(p)});
 export function tickCharmedPlayer(g,p,dt){
  const owner=charmOwner(g,p);if(!owner){clearCharm(p);return;}
  p.bowAiming=false;p.blocking=false;p.charge=0;p.slideX=p.slideY=0;delete p.queuedAttack;

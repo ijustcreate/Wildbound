@@ -1,13 +1,14 @@
 import {block as b,shape as p} from './diagon-shop-brush.mjs';
+import {diagonLaneX,nocturneLaneX,NOCTURNE_STREET_INSET} from './alley-street-layout.mjs';
 
 export const DIAGON_STREET_LAMPS=Object.freeze([
- ...[4350,4730,5110,5490].flatMap(y=>[7839,8161].map(x=>({x,y,height:48,district:'diagon'}))),
- ...[[8530,5192],[8760,5277],[8988,5095],[9195,5188],[8998,5410],[9185,5540]].map(([x,y])=>({x,y,height:48,district:'nocturne'})),
+ ...[4350,4730,5110,5490].flatMap(y=>[7839,8161].map(x=>({x:diagonLaneX(x),y,height:48,district:'diagon'}))),
+ ...[[8530,5192],[8760,5277],[8988,5095],[9195,5188],[8998,5410],[9185,5540]].map(([x,y])=>({x:x>=8970?nocturneLaneX(x):x,y,height:48,district:'nocturne'})),
 ]);
 export const NOCTURNE_WALL_CANDLES=Object.freeze([
  [8941,4635],[8943,4875],[8932,5110],[8816,5313,true],[9239,5156,true],
  [9494,4880,true],[9483,5432,true],[9595,5519,true],
-].map(([x,y,stand=false])=>({x,y,height:36,district:'nocturne',stand})));
+].map(([x,y,stand=false])=>({x:x===9239?x-NOCTURNE_STREET_INSET:x>=8900&&x<8970?x+NOCTURNE_STREET_INSET:x,y,height:36,district:'nocturne',stand})));
 
 export function streetLamp(c,x,y,district='diagon',time=0){
  const glass=district==='nocturne'?['#345e50','#5aa581','#9ed9a1','#d4f2bd']:['#755139','#bd8655','#e7bc7c','#fff0b6'];

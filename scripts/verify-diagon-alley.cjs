@@ -86,6 +86,7 @@ for(const [i,shop] of ALLEY_SHOPS.entries()){
  if(shop.id==='ollivanders')continue;
  if(shop.id==='gringotts')ok(alleyPrompt(g,p).includes('TALK TO GRIPHOOK'),'The central bank entrance leads to its interactive teller counter');
  trainInteraction(g,p);
+ if(shop.id==='bellglass')g.inventoryAction(p,'choice:1');
  if(shop.stock.length)ok(p.ui?.alleyShop===shop.id,shop.name+' trades from its customer aisle');
  if(shop.district==='nocturne'){
   merchantAction(g,p,'use');
@@ -93,7 +94,7 @@ for(const [i,shop] of ALLEY_SHOPS.entries()){
  }
  p.ui=null;
  const defs=alleyShopAssets(shop);
- const expected=shop.district==='garden'?11:shop.id==='quidditch'?21:20;
+ const expected={quidditch:22,'nocturne-curios':19}[shop.id]??(shop.district==='garden'?11:20);
  ok(defs.length===expected&&new Set(defs.map(d=>d.id)).size===expected,shop.name+' has '+expected+' distinct assets');
  const sheet=document.createElement('canvas');sheet.width=1100;sheet.height=70+Math.ceil(expected/5)*151;
  const sheetPen=sheet.getContext('2d');sheetPen.fillStyle='#314742';sheetPen.fillRect(0,0,sheet.width,sheet.height);
@@ -137,16 +138,17 @@ p.ui.index=merchantRows(g,p).find(row=>row.item.type==='floo_powder').index;
 merchantAction(g,p,'use');merchantAction(g,p,'use');
 ok(powder()===2,'Nocturne Curios sells two paid pinches of Floo Powder');
 p.ui=null;frame();arrive(ALLEY_SHOP_HEARTH);
-ok(trainPrompt(g,p).includes('FLOO TO THE HOMESTEAD'),'The shop hearth offers travel from inside');
+ok(trainPrompt(g,p).includes('USE FLOO POWDER'),'The shop hearth offers travel from inside');
 frame({interact:true});
+g.inventoryAction(p,'floo:homestead');
 ok(flooFireGreen(g,ALLEY_SHOP_HEARTH.id),'Activating the shop hearth starts the green flame');
 captureHearth(ALLEY_SHOP_HEARTH,'floo-curios-green');
 for(let i=0;i<7;i++)frame();
 ok(!t.design.activeRoom&&powder()===1&&flooFireGreen(g,HOMESTEAD_HEARTH.id),'A single pinch arrives at the lit Homestead hearth');
 captureHearth(HOMESTEAD_HEARTH,'floo-homestead-green');
 arrive(HOMESTEAD_HEARTH);
-ok(trainPrompt(g,p).includes('FLOO TO DIAGON ALLEY'),'The house hearth offers travel back from inside');
-frame({interact:true});for(let i=0;i<7;i++)frame();
+ok(trainPrompt(g,p).includes('USE FLOO POWDER'),'The house hearth offers travel back from inside');
+frame({interact:true});g.inventoryAction(p,'floo:nocturne-curios');for(let i=0;i<7;i++)frame();
 ok(t.design.activeRoom==='diagon'&&powder()===0,'Return trip uses the final pinch and arrives at the shop');
 arrive(ALLEY_SHOP_HEARTH);
 ok(!trainPrompt(g,p).includes('FLOO'),'An empty supply hides travel even inside the hearth');
@@ -177,16 +179,17 @@ ok(p.hunterPet.x<spiderStart-25,'The adopted spider follows the player through N
 captureHearth({x:p.x,y:p.y},'nocturne-spider-companion');
 const {drawItem}=await import('./src/item-art.mjs');
 const {EMPORIUM_OWLS}=await import('./src/owl-emporium.mjs');
+const {companionReserve,renamePet,switchHunterCompanion}=await import('./src/hunter-pets.mjs');
 const emporium=ALLEY_SHOPS.find(shop=>shop.id==='eeylops');
 Object.assign(p,mirroredShopPoint(emporium,{x:24,y:18}));p.ui=null;
 trainInteraction(g,p);
-ok(p.ui?.alleyShop==='eeylops','The owl cages use the real Eeylops merchant counter');
+ok(p.ui?.alleyShop==='eeylops','The real Eeylops counter opens the companion listings');
 for(const [type,owl]of Object.entries(EMPORIUM_OWLS)){
  const row=merchantRows(g,p).find(row=>row.item.type===type);
  ok(row?.price===owl.price,owl.name+' cage is in the actual Eeylops stock');
  const coins=p.coins;
  merchantAction(g,p,'select:'+row.index);merchantAction(g,p,'use');
- ok(p.inventory.some(i=>i?.type===type)&&p.coins===coins-owl.price,owl.name+' purchase charges once and grants its cage');
+ ok(!p.inventory.some(i=>i?.type===type)&&p.coins===coins-owl.price&&p.hunterPet?.owlVariant===owl.variant&&p.hunterPet.name===owl.name,owl.name+' adoption charges once and activates the combat companion');
 }
 p.ui=null;
 const nocturneStock=ALLEY_SHOPS.filter(shop=>shop.district==='nocturne').flatMap(shop=>shop.stock);
@@ -247,18 +250,13 @@ trainInteraction(g,p);ok(p.ui.alleyShop==='ollivanders','real merchant interacti
 const panel=document.createElement('dialog');panel.className='hero-panel merchant-session';panel.style.cssText='position:fixed;inset:0;width:960px;max-width:calc(100vw - 32px);height:700px;max-height:calc(100vh - 32px);background:#142a25;overflow:auto;padding:16px';document.body.append(panel);const button=(label,key,action)=>{const b=document.createElement('button');b.textContent=label;b.className=key;b.onclick=action;return b;};merchantPanel(panel,g,p,button,r.animator,{select:'Arrow keys',tabs:'Tab',accept:'E',close:'Escape'});panel.showModal();window.diagonPanel=panel;ok(panel.textContent.includes('Ollivanders'),'native merchant UI names alley business');
 const shopPreview=panel.cloneNode(true);document.body.append(shopPreview);const originals=panel.querySelectorAll('canvas');shopPreview.querySelectorAll('canvas').forEach((c,i)=>c.getContext('2d').drawImage(originals[i],0,0));shopPreview.close();window.showDiagonShopPreview=()=>{shopPreview.showModal();const b=shopPreview.getBoundingClientRect();return {width:b.width,height:b.height,viewport:innerWidth};};p.ui=null;panel.close();Object.assign(p,{x:8000,y:5660});trainInteraction(g,p);ok(!t.design.activeRoom,'return portal reaches original station');r.draw(g,.016);ok(Math.hypot(r.camera.x-p.x,r.camera.y-p.y)<1,'return portal camera also snaps');
 const cage=stationOwlCages(g)[0];Object.assign(p,{x:cage.x,y:cage.y+30});t.previous.clear();g.update(.05,{keyboard:{interact:true}});ok(p.npcQuests.snowy_owl.active,'actual input opens cage and adopts owl');g.update(.05,{keyboard:{}});p.x+=160;p.moving=true;for(let i=0;i<100;i++)tickStationOwls(g,.05);ok(g.stationOwls[0].owlHeight>0,'snowy owl flies to moving owner');p.moving=false;for(let i=0;i<100;i++)tickStationOwls(g,.05);ok(g.stationOwls[0].owlPhase==='perch','snowy owl lands beside resting owner');p.equipment.hand1='critter_net';give(p.inventory,'critter_cage');ok(g.attack(p),'actual net attack handles owl');ok(p.inventory.some(a=>a?.type==='caught_snowy_owl'),'net puts owl in a travel cage');p.ui={panel:'pack',index:p.inventory.findIndex(a=>a?.type==='caught_snowy_owl')};g.inventoryAction(p,'use');ok(p.npcQuests.snowy_owl.active,'actual item Use releases pet again');p.ui=null;tickStationOwls(g,.05);
-const {inventoryToolbar}=await import('./src/inventory-toolbar.mjs');
+ok(companionReserve(p).some(pet=>pet.kind==='tarantula'),'The purchased owls preserve the adopted spider in reserve');
+ok(renamePet(g,p,'Ember'),'Companion care renames the active horned owl');
+ok(switchHunterCompanion(g,p,0)&&p.hunterPet.kind==='tarantula','The spider can return to the active companion slot');
+ok(switchHunterCompanion(g,p,companionReserve(p).findIndex(pet=>pet.name==='Ember'))&&p.hunterPet.name==='Ember','Switching back retains the custom owl name');
 const owlBoard=document.createElement('canvas');owlBoard.width=900;owlBoard.height=375;
 const op=owlBoard.getContext('2d');op.imageSmoothingEnabled=false;op.fillStyle='#314541';op.fillRect(0,0,900,375);
 for(const [i,[type,owl]]of Object.entries(EMPORIUM_OWLS).entries()){
- const index=p.inventory.findIndex(item=>item?.type===type);
- p.ui={panel:'pack',index};
- const call=inventoryToolbar(g,p,[]).options.find(x=>x.id==='use');
- ok(call?.label==='Call owl'&&!call.reason,owl.name+' cage is usable through the backpack toolbar');
- g.inventoryAction(p,call.action);
- ok(g.stationOwls.filter(a=>a.owner===p.id).length===1&&g.stationOwls[0].owlVariant===owl.variant&&p.inventory[index]?.type===type,owl.name+' summons with the cage intact');
- g.stationOwls.length=0;g.inventoryAction(p,call.action);tickStationOwls(g,.05);
- ok(g.stationOwls[0]?.owlVariant===owl.variant&&g.stationOwls[0].moving&&p.inventory[index]?.qty===1,owl.name+' can be recalled and take off after its runtime actor disappears');
  const x=150+i*300;
  op.fillStyle='#f0e2ba';op.font='19px Georgia';op.textAlign='center';op.fillText(owl.name,x,34);
  drawItem(op,type,x,88,50);
@@ -273,8 +271,8 @@ p.ui=null;
 images.emporiumOwls=owlBoard.toDataURL();
 const sheet=document.createElement('canvas');sheet.width=1000;sheet.height=440;const c=sheet.getContext('2d');c.fillStyle='#425454';c.fillRect(0,0,1000,440);c.fillStyle='#f4e8bd';c.font='18px Georgia';c.fillText('Snowy owl · shared raven wing joints · eight directions',22,28);for(let d=0;d<8;d++){const v=directionVector(d);drawSnowyOwl(c,{x:70+d*120,y:135,faceX:v[0],faceY:v[1],hp:30,owlPhase:'perch'},2,90);drawSnowyOwl(c,{x:70+d*120,y:295,faceX:v[0],faceY:v[1],hp:30,owlPhase:'fly'},2+d*.09,90);}drawOwlCage(c,{x:140,y:410},false,'back');drawCagedSnowyOwl(c,{x:140,y:410},2);drawOwlCage(c,{x:140,y:410});drawOwlCage(c,{x:300,y:410},true,'back');drawOwlCage(c,{x:300,y:410},true);images.owlViews=sheet.toDataURL();const cageBoard=document.createElement('canvas');cageBoard.width=520;cageBoard.height=260;const cb=cageBoard.getContext('2d');cb.fillStyle='#3d5148';cb.fillRect(0,0,520,260);cb.imageSmoothingEnabled=false;cb.scale(2,2);for(const [i,open]of [false,true].entries()){const a={x:65+i*125,y:112};drawOwlCage(cb,a,open,'back');if(!open)drawCagedSnowyOwl(cb,a,2);drawOwlCage(cb,a,open);cb.fillStyle='#efdfb3';cb.font='10px Georgia';cb.textAlign='center';cb.fillText(open?'Door open':'Snowy owl carrier',a.x,22);}images.cagePreview=cageBoard.toDataURL();ok(true,'eight native owl directions with folded and flapping wings render');
 leaveTrainTest(g);ok(original.npcQuests.snowy_owl.active,'adopted pet survives return to expedition');ok(original.inventory.some(a=>a?.type==='starter_wand'),'alley purchase survives expedition return');
-ok(Object.keys(EMPORIUM_OWLS).every(type=>original.inventory.some(i=>i?.type===type))&&original.npcQuests.owl_emporium.active==='eeylops_archimedes_cage','Purchased cages and the selected call survive return to the expedition');
-ok(original.hunterPet?.kind==='tarantula'&&darkEssence(original)===2,'Spider companion and its exact debit survive preview exit');
+ok(original.hunterPet?.owlVariant==='archimedes'&&original.hunterPet?.name==='Ember'&&companionReserve(original).filter(pet=>pet.owlVariant).length===2,'Every adopted owl and its selected companion state survive return to the expedition');
+ok(companionReserve(original).some(pet=>pet.kind==='tarantula')&&darkEssence(original)===2,'The reserved spider and its exact debit survive preview exit');
 return {checks,images};})().catch(error=>({error:error.stack||String(error)}))`);
 if(result.error)throw Error(result.error);
 for(const [name,data]of Object.entries(result.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(data.split(',')[1],'base64'));w.showInactive();await w.webContents.executeJavaScript('showSpiderPreview()');await new Promise(resolve=>setTimeout(resolve,250));fs.writeFileSync(path.join(out,'nocturne-spider-ui.png'),(await w.webContents.capturePage()).toPNG());await w.webContents.executeJavaScript('document.querySelector("dialog[open]")?.close();showDiagonShopPreview()');await new Promise(resolve=>setTimeout(resolve,300));fs.writeFileSync(path.join(out,'shop-ui.png'),(await w.webContents.capturePage()).toPNG());w.setContentSize(640,480);await new Promise(resolve=>setTimeout(resolve,200));const fit=await w.webContents.executeJavaScript('({width:document.querySelector("dialog[open]").getBoundingClientRect().width,viewport:innerWidth})');if(fit.width>fit.viewport)throw Error('Small shop does not fit');fs.writeFileSync(path.join(out,'shop-small.png'),(await w.webContents.capturePage()).toPNG());result.checks.push('native alley merchant UI fits desktop and small windows');w.hide();if(errors.length)throw Error(errors.join('\n'));const report={passed:result.checks.length,checks:result.checks,failed:0,errors,muted:w.webContents.isAudioMuted()};fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));clearTimeout(deadline);app.exit(0);

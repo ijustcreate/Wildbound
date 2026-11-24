@@ -1,5 +1,5 @@
 import {broomProfileInventory} from './broom-mount.mjs';
-import {petRecord,restoreHunterPet} from './hunter-pets.mjs';
+import {migrateEmporiumOwl,petRecord,restoreHunterPet} from './hunter-pets.mjs';
 import { BACKPACK_SLOTS, canonicalItemType, freshCharacter, ITEMS, migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
 import { DEFAULT_APPEARANCE } from "./appearance.mjs";
 import {migrateSavedStarterChest} from './starter-chest.mjs';
@@ -147,6 +147,7 @@ export class Profiles {
     p.hunterPet=restoreHunterPet(h.hunterPet);
     p.appearance = structuredClone(h.appearance || null);
     p.inventory = structuredClone(h.inventory);
+    migrateEmporiumOwl(p);
     p.equipment = { ...h.equipment };
     p.equipmentSockets=structuredClone(h.equipmentSockets||{});
     p.chests = structuredClone(h.chests);

@@ -1,5 +1,6 @@
 import {block as b,shape as p,line as l} from './diagon-shop-brush.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
+import {DIAGON_STREET_INSET,diagonLaneX,nocturneLaneX} from './alley-street-layout.mjs';
 
 export function drawOllivandersPassage(c,{x,y,w,h},visible){
  if(!visible(x+w/2,y+h/2,w/2,h/2))return;
@@ -13,7 +14,7 @@ export function drawOllivandersPassage(c,{x,y,w,h},visible){
  }
 }
 
-const threshold={x:8129,y:5181,w:129,h:105};
+const threshold={x:8129-DIAGON_STREET_INSET,y:5181,w:129,h:105};
 let thresholdRaster;
 function paintNocturneThreshold(c){
  const {w,h}=threshold;
@@ -77,8 +78,8 @@ export function drawNocturneRatHoles(c,holes,visible){
 }
 
 const posts=[
- {x:8077,y:5588,night:false,boards:[['DIAGON ALLEY','up'],['NOCTURNE ALLEY','right']]},
- {x:9165,y:5234,night:true,boards:[['OLD WIZARD CEMETERY','right'],['DIAGON ALLEY','left']]},
+ {x:diagonLaneX(8077),y:5588,night:false,boards:[['DIAGON ALLEY','up'],['NOCTURNE ALLEY','right']]},
+ {x:nocturneLaneX(9165),y:5234,night:true,boards:[['OLD WIZARD CEMETERY','right'],['DIAGON ALLEY','left']]},
  {x:9448,y:5390,night:true,boards:[['OLD WIZARD CEMETERY','down'],['NOCTURNE ALLEY','up']]},
 ];
 

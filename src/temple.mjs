@@ -47,7 +47,7 @@ export function templeRoomStep(g,p,i,dt){
  const exit=locationMarker('temple-upper','exit',null),chest=locationMarker('temple-upper','chest',{x:160,y:78});
  if(exit?Math.hypot(p.roomX-exit.x,p.roomY-exit.y)<10:p.roomY>202&&Math.abs(p.roomX-160)<24){g.leaveRoom(p);return true;}
  const nearChest=Math.hypot(p.roomX-chest.x,p.roomY-chest.y)<68;
- if((i.interact&&!p.previousInput?.interact||i.pick&&!p.previousInput?.pick)&&collectTempleLoot(g,p))return true;
+ if((i.interact&&!p.previousInput?.interact||i.loot&&!p.previousInput?.loot||i.pick&&!p.previousInput?.pick)&&collectTempleLoot(g,p))return true;
  if(i.summon&&!p.previousInput?.summon)g.raiseSkeleton?.(p);
  if(i.interact&&!p.previousInput?.interact&&nearChest){g.openInventory(p,'temple');g.onSound('inventory',p);g.message('Ritual chest opened.');}
  return true;

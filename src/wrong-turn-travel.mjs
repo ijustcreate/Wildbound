@@ -65,14 +65,20 @@ function clearGround(view,point,reserved){
  return !view.blocked(x,y,9,false,false,false,0,0,false,{x,y});
 }
 
-function groundLandings(view,anchor,travellers,reserved=[],firstPoint){
- const points=ringPoints(anchor),used=[...reserved],placements=[];
+function groundLandings(view,anchor,travellers,reserved=[],firstPoint,limit){
+ const points=ringPoints(anchor,limit),used=[...reserved],placements=[];
  for(const [i] of travellers.entries()){
   const position=i===0&&firstPoint?firstPoint:points.find(point=>clearGround(view,point,used));
   if(!position)return null;
   placements.push({position});used.push(position);
  }
  return placements;
+}
+
+export function planWildGroundArrivals(g,room,anchor,travellers,limit){
+ const view=landingWorld(g,room);
+ const reserved=room===roomOf(g.trainTest)?g.players.filter(p=>!travellers.includes(p)):[];
+ return groundLandings(view,anchor,travellers,reserved,null,limit)?.map(({position})=>position)||null;
 }
 
 function coachCanReceive(t){

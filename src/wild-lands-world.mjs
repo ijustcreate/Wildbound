@@ -1,5 +1,7 @@
 import {spellTransition} from './portal-transition.mjs';
-import {inDiagon} from './diagon-alley.mjs';
+import {inDiagon,switchAlleyLayer} from './diagon-alley.mjs';
+import {inDiagonArena} from './diagon-arena-layout.mjs';
+import {leaveDiagonArena} from './diagon-arena.mjs';
 import {nativeWildTile,nearbyNativeBayouShrine} from './wild-native-biomes.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
 import {EAST_WILDS_WIDTH,HOLLOW_ROOM,HOLLOW_GATE,HOLLOW_EXIT,HOLLOW_ARRIVAL,hollowSurface,mountainLand,mountainSurface,mountainTerrainBlocked} from './wild-mountain-layout.mjs';
@@ -8,6 +10,7 @@ import {sketchBiome,sketchGround,sketchSurface,sketchSurfaceAt} from './wild-lan
 import {WILDS_OVERLOOK,inOverlookGround} from './overlook-maze-layout.mjs';
 import {clearPirateRide} from './pirate-ship.mjs';
 import {QUIDDITCH_ROOM} from './quidditch-layout.mjs';
+import {inQuidditch,leaveQuidditchPitch} from './quidditch-scene.mjs';
 import {wildHomesteadAt,wildHomesteadPoolAt} from './wild-homestead-layout.mjs';
 import {gardenPondContains} from './diagon-garden-layout.mjs';
 import {TIDEGLASS_BLOCKERS,tideglassGround,tideglassSurface} from './tideglass-layout.mjs';
@@ -58,9 +61,11 @@ export function wildLandsTravel(g,id){
  const t=g.trainTest;if(!t?.design.wildLands)return {ok:false,message:'Enter The Wild Lands first.'};
  const stop=(t.design.wildStops||WILD_LANDS_STOPS).find(s=>s.id===id)||WILD_LANDS_GATES.find(s=>s.id===id)||WILD_LANDS_SITES.find(s=>s.id===id&&!s.room);
  if(!stop)return {ok:false,message:'Unknown destination.'};
- if(t.design.activeRoom===HOLLOW_ROOM)crossHollow(g,t,false);
- else if(t.design.activeRoom==='caverns'||t.design.activeRoom==='shadow')crossBiomeRoom(g,t,t.design.activeRoom,false);
- delete t.design.activeRoom;t.wildLandsOverview=false;
+ if(inQuidditch(g)&&!leaveQuidditchPitch(g))return {ok:false,message:'Return to Diagon Alley through the Portkey first.'};
+ if(inDiagonArena(g)&&!leaveDiagonArena(g))return {ok:false,message:'Return to Diagon Alley through the vault stairs first.'};
+ if(inDiagon(g))switchAlleyLayer(g,null);
+ else switchWildLandsLayer(g,null);
+ t.wildLandsOverview=false;
  for(const [i,p]of g.players.entries()){
   clearPirateRide(p);
   delete p.mountainDescent;

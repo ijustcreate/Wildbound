@@ -1,5 +1,7 @@
 import {supportHeight} from './jumping.mjs';
+import {shrinkingScale} from './shrinking-candy.mjs';
 export function actorContact(game,actor,size,rigged=true,projectedSurface){
+ size*=shrinkingScale(actor);
  if(actor.kind==='bee_hive'){const hanging=actor.hp>0&&(actor.hiveLift||0)>0;return {x:actor.x,y:actor.y+1,surface:0,separation:hanging?actor.hiveLift:0,rx:size*(hanging?.42:.35),ry:size*(hanging?.13:.105),alpha:hanging?.25:.44};}
  if(['bee','tsetse'].includes(actor.kind))return {x:actor.x,y:actor.y+1,surface:0,separation:actor.kind==='tsetse'?16:8,rx:size*.26,ry:size*.1,alpha:.24};
  const height=Math.max(0,(actor.groundHeight||0)+(actor.jumpHeight||0));

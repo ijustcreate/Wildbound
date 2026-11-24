@@ -11,22 +11,15 @@ import {OLLIVANDERS_LAYOUT as layout} from './diagon-wand-shop-layout.mjs';
 import {bellglassRoom,meridianRoom} from './diagon-garden-shops.mjs';
 import {LOCKSMITH_ROOM} from './diagon-locksmith.mjs';
 import {NIGHTGLASS_REAR_DOOR} from './diagon-nocturne-rear.mjs';
+import {shopLocalPosition} from './alley-street-layout.mjs';
+
+export {shopEntrySide,mirroredShopPoint,shopLocalPosition} from './alley-street-layout.mjs';
 
 export const ALLEY_SHOP_ROOMS={
   flourish:books,malkins:robes,quidditch,apothecary,eeylops:owlery,floreans:iceCream,gringotts:bank,
   'nocturne-curios':nocturneCurios,nightglass,'borgin-burkes':borgin,bellglass:bellglassRoom,'meridian-hall':meridianRoom,
   'wrong-turn':LOCKSMITH_ROOM,
 };
-
-export const shopEntrySide=shop=>shop.frontEntrance||shop.x<8000?1:-1;
-
-export function mirroredShopPoint(shop,point) {
-  return {x:shop.x+point.x*shopEntrySide(shop),y:shop.y+point.y};
-}
-
-export function shopLocalPosition(shop,x,y) {
-  return {x:(x-shop.x)*shopEntrySide(shop),y:y-shop.y};
-}
 
 export function shopCutawayOpen(shop,party) {
   return party.some(actor=>{

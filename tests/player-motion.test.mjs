@@ -35,6 +35,22 @@ test('vertical dashes keep the upper body aligned to its neutral centerline',()=
   for(const name of ['chest','head','shoulderL','shoulderR'])assert.equal(pose[name][1],playerMotion.joints[name].position[1],name+' stays centered while dashing vertically');
  }
 });
+test('shoulder broom carry locks one grip without changing the gait or arm lengths',()=>{
+ const model=playerMotion;
+ const span=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+ for(const hand of ['L','R'])for(const frame of [0,1.5,4.5,7.99]){
+  const other=hand==='L'?'R':'L';
+  const actor={hp:1,faceX:1,faceY:0,walking:true,moving:true,playerFrame:frame};
+  const carry={...actor,shoulderBroom:{type:'nimbus_2000',hand}};
+  const plain=playerPose(actor,0,model),posed=playerPose(carry,0,model);
+  for(const name of ['pelvis','hipL','hipR','kneeL','kneeR','footL','footR','head','hand'+other])assert.deepEqual(posed[name],plain[name]);
+  assert.ok(Math.abs(posed['hand'+hand][2]-posed['shoulder'+hand][2]+1.6)<1e-5);
+  for(const [a,b] of [['shoulder'+hand,'elbow'+hand],['elbow'+hand,'hand'+hand]]){
+   assert.ok(Math.abs(span(posed[a],posed[b])-span(model.joints[a].position,model.joints[b].position))<1e-5);
+  }
+  assert.deepEqual(playerPose({...carry,swimming:true},0,model),playerPose({...actor,swimming:true},0,model));
+ }
+});
 test("Run loop alternates planted and lifted feet and wraps continuously", () => {
   const m = defaultPlayerMotion(),
     a = poseAt(m, "run", 2),

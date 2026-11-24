@@ -1,5 +1,6 @@
 import {GARDEN_BENCHES,GARDEN_PATHS} from './diagon-garden-layout.mjs';
 import {activeGardenBench} from './diagon-garden-benches.mjs';
+import {nocturneLaneX} from './alley-street-layout.mjs';
 
 const cats=[
  {coat:'calico',seed:58,stops:[[7468,4012],[7414,3982],[7345,3985],[7295,4019]]},
@@ -8,9 +9,9 @@ const cats=[
  {coat:'seal-point',seed:93,stops:[[7350,3867],[7380,3898],[7403,3937],[7415,3965]]},
 ];
 const nocturneCat={id:'nocturne-black-cat',coat:'black',seed:107,
- stops:[[8982,5257],[9057,5243],[9118,5219],[9143,5138],[9134,5056],[9094,5107],[9097,5189],[9040,5211]]};
+ stops:[[8982,5257],[9057,5243],[9118,5219],[9143,5138],[9134,5056],[9094,5107],[9097,5189],[9040,5211]].map(([x,y])=>[nocturneLaneX(x),y])};
 export const NOCTURNE_RAT_HOLES=[{x:9207,y:5026,side:1},{x:8978,y:5060,side:-1},
- {x:9207,y:5370,side:1},{x:8978,y:5358,side:-1},{x:9207,y:4810,side:1}];
+ {x:9207,y:5370,side:1},{x:8978,y:5358,side:-1},{x:9207,y:4810,side:1}].map(hole=>({...hole,x:nocturneLaneX(hole.x)}));
 const nocturneCats=new WeakMap();
 const scenes=new WeakMap(),RADIUS=4,SPEED=39,MAX_VISITORS=2;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);

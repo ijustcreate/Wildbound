@@ -150,7 +150,16 @@ export class PlayableLobby {
   }
   configurePractice(){
     this.practice.onSound=this.sound;
-    this.practice.persist=()=>{for(const a of this.practice.players){const p=this.getGame().players.find(p=>p.id===a.id);if(p)p.hunterPet=a.hunterPet;}this.getGame().persist();};
+    this.practice.persist=()=>{
+      const game=this.getGame();
+      for(const a of this.practice.players){
+        const p=game.players.find(p=>p.id===a.id);
+        if(!p)continue;
+        p.hunterPet=a.hunterPet;
+        if(a.npcQuests?.owl_emporium)(p.npcQuests??={}).owl_emporium=a.npcQuests.owl_emporium;
+      }
+      game.persist();
+    };
     this.practice.onLobbyPickup=actor=>{const p=this.getGame().players.find(p=>p.id===actor.id);if(p){p.inventory=structuredClone(actor.inventory);p.field=structuredClone(actor.field);this.getGame().persist();}};
     this.practice.onPetFeed=(a,food)=>{const p=this.getGame().players.find(p=>p.id===a.id);return !!p&&take(p.inventory,food);};
     this.getGame().canDropLobbyItem=p=>!!this.state.members.get(p.id)?.spawned;

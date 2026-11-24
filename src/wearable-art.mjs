@@ -9,6 +9,7 @@ import {drawAlanTurtleHelmet} from './alan-gear-art.mjs';
 import {drawResolvedHeadwear,headwearStyle} from './resolved-headwear.mjs';
 import {drawDeathEaterMask} from './death-eater-masks.mjs';
 import {drawArenaCostumeTrim} from './diagon-arena-wardrobe.mjs';
+import {drawPirateCaptainHat,drawPirateCoatTrim,drawWillyEyepatch} from './pirate-captain-gear.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
   if(ITEMS[gear.chest]?.blankExplorer)return;
@@ -29,7 +30,9 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     // The torso raster already supplies the clean outer contour and broad
     // light/shadow planes. Add only one identifying construction detail per
     // garment family instead of outlining every row of cloth.
-    if(ITEMS[gear.chest]?.arenaCut){
+    if(gear.chest==='pirate_captain_coat'){
+      drawPirateCoatTrim(c,p,d,material);
+    }else if(ITEMS[gear.chest]?.arenaCut){
       drawArenaCostumeTrim(c,chest,d,ITEMS[gear.chest].arenaCut,material);
     }else if(gear.chest==='armor'){
       const x=chest.x+(bottom.x-chest.x)*.75, y=chest.y+(bottom.y-chest.y)*.75;
@@ -101,6 +104,8 @@ export function directionalHelmet(c, id, h, d, cosmetics = {}, time = 0) {
   const def=ITEMS[id];
   if(!def) return false;
   if(def.style==='witch')return drawWitchHat(c,h,d,id);
+  if(id==='pirate_captain_hat')return drawPirateCaptainHat(c,h,d);
+  if(id==='one_eyed_willy_eyepatch')return drawWillyEyepatch(c,h,d);
   const style=headwearStyle(id,def);
   if(id==='bone_carver_crown'||id==='santa_hat')return drawResolvedHeadwear(c,h,d,style,gearPalette(id),id,time);
   if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics,time),materialIndex(id,'metal')))return true;

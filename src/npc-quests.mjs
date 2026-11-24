@@ -20,6 +20,14 @@ import {arenaBarAction,arenaBarView} from './diagon-arena.mjs';
 import {meridianClueAction,meridianClueView} from './diagon-meridian-clue.mjs';
 import {gringottsAction,gringottsView} from './gringotts-dialogue.mjs';
 import {tideglassDialogueAction,tideglassDialogueView} from './tideglass-quest.mjs';
+import {bayouGoblinDialogueAction,bayouGoblinDialogueView} from './bayou-goblin-hut.mjs';
+import {patronusDialogueAction,patronusDialogueView} from './patronus-dialogue.mjs';
+import {mysteryDialogue,mysteryDialogueAction} from './mystery-inc.mjs';
+import {flooDialogueAction,flooDialogueView} from './floo-travel.mjs';
+import {ALLEY_SHOP_HEARTH} from './diagon-alley.mjs';
+import {lupinDialogueNpc} from './remus-lupin.mjs';
+import {borginDialogueAction,borginDialogueView,validBorginDialogue} from './borgin-heart-dialogue.mjs';
+import {pirateCrewDialogue,pirateCrewDialogueAction} from './pirate-crew.mjs';
 
 const clone=x=>structuredClone(x),distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const key=p=>p.profileId||String(p.id);
@@ -110,7 +118,13 @@ const carried=(p,item)=>(p.inventory||[]).reduce((n,s)=>n+(s?.type===item?s.qty|
 function progress(p,a){return a.contract.objective.type==='collect'?Math.min(a.contract.objective.count,carried(p,a.contract.objective.item)):a.progress||0;}
 function choicesForNode(config,node){const def=config.dialogue.nodes[node];return (def?.choices||[]).map(c=>({label:c.label,action:'node:'+c.next}));}
 export function npcDialogueView(g,p){
+  if(p.ui?.borginHeart)return borginDialogueView(g,p);
+  if(p.ui?.flooHearth)return flooDialogueView(g,p,ALLEY_SHOP_HEARTH);
+  if(p.ui?.mysteryVisitor)return mysteryDialogue(g,p);
+  if(p.ui?.pirateCrew)return pirateCrewDialogue(g,p);
+  if(p.ui?.lupin)return patronusDialogueView(g,p);
   if(p.ui?.tideglassSurveyor)return tideglassDialogueView(g,p);
+  if(p.ui?.bayouGoblin)return bayouGoblinDialogueView(g,p);
   if(p.ui?.gringotts)return gringottsView(g,p);
   if(p.ui?.bellglassDivination)return bellglassDialogueView(g,p);
   if(p.ui?.meridianClerk)return meridianClueView(g,p);
@@ -167,7 +181,13 @@ function validTalk(g,p){const u=p.ui,npc=u?.npcId==='alan'?alanActor(g):(g.quest
 export function npcDialogueAction(g,p,action){
   if(villagerDialogueAction(g,p,action))return true;
   const u=p.ui;if(u?.shop!=='npc-dialogue')return false;
+  if(u.borginHeart)return borginDialogueAction(g,p,action);
+  if(u.flooHearth)return flooDialogueAction(g,p,ALLEY_SHOP_HEARTH,action);
+  if(u.mysteryVisitor)return mysteryDialogueAction(g,p,action);
+  if(u.pirateCrew)return pirateCrewDialogueAction(g,p,action);
+  if(u.lupin)return patronusDialogueAction(g,p,action);
   if(u.tideglassSurveyor)return tideglassDialogueAction(g,p,action);
+  if(u.bayouGoblin)return bayouGoblinDialogueAction(g,p,action);
   if(u.bellglassDivination)return bellglassDialogueAction(g,p,action);
   if(u.trainTicketStation)return trainTicketDialogueAction(g,p,action);
   if(u.trainConductor)return trainConductorDialogueAction(g,p,action);
@@ -273,7 +293,7 @@ export function tickNpcQuests(g,dt){
   }
   g.questNpcs=(g.questNpcs||[]).filter(n=>!n.fled);
   for(const p of g.players){if(p.ui?.shop==='npc-dialogue'&&!p.ui.villagerId){
-    const u=p.ui,valid=u.nocturneDarkWizard?validNocturneDarkWizardTalk:u.nocturneSpiderMerchant?validNocturneSpiderTalk:validTalk;
+    const u=p.ui,valid=u.borginHeart?validBorginDialogue:u.lupin?lupinDialogueNpc:u.nocturneDarkWizard?validNocturneDarkWizardTalk:u.nocturneSpiderMerchant?validNocturneSpiderTalk:validTalk;
     if(!valid(g,p))p.ui=null;
   }
     for(const state of Object.values(p.npcQuests||{})){

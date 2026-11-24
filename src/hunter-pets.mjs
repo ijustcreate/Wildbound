@@ -6,24 +6,105 @@ import {damageEnemy} from './enemy-damage.mjs';
 import {nearbyRoost,moveBatToRoost} from './bat-roost.mjs';
 import {companionMovement} from './companion-locomotion.mjs';
 import {controlledUnit} from './controlled-unit.mjs';
+import {BIRD_CAGES,emporiumOwlVariant} from './owl-emporium.mjs';
+import {waterAt} from './environment.mjs';
 
 export const TAMABLE_KINDS=['lion','wolf','bat','panther','tiger'];
 export const ADOPTABLE_SPIDER_KINDS=['spider','tarantula','jumping_spider'];
-const petKinds=new Set([...TAMABLE_KINDS,...ADOPTABLE_SPIDER_KINDS]);
+const petKinds=new Set([...TAMABLE_KINDS,...ADOPTABLE_SPIDER_KINDS,'great_owl']);
 export const hunterPets=g=>g.players.filter(p=>!p.room).flatMap(p=>[p.hunterPet,p.ritualPet]).filter(Boolean);
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function petRecord(pet){
  if(!pet||!petKinds.has(pet.kind))return null;
- return Object.fromEntries(['kind','name','collar','hp','maxHp','damage','speed','downedRemaining'].map(k=>[k,pet[k]]));
+ const record=Object.fromEntries(['kind','name','collar','hp','maxHp','damage','speed','downedRemaining'].map(k=>[k,pet[k]]));
+ for(const key of ['owlVariant','spiritGhost','ghost'])if(pet[key])record[key]=pet[key];
+ if(pet.inventory?.some(Boolean))record.inventory=structuredClone(pet.inventory);
+ if(Object.values(pet.equipment||{}).some(Boolean))record.equipment={...pet.equipment};
+ if(Object.keys(pet.equipmentSockets||{}).length)record.equipmentSockets=structuredClone(pet.equipmentSockets);
+ return record;
 }
 export function restoreHunterPet(record){
  if(!record||!petKinds.has(record.kind))return null;
+ const owl=record.kind==='great_owl'?emporiumOwlVariant(record.owlVariant):null;
+ if(record.kind==='great_owl'&&!owl)return null;
  const cfg=creatures[record.kind]?.stats||{};
  const maxHp=Math.max(100,Math.round((cfg.hp||60)*1.5));
- return {kind:record.kind,name:String(record.name||record.kind).slice(0,24),collar:/^#[0-9a-f]{6}$/i.test(record.collar)?record.collar:'#77bc87',
+ return {kind:record.kind,name:String(record.name||owl?.name||record.kind).slice(0,24),collar:/^#[0-9a-f]{6}$/i.test(record.collar)?record.collar:'#77bc87',
   maxHp,hp:Math.max(0,Math.min(maxHp,Number.isFinite(record.hp)?record.hp:maxHp)),damage:Math.max(16,Math.round((cfg.damage||10)*1.4)),speed:Math.max(145,(cfg.speed||80)*1.2),
   downedRemaining:record.hp<=0?Math.max(0,Math.min(60,record.downedRemaining??60)):undefined,
-  hunterPet:true,faction:'ally',equipment:{},inventory:[],state:'idle',step:0,faceX:0,faceY:1,cooldown:0};
+  hunterPet:true,faction:'ally',equipment:{...record.equipment},inventory:structuredClone(record.inventory||[]),
+  ...(record.equipmentSockets?{equipmentSockets:structuredClone(record.equipmentSockets)}:{}),
+  ...(record.spiritGhost?{spiritGhost:true,ghost:!!record.ghost}:{}),state:'idle',step:0,faceX:0,faceY:1,cooldown:0,
+  ...(owl?{owlVariant:owl.variant,owlHeight:0,owlPhase:'perch',owlPhaseTime:0}:{})};
+}
+
+export function newEmporiumHunterPet(type,collar){
+ const owl=Object.hasOwn(BIRD_CAGES,type)?BIRD_CAGES[type]:null;
+ return owl?restoreHunterPet({kind:'great_owl',owlVariant:owl.variant,name:owl.name,collar}):null;
+}
+
+export function companionReserve(p){return p.npcQuests?.owl_emporium?.companions||[];}
+
+function reserveList(p){
+ p.npcQuests??={};
+ return (p.npcQuests.owl_emporium??={}).companions??=[];
+}
+
+export function ownsCompanionVariant(p,variant){
+ return p.hunterPet?.owlVariant===variant||companionReserve(p).some(pet=>pet.owlVariant===variant);
+}
+
+export function activateHunterCompanion(p,pet){
+ const active=petRecord(p.hunterPet);
+ if(active)reserveList(p).push(active);
+ p.hunterPet=pet;
+}
+
+export function companionRoster(p){
+ return {active:petRecord(p.hunterPet),companions:structuredClone(companionReserve(p))};
+}
+
+export function recordPreviewCompanions(g,p){
+ const t=g.trainTest;
+ if(!t||t.persistent)return;
+ const receipt=((t.alleyPurchases??={})[p.id]??={spent:0,gold:0,items:[],delta:{}});
+ receipt.owlRoster=companionRoster(p);
+ return receipt;
+}
+
+export function transferPreviewCompanions(original,preview,receipt){
+ const roster=receipt?.owlRoster;
+ if(!roster)return;
+ const live=companionRoster(preview),all=[live.active,...live.companions].filter(Boolean);
+ const updated=record=>record&&(all.find(pet=>pet.kind===record.kind&&pet.owlVariant===record.owlVariant)||record);
+ original.hunterPet=restoreHunterPet(updated(roster.active));
+ const reserve=reserveList(original);
+ reserve.splice(0,reserve.length,...roster.companions.map(updated));
+}
+
+export function switchHunterCompanion(g,p,index){
+ const reserve=companionReserve(p),pet=Number.isInteger(index)?restoreHunterPet(reserve[index]):null;
+ if(!pet||p.controlledFollowerId)return false;
+ reserve.splice(index,1);
+ activateHunterCompanion(p,pet);
+ recordPreviewCompanions(g,p);
+ g.uiRevision=(g.uiRevision||0)+1;
+ g.persist?.();
+ return true;
+}
+
+export function migrateEmporiumOwl(p){
+ const legacy=p.npcQuests?.owl_emporium;
+ if(!legacy?.active)return false;
+ const pet=newEmporiumHunterPet(legacy.active,p.color);
+ if(!pet)return false;
+ if(!ownsCompanionVariant(p,pet.owlVariant)){
+  if(!Array.isArray(p.inventory)||!take(p.inventory,legacy.active))return false;
+  if(p.hunterPet)reserveList(p).push(petRecord(pet));
+  else p.hunterPet=pet;
+ }
+ delete legacy.active;
+ return true;
 }
 export function nearestTamable(g,p){
  const spirit=(g.ghosts||[]).filter(a=>a.ritualTiger&&a.wildTiger&&a.hp>0&&((p.room&&a.room===p.room)?Math.hypot(a.roomX-p.roomX,a.roomY-p.roomY):(!p.room&&!a.room?distance(a,p):Infinity))<=90).sort((a,b)=>((p.room&&a.room===p.room)?Math.hypot(a.roomX-p.roomX,a.roomY-p.roomY):distance(a,p))-((p.room&&b.room===p.room)?Math.hypot(b.roomX-p.roomX,b.roomY-p.roomY):distance(b,p)))[0];
@@ -78,13 +159,26 @@ export function hurtPet(g,pet,amount){
 }
 function placeNearOwner(g,p,pet){
  for(let n=0;n<16;n++){const a=n*Math.PI/8,x=p.x+Math.cos(a)*35,y=p.y+Math.sin(a)*35;
-  if(!g.blocked(x,y,8,pet.kind==='bat',false,false,collisionOffset(g,pet))){pet.x=x;pet.y=y;return;}}
+  if(!g.blocked(x,y,8,pet.kind==='bat'||!!pet.owlVariant,false,false,collisionOffset(g,pet))){pet.x=x;pet.y=y;return;}}
  pet.x=p.x;pet.y=p.y;
+}
+function tickOwlPose(g,p,pet,dt){
+ const surface=waterAt(g,pet.x,pet.y);
+ const overWater=['water','shallow','floodbridge'].includes(surface);
+ const attacking=pet.hp>0&&pet.attack>0;
+ const flying=pet.hp>0&&(attacking||pet.moving||overWater||p.trainRide||p.broomMount);
+ const target=attacking?7:flying?28:0;
+ const height=pet.owlHeight||0,rate=target>height?72:80;
+ pet.owlHeight=height+Math.max(-rate*dt,Math.min(rate*dt,target-height));
+ const phase=attacking?'attack':flying?(height<10?'takeoff':'fly'):pet.owlHeight>0?'landing':'perch';
+ pet.owlPhaseTime=phase===pet.owlPhase?(pet.owlPhaseTime||0)+dt:0;
+ pet.owlPhase=phase;
 }
 export function tickHunterPets(g,dt,inputs={}){
  tickRitualPets(g,dt);
  for(const p of g.players){
   const pet=p.hunterPet;if(!pet)continue;
+  const flies=pet.kind==='bat'||!!pet.owlVariant;
   pet.hunterPet=true;pet.owner=p.id;pet.id??=g.nextId++;pet.equipment??={};pet.inventory??=[];
   if(controlledUnit(g,p)===pet){pet.moving=false;pet.pvpTarget=null;continue;}
   if(!Number.isFinite(pet.x)||!Number.isFinite(pet.y))placeNearOwner(g,p,pet);
@@ -93,7 +187,16 @@ export function tickHunterPets(g,dt,inputs={}){
   pet.invuln=Math.max(0,(pet.invuln||0)-dt);pet.hit=Math.max(0,(pet.hit||0)-dt);pet.attack=Math.max(0,(pet.attack||0)-dt);pet.cooldown=Math.max(0,(pet.cooldown||0)-dt);pet.heartTime=Math.max(0,(pet.heartTime||0)-dt);
   if(pet.hp<=0){
    pet.downedRemaining=Math.max(0,(pet.downedRemaining??60)-dt);
-   if(pet.downedRemaining===0){g.message(`${pet.name} was lost. Equip the Ranger set to tame a new companion.`);p.hunterPet=null;g.persist();continue;}
+   if(pet.downedRemaining===0){
+    if(pet.owlVariant==='parrot'){
+     p.npcQuests??={};
+     (p.npcQuests.owl_emporium??={}).lostParrot={name:pet.name,collar:pet.collar};
+    }
+    const recall=pet.owlVariant==='parrot'?'Use the Parrot Cage to call it back.':
+     pet.owlVariant?'Eeylops can help you adopt another owl.':'Equip the Ranger set to tame a new companion.';
+    g.message(`${pet.name} was lost. ${recall}`);
+    p.hunterPet=null;g.persist();continue;
+   }
    pet.animationAction=null;pet.moving=false;
    const helper=g.players.find(q=>q.hp>0&&!q.room&&distance(q,pet)<55&&inputs[q.device]?.interact&&!q.ui);
    pet.revive=helper?(pet.revive||0)+dt:Math.max(0,(pet.revive||0)-dt);
@@ -113,11 +216,11 @@ export function tickHunterPets(g,dt,inputs={}){
   if(target&&distance(pet,p)<220){
    pet.lastFight=g.time;pet.ownerIdle=0;
    const d=distance(pet,target)||1;pet.faceX=(target.x-pet.x)/d;pet.faceY=(target.y-pet.y)/d;
-   if(d>28){if(pet.kind==='bat')g.moveActor(pet,pet.faceX*pet.speed*dt,pet.faceY*pet.speed*dt,true);else navigateEnemy(g,pet,target,dt);}
+   if(d>28){if(flies)g.moveActor(pet,pet.faceX*pet.speed*dt,pet.faceY*pet.speed*dt,true);else navigateEnemy(g,pet,target,dt);}
    if(d<42&&pet.cooldown===0&&clearShot(g,pet,target)){
     if(g.players.includes(target))g.hurt(target,pet.damage,pet);
     else {damageEnemy(target,pet.damage);target.killedBy=p.id;target.aggro=true;}
-    pet.cooldown=.85;pet.attack=.34;pet.animationAction=pet.kind==='bat'?'dive':'bite';g.onSound('hit',target);
+    pet.cooldown=.85;pet.attack=.34;pet.animationAction=pet.owlVariant?'swoop':pet.kind==='bat'?'dive':'bite';g.onSound('hit',target);
    }
   }else{
    if((g.time||0)-(pet.lastFight??-10)>5)pet.hp=Math.min(pet.maxHp,pet.hp+pet.maxHp*.01*dt);
@@ -130,14 +233,14 @@ export function tickHunterPets(g,dt,inputs={}){
    }
    const d=distance(pet,spot);
    if(d>7){
-    if(pet.kind==='bat'){pet.faceX=(spot.x-pet.x)/d;pet.faceY=(spot.y-pet.y)/d;g.moveActor(pet,pet.faceX*Math.min(d,pet.speed*dt),pet.faceY*Math.min(d,pet.speed*dt),true);}
+    if(flies){pet.faceX=(spot.x-pet.x)/d;pet.faceY=(spot.y-pet.y)/d;g.moveActor(pet,pet.faceX*Math.min(d,pet.speed*dt),pet.faceY*Math.min(d,pet.speed*dt),true);}
     else navigateEnemy(g,pet,spot,dt*Math.min(1,d/28));
    }else{pet.faceX=p.x-pet.x;pet.faceY=p.y-pet.y;pet.animationAction=idle&&pet.kind!=='bat'?'sit':null;}
    pet.happyClock=(pet.happyClock||0)+dt;
    if(pet.happyClock>=9){pet.happyClock=0;g.effects.push({x:pet.x,y:pet.y-36,text:'☺',color:'#ffe9a1',life:1.5});}
   }
-  if(pet.kind!=='bat')tickJump(pet,dt,g,collisionOffset(g,pet));
-  }finally{finish();}
+  if(!flies)tickJump(pet,dt,g,collisionOffset(g,pet));
+  }finally{finish();if(pet.owlVariant&&!p.room)tickOwlPose(g,p,pet,dt);}
  }
 }
 export function tickRitualPets(g,dt){

@@ -6,7 +6,7 @@ import {triggerEnemyTrap} from './enemy-traps.mjs';
 
 export function wolfPack(g,e) {
   const pack=g.enemies.filter(w=>w.kind==='wolf'&&w.hp>0&&w.group===e.group).sort((a,b)=>a.id-b.id);
-  const alpha=pack.find(w=>w.alpha)||pack[0];
+  const alpha=pack.find(w=>w.wildAlphaWolf)||pack.find(w=>w.alpha)||pack[0];
   for(const w of pack){w.alpha=w===alpha;w.alphaId=alpha.id;}
   return {pack,alpha};
 }

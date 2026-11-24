@@ -69,6 +69,7 @@ export const GARDEN_RESIDENTS=Object.freeze([
   greeting:'I’ve been watching the pool. The fish keep passing the same reed, though they don’t all pass it on the same side.',
   question:'What have you seen today?',
   story:'An owl was watching a butterfly over the water. I put them both down in my notes so I could remember who noticed whom first.',
+  lore:{label:'Is there a story about the pond?',text:'They say a swim here can mend a broken heart. Jump in carrying your own heart and the pond gives it back to you. Carry somebody else’s and it finds its way back to them. I wonder how the pond knows.'},
   topic:{label:'Learn to check a wing pattern',text:'“Wait till it lands and turns toward the light,” Luna says. “If you use a net and a bottle for a closer look, remember to let it back out.”',replies:[
    {label:'Take an empty critter bottle.',text:'Luna checks the stopper and hands you a clean critter bottle.',reward:'empty_jar',claim:'celia-pollen',sound:'loot'},
    {label:'I’ll watch them where they land.',text:'Luna moves over. “The light is better on this side. You can see the little marks on the wings.”',sound:'alleyPages'},

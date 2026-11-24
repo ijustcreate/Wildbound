@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/core.mjs';
-import { ITEMS } from '../src/items.mjs';
+import { equip, ITEMS } from '../src/items.mjs';
 import { drawBoomerang, throwBoomerang, tickBoomerangs } from '../src/boomerang.mjs';
 import { boomerangContact } from '../src/boomerang-flight.mjs';
 import { projectedAimTrajectory } from '../src/bow-aim.mjs';
@@ -143,4 +143,45 @@ test('live Studio tuning controls turnaround and the return guide', () => {
   } finally {
     Object.assign(combatTuning, previous);
   }
+});
+
+test('a held Glaive gains speed and range, seeks several targets, and frees the other weapon during flight',()=>{
+ const {g,p}=setup();
+ p.equipment.hand1='sword';p.equipment.hand2=null;
+ p.inventory=[{type:'glaive',qty:1}];
+ assert.ok(equip(p,0,'hand2'));
+ const launch=rangedLaunchOrigin(p,g.time,'boomerang',{slot:'hand2'});
+ assert.ok(g.attack(p,.01));
+ const tap=g.boomerangs[0];
+ assert.equal(tap.slot,'hand2');
+ assert.ok(Math.abs(tap.y-launch.y)<1e-7);
+ for(let i=0;i<160;i++)tickBoomerangs(g,.016);
+ assert.equal(g.boomerangs.length,0);
+ assert.equal(p.glaiveInFlight,undefined);
+
+ p.attack=0;
+ assert.ok(g.attack(p,1.2));
+ const blade=g.boomerangs[0];
+ assert.ok(blade.speed>tap.speed*1.5&&blade.range>tap.range*1.7);
+ const aim=projectedAimTrajectory(p,{origin:launch,direction:{x:1,y:0},kind:'boomerang',slot:'hand2',charge:1.2,world:g});
+ assert.ok(Math.abs(aim.at(-1).distance-blade.range)<1e-7);
+ const first=sentry(901,blade.x+92,blade.y+54);
+ const second=sentry(902,blade.x+112,blade.y-18);
+ const friendly={...sentry(903,blade.x+78,blade.y),faction:'ally'};
+ g.enemies=[first,second,friendly];
+ for(let i=0;i<55&&!blade.returning;i++)tickBoomerangs(g,.016);
+ assert.ok(blade.returning);
+ assert.ok(first.hp<100&&second.hp<100,'two off-axis enemies take hits before the return');
+ assert.equal(friendly.hp,100);
+ assert.ok(blade.trail.length>7);
+ p.attack=0;g.enemies=[sentry(904,p.x+27,p.y)];
+ assert.ok(g.attack(p));
+ assert.notEqual(p.attackClip,'ranged');
+ p.attack=p.attackDuration*.5;
+ g.tickMeleeContact(p);
+ assert.ok(g.enemies[0].hp<100);
+ assert.equal(g.boomerangs[0],blade);
+ tickBoomerangs(g,2);
+ assert.equal(p.equipment.hand2,'glaive');
+ assert.equal(p.glaiveInFlight,undefined);
 });

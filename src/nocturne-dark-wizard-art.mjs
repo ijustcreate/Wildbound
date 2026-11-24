@@ -1,32 +1,46 @@
-import {drawItem} from './item-art.mjs';
 import {ITEMS} from './items.mjs';
 import {actionInputLabel} from './action-prompts.mjs';
 import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {isNocturneDarkWizardLoot,nocturneDarkWizardActors} from './nocturne-dark-wizards.mjs';
+import {nocturneBossActors} from './nocturne-boss.mjs';
+import {drawNocturneBossSpeech,NOCTURNE_LORD_SIZE,paintNocturneDissolve} from './nocturne-boss-art.mjs';
 
 function drawWizardHealth(c,w){
- const x=Math.round(w.x)-14,y=Math.round(w.y)-51;
- c.fillStyle='#241d2c';c.fillRect(x,y,28,5);
- c.fillStyle='#6c414c';c.fillRect(x+1,y+1,26,3);
- c.fillStyle='#d3a571';c.fillRect(x+1,y+1,Math.ceil(26*w.hp/w.maxHp),2);
+ const lord=w.nocturneBossRole==='lord',width=lord?66:28;
+ const x=Math.round(w.x-width/2),y=Math.round(w.y)-(lord?61:51);
+ if(lord){
+  c.save();c.font='700 10px system-ui';c.textAlign='center';
+  c.fillStyle='#d5e0c4';c.fillText(w.name,w.x,y-5);
+  c.restore();
+ }
+ c.fillStyle='#241d2c';c.fillRect(x,y,width,5);
+ c.fillStyle='#6c414c';c.fillRect(x+1,y+1,width-2,3);
+ c.fillStyle=lord?'#90d498':'#d3a571';c.fillRect(x+1,y+1,Math.ceil((width-2)*w.hp/w.maxHp),2);
 }
 
-function drawDuelLoot(c,l,time){
- const x=Math.round(l.x),y=Math.round(l.y),lift=Math.round(Math.sin(time*4+l.id)*1.5);
- c.fillStyle='#241c2b99';c.fillRect(x-7,y-1,14,3);
- drawItem(c,l.type,x,y-11+lift,22);
-}
-
-export function queueNocturneDarkWizards(c,g,visible,objects){
- for(const actor of nocturneDarkWizardActors(g)){
+export function queueNocturneDarkWizards(c,g,visible,objects,animator,bounds){
+ const boss=g.trainTest.nocturneBoss;
+ const actors=[...nocturneDarkWizardActors(g),...nocturneBossActors(g)];
+ for(const actor of actors){
+  if(actor.nocturneBossRole&&actor.hp<=0)continue;
   if(!visible(actor.x,actor.y,65,90))continue;
   const player=actor.hp>0&&actor.attack>0?{...actor,animationAction:'cast'}:actor;
-  objects.push({depth:actor.y,player});
-  if(actor.darkWizardId&&actor.hp>0)objects.push({depth:actor.y+.01,paint:()=>drawWizardHealth(c,actor)});
+  const lord=actor.nocturneBossRole==='lord';
+  objects.push({depth:actor.y,player,size:lord?NOCTURNE_LORD_SIZE:undefined});
+  if((actor.darkWizardId||actor.nocturneBossRole&&actor.aggro)&&actor.hp>0){
+   objects.push({depth:actor.y+.01,paint:()=>drawWizardHealth(c,actor)});
+  }
+  if(lord&&boss?.speech?.text&&boss.speech.until>g.time){
+   objects.push({depth:actor.y+.05,paint:()=>drawNocturneBossSpeech(c,actor,boss.speech.text,bounds)});
+  }
  }
- for(const l of g.loot){
-  if(isNocturneDarkWizardLoot(l)&&visible(l.x,l.y,38,42)){
-   objects.push({depth:l.y,paint:()=>drawDuelLoot(c,l,g.time)});
+ if(boss?.death&&g.time-boss.death.startedAt<2.6&&visible(boss.death.x,boss.death.y,80,130)){
+  const actor=g.enemies.find(e=>e.id===boss.death.id);
+  objects.push({depth:boss.death.y,paint:()=>paintNocturneDissolve(c,animator,actor,boss.death,g.time,g.time-boss.death.startedAt,true)});
+ }
+ for(const actor of g.enemies){
+  if(actor.hp<=0&&actor.nocturneBossRole==='minion'&&actor.deathTimer<1.3&&visible(actor.x,actor.y,65,100)){
+   objects.push({depth:actor.y,paint:()=>paintNocturneDissolve(c,animator,actor,actor,g.time,actor.deathTimer,false)});
   }
  }
  for(const bolt of g.spells){

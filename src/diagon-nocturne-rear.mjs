@@ -1,6 +1,9 @@
 import {block as b, shape as p, line as l} from './diagon-shop-brush.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
 import {chipGravestone,nearestGravestone} from './graveyard-world.mjs';
+import {NOCTURNE_STREET_INSET} from './alley-street-layout.mjs';
+
+export const NIGHTGLASS_REAR_DOOR=Object.freeze({x:9408-NOCTURNE_STREET_INSET,y:5507,offsetY:7,halfSpan:21});
 
 // Public approach, rear lane, Curios court, and Nightglass graveyard.
 export const NOCTURNE_REAR_AREAS=Object.freeze([
@@ -8,6 +11,7 @@ export const NOCTURNE_REAR_AREAS=Object.freeze([
  {x:9426,y:4884,w:62,h:662},
  {x:9426,y:4828,w:195,h:150},
  {x:9426,y:5410,w:236,h:190},
+ {x:NIGHTGLASS_REAR_DOOR.x-16,y:5486,w:100,h:43},
 ]);
 export const NOCTURNE_GRAVES=Object.freeze([
  {id:'morgana',name:'Morgana le Fay',epitaph:'She kept her own counsel.',x:9505,y:5452,w:37,h:31},
@@ -16,7 +20,6 @@ export const NOCTURNE_GRAVES=Object.freeze([
  {id:'godric',name:'Godric Gryffindor',epitaph:'Courage walks on after us.',x:9535,y:5527,w:40,h:34},
  {id:'helga',name:'Helga Hufflepuff',epitaph:'There was always room at her table.',x:9605,y:5534,w:39,h:33},
 ]);
-export const NIGHTGLASS_REAR_DOOR=Object.freeze({x:9408,y:5507,offsetY:7,halfSpan:21});
 const yard={left:9474,right:9651,top:5425,bottom:5588};
 const gate={x:yard.left,y:5507,halfSpan:20};
 const ghostChance=.25;

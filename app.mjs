@@ -4,10 +4,12 @@ import {updateTrainAudio} from './src/train-audio.mjs';
 import {routeLootController} from './src/loot-controller.mjs';
 import {seatOpeningParty} from './src/opening-board.mjs';
 import {mountCampSettings,readCampInputSettings,shapeCampStick} from './src/settings-camp.mjs';
+import {mountWebFeedback} from './src/web-feedback.mjs';
 import {renderVictoryReport,scrollVictoryReport} from './src/victory-ui.mjs';
 import {continueAfterDefeat} from './src/defeat-flow.mjs';
 import {enterWildLands} from './src/wild-lands.mjs';
 import {leaveTrainTest} from './src/train-test.mjs';
+import {shackTrapdoorClick} from './src/hogsmeade-boggart.mjs';
 import {stopRailwayStream} from './src/railway-stream.mjs';
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
 import {worldGridSettings,setWorldGridSettings} from './src/world-grid.mjs';
@@ -47,6 +49,7 @@ import { Assets } from "./src/assets.mjs";
 import { Renderer, drawMenu,drawDie } from "./src/render.mjs";
 import {warmSealVortex} from './src/seal-vortex.mjs';
 import { drawBoard } from "./src/board.mjs";
+import { homesteadBoardView } from "./src/homestead-board.mjs";
 import { Animator } from "./src/animation.mjs";
 import { ITEM_ART_TYPES, drawItem } from "./src/item-art.mjs";
 import {
@@ -1592,6 +1595,7 @@ for (const [action, value] of Object.entries(mapping)) {
 const campSettings=mountCampSettings($('settings-dialog'),{mapping,defaults:DEFAULT_MAPPING,
   onMapping:()=>{localStorage.setItem('wildbound-mapping',serializeMapping(mapping));for(const input of document.querySelectorAll('[data-mapping]'))input.value=mapping[input.dataset.mapping];renderPlayerMappings($('player-mappings'),game,mapping);},
   promptsChanged:()=>renderPlayerMappings($('player-mappings'),game,mapping)});
+mountWebFeedback(() => screen);
 window.addEventListener("keydown", (e) => {
   if(lobbyLanding?.handleKey(e))return;
   const modal = document.querySelector('dialog[open]');
@@ -1705,6 +1709,7 @@ window.addEventListener("blur", () => {
   mouse.down = false;
   mouse.dash = false;
   mouse.active = false;
+  mouse.shackInteract = false;
 });
 $("game-canvas").addEventListener("pointermove", (e) => {
   mouse.x = e.clientX;
@@ -1714,6 +1719,13 @@ $("game-canvas").addEventListener("pointermove", (e) => {
 $("game-canvas").addEventListener("pointerdown", (e) => {
   if (e.button === 2) mouse.dash = true;
   if (e.button === 0) {
+    if(screen==='play'&&!paused&&renderer?.viewport&&game?.trainTest?.design?.wildLands&&!document.querySelector('dialog[open]')){
+      const explorer=game.players.find(p=>rooms.role==='client'?p.id===rooms.playerId:p.device==='keyboard');
+      if(shackTrapdoorClick(game,explorer,renderer.screenToWorld(e.clientX,e.clientY))){
+        mouse.shackInteract=true;
+        return;
+      }
+    }
     mouse.down = true;
     mouse.x = e.clientX;
     mouse.y = e.clientY;
@@ -2189,7 +2201,7 @@ function inputFrame() {
     dodge: keys.has("Space") || mouse.dash,
     trap: keys.has("KeyQ"),
     lobbyInteract: keys.has("KeyE"),
-    interact: keys.has("KeyE"),
+    interact: keys.has("KeyE")||!!mouse.shackInteract,
     potion: keys.has("KeyH"),
     summon: keys.has("KeyR"),
     block: keys.has("KeyC"),
@@ -2209,6 +2221,7 @@ function inputFrame() {
     drop: keys.has("Delete") && !keys.has("ShiftLeft") && !keys.has("ShiftRight"),
     dropOne: keys.has("Delete") && (keys.has("ShiftLeft") || keys.has("ShiftRight")),
   };
+  mouse.shackInteract=false;
   return inputs;
 }
 let last = performance.now(),
@@ -2291,11 +2304,12 @@ function frame(now) {
         ),
       );
       fieldKit.tick(now / 1000);
-      const boardVisible = boardPinned || !!game.roll;
-      if(game.roll){boardPinned=false;$('event-card').classList.add('hidden');}
+      const homeBoard=homesteadBoardView(game,true),boardGame=homeBoard||game,roll=boardGame.roll;
+      const boardVisible = boardPinned || !!roll;
+      if(roll){boardPinned=false;$('event-card').classList.add('hidden');}
       $("board-panel").classList.toggle("hidden", !boardVisible);
-      $("board-panel").classList.toggle('board-sequence',!!game.roll);
-      $('close-board').disabled=!!game.roll;
+      $("board-panel").classList.toggle('board-sequence',!!roll);
+      $('close-board').disabled=!!roll;
       if (boardVisible) {
         const boardCanvas=$('board-closeup'),boardWidth=Math.max(560,Math.round(boardCanvas.getBoundingClientRect().width*Math.min(2,window.devicePixelRatio||1))),boardHeight=Math.round(boardWidth*380/560);
         if(boardCanvas.width!==boardWidth||boardCanvas.height!==boardHeight){boardCanvas.width=boardWidth;boardCanvas.height=boardHeight;}
@@ -2304,20 +2318,20 @@ function frame(now) {
         c.clearRect(0, 0, 560, 380);
         c.save();
         c.translate(280, 185);
-        const reveal=game.roll?.resolved?Math.min(1,Math.max(0,(game.roll.elapsed-game.roll.landingAt)/.45)):0;
+        const reveal=roll?.resolved?Math.min(1,Math.max(0,(roll.elapsed-roll.landingAt)/.45)):0;
         const boardScale=1.9+5.9*(reveal*reveal*(3-2*reveal));
         c.scale(boardScale, boardScale);
-        drawBoard(c, game, game.roll?.elapsed??game.time, { closeup: true,drawDie });
+        drawBoard(c, boardGame, roll?.elapsed??game.time, { closeup: true,drawDie });
         c.restore();
-        $("board-caption").textContent = game.roll
-          ? game.roll.resolved
-            ? [game.event?.name, game.event?.tip].filter(Boolean).join(" — ")
-            : game.roll.elapsed < 1.6
+        $("board-caption").textContent = roll
+          ? roll.resolved
+            ? [boardGame.event?.name, boardGame.event?.tip].filter(Boolean).join(" — ")
+            : roll.elapsed < 1.6
               ? "The dice are rolling…"
               : "Moving space " +
-                Math.min(48, Math.ceil(game.players.find(p=>p.id===game.roll.playerId)?.boardProgress||0)) +
+                Math.min(48, Math.ceil(boardGame.players.find(p=>p.id===roll.playerId)?.boardProgress||0)) +
                 " · " +
-                game.roll.total +
+                roll.total +
                 " rolled"
           : "Figures walk every space. The jungle keeps moving.";
       }

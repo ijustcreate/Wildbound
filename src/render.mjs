@@ -1,4 +1,8 @@
 import {drawEnemyTelegraph} from './enemy-telegraphs.mjs';
+import {stolenHeartName} from './stolen-heart.mjs';
+import {drawEnergyBladeMarks,energyEffectOnLayer} from './energy-blade.mjs';
+import {drawEnergyMotionTail} from './energy-blade-art.mjs';
+import {drawFlamingFootprints,drawZonkoFirework} from './zonko-consumable-art.mjs';
 import {drawMultiplayerFrame,finishSharedCamera,pointInCell} from './split-screen-renderer.mjs';
 import {forestWaterLayer} from './forest-water-cache.mjs';
 import {MultiplayerCamera,cameraSettings} from './multiplayer-camera.mjs';
@@ -65,6 +69,7 @@ import {drawFriendshipHearts} from './friendship-hearts.mjs';
 import {drawJumanjiVines} from './jumanji-vines.mjs';
 import {drawMagicBurst} from './magic-bolt-effects.mjs';
 import {hunterPets} from './hunter-pets.mjs';
+import {activePatronuses} from './patronus.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawFearFace} from './temple.mjs';
 import {applyCelShading} from './cel-shading.mjs';
@@ -310,6 +315,9 @@ export class Renderer {
   drawCombatGround(game,w,h,{omitTelegraphs=false,paintWaterDonors}={}){const ctx=this.ctx;
     this.waterInteractions ||= new WaterInteractionRenderer();
     this.waterInteractions.draw(ctx,game,this,w,h,paintWaterDonors);
+    drawEnergyBladeMarks(ctx,game,(point,pad)=>this.visible(point,w,h,pad));
+    drawFlamingFootprints(ctx,game,(point,pad)=>this.visible(point,w,h,pad));
+    for(const fx of game.effects)if(fx.type==='energyMotionTail'&&energyEffectOnLayer(game,fx)&&this.visible(fx,w,h,55))drawEnergyMotionTail(ctx,fx);
     for (const p of game.pickups)
       this.assets.draw(ctx, "fruit", p.x, p.y + Math.sin(this.age * 4) * 2, 26);
     for (const t of game.traps) {
@@ -375,16 +383,26 @@ export class Renderer {
       ctx.fillStyle = "#e0ffff";
       ctx.fillRect(Math.round(orb.x - 1), Math.round(y - 2), 2, 2);
     }
+    this.drawLootItems(game,w,h,game.loot,false);
+    for (const b of game.baits) {
+      ctx.fillStyle = "#dc9880";
+      ctx.fillRect(b.x - 4, b.y - 3, 8, 6);
+    }
+  }
+  drawAttachedLoot(game,w,h,items){this.drawLootItems(game,w,h,items,true);}
+  drawLootItems(game,w,h,items,attached){
+    const ctx=this.ctx;
     const selectedLoot = new Set(
       game.players
         .filter((p) => !p.room && !p.ui && p.hp > 0)
         .map((p) => game.nearbyLoot(p)),
     );
-    for (const l of game.loot) {
-      if (!this.visible(l, w, h, 40)) continue;
+    for (const l of items) {
+      if (!!l.railwaySurface!==attached) continue;
+      const lootY=l.y-(l.railwayLootLift||0)+(l.quicksandSink||0);
+      if (!this.visible({x:l.x,y:lootY}, w, h, 40)) continue;
       if (!canSee(game, l)) continue;
       if(l.quicksandHidden)continue;
-      const lootY=l.y+(l.quicksandSink||0);
       ctx.fillStyle = "#07100d88";
       ctx.beginPath();
       ctx.ellipse(l.x, lootY + (l.embedded?1:6), l.embedded?3:9, l.embedded?1.5:4, 0, 0, Math.PI * 2);
@@ -419,23 +437,23 @@ export class Renderer {
         ctx.fillText(l.qty, l.x + 13, lootY + 11);
       }
     }
-    for (const b of game.baits) {
-      ctx.fillStyle = "#dc9880";
-      ctx.fillRect(b.x - 4, b.y - 3, 8, 6);
-    }
   }
-  drawCombatProjectiles(game,w,h){const ctx=this.ctx;
+  drawCombatProjectiles(game,w,h,shown=()=>true){const ctx=this.ctx;
     for (const bolt of game.spells || []) {
-      if (this.visible(bolt,w,h,80) && canSee(game,bolt)) drawMagicBolt(ctx,bolt);
+      if(!shown(bolt))continue;
+      const visual=bolt.pirateVisualLift?{...bolt,y:bolt.y-bolt.pirateVisualLift}:bolt;
+      if (this.visible(visual,w,h,80) && canSee(game,bolt)) drawMagicBolt(ctx,visual);
     }
-    for(const b of game.boomerangs||[])if(this.visible(b,w,h,80)&&canSee(game,b)){
+    for(const b of game.boomerangs||[])if(shown(b)&&this.visible(b,w,h,80)&&canSee(game,b)){
+      ctx.save();ctx.translate(0,-(b.pirateVisualLift||0));
       drawBoomerang(ctx,b,game.time,!this.splitChild||this.cameraOwnerIds?.includes(b.owner)===true);
+      ctx.restore();
     }
     for (const a of game.arrows) {
-      if (!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
+      if (!shown(a)||!this.visible(a, w, h, 80) || !canSee(game, a)) continue;
+      ctx.save();ctx.translate(0,-(a.pirateVisualLift||0));
       drawArrowTrail(ctx,a,game.time);
-      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time,this.showLootDetails);continue;}
-      ctx.save();
+      if(a.stuck&&!a.rock&&!a.ice){drawEmbeddedArrow(ctx,a,game.time,this.showLootDetails);ctx.restore();continue;}
       ctx.translate(a.x, a.y - (a.z || 0));
       ctx.rotate(a.rock||a.ice?(a.angle??Math.atan2(a.vy,a.vx)):arrowVisualAngle(a));
       if (a.rock) {
@@ -470,6 +488,12 @@ export class Renderer {
   drawCombatEffects(game){const ctx=this.ctx;
     for (const fx of game.effects) {
       if(fx.room||fx.swordPolish&&fx.swordPolish!=='impact')continue;
+      if(fx.zonkoFirework){
+        const {w,h}=this.viewport;
+        if(this.visible(fx,w,h,240))drawZonkoFirework(ctx,fx);
+        continue;
+      }
+      if(fx.type==='energyMotionTail')continue;
       ctx.globalAlpha = Math.min(1, fx.life * 2);
       ctx.fillStyle = fx.color;
       ctx.strokeStyle = fx.color;
@@ -698,6 +722,7 @@ export class Renderer {
     if(!sealCapture)for(const v of game.house?.vehicles||[])if(this.visible(v,w,h,120))actors.push({...v,isHouseVehicle:true,drawDepth:v.y});
     for(const chest of game.supplyChests||[])actors.push({...chest,isSupplyChest:true,drawDepth:chest.y});
     for(const pet of hunterPets(game))if(!sealCapture&&!pet.controlledBy&&Number.isFinite(pet.x))actors.push({...pet,drawDepth:pet.y+(pet.roostHeight>0?1:0)});
+    if(!sealCapture)for(const a of activePatronuses(game))if(this.visible(a,w,h,70))actors.push({...a,drawDepth:terrainActorDepth(game,a,boardActorDepth(game,a))});
     for (const p of game.players) if (!sealCapture) {
       if (!p.vehicleId&&!p.controlledFollowerId&&!p.room&&this.visible({x:p.x,y:p.y-(p.jumpHeight||0)-(p.groundHeight||0)},w,h,120)) actors.push({ ...p, isPlayer: true, hidePlayerMarker:!!p.bedRest, drawDepth: terrainActorDepth(game,p,boardActorDepth(game,p)) });
       else if(p.controlledFollowerId&&p.controlPetPosition&&!p.controlPetPosition.room){
@@ -1411,7 +1436,7 @@ export class Renderer {
     ctx.font = "12px monospace";
     ctx.textAlign = "left";
     for (const p of game.players) {
-      if (p.room || p.ui || p.hp <= 0) continue;
+      if (p.room || p.ui || p.hp <= 0 || (p.broomMount && game.trainTest?.design.activeRoom==='quidditch-pitch')) continue;
       if(this.cameraOwnerIds&&!this.cameraOwnerIds.includes(p.id))continue;
       if(carInteractionPrompt(game,p))continue;
       if (game.phase === 'play' && p.progress >= 48 && Math.hypot(p.x - 800, p.y - 800) < 120) continue;
@@ -1419,14 +1444,15 @@ export class Renderer {
       if (!item || item.quicksandHidden || used.has(item.id) || !canSee(game, item)) continue;
       used.add(item.id);
       const sx = (item.x - this.camera.x) * this.camera.zoom + w / 2,
-        sy = (item.y - this.camera.y) * this.camera.zoom + h / 2;
+        sy = (item.y - (item.railwayLootLift||0) - this.camera.y) * this.camera.zoom + h / 2;
       if (sx < 0 || sx > w || sy < 0 || sy > h) continue;
       const name =
-          (ITEMS[item.type]?.name || item.type) +
+          (stolenHeartName(item)||ITEMS[item.type]?.name||item.type) +
           (item.qty > 1 ? " ×" + item.qty : ""),
-        hint = !ITEMS[item.type]?.relic&&!ITEMS[item.type]?.skillScroll&&!canGive(p.inventory,item.type,item.qty)
+        hint = !ITEMS[item.type]?.relic&&!ITEMS[item.type]?.skillScroll&&!canGive(p.inventory,item.type,item.qty,32,item)
           ? 'Bag full · make space to collect'
-          : actionInputLabel(game,p,'interact')+(ITEMS[item.type]?.slot&&(ITEMS[item.type]?.stack||1)===1?': collect · hold: equip':': collect'),
+          : actionInputLabel(game,p,game.trainTest?'loot':'interact')+
+            (!game.trainTest&&ITEMS[item.type]?.slot&&(ITEMS[item.type]?.stack||1)===1?': collect · hold: equip':': collect'),
         source = item.source || "Ground loot",
         width = Math.min(
           w - 16,

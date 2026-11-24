@@ -1,10 +1,14 @@
 import {pixelLine,pixelPolygon} from './pixel-shapes.mjs';
+import {drawJollyRoger} from './pirate-flag-art.mjs';
 import {PIRATE_CAVE_BERTH,PIRATE_SHIP_LAYOUT,piratePlankHeight} from './pirate-ship.mjs';
+import {WILLY_CHAIR,WRECK_TREASURE_TABLE} from './pirate-wreck-treasure.mjs';
 
 const colors={ink:'#272c2c',hull:['#3d3030','#583b2e','#744d35','#966a43'],deck:['#75513b','#906a48','#ac8357','#c79a66','#dbb581'],rail:['#4b382d','#77583a','#a68455'],gold:['#82603a','#b58d4c','#e0b76c','#f3d18d'],teal:['#29464a','#3b6261','#608580'],cloth:['#938b73','#b6ab8f','#d7c9a9','#eee2c4','#f4ebd2'],iron:['#333943','#4a5357','#737777','#a5a392']};
 const wreckColors={ink:'#202e33',hull:['#30383a','#4b4740','#635846','#756951'],deck:['#504943','#685d4f','#7d6e56','#92815f','#a18e6d'],rail:['#33413d','#586053','#6e7560'],gold:['#5f6148','#777856','#9b9569','#bdb889'],teal:['#203e42','#30545a','#4b716d'],cloth:['#555c52','#737866','#8e8e73','#a7a487','#bcbaa0'],iron:['#2e393e','#404b4e','#6c7068','#848477']};
 const isWreck=ship=>ship.id===PIRATE_CAVE_BERTH.id;
 const {hull,deckZ,holdZ,hatch,nests,cannons,hold,plank}=PIRATE_SHIP_LAYOUT;
+const mainMast=nests.find(mast=>mast.id==='main');
+const mainMastTip=64;
 const originRadius=425;
 const rasters=new Map();
 const RASTER_LIMIT=16;
@@ -289,7 +293,107 @@ function shipHold(p,wreck){
   wreckGrowth(p,left+28,top+4,holdZ+21,21);
   wreckGrowth(p,left+105,top+7,holdZ+15,15);
   wreckGrowth(p,right-34,bottom-6,holdZ+11,11);
+  const rug=p.board(21,2,holdZ,178,87);
+  p.poly(rug,'#48333a');
+  p.poly(p.board(21,2,holdZ,170,79),'#693f46');
+  p.loop(p.board(21,2,holdZ,156,66),'#aa7861',2);
+  for(const x of [-53,-12,28,68,95])for(const y of [-29,29]){
+   p.poly([[x-5,y,holdZ],[x,y-3,holdZ],[x+5,y,holdZ],[x,y+3,holdZ]],'#916356');
+  }
  }
+}
+
+const brass=['#76503e','#b7864c','#e7bd65','#fff1a3'];
+const gems=[['#274e50','#57958a','#b8e2ba'],['#723d4c','#c46c68','#ffb287'],['#414462','#6f79a3','#b6c4e3']];
+
+function coin(p,x,y,z,r=2){
+ p.poly([[x-r,y,z],[x-1,y-r,z],[x+r,y-r,z],[x+r+1,y+1,z],[x+1,y+r,z],[x-r,y+1,z]],brass[1]);
+ p.line([x-r+1,y-1,z+.6],[x+r-1,y,z+.6],brass[2],1);
+}
+
+function treasureTable(p){
+ const {x,y,width:w,depth:d}=WRECK_TREASURE_TABLE,z=holdZ;
+ p.poly(p.board(x+2,y+4,z,w+11,d+10),'#292d2c88');
+ for(const dx of [-w/2+10,w/2-10])for(const dy of [-d/2+6,d/2-6]){
+  box(p,x+dx,y+dy,z,7,7,15,'#a47b5f','#6b4b3d','#352e2c');
+ }
+ box(p,x,y,z+14,w,d,5,'#a07d56','#64463a','#433637');
+ const top=z+19;
+ p.poly(p.board(x,y,top,83,27),'#754346');
+ p.loop(p.board(x,y,top+.5,79,24),'#a36f56',1);
+ // Each cluster combines a few larger silhouettes with scattered coin piles.
+ for(const [px,py] of [[-35,7],[-22,-10],[4,14],[19,2],[42,10]]){
+  for(const [dx,dy,dz,r] of [[0,0,0,4],[-6,2,1,3],[4,4,1,3],[-2,6,2,3],[2,-2,3,3],[7,-4,0,2]]){
+   coin(p,px+dx,py+dy,top+dz,r);
+  }
+ }
+ box(p,-21,-7,top,23,13,7,'#9c704f','#694439','#483535');
+ p.loop(p.board(-21,-7,top+7.5,23,13),brass[1],2);
+ p.poly(p.board(-21,-7,top+8,17,9),'#443337');
+ p.poly([[-32,-13,top+5],[-10,-13,top+5],[-10,-17,top+15],[-32,-17,top+15]],'#98684b');
+ p.line([-32,-17,top+15],[-10,-17,top+15],brass[2],2);
+ for(const [x,y,i] of [[-24,-5,1],[-18,-7,0],[-35,-3,2],[-5,4,2],[24,7,1],[38,-10,0],[46,3,2]]){
+  const color=gems[i];
+  p.poly([[x-5,y+1,top],[x-3,y-3,top+2],[x+2,y-4,top+3],[x+5,y,top+1],[x+2,y+3,top]],color[0]);
+  p.poly([[x-3,y-3,top+2],[x+2,y-4,top+3],[x+2,y+1,top+2],[x-3,y+1,top+1]],color[1]);
+  p.line([x-3,y-3,top+2],[x,y-4,top+3],color[2]);
+ }
+ for(const [x,y] of [[-7,-13],[30,-7],[56,4]]){
+  p.line([x,y,top],[x,y,top+10],brass[1],3);
+  p.poly([[x-4,y-3,top+12],[x+4,y-3,top+12],[x+2,y+2,top+8],[x-2,y+2,top+8]],brass[2]);
+  p.line([x-4,y-4,top+12],[x+3,y-4,top+12],brass[3]);
+ }
+ p.loop([[5,-4,top+1],[11,-10,top+1],[19,-12,top+1],[25,-7,top+1],[23,-3,top+1],[15,-2,top+1]],brass[2],2);
+}
+
+function willyChair(p){
+ const {x,y,width:w,depth:d}=WILLY_CHAIR,z=holdZ;
+ p.poly(p.board(x+3,y+3,z,w+8,d+7),'#292d2c88');
+ for(const dx of [-8,9])for(const dy of [-8,8]){
+  box(p,x+dx,y+dy,z,5,5,16,'#a37b51','#6d4a3e','#3b2d31');
+ }
+ box(p,x,y,z+14,w,d,4,'#7b4549','#50363b','#382c31');
+ box(p,x+10,y,z+15,5,d,31,'#815f4c','#604434','#382c31');
+ p.line([x+9,-10,z+45],[x+9,10,z+45],brass[1],3);
+
+ const dark='#4b453e',bone='#c5b58e',light='#e5d5a8';
+ const stroke=(a,b,w=3)=>{p.line(a,b,dark,w+2);p.line(a,b,bone,w);};
+ for(const side of [-1,1]){
+  stroke([x,side*5,z+18],[x-14,side*6,z+17],4);
+  stroke([x-14,side*6,z+17],[x-20,side*7,z+4],3);
+  p.line([x-20,side*7,z+3],[x-24,side*7,z+3],bone,3);
+ }
+ p.poly([[x-3,-6,z+17],[x+4,-4,z+17],[x+4,5,z+17],[x-3,5,z+19]],bone);
+ stroke([x+2,0,z+16],[x+2,0,z+35],4);
+ for(let rib=0;rib<4;rib++){
+  const rz=z+23+rib*2.5,hw=4+rib*.8;
+  p.loop([[x+2,-hw,rz],[x-3,-hw,rz+1],[x-6,0,rz],[x-3,hw,rz+1],[x+2,hw,rz]],rib%2?light:bone);
+ }
+ for(const side of [-1,1]){
+  stroke([x+1,side*8,z+32],[x-6,side*11,z+23],3);
+  stroke([x-6,side*11,z+23],[x-16,side*11,z+19],2);
+  p.line([x-16,side*11,z+19],[x-20,side*12,z+18],light,2);
+ }
+ p.poly([[x-8,-6,z+36],[x-8,5,z+37],[x-5,6,z+45],[x+3,5,z+47],[x+5,-3,z+46],[x+1,-6,z+43]],light);
+ p.poly([[x-8,-5,z+36],[x-8,5,z+36],[x-4,4,z+39],[x-3,-4,z+39]],bone);
+ p.line([x-8,-5,z+41],[x-8,5,z+41],'#34313a',3);
+ p.line([x-9,3,z+42],[x-8,5,z+41],'#29292f',4);
+ p.line([x-8,-4,z+37],[x-8,4,z+37],'#655849');
+ p.poly([[x-12,-13,z+44],[x-11,-7,z+49],[x+4,-6,z+55],[x+7,4,z+51],[x+3,11,z+46],[x-6,11,z+46]],'#33343a');
+ p.line([x-12,-13,z+44],[x-6,11,z+46],'#98714f',2);
+ p.line([x-1,-6,z+50],[x+4,-1,z+53],'#56605a',2);
+}
+
+export function drawWreckTreasure(ctx,ship,part){
+ if(part==='table'){raster(ctx,ship,'treasure',part,treasureTable);return;}
+ const {x,y}=WILLY_CHAIR;
+ const scale=([px,py,pz])=>[x+(px-x)*.83,y+(py-y)*.83,holdZ+(pz-holdZ)*.75];
+ raster(ctx,ship,'treasure',part,p=>willyChair({
+  ...p,
+  poly:(vertices,color)=>p.poly(vertices.map(scale),color),
+  line:(a,b,color,width)=>p.line(scale(a),scale(b),color,width&&width*.84),
+  loop:(vertices,color,width)=>p.loop(vertices.map(scale),color,width&&width*.84),
+ }));
 }
 
 function drawCannon(p,cannon,showFlash,shot){
@@ -429,7 +533,8 @@ function rig(p,phase,level,wreck){
  const {ctx,colors}=p;
  const ordered=[...nests].sort((a,b)=>p.point([a.x,a.y,0]).y-p.point([b.x,b.y,0]).y);
  for(const mast of ordered){
-  const tip=mast.z+(wreck&&mast.id!=='main'?23:47),main=mast.id==='main';
+  const main=mast.id==='main';
+  const tip=mast.z+(wreck?(main?47:23):main?mainMastTip:47);
   for(const sign of [-1,1]){
    const attach=[mast.x-24,sign*109,deckZ+9];
    p.line(attach,[mast.x,mast.y,mast.z+15],colors.hull[0],2);
@@ -458,7 +563,7 @@ function rig(p,phase,level,wreck){
    p.line(a,b,colors.hull[1],3);p.line(a,c,colors.cloth[0],2);p.line(b,c,colors.cloth[0],2);
   }else{
    sail(p,mast,main?103:77,mast.z-6,deckZ+37,phase);
-   sail(p,mast,main?71:57,tip-9,mast.z+3,phase*.5);
+   sail(p,mast,main?71:57,mast.z+38,mast.z+3,phase*.5);
   }
   ctx.restore();
   basket(p,mast);
@@ -467,7 +572,8 @@ function rig(p,phase,level,wreck){
    p.poly([[mast.x-5,0,tip-3],[mast.x-1,0,tip+6],[mast.x+2,0,tip+2],[mast.x+4,0,tip-4]],colors.deck[3]);
    continue;
   }
-  const flag=mast.x<0?colors.teal[2]:main?colors.teal[0]:colors.gold[1];
+  if(main)continue;
+  const flag=mast.x<0?colors.teal[2]:colors.gold[1];
   p.poly([[mast.x,0,tip+5],[mast.x+25+phase,0,tip+8],[mast.x+45,0,tip+3],[mast.x+29,0,tip-4],[mast.x,0,tip]],flag);
   p.line([mast.x+5,0,tip+3],[mast.x+18,0,tip+4],colors.cloth[3],2);
  }
@@ -507,6 +613,7 @@ export function drawPirateShipForeground(ctx,ship,{level='shore',time=ship.time|
  if(level==='nest')raster(ctx,ship,'nest-rail','',nearBasketRails,rigBounds);
  else raster(ctx,ship,'rig',level+phase,p=>rig(p,phase,level,wreck),rigBounds);
  const p=picture(ctx,ship);
+ if(!wreck)drawJollyRoger(ctx,p.point([mainMast.x,mainMast.y,mainMast.z+mainMastTip+2]),time);
  for(const cannon of cannons){const shot=activeShot(ship,cannon);if(shot?.age<.12)drawCannon(p,cannon,true,shot);}
 }
 

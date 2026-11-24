@@ -101,6 +101,7 @@ test('all 43 Hogsmeade props have stable identities and the Shack supports both 
  const loaded=checkpoint(g);assert.ok(hogsmeadeDoors(loaded,shack).broken);
  for(const b of HOGSMEADE_BUILDINGS.slice(0,2)){
   const d=hogsmeadeDoor(b);Object.assign(p,{x:d.x,y:d.y+23});
+  if(b.tone==='inn')p.equipment.hand2='wand';
   assert.ok(trainInteraction(g,p));assert.equal(trainWorldBlocked(g,d.x,d.y,7,false,true,0,false,p),false);
   const npc=HOGSMEADE_NPCS.find(n=>n.building===b.id);
   Object.assign(p,{x:npc.x,y:npc.y+34,coins:30});

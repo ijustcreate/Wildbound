@@ -1,6 +1,8 @@
 // Four equal parts of the existing 480-second expedition day. Locations are
 // public approaches, so an errand never sends a resident through a shop wall.
-export const ALLEY_RESIDENT_PLACES = Object.freeze({
+import {diagonLaneX,nocturneLaneX} from './alley-street-layout.mjs';
+
+export const ALLEY_RESIDENT_PLACES = Object.freeze(Object.fromEntries(Object.entries({
  arch: {x:7880,y:5520,name:'the station arch',activity:'Checks station arrivals',faceX:0,faceY:1},
  sweets: {x:7810,y:5385,name:'the ice-cream shop',activity:'Reads today’s flavors',faceX:-1,faceY:0},
  apothecary: {x:7835,y:5015,name:'the apothecary',activity:'Checks the potion list',faceX:-1,faceY:0},
@@ -15,7 +17,7 @@ export const ALLEY_RESIDENT_PLACES = Object.freeze({
  branch: {x:8750,y:5225,name:'the Nocturne lane',activity:'Checks the lane’s lamps',faceX:1,faceY:0},
  oddities: {x:9040,y:4945,name:'the Nocturne antiques window',activity:'Inspects an antique in the window',faceX:1,faceY:0},
  charms: {x:9040,y:5500,name:'the Nocturne charm shop',activity:'Reads the new charm labels',faceX:1,faceY:0},
-});
+}).map(([id,place])=>[id,{...place,x:place.x>=8970?nocturneLaneX(place.x):place.x<8250?diagonLaneX(place.x):place.x}])));
 
 export const ALLEY_RESIDENTS = Object.freeze([
  {
@@ -154,6 +156,7 @@ export const ALLEY_RESIDENTS = Object.freeze([
   id:'george',name:'George Weasley',title:'Practical joke inventor',
   look:{hair:'waves',hairColor:'#b95830',skin:'#e5ac83',eyeColor:'#927b58',shirt:'#625274',pants:'#514553',face:'freckles'},
   equipment:{chest:'alley_moonstitch_robe',back:'hogwarts_scarf_red',feet:'hogwarts_shoes'},
+  shoulderBroom:{type:'flying_broom',hand:'R'},
   stops:['brooms','sweets','branch','brooms'],speed:38,
   question:'What did Fred leave out?',
   greeting:'Fred writes the warnings. I check whether they still apply once the thing has caught fire.',
@@ -169,6 +172,7 @@ export const ALLEY_RESIDENTS = Object.freeze([
   id:'lee',name:'Lee Jordan',title:'Quidditch commentator',
   look:{hair:'locs',hairColor:'#352829',skin:'#8a553d',eyeColor:'#5c433b',shirt:'#9b7148',pants:'#484752'},
   equipment:{cape:'alley_lantern_mantle',back:'hogwarts_scarf_yellow',hand1:'alley_ashwood_wand'},
+  shoulderBroom:{type:'nimbus_2000',hand:'R'},
   stops:['brooms','fountain','owls','sweets'],speed:41,
   question:'Where can I practice flying?',
   greeting:'Have you tried the pitch yet? I’m timing flights from the broom shop window. Half my readings are owls.',

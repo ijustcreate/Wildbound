@@ -9,6 +9,7 @@ import {nearbyEnemyTrap,triggerEnemyTrap} from './enemy-traps.mjs';
 import {tickBananaAttack} from './enemy-banana.mjs';
 import {chargeRecoveryTime,openChargeCounter} from './counterattack.mjs';
 import {forgetHiddenTarget} from './enemy-sight.mjs';
+import {patrolTickTock,TICK_TOCK_SCALE,tickTockTargets} from './tick-tock-crocodile.mjs';
 // Only the old shared-contact/charge routes are replaced. Bespoke bosses,
 // wildlife, pack roles and user-edited AI retain their own controllers.
 export const SPECIES_ATTACKS=Object.freeze({
@@ -34,6 +35,9 @@ export const SPECIES_ATTACKS=Object.freeze({
  necromancer:{style:'support',windup:.8,active:.2,recover:1.1,range:72,arc:.3},
  skeleton_wizard:{style:'support',windup:.8,active:.12,recover:.95,range:420,arc:.3},
 });
+const crocRush=SPECIES_ATTACKS.crocodile;
+const TICK_TOCK_RUSH={...crocRush,windup:1.2,active:.56,recover:1.75,speed:390,
+ range:crocRush.range*TICK_TOCK_SCALE,width:crocRush.width*TICK_TOCK_SCALE};
 export function speciesPhase(e,phase,duration){
  const old=e.speciesCombat||{};
  e.speciesCombat={phase,remaining:duration,duration,index:old.index||0,bowBash:old.bowBash,targetId:old.targetId,dx:e.faceX??0,dy:e.faceY??1,hits:[],interruptedUntil:old.interruptedUntil||0};
@@ -42,8 +46,12 @@ export function speciesPhase(e,phase,duration){
 }
 export function tickSpeciesCombat(g,e,dt,targets){
  let base=SPECIES_ATTACKS[e.kind];const cfg=creatures[e.kind];
- if(!base||e.combatRole||cfg?.edited||e.faction==='ally'||e.controlledBy||e.hunterPet||e.pet)return false;
+ if(!base||e.combatRole||cfg?.edited&&!e.tickTockCrocodile||e.faction==='ally'||e.controlledBy||e.hunterPet||e.pet)return false;
  if(e.hp<=0)return true;
+ if(e.tickTockCrocodile){
+  if(e.tickTockSleeping||!g.trainTest?.design.wildLands||g.trainTest.design.activeRoom)return true;
+  base=TICK_TOCK_RUSH;targets=tickTockTargets(g,e,targets);
+ }
  tickJump(e,dt,g,collisionOffset(g,e));
  // Existing restraint and disable behavior remains authoritative.
  if(e.state==='snared'){e.timer-=dt;if(e.timer<=0)e.hp=0;return true;}
@@ -93,6 +101,7 @@ export function tickSpeciesCombat(g,e,dt,targets){
  const p=locked&&targetId!=null?targets.find(t=>t.id===targetId&&t.hp>0&&!t.room):chooseEnemyTarget(g,e,targets);
  if(!p){
   speciesPhase(e,locked?'recover':'approach',locked?base.recover:0);
+  if(e.tickTockCrocodile&&!locked)patrolTickTock(g,e,dt);
   e.pendingBanana=null;e.throwTime=0;
   return true;
  }
@@ -133,7 +142,7 @@ export function tickSpeciesCombat(g,e,dt,targets){
      g.arrows.push({id:g.nextId++,ammoType:'arrow',shaftLength:24,x:e.x,y:e.y,z:20,vx:s.dx*270,vy:s.dy*270,vz:45,damage:e.damage,hostile:true});e.arrowsLeft--;e.attack=.3;
     }
     speciesPhase(e,'recover',base.recover);
-   }else{const active=speciesPhase(e,'active',base.active);active.rushContact=false;if(beh.jump&&base.style==='rush')startJump(e);}
+   }else{const active=speciesPhase(e,'active',base.active);active.rushContact=false;if(beh.jump&&base.style==='rush'&&!e.tickTockCrocodile)startJump(e);}
   }return true;
  }
  if(s.phase==='active'){
@@ -184,7 +193,7 @@ export function tickSpeciesCombat(g,e,dt,targets){
   if(beh.hunt!==false&&(arrows<=0||d>=105)&&retrieveEnemyArrows(g,e,dt,{target:p}))return true;
   if(arrows<=0)return true;
  }
- const enabled=base.style==='ranged'?beh.ranged!==false:base.style==='spell'?beh.fireball!==false:base.style==='rush'?beh.dash!==false:beh.melee!==false;
+ const enabled=e.tickTockCrocodile||(base.style==='ranged'?beh.ranged!==false:base.style==='spell'?beh.fireball!==false:base.style==='rush'?beh.dash!==false:beh.melee!==false);
  // A healer without an escort has no long-range attack. Stop using the caster
  // retreat band once its group is gone, so cleanup becomes a fair staff duel.
  const backline=['ranged','spell'].includes(base.style)||base.style==='support'&&(e.kind!=='skeleton_caster'||g.enemies.some(a=>a!==e&&a.hp>0&&a.group===e.group));
@@ -192,6 +201,10 @@ export function tickSpeciesCombat(g,e,dt,targets){
  const circling=base.style==='rush'&&beh.circle&&d<220&&e.tacticTime>0;
  if(enabled&&!circling&&e.cooldown<=0&&d<(base.style==='support'?65:attack.range)&&clearShot(g,e,p)&&requestEnemyGroupTurn(g,e,p,{rush:base.style==='rush',flightSpeed:base.style==='ranged'?270:base.style==='spell'?(e.kind==='water_elemental'?150:190):0})){
   const next=speciesPhase(e,'windup',attack.windup);next.targetId=p.id;next.bowBash=e.kind==='archer'&&base.style==='melee';next.style=base.style==='spell'?'ranged':base.style;next.reach=base.style==='rush'?base.speed*base.active+(base.width||0):attack.range;next.width=(base.width||13)*2;next.arc=Math.acos(base.arc??.3);return true;
+ }
+ if(e.tickTockCrocodile){
+  if(d>attack.range*.65&&!g.moveActor(e,dx*e.speed*dt,dy*e.speed*dt))patrolTickTock(g,e,dt);
+  return true;
  }
  const before={x:e.x,y:e.y};if(beh.hunt!==false){
   if(backline&&!clearShot(g,e,p))navigateEnemy(g,e,p,dt);

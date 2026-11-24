@@ -44,15 +44,20 @@ function segment(c,a,b,width,d,color,right,join=true,soft=false){
   const offset=width*.22;
   pixelPolygon(c,[{x:p.x-nx*offset-.5,y:p.y-ny*offset},{x:q.x-nx*offset-.5,y:q.y-ny*offset},{x:q.x-nx*offset+.3,y:q.y-ny*offset},{x:p.x-nx*offset+.3,y:p.y-ny*offset}],mat.light);
 }
-export function drawNativeArm(c,points,side,d,shirt,skin,part='all'){
+export function drawNativeArm(c,points,side,d,shirt,skin,part='all',longSleeve=false,hook=false){
   const shoulder=points['shoulder'+side],elbow=points['elbow'+side],hand=points['hand'+side];
   const right=unit(sub(points.shoulderR,points.shoulderL));
   if(part!=='lower'){
-    segment(c,shoulder,elbow,3.7,d,skin,right);
-    segment(c,shoulder,mix(shoulder,elbow,.58),4.4,d,shirt,right,true,true);
+    segment(c,shoulder,elbow,3.7,d,longSleeve?shirt:skin,right);
+    segment(c,shoulder,mix(shoulder,elbow,longSleeve?1:.58),4.4,d,shirt,right,true,true);
   }
   if(part!=='upper'){
     segment(c,elbow,hand,3.1,d,skin,right);
+    if(longSleeve){
+      segment(c,elbow,mix(elbow,hand,.8),3.8,d,shirt,right);
+      segment(c,mix(elbow,hand,.7),mix(elbow,hand,.86),4.2,d,'#cb9e63',right);
+    }
+    if(hook)return true;
     volume(c,hand,basis(sub(hand,elbow),right),[1.65,1.25,1.8],d,material(skin));
     const thumb=projectPoint(hand.map((v,i)=>v+right[i]*(side==='L'?1:-1)*1.1),d),p=material(skin);
     c.fillStyle=p.light;c.fillRect(Math.round(thumb.x),Math.round(thumb.y),1,1);
@@ -66,7 +71,7 @@ export function drawNativeLeg(c,points,side,d,color){
   segment(c,knee,foot,3.9,d,color,right);
   return true;
 }
-export function drawNativeTorso(c,points,d,color,skin){
+export function drawNativeTorso(c,points,d,color,skin,stripe){
   const up=sub(points.chest,points.pelvis),right=unit(sub(points.shoulderR,points.shoulderL));
   const axes=basis(up,right),length=Math.hypot(...up);
   // Let the collar support the jaw instead of exposing a narrow skin post.
@@ -82,6 +87,14 @@ export function drawNativeTorso(c,points,d,color,skin){
   pixelPolygon(c,[{x:chest.x-half+.7,y:chest.y-rearLift},{x:chest.x+half-.7,y:chest.y-rearLift},{x:chest.x+half-.5,y:chest.y+1-rearLift},{x:chest.x+half-.9,y:chest.y+2.5-rearLift},{x:pelvis.x+half*.75-.5,y:pelvis.y},{x:pelvis.x-half*.75+.5,y:pelvis.y},{x:chest.x-half+.9,y:chest.y+2.5-rearLift},{x:chest.x-half+.5,y:chest.y+1-rearLift}],mat.body);
   pixelPolygon(c,[{x:chest.x-half+.8,y:chest.y},{x:chest.x-half+2,y:chest.y},{x:pelvis.x-half*.75+1.7,y:pelvis.y-1},{x:pelvis.x-half*.75+.7,y:pelvis.y-1}],mat.light);
   pixelPolygon(c,[{x:chest.x+half-1.5,y:chest.y+1},{x:chest.x+half-.7,y:chest.y+1},{x:pelvis.x+half*.75-.5,y:pelvis.y},{x:pelvis.x+half*.75-1.4,y:pelvis.y}],mat.shade);
+  if(stripe){
+    const cloth=material(stripe);
+    for(const t of [.31,.68]){
+      const x=chest.x+(pelvis.x-chest.x)*t,y=chest.y+(pelvis.y-chest.y)*t,w=half*(.77-t*.16);
+      pixelPolygon(c,[{x:x-w,y:y-1},{x:x+w,y:y-1},{x:x+w-.4,y:y+1},{x:x-w+.3,y:y+1}],cloth.body);
+      c.fillStyle=cloth.shade;c.fillRect(Math.round(x+w)-1,Math.round(y),1,1);
+    }
+  }
   const shoulders=mix(points.shoulderL,points.shoulderR);
   // Shoulder sleeves meet the torso silhouette without another floating oval.
   // Broad collar folds and a single front closure, attached in the torso frame.

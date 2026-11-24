@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {advanceQuidditchMatch,createQuidditchMatch,quidditchAction,quidditchPrompt,quidditchTeam} from '../src/quidditch-match.mjs';
+import {advanceQuidditchMatch,createQuidditchMatch,quidditchAction,quidditchCheckPrompt,quidditchPrompt,quidditchTeam} from '../src/quidditch-match.mjs';
 import {QUIDDITCH_HOOPS,QUIDDITCH_PITCH,QUIDDITCH_TEAMS,QUIDDITCH_TRUNK} from '../src/quidditch-layout.mjs';
 
 const hero=(id,team,more={})=>({id,team,x:7600+id*200,y:4600,faceX:1,faceY:0,hp:95,
@@ -143,6 +143,56 @@ test('opposing NPCs can be robbed and an unarmed rider can swat a Bludger',()=>{
  assert.equal(quidditchAction(match,p,'ball',{aimX:0,aimY:-1},[p]),true);
  assert.equal(match.events.at(-1).type,'bludger-swatted');assert.equal(ball.vy,-325);
  assert.equal(p.hp,95);
+});
+
+test('a close flying opponent can knock the Quaffle loose without taking custody or damaging the rider',()=>{
+ const {match,p,roster}=fixture(),opponent=roster[3];
+ on(p,{x:8100,y:5200},52);
+ on(opponent,{x:p.x+26,y:p.y},82);
+ match.quaffle.holderId=String(opponent.id);
+ assert.equal(quidditchCheckPrompt(match,p,roster),'');
+ assert.equal(quidditchAction(match,p,'check',{},roster),false);
+ on(opponent,opponent,52);
+ assert.equal(quidditchCheckPrompt(match,p,roster),'KNOCK QUAFFLE LOOSE');
+ assert.equal(quidditchAction(match,p,'check',{},roster),true);
+ const ball=match.quaffle,event=match.events.at(-1);
+ assert.equal(ball.holderId,null);
+ assert.equal(ball.throwTeam,null);
+ assert.ok(ball.vx>0&&ball.vz>0);
+ assert.equal(event.type,'quaffle-knocked-loose');
+ assert.equal(event.fromId,String(opponent.id));
+ assert.equal(opponent.hp,95);
+ assert.equal(quidditchAction(match,opponent,'catch',{},roster),false,'the old carrier cannot reclaim it immediately');
+ on(p,ball,ball.z-3);
+ assert.equal(quidditchAction(match,p,'ball',{},roster),true);
+ assert.equal(ball.holderId,String(p.id));
+});
+
+test('close grab transfers the Snitch between opposing riders and guards immediate steals',()=>{
+ const {match,p,roster}=fixture(),opponent=roster[3],ally=roster[1];
+ on(p,{x:8100,y:5200},54);
+ on(ally,p,54);
+ on(opponent,{x:p.x+47,y:p.y},54);
+ match.snitch.holderId=String(opponent.id);
+ assert.equal(quidditchAction(match,p,'steal-snitch',{},roster),false,'out of reach');
+ on(opponent,{x:p.x+15,y:p.y},77);
+ assert.equal(quidditchAction(match,p,'steal-snitch',{},roster),false,'out of height range');
+ on(opponent,opponent,54);
+ match.snitch.holderId=String(ally.id);
+ assert.equal(quidditchAction(match,p,'steal-snitch',{},roster),false,'a teammate retains custody');
+ match.snitch.holderId=String(opponent.id);
+ match.quaffle.holderId=String(p.id);
+ assert.equal(quidditchPrompt(match,p,roster),'STEAL SNITCH');
+ assert.equal(quidditchAction(match,p,'ball',{},roster),true);
+ assert.equal(match.snitch.holderId,String(p.id));
+ assert.equal(match.quaffle.holderId,null);
+ assert.deepEqual(match.scores,{gold:0,violet:0});
+ assert.equal(match.events.at(-1).type,'snitch-stolen');
+ assert.equal(match.events.at(-1).fromId,String(opponent.id));
+ assert.equal(quidditchAction(match,opponent,'steal-snitch',{},roster),false);
+ match.time+=.8;
+ assert.equal(quidditchAction(match,opponent,'steal-snitch',{},roster),true);
+ assert.equal(match.snitch.holderId,String(opponent.id));
 });
 
 test('solo fills both teams and cloned match state advances deterministically',()=>{

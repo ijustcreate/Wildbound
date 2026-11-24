@@ -144,7 +144,9 @@ function makeMaze(dx, dy) {
   const walk = [gate, {x:gate.x,y:southY}, {x:outerX,y:southY}, {x:outerX,y:outerY},
     {x:entrance.x,y:outerY}, {x:entrance.x,y:y+12}];
   const southWalk=[gate,{x:gate.x,y:southY},southEntrance,{x:southEntrance.x,y:southOpening.y-28}];
-  return {x,y,w,h,buckets,parts,entrance,opening,southEntrance,southOpening,chest,gate,walk,southWalk};
+  const maze={x,y,w,h,buckets,parts,entrance,opening,southEntrance,southOpening,chest,gate,walk,southWalk};
+  for(const part of parts)part.snow=Math.round(overlookSnowCoverage(maze,part.x+part.w/2,part.y+part.h/2)*3);
+  return maze;
 }
 
 export const VILLA_OVERLOOK = makeMaze(0, 0);
@@ -169,3 +171,14 @@ export function inOverlookGround(maze, x, y, pad = 0) {
   return x >= maze.x - 76 - pad && x < maze.x + maze.w + 54 + pad &&
     y >= maze.y - 73 - pad && y < maze.gate.y + 8 + pad;
 }
+
+export function overlookSnowCoverage(maze, x, y) {
+  if(!maze)return 0;
+  const px=x-maze.x,py=y-maze.y;
+  const front=maze.h*.5+Math.sin(px*.009)*46+Math.cos(px*.024+1)*18+Math.sin(px*.052)*7;
+  const lip=Math.max(0,-px,px-maze.w,-py);
+  return clampSnow((front-py+36)/72)*clampSnow(1-lip/74);
+}
+
+function clampSnow(value){return Math.max(0,Math.min(1,value));}
+export const inOverlookSnow=(maze,x,y)=>overlookSnowCoverage(maze,x,y)>=.45;

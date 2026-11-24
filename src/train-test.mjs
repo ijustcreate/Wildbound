@@ -4,14 +4,19 @@ import {cancelConductorDestination,unattendedTrainSpeed,finishUnattendedStop} fr
 import {advanceRailwayTicket,cancelRailwayTicket,finishRailwayTicket} from './train-ticket-service.mjs';
 import {tickTrainConductor,nearbyTrainConductor,interactTrainConductor,tickTrainConductorDialogue} from './train-conductor.mjs';
 import {clearSwordPolish} from './sword-charge-state.mjs';
-import {tickAlley,interactAlley,alleyPrompt,alleyBlocked,inDiagon,transferAlleyPurchases} from './diagon-alley.mjs';
+import {tickAlley,interactAlley,alleyPrompt,alleyBlocked,alleyFlooPrompt,interactFlooHearth,inDiagon,transferAlleyPurchases} from './diagon-alley.mjs';
 import {privateStoragePortal,tickPortalClosures,tickRailwayStoragePlayer} from './storage-portals.mjs';
-import {isNocturneDarkWizardLoot} from './nocturne-dark-wizards.mjs';
+import {collectNearbyWorldLoot} from './inventory-world.mjs';
+import {railwayLootAnchor,tickRailwayLoot} from './railway-loot.mjs';
 import {transferDiagonCritters} from './diagon-critters.mjs';
 import {clearPirateRide,interactPirateShip,pirateShipBlocked,pirateShipPrompt,stepOntoPiratePlank,tickPirateShip,tickPirateShipPlayer} from './pirate-ship.mjs';
+import {interactMystery,mysteryPrompt} from './mystery-inc.mjs';
+import {tickBorginHeartPond} from './borgin-heart-pond.mjs';
+import {validBorginDialogue} from './borgin-heart-dialogue.mjs';
 import {tickStationOwls,openOwlCage,owlPrompt,transferStationOwls} from './station-owls.mjs';
 import {trainFurnitureBlocks} from './train-surfaces.mjs';
 import {emitGameplayFx} from './gameplay-fx.mjs';
+import {tickEnergyBlade,tickEnergyMotionTail,tickRailwayEnergyBurns} from './energy-blade.mjs';
 import {trainStudents,nearbyTrainStudent,interactTrainStudent,transferTrainStudentGifts} from './train-students.mjs';
 import {tickChocolateFrogs} from './chocolate-frogs.mjs';
 import {trainTailor,nearbyTrainTailor,openTrainTailor,transferTailorPurchases} from './train-tailor.mjs';
@@ -22,9 +27,15 @@ export {harvestNativeGravestone} from './wild-native-biomes.mjs';
 import {tickSceneryFalls,tickTracks} from './environment.mjs';
 import {structureBlocked,toggleDoor} from './expansion.mjs';
 import {interactWildHomestead,wildHomesteadPrompt,tickWildHomestead,tickWildHomesteadVehicle} from './wild-homestead.mjs';
+import {homesteadBoardHolds} from './homestead-board.mjs';
+import {boardTableBlocked} from './board-table.mjs';
+import {tickTickTockCrocodile} from './tick-tock-crocodile.mjs';
+import {tickHollowStalactites} from './hollow-stalactites.mjs';
+import {bayouGoblinPrompt,interactBayouGoblin} from './bayou-goblin-hut.mjs';
+import {bayouGoblinHutBlocked} from './bayou-goblin-hut-layout.mjs';
 import {tickDestruction} from './structure-destruction.mjs';
 import {tickTrainImpacts} from './train-impact.mjs';
-import {tickWildLandsContent,interactWildLandsSite,nearbyWildSite} from './wild-lands-content.mjs';
+import {tickWildLandsContent,interactWildLandsSite,nearbyWildSite,VEIL_GLAIVE_CHEST} from './wild-lands-content.mjs';
 import {interactOverlookChest} from './overlook-maze.mjs';
 import {tickPlayerIce} from './frost-prison.mjs';
 import {BROOM_HOVER_HEIGHT,tickBroomFlight,dismountBroom} from './broom-mount.mjs';
@@ -58,19 +69,22 @@ import {nearbyTrainTicketBooth,openTrainTicketDialogue,tickTrainTicketDialogue} 
 import {diagonArenaBlocked,inDiagonArena} from './diagon-arena-layout.mjs';
 import {interactDiagonArena,tickDiagonArena} from './diagon-arena.mjs';
 import {hogsmeadeBlocked,hogsmeadePrompt,interactHogsmeade} from './hogsmeade.mjs';
+import {tickLupin} from './remus-lupin.mjs';
+import {tickShackBoggart} from './hogsmeade-boggart.mjs';
 import {controllerButtonNames,trainCabButtons} from './controls.mjs';
 import {railwayForestBlocked} from './railway-forest.mjs';
 import {railwaySurface} from './railway-water.mjs';
 import {stationDeckAt,stationBlocked,tickStationCats,syncStationAssets} from './railway-station.mjs';
 import {claimTrainCocoa,transferTrainTreats} from './hot-chocolate.mjs';
 import {startJump,tickJump,releaseJump,jumpMotion} from './jumping.mjs';
-import {readTrainDesign,validateTrainDesign,trainInterior,tenderLayout,trainDoorGeometry,trainSideDoorway,trainSideWallHeight} from './train-design.mjs';
+import {readTrainDesign,validateTrainDesign,trainInterior,tenderLayout,trainDoorGeometry,trainSideDoorSpans,trainSideDoorway,trainSideWallHeight} from './train-design.mjs';
 import {compartmentSeatStandY,nativeCompartmentAisle} from './train-interior.mjs';
 import {buildTrainRoute,sampleTrainRoute,trainCars,trainWorld,trainLocal,nearestTrainTrack,railwayWater,railElevation,trainRiderWorld,trainGangwayEnds} from './train-track.mjs';
 import {playTrainAudio,stopTrainAudio} from './train-audio.mjs';
 export {buildTrainRoute,sampleTrainRoute} from './train-track.mjs';
 export {validateTrainDesign} from './train-design.mjs';
 export {drawTrainTest} from './train-world-art.mjs';
+import {tickSalvage} from './salvage.mjs';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const combatCollisionCars=new WeakMap();
 function collisionCars(t){
@@ -165,10 +179,18 @@ function walkInside(t,c,r,dx,dy,height=0){
   if(stepY&&!trainInteriorBlocked(t,c,r.x,r.y+stepY,ignored,height))r.y+=stepY;
  }
 }
-function doorAt(c,q){return trainSideDoorway(c,q.x)&&Math.abs(q.y)>c.width/2-24&&Math.abs(q.y)<c.width/2+33;}
 const BROOM_CABIN_HOVER=10;
 const carFloor=c=>20+c.z;
 const carRoof=c=>carFloor(c)+trainSideWallHeight(c);
+
+function doorwayGuide(car,x){
+ let offset=null;
+ for(const {min,max} of trainSideDoorSpans(car)){
+  const distance=clamp(x,min+10,max-10)-x;
+  if(Math.abs(distance)<=12&&(offset===null||Math.abs(distance)<Math.abs(offset)))offset=distance;
+ }
+ return offset;
+}
 
 function broomTrainHover(p,cs,jump){
  if(p.trainRide)return BROOM_CABIN_HOVER;
@@ -178,15 +200,16 @@ function broomTrainHover(p,cs,jump){
  for(const car of cs){
   const local=trainLocal(car,p);
   if(Math.abs(local.x)>car.length/2+44||Math.abs(local.y)>car.width/2+60)continue;
-  if(doorAt(car,local)&&(p.jumpHeight||0)+ground<carRoof(car)){
+  if(Math.abs(local.y)>car.width/2-8&&doorwayGuide(car,local.x)!==null&&(p.jumpHeight||0)+ground<carRoof(car)){
    doorHeight=carFloor(car)+6-ground;
   }else target=Math.max(target,carRoof(car)+12-ground);
  }
  return doorHeight===null?target:Math.max(BROOM_HOVER_HEIGHT,doorHeight);
 }
 
-function blocksCarExterior(c,q,radius,height){
- return Math.abs(q.x)<c.length/2+radius&&Math.abs(q.y)<c.width/2+radius&&height<carRoof(c)&&!doorAt(c,q);
+function blocksCarExterior(c,q,radius,height,airborne){
+ const doorway=airborne&&height>=carFloor(c)&&Math.abs(q.y)>=c.width/2-9&&trainSideDoorway(c,q.x);
+ return Math.abs(q.x)<c.length/2+radius&&Math.abs(q.y)<c.width/2+radius&&height<carRoof(c)&&!doorway;
 }
 
 function separateCarExterior(p,cs){
@@ -194,7 +217,7 @@ function separateCarExterior(p,cs){
  const height=(p.jumpHeight||0)+(p.groundHeight||0)+(p.trainGround||0);
  for(const car of cs){
   const q=trainLocal(car,p);
-  if(!blocksCarExterior(car,q,6,height))continue;
+  if(!blocksCarExterior(car,q,6,height,p.jumpHeight>0))continue;
   const toEnd=car.length/2-Math.abs(q.x),toSide=car.width/2-Math.abs(q.y);
   const x=toEnd<toSide?Math.sign(q.x||1)*(car.length/2+9):q.x;
   const y=toEnd<toSide?q.y:Math.sign(q.y||1)*(car.width/2+9);
@@ -202,21 +225,47 @@ function separateCarExterior(p,cs){
  }
 }
 
-export function tryBoardTrain(g,p,cs=trainCars(g.trainTest)){
+function boardingAllowed(t,p){
+ return !t.derailed&&!p.trainRide&&!p.underBridge&&!p.wingHover&&p.jumpHeight>0&&!(p.trainBoardAfter>t.time);
+}
+
+function guideTrainApproach(g,t,p,cars,motion,dt){
+ if(!boardingAllowed(t,p)||Math.hypot(motion.dx,motion.dy)<.01)return motion;
+ const height=p.jumpHeight+(p.trainGround||0);
+ for(const car of cars){
+  const q=trainLocal(car,p),gap=Math.abs(q.y)-car.width/2;
+  if(gap<-1||gap>22||height<carFloor(car)-12||height>=carRoof(car))continue;
+  const side=Math.sign(q.y),cos=Math.cos(car.a),sin=Math.sin(car.a);
+  if(side*(-sin*motion.dx+cos*motion.dy)>-.15)return motion;
+  const offset=doorwayGuide(car,q.x);
+  if(offset===null)continue;
+  const along=clamp(offset,-42*dt,42*dt),inward=side*12*dt;
+  if(along){
+   // Align along the side before the normal movement tries the threshold.
+   const point=trainWorld(car,q.x+along,q.y);
+   if(!trainWorldBlocked(g,point.x,point.y,8,!!p.broomMount,true,p.jumpHeight,false,p)){
+    p.x=point.x;p.y=point.y;
+   }
+  }
+  return {dx:motion.dx+sin*inward,dy:motion.dy-cos*inward};
+ }
+ return motion;
+}
+
+export function tryBoardTrain(g,p,cs=trainCars(g.trainTest),previous=null){
  const t=g.trainTest;
- if(t.derailed||p.trainRide||p.underBridge||(p.trainBoardAfter||0)>t.time)return false;
- const height=(p.jumpHeight||0)+(p.trainGround||0);
+ if(!boardingAllowed(t,p))return false;
+ const height=p.jumpHeight+(p.trainGround||0);
  for(const car of cs){
-  const q=trainLocal(car,p),mounted=!!p.broomMount;
-  if(height<carFloor(car)||Math.abs(q.x)>car.length/2-8||Math.abs(q.y)>car.width/2+(mounted?6:12))continue;
-  if(mounted?(!doorAt(car,q)||height>=carRoof(car)):(!trainSideDoorway(car,q.x)&&height<carRoof(car)))continue;
-  const x=clamp(q.x,-car.length/2+16,car.length/2-16),y=clamp(q.y,-car.width/2+16,car.width/2-16);
-  if(trainInteriorBlocked(t,car,x,y))continue;
-  p.trainRide={car:car.index,x,y};
-  const world=trainWorld(car,x,y);
-  Object.assign(p,{x:world.x,y:world.y,swimming:false,underBridge:false,trainDeck:false,trainGround:0,
-   jumpHeight:mounted?BROOM_CABIN_HOVER:0,jumpVelocity:0,jumpHeld:false});
-  cue(g,'door',p);notice(t,mounted?'Broom aboard. Fly back through the doorway to leave.':'Boarded. Interact near seats, tables, doors or cab controls.');
+  const q=trainLocal(car,p),sideDistance=Math.abs(q.y),edge=car.width/2;
+  if(height<carFloor(car)||height>=carRoof(car)||sideDistance>edge||sideDistance<edge-9||!trainSideDoorway(car,q.x))continue;
+  if(previous&&Math.abs(trainLocal(car,previous).y)<=sideDistance+.01)continue;
+  const lift=p.broomMount?BROOM_CABIN_HOVER:height-carFloor(car);
+  if(trainInteriorBlocked(t,car,q.x,q.y,null,lift))continue;
+  p.trainRide={car:car.index,x:q.x,y:q.y};
+  Object.assign(p,{swimming:false,underBridge:false,trainDeck:false,trainGround:0,trainVisualLift:carFloor(car),
+   groundHeight:0,jumpHeight:lift,jumpVelocity:lift>0&&!p.broomMount?p.jumpVelocity||0:0});
+  cue(g,'door',p);notice(t,p.broomMount?'Broom aboard. Fly back through the doorway to leave.':'Boarded. Interact near seats, tables, doors or cab controls.');
   return true;
  }
  return false;
@@ -245,13 +294,16 @@ export function trainInteraction(g,p,cs=trainCars(g.trainTest)){
  if(inDiagonArena(g))return interactDiagonArena(g,p);
  if(inQuidditch(g))return interactQuidditchScene(g,p);
  const t=g.trainTest,r=p.trainRide,c=r?cs[r.car]:null;
+ if(!r&&interactFlooHearth(g,p))return true;
  if(!r&&openTrainTicketDialogue(g,p))return true;
  if(!r&&interactHogsmeade(g,p))return true;
  if(!r&&interactTideglass(g,p))return true;
+ if(!r&&interactBayouGoblin(g,p))return true;
+ if(!r&&interactMystery(g,p))return true;
  if(interactOverlookChest(g,p))return true;
  if(interactPirateShip(g,p))return true;
  if(interactAlley(g,p)||openOwlCage(g,p)||interactWildLandsSite(g,p)||wildLandsInteract(g,p)||!r&&interactNativeIce(g,p))return true;
- if(!r){if(interactWildHomestead(g,p)||toggleDoor(g,p))return true;if(p.underBridge)return false;for(const car of cs){const q=trainLocal(car,p);if(doorAt(car,q)){if((p.jumpHeight||0)+(p.trainGround||0)<10+car.z){notice(t,'Jump onto the raised doorway to board.');return true;}const x=clamp(q.x,-car.length/2+16,car.length/2-16),y=Math.sign(q.y)*(car.width/2-16);if(trainInteriorBlocked(t,car,x,y))continue;p.trainRide={car:car.index,x,y};p.swimming=false;p.underBridge=false;p.trainDeck=false;p.trainGround=0;p.jumpHeight=0;p.jumpVelocity=0;p.jumpHeld=false;cue(g,'door',p);notice(t,'Boarded. Move through the carriage. Interact near seats, doors or the cab console.');return true;}}return false;}
+ if(!r)return interactWildHomestead(g,p)||toggleDoor(g,p);
  if(r.seat)return stand(t,c,r);
  const closeCup=closerTrainCocoa(g,p,cs);if(closeCup)return claimTrainCocoa(g,p,c.id+':'+closeCup.id);
  if(interactTrainConductor(g,p,cs))return true;
@@ -272,16 +324,18 @@ export function trainPrompt(g,p){
  const t=g.trainTest,cs=trainCars(t),r=p.trainRide,names=controllerButtonNames(p.controllerFamily||'generic'),key=p.device==='keyboard'?'E':names[3],jump=p.device==='keyboard'?'J':names[0];
  const ship=pirateShipPrompt(g,p);if(p.pirateRide||ship)return ship?key+' · '+ship:'';
  if(!r){
+  const floo=alleyFlooPrompt(g,p);if(floo)return key+' · '+floo;
   const booth=nearbyTrainTicketBooth(g,p);if(booth)return key+' · TICKET OFFICE · '+booth.stationName.toUpperCase();
   const hogsmeade=hogsmeadePrompt(g,p);if(hogsmeade)return key+' · '+hogsmeade;
   const tideglass=tideglassPrompt(g,p);if(tideglass)return key+' · '+tideglass;
+  const goblin=bayouGoblinPrompt(g,p);if(goblin)return key+' · '+goblin;
+  const mystery=mysteryPrompt(g,p);if(mystery)return key+' · '+mystery;
   const magic=alleyPrompt(g,p)||owlPrompt(g,p);if(magic)return key+' · '+magic;
   const ice=nearbyNativeIce(g,p);if(ice)return key+' · '+(ice.kind==='winter_cache'?'WINTER SUPPLIES':'FROST BERRIES');
-  const site=nearbyWildSite(g,p);if(site&&!t.wildExploration?.opened.has(site.id))return key+' · SUPPLIES';
+  const site=nearbyWildSite(g,p);
+  if(site&&!t.wildExploration?.opened.has(site.id))return key+(site===VEIL_GLAIVE_CHEST?' · OPEN VEILKEEPER’S CHEST':' · SUPPLIES');
   const gate=wildLandsGatePrompt(g,p);if(gate)return key+' · '+gate;
   const home=wildHomesteadPrompt(g,p);if(home)return key+' · '+home;
-  if(p.underBridge)return '';
-  for(const c of cs)if(doorAt(c,trainLocal(c,p)))return jump+' · BOARD '+trainCarName(c).toUpperCase();
   return '';
  }
  if(r.driving){
@@ -304,11 +358,23 @@ export function trainPrompt(g,p){
  return o?key+' · '+(o.kind==='console'?(t.engine?'STOP ENGINE':'START ENGINE'):o.kind==='door'?((t.doors[c.id+':'+o.id]??o.open)?'CLOSE DOOR':'OPEN DOOR'):'SIT'):Math.abs(r.x)>c.length/2-39?'WALK OUT · '+jump+' · JUMP OFF':'';
 }
 
+function tickRailwaySalvage(g,dt,inputs){
+ for(const p of g.players){
+  if(p.salvageFinish>0)p.salvageFinish=Math.max(0,p.salvageFinish-dt);
+  const held=p.ui&&!isCharmed(p)&&(p.ui.salvagePointer||playerInput(g.players,p,inputs).salvage);
+  if(held||p.salvageHold)tickSalvage(g,p,!!held,dt,railwayLootAnchor);
+ }
+}
+
 export function tickTrainTest(g,dt,inputs){
  if(inDiagonArena(g)||inQuidditch(g)){
   const t=g.trainTest,previousTime=t.time;
   const result=inDiagonArena(g)?tickDiagonArena(g,dt,inputs):tickQuidditchScene(g,dt,inputs);
-  if(t.time>previousTime)tickNightCycle(g,t.time-previousTime);
+  if(t.time>previousTime){
+   const elapsed=t.time-previousTime;
+   tickNightCycle(g,elapsed);
+   tickRailwaySalvage(g,elapsed,inputs);
+  }
   if(t.railwayTicket&&t.time>previousTime){
    const previousDistance=t.distance,previousRoute=t.route,elapsed=t.time-previousTime;
    if(advanceRailwayTicket(g,elapsed)){
@@ -320,8 +386,9 @@ export function tickTrainTest(g,dt,inputs){
  }
  const t=g.trainTest;if(!t)return false;const costs={};let markTime=performance.now();const mark=name=>{const now=performance.now();costs[name]=now-markTime;markTime=now;};syncStationAssets(g);mark('station-assets');if(inDiagon(g))g.house={walls:[],doors:[],furniture:[],floors:[],pools:[],vehicles:[]};if(t.preparing)return true;if(!['play','won'].includes(g.phase))return true;dt=Math.max(0,Math.min(dt,.05));t.time+=dt;g.time+=dt;const d=t.design;
  if(d.wildLands)tickNightCycle(g,dt);else if(g.sky)g.sky.elapsed=(g.sky.elapsed+dt)%480;
- tickWildLandsContent(g);tickAlley(g,dt);tickPirateShip(g,dt);tickMountainEncounters(g);tickWildBiomeSpawns(g);
+ tickLupin(g);tickWildLandsContent(g);tickAlley(g,dt);tickPirateShip(g,dt);tickTickTockCrocodile(g);tickMountainEncounters(g);tickWildBiomeSpawns(g);
  tickWildCoastalCritters(g,dt);
+ tickShackBoggart(g);
  if(g.portals.length)tickPortalClosures(g,dt,g.portals.filter(d=>d.railwayScene&&privateStoragePortal(d)));
  tickCharmStatuses(g,dt);inputs=charmInputs(g,inputs);tickField(g,dt,inputs);g.tickWorldLoot?.(dt);tickGhosts(g,dt);tickHunterPets(g,dt,inputs);tickVillagers(g,dt);tickWildHomestead(g,dt,inputs);
  mark('globals');const previousDistance=t.distance,previousRoute=t.route,previousEngine=trainCars(t)[0];
@@ -330,21 +397,24 @@ export function tickTrainTest(g,dt,inputs){
  if(!ticketApproach){const target=unattendedTrainSpeed(g,dt);delta=clamp(target-t.speed,-trainBrakingPower(t)*dt,d.acceleration*dt);t.speed=Math.max(0,t.speed+delta);t.distance+=t.speed*dt;finishUnattendedStop(g);}
  tickTrainJunction(t,ticketApproach?t.distance-previousDistance:Math.max(0,t.speed*dt));
  tickTrainBridgeWater(g,dt,previousDistance);if(ticketApproach)finishRailwayTicket(g);
- const cs=trainCars(t);tickTrainConductor(g,cs,dt,trainInteriorBlocked);tickChocolateFrogs(g,dt);tickStationOwls(g,dt);t.audioEngine=cs[0];tickTrainJourney(g,dt,previousDistance,previousRoute,cs[0]);tickTrainImpacts(g,previousEngine,cs[0]);mark('movement-impacts');tickStationCats(t,dt,g.players);mark('cats');
+ const cs=trainCars(t);tickRailwayLoot(g,cs);tickTrainConductor(g,cs,dt,trainInteriorBlocked);tickChocolateFrogs(g,dt);tickStationOwls(g,dt);t.audioEngine=cs[0];tickTrainJourney(g,dt,previousDistance,previousRoute,cs[0]);tickTrainImpacts(g,previousEngine,cs[0]);mark('movement-impacts');tickStationCats(t,dt,g.players);mark('cats');
  if(t.speed>2&&t.time>(t.nextChuff||0)){cue(g,'chuff',cs[0]);t.nextChuff=t.time+Math.max(.09,26/(t.speed+25));}if(t.speed>12&&t.time>(t.nextClack||0)){cue(g,'clack',cs[2]);t.nextClack=t.time+Math.max(.16,65/t.speed);}
  if(t.driver&&!g.players.some(p=>p.id===t.driver&&p.trainRide?.driving)){t.driver=null;}
  for(const p of g.players){const old=t.previous.get(p.id)||{},input=trainPlayerInput(g,p,inputs,old),use=input.interact&&!old.interact,jump=input.jump&&!old.jump;t.previous.set(p.id,{...input});if(input.inventory&&!old.inventory){if(p.ui)p.ui=null;else g.openInventory?.(p);}
+  tickEnergyBlade(g,p,dt);
   if(p.trainRide){const ride=p.trainRide,car=cs[ride.car];if(car){p.trainVisualLift=20+car.z;const carried=trainRiderWorld(cs,ride);p.x=carried.x;p.y=carried.y;if(ride.seat){p.faceX=Math.cos(car.a+ride.facing);p.faceY=Math.sin(car.a+ride.facing);}}}
   p.consumeInput=!!p.ui;tickPlayerIce(p,dt);const swordPause=g.tickPlayerCombatTimers?.(p,dt)||0;g.tickHeroVitals?.(p,dt);
+  if(homesteadBoardHolds(g,p)){p.moving=false;p.walking=false;p.charge=0;continue;}
   if(p.mountainDescent&&advanceMountainDescent(g,p,dt)){p.trainVisualLift=p.trainGround;continue;}
   if(p.ui){
    p.charge=0;p.moving=false;
    if(p.ui.trainTicketStation)tickTrainTicketDialogue(g,p);
    if(p.ui?.trainConductor)tickTrainConductorDialogue(g,p);
+   if(p.ui?.borginHeart&&!validBorginDialogue(g,p))p.ui=null;
    if(!p.ui)continue;
    if(p.ui.trainStudentGift&&(!p.trainRide||t.derailed))p.ui=null;
    else{
-    if((p.ui.trainTicketStation||p.ui.trainConductor||p.ui.trainStudentGift||p.ui.alleyResident||p.ui.nocturneSpiderMerchant||p.ui.nocturneDarkWizard||p.ui.bellglassDivination)&&use&&!input.close)input.use=true;
+    if((p.ui.trainTicketStation||p.ui.trainConductor||p.ui.trainStudentGift||p.ui.alleyResident||p.ui.nocturneSpiderMerchant||p.ui.nocturneDarkWizard||p.ui.borginHeart||p.ui.bellglassDivination||p.ui.lupin||p.ui.pirateCrew||p.ui.bayouGoblin||p.ui.hogsmeadeNpc||p.ui.flooHearth||p.ui.mysteryVisitor)&&use&&!input.close)input.use=true;
     for(const action of ['close','next','prev','down','up','panel','use','offhand','sockets','store','drop','dropOne','pick','split']){
      if(!p.ui)break;
      if(input[action]&&!old[action])g.inventoryAction?.(p,action);
@@ -366,6 +436,8 @@ export function tickTrainTest(g,dt,inputs){
    }
   }
   if(tickWildHomesteadVehicle(g,p,input,old,dt,use))continue;
+  const pick=input.loot&&!old.loot;
+  const picked=pick?collectNearbyWorldLoot(g,p):use&&collectNearbyWorldLoot(g,p,true);
   if(input.controlCycle&&!old.controlCycle&&!p.trainRide)cycleFollowerControl(g,p);const controlled=controlledFollower(g,p);
   updateAimFacing(p,input);p.bowAiming=!!(input.block&&hasAimWeapon(p)&&!p.swimming&&!r?.seat&&!r?.driving);p.holdingPosition=!!input.holdPosition;updateBowAimBlend(p,input,dt);p.blocking=!!input.block&&!hasAimWeapon(p)&&itemKind(p.equipment?.hand2)==='shield';
   if(!r?.seat&&!r?.driving){g.tickWeaponInput?.(p,input,old,dt);if(input.potion&&!old.potion)g.usePotion?.(p);if(input.summon&&!old.summon)g.raiseSkeleton?.(p);if(input.trap)g.trap?.(p);}else p.charge=0;
@@ -388,7 +460,7 @@ export function tickTrainTest(g,dt,inputs){
   if(moveScale>0&&!p.dashTime&&!p.dashRecovery){const stride=jumpMotion(p,mx,my,moveScale,dt);if(stride){mx=stride.dx/(moveScale*dt);my=stride.dy/(moveScale*dt);}}
   if(step&&moveScale){mx+=(p.swordFacing?.x||0)*step/(moveScale*dt);my+=(p.swordFacing?.y||0)*step/(moveScale*dt);}
   const aboardShip=!!p.pirateRide;
-  if(aboardShip)tickPirateShipPlayer(g,p,{x:mx*moveScale,y:my*moveScale},dt,use);
+  if(aboardShip)tickPirateShipPlayer(g,p,{x:mx*moveScale,y:my*moveScale},dt,use&&!picked);
   else if(r){
    if(r.driving){
     if(input.dodge&&!old.dodge)emergencyTrainBrake(g,p,c);
@@ -403,28 +475,35 @@ export function tickTrainTest(g,dt,inputs){
       if(outward&&edge&&(doorway||clearsWall)){r.y+=dy;leaveTrainCar(g,p,c,r);r=null;c=null;}else walkInside(t,c,r,dx,dy,p.jumpHeight||p.groundHeight||0);}
     }
    }
-   if(use&&p.trainRide&&!p.trainRide.gangway)trainInteraction(g,p,cs);r=p.trainRide;if(r){c=cs[r.car];const q=trainRiderWorld(cs,r);p.x=q.x;p.y=q.y;p.moving=!r.seat&&!r.driving&&Math.hypot(mx,my)>.1;p.moveSpeed=p.moving?105:0;if(r.seat){p.faceX=Math.cos(c.a+r.facing);p.faceY=Math.sin(c.a+r.facing);}else if(p.moving&&!p.swordFacing&&!input.aimX&&!input.aimY){p.faceX=mx/(Math.hypot(mx,my)||1);p.faceY=my/(Math.hypot(mx,my)||1);}}
+   if(use&&!picked&&p.trainRide&&!p.trainRide.gangway&&!trainInteraction(g,p,cs))collectNearbyWorldLoot(g,p);
+   r=p.trainRide;if(r){c=cs[r.car];const q=trainRiderWorld(cs,r);p.x=q.x;p.y=q.y;p.moving=!r.seat&&!r.driving&&Math.hypot(mx,my)>.1;p.moveSpeed=p.moving?105:0;if(r.seat){p.faceX=Math.cos(c.a+r.facing);p.faceY=Math.sin(c.a+r.facing);}else if(p.moving&&!p.swordFacing&&!input.aimX&&!input.aimY){p.faceX=mx/(Math.hypot(mx,my)||1);p.faceY=my/(Math.hypot(mx,my)||1);}}
   }else{
-   const previous={x:p.x,y:p.y},speed=moveScale*dt;
-   const motion=nativeWildIceMotion(g,p,mx,my,moveScale,dt);g.moveActor(p,motion.dx,motion.dy);
+   const previous={x:p.x,y:p.y};
+   const motion=guideTrainApproach(g,t,p,cs,nativeWildIceMotion(g,p,mx,my,moveScale,dt),dt);
+   g.moveActor(p,motion.dx,motion.dy);
    updateTrainWater(t,p,previous);
-   separateCarExterior(p,cs);
+   const boarded=tryBoardTrain(g,p,cs,previous);
+   if(!boarded)separateCarExterior(p,cs);
    p.moving=Math.hypot(mx,my)>.1;p.moveSpeed=p.moving?145:0;if(p.moving&&!p.swordFacing&&!input.aimX&&!input.aimY){p.faceX=mx/(Math.hypot(mx,my)||1);p.faceY=my/(Math.hypot(mx,my)||1);}
-   if(!stepOntoPiratePlank(g,p,previous)){
-    if((p.jumpHeight||0)>0&&!p.underBridge)tryBoardTrain(g,p,cs);
-    else if(use&&!(input.loot&&inDiagon(g)&&isNocturneDarkWizardLoot(g.nearbyLoot?.(p)))){
-     trainInteraction(g,p,cs);
-     if(inDiagonArena(g))return true;
+   if(!boarded&&!stepOntoPiratePlank(g,p,previous)){
+    if(!(p.jumpHeight>0)&&use&&!picked){
+     const room=d.activeRoom;
+     if(!trainInteraction(g,p,cs))collectNearbyWorldLoot(g,p);
+     if(d.activeRoom!==room)return true;
     }
    }
   }
   if(p.gardenBench)continue;
   if(!p.trainRide&&!p.pirateRide){p.trainVisualLift=p.trainGround||0;tickSwimBreath(g,p,input,dt);}
-  g.tickMeleeContact?.(p);syncControlledFollower(g,p,dt);if(controlled){tickFollowerAttack(g,controlled,dt);controlled.jumpHeight=p.jumpHeight;controlled.jumpVelocity=p.jumpVelocity;}if(!p.ui){const loot=g.nearbyLoot?.(p),arrow=g.nearbyArrow?.(p);if(input.loot&&!old.loot){if(arrow)g.collectArrow(p,arrow);if(loot)g.collect(p,loot);}g.tickAutomaticLoot?.(p);}
+  g.tickMeleeContact?.(p);syncControlledFollower(g,p,dt);if(controlled){tickFollowerAttack(g,controlled,dt);controlled.jumpHeight=p.jumpHeight;controlled.jumpVelocity=p.jumpVelocity;}if(!p.ui)g.tickAutomaticLoot?.(p);
   if(!aboardShip&&!p.pirateRide){const end=p.trainRide,travel=end?(motionStart.car===end.car?Math.hypot(end.x-motionStart.x,end.y-motionStart.y):0):motionStart.car===undefined?Math.hypot(p.x-motionStart.x,p.y-motionStart.y):0;p.moving=(end?.gangway?Math.hypot(mx,my)>.1:travel>.02)&&!end?.seat&&!end?.driving;p.step=locomotionStep+(end?.gangway||motionStart.gangway?Math.hypot(mx,my)*moveScale*dt:travel)*.13;p.moveSpeed=dt>0?travel/dt:0;p.movementGait=p.moving?(p.walking?'walk':'run'):'idle';p.locomotionTransition=null;delete p.playerFrame;delete p.poseTime;}
  }
+ if(d.activeRoom===HOLLOW_ROOM)tickHollowStalactites(g,dt);
+ for(const p of g.players)tickEnergyMotionTail(g,p,dt);
+ tickRailwayEnergyBurns(g,dt);
  if(t.railwayTicket)finishRailwayTicket(g);
  if(inDiagon(g))tickGardenPond(g,dt);
+ tickBorginHeartPond(g);
  tickDiagonFootprints(g);mark('players');t.fallingScenery??=new Set();for(const o of g.scenery||[])if(o.falling)t.fallingScenery.add(o);if(t.fallingScenery.size){const view=Object.create(g);view.scenery=[...t.fallingScenery];tickSceneryFalls(view,dt);for(const o of t.fallingScenery)if(!o.falling)t.fallingScenery.delete(o);}
  tickDestruction(g,dt);tickNightEquipment(g,dt);
  // Actors may sample a pursuit line many times while the cars stay fixed for this tick.
@@ -442,6 +521,7 @@ export function tickTrainTest(g,dt,inputs){
  if(t.speed>55&&t.time>(t.nextSpark||0)){for(const c of cs){const a=sampleTrainRoute(t.route,c.s-22),b=sampleTrainRoute(t.route,c.s+22),turn=Math.abs(Math.atan2(Math.sin(b.a-a.a),Math.cos(b.a-a.a)));if(turn>.025){const side=Math.sin(b.a-a.a)>0?1:-1;emit(trainWorld(c,c.length*.3,side*d.gauge/2,2),'spark',-Math.cos(c.a)*45,-20,.3,2);}}t.nextSpark=t.time+.1;}
  for(const p of t.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.kind==='smoke'){p.seed??=(Math.sin(p.x*3+p.y*7)+1)*50;const age=p.max-p.life;p.vx+=(-12+Math.sin(age*2+p.seed)*7-p.vx)*dt*.9;p.vy+=(-24+Math.cos(age*1.8+p.seed)*5-p.vy)*dt*.65;p.size+=dt*(7+age*2);}if(p.kind==='ember'||p.kind==='spark')p.vy+=dt*65;}t.particles=t.particles.filter(p=>p.life>0);
  if(!g.players.some(p=>p.hp>0))g.phase='lost';mark('exhaust');t.updateCosts=costs;
+ tickRailwaySalvage(g,dt,inputs);
  return true;
 }
 
@@ -475,16 +555,18 @@ export function updateTrainWater(t,p,previous=p){
 
 export function trainWorldBlocked(g,x,y,radius=7,flying=false,ignoreWater=false,height=0,projectile=false,from=null){
  if(inDiagonArena(g))return diagonArenaBlocked(x,y,radius);
- if(inQuidditch(g))return quidditchFieldBlocked(x,y,radius,height);
+ if(inQuidditch(g))return quidditchFieldBlocked(x,y,radius,height,g.trainTest.quidditch);
  const t=g.trainTest,d=t.design;if(inDiagon(g))return alleyBlocked(g,x,y,radius,projectile?null:from,height);if(alleyBlocked(g,x,y,radius))return true;if(x<radius||y<radius||x>d.width-radius||y>d.height-radius)return true;
  if(hogsmeadeBlocked(g,x,y,radius,height))return true;
+ if(bayouGoblinHutBlocked(d,x,y,radius,height,from,projectile,flying))return true;
+ if(!flying&&boardTableBlocked(g,x,y,radius,height,from))return true;
  if(from?.pirateRide)return pirateShipBlocked(g,x,y,radius,from,height);
  if(d.wildLands&&d.activeRoom===HOLLOW_ROOM&&mountainTerrainBlocked(d,x,y,radius))return true;
  if(!flying&&pirateShipBlocked(g,x,y,radius,from,height))return true;
  if(from?.trainRide){const c=collisionCars(t)[from.trainRide.car],q=trainLocal(c,{x,y});return trainInteriorBlocked(t,c,q.x,q.y,null,height);}
- if(!projectile&&from&&!from.trainRide&&!(from.underBridge||from.swimming)){
-  const elevation=height+(from.trainGround||0);
-  if(collisionCars(t).some(c=>blocksCarExterior(c,trainLocal(c,{x,y}),radius,elevation)))return true;
+ if(!projectile&&from&&(!(from.underBridge||from.swimming)||railwaySurface(d,from.x,from.y)==='grass')){
+  const elevation=height+(from.trainGround||0),airborne=height>(from.groundHeight||0);
+  if(collisionCars(t).some(c=>blocksCarExterior(c,trainLocal(c,{x,y}),radius,elevation,airborne)))return true;
  }
  if(projectile)for(const c of collisionCars(t)){const q=trainLocal(c,{x,y});if(Math.abs(q.x)>c.length/2+radius||Math.abs(q.y)>c.width/2+radius)continue;if(Math.abs(q.y)>c.width/2-5-radius&&!trainSideDoorway(c,q.x)||Math.abs(q.x)>c.length/2-5-radius&&Math.abs(q.y)>12)return true;if(c.kind==='engine'&&q.x>-c.length*.07&&Math.abs(q.y)<c.width/2-16)return true;for(const item of trainInterior(d,c)){const o=item.kind==='door'?trainDoorGeometry(item,t.doors[c.id+':'+item.id]??item.open):item;if(!['wall','door','console','firebox','table'].includes(o.kind))continue;if(Math.abs(q.x-o.x)<o.w/2+radius&&Math.abs(q.y-o.y)<o.h/2+radius)return true;}}
  const descent=from?.mountainDescent&&mountainDescentCorridor(d,from,x,y);

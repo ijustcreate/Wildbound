@@ -24,7 +24,7 @@ export function salvageReason(p){
 }
 // Requires a fresh hold for each item. Changing selection or performing another
 // inventory action cancels the hold instead of destroying the next selected item.
-export function tickSalvage(g,p,held,dt){
+export function tickSalvage(g,p,held,dt,lootAnchor){
  if(tickPresentUnwrap(g,p,held,dt))return;
  if(!held){delete p.salvageHold;return;}
  if(p.salvageHold?.latched)return;
@@ -36,32 +36,33 @@ export function tickSalvage(g,p,held,dt){
  hold.elapsed+=Math.max(0,Math.min(.1,dt));
  if(hold.elapsed+1e-8<SALVAGE_SECONDS)return;
  const drops=[...salvageYield(item.type,item),...(item.sockets||[]).map(type=>({type,qty:1}))];
- // The lobby has a separate practice simulation; world drops there would be
- // invisible and discarded on starting an expedition. Deliver atomically to
- // the real backpack, including returned socketed trinkets.
- let lobbyPack;
- if(g.phase==='lobby'){
-  lobbyPack=structuredClone(p.inventory);
-  if(--lobbyPack[hold.index].qty===0)clearSlot(lobbyPack,hold.index);
-  else delete lobbyPack[hold.index].sockets;
-  if(!drops.every(drop=>give(lobbyPack,drop.type,drop.qty))){
+ const anchor=lootAnchor?.(g,p);
+ // Deliver atomically when only the backpack can keep the output with the player.
+ let deliveredPack;
+ if(g.phase==='lobby'||!anchor&&(p.trainRide||p.pirateRide)){
+  deliveredPack=structuredClone(p.inventory);
+  if(--deliveredPack[hold.index].qty===0)clearSlot(deliveredPack,hold.index);
+  else delete deliveredPack[hold.index].sockets;
+  if(!drops.every(drop=>give(deliveredPack,drop.type,drop.qty))){
    p.salvageHold={latched:true};p.ui.salvagePointer=false;
    p.ui.notice='Free backpack space for the salvage materials. Nothing was consumed.';
    g.uiRevision=(g.uiRevision||0)+1;return;
   }
  }
- if(--item.qty===0)clearSlot(p.inventory,hold.index);
- else delete item.sockets;
  p.salvageHold={latched:true};p.ui.salvagePointer=false;p.salvageFinish=.3;
- if(lobbyPack)p.inventory=lobbyPack;
- else for(const [n,drop] of drops.entries()){
-  const a=n*Math.PI*2/drops.length;
-  let loot;
-  if(p.room==='temple-upper')loot=dropTempleLoot(g,p,drop.type,drop.qty);
-  else{g.dropLoot(p.x+Math.cos(a)*18,p.y+Math.sin(a)*12,drop.type,drop.qty,'Salvaged by '+p.name,true);loot=g.loot.at(-1);}
-  if(loot)loot.salvageBorn=g.time;
+ if(deliveredPack)p.inventory=deliveredPack;
+ else{
+  if(--item.qty===0)clearSlot(p.inventory,hold.index);
+  else delete item.sockets;
+  for(const [n,drop] of drops.entries()){
+   const a=n*Math.PI*2/drops.length;
+   const loot=p.room==='temple-upper'?dropTempleLoot(g,p,drop.type,drop.qty):g.dropLoot(
+    anchor?.x??p.x+Math.cos(a)*18,anchor?.y??p.y+Math.sin(a)*12,drop.type,drop.qty,'Salvaged by '+p.name,true,anchor||{},
+   )??g.loot.at(-1);
+   if(loot)loot.salvageBorn=g.time;
+  }
  }
- refreshVitals(p);p.ui.notice=lobbyPack?'Salvaged. Materials and socketed trinkets added to your backpack. Release to salvage again.':'Salvaged. Materials and socketed trinkets are at your feet. Release to salvage again.';
+ refreshVitals(p);p.ui.notice=deliveredPack?'Salvaged. Materials and socketed trinkets added to your backpack. Release to salvage again.':'Salvaged. Materials and socketed trinkets are at your feet. Release to salvage again.';
  g.uiRevision=(g.uiRevision||0)+1;g.persist();
 }
 export function salvageProgress(p){return p.salvageHold?.latched?0:Math.min(1,(p.salvageHold?.elapsed||0)/SALVAGE_SECONDS);}

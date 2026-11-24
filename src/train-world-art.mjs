@@ -1,4 +1,11 @@
 import {drawTrainGangway} from './train-gangway-art.mjs';
+import {boardActorDepth,boardTableDepth} from './board-table.mjs';
+import {wildHomesteadBoardTable} from './wild-homestead-layout.mjs';
+import {homesteadBoardSuction,homesteadBoardView} from './homestead-board.mjs';
+import {drawHomesteadBoardPortal,drawHomesteadSuctionActor} from './homestead-board-art.mjs';
+import {drawTickTockCrocodile} from './tick-tock-crocodile-art.mjs';
+import {drawHollowStalactites} from './hollow-stalactites.mjs';
+import {bayouGoblinHutSubjects,drawBayouGoblinHutGround,drawBayouGoblinHutLamp} from './bayou-goblin-hut-art.mjs';
 import {drawTrainShadows} from './train-shadows.mjs';
 import {sceneryBatches,drawSceneryBatch} from './scenery-batches.mjs';
 import {drawTrainRiderLayer} from './train-rider-layer.mjs';
@@ -30,9 +37,13 @@ import {paintSwordCharge} from './sword-feel.mjs';
 import {drawPixelTrainCloud} from './train-exhaust-art.mjs';
 import {wildBuildingSubjects,drawWildBuildingSubject,drawWildHomesteadDetails} from './wild-landmark-buildings.mjs';
 import {drawHogsmeadeGround,hogsmeadeSubjects} from './hogsmeade-art.mjs';
+import {pirateCrewActors,pirateCrewSpeech} from './pirate-crew.mjs';
+import {drawPirateCrewMember,drawPirateCrewSpeech} from './pirate-crew-art.mjs';
+import {activePatronuses} from './patronus.mjs';
 import {drawBedSleeper} from './house-living.mjs';
 import {drawRiverCattails,drawRiverShallows,riverBankVegetation} from './wild-river-vegetation.mjs';
 import {drawWildCoastalCritters} from './wild-coastal-critters.mjs';
+import {drawMerlockCampFixture,drawMerlockCampGround,merlockCampSubjects,visibleMerlockCamps} from './wild-merlock-camp-art.mjs';
 import {vegetationWindStrength} from './vegetation-motion.mjs';
 import {overlookMazeFor} from './overlook-maze.mjs';
 import {drawOverlookGarden,overlookSubjects,drawOverlookSubject,drawOverlookClippings} from './overlook-maze-art.mjs';
@@ -42,7 +53,9 @@ import {trainActorDepth,trainCarDepth} from './train-visibility.mjs';
 import {nearbyWildSite} from './wild-lands-content.mjs';
 import {controlledUnit} from './controlled-unit.mjs';
 import {hunterPets} from './hunter-pets.mjs';
+import {drawHunterPet} from './hunter-pet-render.mjs';
 import {drawWildLandsFloor,wildLandsProps,drawWildLandsLandmarks,drawWildLandsMap,drawWildLandsCrossings,drawFrozenExplorerCache,frozenExplorerCacheSubject} from './wild-lands-art.mjs';
+import {drawVeilGlaiveChest,veilGlaiveChestSubject} from './wild-lands-art.mjs';
 import {wildLandsGround} from './wild-lands-world.mjs';
 import {GrassFieldRenderer} from './grass-field.mjs';
 import {drawForestSunlight} from './forest-sunlight.mjs';
@@ -64,7 +77,11 @@ import {PLAYER_RENDER_SIZE} from './render-settings.mjs';
 import {TRAIN_SEAT_HEIGHT} from './train-surfaces.mjs';
 import {TRAIN_SEATED_PELVIS_HEIGHT} from './train-clips.mjs';
 import {PIRATE_SHIP_LAYOUT,pirateShip,pirateShipPoint} from './pirate-ship.mjs';
-import {drawPirateShipGround,drawPirateShipForeground,drawPirateShipEffects} from './pirate-ship-art.mjs';
+import {drawPirateShipGround,drawPirateShipForeground,drawPirateShipEffects,drawWreckTreasure} from './pirate-ship-art.mjs';
+import {WILLY_CHAIR,WRECK_TREASURE_TABLE} from './pirate-wreck-treasure.mjs';
+import {mysteryVisitors} from './mystery-inc.mjs';
+import {drawMysteryDog} from './mystery-inc-art.mjs';
+import {drawWildWeather} from './wild-weather-art.mjs';
 import {HOLLOW_BOUNDS,HOLLOW_EXIT,HOLLOW_ROOM} from './wild-mountain-layout.mjs';
 import {drawHollowMap,drawMountainForegroundActor,drawMountainLights,drawWildHollow,drawWildMountain,drawWildMountainUpper,mountainActorLift} from './wild-mountain-art.mjs';
 import {actorContact} from './contact-shadow.mjs';
@@ -349,7 +366,7 @@ export function drawTrainTest(renderer,g,dt){
  if(!t.wildLandsOverview)g.scenery=forest;
  if(!starting)prepareSceneryPoses(t,g,bounds,renderer.splitChild?renderer.cameraViewId:'shared');
  mark('props');
- if(hollow){drawWildHollow(ctx,bounds,t.time);t.streamCoverage.groundReady=true;}
+ if(hollow){drawWildHollow(ctx,bounds,t.time);drawHollowStalactites(ctx,g,visible);t.streamCoverage.groundReady=true;}
  else if(d.wildLands){drawWildLandsFloor(ctx,t,bounds,t.wildLandsOverview,starting?null:g);if(!t.wildLandsOverview||d.activeRoom)drawWildLandsLandmarks(ctx,t,bounds,g);if(!starting&&camera.zoom>=.3&&!d.activeRoom){g.forestLandscape=t.forestPlan??={seed:42,routes:[],landmarks:[],cover:[],routeField:new Float32Array(10000).fill(200),paving:{cells:Array(576).fill(0)}};renderer.railwayGrass??=new GrassFieldRenderer();t.shaderGrass=renderer.railwayGrass.draw(ctx,g,camera,w,h,false,renderer.canvas);drawForestSunlight(ctx,g,bounds,daylight(g));}if(!d.activeRoom&&!t.wildLandsOverview){drawWildMountain(ctx,bounds,t.time,t,true);if(camera.zoom>=.26)drawHogsmeadeGround(ctx,g,bounds);}}
  else{
  drawRailwayForestFloor(ctx,t,bounds,t.time);
@@ -372,7 +389,9 @@ export function drawTrainTest(renderer,g,dt){
  const mountainViewer=party.find(p=>!renderer.cameraOwnerIds?.length||renderer.cameraOwnerIds.includes(p.id));
  const mountainForeground=d.wildLands&&!d.activeRoom&&!t.wildLandsOverview?
   drawWildMountainUpper(ctx,bounds,t.time,t,mountainViewer?mountainActorLift(d,mountainViewer):0,camera.zoom>=.4):null;
- const shoreSubjects=riverPlants.filter(p=>p.kind==='cattail').map(p=>({...p,riverCattail:p,depth:p.y}));
+ const merlockCamps=!starting&&camera.zoom>=.34?visibleMerlockCamps(g,visible):[];
+ for(const camp of merlockCamps)drawMerlockCampGround(ctx,camp);
+ const shoreSubjects=[...riverPlants.filter(p=>p.kind==='cattail').map(p=>({...p,riverCattail:p,depth:p.y})),...merlockCampSubjects(merlockCamps)];
  const shoreWind=shoreSubjects.length?vegetationWindStrength(g):1;
  if(!t.wildLandsOverview)drawStoragePortals(ctx,g,visible);
  const visibleGrounding=d.wildLands&&!starting&&camera.zoom>=.3;
@@ -393,13 +412,31 @@ export function drawTrainTest(renderer,g,dt){
   else if(below.includes(p))drawMountainForegroundActor(ctx,mountainForeground,p,0,pen=>renderer.animator.draw(pen,p,g.time,PLAYER_RENDER_SIZE));
  }
  if(!t.wildLandsOverview&&d.wildLands&&!d.activeRoom)drawBridgeReveal(ctx,bounds,below,area=>drawWildLandsCrossings(ctx,d,area));
- if(showShip)drawPirateShipGround(ctx,ship,shipView);
+ const coachLoot=new Map(),gangwayLoot=[],shipLoot=[];
+ for(const item of g.loot||[]){
+  const surface=item.railwaySurface;
+  if(surface?.kind==='ship'){
+   if(showShip&&surface.shipId===ship.id&&visibleShipLevel({pirateRide:surface},shipView))shipLoot.push(item);
+  }else if(surface?.kind==='train'){
+   if(surface.gangway)gangwayLoot.push(item);
+   else {
+    if(!coachLoot.has(surface.car))coachLoot.set(surface.car,[]);
+    coachLoot.get(surface.car).push(item);
+   }
+  }
+ }
+ if(showShip){
+  drawPirateShipGround(ctx,ship,shipView);
+  if(shipLoot.length)renderer.drawAttachedLoot(g,w,h,shipLoot);
+ }
  // Display other saved branches as real rails; only the selected itinerary drives the train.
  if(!hollow)drawRailwayTracks(ctx,t,bounds,camera.zoom<.18,party);
+ if(!starting&&!t.wildLandsOverview)drawBayouGoblinHutGround(ctx,d,visible);
  // Ground warnings belong on the walkable rail surface, beneath cars and actors.
  renderer.drawCombatTelegraphs(g,w,h);
  for(const p of party){if(!visibleShipLevel(p,shipView))continue;const lift=p.trainVisualLift||surfaceLift(d,p);if(!p.trainRide)paintSwordCharge(ctx,p,g.time,lift);drawBowAim(ctx,p,1,g.time,g,lift);}
  for(let i=1;!t.derailed&&i<cs.length;i++)drawTrainGangway(ctx,cs[i],cs[i-1]);
+ if(!t.derailed&&gangwayLoot.length)renderer.drawAttachedLoot(g,w,h,gangwayLoot);
  if(!hollow)drawAlleyGate(ctx,g);
  drawDestruction(ctx,g,p=>visible(p,100),{groundOnly:true});
  mark('ground-stations-track');
@@ -420,17 +457,57 @@ export function drawTrainTest(renderer,g,dt){
  const frameCarOptions=new Map(),carOptions=car=>{let options=frameCarOptions.get(car.index);if(!options){options={time:t.time,distance:t.distance,speed:t.speed,engine:t.engine,doors:t.doors,riders:ridersFor(car),wallVisibility:new Map(),occlusionFrame:{parts:new Map()},cocoaTaken:t.cocoaTaken,world:{time:g.time,scenery:forest},roofAlpha:t.roof[car.id]??1};frameCarOptions.set(car.index,options);}return options;};
  drawTrainShadows(ctx,cs.filter(car=>visible(car,car.length+car.width)));
  const shipSubjects=showShip?[{shipForeground:true,depth:Math.max(...PIRATE_SHIP_LAYOUT.hull.map(p=>pirateShipPoint(ship,p.x,p.y).y))}]:[];
+ if(showShip&&hollow&&shipView.level==='hold'){
+  for(const [part,fixture] of [['chair',WILLY_CHAIR],['table',WRECK_TREASURE_TABLE]]){
+   const point=pirateShipPoint(ship,fixture.x-fixture.width*.32,fixture.y+fixture.depth/2);
+   shipSubjects.push({wreckTreasure:part,depth:point.y});
+  }
+ }
+ const shipCrew=showShip?pirateCrewActors(g).filter(p=>visibleShipLevel(p,shipView)&&
+  (p.hp>0||p.pirateHostile&&(p.deathTimer||0)<3.5)&&visible({x:p.x,y:p.y-p.pirateVisualLift},105)):[];
+ for(const actor of shipCrew)shipSubjects.push({pirateActor:actor,depth:actor.y});
  const enemies=[];
- for(const actor of [...(g.enemies||[]),...(g.ghosts||[]),...(g.villageFollowers||[]),...hunterPets(g)]){
-  if(actor.controlledBy)continue;
+ for(const actor of [...(g.enemies||[]),...(g.ghosts||[]),...(g.villageFollowers||[]),...hunterPets(g),...activePatronuses(g)]){
+  if(actor.controlledBy||actor.pirateRole)continue;
   const lift=mountainActorLift(d,actor);
   const enemy=lift?{...actor,y:actor.y-lift}:actor;
-  if(visible(enemy))enemies.push({depth:trainActorDepth(actor,cs),enemy,lift});
+  if(visible(enemy,actor.tickTockCrocodile?240:undefined))enemies.push({depth:trainActorDepth(actor,cs),enemy,lift});
  }
  const cacheSubject=camera.zoom>=.3?frozenExplorerCacheSubject(t,visible):null;
  const objects=[...shoreSubjects,...(camera.zoom>=.26?hogsmeadeSubjects(g,visible):[]),...(cacheSubject?[cacheSubject]:[]),...(camera.zoom>=.28?overlookSubjects(overlook,visible,g).map(subject=>({overlookSubject:subject,depth:subject.depth})):[]),...(hollow?[]:g.stationOwls||[]).filter(a=>!a.hidden&&visible(a)).map(owl=>({owl,depth:owl.y})),...(hollow?[]:escapedChocolateFrogs(g)).filter(a=>!a.room).map(frog=>({frog,depth:trainActorDepth(frog,cs)})),...(hollow||camera.zoom<.3?[]:wildBuildingSubjects(d)).filter(q=>visible(q,200)),...forest.filter(q=>visible(q)).map(tree=>({depth:tree.rootY??tree.y,tree})),...(hollow?[]:stationSubjects(d,t.time,t.stationCats,bounds)).filter(q=>(camera.zoom>=.3||q.stationCat&&camera.zoom>=.18)&&visible(q,500)).map(subject=>({depth:subject.depth,subject})),...cs.filter(q=>{const hx=Math.abs(Math.cos(q.a))*q.length/2+Math.abs(Math.sin(q.a))*q.width/2+24,hy=Math.abs(Math.sin(q.a))*q.length/2+Math.abs(Math.cos(q.a))*q.width/2+24;return q.x+hx>bounds.left&&q.x-hx<bounds.right&&q.y+hy>bounds.top&&q.y-hy-q.z-116<bounds.bottom;}).map(car=>({depth:trainCarDepth(car),car})),...enemies,...g.players.filter(p=>!p.room&&p.controlledFollowerId&&p.controlPetPosition).map(p=>({player:{...p,...p.controlPetPosition,...(p.controlMainLoadout||{}),controlledFollowerId:null,trainRide:null,moving:!!p.controlPetPosition.moving,walking:true,attack:0,charge:0,dashTime:0,animationAction:null},depth:p.controlPetPosition.y})),...passengers,...shipSubjects,...party.filter(p=>!p.swimming&&!below.includes(p)&&visibleShipLevel(p,shipView)&&visible({x:p.x,y:p.y-surfaceLift(d,p)-(p.jumpHeight||p.groundHeight||0)},180)).map(player=>({depth:trainActorDepth(player,cs),player}))].sort((a,b)=>a.depth-b.depth);
- if(showTideglass){const eastern=tideglassSubjects(t,bounds);if(eastern.length){objects.push(...eastern);objects.sort((a,b)=>a.depth-b.depth);}}
- const queued=sceneryBatches(renderer,g,t,objects,(pen,tree)=>{const biome=tree._biome||(d.wildLands?wildLandsGround(d,tree.x,tree.y):'forest');if(camera.zoom<.3||camera.zoom<.6&&!['tree','snow_tree','palm','leafless_tree','grave_forest_tree','rock','ice_rock','forest_ruin'].includes(tree.kind))drawDistantProp(pen,t,tree,g,biome);else drawNativePropCached(pen,t,tree,g,biome,true);});const paintedCars=new Set();for(const o of queued){if(o.tideglass){const {paint,actor}=o.tideglass;if(actor)renderer.animator.draw(ctx,actor,g.time,PLAYER_RENDER_SIZE);else paint(ctx);continue;}if(o.riverCattail){drawRiverCattails(ctx,o.riverCattail,g.time,shoreWind);continue;}if(o.hogsmeade){const {npc,paint}=o.hogsmeade;if(npc)renderer.animator.draw(ctx,npc,g.time,npc.id==='hagrid'?57:48);else paint(ctx);continue;}if(o.frozenExplorerCache){drawFrozenExplorerCache(ctx,t);continue;}if(o.shipForeground){drawPirateShipForeground(ctx,ship,shipView);continue;}if(o.overlookSubject){drawOverlookSubject(ctx,o.overlookSubject);continue;}if(o.sceneryBatch){drawSceneryBatch(ctx,o.sceneryBatch);continue;}if(o.owl){drawSnowyOwl(ctx,o.owl,g.time);continue;}if(o.frog){const a=o.frog,lift=a.trainRide?20+(cs[a.trainRide.car]?.z||0):0;drawChocolateFrog(ctx,{...a,y:a.y-lift},g.time);continue;}if(o.wildBuildingAsset){drawWildBuildingSubject(ctx,g,o);continue;}if(o.enemy){drawMountainForegroundActor(ctx,mountainForeground,o.enemy,o.lift,pen=>{drawActorGameplayFx(pen,g,o.enemy,43,'back');renderer.animator.draw(pen,o.enemy,g.time,43);drawActorGameplayFx(pen,g,o.enemy,43,'front');});continue;}if(o.subject){drawStationSubject(ctx,d,o.subject,t.time,renderer,party,g);continue;}if(o.tree){ctx.save();if(party.some(p=>isOccluded(o.tree,g.spriteLibrary?.[o.tree.kind],p)))ctx.globalAlpha=.4;const biome=o.tree._biome||(d.wildLands?wildLandsGround(d,o.tree.x,o.tree.y):'forest');if(camera.zoom<.3||camera.zoom<.6&&!['tree','snow_tree','palm','leafless_tree','grave_forest_tree','rock','ice_rock','forest_ruin'].includes(o.tree.kind))drawDistantProp(ctx,t,o.tree,g,biome);else drawNativePropCached(ctx,t,o.tree,g,biome);ctx.restore();continue;}if(o.player){const p=o.player;if(p.vehicleId||drawBedSleeper(ctx,p,g.time,renderer.animator))continue;const studentSize=p.trainStudent?TRAIN_STUDENT_RENDER_SIZE:PLAYER_RENDER_SIZE,r=p.trainRide,seat=r?.seat;
+ const visitors=camera.zoom>=.3?mysteryVisitors(g).filter(npc=>visible(npc,60)):[];
+ const veilChest=camera.zoom>=.3?veilGlaiveChestSubject(t,visible):null;
+ if(veilChest)objects.push(veilChest);
+ for(const npc of visitors)objects.push({mysteryVisitor:npc,depth:npc.y});
+ const eastern=showTideglass?tideglassSubjects(t,bounds):[];
+ if(visitors.length||eastern.length||veilChest){objects.push(...eastern);objects.sort((a,b)=>a.depth-b.depth);}
+ const sageHut=!starting&&!t.wildLandsOverview?bayouGoblinHutSubjects(g,party,visible):[];
+ if(sageHut.length){objects.push(...sageHut.map(o=>({depth:o.depth,sageHut:o})));objects.sort((a,b)=>a.depth-b.depth);}
+ const homeBoard=wildHomesteadBoardTable(d),boardPortal=homesteadBoardSuction(g);
+ if(homeBoard&&visible(homeBoard,80)){
+  const depth=boardTableDepth(homeBoard);
+  for(const o of objects)if(o.player)o.depth=boardActorDepth(g,o.player,o.depth);
+  objects.push({homeBoard,depth});objects.sort((a,b)=>a.depth-b.depth);
+ }
+ const queued=sceneryBatches(renderer,g,t,objects,(pen,tree)=>{const biome=tree._biome||(d.wildLands?wildLandsGround(d,tree.x,tree.y):'forest');if(camera.zoom<.3||camera.zoom<.6&&!['tree','snow_tree','palm','leafless_tree','grave_forest_tree','rock','ice_rock','forest_ruin'].includes(tree.kind))drawDistantProp(pen,t,tree,g,biome);else drawNativePropCached(pen,t,tree,g,biome,true);});const paintedCars=new Set();for(const o of queued){
+ if(o.wreckTreasure){drawWreckTreasure(ctx,ship,o.wreckTreasure);continue;}
+ if(o.merlockCamp){drawMerlockCampFixture(ctx,o,t.time);continue;}
+ if(o.sageHut){
+  const {npc,paint}=o.sageHut;
+  if(npc){drawRailPlayerContact(ctx,d,npc,48);renderer.animator.draw(ctx,npc,g.time,48);}
+  else paint(ctx);
+  continue;
+ }
+ if(o.veilGlaiveChest){drawVeilGlaiveChest(ctx,t);continue;}
+ if(o.mysteryVisitor){
+  const npc=o.mysteryVisitor;
+  drawRailPlayerContact(ctx,d,npc,npc.dog?38:PLAYER_RENDER_SIZE);
+  if(npc.dog)drawMysteryDog(ctx,npc,g.time,45);
+  else renderer.animator.draw(ctx,npc,g.time,PLAYER_RENDER_SIZE);
+  continue;
+ }
+ if(o.homeBoard){const view=homesteadBoardView(g);renderer.boardBase(ctx,{...view,openingBoard:true},o.homeBoard);renderer.boardTop(ctx,view,o.homeBoard);if(boardPortal)drawHomesteadBoardPortal(ctx,boardPortal,g.time);continue;}if(o.tideglass){const {paint,actor}=o.tideglass;if(actor)renderer.animator.draw(ctx,actor,g.time,PLAYER_RENDER_SIZE);else paint(ctx);continue;}if(o.riverCattail){drawRiverCattails(ctx,o.riverCattail,g.time,shoreWind);continue;}if(o.hogsmeade){const {npc,paint}=o.hogsmeade;if(npc)renderer.animator.draw(ctx,npc,g.time,npc.id==='hagrid'?57:(npc.renderSize??48));else paint(ctx);continue;}if(o.frozenExplorerCache){drawFrozenExplorerCache(ctx,t);continue;}if(o.shipForeground){drawPirateShipForeground(ctx,ship,shipView);continue;}if(o.pirateActor){drawPirateCrewMember(renderer,g,o.pirateActor);continue;}if(o.overlookSubject){drawOverlookSubject(ctx,o.overlookSubject);continue;}if(o.sceneryBatch){drawSceneryBatch(ctx,o.sceneryBatch);continue;}if(o.owl){drawSnowyOwl(ctx,o.owl,g.time);continue;}if(o.frog){const a=o.frog,lift=a.trainRide?20+(cs[a.trainRide.car]?.z||0):0;drawChocolateFrog(ctx,{...a,y:a.y-lift},g.time);continue;}if(o.wildBuildingAsset){drawWildBuildingSubject(ctx,g,o);continue;}if(o.enemy){drawMountainForegroundActor(ctx,mountainForeground,o.enemy,o.lift,pen=>{drawActorGameplayFx(pen,g,o.enemy,43,'back');if(o.enemy.hunterPet&&o.enemy.owlVariant)drawHunterPet(pen,o.enemy,g.players.find(p=>p.id===o.enemy.owner)||{},g.time);else if(o.enemy.tickTockCrocodile)drawTickTockCrocodile(pen,renderer.animator,o.enemy,g.time,43);else renderer.animator.draw(pen,o.enemy,g.time,43);drawActorGameplayFx(pen,g,o.enemy,43,'front');});continue;}if(o.subject){drawStationSubject(ctx,d,o.subject,t.time,renderer,party,g);continue;}if(o.tree){ctx.save();if(party.some(p=>isOccluded(o.tree,g.spriteLibrary?.[o.tree.kind],p)))ctx.globalAlpha=.4;const biome=o.tree._biome||(d.wildLands?wildLandsGround(d,o.tree.x,o.tree.y):'forest');if(camera.zoom<.3||camera.zoom<.6&&!['tree','snow_tree','palm','leafless_tree','grave_forest_tree','rock','ice_rock','forest_ruin'].includes(o.tree.kind))drawDistantProp(ctx,t,o.tree,g,biome);else drawNativePropCached(ctx,t,o.tree,g,biome);ctx.restore();continue;}if(o.player){const p=o.player;if(p.vehicleId||drawBedSleeper(ctx,p,g.time,renderer.animator))continue;const studentSize=p.trainStudent?TRAIN_STUDENT_RENDER_SIZE:PLAYER_RENDER_SIZE,r=p.trainRide,seat=r?.seat;
+ if(boardPortal?.playerId===p.id){drawHomesteadSuctionActor(ctx,renderer,p,boardPortal,g.time,studentSize);continue;}
  const rideAnchor=r?trainRiderWorld(cs,r):null;
  const maskPoint=p.trainMaskPoint||(seat?rideAnchor:p);
  // Keep the matte at the physical seat while lifting the native seated pose onto its cushion.
@@ -446,23 +523,35 @@ export function drawTrainTest(renderer,g,dt){
   drawActorGameplayFx(pen,g,actor,studentSize,'front');drawHappySparkles(pen,actor,g.time);
  }));continue;}const car=o.car;if(t.derailed&&car.sink>=1)continue;ctx.save();if(t.derailed){ctx.globalAlpha=Math.max(0,1-car.sink*.85);const waterY=car.y+12;ctx.beginPath();ctx.rect(car.x-car.length-200,waterY-car.length-400,car.length*2+400,car.length+400);ctx.clip();}
   if(camera.zoom<.18){drawDistantTrain(ctx,t,d,car,g,renderer);ctx.restore();paintedCars.add(car.index);continue;}
-  drawTrainCar(ctx,d,car,carOptions(car));ctx.restore();paintedCars.add(car.index);
+  const items=coachLoot.get(car.index),options=carOptions(car);
+  const paintLoot=items?.length&&options.roofAlpha<.995?()=>{
+   ctx.save();ctx.translate(-car.x,-car.y+car.z);
+   renderer.drawAttachedLoot(g,w,h,items);
+   ctx.restore();
+  }:undefined;
+  drawTrainCar(ctx,d,car,options,paintLoot);ctx.restore();paintedCars.add(car.index);
  }
  renderer.animator.lighting=priorLighting;
- mark('subjects');if(!hollow)drawTrainBridgeWater(ctx,t);drawNightEquipment(ctx,g);renderer.drawCombatProjectiles(g,w,h);renderer.drawCombatEffects(g);drawDestruction(ctx,g,p=>visible(p,100),{airOnly:true});
+ mark('subjects');if(!hollow)drawTrainBridgeWater(ctx,t);drawNightEquipment(ctx,g);renderer.drawCombatProjectiles(g,w,h,shot=>!shot.pirateRide||showShip&&visibleShipLevel(shot,shipView));renderer.drawCombatEffects(g);drawDestruction(ctx,g,p=>visible(p,100),{airOnly:true});
  if(d.wildLands&&!d.activeRoom&&!starting&&camera.zoom>=.6)drawFallingLeaves(ctx,g,p=>visible(p,30),forest);
  if(!hollow&&camera.zoom>=.3)drawWildHomesteadDetails(ctx,g,visible);
- if(showShip)drawPirateShipEffects(ctx,ship,shipView);
+ if(showShip){
+  drawPirateShipEffects(ctx,ship,shipView);
+  const line=pirateCrewSpeech(g),speaker=line&&shipCrew.find(actor=>actor.id===line.actorId&&actor.hp>0);
+  if(speaker)drawPirateCrewSpeech(ctx,speaker,line.text);
+ }
  if(!starting&&camera.zoom>=.36)drawWildCoastalCritters(ctx,g,visible,renderer.animator);
  for(const p of hollow?[]:t.particles){const f=p.life/p.max,age=1-f;ctx.save();ctx.globalAlpha=(p.kind==='smoke'?.52:.8)*Math.min(1,f*2,age*9);const size=p.size,x=Math.round(p.x/2)*2,y=Math.round(p.y/2)*2;if(p.kind==='smoke'||p.kind==='steam')drawPixelTrainCloud(ctx,p,x,y);else{ctx.fillStyle=p.kind==='spark'?'#ffe79d':'#f5aa4f';ctx.fillRect(x,y,size,size);}ctx.restore();}
  const dark=1-daylight(g);if(!hollow&&dark>0){ctx.fillStyle=`rgba(9,20,39,${dark*.48})`;ctx.fillRect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);}
  if(hollow||d.wildLands&&!d.activeRoom)drawMountainLights(ctx,bounds,t.time,hollow,dark);
  if(showTideglass)drawTideglassLights(ctx,t,bounds,dark);
  if(!hollow)drawStationLights(ctx,d,t.time,dark>.3);
+ if(!t.wildLandsOverview)drawBayouGoblinHutLamp(ctx,d,visible,dark);
  if(!hollow&&camera.zoom>=.3)drawWildHomesteadDetails(ctx,g,visible,true);
  if(dark>.15&&!t.derailed&&cs.length){const engine=cs[0],q=trainWorld(engine,engine.length*.48,0,38),a=engine.a;ctx.save();ctx.translate(q.x,q.y);ctx.rotate(a);ctx.globalCompositeOperation='screen';const light=ctx.createLinearGradient(0,0,420,0);light.addColorStop(0,'#ffe9a090');light.addColorStop(1,'#ffe9a000');ctx.fillStyle=light;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(420,-125);ctx.lineTo(420,125);ctx.lineTo(0,8);ctx.closePath();ctx.fill();ctx.fillStyle='#fff1c2';ctx.fillRect(-3,-5,9,10);ctx.restore();}
  if(!t.wildLandsOverview)for(const p of party)if(visibleShipLevel(p,shipView))drawBreath(ctx,p);
  ctx.restore();
+ if(d.wildLands&&!d.activeRoom&&!t.wildLandsOverview)drawWildWeather(ctx,g,renderer,camera,w,h,dt);
  if(ship&&t.wildLandsOverview)drawShipMapMarker(ctx,w/2+(ship.x-camera.x)*camera.zoom,h/2+(ship.y-camera.y)*camera.zoom,1.2);
  if(!hollow){drawStudentSpeech(ctx,g,cs,camera,w,h,students.map(n=>n.actor));drawConductorSpeech(ctx,g,cs,camera,w,h,students.map(n=>n.actor));}
  // The same outlined, display-resolution typography as the lobby prop captions.
@@ -481,7 +570,7 @@ export function drawTrainTest(renderer,g,dt){
   const parts=driving?text.split(' · '):null;
   const lines=parts?[parts[0],parts[1],parts.slice(2).join(' · ')]:[text];
   const spacing=14,x=driving?Math.round(w/2):Math.round(w/2+(p.x-camera.x)*camera.zoom);
-  const belowActor=text.includes('TALK TO')||text.includes('TICKET OFFICE');
+  const belowActor=text.includes('TALK TO')||text.includes('TICKET OFFICE')||text.includes('INSPECT ONE-EYED WILLY');
   const rawY=h/2+(p.y-surfaceLift(d,p)-camera.y+(belowActor?18:-(p.trainRide?68:52)))*camera.zoom;
   const belowY=h/2+(p.y-camera.y+18)*camera.zoom;
   const y=Math.round(driving?Math.max(52,Math.min(90,h*.19)):

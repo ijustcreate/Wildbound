@@ -57,3 +57,39 @@ function drawFirebolt(c,p,d){
 }
 
 export function drawBroomIcon(c){drawBroom(c,{pelvis:{x:12,y:13}},6);}
+
+const carryPalettes={
+ flying_broom:{shaft:wood,highlight:light,brush:straw,shade:'#896136',tip:'#d6a353',band:'#80603c',tail:26},
+ nimbus_2000:{shaft:'#88532f',highlight:'#c08a50',brush:'#a86c3e',shade:'#683e2b',tip:'#cc9c5d',band:'#d5b16d',tail:31},
+ firebolt:{shaft:'#4e3934',highlight:'#ad7952',brush:'#855c43',shade:'#583c34',tip:'#b98b63',band:'#b99063',tail:32},
+};
+
+export function drawShoulderBroom(c,type,point,brushEnd){
+ const p=carryPalettes[type]||carryPalettes.flying_broom;
+ if(!brushEnd){
+  const grip=point(-.7),tip=point(13,.6);
+  line(c,grip,tip,3,ink);
+  line(c,point(0,.4),point(12,1),1,p.highlight);
+  return;
+ }
+ const base=-p.tail+11,tail=-p.tail;
+ line(c,point(base),point(.7),3,ink);
+ line(c,point(base,.4),point(.7,.4),1,p.shaft);
+ // The bound bundle has thickness around the handle. Keep its cross-section
+ // visible even in side views, where the broom's horizontal axis is foreshortened.
+ const root=point(base),end=point(tail),dx=end.x-root.x,dy=end.y-root.y;
+ const length=Math.hypot(dx,dy)||1,sign=dx>=0?1:-1;
+ const edge=(forward,spread)=>{
+  const p=point(forward);
+  return {x:p.x-dy*sign/length*spread,y:p.y+dx*sign/length*spread};
+ };
+ const brush=[edge(base,-1.35),edge(tail+7,-2.5),edge(tail+2,-3.5),edge(tail,-2),
+  edge(tail+1,2.8),edge(tail+5,3.1),edge(base,1.5)];
+ polygon(c,brush,ink);
+ polygon(c,[edge(base,-.75),edge(tail+7,-1.6),edge(tail+3,-2.5),edge(tail+1,-1.6),
+  edge(tail+2,1.8),edge(tail+5,2),edge(base,.9)],p.brush);
+ line(c,edge(base-2,-.4),edge(tail+3,-1.6),1,p.tip);
+ line(c,edge(base-3,.7),edge(tail+3,1.5),1,p.shade);
+ line(c,edge(base-1,-1.25),edge(base-1,1.25),2,ink);
+ line(c,edge(base-.8,-1),edge(base-.8,1),1,p.band);
+}

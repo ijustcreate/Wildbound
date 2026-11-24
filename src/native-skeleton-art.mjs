@@ -17,7 +17,7 @@ export function drawSkeletonLimb(c,p,side,pal,leg=false){
  if(!leg){const q=p[end+side];ellipse(c,q.x,q.y,1.6,1.5,pal.headShade);c.fillStyle=pal.head;c.fillRect(Math.round(q.x)-1,Math.round(q.y)-1,2,2);}
  return true;
 }
-export function drawSkeletonTorso(c,p,d,pal){
+export function drawSkeletonTorso(c,p,d,pal,heartTime){
  bone(c,p.pelvis,p.chest,pal,1.7);bone(c,p.chest,{x:p.head.x,y:p.head.y+3.5},pal,1.5);
  const point=(t,x)=>({x:p.chest.x+(p.pelvis.x-p.chest.x)*t+x,y:p.chest.y+(p.pelvis.y-p.chest.y)*t});
  const width=d===2||d===6?2.6:4.3;
@@ -27,6 +27,15 @@ export function drawSkeletonTorso(c,p,d,pal){
    const a=point(t,s*.6),b=point(t+.06,s*w),end=point(t+.17,s*(w-.8));
    bone(c,a,b,pal,1);bone(c,b,end,pal,1);
   }
+ }
+ if(Number.isFinite(heartTime)){
+  const heart=point(.43,d===2?-1:d===6?1:0);
+  const x=Math.round(heart.x),y=Math.round(heart.y),beat=Math.sin(heartTime*8)>.26;
+  c.fillStyle=beat?'#ee52614f':'#f457653a';c.fillRect(x-4,y-3,9,7);
+  c.fillStyle='#792f50';c.fillRect(x-3,y-2,7,3);c.fillRect(x-2,y+1,5,1);c.fillRect(x-1,y+2,3,1);
+  c.fillStyle=beat?'#ff8691':'#e15868';c.fillRect(x-2,y-2,2,1);c.fillRect(x+1,y-2,2,1);
+  c.fillRect(x-2,y-1,5,2);c.fillRect(x-1,y+1,3,1);c.fillRect(x,y+2,1,1);
+  c.fillStyle='#ffe1c7';c.fillRect(x-2,y-2,1,1);if(beat)c.fillRect(x+1,y-1,1,1);
  }
  for(const s of [-1,1])bone(c,p.chest,p['shoulder'+(s<0?'L':'R')],pal,1.4);
  bone(c,p.hipL,p.hipR,pal,2);

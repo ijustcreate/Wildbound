@@ -32,8 +32,13 @@ import { drawStorageRobot, drawRobotPortrait } from "./robot-art.mjs";
 import {controlledUnit} from './controlled-unit.mjs';
 import {creatureRenderSize} from './render-settings.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
+import {drawWizardCardPortrait,wizardCardCollectionPopup} from './wizard-card-ui.mjs';
+import {wizardCardCount} from './wizard-card-collection.mjs';
+import {WIZARD_CARDS} from './wizard-cards.mjs';
 import {drawStorageBackdrop,drawStorageChest,drawStorageLight,drawStorageDust} from './storage-art.mjs';
 import {storageVisualActor,nearbyStorageChest} from './storage-room.mjs';
+import {storageRoomLoot} from './room-loot-data.mjs';
+import {drawRoomLootItem,nearbyRoomLoot,roomLootPrompt} from './room-loot.mjs';
 import {privateStorageRoom,storageRoomRepresentative,storagePanelBox,storageRoomCamera} from './storage-view.mjs';
 import {robotOnline,nearStorageRobot,ROBOT_REPAIR_SECONDS} from './storage-repair.mjs';
 import { drawPortal } from "./portal-art.mjs";
@@ -41,12 +46,17 @@ import { shopPanel, drawVending } from "./shop-ui.mjs";
 import { defaultPlayerMotion, drawPlayer } from "./player-motion.mjs";
 import { ITEMS, SLOTS, count, itemKind, itemStats, sellValue } from "./items.mjs";
 import { drawItem } from "./item-art.mjs";
+import {stolenHeartName} from './stolen-heart.mjs';
 const el = (tag, text, cls) => {
   const e = document.createElement(tag);
   if (text) e.textContent = text;
   if (cls) e.className = cls;
   return e;
 };
+function itemDisplayName(item,def){
+ if(def?.wizardCardCollection)return `${def.name} · ${wizardCardCount(item)} / ${WIZARD_CARDS.length}`;
+ return stolenHeartName(item)||def?.name||'Empty slot';
+}
 function liveControllerFamily(player) {
   if (player?.device?.startsWith('pad:')) {
     const index = Number(player.device.slice(4));
@@ -100,7 +110,7 @@ export class HeroUI {
     const show = () => {
       let tip = panel.querySelector('.item-tooltip');
       if (!tip) { tip = el('div', null, 'item-tooltip'); panel.append(tip); }
-      if(p.ui?.carry||(p.ui?.socket||p.ui?.bag||p.ui?.split)&&!button.closest('.inventory-popover')){tip.hidden=true;panel.tooltipExpanded=false;if(this.tooltipAltOwner===p.id)this.tooltipAlt=false;return;}
+      if(p.ui?.carry||(p.ui?.socket||p.ui?.bag||p.ui?.split||p.ui?.wizardCards)&&!button.closest('.inventory-popover')){tip.hidden=true;panel.tooltipExpanded=false;if(this.tooltipAltOwner===p.id)this.tooltipAlt=false;return;}
       panel.tooltipAnchor?.removeAttribute('aria-describedby');
       panel.tooltipAnchor=button;panel.lastTooltipAnchor=button;
       const expanded=!!(panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===p.id));
@@ -109,7 +119,7 @@ export class HeroUI {
       tip.id=`item-tooltip-${p.id}`;
       tip.setAttribute('role','tooltip');
       button.setAttribute('aria-describedby',tip.id);
-      const name=el('strong',def.name,'item-name');
+      const name=el('strong',itemDisplayName(item,def),'item-name');
       name.style.color=RARITIES[def.rarity]||RARITIES.common;
       tip.replaceChildren(name);
       if (def.description) tip.append(el('p', def.description));
@@ -241,6 +251,7 @@ export class HeroUI {
         JSON.stringify(p.ui?.carry||null),
         JSON.stringify(p.ui?.split || null),
         JSON.stringify(p.ui?.bag || null),
+        JSON.stringify(p.ui?.wizardCards || null),
         p.ui?JSON.stringify((p.inventory||[]).filter(i=>i?.type==='relic_bag')):'',
         game.phase, game.environment,
         JSON.stringify(p.ui?.socket||null),
@@ -249,6 +260,7 @@ export class HeroUI {
         portal?.oldWell?Math.hypot(p.roomX-portal.well.exit.x,p.roomY-portal.well.exit.y)<36:'',
       ].join("|");
       this.preview(panel, p, game.time,game);
+      if(p.ui?.wizardCards)drawWizardCardPortrait(panel.querySelector('.wizard-card-portrait'),performance.now()/1000);
       const repairProgress=panel.querySelector('.robot-repair-progress');
       if(repairProgress){const progress=(p.robotRepair?.progress||0)/ROBOT_REPAIR_SECONDS;repairProgress.style.setProperty('--repair-progress',progress*100+'%');repairProgress.setAttribute('aria-valuenow',String(Math.round(progress*100)));}
       panel.querySelectorAll('.salvage-ring').forEach(r=>{const progress=salvageProgress(p);r.style.setProperty('--salvage-fill',progress*360+'deg');r.setAttribute('aria-valuenow',String(Math.round(progress*100)));});
@@ -378,7 +390,7 @@ export class HeroUI {
       }
       this.preview(panel, p, game.time,game);
       if(p.ui?.shop==='npc-dialogue')drawNpcDialoguePortraits(panel,game,p,renderer?.animator||(this.roomAnimator||=new Animator()));
-      if (focus)
+      if (focus&&(!p.ui?.wizardCards||focus.startsWith('wizard-card-')))
         panel
           .querySelector('[data-action="' + focus + '"]')
           ?.focus({ preventScroll: true });
@@ -679,15 +691,15 @@ export class HeroUI {
           (gear ? item.slot.toUpperCase().replace('HAND', 'HAND ') : (item?.type === "occupied" ? "BOTH" : "")) +
             (item?.qty > 1 ? " ×" + item.qty : ""),
           action,
-          () => { select(mode, n); if (def?.bag) u.bag = {mode, index:n, selected:0}; },
+          () => { select(mode, n); if (def?.bag&&!def.wizardCardCollection) u.bag = {mode, index:n, selected:0}; },
         );
         b.classList.toggle("selected", active && n === index);
         b.classList.toggle('carried-source',!!u.carry&&u.carry.from.mode===mode&&(gear?u.carry.from.slot===item.slot:u.carry.from.index===n));
         b.classList.toggle('carry-target',!!u.carry&&active&&n===index);
         b.dataset.index = n;
         b.dataset.mode = mode;
-        if (def?.bag) b.ondblclick = () => { select(mode, n); u.bag = {mode, index:n}; };
-        b.setAttribute('aria-label',(gear?item.slot+': ':'')+(def?.name||'Empty slot')+(item?.qty>1?' ×'+item.qty:''));
+        if (def?.bag&&!def.wizardCardCollection) b.ondblclick = () => { select(mode, n); u.bag = {mode, index:n}; };
+        b.setAttribute('aria-label',(gear?item.slot+': ':'')+itemDisplayName(item,def)+(item?.qty>1?' ×'+item.qty:''));
         b.style.setProperty("--item", def?.color || "#405047");
         if (gear) {
           b.dataset.slot=item.slot;b.textContent='';
@@ -700,7 +712,7 @@ export class HeroUI {
         b.dataset.rarity=def?.rarity||'common';
         b.style.setProperty('--rarity',RARITIES[def?.rarity]||RARITIES.common);
         b.title = def
-          ? def.name +
+          ? itemDisplayName(displayItem,def) +
             " · " +
             itemStats(displayItem.type) +
             " · " +
@@ -715,7 +727,9 @@ export class HeroUI {
         if (def) this.itemTooltip(panel, b, game, p, displayItem);
         if (def) b.removeAttribute('title');
         if (def?.slot) b.style.color = def.color;
-        if(!gear&&item?.qty>1){b.textContent='';b.append(el('span',String(item.qty),'inventory-quantity'));}
+        if(!gear&&(item?.qty>1||def?.wizardCardCollection)){
+          b.textContent='';b.append(el('span',String(def?.wizardCardCollection?wizardCardCount(item):item.qty),'inventory-quantity'));
+        }
         if (def) {
           const icon = el("canvas");
           icon.width = icon.height = 48;
@@ -739,7 +753,7 @@ export class HeroUI {
           e.dataTransfer.effectAllowed = "move";
           e.dataTransfer.setData(
             "text/plain",
-            def?.name || "Two-handed weapon",
+            def ? itemDisplayName(displayItem,def) : 'Two-handed weapon',
           );
         };
         b.ondragend = () => {
@@ -762,7 +776,7 @@ export class HeroUI {
         el(
           "p",
           def
-            ? def.name +
+            ? itemDisplayName(item,def) +
                 " · " +
                 itemStats(item.type) +
                 " · " +
@@ -813,7 +827,7 @@ export class HeroUI {
       const b=button('',option.id,()=>game.inventoryAction(p,option.action));
       b.disabled=!!option.reason;b.setAttribute('aria-label',option.label+' · '+option.key+(option.reason?' · '+option.reason:''));b.title=option.reason||option.label+' · '+option.key;
       const badge=option.key.replace(/Triangle/g,'△').replace(/Square/g,'□').replace(/Circle/g,'○').replace(/Cross/g,'×').replace(/Shift\+Del/g,'⇧Del');
-      const compactLabel={'Learn recipe':'Learn','Ask the crystal ball':'Ask','Eat magic mushroom':'Eat'}[option.label]||option.label;
+      const compactLabel={'Learn recipe':'Learn','Ask the crystal ball':'Ask','Eat magic mushroom':'Eat','Eat Chocolate Frog':'Eat','Open card collection':'Open'}[option.label]||option.label;
       b.append(el('span',badge,'inventory-key'),el('span',compactLabel,'inventory-action-label'));
       if(option.id==='salvage-hold'){
         const ring=el('span',null,'salvage-ring');ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
@@ -831,6 +845,7 @@ export class HeroUI {
 
   inventoryPopovers(panel, game, p, button) {
     const u = p.ui;
+    if(u.wizardCards){wizardCardCollectionPopup(panel,game,p,button);return;}
     const anchorPopup = (popup, mode, index) => {
       panel.querySelector('.item-tooltip')?.remove();
       panel.append(popup);
@@ -1097,6 +1112,8 @@ export class HeroUI {
       90,
     );
     c.restore();
+    const floorItems=storageRoomLoot(g,d);
+    for(const item of floorItems)drawRoomLootItem(c,item);
     for (const q of g.players
       .filter((q) => q.room === d.id)
       .sort((a, b) => a.roomY - b.roomY)) {
@@ -1129,6 +1146,12 @@ export class HeroUI {
     }
     drawRoomVillagerFollowers(c,g,d.id,animator);
     for(const q of g.players.filter(q=>q.room===d.id)){
+      const item=nearbyRoomLoot(floorItems,q);
+      if(item&&!q.roomJumpHeight){
+        const prompt=roomLootPrompt(g,q,item);
+        if(prompt){c.fillStyle='#fff0c4';c.textAlign='center';c.font='bold 7px monospace';c.fillText(prompt,q.roomX,q.roomY+23);}
+        continue;
+      }
       const index=nearbyStorageChest(q);if(index<0)continue;
       const x=[60,160,260][index],key=q.device==='keyboard'?'E':controllerButtonNames(liveControllerFamily(q))[3];
       c.fillStyle='#122b23';c.fillRect(x-36,22,72,17);c.strokeStyle='#d7bc78';c.lineWidth=1;c.strokeRect(x-36,22,72,17);

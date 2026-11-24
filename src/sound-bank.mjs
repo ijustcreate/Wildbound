@@ -11,8 +11,15 @@ const streetFoley=(names,gain,options={})=>({
  cooldown:180,distance:180,maxDuration:.55,...options,
 });
 export const CUES={
+ energyBladeIgnite:{synthesis:'ignite',gain:.12,group:'energy-blade',priority:36,polyphony:3,cooldown:260,distance:310,maxDuration:.43},
+ energyBladeSwing:{synthesis:'swing',gain:.19,group:'energy-blade',priority:46,polyphony:4,cooldown:110,distance:420,maxDuration:.24},
+ energyBladeHit:{synthesis:'hit',gain:.19,group:'impact',priority:52,polyphony:4,cooldown:125,distance:420,maxDuration:.14},
+ zonkoFireworkLaunch:{...rpg('cloth3,cloth4',.19),rate:1.24,distance:480,maxDuration:.36},
+ zonkoFireworkBurst:{...impact('impactWood_heavy',.29),rate:.87,distance:740,maxDuration:.75},
  rifle:impact('impactMetal_heavy',.5),stalkerStep:impact('footstep_grass',.22),
  pirateCannon:{...impact('impactMining',.46),rate:.58,lowpass:1600,distance:1450,cooldown:180,maxDuration:1.1},
+ crocodileTick:{files:files('ui','tick_001'),gain:.2,rate:.86,group:'ship-clock',priority:24,polyphony:1,cooldown:420,distance:580,maxDuration:.2},
+ crocodileTock:{files:files('ui','tick_004'),gain:.19,rate:.68,group:'ship-clock',priority:24,polyphony:1,cooldown:420,distance:580,maxDuration:.22},
  stalkerBreath:{files:['assets/sfx/creatures/snarl.ogg'],gain:.09,rate:.55,maxDuration:1.1},
  focus:ui('select_001,select_002'),click:ui('click_001,click_002'),back:ui('back_001'),error:ui('error_003'),join:ui('confirmation_001'),ready:ui('confirmation_002'),save:ui('confirmation_003'),
  attack:rpg('knifeSlice,knifeSlice2'),bow:rpg('cloth1,cloth2'),magic:ui('glass_001,glass_002'),hit:impact('impactPunch_medium'),shield:impact('impactMetal_medium'),hurt:impact('impactPunch_heavy'),
@@ -133,5 +140,5 @@ function creatureRecording(kind,action){
  return {files:sources,rate:rate*(action==='death'?.75:action==='hurt'?1.15:1),gain:action==='spawn'?.28:.2,maxDuration:action==='spawn'?2:action==='death'?1.8:.75};
 }
 // Only bundled recordings may enter the decoder cache; custom cue objects still work.
-export const SOUND_FILES=new Set(Object.values(CUES).flatMap(c=>c.files));
+export const SOUND_FILES=new Set(Object.values(CUES).flatMap(c=>c.files??[]));
 for(const kind of [...Object.keys(FAMILIES),'unknown'])for(const action of ['spawn','attack','hurt','death','windup','swoop','swipe','bite'])for(const file of creatureCue(kind,action).files)SOUND_FILES.add(file);

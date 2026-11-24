@@ -38,6 +38,7 @@
     <link rel="stylesheet" href="src/storage-refresh.css" />
     <link rel="stylesheet" href="src/inventory-tooltips.css" />
     <link rel="stylesheet" href="src/action-polish.css" />
+    <link rel="stylesheet" href="src/web-feedback.css" />
   </head>
   <body>
     <div id="loading">
@@ -51,6 +52,7 @@
         <small>THE LIVING BOARD</small></a
       >
       <nav>
+        <button class="nav" type="button" data-web-feedback-open hidden>FEEDBACK</button>
         <button id="nav-play" class="nav active">ADVENTURE</button
         ><button id="nav-workshop" class="nav">SPRITE WORKSHOP</button
         ><button id="worlds-button" class="nav" type="button">WORLDS</button
@@ -482,6 +484,7 @@
         <section id="settings-display" class="settings-panel" role="tabpanel" data-settings-panel="display">
           <div class="panel-title">DISPLAY</div>
           <details id="camp-session-actions" class="camp-session-actions" hidden><summary>Expedition actions</summary></details>
+          <button class="small-button" type="button" data-web-feedback-open hidden>Send feedback</button>
           <button id="fullscreen-button" class="camp-fullscreen" role="switch" aria-checked="false"><span class="switch-art" aria-hidden="true"></span>Toggle fullscreen</button>
           <div class="settings-display-columns">
             <section class="settings-option-card">
@@ -547,6 +550,25 @@
         </section>
       </div>
       <button id="close-settings" class="primary compact full">✓ &nbsp; DONE</button>
+    </dialog>
+    <dialog id="web-feedback-dialog" aria-labelledby="web-feedback-title">
+      <form>
+        <h2 id="web-feedback-title">Send feedback</h2>
+        <p>No account needed. Your report includes the game version and screen.</p>
+        <label for="web-feedback-category">Type</label>
+        <select id="web-feedback-category" name="category">
+          <option value="bug">Report a bug</option>
+          <option value="feedback">Share feedback</option>
+        </select>
+        <label for="web-feedback-message">What would you like us to know?</label>
+        <textarea id="web-feedback-message" name="message" rows="5" maxlength="2400" required></textarea>
+        <button type="button" class="small-button" data-feedback-keyboard hidden>On-screen keyboard</button>
+        <p role="status" aria-live="polite" data-feedback-status></p>
+        <div class="web-feedback-actions">
+          <button type="button" class="small-button" data-feedback-close>Close</button>
+          <button type="submit" class="primary compact">Send</button>
+        </div>
+      </form>
     </dialog>
   </body>
 </html>

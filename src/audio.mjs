@@ -11,6 +11,7 @@ import {nearestTrainTrack,railElevation} from './train-track.mjs';
 import {inRainPuddle} from './wet-weather.mjs';
 import {playThunder} from './thunder.mjs';
 import {CUES,creatureCue,SOUND_FILES} from './sound-bank.mjs';
+import {synthesizeEnergyBlade} from './energy-blade-sound.mjs';
 import {audioDistance,audioPosition,sameAudioRoom} from './adaptive-music-threat.mjs';
 import {isUndergroundRoom,createUndergroundReverb} from './underground-audio.mjs';
 import {worldAmbienceEmitters,weatherAudioState} from './world-ambience.mjs';
@@ -232,19 +233,26 @@ export class GameAudio {
  }
  async play(name,actor){
   if(!this.enabled||!this.unlocked||!this.settings.master)return;
-  const cue=typeof name==='object'?name:CUES[name];if(!cue?.files?.length||!clamp(this.settings[cue.bus||'sfx']))return;
+  const cue=typeof name==='object'?name:CUES[name];if(!(cue?.files?.length||cue?.synthesis)||!clamp(this.settings[cue.bus||'sfx']))return;
   const {attenuation}=this.spatial(cue,actor);if(attenuation<=.002)return;
-  const key=cue.key|| (typeof name==='string'?name:cue.files[0]),now=performance.now();
+  const key=cue.key|| (typeof name==='string'?name:cue.synthesis||cue.files[0]),now=performance.now();
   if(cue.group==='notification')this.duckUntil=now+1200;
   let cooldowns=this.last;
   if(actor&&typeof actor==='object'){if(!this.actorLast.has(actor))this.actorLast.set(actor,new Map());cooldowns=this.actorLast.get(actor);}
   if(now-(cooldowns.get(key)??-10000)<(cue.cooldown??160))return;
   boundedSet(cooldowns,key,now,AUDIO_LIMITS.cooldowns);
-  const previous=this.variants.get(key),choices=cue.files.filter(f=>f!==previous),pool=choices.length?choices:cue.files;
-  const file=pool[Math.floor(Math.random()*pool.length)];boundedSet(this.variants,key,file,AUDIO_LIMITS.variants);
   const token={key,group:cue.group||'action',priority:cue.priority??45,polyphony:cue.polyphony??6,at:now,epoch:this.epoch,room:actor?.room||null,actor,cue};
   if(!this.reserve(token))return;
-  const buffer=await this.buffer(file);
+  let buffer;
+  if(cue.synthesis){
+   this.synthesized??=new Map();
+   buffer=this.synthesized.get(cue.synthesis);
+   if(!buffer){buffer=synthesizeEnergyBlade(this.ctx,cue.synthesis);this.synthesized.set(cue.synthesis,buffer);}
+  }else{
+   const previous=this.variants.get(key),choices=cue.files.filter(f=>f!==previous),pool=choices.length?choices:cue.files;
+   const file=pool[Math.floor(Math.random()*pool.length)];boundedSet(this.variants,key,file,AUDIO_LIMITS.variants);
+   buffer=await this.buffer(file);
+  }
   if(!this.pending.delete(token)||!buffer||!this.enabled||token.epoch!==this.epoch||!clamp(this.settings[cue.bus||'sfx'])||token.room!==(actor?.room||null))return;
   const pos=this.spatial(cue,actor);if(pos.attenuation<=.002)return;
   // Re-reserve after decode, including active voices created by other completed loads.

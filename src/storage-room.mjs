@@ -2,6 +2,8 @@ import {locationMarker} from './location-designs.mjs';
 import {catchChocolateFrog} from './chocolate-frogs.mjs';
 import {roomBlocked,ROOM_STATIONS,storageChestPoints} from './shops.mjs';
 import {tickRobotRepair,storageOwner,robotOnline,nearStorageRobot,openRobotIntroduction} from './storage-repair.mjs';
+import {storageRoomLoot} from './room-loot-data.mjs';
+import {collectRoomLoot,nearbyRoomLoot} from './room-loot.mjs';
 export function nearbyStorageChest(p){
   if(p.ui||p.roomJumpHeight>0||p.hp<=0)return -1;
   return storageChestPoints().findIndex(c=>Math.hypot(c.x-p.roomX,c.y-14-p.roomY)<50);
@@ -34,7 +36,7 @@ function tickStorageJump(game,p,input,dt){
 }
 
 // The expedition and lobby use the same room movement and station interactions.
-export function tickStorageRoom(game,p,input,dt,interact=false){
+export function tickStorageRoom(game,p,input,dt,interact=false,loot=input.loot&&!p.previousInput?.loot){
   if(input.attack&&!p.previousInput?.attack){if(!catchChocolateFrog(game,p)){p.attack=.3;game.onSound?.('swing',p);}}
   tickStorageJump(game,p,input,dt);
   const beforeX=p.roomX,beforeY=p.roomY;
@@ -46,6 +48,13 @@ export function tickStorageRoom(game,p,input,dt,interact=false){
   p.roomMoving=distance>.001;p.roomStep=(p.roomStep||0)+distance*.13;
   if(p.roomMoving){p.faceX=dx/distance;p.faceY=dy/distance;}
   if(p.roomJumpHeight>0)return;
+  if(interact||loot){
+    const door=game.portals?.find(door=>door.id===p.room);
+    if(door){
+      const items=storageRoomLoot(game,door);
+      if(collectRoomLoot(game,p,items,nearbyRoomLoot(items,p)))return;
+    }
+  }
   if(interact&&nearStorageRobot(p)&&openRobotIntroduction(game,p))return;
   if(tickRobotRepair(game,p,!!(input.interact||input.lobbyInteract||p.robotRepairPointer),dt))return;
   const exit=locationMarker('storage','exit',{x:160,y:214});

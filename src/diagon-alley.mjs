@@ -4,16 +4,21 @@ import {spellTransition} from './portal-transition.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {alleyStreetPropBlocked} from './diagon-alley-props.mjs';
 import {HOGWARTS_CATALOG} from './train-tailor.mjs';
-import {OLLIVANDERS_LAYOUT, ollivandersBlocked, ollivandersInCounterReach} from './diagon-wand-shop-layout.mjs';
-import {ALLEY_SHOP_ROOMS, mirroredShopPoint, shopServiceReach, shopSolidAt} from './diagon-shop-rooms.mjs';
+import {OLLIVANDERS_LAYOUT, ollivandersBlocked, ollivandersInCounterReach, ollivandersRoomOpen} from './diagon-wand-shop-layout.mjs';
+import {ALLEY_SHOP_ROOMS, mirroredShopPoint, shopCutawayOpen, shopServiceReach, shopSolidAt} from './diagon-shop-rooms.mjs';
+import {openBorginDialogue,transferBorginHeartTrades} from './borgin-heart-dialogue.mjs';
 import {nearbyAlleyResident,openAlleyResidentDialogue,tickAlleyResidents} from './diagon-residents.mjs';
-import {flooPrompt,hearthBlocks,startFlooTravel,tickFlooTravel} from './floo-travel.mjs';
+import {flooPrompt,hearthBlocks,startFlooTravel,THREE_BROOMSTICKS_HEARTH,tickFlooTravel} from './floo-travel.mjs';
 import {wildHomesteadHearth} from './wild-homestead-layout.mjs';
 import {visitQuidditchPitch} from './quidditch-scene.mjs';
 import {QUIDDITCH_SHOP_PORTKEY_LOCAL} from './quidditch-layout.mjs';
-import {FLOURISH_SPELLBOOK_STOCK,FIREBOLT_STOCK,MALKINS_WITCH_HAT_STOCK,syncWizardingShopStock} from './wizarding-shop-goods.mjs';
-import {nocturneSpiderPrompt,openNocturneSpiderMerchant,transferNocturneSpiderPurchase} from './nocturne-spider-merchant.mjs';
+import {nearQuidditchKitMerchant,openQuidditchKitShop,quidditchKitMerchantActor} from './quidditch-team-shop.mjs';
+import {FLOURISH_SPELLBOOK_STOCK,FIREBOLT_STOCK,MALKINS_WITCH_HAT_STOCK,FORTESCUE_ICE_CREAM_STOCK,syncWizardingShopStock} from './wizarding-shop-goods.mjs';
+import {isFortescueIceCream} from './fortescue-ice-cream.mjs';
+import {NOCTURNE_SPIDER_MERCHANT,nocturneSpiderPrompt,openNocturneSpiderMerchant,transferNocturneSpiderPurchase} from './nocturne-spider-merchant.mjs';
 import {nocturneDarkWizardPrompt,openNocturneDarkWizard,tickNocturneDarkWizards} from './nocturne-dark-wizards.mjs';
+import {suspendNocturneBoss,tickNocturneBoss} from './nocturne-boss.mjs';
+import {BORGIN_MIRROR_SHOP,tickBorginMirror} from './borgin-mirror.mjs';
 import {MAGE_GARDEN_AREAS,mageGardenBlocked} from './diagon-mage-garden.mjs';
 import {alleyGardenPropBlocked} from './diagon-garden-props.mjs';
 import {tickDiagonCritters} from './diagon-critters.mjs';
@@ -26,18 +31,19 @@ import {GARDEN_PERIMETER_FRONTAGES} from './diagon-garden-layout.mjs';
 import {LOCKSMITH_LOOK} from './diagon-locksmith.mjs';
 import {WRONG_TURN_KEY} from './wrong-turn-key.mjs';
 import {interactWrongTurnDoor,tickWrongTurnDoors,wrongTurnDoorBlocked,wrongTurnDoorPrompt} from './wrong-turn-doors.mjs';
-import {travelThroughWrongTurn} from './wrong-turn-travel.mjs';
+import {planWildGroundArrivals,travelThroughWrongTurn} from './wrong-turn-travel.mjs';
 import {EMPORIUM_OWL_STOCK} from './owl-emporium.mjs';
+import {transferPreviewCompanions} from './hunter-pets.mjs';
 import {NOCTURNE_REAR_AREAS,nocturneGraveBlocked,nocturneCemeteryInteraction,interactNocturneCemetery,restoreNocturneCemeteryGhosts} from './diagon-nocturne-rear.mjs';
 import {enterDiagonArena} from './diagon-arena.mjs';
 import {diagonEntryBlocked} from './diagon-entry-plaza.mjs';
+import {DIAGON_STREET,DIAGON_STREET_INSET,NOCTURNE_CONNECTOR,NOCTURNE_LANE,NOCTURNE_STREET_INSET} from './alley-street-layout.mjs';
 export const ALLEY={left:7100,right:9688,top:3720,bottom:5750,entry:{x:8000,y:5660}};
-export const DIAGON_STREET={x:7760,y:3905,w:480,h:1845};
-export const OLLIVANDERS_PASSAGE={x:7350,y:4275,w:468,h:49};
-export const NOCTURNE_CONNECTOR={x:8180,y:5181,w:1030,h:105};
+export {DIAGON_STREET,NOCTURNE_CONNECTOR};
+export const OLLIVANDERS_PASSAGE={x:7350,y:4275,w:468+DIAGON_STREET_INSET,h:49};
 export const NOCTURNE_STREETS=[
  NOCTURNE_CONNECTOR,
- {x:8970,y:4535,w:246,h:1073},
+ NOCTURNE_LANE,
  ...NOCTURNE_REAR_AREAS,
 ];
 export const ALLEY_SHOPS=[
@@ -46,20 +52,28 @@ export const ALLEY_SHOPS=[
  {id:'malkins',name:'Madam Malkin’s',owner:'Madam Malkin',subtitle:'Robes for all occasions',x:7550,y:4630,color:'#69516b',stock:[...HOGWARTS_CATALOG,...MALKINS_WITCH_HAT_STOCK],line:'Stand still, dear. The tape measure is only ticklish.'},
  {id:'quidditch',name:'Quality Quidditch Supplies',owner:'Kennilworthy Spindle',subtitle:'Brooms, polished and flight-ready',x:8450,y:4630,color:'#624b39',stock:[['flying_broom',130],['nimbus_2000',240],FIREBOLT_STOCK],line:'A repaired Nimbus still has plenty of sky in it.'},
  {id:'apothecary',name:'Slugg & Jiggers',owner:'Arsenius Jigger',subtitle:'The apothecary',x:7550,y:5010,color:'#42615d',stock:[['potion',12],['stamina_potion',18]],line:'Three drops. Not three spoonfuls. Very different results.'},
- {id:'eeylops',name:'Eeylops Owl Emporium',owner:'Myrtle Featherwick',subtitle:'Cages, nets and feathered friends',x:8450,y:5010,color:'#5e5849',stock:[['critter_cage',8],...EMPORIUM_OWL_STOCK,['critter_net',24],['empty_jar',4]],line:'Meet Hedwig, Pigwidgeon, and Archimedes. Use their cage whenever you need to call them back.'},
- {id:'floreans',name:'Florean Fortescue’s',owner:'Florean Fortescue',subtitle:'Ice cream & magical sweets',x:7550,y:5390,color:'#805653',stock:[['diagon_ice_cream',8],['chocolate_frog',15]],line:'An extra scoop for the journey? Chocolate frogs do hop off.'},
+ {id:'eeylops',name:'Eeylops Owl Emporium',owner:'Myrtle Featherwick',subtitle:'Cages, nets and feathered friends',x:8450,y:5010,color:'#5e5849',stock:[['critter_cage',8],...EMPORIUM_OWL_STOCK,['critter_net',24],['empty_jar',4]],line:'Meet our snowy owl, tiny barn owl, and great horned owl. Adopt one and use Companion care to name it or switch companions.'},
+ {id:'floreans',name:'Florean Fortescue’s',owner:'Florean Fortescue',subtitle:'Ice cream & magical sweets',x:7550,y:5390,color:'#805653',stock:[...FORTESCUE_ICE_CREAM_STOCK,['chocolate_frog',15]],line:'An extra scoop for the journey? Chocolate frogs do hop off.'},
  {id:'gringotts',name:'Gringotts Wizarding Bank',owner:'Griphook',subtitle:'Safe coin exchange',x:8000,y:3834,frontEntrance:true,color:'#77786d',stock:[],line:'Your gold is counted. Every last coin.'},
  {id:'nocturne-curios',district:'nocturne',name:'Nocturne Curios',owner:'Mara Vesper',subtitle:'Mantles, ashwood wands and Floo powder',x:9300,y:4930,color:'#514565',stock:[['alley_inkcap',27],['alley_moonstitch_robe',52],['alley_lantern_mantle',36],['alley_ashwood_wand',105],['floo_powder',10]],line:'Look for the thing that catches the lamplight.'},
  {id:'nightglass',district:'nocturne',name:'Nightglass Apothecary',owner:'Perrin Graves',subtitle:'Tinctures and tinted glass',x:9300,y:5500,color:'#365454',stock:[['alley_moonmint_tonic',16],['alley_lodestone_brooch',48],['alley_copperweave_gloves',25]],line:'Moonmint is cooling. The copper gloves are for everything else.'},
  {id:'borgin-burkes',district:'nocturne',name:'Borgin and Burkes',owner:'Mr. Borgin',subtitle:'Unusual and enchanted antiques',x:9300,y:4650,color:'#48473d',stock:[['skeleton_skull',44],['warlock_sigil',85],['cursed_axe',140]],line:'Leave the cabinet latch alone. Some merchandise is strictly for display.'},
  ...GARDEN_SHOPS,
-].map(shop=>shop.district||shop.frontEntrance?shop:{...shop,x:shop.x+(shop.x<8000?90:-90)});
+].map(shop=>{
+ if(shop.district==='nocturne')return {...shop,x:shop.x-NOCTURNE_STREET_INSET};
+ if(shop.district||shop.frontEntrance)return shop;
+ return {...shop,x:shop.x+(shop.x<8000?1:-1)*(90+DIAGON_STREET_INSET)};
+});
 const portkeyShop=ALLEY_SHOPS.find(shop=>shop.id==='quidditch');
 const meridianShop=ALLEY_SHOPS.find(shop=>shop.id==='meridian-hall');
 export const ALLEY_PITCH_PORTKEY=mirroredShopPoint(portkeyShop,QUIDDITCH_SHOP_PORTKEY_LOCAL);
 const curios=ALLEY_SHOPS.find(shop=>shop.id==='nocturne-curios');
+export const BORGIN_MIRROR_STORE=ALLEY_SHOPS.find(shop=>shop.id===BORGIN_MIRROR_SHOP);
 export const ALLEY_SHOP_HEARTH=Object.freeze({id:curios.id,room:'diagon',
  ...mirroredShopPoint(curios,ALLEY_SHOP_ROOMS[curios.id].props.find(prop=>prop.id==='curios-fireplace'))});
+export const alleyFlooPrompt=(g,p)=>flooPrompt(g,p,ALLEY_SHOP_HEARTH);
+export const interactFlooHearth=(g,p)=>startFlooTravel(g,p,ALLEY_SHOP_HEARTH);
+export const useFlooPowder=(g,p)=>startFlooTravel(g,p,ALLEY_SHOP_HEARTH,true);
 export const ALLEY_CLOSED_FRONTAGES=[
  {x:7605,y:4410,theme:'stationery'}, {x:8390,y:4450,theme:'pottery'},
  {x:7615,y:4820,theme:'clockmaker'}, {x:8395,y:4820,theme:'stationery'},
@@ -86,8 +100,12 @@ export const ALLEY_CLOSED_FRONTAGES=[
  {x:7850,y:5870,theme:'pottery',halfWidth:108,halfDepth:80},
  {x:8074,y:5863,theme:'weaver',halfWidth:105,halfDepth:82},
  {x:8286,y:5813,theme:'clockmaker',halfWidth:106,halfDepth:84},
- ...GARDEN_PERIMETER_FRONTAGES,
-]);
+]).map(frontage=>{
+ const {x,y}=frontage;
+ if(x<8650&&y<5750)return {...frontage,x:x+(x<8000?DIAGON_STREET_INSET:-DIAGON_STREET_INSET)};
+ if(x>=8750&&x<9460&&y>=4430&&y<5600&&(x<8970||x>9216))return {...frontage,x:x+(x<8970?NOCTURNE_STREET_INSET:-NOCTURNE_STREET_INSET)};
+ return frontage;
+}).concat(GARDEN_PERIMETER_FRONTAGES);
 
 export function alleyShopGround(shop){
  if(shop.frontEntrance)return {x:shop.x-133,y:shop.y-85,w:266,h:204};
@@ -116,11 +134,12 @@ export function alleyPrompt(g,p){
   const wrongTurn=wrongTurnDoorPrompt(g,p);
   if(wrongTurn)return wrongTurn;
   if(Math.hypot(p.x-ALLEY_PITCH_PORTKEY.x,p.y-ALLEY_PITCH_PORTKEY.y)<26)return 'PORTKEY TO THE QUIDDITCH PITCH';
+  if(nearQuidditchKitMerchant(portkeyShop,p))return 'TALK TO ELSPETH TREWICK';
   if(Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<80)return 'RETURN TO STATION';
   const spiderMerchant=nocturneSpiderPrompt(g,p);
   if(spiderMerchant)return spiderMerchant;
   const shop=nearbyAlleyShop(g,p);
-  if(shop)return shop.id==='gringotts'?'TALK TO GRIPHOOK':shop.id==='bellglass'?'TALK TO IONA BELLGLASS':'VISIT '+shop.name.toUpperCase();
+  if(shop)return shop.id==='gringotts'?'TALK TO GRIPHOOK':shop.id==='bellglass'?'TALK TO IONA BELLGLASS':shop.id==='borgin-burkes'?'TALK TO MR. BORGIN':'VISIT '+shop.name.toUpperCase();
   const darkWizard=nocturneDarkWizardPrompt(g,p);
   if(darkWizard)return darkWizard;
   const resident=nearbyAlleyResident(g,p,(x,y,r)=>alleyBlocked(g,x,y,r));
@@ -136,27 +155,32 @@ export function switchAlleyLayer(g,room){
   const actors=['enemies','loot','pickups','baits','spells','arrows','traps','effects','xpOrbs','ghosts','villageFollowers','boomerangs','rifleShots'];
   t.alleyActors=Object.fromEntries(actors.map(key=>[key,g[key]]));
   for(const key of actors)g[key]=[];
- }else if(t.alleyActors){
-  Object.assign(g,t.alleyActors);
+  g.loot=t.alleyGroundLoot||[];
+  delete t.alleyGroundLoot;
+ }else{
+  if(inDiagon(g))suspendNocturneBoss(g);
+  t.alleyGroundLoot=g.loot;
+  if(t.alleyActors)Object.assign(g,t.alleyActors);
+  else g.loot=[];
   delete t.alleyActors;
  }
  if(room!=='diagon')clearGardenCats(g);
  t.design.activeRoom=room||undefined;
 }
-function travel(g,room,point){
+function travel(g,room,point,travellers=g.players,effect){
  const t=g.trainTest;
  switchAlleyLayer(g,room);
  t.wildLandsOverview=false;
  t.notice=room?'Welcome to Diagon Alley. Explore the shops and return through the golden arch.':'Returned to Jungle Ruins station.';
  t.noticeUntil=t.time+4;
- for(const [i,p]of g.players.entries()){
+ for(const [i,p]of travellers.entries()){
   const arrival=point.arrivals?.[i]||{x:point.x+i*28,y:point.y};
   delete p.trainRide;
   delete p.gardenBench;
   Object.assign(p,{...arrival,room:null,ui:null,swimming:false,trainGround:0,trainVisualLift:0,trainDeck:false,
    jumpHeight:0,jumpVelocity:0,dashTime:0,dashRecovery:0,charge:0});
  }
- spellTransition(g);
+ spellTransition(g,effect?travellers:null,{effect});
 }
 export function interactAlley(g,p){if(p.hp<=0||p.trainRide)return false;const t=g.trainTest;if(!t?.design.wildLands)return false;
  if(startFlooTravel(g,p,ALLEY_SHOP_HEARTH))return true;
@@ -173,6 +197,7 @@ export function interactAlley(g,p){if(p.hp<=0||p.trainRide)return false;const t=
    delta[WRONG_TURN_KEY]=(delta[WRONG_TURN_KEY]||0)-1;
   }))return true;
   if(Math.hypot(p.x-ALLEY_PITCH_PORTKEY.x,p.y-ALLEY_PITCH_PORTKEY.y)<26)return visitQuidditchPitch(g,p,ALLEY_PITCH_PORTKEY);
+  if(openQuidditchKitShop(g,p,portkeyShop))return true;
   if(openNocturneSpiderMerchant(g,p))return true;
   if(Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<80){travel(g,null,t.alleyReturn);return true;}
   const s=nearbyAlleyShop(g,p);
@@ -186,6 +211,7 @@ export function interactAlley(g,p){if(p.hp<=0||p.trainRide)return false;const t=
   const service=mirroredShopPoint(s,OLLIVANDERS_LAYOUT.service);
   Object.assign(m,service);
   if(s.id==='bellglass')return openBellglassDivination(g,p,m);
+  if(s.id==='borgin-burkes')return openBorginDialogue(p,s,m);
   p.ui={shop:'merchant',alleyShop:s.id,panel:'stock',index:0,page:0,notice:s.line};return true;
  }
  const gate=alleyGate(g);if(!gate||Math.hypot(p.x-gate.x,p.y-gate.y)>110)return false;
@@ -222,9 +248,21 @@ export function alleyMerchantActor(s){
  return {id:'alley-'+s.id,sprite:'player',kind:'player',hp:1,...mirroredShopPoint(s,offset),faceX:0,faceY:1,
    equipment:{},appearance:{...DEFAULT_APPEARANCE,...look,shirt:s.color}};
 }
+
+function stationaryWizardNear(g,p){
+ if(nearQuidditchKitMerchant(portkeyShop,p))return quidditchKitMerchantActor(portkeyShop);
+ if(nocturneSpiderPrompt(g,p))return NOCTURNE_SPIDER_MERCHANT;
+ const shop=nearbyAlleyShop(g,p);
+ if(!shop||shop.id==='gringotts'||shop.id==='borgin-burkes')return null;
+ const open=shop.id==='ollivanders'?ollivandersRoomOpen(shop,[p]):shopCutawayOpen(shop,[p]);
+ if(!open)return null;
+ const actor=alleyMerchantActor(shop);
+ return Math.hypot(actor.x-p.x,actor.y-p.y)<104?actor:null;
+}
 export function alleyBlocked(g,x,y,r=7,from=null,height=0){if(!inDiagon(g)){
   const t=g.trainTest;
-  if(t?.design.wildLands&&!t.design.activeRoom&&hearthBlocks(wildHomesteadHearth(t.design),x,y,r))return true;
+  if(t?.design.wildLands&&!t.design.activeRoom&&
+    (hearthBlocks(THREE_BROOMSTICKS_HEARTH,x,y,r)||hearthBlocks(wildHomesteadHearth(t.design),x,y,r)))return true;
   const gate=alleyGate(g);
   return !!gate&&!t.alleyOpened&&Math.abs(x-gate.x)<60+r&&Math.abs(y-gate.y)<12+r;
  }
@@ -245,25 +283,28 @@ export function alleyBlocked(g,x,y,r=7,from=null,height=0){if(!inDiagon(g)){
 }
 export function alleyReceipt(g,p){return ((g.trainTest.alleyPurchases??={})[p.id]??={spent:0,gold:0,items:[],delta:{}});}
 export function transferAlleyPurchases(g,t){let changed=false;for(const original of t.returnPlayers){const p=g.players.find(p=>p.id===original.id),r=t.alleyPurchases?.[original.id];if(!p||!r)continue;changed=true;original.coins=Math.max(0,(original.coins||0)-r.spent+r.gold);original.npcQuests??={};const state=original.npcQuests.train_students??={received:{},pending:[]};state.pending??=[];
- for(const [type,amount]of Object.entries(r.delta)){const n=['potion','stamina_potion','diagon_ice_cream','alley_moonmint_tonic'].includes(type)?Math.min(amount,Math.max(0,p.inventory.filter(a=>a?.type===type).reduce((v,a)=>v+a.qty,0)-(r.baseline?.[type]||0))):amount;if(n<0){let left=-n;for(const a of original.inventory)if(a?.type===type){const used=Math.min(left,a.qty);a.qty-=used;left-=used;}original.inventory=original.inventory.map(a=>a?.qty===0?null:a);}else if(n>0&&!give(original.inventory,type,n))state.pending.push({type,qty:n});}
+ for(const [type,amount]of Object.entries(r.delta)){const consumable=isFortescueIceCream(type)||['potion','stamina_potion','alley_moonmint_tonic','broom_speed_potion'].includes(type);const n=consumable?Math.min(amount,Math.max(0,p.inventory.filter(a=>a?.type===type).reduce((v,a)=>v+a.qty,0)-(r.baseline?.[type]||0))):amount;if(n<0){let left=-n;for(const a of original.inventory)if(a?.type===type){const used=Math.min(left,a.qty);a.qty-=used;left-=used;}original.inventory=original.inventory.map(a=>a?.qty===0?null:a);}else if(n>0&&!give(original.inventory,type,n))state.pending.push({type,qty:n});}
+ transferBorginHeartTrades(original,r,state.pending);
  transferNocturneSpiderPurchase(original,p,r);
+ transferPreviewCompanions(original,p,r);
  }return changed;}
 
-function completeHearthTravel(g,hearth,p){
+function completeHearthTravel(g,hearth,p,travellers,arrivals){
  const t=g.trainTest,gate=alleyGate(g);
  if(!t.persistent){
   const {delta}=alleyReceipt(g,p);
   delta.floo_powder=(delta.floo_powder||0)-1;
  }
  if(hearth.room&&!t.alleyReturn&&gate)t.alleyReturn={x:gate.x,y:gate.y+65};
- const arrivals=g.players.map((_,i)=>({x:hearth.x+[0,-14,14][i%3],y:hearth.y+19+Math.floor(i/3)*16}));
- travel(g,hearth.room,{arrivals});
- t.notice=hearth.room?'Nocturne Curios':'Wilds Homestead';
+ travel(g,hearth.room,{arrivals},travellers,'floo');
+ t.notice=hearth.id==='three-broomsticks'?'The Three Broomsticks':hearth.room?'Nocturne Curios':'Wilds Homestead';
  g.persist?.();
 }
 
 export function tickAlley(g,dt){const t=g.trainTest;if(!t?.design.wildLands)return;
- if(tickFlooTravel(g,ALLEY_SHOP_HEARTH,(hearth,p)=>completeHearthTravel(g,hearth,p)))return;
+ if(t.flooTransfer&&tickFlooTravel(g,ALLEY_SHOP_HEARTH,
+  (hearth,travellers)=>planWildGroundArrivals(g,hearth.room,{x:hearth.x,y:hearth.y+19},travellers,72),
+  (...args)=>completeHearthTravel(g,...args)))return;
  const gate=alleyGate(g),p=g.players.find(p=>p.hp>0&&!p.trainRide&&!p.ui&&!p.room&&(inDiagon(g)?Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<24:gate&&t.alleyOpened&&t.time-t.alleyOpenedAt>.65&&Math.hypot(p.x-gate.x,p.y-(gate.y-12))<24));if(p)interactAlley(g,p);
  if(!inDiagon(g))return;
  if(tickWrongTurnDoors(g,travelThroughWrongTurn))return;
@@ -279,8 +320,10 @@ export function tickAlley(g,dt){const t=g.trainTest;if(!t?.design.wildLands)retu
  }
  for(const actor of g.players)if(actor.gardenBench&&!activeGardenBench(g,actor))delete actor.gardenBench;
  const blocked=(x,y,r)=>alleyBlocked(g,x,y,r);
- tickAlleyResidents(g,dt,blocked);
+ tickAlleyResidents(g,dt,blocked,p=>stationaryWizardNear(g,p),ALLEY_SHOPS.find(s=>s.id==='floreans'));
  tickNocturneDarkWizards(g);
+ tickNocturneBoss(g);
+ tickBorginMirror(g,BORGIN_MIRROR_STORE,dt);
  tickDiagonCritters(g,dt,blocked,tickNocturneCatHunt);
  tickGardenCats(g,dt,blocked);
 }
