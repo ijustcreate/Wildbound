@@ -7,7 +7,7 @@ import {spawnQuestNpc,openNpcDialogue,npcDialogueAction,npcDialogueView,npcQuest
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {travelHouseWorlds} from '../src/house-worlds.mjs';
 import {LOBBY_OBJECTS} from '../src/playable-lobby.mjs';
-import {LOBBY_FURNITURE} from '../src/lobby-practice.mjs';
+import {LOBBY_FURNITURE,LobbyPractice} from '../src/lobby-practice.mjs';
 
 function setup(){const g=new Game(()=>.31);g.environment='forest';const p=g.addPlayer('keyboard','Quest QA');g.start();g.openingBoard=false;p.inventory=Array(32).fill(null);const n=spawnQuestNpc(g);assert.ok(n);Object.assign(p,{x:n.x,y:n.y+30});assert.ok(openNpcDialogue(g,p));return {g,p,n};}
 function accept(g,p,branch=0){p.ui.node='quests';npcDialogueAction(g,p,'offer:'+branch);npcDialogueAction(g,p,'accept');assert.ok(npcQuestState(p).active);}
@@ -37,6 +37,22 @@ test('different devices cannot share dialogue ownership or quest progress',()=>{
 test('accepted contracts and progress survive session restore and edits',()=>{
  const {g,p}=setup();accept(g,p);const original=structuredClone(getNpcQuestConfig()),edit=structuredClone(original);edit.stages[0].branches[0].objective.count=8;replaceNpcQuestConfig(edit);
  try{assert.equal(npcQuestState(p).active.contract.objective.count,3);const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.equal(npcQuestState(restored.players[0]).active.contract.objective.count,3);assert.equal(restored.questNpcs.length,1);assert.equal(restored.questSceneToken,g.questSceneToken);}finally{replaceNpcQuestConfig(original);}
+});
+test('saved owl state survives the first lobby frame alongside a real quest',()=>{
+ const {g,p}=setup();
+ accept(g,p);
+ const quest=npcQuestState(p).active;
+ p.ui=null;
+ p.npcQuests.snowy_owl={active:true,name:'Snowy Owl'};
+ p.npcQuests.owl_emporium={active:'eeylops_hedwig_cage'};
+ const lobby=new LobbyPractice();
+ const member={spawned:true,x:300,y:480,faceX:0,faceY:1,step:0};
+ lobby.stepPractice(.05,[p],new Map([[p.id,member]]),{[p.device]:{x:1}});
+ const actor=lobby.players[0];
+ assert.equal(actor.npcQuests.snowy_owl.active,true);
+ assert.equal(actor.npcQuests.owl_emporium.active,'eeylops_hedwig_cage');
+ assert.equal(actor.npcQuests[getNpcQuestConfig().id].active.stageId,quest.stageId);
+ assert.ok(lobby.stationOwls.some(owl=>owl.owner===actor.id));
 });
 test('only genuine player or owned target kills count, once, never allies',()=>{
  const {g,p}=setup();npcQuestState(p).completed=[{stageId:getNpcQuestConfig().stages[0].id}];accept(g,p,1);const a=npcQuestState(p).active;const e={kind:'bat',killedBy:p.id};recordNpcQuestKill(g,{kind:'bat',faction:'ally',killedBy:p.id});recordNpcQuestKill(g,{kind:'bat'});assert.equal(a.progress,0);recordNpcQuestKill(g,e);recordNpcQuestKill(g,e);assert.equal(a.progress,1);recordNpcQuestKill(g,{kind:'bat',questOwner:p.profileId||String(p.id),questStage:a.stageId});assert.equal(a.progress,2);

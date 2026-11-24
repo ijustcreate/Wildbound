@@ -3,6 +3,7 @@ import {trainChatPlacement,rememberTrainChat} from './train-chat-placement.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {ITEMS,give,take} from './items.mjs';
 import {trainInterior} from './train-design.mjs';
+import {nativeCompartmentAisle} from './train-interior.mjs';
 import {trainCars,trainWorld} from './train-track.mjs';
 import {TRAIN_SEAT_HEIGHT} from './train-surfaces.mjs';
 import {TRAIN_SEATED_PELVIS_HEIGHT} from './train-clips.mjs';
@@ -19,7 +20,9 @@ export function studentCompartment(t,cs){
  const car=cs.find(c=>c.kind==='compartments');if(!car)return null;
  const objects=trainInterior(t.design,car),tables=objects.filter(o=>o.kind==='table').sort((a,b)=>a.x-b.x);
  for(const table of tables){const walls=objects.filter(o=>o.kind==='wall'&&o.h>car.width*.4).map(o=>o.x).sort((a,b)=>a-b),left=walls.filter(x=>x<table.x).at(-1)??-car.length/2+8,right=walls.find(x=>x>table.x)??car.length/2-8;
-  const seats=objects.filter(o=>o.kind==='seat'&&o.x>left&&o.x<right).sort((a,b)=>a.x-b.x);if(seats.length>=2)return {car,table,seats:[seats[0],seats.at(-1)],left,right};
+  const seats=objects.filter(o=>o.kind==='seat'&&o.x>left&&o.x<right).sort((a,b)=>a.x-b.x);
+  const aisle=nativeCompartmentAisle(t.design,car);
+  if(seats.length>=2)return {car,table,seats:[seats[0],seats.at(-1)],left,right,roomEdgeY:(aisle?.wallY??car.width/2-23)+3};
  }return null;
 }
 export function trainStudents(g,cs){
@@ -34,7 +37,7 @@ export function trainStudents(g,cs){
 }
 function reachableStudents(g,p,cs){
  const r=p.trainRide;if(!r||r.seat||r.gangway||r.driving||p.hp<=0)return null;
- return trainStudents(g,cs).filter(n=>n.car.index===r.car&&r.x>n.room.left+2&&r.x<n.room.right-2&&r.y<n.car.width/2-20&&Math.hypot(r.x-n.local.x,r.y-n.local.y)<64);
+ return trainStudents(g,cs).filter(n=>n.car.index===r.car&&r.x>n.room.left+2&&r.x<n.room.right-2&&r.y<n.room.roomEdgeY&&Math.hypot(r.x-n.local.x,r.y-n.local.y)<64);
 }
 export function nearbyTrainStudent(g,p,cs){
  const candidates=reachableStudents(g,p,cs);

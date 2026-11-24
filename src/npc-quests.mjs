@@ -276,8 +276,15 @@ export function tickNpcQuests(g,dt){
     const u=p.ui,valid=u.nocturneDarkWizard?validNocturneDarkWizardTalk:u.nocturneSpiderMerchant?validNocturneSpiderTalk:validTalk;
     if(!valid(g,p))p.ui=null;
   }
-    for(const s of Object.values(p.npcQuests||{})){const a=s.active;if(!a||p.hp<=0||p.room)continue;
-      if(a.contract.objective.type==='visit'&&a.world===scene(g)&&a.target&&distance(p,a.target)<36&&a.progress<a.contract.objective.count){a.progress=a.contract.objective.count;g.message?.(`${p.name}: route surveyed. Return to the wayfarer.`);g.persist?.();}
+    for(const state of Object.values(p.npcQuests||{})){
+      // Companion preferences also live in npcQuests and can have an active flag.
+      const quest=state?.active,objective=quest?.contract?.objective;
+      if(objective?.type!=='visit'||p.hp<=0||p.room)continue;
+      if(quest.world===scene(g)&&quest.target&&distance(p,quest.target)<36&&quest.progress<objective.count){
+        quest.progress=objective.count;
+        g.message?.(`${p.name}: route surveyed. Return to the wayfarer.`);
+        g.persist?.();
+      }
     }
   }
   g.questSpawnTimer=(g.questSpawnTimer||0)-dt;

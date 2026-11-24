@@ -8,6 +8,7 @@ import {trainWallOccludes} from './train-visibility.mjs';
 import {drawTenderCoal,coalClusters} from './train-coal.mjs';
 import {vehicleReflectionColors} from './car-art.mjs';
 import {TRAIN_PARTS,TRAIN_VIEWS,trainInterior,tenderLayout,trainDoorGeometry,trainSideDoorSpans} from './train-design.mjs';
+import {nativeCompartmentAisle} from './train-interior.mjs';
 import {trainWorld} from './train-track.mjs';
 export const TRAIN_ART_SIZE={width:560,height:300,x:280,y:210};
 export const trainViewAngle=i=>Math.PI/2+i*Math.PI/4;
@@ -93,16 +94,18 @@ export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=f
   }
  }
  if(part==='body'){
+  const aisle=nativeCompartmentAisle(d,car);
   if(!d.art?.[car.kind+':trim:'+trainViewIndex(car.a)])for(const side of[-1,1].filter(side=>side*Math.cos(car.a)<-1e-6))p.line([[-L/2+6,side*(W/2+1),22],[L/2-6,side*(W/2+1),22]],P.lining,2);
   p.box(0,0,14,L-5,W,5,['seats','caboose'].includes(car.kind)?P.wood:'#64727b',true);
   if(['seats','caboose'].includes(car.kind)){for(let x=-L/2+12,i=0;x<L/2-5;x+=16,i++){p.line([[x,-W/2+5,20],[x,W/2-5,20]],shade(P.wood,.75),1);const y=i%2?W*.12:-W*.2;p.line([[x+1,y,20],[Math.min(x+14,L/2-6),y,20]],shade(P.wood,.84),1);p.line([[x+3,-W*.31,20],[x+3,-W*.12,20]],shade(P.wood,1.08),1);}}
   paintTrainDeckEdge(p,car,P);
   if(car.kind==='compartments'){
    p.box(0,0,19,L-18,W-15,1,'#526d72');
-   p.box(0,W/2-16,20,L-24,14,.2,shade(P.seats,.55));
-   for(const y of[W/2-22,W/2-10])p.line([[-L/2+14,y,20.3],[L/2-14,y,20.3]],shade(P.lining,.73),1);
+   const center=aisle?.center??W/2-16,half=aisle?.half??6;
+   p.box(0,center,20,L-24,2*half+2,.2,shade(P.seats,.55));
+   for(const y of[center-half,center+half])p.line([[-L/2+14,y,20.3],[L/2-14,y,20.3]],shade(P.lining,.73),1);
   }
-  if(details&&!occlusionOnly)paintTrainAisleCloth(p,car,P);
+  if(details&&!occlusionOnly)paintTrainAisleCloth(p,car,P,aisle);
   if(car.kind==='tender'){
    const bunker=tenderLayout(car),BW=bunker.bunkerWidth,BL=bunker.bunkerLength;
    p.box(0,0,19,L-5,W-7,2,'#a58c64',true);

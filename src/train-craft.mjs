@@ -104,11 +104,11 @@ export function paintTrainCoachLining(p,car,P,wallLength,wallY){
  }
 }
 
-export function paintTrainAisleCloth(p,car,P){
+export function paintTrainAisleCloth(p,car,P,aisle){
  const {length:L,width:W,kind}=car;
  if(kind!=='compartments'&&kind!=='seats'&&kind!=='caboose')return;
  const x0=-L/2+32,x1=L/2-32;
- const center=kind==='compartments'?W/2-16:0,half=kind==='compartments'?6:7;
+ const center=aisle?.center??(kind==='compartments'?W/2-16:0),half=aisle?.half??(kind==='compartments'?6:7);
  const y0=center-half,y1=center+half;
  // The edge is flush with the deck. Its horizontal graphic never casts an
  // occlusion silhouette over someone using the gangway or sitting nearby.

@@ -1,4 +1,5 @@
 import {restoreWildLands, snapshotWildLands} from './wild-lands-session.mjs';
+import {restoreCompartmentRiders} from './train-test.mjs';
 import {clearSwordPolish} from './sword-charge-state.mjs';
 import {initializeBoundlessWorld,checkpointBoundlessWorld} from './boundless-world.mjs';
 import {restoreFollowerControl} from './follower-control.mjs';
@@ -105,7 +106,10 @@ export function restoreSession(saved) {
     cancelRobotRepair(p);
     p.dashHeld = false;
   }
-  if(saved.wilds)g.trainTest=restoreWildLands(saved.wilds);
+  if(saved.wilds){
+    g.trainTest=restoreWildLands(saved.wilds);
+    restoreCompartmentRiders(g.trainTest,g.players);
+  }
   else initializeBoundlessWorld(g);
   for(const p of g.players)restoreFollowerControl(g,p);
   initLivingEcosystem(g);

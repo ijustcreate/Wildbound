@@ -65,6 +65,7 @@ import {stationDeckAt,stationBlocked,tickStationCats,syncStationAssets} from './
 import {claimTrainCocoa,transferTrainTreats} from './hot-chocolate.mjs';
 import {startJump,tickJump,releaseJump,jumpMotion} from './jumping.mjs';
 import {readTrainDesign,validateTrainDesign,trainInterior,tenderLayout,trainDoorGeometry,trainSideDoorway,trainSideWallHeight} from './train-design.mjs';
+import {compartmentSeatStandY,nativeCompartmentAisle} from './train-interior.mjs';
 import {buildTrainRoute,sampleTrainRoute,trainCars,trainWorld,trainLocal,nearestTrainTrack,railwayWater,railElevation,trainRiderWorld,trainGangwayEnds} from './train-track.mjs';
 import {playTrainAudio,stopTrainAudio} from './train-audio.mjs';
 export {buildTrainRoute,sampleTrainRoute} from './train-track.mjs';
@@ -138,6 +139,23 @@ export function trainInteriorBlocked(t,c,x,y,ignore,height=0){
  }
  return false;
 }
+export function restoreCompartmentRiders(t,players){
+ if(t.derailed||!players.some(p=>p.trainRide))return;
+ const cars=trainCars(t);
+ for(const p of players){
+  const ride=p.trainRide,height=p.jumpHeight||p.groundHeight||0;
+  if(!ride||ride.seat||ride.driving||ride.gangway)continue;
+  const car=cars[ride.car],aisle=car&&nativeCompartmentAisle(t.design,car);
+  if(!aisle||aisle.wallY===car.width/2-23||Math.abs(ride.y-aisle.wallY)>=9.5||
+   !trainInteriorBlocked(t,car,ride.x,ride.y,null,height))continue;
+  // A saved rider overlapping the moved wall can step onto the nearest clear side.
+  const near=Math.sign(ride.y-aisle.wallY)||1;
+  const y=[aisle.wallY+near*10,aisle.wallY-near*10].find(spot=>!trainInteriorBlocked(t,car,ride.x,spot,null,height));
+  if(y===undefined)continue;
+  ride.y=y;
+  const point=trainRiderWorld(cars,ride);p.x=point.x;p.y=point.y;
+ }
+}
 function walkInside(t,c,r,dx,dy,height=0){
  if(!dx&&!dy)return;
  const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4)),stepX=dx/steps,stepY=dy/steps;
@@ -204,7 +222,25 @@ export function tryBoardTrain(g,p,cs=trainCars(g.trainTest)){
  return false;
 }
 export function leaveTrainCar(g,p,c,r){const t=g.trainTest,side=Math.sign(r.y||1),q=trainWorld(c,r.x,side*Math.max(Math.abs(r.y),c.width/2+8));delete p.trainRide;Object.assign(p,{x:q.x,y:q.y,trainGround:0,trainDeck:false,groundHeight:0,swimming:false,underBridge:false,jumpHeight:20+c.z+(p.jumpHeight||p.groundHeight||0),jumpVelocity:Math.max(0,p.jumpVelocity||0),jumpHeld:!!p.jumpHeld,trainBoardAfter:t.time+.6});cue(g,'door',p);notice(t,'Left the train. Jump onto the raised floor to board again.');}
-function stand(t,c,r){const seat=trainInterior(t.design,c).find(o=>c.id+':'+o.id===r.seat);if(!seat){delete r.seat;return true;}for(const a of[(seat.facing||0)*Math.PI/2,0,Math.PI/2,Math.PI,Math.PI*1.5]){const x=seat.x+Math.cos(a)*(seat.w/2+12),y=seat.y+Math.sin(a)*(seat.h/2+12);if(!trainInteriorBlocked(t,c,x,y)){delete r.seat;r.x=x;r.y=y;return true;}}notice(t,'There is no room to stand beside this seat.');return false;}
+function stand(t,c,r){
+ const seat=trainInterior(t.design,c).find(o=>c.id+':'+o.id===r.seat);
+ if(!seat){delete r.seat;return true;}
+ const leaveSeat=(x,y)=>{delete r.seat;r.x=x;r.y=y;return true;};
+ if(nativeCompartmentAisle(t.design,c)){
+  const y=compartmentSeatStandY(seat);
+  if(!trainInteriorBlocked(t,c,seat.x,y))return leaveSeat(seat.x,y);
+ }
+ for(const a of[(seat.facing||0)*Math.PI/2,0,Math.PI/2,Math.PI,Math.PI*1.5]){
+  const x=seat.x+Math.cos(a)*(seat.w/2+12),y=seat.y+Math.sin(a)*(seat.h/2+12);
+  if(!trainInteriorBlocked(t,c,x,y))return leaveSeat(x,y);
+ }
+ notice(t,'There is no room to stand beside this seat.');
+ return false;
+}
+function nearCompartmentDoor(aisle,c,r,door){
+ // From inside a native room, reaching toward a sofa should not open the door next to it.
+ return !aisle||r.y>=door.y||Math.abs(r.x-door.x)<Math.min(door.w/2+2,(c.length-70)/16);
+}
 export function trainInteraction(g,p,cs=trainCars(g.trainTest)){
  if(inDiagonArena(g))return interactDiagonArena(g,p);
  if(inQuidditch(g))return interactQuidditchScene(g,p);
@@ -223,7 +259,8 @@ export function trainInteraction(g,p,cs=trainCars(g.trainTest)){
  if(openTrainTailor(g,p,cs))return true;
  const allObjects=trainInterior(t.design,c),cup=allObjects.filter(o=>o.kind==='table').slice(0,c.kind==='compartments'?2:0).find(o=>Math.hypot(o.x-r.x,o.y-r.y)<30&&!t.cocoaTaken.has(c.id+':'+o.id));if(cup)return claimTrainCocoa(g,p,c.id+':'+cup.id);
  const objs=allObjects,near=objs.filter(o=>Math.hypot(o.x-r.x,o.y-r.y)<Math.max(25,Math.hypot(o.w,o.h)/2+12)).sort((a,b)=>Math.hypot(a.x-r.x,a.y-r.y)-Math.hypot(b.x-r.x,b.y-r.y));
- const door=near.find(o=>o.kind==='door');if(door){const key=c.id+':'+door.id,next=!(t.doors[key]??door.open);if(!next&&g.players.some(q=>q.trainRide?.car===c.index&&Math.abs(q.trainRide.x-door.x)<door.w/2+8&&Math.abs(q.trainRide.y-door.y)<door.h/2+8)){notice(t,'The doorway is occupied.');return true;}t.doors[key]=next;cue(g,'door',p);notice(t,next?'Compartment door opened.':'Compartment door closed.');return true;}
+ const aisle=nativeCompartmentAisle(t.design,c);
+ const door=near.find(o=>o.kind==='door'&&nearCompartmentDoor(aisle,c,r,o));if(door){const key=c.id+':'+door.id,next=!(t.doors[key]??door.open);if(!next&&g.players.some(q=>q.trainRide?.car===c.index&&Math.abs(q.trainRide.x-door.x)<door.w/2+8&&Math.abs(q.trainRide.y-door.y)<door.h/2+8)){notice(t,'The doorway is occupied.');return true;}t.doors[key]=next;cue(g,'door',p);notice(t,next?'Compartment door opened.':'Compartment door closed.');return true;}
  const console=near.find(o=>o.kind==='console');if(console){if(t.driver&&t.driver!==p.id){notice(t,'Another explorer has the controls.');return true;}t.driver=p.id;r.driving=true;if(cancelConductorDestination(t)){notice(t,'Cab controls taken. The conductor’s destination was cleared.');g.persist?.();return true;}t.engine=!t.engine;if(t.engine){delete t.emergencyBrake;t.throttle=Math.max(t.throttle,.2);cue(g,'steam',p);notice(t,'Steam on. Up/down: throttle · attack: whistle · dash: emergency brake · jump: leave controls. Interact here to stop.');}else{t.throttle=0;cue(g,'brake',p);notice(t,'Steam closed. The train is braking.');}return true;}
  const seat=near.find(o=>o.kind==='seat'&&![...trainStudents(g,cs),trainTailor(g,cs)].filter(Boolean).some(n=>n.seatId===c.id+':'+o.id)&&!g.players.some(q=>q.trainRide?.seat===c.id+':'+o.id));if(seat){r.seat=c.id+':'+seat.id;r.x=seat.x;r.y=seat.y;r.facing=(seat.facing??0)*Math.PI/2;p.groundHeight=0;p.jumpHeight=0;p.jumpVelocity=0;notice(t,'Seated. Rest quietly to recover health. Interact or jump to stand.');return true;}
  if(trainSideDoorway(c,r.x)&&Math.abs(r.y)>c.width/2-12){leaveTrainCar(g,p,c,r);return true;}
@@ -261,7 +298,9 @@ export function trainPrompt(g,p){
  const tailor=nearbyTrainTailor(g,p,cs);if(tailor)return key+' · HOGWARTS ROBES';
  const objects=trainInterior(t.design,c);
  if(c.kind==='compartments'&&objects.filter(o=>o.kind==='table').slice(0,2).some(o=>!t.cocoaTaken.has(c.id+':'+o.id)&&Math.hypot(o.x-r.x,o.y-r.y)<30))return key+' · TAKE HOT CHOCOLATE';
- const o=objects.find(o=>['door','console','seat'].includes(o.kind)&&Math.hypot(o.x-r.x,o.y-r.y)<30);
+ const aisle=nativeCompartmentAisle(t.design,c);
+ const o=objects.find(o=>['door','console','seat'].includes(o.kind)&&Math.hypot(o.x-r.x,o.y-r.y)<30
+  &&(o.kind!=='door'||nearCompartmentDoor(aisle,c,r,o)));
  return o?key+' · '+(o.kind==='console'?(t.engine?'STOP ENGINE':'START ENGINE'):o.kind==='door'?((t.doors[c.id+':'+o.id]??o.open)?'CLOSE DOOR':'OPEN DOOR'):'SIT'):Math.abs(r.x)>c.length/2-39?'WALK OUT · '+jump+' · JUMP OFF':'';
 }
 
