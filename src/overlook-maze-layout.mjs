@@ -98,15 +98,27 @@ function makeMaze(dx, dy) {
   const parts = mergeShortPieces(mergeShortPieces(cuts,'x','w','y','h'),'y','h','x','w');
   for (const [id, part] of parts.entries()) Object.assign(part, {id, seed:(id + 1) * 43, neighbors:[[],[],[],[]]});
   const opening = {left:Math.round(mapX(206)), right:Math.round(mapX(234)), y:mapY(108)};
+  const southOpening = {left:Math.round(mapX(230)), right:Math.round(mapX(258)), y:Math.round(mapY(644))};
   for (const part of parts) {
-    if (part.y > opening.y || part.y + part.h < opening.y) continue;
-    if (part.x + part.w === opening.left) part.entryEnd = 'left';
-    if (part.x === opening.right) part.entryEnd = 'right';
+    if (part.y <= opening.y && part.y + part.h > opening.y) {
+      if (part.x + part.w === opening.left) part.entryEnd = 'left';
+      if (part.x === opening.right) part.entryEnd = 'right';
+    }
+    if (part.y > southOpening.y || part.y + part.h <= southOpening.y) continue;
+    const right=part.x+part.w;
+    if (right>southOpening.left&&part.x<southOpening.right) {
+      if (part.x<southOpening.left) part.w=southOpening.left-part.x;
+      else if (right>southOpening.right) {part.x=southOpening.right;part.w=right-part.x;}
+      else part.entranceGap=true; // Retain its index for stored hedge damage.
+    }
+    if (!part.entranceGap&&part.x+part.w===southOpening.left) part.southEntryEnd='left';
+    if (!part.entranceGap&&part.x===southOpening.right) part.southEntryEnd='right';
   }
   const buckets = new Map();
   for (const p of parts) {
+    if (p.entranceGap) continue;
     for (const other of parts) {
-      if (p === other) continue;
+      if (p === other || other.entranceGap) continue;
       if (within(p.x, p.x + p.w, other.x, other.x + other.w)) {
         if (p.y === other.y + other.h) p.neighbors[0].push(other.id);
         if (p.y + p.h === other.y) p.neighbors[2].push(other.id);
@@ -128,9 +140,11 @@ function makeMaze(dx, dy) {
   const chest = {x: Math.round(mapX(226)), y: Math.round(mapY(385))};
   const gate = {x: 800 + dx, y: 144 + dy};
   const outerX = x - 46, outerY = y - 43, southY = y + h + 18;
+  const southEntrance={x:Math.round((southOpening.left+southOpening.right)/2),y:southOpening.y+29};
   const walk = [gate, {x:gate.x,y:southY}, {x:outerX,y:southY}, {x:outerX,y:outerY},
     {x:entrance.x,y:outerY}, {x:entrance.x,y:y+12}];
-  return {x,y,w,h,buckets,parts,entrance,opening,chest,gate,walk};
+  const southWalk=[gate,{x:gate.x,y:southY},southEntrance,{x:southEntrance.x,y:southOpening.y-28}];
+  return {x,y,w,h,buckets,parts,entrance,opening,southEntrance,southOpening,chest,gate,walk,southWalk};
 }
 
 export const VILLA_OVERLOOK = makeMaze(0, 0);

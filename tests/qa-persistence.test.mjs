@@ -10,6 +10,7 @@ import { travelHouseWorlds } from '../src/house-worlds.mjs';
 import { saveSession, restoreSession } from '../src/session.mjs';
 import { Profiles, prepareCharacterBackup } from '../src/profiles.mjs';
 import { freshCharacter } from '../src/items.mjs';
+import { enterWildLands } from '../src/wild-lands.mjs';
 import { createLocalWorld, restoreLocalWorld, saveLocalWorld } from '../src/world-instances.mjs';
 import { BUILTIN_PACKS, MAX_REGIONS } from '../src/world-simulation.mjs';
 import { tickLocalWorld } from '../src/world-runtime.mjs';
@@ -56,6 +57,47 @@ test('current and legacy encounter checkpoints resume pending actions once', () 
     assert.equal(resumed.log.filter(message => message === 'New action').length, 1);
     assert.ok(!resumed.log.includes('Already executed'));
   }
+});
+
+test('Classic and persistent Wild Lands save collected loot, equipment and used supplies in both stores', async () => {
+  for (const wilds of [false, true]) await withFiles(async root => {
+    const profilePath=path.join(root,'characters-v1.json'), sessionPath=path.join(root,'session-v1.json');
+    await withDesktop({
+      loadProfiles:()=>store.read(profilePath,'profiles'),
+      saveProfiles:data=>store.write(profilePath,data,'profiles'),
+    }, async () => {
+      const game=expedition(), player=game.players[0], profiles=new Profiles();
+      const hero=freshCharacter('inventory-qa','Inventory QA');
+      profiles.data.heroes.push(hero);
+      profiles.assign(player,hero);
+      if(wilds)assert.equal(enterWildLands(game,{persistent:true}).ok,true);
+      game.persist=()=>profiles.capture(game);
+      const collect=(type,qty)=>{
+        const loot={id:game.nextId++,x:player.x,y:player.y,type,qty};
+        game.loot.push(loot);
+        assert.equal(game.collect(player,loot),true);
+      };
+      collect('sword',1);
+      collect('potion',2);
+      game.openInventory(player);
+      game.inventoryAction(player,'select:'+player.inventory.findIndex(item=>item?.type==='sword'));
+      game.inventoryAction(player,'equip');
+      player.hp=10;
+      game.usePotion(player);
+      await profiles.savePromise;
+      await store.write(sessionPath,saved(game),'session');
+
+      const loadedProfiles=await new Profiles().load();
+      const resumed=restoreSession(await store.read(sessionPath,'session'));
+      loadedProfiles.reconcileCheckpoint(resumed);
+      assert.equal(!!resumed.trainTest?.persistent,wilds);
+      for(const record of [loadedProfiles.data.heroes[0],resumed.players[0]]){
+        assert.equal(record.equipment.hand1,'sword');
+        assert.equal(record.inventory.find(item=>item?.type==='potion')?.qty,1);
+        assert.equal(record.inventory.some(item=>item?.type==='sword'),false);
+      }
+    });
+  });
 });
 
 test('travel preserves runtime audio outside active and cached persisted maps', () => {

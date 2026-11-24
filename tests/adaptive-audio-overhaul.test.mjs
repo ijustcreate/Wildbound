@@ -6,6 +6,7 @@ import {AdaptiveMusic} from '../src/adaptive-music.mjs';
 import {CombatMusicThreat,audioDistance,activeHostile} from '../src/adaptive-music-threat.mjs';
 import {GameAudio,AUDIO_LIMITS,footstepMaterial,landingCue} from '../src/audio.mjs';
 import {CUES,SOUND_FILES,creatureCue} from '../src/sound-bank.mjs';
+import {wetWeatherState} from '../src/wet-weather.mjs';
 const root=new URL('../',import.meta.url);
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 const world=()=>({phase:'play',seed:1,environment:'forest',time:1,players:[{id:1,x:100,y:100,hp:100}],enemies:[]});
@@ -95,13 +96,27 @@ test('distance attenuation, nearest party listener and room isolation apply befo
  assert.equal(a.spatial(CUES.hit,{...e,room:'storage'}).attenuation,0);
  a.listeners.push({x:800,y:100,room:'storage',roomX:10,roomY:10});assert.equal(a.spatial(CUES.hit,{room:'storage',roomX:10,roomY:10}).attenuation,1);
 });
-test('footsteps and landings select biome, terrain, house, room and wet materials',()=>{
- const g=world(),p=g.players[0];for(const [environment,expected] of [['forest','grass'],['desert','sand'],['ice','snow'],['temple','stone']]){g.environment=environment;assert.equal(footstepMaterial(g,p),expected);}
- g.environment='forest';g.terrain=Array(2500).fill('water');assert.equal(footstepMaterial(g,p),'water');assert.equal(landingCue(g,p).key,'land:water');
- g.terrain.fill('mud');assert.equal(footstepMaterial(g,p),'mud');g.terrain.fill('bridge');assert.equal(footstepMaterial(g,p),'wood');
+test('footsteps and landings select terrain, floor finishes, and bridge levels',()=>{
+ const g=world(),p=g.players[0];g.terrain=Array(2500).fill('grass');
+ const surfaces={grass:'grass',marsh_grass:'grass',water:'water',shallow:'water',mud:'mud',bridge:'wood',snow:'snow',ice:'ice',sand:'sand',quicksand:'sand',cave_floor:'stone',shadow_soil:'stone',temple_stone:'stone',path:'gravel',dirt:'dirt',tile:'tile',carpet:'carpet'};
+ for(const [tile,cue] of Object.entries(surfaces)){
+  g.terrain.fill(tile);assert.equal(footstepMaterial(g,p),cue,tile);
+  assert.equal(landingCue(g,p).key,`land:${cue}`);
+ }
+ const uniqueCues=[...new Set(Object.values(surfaces))];
+ const files=uniqueCues.flatMap(cue=>CUES[cue].files);
+ assert.equal(new Set(files).size,files.length,'Each surface needs its own clips');
+ assert.ok(uniqueCues.every(cue=>CUES[cue].files.length>=3));
+ g.terrain.fill('water');g.terrain[3*50+3]='bridge';
+ assert.equal(footstepMaterial(g,p),'wood');p.underBridge=true;assert.equal(footstepMaterial(g,p),'water');p.underBridge=false;
+ g.weather={type:'monsoon'};assert.equal(footstepMaterial(g,p),'water');delete g.weather;
  p.room='temple-upper';assert.equal(footstepMaterial(g,p),'stone');p.room='storage';assert.equal(footstepMaterial(g,p),'wood');p.room=null;
- g.terrain.fill('grass');g.house={floors:[{x:0,y:0,w:200,h:200}]};assert.equal(footstepMaterial(g,p),'wood');p.x=400;assert.equal(footstepMaterial(g,p),'grass');
- g.house=null;g.environment='ice';p.groundHeight=24;assert.equal(footstepMaterial(g,p),'snow');
+ g.terrain.fill('grass');g.house={floors:[{x:0,y:0,w:200,h:200,material:'cement'}],floorZones:[{x:80,y:80,w:40,h:40,material:'checker'}],furniture:[{kind:'rug',x:130,y:80,w:30,h:40}]};
+ for(const [x,cue] of [[70,'stone'],[100,'tile'],[145,'carpet'],[400,'grass']]){p.x=x;assert.equal(footstepMaterial(g,p),cue);}
+ wetWeatherState(g).puddles.push({x:p.x,y:p.y,radius:10,life:60});assert.equal(footstepMaterial(g,p),'water');
+ p.playLogId='log';assert.equal(footstepMaterial(g,p),'wood');delete p.playLogId;
+ g.trainTest={design:{river:{x:400,width:100}}};
+ p.x=355;assert.equal(footstepMaterial(g,p),'water');p.trainDeck=true;assert.equal(footstepMaterial(g,p),'wood');
 });
 test('decoded requests cannot leak after mute, room changes, cancellation or priority stealing',async()=>{
  const a=fakeAudio();let resolve;a.buffer=()=>new Promise(r=>resolve=r);
@@ -143,4 +158,16 @@ test('observed movement/jump/landing/death/repair cues fire once and skip airbor
  p.jumpHeight=0;p.landTime=.22;a.update(g,true);assert.deepEqual(events,['land:grass']);events.length=0;
  p.robotRepaired=true;p.robotRepair={progress:.8};a.update(g,true);assert.deepEqual(events,['repairDone','repair']);events.length=0;
  p.robotRepair=null;p.hp=0;a.update(g,true);a.update(g,true);assert.deepEqual(events,['death']);
+});
+test('walks into and out of shallow water while flight and vehicles skip steps',()=>{
+ const a=fakeAudio(),g=world(),p=g.players[0],events=[];
+ a.play=name=>events.push(name);a.ambient=()=>{};a.updateWorldAmbience=()=>{};a.updateWeatherBed=()=>{};
+ g.terrain=Array(2500).fill('grass');g.terrain[3*50+5]='shallow';
+ for(const x of [100,131,162,193]){p.x=x;a.update(g,true);}
+ assert.deepEqual(events,['grass','water','grass']);events.length=0;
+ for(const state of [{vehicleId:'car'},{vehicleId:null,broomMount:true},{broomMount:null}]){
+  Object.assign(p,state,{x:p.x+31});a.update(g,true);
+ }
+ assert.deepEqual(events,[]);
+ p.x+=31;a.update(g,true);assert.deepEqual(events,['grass']);
 });

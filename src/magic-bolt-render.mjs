@@ -1,4 +1,6 @@
 import {drawFriendshipHeart} from './friendship-hearts.mjs';
+export const HEALING_COLOR='#9cddff';
+export const magicBoltColor=def=>def?.healing?HEALING_COLOR:def?.artColor||def?.color||'#90baff';
 export const magicBoltGlow=def=>def?.friendship ? .04 : ({common:.055,rare:.11,unique:.16,legendary:.21,gm:.12}[def?.rarity]??.055);
 export const MAGIC_TRAIL_LIMIT=48;
 export const MAGIC_TRAIL_SECONDS=.42;
@@ -8,6 +10,10 @@ function hash(n){n=Math.imul(n^0x9e3779b9,0x85ebca6b);n=Math.imul(n^(n>>>13),0xc
 function tint(color,amount){const n=parseInt(color.slice(1),16);if(!Number.isFinite(n))return color;return '#'+[n>>>16,(n>>>8)&255,n&255].map(v=>Math.round(v+(amount>0?(255-v)*amount:v*amount)).toString(16).padStart(2,'0')).join('');}
 const palettes=new Map();
 function palette(color){if(!palettes.has(color)){if(palettes.size>=32)palettes.delete(palettes.keys().next().value);palettes.set(color,{base:color,dark:tint(color,-.48),light:tint(color,.28)});}return palettes.get(color);}
+export function magicChargePalette(color){
+ const {base,dark,light}=palette(color);
+ return [tint(base,-.85),tint(base,-.7),dark,tint(base,-.34),tint(base,-.16),base,light,'#ffffff'];
+}
 // Reconstruct a bounded emission history from age + velocity. The particles
 // have stable birth positions, disperse and shrink as they age, and require no
 // persistent particle actors, allocations per mote, or frame-dependent RNG.

@@ -6,6 +6,8 @@ export function trainFootprintSlice(c,x){
  return ys.length?{back:Math.min(...ys),front:Math.max(...ys)}:null;
 }
 export function trainActorDepth(p,cars){
+ // Paint the sleeper and blanket above the bed at its front edge.
+ if(p.bedRest)return p.bedRest.y+p.bedRest.h+.01;
  const ride=p.trainRide,own=ride?[ride.car,...(ride.gangway?[ride.gangway.to]:[])]:[];let lower=-Infinity,upper=Infinity;
  for(const c of cars){const depth=trainCarDepth(c);if(own.includes(c.index)){
   // Retain each rider's ground depth after the shared floor, even on the far

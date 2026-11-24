@@ -5,7 +5,7 @@ export function renderLOD(zoom) { return zoom < .55 ? 2 : zoom < 1 ? 1 : 0; }
 export class DecorationCache {
   constructor(limit = 24 * 1024 * 1024) { this.limit=limit;this.bytes=0;this.entries=new Map(); }
   draw(ctx,prop,tier,paint) {
-    if(!tier || prop.falling || prop.burning || prop.harvest || !['tree','snow_tree','palm','bush','rock','fern'].includes(prop.kind))return paint(ctx);
+    if(!tier || prop.falling || prop.burning || Number.isFinite(prop.bushBurnAt) || prop.harvest || !['tree','snow_tree','palm','bush','rock','fern'].includes(prop.kind))return paint(ctx);
     const key=prop.id??`${prop.kind}:${prop.x}:${prop.y}`;
     const tallHeight=isTwoTierForestTree(prop)?twoTierForestTreeHeight(prop):0;
     const signature=[tier,prop.kind,prop.size,prop.x,prop.y,prop.rootY,prop.fallen,prop.seed,prop.variant,prop.treeType,prop.treeVariant,tallHeight,prop.season,prop.leafHabit].join(':');

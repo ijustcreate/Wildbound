@@ -1,11 +1,11 @@
 import {drawOverlookHedge, drawOverlookHedgeGround} from './overlook-hedge-art.mjs';
-import {overlookPartArt} from './overlook-maze.mjs';
+import {nearOverlookChest,overlookPartArt} from './overlook-maze.mjs';
 import {drawStarterChest} from './starter-chest.mjs';
 import {pixelPolygon} from './pixel-shapes.mjs';
 
-const STEP = 12, PAD = 80, SOUTH = 58;
+const STEP = 8, PAD = 80, SOUTH = 76;
 const grass = ['#405c3e', '#445f40', '#486242', '#4b6442'];
-const dirt = ['#797452', '#7e7654', '#827957', '#857d58'];
+const dirt = ['#73684d', '#7b7052', '#807454', '#877a59'];
 const paving = ['#7d8072', '#8b8b79', '#95927e', '#828573'];
 let groundRaster;
 
@@ -81,24 +81,29 @@ function paintThreshold(c, x, y, width) {
 function drawGardenRaster(c, maze, offsetX, offsetY) {
   const {w, h} = maze;
   const trail = maze.walk.map(p => ({x:p.x-maze.x,y:p.y-maze.y}));
+  const south = maze.southWalk.map(p => ({x:p.x-maze.x,y:p.y-maze.y}));
   for (let py = -PAD; py < h + SOUTH; py += STEP) for (let px = -PAD; px < w + PAD; px += STEP) {
     const cx = px + STEP / 2, cy = py + STEP / 2;
     const inside = cx >= 0 && cx < w && cy >= 0 && cy < h;
-    const path = inside || walkDistance(trail,cx,cy) < (23 + hash(px,py) * 5) ** 2;
+    const path = inside || Math.min(walkDistance(trail,cx,cy),walkDistance(south,cx,cy)) < (23 + hash(px,py) * 5) ** 2;
     const edge = Math.max(-cx, cx - w, -cy, cy - h);
     const alpha = path ? 1 : Math.max(0, .82 - edge / 84 + hash(px, py) * .2);
     if (!alpha) continue;
     c.globalAlpha = alpha;
     rect(c, offsetX + px, offsetY + py, STEP, STEP, earthTone(cx, cy, path ? dirt : grass));
     const pick = hash(py, px);
-    if (pick > .50) {
-      const ax = offsetX + px + 2 + Math.floor(pick * 6), ay = offsetY + py + 2 + Math.floor(hash(px + 2,py) * 6);
+    if (pick > .53) {
+      const ax = offsetX + px + 1 + Math.floor(pick * 4), ay = offsetY + py + 1 + Math.floor(hash(px + 2,py) * 5);
       rect(c, ax, ay, pick > .82 ? 4 : 2, 1, path ? '#9b8963' : '#607650');
       if (pick > .75) rect(c, ax + 1, ay + 1, 2, 1, path ? '#6e684b' : '#354e39');
     }
   }
   c.globalAlpha = 1;
   paintThreshold(c, offsetX + maze.entrance.x - maze.x, offsetY + maze.opening.y - maze.y, maze.opening.right - maze.opening.left);
+  const southY=offsetY+maze.southOpening.y-maze.y;
+  c.save();c.translate(0,southY*2);c.scale(1,-1);
+  paintThreshold(c,offsetX+maze.southEntrance.x-maze.x,southY,maze.southOpening.right-maze.southOpening.left);
+  c.restore();
   paintCourtyard(c, offsetX + maze.chest.x - maze.x, offsetY + maze.chest.y - maze.y);
 }
 
@@ -116,7 +121,7 @@ export function drawOverlookGarden(c, maze, visible, detail = true) {
   }
   if (groundRaster) c.drawImage(groundRaster, maze.x - PAD, maze.y - PAD);
   else drawGardenRaster(c, maze, maze.x, maze.y);
-  for (const part of maze.parts) if (visible({x: part.x + part.w / 2, y: part.y + part.h / 2}, 40)) {
+  for (const part of maze.parts) if (!part.entranceGap&&visible({x: part.x + part.w / 2, y: part.y + part.h / 2}, 40)) {
     const art = overlookPartArt(maze, part);
     if(detail)drawOverlookHedgeGround(c, art);
     else if(!art.broken)rect(c, part.x, part.y, part.w, part.h, '#355338');
@@ -127,7 +132,7 @@ export function overlookSubjects(maze, visible, game) {
   if (!gardenVisible(maze, visible)) return [];
   const subjects = [];
   const party = game.players.filter(p => p.hp > 0 && !p.room && !p.trainRide);
-  for (const part of maze.parts) if (visible({x: part.x + part.w / 2, y: part.y - 8}, 74)) {
+  for (const part of maze.parts) if (!part.entranceGap&&visible({x: part.x + part.w / 2, y: part.y - 8}, 74)) {
     const art = overlookPartArt(maze, part);
     if (!art.broken) {
       const obscuresPlayer = party.some(p => p.x > part.x - 7 && p.x < part.x + part.w + 7 &&
@@ -136,7 +141,7 @@ export function overlookSubjects(maze, visible, game) {
     }
   }
   if (visible(maze.chest, 80)) {
-    const player = party.some(p => Math.hypot(p.x - maze.chest.x, p.y - maze.chest.y) <= 56);
+    const player = party.some(p => nearOverlookChest(game,p));
     const prompt = player && !maze.state.opened ? (game.controlLabels?.interact || 'Interact') + ' · OPEN CHEST' : '';
     subjects.push({overlookChest: maze.chest, depth: maze.chest.y + 10, opened: maze.state.opened, prompt});
   }

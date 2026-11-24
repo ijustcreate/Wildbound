@@ -18,7 +18,28 @@ try{await w.loadFile(path.join(process.env.WILDBOUND_VERIFY_APP||root,'index.htm
  for(let row=0;row<3;row++)for(let d=0;d<8;d++){const [faceX,faceY]=directionVector(d),a={...students[row].actor,x:75+d*150,y:180+row*210,faceX,faceY};animator.draw(c,a,1.3,74);c.fillStyle='#ead9ac';c.font='12px sans-serif';c.textAlign='center';c.fillText(students[row].name+' · '+d,a.x,a.y+23);}images.directions=sheet.toDataURL();
  const poses=document.createElement('canvas');poses.width=1200;poses.height=420;const pc=poses.getContext('2d');pc.fillStyle='#36483d';pc.fillRect(0,0,1200,420);pc.imageSmoothingEnabled=false;for(let row=0;row<3;row++)for(const [i,action]of ['idle','walk','run','cast','death','train_sit'].entries()){animator.draw(pc,{...students[row].actor,x:85+i*200,y:100+row*140,animationAction:action,moving:['walk','run'].includes(action),playerFrame:3},1,65);}images.poses=poses.toDataURL();
  ok(animator.rigSurface.width<=256,'student poses use the existing bounded native rig renderer');
- for(const [i,s]of students.entries()){p.trainRide={car:car.index,...s.local};t.time=i*7;delete t.studentSpeech;r.draw(g,0);ok(studentSpeech(g,cs)?.npc.id===s.id,'rotating idle chatter for '+s.name);ok(trainPrompt(g,p).includes(s.name.toUpperCase()),'actual interaction prompt names '+s.name);g.trainTest.previous=new Map();g.update(.05,{keyboard:{interact:true}});ok(p.inventory.some(item=>item?.type===s.gift),'real input receives '+s.gift);g.update(.05,{keyboard:{}});trainInteraction(g,p,cs);ok(p.inventory.filter(item=>item?.type===s.gift).reduce((n,item)=>n+item.qty,0)===1,'repeat conversation does not duplicate '+s.gift);}
+ const {npcDialoguePanel}=await import('./src/npc-dialogue-ui.mjs');
+ for(const [i,s]of students.entries()){
+  p.trainRide={car:car.index,...s.local};t.time=i*7;delete t.studentSpeech;r.draw(g,0);
+  ok(studentSpeech(g,cs)?.npc.id===s.id,'rotating idle chatter for '+s.name);
+  ok(trainPrompt(g,p).includes(s.name.toUpperCase()),'actual interaction prompt names '+s.name);
+  g.trainTest.previous=new Map();g.update(.05,{keyboard:{interact:true}});
+  ok(p.ui?.trainStudentGift===s.id&&!p.inventory.some(item=>item?.type===s.gift),'Interact offers '+s.gift+' without granting it');
+  g.update(.05,{keyboard:{interact:true}});
+  ok(p.ui?.trainStudentGift===s.id,'holding Interact cannot accept '+s.gift);
+  g.update(.05,{keyboard:{}});
+  if(i===0){
+   const card=document.createElement('section');
+   npcDialoguePanel(card,g,p,(_label,_id,action)=>{const control=document.createElement('button');control.onclick=action;return control;});
+   const replies=[...card.querySelectorAll('.npc-dialogue-choice')];
+   ok(replies.length===2&&replies[0].textContent.includes('Yes, please.')&&replies[1].textContent.includes('No, thank you.'),'native conversation presents both replies');
+   replies[0].click();
+  }else g.update(.05,{keyboard:{interact:true}});
+  ok(p.inventory.some(item=>item?.type===s.gift),'explicit acceptance receives '+s.gift);
+  g.update(.05,{keyboard:{}});trainInteraction(g,p,cs);
+  ok(p.inventory.filter(item=>item?.type===s.gift).reduce((n,item)=>n+item.qty,0)===1,'repeat conversation does not duplicate '+s.gift);
+  if(p.ui?.trainStudentGift)g.inventoryAction(p,'close');
+ }
  const icons=document.createElement('canvas');icons.width=480;icons.height=160;const ic=icons.getContext('2d');ic.fillStyle='#273930';ic.fillRect(0,0,480,160);for(const [i,n]of TRAIN_STUDENTS.entries()){ic.save();ic.translate(30+i*155,20);ic.scale(4,4);drawItem(ic,n.gift,12,12,24);ic.restore();}images.gifts=icons.toDataURL();
  delete p.trainRide;p.ui={};const index=p.inventory.findIndex(i=>i?.type==='nimbus_2000');ok(useBroom(g,p,index)&&p.broomMount.item.type==='nimbus_2000','repaired Nimbus mounts as its own broom');
  const flight=document.createElement('canvas');flight.width=1200;flight.height=260;const fc=flight.getContext('2d');fc.fillStyle='#36483d';fc.fillRect(0,0,1200,260);for(let d=0;d<8;d++){const [faceX,faceY]=directionVector(d);animator.draw(fc,{...p,sprite:'player',kind:'player',isPlayer:true,x:75+d*150,y:185,faceX,faceY,jumpHeight:0,animationAction:'broom_ride',playerFrame:3,id:'nimbus-review-'+d},1,64);}images.nimbusFlight=flight.toDataURL();ok(dismountBroom(g,p),'Nimbus returns to backpack');

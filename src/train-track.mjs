@@ -14,11 +14,52 @@ export function buildTrainRoute(design,routeId=design.activeRoute){
 }
 export function sampleTrainRoute(route,distance){const s=((distance%route.length)+route.length)%route.length,p=route.points;let lo=0,hi=p.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(p[m].s<=s)lo=m;else hi=m;}const a=p[lo],b=p[hi],t=(s-a.s)/(b.s-a.s);return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t,a:Math.atan2(b.y-a.y,b.x-a.x),edge:a.edge,s};}
 const trackSearch=new WeakMap();
+function buildTrackSearch(route){
+ const groups=[],points=route.points;
+ for(let start=1;start<points.length;start+=48){
+  const end=Math.min(points.length,start+48);
+  let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
+  for(let i=start-1;i<end;i++){
+   const {x,y}=points[i];
+   left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);
+  }
+  groups.push({start,end,left,right,top,bottom});
+ }
+ const index={groups,bounds:new Float64Array(groups.length)};
+ trackSearch.set(route,index);
+ return index;
+}
+
 export function nearestTrainTrack(route,x,y){
- let groups=trackSearch.get(route);if(!groups){groups=[];for(let i=1;i<route.points.length;i+=48){const end=Math.min(route.points.length,i+48),points=route.points.slice(i-1,end);groups.push({start:i,end,left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y))});}trackSearch.set(route,groups);}
- const ordered=groups.map(g=>({g,d:Math.max(g.left-x,0,x-g.right)**2+Math.max(g.top-y,0,y-g.bottom)**2})).sort((a,b)=>a.d-b.d);let best={distance:Infinity},bestSquared=Infinity;
- for(const {g,d}of ordered){if(d>bestSquared)break;for(let i=g.start;i<g.end;i++){const a=route.points[i-1],b=route.points[i],dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy))),px=a.x+dx*t,py=a.y+dy*t,squared=(x-px)**2+(y-py)**2;if(squared<bestSquared){bestSquared=squared;best={distance:Math.sqrt(squared),x:px,y:py,s:a.s+(b.s-a.s)*t,z:a.z+(b.z-a.z)*t,edge:a.edge,a:Math.atan2(dy,dx)};}}}
- return best;
+ const {groups,bounds}=trackSearch.get(route)||buildTrackSearch(route),points=route.points;
+ let first=-1,firstBound=Infinity;
+ for(let i=0;i<groups.length;i++){
+  const {left,right,top,bottom}=groups[i],dx=Math.max(left-x,0,x-right),dy=Math.max(top-y,0,y-bottom);
+  const bound=bounds[i]=dx*dx+dy*dy;
+  if(bound<firstBound){first=i;firstBound=bound;}
+ }
+ if(first<0)return {distance:Infinity};
+ let bestSquared=Infinity,bestGroup=-1,bestIndex=-1,bestT=0;
+ function inspectGroup(index){
+  const {start,end}=groups[index],bound=bounds[index];
+  for(let i=start;i<end;i++){
+   const a=points[i-1],b=points[i],dx=b.x-a.x,dy=b.y-a.y;
+   const t=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy)));
+   const px=a.x+dx*t,py=a.y+dy*t,squared=(x-px)**2+(y-py)**2;
+   if(squared<bestSquared||squared===bestSquared&&bestGroup!==index&&
+      (bound<bounds[bestGroup]||bound===bounds[bestGroup]&&index<bestGroup)){
+    bestSquared=squared;bestGroup=index;bestIndex=i;bestT=t;
+   }
+  }
+ }
+ // The nearest box supplies a provisional hit. Only boxes that can tie or
+ // improve it need segment tests. Stable tie-breaking preserves junctions.
+ inspectGroup(first);
+ for(let i=0;i<groups.length;i++)if(i!==first&&bounds[i]<=bestSquared)inspectGroup(i);
+ if(bestIndex<0)return {distance:Infinity};
+ const a=points[bestIndex-1],b=points[bestIndex],dx=b.x-a.x,dy=b.y-a.y;
+ return {distance:Math.sqrt(bestSquared),x:a.x+dx*bestT,y:a.y+dy*bestT,s:a.s+(b.s-a.s)*bestT,
+  z:a.z+(b.z-a.z)*bestT,edge:a.edge,a:Math.atan2(dy,dx)};
 }
 export function railwayWater(d,x,y){return railwayWaterDepth(d,x,y);}
 export function railElevation(d,q){if(d.wildLands){if(railwayWater(d,q.x,q.y))return q.z+10;for(let reach=40;reach<=160;reach+=40)for(const sign of[-1,1])if(railwayWater(d,q.x+Math.cos(q.a||0)*reach*sign,q.y+Math.sin(q.a||0)*reach*sign))return q.z+10*(1-reach/200);return q.z;}const edge=d.river.width/2+120-Math.abs(q.x-d.river.x),ramp=Math.max(0,Math.min(1,edge/120));return q.z+10*ramp*ramp*(3-2*ramp);}

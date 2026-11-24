@@ -103,9 +103,9 @@ export class WorldLightRenderer{
    const cells=Math.ceil(radius/4),width=cells*2,step=radius/cells;
    const slot=source.owner||`${source.x}:${source.y}`;
    this.groundSlots??=new Map();let entry=this.groundSlots.get(slot);
-   const casters=frame.field.near(source);
+   const casters=frame.field?.near(source)||[];
    const movingCasters=casters.filter(v=>String(v.owner).startsWith('actor:')&&v.owner!==source.owner).map(v=>[v.owner,Math.round(v.x/4),Math.round(v.y/4),Math.round(v.minZ/4),Math.round(v.maxZ/4)].join(',')).join(';');
-   const signature=[Math.round(source.x/8),Math.round(source.y/8),Math.round((source.height||30)/4),source.color,source.intensity,radius,frame.field.staticRevision??frame.field.revision,movingCasters].join(':');
+   const signature=[Math.round(source.x/8),Math.round(source.y/8),Math.round((source.height||30)/4),source.color,source.intensity,radius,frame.field?.staticRevision??frame.field?.revision,movingCasters].join(':');
    if(!entry||entry.signature!==signature){
     const canvas=entry?.canvas||document.createElement('canvas');if(canvas.width!==width||canvas.height!==width)canvas.width=canvas.height=width;
     const c=canvas.getContext('2d'),rgb=colorRGB(source.color),falloff=c.createRadialGradient(cells,cells,0,cells,cells,cells);
@@ -121,6 +121,7 @@ export class WorldLightRenderer{
     c.restore();const bytes=width*width*4;this.groundBytes=(this.groundBytes||0)+bytes-(entry?.bytes||0);entry={signature,canvas,bytes};this.groundSlots.set(slot,entry);
    }
    ctx.save();ctx.globalCompositeOperation='screen';ctx.imageSmoothingEnabled=true;
+   if(source.flicker!==undefined)ctx.globalAlpha*=clamp(source.flicker);
    ctx.drawImage(entry.canvas,source.x-radius,source.y-radius,radius*2,radius*2);ctx.restore();
    this.groundSlots.delete(slot);this.groundSlots.set(slot,entry);
   }

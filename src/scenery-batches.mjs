@@ -8,7 +8,7 @@ export function sceneryBatches(renderer,g,t,objects,paint){
  if(t.sceneryBatchStats?.frame!==renderer.frameSerial)t.sceneryBatchStats={frame:renderer.frameSerial,builds:0,hits:0,live:0};const metrics=t.sceneryBatchStats;
  const moving=objects.filter(o=>!o.tree).map(footprint),runs=[];let list=[],band=null;
  const flush=()=>{if(list.length)runs.push(list);list=[];};
- for(const o of objects){const p=o.tree,b=Math.floor(o.depth/BAND),live=!p||p.falling||p.burning||p.harvest||p.depleted||['campfire','torch','grave_candles','spirit_lamp'].includes(p.kind)||moving.some(a=>overlaps(a,footprint(o)));
+ for(const o of objects){const p=o.tree,b=Math.floor(o.depth/BAND),live=!p||p.falling||p.burning||Number.isFinite(p.bushBurnAt)||p.harvest||p.depleted||p.kind==='bush'&&renderer.camera.zoom>=.55||['campfire','torch','grave_candles','spirit_lamp'].includes(p.kind)||moving.some(a=>overlaps(a,footprint(o)));
   if(live){flush();runs.push(o);band=null;}else{if(band!==b)flush();band=b;list.push(o);}
  }flush();t.sceneryBands??=new Map();t.sceneryBandBytes??=0;const output=[];
  for(const run of runs){if(!Array.isArray(run)){output.push(run);continue;}if(run.length<3){metrics.live+=run.length;output.push(...run);continue;}

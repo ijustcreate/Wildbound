@@ -16,7 +16,7 @@ export function gearPalette(id, dye) {
   if (ramps.has(key)) return ramps.get(key);
   const metal=/plate|iron|steel|moon|sun|gauntlet|blade|sword|dagger|shield/.test(id+' '+(def.style||''));
   const result = { ink:'#302b2b', dark:mixGearColor(base,'#392b34',metal?.4:.32), base,
-    light:mixGearColor(base,'#f7dfb7',metal?.38:.25), shine:'#f4e4bc', trim:'#b18a51', leather:'#624735' };
+    light:mixGearColor(base,'#f7dfb7',metal?.38:.25), shine:'#f4e4bc', trim:def.trimColor||'#b18a51', leather:'#624735' };
   if(def.blankExplorer)Object.assign(result,{ink:'#414b4d',dark:'#697476',base:'#858f90',light:'#b1baba',shine:'#b1baba',trim:'#697476',leather:'#697476'});
   if(def.bansheeGear)Object.assign(result,{ink:'#24232e',dark:mixGearColor(base,'#202532',.5),light:mixGearColor(base,'#b7d2de',.34),shine:'#d0e8ed',trim:'#90aab9',leather:'#473344'});
   if (ramps.size >= 512) ramps.clear();

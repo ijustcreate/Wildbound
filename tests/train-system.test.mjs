@@ -6,6 +6,13 @@ import {buildTrainRoute,sampleTrainRoute,nearestTrainTrack,trainCars} from '../s
 import {enterTrainTest,leaveTrainTest,tickTrainTest,trainInteraction,trainInteriorBlocked,requestTrainRoute} from '../src/train-test.mjs';
 const storage=()=>{const map=new Map();return{getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)};};
 test('Railway defaults preserve long coaches, valid interiors, closed route and distance lookup',()=>{const d=validateTrainDesign(defaultTrainDesign());for(const c of d.cars){d.interiors[c.id]=defaultInterior(c);}validateTrainDesign(d);const route=buildTrainRoute(d);assert.ok(route.length>10000);const a=sampleTrainRoute(route,0),b=sampleTrainRoute(route,route.length);assert.deepEqual(a,b);const q=sampleTrainRoute(route,2300),near=nearestTrainTrack(route,q.x,q.y);assert.ok(near.distance<.01);assert.ok(Math.abs(near.s-2300)<.1);assert.ok(d.cars[2].length>=320);assert.equal(d.cars.length,5);});
+test('nearest track retains stable segment order where two track groups cross at the same distance',()=>{
+ const points=Array.from({length:100},(_,i)=>({x:i<50?(i-20)*2:0,y:i<50?0:(i-70)*2,z:0,edge:i,s:i*2}));
+ const route={points};
+ assert.deepEqual(nearestTrainTrack(route,0,0),{x:0,y:0,z:0,distance:0,edge:19,s:40,a:0});
+ assert.equal(nearestTrainTrack(route,0,5).edge,72);
+ assert.equal(nearestTrainTrack(route,5,0).edge,22);
+});
 test('Invalid track graphs, impossible grades and damaged pixel data fail before use',()=>{const d=defaultTrainDesign();d.routes[0].nodes[2]='missing';assert.throws(()=>validateTrainDesign(d));const steep=defaultTrainDesign();steep.nodes[1].x=steep.nodes[0].x-80;steep.nodes[1].y=steep.nodes[0].y;steep.nodes[1].z=160;assert.throws(()=>buildTrainRoute(steep));assert.throws(()=>unpackTrainDesign({art:{bad:{width:2,height:2,runs:[8,0]}}}));});
 test('Complete designs and recovered drafts round-trip with compressed per-view pixels',()=>{const d=defaultTrainDesign(),s=storage();d.art['engine:roof:0']={width:4,height:2,palette:['transparent','#aa3344'],pixels:[0,0,0,0,1,1,1,1]};assert.deepEqual(unpackTrainDesign(packTrainDesign(d)),d);saveTrainDesign(d,{storage:s});assert.deepEqual(readTrainDesign(s),d);preserveTrainDraft(d,s);assert.deepEqual(readTrainDraft(s),d);});
 function game(){const g=new Game(()=>.5),p=g.addPlayer('keyboard');Object.assign(p,{x:300,y:400,hp:100,inventory:[],equipment:{},jumpHeight:0});g.phase='play';g.time=20;return g;}

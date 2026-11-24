@@ -4,6 +4,8 @@ import {drawPixelChatText, pixelChatTextWidth} from './pixel-chat-font.mjs';
 import {block as b, shape as p, line as l} from './diagon-shop-brush.mjs';
 import {OLLIVANDERS_LAYOUT as layout} from './diagon-wand-shop-layout.mjs';
 import {drawOllivandersApron} from './diagon-wand-shop.mjs';
+import {drawGringottsDragon} from './gringotts-dragon-art.mjs';
+import {NIGHTGLASS_REAR_DOOR} from './diagon-nocturne-rear.mjs';
 import {
   SHOP_FRONTAGES, frontageRoof, frontageBay, frontageSign, frontageLamp,
   frontageEntry, frontageSill,
@@ -11,6 +13,7 @@ import {
 
 const {halfWidth:W,halfDepth:D,entranceHalf:E,wall:EDGE}=layout;
 const shellBounds={x:-153,y:-143,w:306,h:237};
+const bankBounds={x:-153,y:-195,w:306,h:289};
 const groundBounds={x:-160,y:-92,w:320,h:203};
 const layers=new Map();
 
@@ -27,6 +30,10 @@ const taskLights={
   flourish:[[-82,44,23,18]],malkins:[[-63,65,22,15]],quidditch:[[-80,23,24,15]],
   apothecary:[[76,-40,29,16],[-74,-9,24,16]],eeylops:[[78,47,24,17]],
   floreans:[[-63,47,22,17]],gringotts:[[-10,-25,37,22]],
+  'nocturne-curios':[[-79,44,28,19],[87,42,29,17]],nightglass:[[-72,48,30,18],[85,31,29,19]],
+  'borgin-burkes':[[23,-8,31,19,true],[33,49,28,17,true],[35,-53,22,14,true]],
+  bellglass:[[-42,9,27,16],[67,-22,32,24,true]],'meridian-hall':[[0,-36,30,17],[64,-5,24,14]],
+  'wrong-turn':[[-58,5,28,18],[52,-40,29,19]],
 };
 
 export function shopArchitectureAssets(shop) {
@@ -105,10 +112,19 @@ function paintShell(c,shop,side,f,open) {
     const inner=side===1?W-EDGE:-W;
     const innerSide=side===1?'east':'west';
     const outerSide=side===1?'west':'east';
-    drawInteriorCutawayEdge(c,{x:outer,y:-D,w:EDGE,h:D*2},{side:outerSide,trim:f.trim});
-    drawInteriorCutawayEdge(c,{x:inner,y:-D,w:EDGE,h:D-E},{side:innerSide,trim:f.trim});
-    drawInteriorCutawayEdge(c,{x:inner,y:E,w:EDGE,h:D-E},{side:innerSide,trim:f.trim});
-    drawInteriorCutawayEdge(c,{x:-W,y:D-EDGE,w:W*2,h:EDGE},{trim:f.trim});
+    if(shop.id==='nightglass'){
+      const {offsetY,halfSpan}=NIGHTGLASS_REAR_DOOR;
+      drawInteriorCutawayEdge(c,{x:outer,y:-D,w:EDGE,h:D+offsetY-halfSpan},{side:outerSide,trim:f.trim});
+      drawInteriorCutawayEdge(c,{x:outer,y:offsetY+halfSpan,w:EDGE,h:D-offsetY-halfSpan},{side:outerSide,trim:f.trim});
+    }else drawInteriorCutawayEdge(c,{x:outer,y:-D,w:EDGE,h:D*2},{side:outerSide,trim:f.trim});
+    if(shop.frontEntrance){
+      drawInteriorCutawayEdge(c,{x:inner,y:-D,w:EDGE,h:D*2},{side:innerSide,trim:f.trim});
+      for(const x of [-W,E])drawInteriorCutawayEdge(c,{x,y:D-EDGE,w:W-E,h:EDGE},{trim:f.trim});
+    }else{
+      drawInteriorCutawayEdge(c,{x:inner,y:-D,w:EDGE,h:D-E},{side:innerSide,trim:f.trim});
+      drawInteriorCutawayEdge(c,{x:inner,y:E,w:EDGE,h:D-E},{side:innerSide,trim:f.trim});
+      drawInteriorCutawayEdge(c,{x:-W,y:D-EDGE,w:W*2,h:EDGE},{trim:f.trim});
+    }
   }else {
     tile(c,wide?'stone':f.surface==='wood'?'timber':'stone',-W,25,W*2,57,f);
     b(c,-W,75,W*2,7,f.wall[0]);
@@ -116,18 +132,27 @@ function paintShell(c,shop,side,f,open) {
     for(const x of [-W+4,-36,36,W-4])upright(c,x,30,49,f,wide);
     many(c,[-66,66],74,pen=>frontageBay(pen,f));
     frontageRoof(c,f);
-    const nameWidth=pixelChatTextWidth(f.name), y=f.profile==='awning'?52:47;
+    const nameWidth=pixelChatTextWidth(f.name), y=shop.frontEntrance?20:f.profile==='awning'?52:47;
     b(c,-nameWidth/2-8,y-2,nameWidth+16,14,f.trim[0]);
     b(c,-nameWidth/2-6,y-1,nameWidth+12,11,f.trim[1]);
     b(c,-nameWidth/2-5,y,nameWidth+10,1,f.trim[2]);
     drawPixelChatText(c,f.name,-nameWidth/2,y+2,f.mark);
-    many(c,[0],79,pen=>frontageLamp(pen,f));
+    if(shop.frontEntrance){
+      p(c,'#31393a',[[-26,D],[-26,D-31],[-19,D-42],[-10,D-47],[10,D-47],[19,D-42],[26,D-31],[26,D]]);
+      p(c,'#253033',[[-20,D],[-20,D-29],[-13,D-36],[-7,D-39],[7,D-39],[13,D-36],[20,D-29],[20,D]]);
+      b(c,-29,D-35,4,35,f.wall[3]);b(c,25,D-35,4,35,f.wall[3]);
+      b(c,-13,D-3,26,3,'#acaaa0');many(c,[-36,36],D-13,pen=>frontageLamp(pen,f));
+      if(shop.id==='gringotts'){c.save();c.translate(0,-101);drawGringottsDragon(c);c.restore();}
+    }else many(c,[0],79,pen=>frontageLamp(pen,f));
   }
-  doorway(c,side,f,open);
+  if(!shop.frontEntrance)doorway(c,side,f,open);
 }
 
-function pool(c,x,y,rx,ry) {
-  for(const [factor,color] of [[1,'#e6b57917'],[.68,'#ffd89c15'],[.36,'#ffe1a620']]){
+const amberPools=[[1,'#e6b57917'],[.68,'#ffd89c15'],[.36,'#ffe1a620']];
+const greenPools=[[1,'#779e6330'],[.68,'#8fc27c23'],[.36,'#b8d99736']];
+
+function pool(c,x,y,rx,ry,green=false) {
+  for(const [factor,color] of green?greenPools:amberPools){
     const w=Math.round(rx*factor),h=Math.round(ry*factor);
     p(c,color,[[x-w,y-h*.45],[x-w*.62,y-h],[x+w*.55,y-h],[x+w,y-h*.4],
       [x+w,y+h*.45],[x+w*.62,y+h],[x-w*.55,y+h],[x-w,y+h*.45]]);
@@ -150,14 +175,22 @@ function runner(c,f) {
 
 function paintGround(c,shop,side,f,open,props) {
   p(c,'#26312f52',[[-113,-77],[109,-79],[122,-62],[125,90],[115,103],[-111,103],[-122,91]]);
+  if(shop.district==='nocturne'){
+    p(c,'#292933',[[-116,-82],[112,-82],[123,-64],[130,78],[119,98],[-115,98],[-128,76]]);
+    b(c,-119,D-1,238,12,'#343541');
+    for(let x=-115;x<106;x+=28){
+      p(c,'#4b4b56',[[x,D+1],[x+24,D+1],[x+26,D+4],[x+23,D+8],[x+2,D+8]]);
+      b(c,x+4,D+1,13,1,'#65616d');
+    }
+  }
   if(open){
     if(!floorPlans.has(f.surface))floorPlans.set(f.surface,{floors:[{x:0,y:0,w:W*2,h:D*2,material:f.surface}]});
     c.save();c.translate(-W,-D);drawHouseFloor(c,floorPlans.get(f.surface));c.restore();
-    b(c,-W+3,-D+2,W*2-6,D*2-4,f.surface==='wood'?'#46332829':'#8d775a35');
+    b(c,-W+3,-D+2,W*2-6,D*2-4,f.floorWash||(f.surface==='wood'?'#46332829':'#8d775a35'));
     b(c,-W+5,-D+4,W*2-10,9,'#2632354a');
     runner(c,f);
     pool(c,side*84,-54,35,24);pool(c,-side*80,-50,27,24);pool(c,side*88,7,25,27);
-    for(const [x,y,rx,ry] of taskLights[shop.id])pool(c,x*side,y,rx,ry);
+    for(const [x,y,rx,ry,green] of taskLights[shop.id])pool(c,x*side,y,rx,ry,green);
     for(const {x,y,solid} of props){
       if(!solid)continue;
       const mid=x*side,hw=solid.width/2;
@@ -166,8 +199,17 @@ function paintGround(c,shop,side,f,open,props) {
       b(c,mid-hw+2,y-1,solid.width-3,3,'#3326224a');
     }
   }
-  many(c,[side*(W+6)],0,pen=>frontageSill(pen,f));
-  many(c,[side*(W+6)],E-1,pen=>frontageSill(pen,f));
+  if(shop.frontEntrance){
+    for(let step=0;step<4;step++){
+      const width=(shop.district==='garden'?58:126)+step*10,y=D+step*6;
+      b(c,-width/2,y,width,6,step%2?'#a0a294':'#afb1a1');
+      b(c,-width/2,y+4,width,2,'#777d73');
+      b(c,-width/2+2,y,width-4,1,'#d4d0b8');
+    }
+  }else{
+    many(c,[side*(W+6)],0,pen=>frontageSill(pen,f));
+    many(c,[side*(W+6)],E-1,pen=>frontageSill(pen,f));
+  }
   if(!open){pool(c,-63,D+5,29,11);pool(c,63,D+5,29,11);pool(c,side*(W+17),4,23,21);}
 }
 
@@ -188,14 +230,16 @@ function cached(c,shop,key,bounds,paint) {
 export function groundShop(c,shop,side,open,props) {
   // The approved broken stone approach is reused. Reflect only its plan so
   // every threshold opens toward the avenue.
-  c.save();c.translate(shop.x,shop.y);c.scale(side,1);
-  drawOllivandersApron(c,{x:0,y:0});c.restore();
+  if(shop.district!=='nocturne'&&!shop.frontEntrance){
+    c.save();c.translate(shop.x,shop.y);c.scale(side,1);
+    drawOllivandersApron(c,{x:0,y:0});c.restore();
+  }
   const f=SHOP_FRONTAGES[shop.id];
   cached(c,shop,open?'floor':'foundation',groundBounds,pen=>paintGround(pen,shop,side,f,open,props));
 }
 
 export function drawShopShell(c,shop,side,open) {
-  cached(c,shop,open?'cutaway':'exterior',shellBounds,pen=>paintShell(pen,shop,side,SHOP_FRONTAGES[shop.id],open));
+  cached(c,shop,open?'cutaway':'exterior',shop.frontEntrance?bankBounds:shellBounds,pen=>paintShell(pen,shop,side,SHOP_FRONTAGES[shop.id],open));
 }
 
 export function shopArchitectureRasterCount() {return layers.size;}

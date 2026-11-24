@@ -12,6 +12,8 @@ import {houseKeepsWorld} from './house-victory.mjs';
 import { nearbyScenery } from './performance.mjs';
 import {fleeGhostCritter} from './ghost-fear.mjs';
 import {releaseMarshFirefly} from './swamp-fireflies.mjs';
+import {catchDiagonCritter,releaseDiagonCritter} from './diagon-critters.mjs';
+import {catchableWildCoastalCritter,removeWildCoastalCritter,releaseWildCoastalCritter,wildCoastalReleaseSpot} from './wild-coastal-critters.mjs';
 
 /** Parent integration (world coordinates, seconds):
  * initLivingEcosystem(game) after world creation/restore; updateLivingEcosystem(game, dt)
@@ -281,8 +283,10 @@ function tickFrog(g,a,dt,time){
 }
 export function catchCritter(g,p){
  if(![p.equipment?.hand1,p.equipment?.hand2].includes('critter_net'))return false;
- if(catchStationOwl(g,p)||catchChocolateFrog(g,p))return true;
- const r=ensure(g),a=r.animals.filter(a=>Math.hypot(a.x-p.x,a.y-p.y)<46&&(a.x-p.x)*(p.faceX||0)+(a.y-p.y)*(p.faceY||0)>=-8).sort((a,b)=>distance(a,p)-distance(b,p))[0];
+ if(catchDiagonCritter(g,p)||catchStationOwl(g,p)||catchChocolateFrog(g,p))return true;
+ if(g.trainTest?.design.activeRoom==='diagon'){g.message('No critter within reach.');return true;}
+ const wild=g.trainTest?.design.wildLands, r=wild?null:ensure(g);
+ const a=wild?catchableWildCoastalCritter(g,p):r.animals.filter(a=>Math.hypot(a.x-p.x,a.y-p.y)<46&&(a.x-p.x)*(p.faceX||0)+(a.y-p.y)*(p.faceY||0)>=-8).sort((a,b)=>distance(a,p)-distance(b,p))[0];
  if(!a){g.message('No critter within reach.');return true;}
  const preferred=critterContainer(a.kind),copy=structuredClone(p.inventory);migrateLegacySupplies(copy);
  const containers=[preferred,...CRITTER_CONTAINERS.filter(c=>c!==preferred)];
@@ -290,17 +294,26 @@ export function catchCritter(g,p){
  const container=consume(copy);
  if(!container){g.message('You need an empty critter bottle/jar or travel cage in your backpack. Filled containers cannot be reused.');return true;}
  if(!give(copy,'caught_'+a.kind,1,32,{captureContainer:container})){g.message('Make space for your new passenger. Nothing was consumed.');return true;}
- p.inventory=copy;if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught '+a.kind+'! Packed in your '+(container==='empty_jar'?'bottle.':'travel cage.'));g.persist?.();return true;
+ p.inventory=copy;
+ if(wild)removeWildCoastalCritter(g,a);
+ else{if(a.releasedOwner==null)r.state.caught.push(a.id);r.animals=r.animals.filter(b=>b!==a);}
+ p.attack=p.attackDuration=.34;p.attackClip='punch';g.message('Caught '+a.kind+'! Packed in your '+(container==='empty_jar'?'bottle.':'travel cage.'));g.persist?.();return true;
 }
 export function releaseCritter(g,p,index){
+ if(releaseDiagonCritter(g,p,index))return true;
  if(releaseStationOwl(g,p,index))return true;
  if(p.inventory?.[index]?.type==='caught_marsh_firefly')return releaseMarshFirefly(g,p,index);
  const item=p.inventory[index];if(!item?.type?.startsWith('caught_')||p.room)return false;
- const kind=item.type.slice(7),container=critterContainer(item.type,item),copy=structuredClone(p.inventory),water=kind==='fish'?nearbyFishWater(g,p):null;
- if(kind==='fish'&&!water){p.ui.notice='Release your fish beside deep water. Nothing was consumed.';return true;}
+ const kind=item.type.slice(7),container=critterContainer(item.type,item),copy=structuredClone(p.inventory);
+ const wild=g.trainTest?.design.wildLands&&(kind==='fish'||kind==='crab');
+ const coast=wild?wildCoastalReleaseSpot(g,p,kind):null,water=!wild&&kind==='fish'?nearbyFishWater(g,p):null;
+ if(wild&&!coast){p.ui.notice=kind==='fish'?'Release your fish beside deep coastal water. Nothing was consumed.':'Release your crab on the beach or in coastal shallows. Nothing was consumed.';return true;}
+ if(!wild&&kind==='fish'&&!water){p.ui.notice='Release your fish beside deep water. Nothing was consumed.';return true;}
  if(--copy[index].qty===0)clearSlot(copy,index);
  if(!give(copy,container,1)){p.ui.notice='Make room for the empty container first.';return true;}
- p.inventory=copy;const r=ensure(g),spot=water||{x:p.x+18,y:p.y+18};r.animals.push({id:'released-'+p.id+'-'+(g.nextId++),kind,...spot,homeX:spot.x,homeY:spot.y,phase:r.time,releasedOwner:p.id,hopHeight:0});
+ p.inventory=copy;
+ if(wild)releaseWildCoastalCritter(g,p,kind,coast);
+ else{const r=ensure(g),spot=water||{x:p.x+18,y:p.y+18};r.animals.push({id:'released-'+p.id+'-'+(g.nextId++),kind,...spot,homeX:spot.x,homeY:spot.y,phase:r.time,releasedOwner:p.id,hopHeight:0});}
  p.ui.notice='Released! Your critter follows for this level. Catch it again before quitting.';g.uiRevision=(g.uiRevision||0)+1;g.persist?.();return true;
 }
 

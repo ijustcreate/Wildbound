@@ -170,6 +170,33 @@ function stoneBlock(c, x, y, w, h, seed) {
     rect(c, x + 2, y + h - 4, w * .6, 3, '#657e47'); rect(c, x + 3, y + h - 3, w * .3, 1, '#a1ad64');
   }
 }
+function drawPillarCapGrass(c,left,top,width,depth,seed) {
+  const x=Math.round(left)+5,y=Math.round(top)+5,w=Math.floor(width)-10,h=Math.floor(depth)-12;
+  if(w<9||h<8)return;
+  const [root,shade,grass,light]=grassColors.slice(1,5);
+  // The uneven sod sits inside the lit stone rim.
+  rect(c,x+2,y,w-4,1,shade);
+  rect(c,x,y+1,w,h-2,shade);
+  rect(c,x+2,y+h-1,w-4,1,root);
+  for(let row=0;row<h-3;row+=5)for(let col=0;col<w-4;col+=7){
+    const tone=hash(seed+row,col);
+    if(tone<.3)continue;
+    const px=x+1+col,py=y+1+row,run=Math.min(5,w-col-2);
+    rect(c,px,py,run,2,tone>.68?grass:root);
+    rect(c,px+1,py+2,run-2,1,tone>.68?grass:root);
+  }
+  for(let row=5;row<h-1;row+=7)for(let col=4;col<w-4;col+=8){
+    const tone=hash(seed+col,row);
+    if(tone<.17)continue;
+    const px=x+col+(tone>.66?1:0),py=y+row,lean=tone>.5?1:-1;
+    rect(c,px-2,py,5,2,root);
+    rect(c,px-1,py-2,3,2,grass);
+    rect(c,px+lean*2,py-3,1,3,grass);
+    rect(c,px,py-3,1,2,light);
+    if(tone>.48)rect(c,px-lean,py-4,1,1,light);
+  }
+}
+
 export function drawForestRuin(c, p) {
   const left = p.x - p.width / 2, top = p.y - p.depth - p.height;
   polygon(c, [[left, p.y], [left + p.width, p.y], [left + p.width + p.height * .7, p.y + p.height * .35], [left + p.height * .7, p.y + p.height * .35]], '#193d3533');
@@ -186,10 +213,13 @@ export function drawForestRuin(c, p) {
   rect(c, left - 3, top + p.depth - 3, p.width + 6, 6, '#acb399');
   rect(c, left - 3, top + p.depth + 3, p.width + 6, 3, '#526564');
   polygon(c, [[left, top], [left + p.width, top + 2], [left + p.width + 3, top + p.depth - 3], [left - 3, top + p.depth - 3]], '#a7af8b');
-  rect(c, left + 5, top + 3, p.width - 10, Math.max(4, p.depth - 10), '#7f9958');
-  for (let i = 0; i < p.width * .65; i++) {
-    const x = left + hash(i, p.seed) * p.width, y = top + hash(p.seed, i) * (p.depth - 3);
-    rect(c, x, y, 1, 2 + hash(i, 3) * 4, i % 3 ? '#b9c47e' : '#526f45');
+  if (p.shape === 'pillar' || p.grassCap) drawPillarCapGrass(c,left,top,p.width,p.depth,p.seed);
+  else {
+    rect(c, left + 5, top + 3, p.width - 10, Math.max(4, p.depth - 10), '#7f9958');
+    for (let i = 0; i < p.width * .65; i++) {
+      const x = left + hash(i, p.seed) * p.width, y = top + hash(p.seed, i) * (p.depth - 3);
+      rect(c, x, y, 1, 2 + hash(i, 3) * 4, i % 3 ? '#b9c47e' : '#526f45');
+    }
   }
   if (p.shape === 'shrine') {
     rect(c, p.x - 12, top + p.depth + 13, 24, Math.max(12, p.height - 19), '#304c49');

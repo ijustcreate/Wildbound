@@ -1,3 +1,5 @@
+import {CRAB_PINCER_PHASES} from './crab-pincer.mjs';
+
 const gaitActions=Object.freeze({
   snail:{walk:'crawl',run:'crawl'},
   jumping_spider:{walk:'walk',run:'run'},
@@ -25,6 +27,14 @@ export function creaturePackVisualActor(actor){
     return {...actor,animationAction:'wowhead-attack'};
   }
   if(actor?.hp>0&&!actor.dead&&(actor.hit||0)<=0&&(actor.flash||0)<=0&&(actor.frozen||0)<=0){
+    if(actor.kind==='crab'&&!actor.rigOverride&&!Number.isFinite(actor.playerFrame)){
+      const phase=CRAB_PINCER_PHASES[actor.wildlifeBehaviorPhase];
+      if(phase&&Number.isFinite(actor.wildlifeBehaviorTime)){
+        const poseTime=Math.max(0,Math.min(1,1-actor.wildlifeBehaviorTime/phase.duration));
+        return {...actor,animationAction:phase.clip,poseTime};
+      }
+      if(actor.animationAction==='attack')return {...actor,animationAction:'pinch'};
+    }
     // The eldritch AI sets a clip when it winds up, then relies on actor.state
     // to return to locomotion. Keep those native actions aligned with valid
     // clips: Great Owl is authored as `glide` (not the generic `fly` name).

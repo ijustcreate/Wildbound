@@ -3,8 +3,11 @@ import {overlookNorth} from './overlook-maze-layout.mjs';
 import {vegetationBlocked} from './house-surfaces.mjs';
 import {setTreeFallDirection,treeFallVector,applyTreeFall} from './tree-fall.mjs';
 import {vegetationWindStrength} from './vegetation-motion.mjs';
+import {drawBushFire} from './bush-fire.mjs';
 import {drawJungleFern} from './fern-art.mjs';
 import {drawForestAsset} from './forest-props.mjs';
+import {drawRockGrass} from './forest-grounding-art.mjs';
+import {drawSnowMelt,snowGroundAt} from './snow-surface.mjs';
 import {meadowAllowed} from './pixel-meadow.mjs';
 import {realmTree,realmHarvestable,realmAsset,tickRealmHazards,realmTerrainAt} from './realm-world.mjs';
 import {swampSurface} from './swamp-terrain.mjs';
@@ -145,13 +148,19 @@ export function tickEnvironment(g, dt) {
   tickTallGrass(g,dt);
   tickFlamingTrees(g,dt);
   tickForest(g,dt);
-  g.footprints ||= [];
   g.environmentParticles ||= [];
-  g.footprints = g.footprints.filter((f) => g.time - f.time < 18);
   g.environmentParticles = g.environmentParticles.filter(
     (f) => (f.life -= dt) > 0,
   );
   tickSceneryFalls(g,dt);
+  tickTracks(g);
+}
+export function tickTracks(g) {
+  const wildSnow=!!g.trainTest?.design.wildLands;
+  if(wildSnow&&g.trainTest.design.activeRoom)return;
+  const snowOnly=wildSnow||g.generatedEnvironment==='ice';
+  const world=wildSnow?g.trainTest:g;
+  const footprints=world.footprints=(world.footprints||[]).filter(f=>g.time-f.time<18);
   for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
     if(a.kind==='slime'||flies(a)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if (
@@ -162,9 +171,13 @@ export function tickEnvironment(g, dt) {
     )
       continue;
     const feetOffset=a.kind?14:0;
-    if(['water','shallow','floodbridge'].includes(waterAt(g,a.x,a.y+feetOffset))){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
-    if(a.trackImpulse){const point=a.trackImpulse;delete a.trackImpulse;const angle=Math.atan2(a.faceY||0,a.faceX||1);for(const side of [-1,1])g.footprints.push({x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,water:isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind});a.trackPosition={x:a.x,y:a.y};}
-    if(a.jumpHeight>0||a.groundHeight>0||a.swimming){a.trackPosition={x:a.x,y:a.y};continue;}
+    const snow=snowOnly&&snowGroundAt(g,a.x,a.y+feetOffset);
+    if(snowOnly&&!snow||!snowOnly&&['water','shallow','floodbridge'].includes(waterAt(g,a.x,a.y+feetOffset))){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
+    if(wildSnow&&(a.trainRide||a.pirateRide||a.vehicleId||a.trainGround>0)){a.trackPosition={x:a.x,y:a.y};continue;}
+    if(a.trackPosition&&!!a.trackPosition.wildSnow!==wildSnow)a.trackPosition=null;
+    const position=wildSnow?{x:a.x,y:a.y,wildSnow}:{x:a.x,y:a.y};
+    if(a.trackImpulse){const point=a.trackImpulse;delete a.trackImpulse;const angle=Math.atan2(a.faceY||0,a.faceX||1);for(const side of [-1,1])footprints.push({x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,water:!snow&&isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind,...(snow?{snow:true}:{})});a.trackPosition=position;}
+    if(a.jumpHeight>0||a.groundHeight>0||a.swimming||a.flyingMounted){a.trackPosition=position;continue;}
     const last = a.trackPosition;
     if (
       last &&
@@ -173,32 +186,44 @@ export function tickEnvironment(g, dt) {
     ) {
       a.trackSide = -(a.trackSide || 1);
       const angle = Math.atan2(a.y - last.y, a.x - last.x),
-        water = isShallow(waterAt(g, a.x, a.y + feetOffset));
-      g.footprints.push({
+        water = !snow&&isShallow(waterAt(g, a.x, a.y + feetOffset));
+      footprints.push({
         x: a.x + Math.sin(angle) * a.trackSide * 3,
         y: a.y + feetOffset - Math.cos(angle) * a.trackSide * 3,
         angle,
         time: g.time,
         water,
+        ...(snow?{snow:true}:{}),
         animal: !!a.kind,
         purple: a.kind === 'necromancer' || !!a.summonFootprint,
       });
-      a.trackPosition = { x: a.x, y: a.y };
+      a.trackPosition = position;
     } else if (!last || Math.hypot(a.x - last.x, a.y - last.y) >= 100)
-      a.trackPosition = { x: a.x, y: a.y };
+      a.trackPosition = position;
   }
-  if (g.footprints.length > 600)
-    g.footprints.splice(0, g.footprints.length - 600);
+  if (footprints.length > 600)
+    footprints.splice(0, footprints.length - 600);
 }
-export function drawTracks(c, g) {
+export function drawTracks(c, g, visible=()=>true) {
+  const wildSnow=!!g.trainTest?.design.wildLands;
+  if(wildSnow&&g.trainTest.design.activeRoom)return;
   // An active Banshee Queen owns the ground-trail layer while she is alive.
-  if ((g.enemies || []).some(e => e.kind === 'banshee_queen' && e.hp > 0 && !e.room)) return;
-  for (const f of g.footprints || []) {
-    if(['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
+  const banshee=(g.enemies||[]).some(e=>e.kind==='banshee_queen'&&e.hp>0&&!e.room);
+  for (const f of (wildSnow?g.trainTest:g).footprints || []) {
+    if(!visible(f)||banshee&&!f.snow)continue;
+    if(!f.snow&&['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
     const t = g.time - f.time;
     c.save();
     c.translate(f.x, f.y);
-    if (f.water) {
+    if(f.snow){
+      c.globalAlpha*=Math.max(0,1-t/18)*.78;
+      c.rotate(f.angle);
+      c.fillStyle='#eff9f9';c.fillRect(-4,-3,7,6);
+      c.fillStyle='#819eab';c.fillRect(-3,-2,5,4);
+      c.fillStyle='#a6bcc6';c.fillRect(-2,0,5,2);
+      if(f.animal){c.fillRect(2,-2,2,1);c.fillRect(2,1,2,1);}
+      else{c.fillStyle='#637e8b';c.fillRect(-2,-1,1,2);c.fillRect(0,-1,1,2);}
+    } else if (f.water) {
       if (t > 1) {
         c.restore();
         continue;
@@ -227,6 +252,8 @@ export function drawTracks(c, g) {
     }
     c.restore();
   }
+  drawSnowMelt(c,g,visible);
+  if(wildSnow||banshee)return;
   for (const f of g.environmentParticles || []) {
     c.fillStyle = f.kind === "tree" ? "#c29a57" : "#a5aaa2";
     for (let i = 0; i < 6; i++) {
@@ -247,12 +274,20 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
   if(p.kind==='forest_understory'&&(vegetationBlocked(game,p.x,p.rootY??p.y,8)||game.forestLandscape&&!meadowAllowed(game,p.x,p.rootY??p.y,8)))return true;
   // Forest resources use the existing faceted realm rock sprites; the old
   // woodland limestone silhouettes looked pale and marker-like at play scale.
+  if(drawBushFire(c,p,game.time??time,()=>drawForestAsset(c,{...p,procedural:true},time,game)))return true;
   if(p.kind!=='rock'&&(game.generatedEnvironment||game.environment)==='forest'&&!p.depleted&&!p.destroyed&&drawForestAsset(c,p,time,game))return true;
   if(['short_grass','tall_grass','grass'].includes(p.kind)&&vegetationBlocked(game,p.x,p.rootY??p.y+p.size*.4,Math.max(6,(p.size||20)*.35)))return true;
   if(drawRealmProp(c,p,time,game,renderOptions))return true;
   if(p.kind==='rock'&&p.procedural&&!p.depleted&&!p.destroyed&&(game.generatedEnvironment||game.environment)==='forest'){
     const rockKind=terrainHash(p.x,p.y)>.55?'peat_boulder':'limestone_shelf';
-    if(drawRealmProp(c,{...p,kind:rockKind,realm:true},time,game,renderOptions))return true;
+    if(drawRealmProp(c,{...p,kind:rockKind,realm:true},time,game,renderOptions)){
+      const root=p.rootY??p.y+p.size*.19;
+      // Streamed native props already passed the surface mask at their scene
+      // anchor before this paint job was translated to an offscreen origin.
+      const grass=p.nativeSource==='forest'||((game.trainTest||game.terrain&&game.forestLandscape)&&meadowAllowed(game,p.x,root,4));
+      if(grass&&!vegetationBlocked(game,p.x,root,4))drawRockGrass(c,p,root);
+      return true;
+    }
   }
   if(renderOptions.shaderGrass&&p.kind==='tall_grass'&&!p.charred)return true;
   if(drawGrassProp(c,p,time,game.generatedEnvironment||game.environment,game))return true;
@@ -264,7 +299,10 @@ export function drawProp(c, p, time,game={},renderOptions={}) {
     if(p.kind==='palm')drawPalmTree(c,p,time);else drawForestTree(c,p,time,game,tier);
     if((!tier||tier==='roots')&&p.harvest&&!p.falling&&time-(p.hitAt||0)<4){const b=propBase(p);c.fillStyle='#152c25';c.fillRect(b.x-17,b.y+8,34,5);c.fillStyle='#cba568';c.fillRect(b.x-16,b.y+9,32*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}return true;
   }
-  if(p.kind==='bush'){drawBush(c,p,time,{...renderOptions,windStrength:vegetationWindStrength(game)});return true;}
+  if(p.kind==='bush'){
+    if(!drawForestAsset(c,{...p,procedural:true},time,game))drawBush(c,p,time,{...renderOptions,windStrength:vegetationWindStrength(game)});
+    return true;
+  }
   if(p.procedural&&p.kind==='fern'&&(game.generatedEnvironment||game.environment)==='forest'){
     c.save();const base=propBase(p);c.translate(base.x,base.y);c.scale(p.size/48,p.size/48);drawJungleFern(c,{...p,x:0,y:0},time,vegetationWindStrength(game));c.restore();return true;
   }

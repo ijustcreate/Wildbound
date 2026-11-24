@@ -16,6 +16,16 @@ for(const [name,enter]of [['railway',enterTrainTest],['Wild Lands',enterWildLand
 }
 
 test('Wild Lands stations use upright furnished rooms with platform-facing door collision and support',()=>{const {g}=setup(enterWildLands),d=g.trainTest.design,worlds=railwayStations(d);assert.equal(worlds.length,8);for(const world of worlds){const s=world.station,t=world._stationContext,project=(x,y)=>({x:t.x+Math.cos(t.angle)*(x-t.x)-Math.sin(t.angle)*(y-t.y),y:t.y+Math.sin(t.angle)*(x-t.x)+Math.cos(t.angle)*(y-t.y)}),wall=project(s.x+s.w/2-8,s.y-s.h/2+8),door=stationEntrance(s),platformShape=platformSamples(world),a=platformShape[Math.floor(platformShape.length/2)-1],b=platformShape[Math.floor(platformShape.length/2)],platform={x:(a.near.x+a.far.x+b.near.x+b.far.x)/4,y:(a.near.y+a.far.y+b.near.y+b.far.y)/4};assert.ok(stationBlocked(d,wall.x,wall.y));assert.ok(!stationBlocked(d,door.x,door.y));assert.equal(stationDeckAt(d,platform.x,platform.y),10,'support matches the drawn curved platform at '+s.name);assert.ok(s.props.length>=8,'station has a complete themed arrangement');assert.ok(s.props.some(p=>p.kind==='clock'));assert.ok(s.props.some(p=>p.kind==='trunks'));assert.equal(new Set(s.props.map(p=>p.id)).size,s.props.length);}for(let i=0;i<100;i++)tickStationCats(g.trainTest,.05);assert.equal(g.trainTest.stationCats.size,16);assert.ok([...g.trainTest.stationCats.values()].every(c=>Number.isFinite(c.x+c.y)));});
+test('train passengers activate cats near their station and local path searches still finish',()=>{
+ const {g}=setup(enterWildLands),t=g.trainTest;
+ const world=railwayStations(t.design)[0];
+ const rider={x:world.station.x,y:world.station.y,hp:100,trainRide:{car:2}};
+ tickStationCats(t,.05,[{...rider,x:-6000,y:-6000}]);
+ assert.equal(t.stationCats?.size||0,0);
+ for(let i=0;i<150;i++)tickStationCats(t,.05,[rider]);
+ assert.ok(t.stationCats.size>0&&t.stationCats.size<16);
+ assert.ok([...t.stationCats.values()].some(cat=>cat.step>0));
+});
 for(const [name,enter]of [['railway',enterTrainTest],['Wild Lands',enterWildLands]])test(name+' spawns normal enemies near explorers, and weapons work while riding above water',()=>{const {g,p}=setup(enter);const index=EVENTS.findIndex(e=>e.kind==='lion'&&!e.type);assert.ok(index>=0);assert.notEqual(g.spawnEvent(index,{force:true}),false);assert.ok(g.enemies.length>0);assert.ok(g.enemies.every(e=>Math.hypot(e.x-p.x,e.y-p.y)<500));g.enemies=[];p.trainRide={car:2,x:0,y:0};p.swimming=false;g.attack(p);assert.ok(p.attack>0);});
 
 for(const [name,enter]of [['railway',enterTrainTest],['Wild Lands',enterWildLands]])test(name+' uses normal freeze expiry and returns control after thawing',()=>{const {g,p}=setup(enter);p.frozen=.08;p.bansheeIce=.08;for(let i=0;i<6;i++)g.update(.02,{});assert.equal(p.frozen,0);assert.equal(p.bansheeIce,0);g.update(.02,{keyboard:{x:1,dodge:true}});assert.ok(p.dashTime>0);});

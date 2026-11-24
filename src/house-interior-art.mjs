@@ -1,3 +1,4 @@
+import {drawMountedClock,houseClockMount} from './wall-clock.mjs';
 import {WALL_SECTION_SIZE} from './structure-destruction.mjs';
 import {drawInteriorFace,drawInteriorCutawayEdge,paintInteriorMaterial} from './interior-materials.mjs';
 
@@ -96,19 +97,29 @@ function roomEdges(b,rooms,horizontal){
   return hits.some(Boolean)||onRoom?hits:null;
 }
 
-export function drawHouseInteriorWalls(c,house,players=[],visible=()=>true,{always=false}={}){
+export function drawHouseInteriorWalls(c,house,players=[],visible=()=>true,{always=false,clockPass='all'}={}){
   if(!house?.floors?.length)return;
   const rooms=always?house.floors:house.floors.filter(f=>players.some(p=>validPlayer(p,f)));
   if(!rooms.length)return;
+  const clocks=new Map();
+  for(const clock of clockPass==='none'?[]:house.furniture||[]){
+    if(clock.kind!=='wall_clock'||clock.destroyed)continue;
+    const mount=houseClockMount(house,clock);
+    if(!mount)continue;
+    if(!clocks.has(mount.wall))clocks.set(mount.wall,[]);
+    clocks.get(mount.wall).push({x:mount.x,clock});
+  }
   c.save();c.imageSmoothingEnabled=false;
   for(const b of house.walls||[]){
+    if(clockPass==='mounted'&&!clocks.has(b))continue;
     if(b.destroyed||b.kind==='fence'||b.w<2||b.h<2)continue;
     if(!visible({x:b.x+b.w/2,y:b.y+b.h/2},Math.max(b.w,b.h)+52))continue;
     const horizontal=b.w>=b.h,edges=roomEdges(b,rooms,horizontal);
     if(!edges)continue;
     const temple=!!house.temple;
     const north=horizontal&&edges[1];
-    for(const [start,end] of liveSpans(b,horizontal,edges[1])){
+    const spans=liveSpans(b,horizontal,edges[1]);
+    for(const [start,end] of spans){
       const length=end-start;
       if(north){
         if(b.kind==='window'&&b.broken&&!b.sectionDamage)continue;
@@ -119,6 +130,11 @@ export function drawHouseInteriorWalls(c,house,players=[],visible=()=>true,{alwa
         const side=edges[1]?'west':'east';
         drawInteriorCutawayEdge(c,{x:b.x,y:b.y+start,w:b.w,h:length},{side,trim:temple?templeTrim:trim,height:5});
       }
+    }
+    if(north)for(const {x,clock}of clocks.get(b)||[]){
+      if(!spans.some(([start,end])=>x>=b.x+start&&x<b.x+end))continue;
+      const sharedWall=edges[0],size=Math.min(clock.w,clock.h,sharedWall?14:16);
+      drawMountedClock(c,x,b.y+3-(sharedWall?10:17),size);
     }
   }
   c.restore();

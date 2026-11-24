@@ -17,7 +17,7 @@ export function validRecoveryPoint(g,p,point){
 export function rememberSafePositions(g,dt){
   const all=state(g);
   for(const p of g.players||[]){
-    if(p.hp<=0||p.ui||p.trainRide||p.vehicleId||p.broomMount||p.controlledFollowerId||p.jumpHeight>0||p.groundHeight>0||p.roomJumpHeight>0||p.swimming||p.dashTime>0)continue;
+    if(p.hp<=0||p.ui||p.trainRide||p.pirateRide||p.vehicleId||p.broomMount||p.controlledFollowerId||p.jumpHeight>0||p.groundHeight>0||p.roomJumpHeight>0||p.swimming||p.dashTime>0)continue;
     const key=context(g,p);let record=all.get(p.id);
     if(!record||record.context!==key){record={context:key,age:0,last:null,entrance:null};all.set(p.id,record);}
     const point={x:p.room?p.roomX:p.x,y:p.room?p.roomY:p.y};
@@ -29,6 +29,7 @@ export function rememberSafePositions(g,dt){
 export function recoveryReason(g,p){
   if(!p||p.hp<=0)return 'Use Revive and Continue for a fallen explorer.';
   if(g.remoteAuthoritative)return 'The host controls recovery in this expedition.';
+  if(p.pirateRide)return 'Walk ashore before using ground recovery.';
   if(p.trainRide||p.vehicleId||p.broomMount)return 'Stop and leave your vehicle before using ground recovery.';
   if(p.controlledFollowerId)return 'Return control to your explorer before recovering.';
   if(p.ui?.carry)return 'Place or cancel the held inventory item before recovering.';

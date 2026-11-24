@@ -82,9 +82,10 @@ export function spiderAction(a) {
 }
 export function spiderFrame(a,time,m){
  const action=spiderAction(a),cl=m.clips[action]||m.clips.idle;
+ const stride=m.type==='tarantula'?(action==='walk'?18:26):(action==='walk'?42:32);
  return Number.isFinite(a.playerFrame)?a.playerFrame:Number.isFinite(a.poseTime)?a.poseTime*(cl.length-1):
   action==='attack'?Math.max(0,1-(a.attack||0)/.25)*(cl.length-1):action==='hurt'?Math.max(0,1-(a.flash||a.hit||0)/.2)*(cl.length-1):
-  a.moving?(a.step||0)/(m.type==='tarantula'?.13*(action==='walk'?18:26):14)*cl.length:(time+(a.id||0)*.071)*cl.fps;
+  a.moving&&Number.isFinite(a.step)?a.step/(.13*stride)*cl.length:(time+(a.id||0)*.071)*cl.fps;
 }
 export function drawSpider(c,a,time,m,suppliedPose=null) {
  const action=spiderAction(a),frame=spiderFrame(a,time,m);

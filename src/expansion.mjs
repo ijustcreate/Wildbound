@@ -25,15 +25,14 @@ export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elev
  r=from?.vehicleId?Math.max(r,34):r;
  if(!projectile&&boardTableBlocked(g,x,y,r,elevation,from))return true;
  if(overlookBlocked(g,x,y+footOffset,r,elevation,projectile))return true;
- const hit=b=>raisedSurfaceBlocked(b,x,y+footOffset,r);
  const clearsFence=!projectile&&(flying||from?.wingHover&&elevation>=32);
  if((g.house?.walls||[]).some(w=>!(clearsFence&&w.kind==='fence')&&!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y+footOffset,r)))return true;
  if((g.house?.doors||[]).some(d=>!(clearsFence&&d.kind==='gate')&&!d.open&&!canOpenDoors&&sectionBlocked(d,x,y+footOffset,r)))return true;
  return (g.house?.furniture||[]).some(f=>{
-  if(f.destroyed||(f.wallMounted||['rug','plant','wall_clock'].includes(f.kind)))return false;
+  if(f.wallMounted||f.kind==='rug'||f.kind==='plant'||f.kind==='wall_clock'||!sectionBlocked(f,x,y+footOffset,r))return false;
   const height=furnitureHeight(f);
   if(height>0&&elevation>=height)return false;
-  return sectionBlocked(f,x,y+footOffset,r)&&raisedSurfaceBlocked(f,x,y+footOffset,r,height>0&&!projectile?from:null,footOffset);
+  return raisedSurfaceBlocked(f,x,y+footOffset,r,height>0&&!projectile?from:null,footOffset);
  });
 }
 export function breakWindow(g,x,y,r=1){
@@ -158,19 +157,28 @@ export function tickSpider(g,e,dt,visiblePlayers=g.players){
   }
   return true;
 }
+export function drawHousePool(c,g,p){
+ drawWaterSurface(c,g,p.x,p.y,p.w,p.h);
+ c.strokeStyle='#bcece488';c.lineWidth=2;c.strokeRect(p.x+5,p.y+5,p.w-10,p.h-10);
+ c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);
+ c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);
+}
+
 export function drawExpansion(c,g,visible=()=>true,{floorOnly=false,structuresOnly=false,lightPaint=null}={}){
  if(!structuresOnly){
   for(const w of g.webs||[])if(visible(w,w.radius+12))drawGroundWeb(c,w);
   if(!g.house)return;
   if(g.generatedEnvironment==='house'){
     drawHouseFloor(c,g.house);
-    drawHouseInteriorWalls(c,g.house,g.players,visible);
+    drawHouseInteriorWalls(c,g.house,g.players,visible,{clockPass:'none'});
   }else if(g.house.temple)drawHouseInteriorWalls(c,g.house,g.players,visible,{always:true});
-  for(const p of g.house.pools||[]){drawWaterSurface(c,g,p.x,p.y,p.w,p.h);c.strokeStyle='#bcece488';c.lineWidth=2;c.strokeRect(p.x+5,p.y+5,p.w-10,p.h-10);c.strokeStyle='#c1ccbc';c.lineWidth=8;c.strokeRect(p.x-4,p.y-4,p.w+8,p.h+8);c.strokeStyle='#416c75';c.lineWidth=2;c.strokeRect(p.x+3,p.y+3,p.w-6,p.h-6);}
+  for(const p of g.house.pools||[])drawHousePool(c,g,p);
  }
  if(!g.house||floorOnly)return;
  const paint=(shape,draw,key)=>{const run=ctx=>drawBreakable(ctx,g,shape,draw,key);if(lightPaint)lightPaint(c,key.startsWith('furniture:')?{...shape,surfaceArtKey:key}:shape,run);else run(c);};
-  for(const f of g.house.furniture||[]){if(!visible({x:f.x+f.w/2,y:f.y+f.h/2},Math.max(f.w,f.h)+64))continue;paint(f,(pen,shape)=>drawFurniture(pen,shape,g),'furniture:'+JSON.stringify(visibleSurfaceItems(g,f)));}
+  // The clock and its wall face sit in front of the outdoor ground detail.
+  if(g.generatedEnvironment==='house')drawHouseInteriorWalls(c,g.house,g.players,visible,{clockPass:'mounted'});
+  for(const f of g.house.furniture||[]){if(!visible({x:f.x+f.w/2,y:f.y+f.h/2},Math.max(f.w,f.h)+64))continue;if(f.kind==='wall_clock'){drawFurniture(c,f,g);continue;}paint(f,(pen,shape)=>drawFurniture(pen,shape,g),'furniture:'+JSON.stringify(visibleSurfaceItems(g,f)));}
   drawHouseAppliances(c,g);
   const nearby=(g.players||[]).filter(p=>p.hp>0&&!p.room&&!p.vehicleId&&!p.ui).map(p=>surfaceAction(g,p)).filter(Boolean).sort((a,b)=>a.d-b.d)[0];
   if(nearby){const {f,prop}=nearby,label='Interact · '+({kettle:'Cook broth',recipe_book:'Read recipe',candle:prop.lit?'Extinguish candle':'Light candle'}[prop.kind]||'Inspect '+prop.kind.replaceAll('_',' '));

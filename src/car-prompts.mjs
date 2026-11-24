@@ -15,6 +15,7 @@ export function drawCarPrompts(c,g,camera,w,h){
  c.save();c.font='12px monospace';c.textAlign='center';
  const used=new Set();
  for(const p of g.players||[]){
+  if(p.vehicleId)continue;
   const prompt=carInteractionPrompt(g,p);if(!prompt)continue;
   const key=prompt.x+':'+prompt.y+':'+prompt.text;if(used.has(key))continue;used.add(key);
   const width=Math.min(w-16,c.measureText(prompt.text).width+18);

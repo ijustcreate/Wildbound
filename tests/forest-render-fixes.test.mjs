@@ -7,6 +7,7 @@ import {BOARD_TABLE} from '../src/board-table-geometry.mjs';
 import {drawGrassProp} from '../src/tall-grass.mjs';
 import {emptyShadowMaps,makeShadowCanvas} from '../src/realtime-shadows.mjs';
 import {waterAt} from '../src/environment.mjs';
+import {drawBushFire,igniteBushAt} from '../src/bush-fire.mjs';
 
 test('old bridge banks become supported deck without bridging unrelated water',()=>{
  const terrain=Array(2500).fill('grass'),at=20*50;
@@ -16,6 +17,21 @@ test('old bridge banks become supported deck without bridging unrelated water',(
  for(const x of [10,11,12,13]){assert.ok(bridgeAt(g,x*32+16,656));assert.equal(terrainSupport(g,{x:x*32+16,y:656}),10);}
  assert.equal(terrain[at+15],'water');const copy=terrain.slice();connectForestBridgeBanks(terrain);assert.deepEqual(terrain,copy);
  g.weather={type:'monsoon'};assert.equal(waterAt(g,9*32+16,656),'grass','rain preserves dry bridge landing');
+});
+
+test('direct fire scorches one bush and leaves a local mark after the flames and smoke end',()=>{
+ const bush={kind:'bush',x:100,y:100,rootY:106,size:40};
+ const neighbor={kind:'bush',x:116,y:100,rootY:106,size:40};
+ const g={time:4,scenery:[bush,neighbor]};
+ assert.equal(igniteBushAt(g,101,101),true);
+ assert.equal(neighbor.bushBurnAt,undefined);
+ const colors=new Set(),c={globalAlpha:1,save(){},restore(){},fillRect(){colors.add(this.fillStyle);}};
+ assert.equal(drawBushFire(c,bush,4.45,()=>{}),true);
+ assert.ok(colors.has('#ffc268')&&colors.has('#8b9183'));
+ colors.clear();drawBushFire(c,bush,7,()=>{throw Error('Scorched bush redrew live foliage');});
+ assert.ok(colors.has('#3d3c2d'));
+ assert.equal(colors.has('#ffc268'),false);
+ assert.equal(colors.has('#8b9183'),false);
 });
 
 test('board uses its rectangular tabletop and four grounded leg casters, and invalidates on removal',()=>{

@@ -1,22 +1,11 @@
 export const BROOM_SEAT_DROP=2,BROOM_PITCH=.08,BROOM_GRIP_FORWARD=9;
+export {drawWitchHat} from './witch-hat-art.mjs';
 const ink='#252e29',wood='#936335',light='#c29453',straw='#bd8a3f';
 const pixel=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));};
 function line(c,a,b,width,color){const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)));for(let n=0;n<=steps;n++)pixel(c,a.x+(b.x-a.x)*n/steps-width/2,a.y+(b.y-a.y)*n/steps-width/2,width,width,color);}
 export function broomPoint(d,forward,z=0){const a=d*Math.PI/4;return {x:-Math.sin(a)*forward,y:Math.cos(a)*forward*.52-z-forward*BROOM_PITCH};}
 function polygon(c,points,color){const left=Math.floor(Math.min(...points.map(p=>p.x))),right=Math.ceil(Math.max(...points.map(p=>p.x))),top=Math.floor(Math.min(...points.map(p=>p.y))),bottom=Math.ceil(Math.max(...points.map(p=>p.y)));for(let y=top;y<=bottom;y++)for(let x=left;x<=right;x++){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if((a.y>y)!==(b.y>y)&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)inside=!inside;}if(inside)pixel(c,x,y,1,1,color);}}
-export function drawBroom(c,p,d,type='flying_broom'){if(type==='nimbus_2000')return drawNimbus(c,p,d);const nimbus=type==='nimbus_2000',z=p.pelvis.y+BROOM_SEAT_DROP,point=n=>{const q=broomPoint(d,n);return{x:p.pelvis.x+q.x,y:z+q.y};},front=point(nimbus?27:22),rear=point(-23),brush=point(nimbus?-37:-34);line(c,rear,front,4,ink);line(c,rear,front,2,nimbus?'#88532f':wood);line(c,{x:rear.x,y:rear.y-1},{x:front.x,y:front.y-1},1,light);const side={x:Math.cos(d*Math.PI/4),y:Math.sin(d*Math.PI/4)*.52};const rim=(p,w,sign)=>({x:p.x+side.x*w*sign,y:p.y+side.y*w*sign});polygon(c,[rim(rear,3,-1),rim(brush,7,-1),rim(brush,7,1),rim(rear,3,1)],ink);polygon(c,[rim(rear,2,-1),rim(brush,6,-1),rim(brush,6,1),rim(rear,2,1)],nimbus?'#92572d':straw);polygon(c,[rear,rim(brush,5,-1),brush],'#d6a353');for(const n of [-3,2])line(c,rear,rim(brush,Math.abs(n),Math.sign(n)),1,'#967036');line(c,{x:rear.x-side.x*3,y:rear.y-side.y*3},{x:rear.x+side.x*3,y:rear.y+side.y*3},3,'#5d4731');if(nimbus)for(const n of [4,10]){const q=point(n);line(c,rim(q,2,-1),rim(q,2,1),3,'#d9b969');pixel(c,q.x,q.y-1,1,1,'#f6d78f');}}
-// Eight resolved silhouettes: the crown folds toward the back of the facing.
-const witchViews=[
- {brim:[[-11,-5],[-7,-8],[6,-8],[11,-5],[7,-3],[-7,-3]],crown:[[-6,-7],[-4,-13],[0,-21],[3,-17],[3,-13],[6,-7]],light:[[-4,-8],[-2,-13],[0,-18],[0,-12],[3,-8]],buckle:[-1,-8]},
- {brim:[[-12,-5],[-8,-8],[3,-8],[12,-4],[8,-2],[-8,-3]],crown:[[-5,-7],[-3,-13],[4,-18],[10,-18],[5,-14],[3,-9],[6,-6]],light:[[-3,-8],[-1,-12],[4,-16],[7,-17],[2,-12],[1,-8]],buckle:[-3,-8]},
- {brim:[[-12,-5],[-7,-7],[6,-7],[12,-4],[7,-2],[-8,-3]],crown:[[-6,-6],[-3,-13],[5,-19],[11,-18],[7,-14],[4,-8],[6,-6]],light:[[-4,-7],[-1,-12],[5,-17],[7,-17],[3,-12],[2,-7]],buckle:[-5,-7]},
- {brim:[[-10,-8],[-3,-11],[7,-10],[12,-7],[5,-2],[-6,-3]],crown:[[-6,-8],[-6,-12],[0,-15],[9,-14],[13,-13],[6,-10],[3,-7]],light:[[-4,-9],[-3,-12],[1,-13],[8,-13],[3,-11],[1,-8]]},
- {brim:[[-10,-6],[-5,-9],[6,-9],[11,-6],[7,-2],[-6,-2]],crown:[[-6,-8],[-3,-15],[-1,-21],[2,-17],[3,-12],[6,-8]],light:[[-4,-8],[-2,-14],[-1,-17],[0,-12],[3,-8]]},
- {brim:[[-12,-7],[-7,-10],[3,-10],[10,-7],[6,-3],[-5,-3]],crown:[[-6,-7],[-5,-10],[-11,-14],[-12,-16],[-4,-16],[3,-12],[6,-8]],light:[[-3,-8],[-4,-11],[-8,-14],[-4,-14],[1,-11],[3,-8]]},
- {brim:[[-12,-4],[-6,-7],[7,-7],[12,-5],[8,-3],[-7,-2]],crown:[[-6,-6],[-4,-8],[-7,-14],[-11,-18],[-5,-19],[3,-13],[6,-6]],light:[[-2,-7],[-3,-12],[-7,-17],[-5,-17],[1,-12],[4,-7]],buckle:[3,-7]},
- {brim:[[-12,-4],[-3,-8],[8,-8],[12,-5],[8,-3],[-8,-2]],crown:[[-6,-6],[-3,-9],[-5,-14],[-10,-18],[-4,-18],[3,-13],[5,-7]],light:[[-1,-8],[-2,-12],[-7,-17],[-4,-16],[1,-12],[3,-8]],buckle:[2,-8]}
-];
-export function drawWitchHat(c,h,d){const v=witchViews[d],paint=(points,col)=>polygon(c,points.map(([x,y])=>({x:Math.round(h.x)+Math.round(x),y:Math.round(h.y)+Math.round(y)})),col);paint(v.brim,ink);paint(v.brim.map(([x,y])=>[x*.85,-5+(y+5)*.65]),'#647747');paint(v.crown,ink);paint(v.crown.map(([x,y])=>[x*.8,-7+(y+7)*.85]),'#3c523b');paint(v.light,'#5f784a');pixel(c,h.x-5,h.y-8,11,2,'#243a2d');if(v.buckle){pixel(c,h.x+v.buckle[0],h.y+v.buckle[1],3,2,'#b8a15d');pixel(c,h.x+v.buckle[0]+1,h.y+v.buckle[1],1,1,'#43503a');}return true;}
+export function drawBroom(c,p,d,type='flying_broom'){if(type==='firebolt')return drawFirebolt(c,p,d);if(type==='nimbus_2000')return drawNimbus(c,p,d);const z=p.pelvis.y+BROOM_SEAT_DROP,point=n=>{const q=broomPoint(d,n);return{x:p.pelvis.x+q.x,y:z+q.y};},front=point(22),rear=point(-23),brush=point(-34);line(c,rear,front,4,ink);line(c,rear,front,2,wood);line(c,{x:rear.x,y:rear.y-1},{x:front.x,y:front.y-1},1,light);const side={x:Math.cos(d*Math.PI/4),y:Math.sin(d*Math.PI/4)*.52};const rim=(p,w,sign)=>({x:p.x+side.x*w*sign,y:p.y+side.y*w*sign});polygon(c,[rim(rear,3,-1),rim(brush,7,-1),rim(brush,7,1),rim(rear,3,1)],ink);polygon(c,[rim(rear,2,-1),rim(brush,6,-1),rim(brush,6,1),rim(rear,2,1)],straw);polygon(c,[rear,rim(brush,5,-1),brush],'#d6a353');for(const n of [-3,2])line(c,rear,rim(brush,Math.abs(n),Math.sign(n)),1,'#967036');line(c,{x:rear.x-side.x*3,y:rear.y-side.y*3},{x:rear.x+side.x*3,y:rear.y+side.y*3},3,'#5d4731');}
 export function drawNimbus(c,p,d){
  const root={x:p.pelvis.x,y:p.pelvis.y+BROOM_SEAT_DROP},point=(n,z=0)=>{const q=broomPoint(d,n,z);return {x:root.x+q.x,y:root.y+q.y};},side={x:Math.cos(d*Math.PI/4),y:Math.sin(d*Math.PI/4)*.52},edge=(q,w)=>({x:q.x+side.x*w,y:q.y+side.y*w});
  const rear=point(-22),neck=point(-26),middle=point(-35),tail=point(-45,1),shaft=point(23),nose=point(31,2);
@@ -27,4 +16,44 @@ export function drawNimbus(c,p,d){
  line(c,rear,shaft,4,'#35291f');line(c,rear,shaft,2,'#88532f');line(c,{x:rear.x,y:rear.y-1},{x:shaft.x,y:shaft.y-1},1,'#c08a50');line(c,shaft,nose,3,'#35291f');line(c,shaft,nose,1,'#ad783e');
  for(const n of [-22,3,10]){const q=point(n);line(c,edge(q,-2),edge(q,2),3,'#76522e');line(c,edge(q,-1.7),edge(q,1.7),1,'#e3c16e');}
 }
+
+function drawFirebolt(c,p,d){
+ const angle=d*Math.PI/4,sideX=Math.cos(angle),sideY=Math.sin(angle)*.52;
+ const point=(forward,side=0,height=0)=>{
+  const q=broomPoint(d,forward,height);
+  return {x:p.pelvis.x+q.x+sideX*side,y:p.pelvis.y+BROOM_SEAT_DROP+q.y+sideY*side};
+ };
+ const outline='#2e2729',ebony='#4e3934',bronze='#ac794f',iron='#555958';
+ const shape=(points,color)=>polygon(c,points.map(v=>point(...v)),color);
+ const stroke=(a,b,width,color)=>line(c,point(...a),point(...b),width,color);
+ const near=d>=1&&d<=3?1:-1;
+ function stirrup(sign){
+  const curve=[[-16,sign*1,0],[-13,sign*4,-1],[-8,sign*7,-5],[-3,sign*8,-6],[-3,sign*10,-5]];
+  for(let i=1;i<curve.length;i++)stroke(curve[i-1],curve[i],2,outline);
+  for(let i=1;i<curve.length;i++)stroke(curve[i-1],curve[i],1,sign===near?'#909089':iron);
+  stroke(curve[3],curve[4],2,sign===near?'#a5a398':'#747470');
+ }
+ stirrup(-near);
+ shape([[-21,-2],[-28,-5],[-36,-7],[-46,-5,1],[-50,-3,2],[-46,-1,1],[-48,2,1],[-43,5],[-36,6],[-27,4],[-21,2]],outline);
+ shape([[-22,-1],[-29,-4],[-37,-6],[-47,-3,1],[-42,-2,1],[-46,2,1],[-39,5],[-31,4],[-22,1]],'#765642');
+ shape([[-22,-1,1],[-33,-5,1],[-44,-4,2],[-39,0,1],[-32,1,1]],'#a6764e');
+ for(const [tail,fan,height,color] of [[-48,-3,2,'#c49765'],[-45,-1,1,'#72503b'],[-46,2,1,'#b58a5a'],[-40,4,0,'#5b4235']]){
+  stroke([-27,fan*.27,0],[tail,fan,height],1,color);
+ }
+ stroke([-23,0,0],[19,0,0],4,outline);
+ stroke([-22,0,0],[19,0,0],2,ebony);
+ stroke([18,0,0],[33,0,2.3],3,outline);
+ stroke([18,0,0],[32,0,2.3],1,ebony);
+ stroke([-21,-.6,1],[18,-.6,1],1,'#88604a');
+ stroke([18,-.6,1],[31,-.6,3],1,'#9b7355');
+ for(const forward of [13,17,22,26]){
+  const q=point(forward,-.7,1+(forward>20?1:0));
+  pixel(c,q.x,q.y,1,1,bronze);
+ }
+ stroke([-23,-2,0],[-23,2,0],4,'#4a3c36');
+ stroke([-23,-2,1],[-23,1.8,1],2,'#9f7954');
+ stroke([-23,-1.75,2],[-23,1,2],1,'#e5b97a');
+ stirrup(near);
+}
+
 export function drawBroomIcon(c){drawBroom(c,{pelvis:{x:12,y:13}},6);}

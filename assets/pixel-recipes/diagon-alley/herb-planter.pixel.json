@@ -1,0 +1,42 @@
+{
+  "width": 32,
+  "height": 23,
+  "x": -16,
+  "y": -22,
+  "palette": {
+    "o": "#293630",
+    "m": "#533e34",
+    "b": "#825943",
+    "h": "#b58a60",
+    "g": "#314e3d",
+    "p": "#4d6b47",
+    "k": "#729059",
+    "j": "#acb36e",
+    "z": "#c77e4e"
+  },
+  "rows": [
+    "................................",
+    "................................",
+    "...............ppp..............",
+    ".............pppppp.............",
+    ".............pjjjkp.............",
+    "............ppjjjkpp............",
+    "......gg....ppppkppp..gzzg......",
+    ".....ggggg..ppppkpppgggzzgg.....",
+    "....ggkgggggpppkpppgggggggkg....",
+    "....gggkgggppppkpppggggggkggg...",
+    "....ggggkgppppkpppgggggkkgg.g...",
+    ".....ggggkppppkpppggggkggggg....",
+    "..oooggggppppppppgggggggggogo...",
+    "..oooggggppppppppggggggggggooo..",
+    ".oohhhhhhhhhhhhhhhhhhhhhhhhhhoo.",
+    ".oohhhhhhhhhhhhhhhhhhhhhhhhhhoo.",
+    ".ooommmmmmmmmmmmmmmmmmmmmmmmoooo",
+    "..oommbbbbbbbbbbbbbbbbbbmmmmooo.",
+    "..oommbbbbbbbbbbbbbbbbbbmmmmo.o.",
+    "...ommmmmmmmmmmmmmmmmmmmmmmmoo..",
+    "...ooooooooooooooooooooooooo.o..",
+    "....ooooooooooooooooooooooooo...",
+    "................................"
+  ]
+}

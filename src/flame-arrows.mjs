@@ -1,6 +1,6 @@
 import { waterAt, propBase } from './environment.mjs';
 import { ignite } from './hazards.mjs';
-import { igniteTallGrassAt } from './tall-grass.mjs';
+import { heatGround } from './terrain-fire.mjs';
 import { emitGameplayFx } from './gameplay-fx.mjs';
 import { templeLightSources } from './house-lights.mjs';
 import { heldItemWorld } from './player-motion.mjs';
@@ -97,7 +97,7 @@ export function stepArrowFlame(game, arrow, from, getFlames) {
   arrow.flameGrassTravel = (arrow.flameGrassTravel ?? 14) + distance;
   if (arrow.flameGrassTravel >= 14) {
     arrow.flameGrassTravel %= 14;
-    igniteTallGrassAt(game, arrow.x, arrow.y, { trail: true });
+    heatGround(game, arrow.x, arrow.y, { trail: true });
   }
 }
 
@@ -113,7 +113,7 @@ export function flameArrowTargetHit(arrow, target, damage) {
 
 export function flameArrowGroundHit(game, arrow, prop) {
   if (!(arrow.flameDistance > 0) || water.has(waterAt(game, arrow.x, arrow.y))) return;
-  if ((arrow.z || 0) <= 16) igniteTallGrassAt(game, arrow.x, arrow.y);
+  if ((arrow.z || 0) <= 16) heatGround(game, arrow.x, arrow.y);
   if (prop && trees.has(prop.kind) && !prop.fallen && !prop.falling && !prop.depleted) {
     const base = propBase(prop);
     if (Math.hypot(base.x - arrow.x, base.y - arrow.y) <= 23) {

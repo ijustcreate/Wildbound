@@ -6,6 +6,7 @@ import {enterWildLands} from '../src/wild-lands.mjs';
 import {railwayBridgeState} from '../src/train-bridges.mjs';
 import {leaveTrainTest,repairTrain,requestTrainRoute,tickTrainTest,enterTrainTest} from '../src/train-test.mjs';
 import {nearestTrainTrack,trainCars} from '../src/train-track.mjs';
+import {nativeWildBlocked,nativeWildProps,nativeWildWorld} from '../src/wild-native-biomes.mjs';
 
 test('Public Wilds preserves party rewards, player position, train, and site claims through a serialized checkpoint',()=>{
  const game=new Game(()=>.5,{deferWorld:true}),player=game.addPlayer('keyboard');
@@ -38,6 +39,47 @@ test('Public Wilds preserves party rewards, player position, train, and site cla
  assert.ok(t.time>18);
  leaveTrainTest(restored);
  assert.equal(restored.trainTest,t,'developer return cannot discard public Wilds');
+});
+
+test('Wild Lands cemetery stones chip under ordinary attacks and keep their cleared footprints after reload',()=>{
+ const game=new Game(()=>.5,{deferWorld:true}),player=game.addPlayer('keyboard');
+ assert.ok(enterWildLands(game,{persistent:true}).ok);
+ game.openingBoard=false;game.enemies=[];
+ const bounds={left:3400,top:6110,right:3990,bottom:6600};
+ const view=t=>nativeWildProps(t,bounds).filter(p=>p.id.startsWith('cemetery-cache:gravestone:'));
+ const [stone,neighbor]=view(game.trainTest);
+ assert.equal(view(game.trainTest).length,7,'Every landmark headstone is part of the world scenery');
+ const region=nativeWildWorld(game.trainTest,3600,6800,'graveyard');
+ const ordinary=region.props.find(p=>p.kind==='gravestone');
+ assert.deepEqual([stone.size,stone.graveyardFootprint.w,ordinary.size,ordinary.graveyardFootprint.w],[35,26,35,26]);
+ const staticMausoleum=region.props.find(p=>p.kind==='mausoleum');
+ assert.equal(staticMausoleum.graveyardFootprint.w,112);
+ const blocked=(t,p)=>nativeWildBlocked(t,p.x,p.rootY,3);
+ assert.ok(blocked(game.trainTest,stone));
+ let saves=0;game.persist=()=>saves++;
+ player.equipment={hand1:null,hand2:null};
+ const strike=(target,faceY=-1)=>{
+  Object.assign(player,{x:target.x,y:target.rootY+36,faceX:0,faceY});
+  game.update(.05,{keyboard:{attack:true}});
+  game.update(.05,{keyboard:{}});
+  for(let i=0;i<12;i++)game.update(.05,{keyboard:{}});
+ };
+ strike(stone,1);assert.equal(stone.hp,stone.maxHp,'A swing facing away does not strike the tombstone');
+ strike(stone);
+ assert.ok(stone.hp>0&&stone.hp<stone.maxHp);
+ assert.ok(blocked(game.trainTest,stone),'A chipped monument remains solid');
+ for(let i=0;i<6&&!stone.depleted;i++)strike(stone);
+ assert.equal(stone.hp,0);
+ assert.equal(blocked(game.trainTest,stone),false);
+ strike(neighbor);assert.ok(neighbor.hp>0&&neighbor.hp<neighbor.maxHp);
+ const reload=restoreSession(JSON.parse(JSON.stringify(saveSession(game))));
+ const stones=view(reload.trainTest);
+ const destroyed=stones.find(p=>p.id===stone.id),chipped=stones.find(p=>p.id===neighbor.id);
+ assert.equal(destroyed.depleted,true);
+ assert.equal(blocked(reload.trainTest,destroyed),false);
+ assert.equal(chipped.hp,neighbor.hp);
+ assert.equal(blocked(reload.trainTest,chipped),true);
+ assert.ok(saves>=3,'Damage and the break both request a checkpoint');
 });
 
 test('Repair after switching a railway junction resets all carriages to the current route',()=>{

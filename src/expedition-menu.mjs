@@ -6,44 +6,27 @@ export function dailyExpeditionSeed(date = new Date()) {
 }
 
 const MODE_LABELS = [
-  ['wild', 'Wildbound', 'Start at Home and open portals to linked worlds.'],
-  ['classic', 'Classic', 'Start at the board in one destination.'],
-  ['wilds', 'The Wilds', 'Start by the railway and explore on foot or by train.'],
+  ['wild', 'Wildbound', 'A connected, evolving world', 'Start at Home and open portals to linked worlds.'],
+  ['classic', 'Classic', 'A single destination', 'Start at the board in one destination.'],
+  ['wilds', 'The Wilds', 'Explore on foot or by rail', 'Start a fresh expedition in the Homestead and explore on foot or by train.'],
 ];
 
-function paintModeCrest(canvas, mode) {
+function paintRailwayCrest(canvas) {
   const context = canvas.getContext('2d');
   canvas.width = canvas.height = 32;
   const rectangle = (color, x, y, width, height) => {
     context.fillStyle = color;
     context.fillRect(x, y, width, height);
   };
-  if (mode === 'wild') {
-    rectangle('#93d3ac', 3, 6, 26, 20);
-    rectangle('#224938', 6, 9, 20, 14);
-    rectangle('#d5b56a', 10, 15, 12, 11);
-    rectangle('#7c4531', 8, 14, 16, 3);
-    rectangle('#b17852', 11, 11, 10, 3);
-    rectangle('#402c25', 14, 19, 4, 7);
-    rectangle('#efca7d', 4, 12, 3, 3);
-    rectangle('#efca7d', 25, 12, 3, 3);
-  } else if (mode === 'classic') {
-    rectangle('#997044', 3, 20, 26, 6);
-    rectangle('#e8bc76', 4, 20, 24, 2);
-    rectangle('#f1d9a3', 9, 5, 14, 14);
-    rectangle('#c49a5d', 9, 17, 14, 2);
-    for (const [x, y] of [[11, 7], [18, 7], [14, 10], [11, 13], [18, 13]]) rectangle('#523721', x, y, 3, 3);
-  } else {
-    rectangle('#86755e', 4, 22, 24, 3);
-    rectangle('#c6c2a2', 6, 26, 20, 2);
-    rectangle('#577fa1', 7, 8, 10, 15);
-    rectangle('#a1c7d4', 9, 10, 5, 5);
-    rectangle('#376485', 17, 12, 8, 11);
-    rectangle('#99b0ba', 22, 8, 3, 5);
-    rectangle('#f5bf68', 25, 15, 3, 4);
-    rectangle('#262e35', 9, 21, 6, 6);
-    rectangle('#262e35', 20, 21, 6, 6);
-  }
+  rectangle('#86755e', 4, 22, 24, 3);
+  rectangle('#c6c2a2', 6, 26, 20, 2);
+  rectangle('#577fa1', 7, 8, 10, 15);
+  rectangle('#a1c7d4', 9, 10, 5, 5);
+  rectangle('#376485', 17, 12, 8, 11);
+  rectangle('#99b0ba', 22, 8, 3, 5);
+  rectangle('#f5bf68', 25, 15, 3, 4);
+  rectangle('#262e35', 9, 21, 6, 6);
+  rectangle('#262e35', 20, 21, 6, 6);
 }
 
 export function buildExpeditionMenu({panel, member, player, game, select, mode, drawIcon, accept, close, highlight, details}) {
@@ -84,6 +67,12 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
     node('strong', '', title, wrapper);
     if (description) node('small', '', description, wrapper);
   };
+  for (const [variant, file] of [['unrolled', 'frame-unrolled-v1.png'], ['rolled', 'frame-rolled-v2.png']]) {
+    const art = node('img', `expedition-skin ${variant}`);
+    art.src = new URL(`../assets/ui/expedition/${file}`, import.meta.url).href;
+    art.alt = '';
+    art.draggable = false;
+  }
   const header = node('header', 'expedition-header');
   const heading = node('div', 'expedition-title', '', header);
   node('h2', 'expedition-heading', 'Choose Your Adventure', heading);
@@ -92,18 +81,29 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
   exit.textContent = '×';
 
   const body = node('div', 'expedition-body');
+  node('div', 'expedition-adventure-label', 'Adventure Mode', body).setAttribute('aria-hidden', 'true');
   const modeGroup = node('div', 'expedition-modes', '', body);
   modeGroup.setAttribute('role', 'group');
   modeGroup.setAttribute('aria-label', 'Adventure mode');
-  const modeOptions = MODE_LABELS.map(([kind, label, description]) => {
-    const control = button(`expedition-mode expedition-${kind}${kind === 'wild' ? ' wildbound-mode-choice' : ''}`, `${label}. ${description}`, () => {
+  const modeOptions = MODE_LABELS.map(([kind, label, description, accessibleDetails]) => {
+    const control = button(`expedition-mode expedition-${kind}${kind === 'wild' ? ' wildbound-mode-choice' : ''}`, `${label}. ${accessibleDetails}`, () => {
       draft.wild = kind === 'wild';
       draft.wilds = kind === 'wilds';
       update();
     }, modeGroup);
-    const art = node('canvas', 'expedition-crest', '', control);
-    art.setAttribute('aria-hidden', 'true');
-    paintModeCrest(art, kind);
+    if (kind === 'classic') {
+      const art = node('img', 'expedition-crest expedition-sign', '', control);
+      art.alt = '';
+      art.src = new URL('../assets/ui/expedition/classic-sign-v1.png', import.meta.url).href;
+    } else {
+      const art = node('canvas', 'expedition-crest', '', control);
+      art.setAttribute('aria-hidden', 'true');
+      if (kind === 'wilds') paintRailwayCrest(art);
+      else {
+        art.width = art.height = 64;
+        drawIcon(art.getContext('2d'), 'forest', 0, 0, 64);
+      }
+    }
     copy(control, label, description);
     node('span', 'expedition-check', '✓', control).setAttribute('aria-hidden', 'true');
     return control;
@@ -112,6 +112,7 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
   const toggle = button('expedition-boundless map-mode-toggle', 'Boundless World', () => { draft.boundless = !draft.boundless; update(); }, body);
   toggle.setAttribute('role', 'switch');
   copy(toggle, 'Boundless World', 'Explore without world boundaries.');
+  node('i', 'expedition-switch', '', toggle).setAttribute('aria-hidden', 'true');
   const toggleState = node('span', 'expedition-switch-state', 'Off', toggle);
   const today = dailyExpeditionSeed();
   const daily = button('expedition-daily', 'Daily Seed', () => {
@@ -122,6 +123,7 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
   daily.setAttribute('role', 'switch');
   copy(daily, 'Daily Seed', '');
   const dailyInfo = node('small', 'expedition-daily-info', '', daily.querySelector('.expedition-copy'));
+  node('i', 'expedition-switch', '', daily).setAttribute('aria-hidden', 'true');
   const dailyState = node('span', 'expedition-switch-state', '', daily);
 
   const starting = node('section', 'expedition-starting', '', body);
@@ -134,8 +136,11 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
   const describe = option => details?.[option.value] || (option.value === 'random' ? 'Choose a surprise destination.' : `Explore ${optionName(option)}.`);
   const selectedOption = () => options.find(option => option.value === draft.map);
   const showPreview = option => {
-    preview.textContent = option ? `${optionName(option)} · ${describe(option)}` : '';
+    previewName.textContent = option ? optionName(option) : '';
+    previewDetail.textContent = option ? describe(option) : '';
   };
+  const previewName = node('strong', 'expedition-map-name', '', preview);
+  const previewDetail = node('span', 'expedition-map-detail', '', preview);
   for (const option of options) {
     const label = optionName(option);
     const control = button('expedition-map map-choice', `${label}. ${describe(option)}`, () => {
@@ -176,7 +181,7 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
       if (panel.isConnected) done.disabled = false;
     }
   }, footer);
-  done.textContent = 'Accept';
+  done.textContent = '✓ Accept';
   const controls = () => [...panel.querySelectorAll('button')];
   const focusable = () => controls().filter(control => !control.disabled && !control.closest('[hidden]'));
   const currentMode = () => draft.wild ? wild : draft.wilds ? wilds : classic;
@@ -223,12 +228,17 @@ export function buildExpeditionMenu({panel, member, player, game, select, mode, 
 
 function horizontalMapNeighbor(controls, current, direction) {
   const box = current.getBoundingClientRect();
-  return controls.find(control => {
-    if (!control.dataset.map || control === current) return false;
+  let next, nearest = Infinity;
+  for (const control of controls) {
+    if (!control.dataset.map || control === current) continue;
     const candidate = control.getBoundingClientRect();
-    return Math.abs(candidate.top - box.top) < 4 && direction * (candidate.left - box.left) > 0
-      && Math.abs(candidate.left - box.left) <= box.width + 16;
-  });
+    const distance = direction * (candidate.left - box.left);
+    if (Math.abs(candidate.top - box.top) < 4 && distance > 0 && distance < nearest) {
+      next = control;
+      nearest = distance;
+    }
+  }
+  return next;
 }
 
 function verticalNeighbor(controls, current, direction) {

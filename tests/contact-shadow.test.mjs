@@ -13,3 +13,10 @@ test('Jumping leaves shadow on receiving surface and makes it broader and fainte
  assert.ok(air.alpha<rest.alpha&&air.rx>rest.rx);
  const below=actorContact(g,{x:100,y:200,jumpHeight:3},43);assert.equal(below.surface,0);
 });
+test('a projected railway surface receives contact without subtracting its elevation again',()=>{
+ const rest=actorContact(null,{x:100,y:180},43,true,0);
+ const air=actorContact(null,{x:100,y:180,jumpHeight:32},43,true,0);
+ assert.equal(rest.y,181);
+ assert.equal(air.y,rest.y);
+ assert.ok(air.alpha<rest.alpha&&air.rx>rest.rx);
+});

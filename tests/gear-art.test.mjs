@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ITEMS, itemKind } from '../src/items.mjs';
 import { fittedGear, fittedShield, gearPalette, bootFrame, withBootPose } from '../src/gear-art.mjs';
 import { directionalHelmet } from '../src/wearable-art.mjs';
+import { paintItem } from '../src/item-art.mjs';
 import { renderLayers } from '../src/render-order.mjs';
 import { drawPlayer, defaultPlayerMotion, directionVector, poseAt, projectPoint } from '../src/player-motion.mjs';
 
@@ -44,11 +45,13 @@ test('Held items depth-sort independently of arms and relics are not worn in all
 
 test('Every fitted gear piece follows its joint in eight directions without changing item definitions',()=>{
   const before=JSON.stringify(ITEMS);
+  const extendedHeadwear={bone_carver_crown:{x:18,y:22},alley_inkcap:{x:12,y:19},horned_helm:{x:11,y:14},halo:{x:10,y:13}};
   for(const [id,def] of Object.entries(ITEMS)) {
     const kind=itemKind(id);
-    if(!['hat','gloves','boots','shoulder_armor','shield'].includes(kind))continue;
+    const headwear=kind==='hat'||def.style==='witch';
+    if(!headwear&&!['gloves','boots','shoulder_armor','shield'].includes(kind))continue;
     for(let d=0;d<8;d++)for(const side of ['L','R']) {
-      const draw=(c,anchor)=>kind==='hat'?directionalHelmet(c,id,anchor,d):kind==='shield'?fittedShield(c,id,anchor,d,false):fittedGear(c,id,anchor,d,side);
+      const draw=(c,anchor)=>headwear?directionalHelmet(c,id,anchor,d):kind==='shield'?fittedShield(c,id,anchor,d,false):fittedGear(c,id,anchor,d,side);
       const original=raster(c=>draw(c,{x:0,y:0}));
       const moved=raster(c=>draw(c,{x:9,y:-12}));
       assert.ok(original.size>8,id);
@@ -56,12 +59,30 @@ test('Every fitted gear piece follows its joint in eight directions without chan
       for(const [key,color] of original) {
         const [x,y]=key.split(',').map(Number);
         assert.equal(moved.get(`${x+9},${y-12}`),color,id);
-        const extent=id==='bone_carver_crown'?{x:18,y:22}:id==='witch_hat'?{x:13,y:22}:{x:10,y:/horn/.test(ITEMS[id].style||'')?14:12};
+        const extent=def.style==='witch'?{x:13,y:22}:extendedHeadwear[id]||{x:10,y:/horn/.test(def.style||'')?14:12};
         assert.ok(Math.abs(x)<=extent.x&&Math.abs(y)<=extent.y,id);
       }
     }
   }
   assert.equal(JSON.stringify(ITEMS),before);
+});
+
+test('All four witch-hat icons and eight equipped views use their cloth colors',()=>{
+  const ids=['witch_hat','witch_hat_plum','witch_hat_slate','witch_hat_russet'];
+  const pixels=[...Array.from({length:8},(_,direction)=>id=>raster(c=>directionalHelmet(c,id,{x:0,y:0},direction))),
+    id=>raster(c=>paintItem(c,id))];
+  for(const draw of pixels){
+    const variants=ids.map(draw);
+    assert.equal(new Set(variants.map(variant=>JSON.stringify([...variant.values()]))).size,ids.length);
+    for(const [index,variant] of variants.entries()){
+      assert.deepEqual([...variant.keys()],[...variants[0].keys()]);
+      assert.ok([...variant.values()].includes(ITEMS[ids[index]].artColor),ids[index]);
+    }
+  }
+  for(const key of pixels.at(-1)('witch_hat').keys()){
+    const [x,y]=key.split(',').map(Number);
+    assert.ok(x>=0&&x<24&&y>=0&&y<24);
+  }
 });
 
 test('Dye changes fitted material while retaining the outline and distinct light/shadow ramps',()=>{

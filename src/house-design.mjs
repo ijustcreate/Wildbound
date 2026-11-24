@@ -1,3 +1,4 @@
+import {CLOCK_FACE_SIZE} from './wall-clock.mjs';
 import {ensureHouseChristmas} from './holiday-decor.mjs';
 export const HOUSE_KEY='wildbound-house-designs-v1';
 export const HOUSE_STATE_KEY='wildbound-house-state-v1';
@@ -36,7 +37,13 @@ export const LOW_FURNITURE={bed:12,table:16,desk:16,sofa:10,chair:8,bench:8,coun
 export function furnitureHeight(f){return f.jumpable!==false&&LOW_FURNITURE[f.kind]?Math.max(6,Math.min(f.lobbySurface?100:18,Number(f.surfaceHeight)||LOW_FURNITURE[f.kind])):0;}
 export function upgradeHouseFeatures(h){
  ensureHouseChristmas(h);
- if(!h.clockVersion){h.clockVersion=1;const wall=h.walls.find(w=>w.w>w.h&&w.w>=60);if(wall&&!(h.furniture||[]).some(f=>f.kind==='wall_clock'))(h.furniture??=[]).push({kind:'wall_clock',x:wall.x+Math.min(wall.w-34,36),y:wall.y+4,w:28,h:28,wallMounted:true});}
+ if(!h.clockVersion){
+  h.clockVersion=1;
+  const wall=h.walls.find(w=>w.w>w.h&&w.w>=60&&(!w.kind||w.kind==='wall'));
+  if(wall&&!(h.furniture||[]).some(f=>f.kind==='wall_clock'))(h.furniture??=[]).push({
+   kind:'wall_clock',x:wall.x+36,y:wall.y+4,w:CLOCK_FACE_SIZE,h:CLOCK_FACE_SIZE,wallMounted:true,
+  });
+ }
  if((h.lightingVersion||0)<2){
   h.lightingVersion=2;
   if(!(h.furniture||[]).some(f=>['lamp','ceiling_light'].includes(f.kind)))for(const floor of h.floors||[]){

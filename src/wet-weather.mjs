@@ -13,6 +13,10 @@ export function weatherIntensity(g){
 export function sheltered(g,a){return !!a.room||(g.house?.floors||[]).some(f=>a.x>=f.x&&a.x<f.x+f.w&&a.y>=f.y&&a.y<f.y+f.h);}
 export function rainExposed(g,a){return rainActive(g)&&!sheltered(g,a);}
 export function wetWeatherState(g){let s=states.get(g);if(!s||s.seed!==g.seed||s.terrain!==g.terrain){s={seed:g.seed,terrain:g.terrain,actors:new WeakMap(),drops:[],puddles:[],timer:0};states.set(g,s);}return s;}
+export function inRainPuddle(g,x,y){
+ const s=states.get(g);
+ return !!s&&s.seed===g.seed&&s.terrain===g.terrain&&s.puddles.some(p=>Math.hypot(x-p.x,(y-p.y)*1.6)<p.radius*Math.min(1,p.life/15));
+}
 export function tickWetWeather(g,dt){
  const s=wetWeatherState(g),raining=rainActive(g);s.timer-=dt;
  // A few fixed roof leaks, not an indoor rain sheet.
@@ -36,7 +40,7 @@ export function tickWetWeather(g,dt){
    const seed=terrainHash(a.x+(g.time||0)*37,a.id||0);
    s.drops.push({x:(a.room?a.roomX:a.x)+(seed-.5)*12,y:(a.room?a.roomY:a.y)-6-seed*22,z:6+seed*22,vy:8,life:.65,room:a.room||null});
   }
-  if(a.moving&&!a.room&&!(a.jumpHeight>2)&&s.puddles.some(p=>Math.hypot(a.x-p.x,(a.y-p.y)*1.6)<p.radius*Math.min(1,p.life/15))){
+  if(a.moving&&!a.room&&!(a.jumpHeight>2)&&inRainPuddle(g,a.x,a.y)){
    state.splash=(state.splash||0)-dt;if(state.splash<=0){state.splash=.18;for(let n=0;n<3;n++)s.drops.push({x:a.x+(n-1)*3,y:a.y,z:0,vy:-20-n*5,life:.4,room:null});}
   }
  }

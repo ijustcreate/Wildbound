@@ -1,4 +1,6 @@
 import {block as b, shape as p, line, casework} from './diagon-shop-brush.mjs';
+import {paintWizardingShopIcon} from './wizarding-shop-art.mjs';
+import {FLOURISH_SPELLBOOK_STOCK} from './wizarding-shop-goods.mjs';
 
 // Native 1px grid and the Ollivanders upper-left light. Bowed oak shelves
 // frame a burgundy reading nook, with moss paint and paper leading the eye.
@@ -28,7 +30,12 @@ function bowedCase(c) {
   for (const [i,y] of [-51,-37,-23].entries()) {
     const dimensions = [[5,10],[3,9],[6,12],[4,8],[4,11],[6,9],[3,12],[5,8],[4,10]];
     let x=-24;
-    for (const [j,[w,h]] of dimensions.entries()) {
+    if(i===2){
+      for(const [type] of FLOURISH_SPELLBOOK_STOCK){
+        c.save();c.translate(x,y-8);c.scale(.48,.6);paintWizardingShopIcon(c,type);c.restore();
+        x+=12;
+      }
+    }else for (const [j,[w,h]] of dimensions.entries()) {
       shelfBook(c,x,y+6-h,w,h,(i*3+j)%4);
       x+=w+1;
     }

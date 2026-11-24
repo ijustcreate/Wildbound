@@ -2,19 +2,27 @@ import {drawGoldenTicketIcon} from './train-conductor-art.mjs';
 import {drawCarvedBoneIcon,drawCarverCrown} from './bone-carver-art.mjs';
 import {drawChocolateFrogIcon} from './frog-art.mjs';
 import {paintSchoolUniformIcon} from './train-students-art.mjs';
-import {drawBroomIcon,drawBroom,drawWitchHat} from './broom-art.mjs';
+import {drawBroomIcon,drawBroom} from './broom-art.mjs';
+import {drawWitchHatIcon} from './witch-hat-art.mjs';
 import {paintSkeletonItem} from './skeleton-item-art.mjs';
 import {paintReaperItem} from './reaper-art.mjs';
 import {paintChristmasItem} from './christmas-art.mjs';
 import {paintGhostItem} from './ghost-art.mjs';
 import { ITEMS, itemKind } from "./items.mjs";
-import { mixGearColor, paintGearIcon } from './gear-art.mjs';
+import { gearPalette, mixGearColor, paintGearIcon } from './gear-art.mjs';
+import { drawHeadwearIcon } from './headwear-art.mjs';
 import {paintSuccubusItem} from './succubus-attachments.mjs';
 import {detailRaster,materialIndex,humanoidArtStatus} from './humanoid-hd.mjs';
 import {paintKeeperItem} from './keeper-gear-art.mjs';
 import {paintPumpkinItem} from './pumpkin-art.mjs';
 import {paintCursedAxeIcon} from './cursed-axe-art.mjs';
 import {overlookNorth} from './overlook-maze-layout.mjs';
+import {paintWizardingItem} from './wizarding-item-art.mjs';
+import {paintWizardingShopIcon} from './wizarding-shop-art.mjs';
+import {paintDeathEaterMaskIcon} from './death-eater-masks.mjs';
+import {paintDiagonCritterIcon} from './diagon-critter-art.mjs';
+import {EMPORIUM_OWLS} from './owl-emporium.mjs';
+import {WRONG_TURN_KEY,drawWrongTurnKeyIcon} from './wrong-turn-key.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -41,6 +49,8 @@ for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
   const custom=ITEMS[type]?.artPixels;if(Array.isArray(custom)&&custom.length===576){custom.forEach((color,i)=>{if(typeof color==='string'&&/^#[0-9a-f]{6}$/i.test(color)){c.fillStyle=color;c.fillRect(i%24,Math.floor(i/24),1,1);}});return;}
+  if(ITEMS[type]?.style==='witch')return drawWitchHatIcon(c,type);
+  if(ITEMS[type]?.slot==='head'&&drawHeadwearIcon(c,type,gearPalette(type)))return;
   if(ITEMS[type]?.blankExplorer){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     r(8,2,8,7,'#414b4d');r(9,3,6,5,'#8b9596');r(5,9,14,8,'#414b4d');r(6,10,12,6,'#858f90');r(7,16,4,6,'#697476');r(13,16,4,6,'#697476');r(11,4,2,1,'#b7c0bf');r(12,5,1,1,'#b7c0bf');r(11,7,1,1,'#b7c0bf');return;
@@ -72,6 +82,7 @@ export function paintItem(c, type) {
   }
   if(['cave_crystal_shard','veil_shard'].includes(type)){const veil=type==='veil_shard';c.fillStyle=veil?'#34273f':'#244b50';c.fillRect(7,5,10,15);c.fillRect(10,2,5,20);c.fillStyle=veil?'#9f78b8':'#73bdb9';c.fillRect(8,7,5,12);c.fillRect(11,3,3,16);c.fillStyle=veil?'#d4b5e2':'#caeade';c.fillRect(9,8,2,8);c.fillRect(12,4,1,5);if(veil){c.fillStyle='#211e34';c.fillRect(12,12,4,2);c.fillRect(10,14,3,2);}else{c.fillStyle='#4f949e';c.fillRect(3,13,4,8);c.fillStyle='#a6e5d9';c.fillRect(4,12,2,7);}return;}
 
+  if(type===WRONG_TURN_KEY)return drawWrongTurnKeyIcon(c);
   if(type==='car_key'){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     r(4,4,9,9,'#59452c');r(5,5,7,7,'#e6c66f');r(7,7,3,3,'#59452c');
@@ -148,14 +159,32 @@ export function paintItem(c, type) {
 }
 function iconPart(c,paint,sx,sy,ox,oy){const pen={fillStyle:'',fillRect(x,y,w,h){const left=Math.max(0,Math.round(ox+x*sx)),top=Math.max(0,Math.round(oy+y*sy)),right=Math.min(24,Math.max(left+1,Math.round(ox+(x+w)*sx))),bottom=Math.min(24,Math.max(top+1,Math.round(oy+(y+h)*sy)));if(right>left&&bottom>top){c.fillStyle=this.fillStyle;c.fillRect(left,top,right-left,bottom-top);}}};paint(pen);}
 function paintItemBase(c, type) {
+  if(type==='vault_champion_draught'){
+    const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    r(9,1,6,5,'#41342c');r(10,2,4,3,'#b68554');r(9,6,6,2,'#b5a283');
+    r(6,9,12,12,'#372e32');r(8,7,8,15,'#372e32');r(5,12,14,6,'#372e32');
+    r(7,10,10,10,'#9b5136');r(8,9,8,9,'#e3a252');r(10,9,2,10,'#f6d98c');r(16,12,2,7,'#773e38');
+    r(9,13,6,4,'#735068');r(11,12,2,6,'#f4cf77');r(10,14,4,2,'#f4cf77');
+    r(8,21,8,1,'#cf9855');r(18,5,2,4,'#f1c874');r(17,6,4,2,'#f1c874');return;
+  }
+  if(paintWizardingItem(c,type)||paintWizardingShopIcon(c,type))return;
+  if(paintDeathEaterMaskIcon(c,type))return;
+  if(paintDiagonCritterIcon(c,type))return;
   if(type==='golden_train_ticket'){drawGoldenTicketIcon(c);return;}
   if(paintSchoolUniformIcon(c,type))return;
   if(ITEMS[type]?.scarf){const [base,trim]=ITEMS[type].scarf;c.fillStyle='#302b31';c.fillRect(5,3,14,6);c.fillRect(6,7,5,15);c.fillRect(14,7,5,12);c.fillStyle=base;c.fillRect(6,4,12,4);c.fillRect(7,8,3,13);c.fillRect(15,8,3,10);c.fillStyle=trim;for(const y of [5,11,17]){c.fillRect(7,y,3,2);if(y<17)c.fillRect(15,y,3,2);}return;}
   if(type==='chocolate_frog'){drawChocolateFrogIcon(c);return;}
-  if(type==='caught_snowy_owl'){
+  if(type==='caught_snowy_owl'||ITEMS[type]?.owlCage){
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
+    const owl=EMPORIUM_OWLS[type],small=owl?.variant==='pigwidgeon',horned=owl?.variant==='archimedes';
+    const feather=owl?.color||'#e3e7d9',mask=small?'#d6b68b':horned?'#cda16a':'#f5eed9';
     r(4,8,18,14,'#343b33');r(5,4,15,5,'#343b33');r(8,2,9,3,'#343b33');r(10,0,5,2,'#af935f');
-    r(5,8,15,12,'#29403d');r(8,10,10,9,'#e3e7d9');r(7,8,12,6,'#f5eed9');r(9,10,2,2,'#dcb95c');r(15,10,2,2,'#dcb95c');r(10,10,1,2,'#2a3435');r(15,10,1,2,'#2a3435');
+    r(5,8,15,12,'#29403d');
+    r(small?9:8,small?13:10,small?8:10,small?6:9,feather);
+    if(horned){r(7,6,2,4,feather);r(17,6,2,4,feather);}
+    r(small?8:7,small?12:8,small?10:12,small?5:6,mask);
+    const eyes=small?13:10;
+    r(9,eyes,2,2,'#e8b558');r(15,eyes,2,2,'#e8b558');r(10,eyes,1,2,'#2a3435');r(15,eyes,1,2,'#2a3435');
     for(const x of [4,11,20]){r(x,8,2,13,'#9a7a4b');r(x,9,1,11,'#dcc185');}r(5,5,3,4,'#ba9b65');r(8,3,9,2,'#d5ba82');r(18,5,3,4,'#9a7a4b');
     r(2,20,21,4,'#413c2d');r(3,20,19,1,'#dcc185');r(3,21,18,2,'#88603c');r(14,14,4,4,'#d3ad61');r(15,15,1,2,'#675038');return;
   }
@@ -169,7 +198,6 @@ function paintItemBase(c, type) {
   if(ITEMS[type]?.carvedAnimal){drawCarvedBoneIcon(c,ITEMS[type].carvedAnimal);return;}
   if(type==='bone_carver_crown'){iconPart(c,p=>drawCarverCrown(p,{x:0,y:0},0),.8,.6,12,10);return;}
   if(type==='flying_broom'||type==='mounted_broom'){iconPart(c,p=>drawBroom(p,{pelvis:{x:0,y:0}},6),.34,.9,14,10);if(type==='mounted_broom'){c.fillStyle='#6aa27f';c.fillRect(17,3,5,4);c.fillStyle='#dcebc9';c.fillRect(18,4,2,1);}return;}
-  if(type==='witch_hat'){iconPart(c,p=>drawWitchHat(p,{x:0,y:0},0),.8,.8,12,19);return;}
   if(type==='coffin_lid_shield') {
     const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);};
     // Narrow head, broad shoulders and a tapered foot: a coffin lid, not a kite.
@@ -266,6 +294,13 @@ function paintItemBase(c, type) {
     c.fillRect(x, y, w, h);
   };
   if(type==='azure_bead'){r(10,2,4,4,'#b8a578');r(6,7,12,12,'#256981');r(4,10,16,6,'#256981');r(8,8,8,9,'#68d9ed');r(8,8,3,3,'#ddfaff');r(10,19,4,2,'#184c65');return;}
+  if(type==='tideglass_lens'){
+    r(9,2,6,2,'#5c5247');r(6,4,12,2,'#7c6654');r(4,6,16,12,'#795e4a');
+    r(3,9,18,6,'#544a43');r(6,6,12,12,'#cc9c70');r(6,8,12,8,'#33666c');
+    r(8,6,8,12,'#4b929d');r(9,7,6,10,'#6ecccb');r(8,7,5,3,'#b9ede1');
+    r(11,10,5,3,'#9bd9d0');r(15,13,3,3,'#376c8b');r(6,18,12,2,'#765c4d');
+    r(9,20,6,2,'#494641');r(10,2,4,2,'#c79c73');return;
+  }
   if(type==='moon_prism'){for(let y=3;y<22;y++){const w=Math.max(1,7-Math.abs(y-12)*.7)|0;r(12-w,y,w*2+1,1,y<12?'#a8a0ee':'#625baf');}r(11,5,2,12,'#e0dbff');return;}
   if(type==='starheart'){r(10,2,4,20,'#5cb9a0');r(2,10,20,4,'#5cb9a0');r(6,6,12,12,'#5cb9a0');r(8,8,8,8,'#a2f3d4');r(10,6,3,10,'#efffea');r(6,10,11,3,'#efffea');return;}
   if(type==='ritual_dagger'){r(11,2,3,12,'#91efcf');r(9,5,2,7,'#3e9b89');r(8,13,9,3,'#ddb457');r(11,16,3,5,'#78563f');r(10,20,5,2,'#eabf5c');return;}

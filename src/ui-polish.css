@@ -144,20 +144,13 @@ body:has(#settings-dialog[open]) #settings-button{visibility:hidden}
 }
 /* On exceptionally short windows content scrolls instead of disappearing. */
 @media (max-height:370px) {
-  .hero-panel.inventory-redesign.inventory-workbench {overflow-y:auto!important;grid-template-rows:auto auto minmax(276px,1fr) 32px 48px auto!important;}
+  .hero-panel.inventory-redesign.inventory-workbench {overflow-y:auto!important;}
 }
 .hero-panel.vending-refresh .vending-machine {overflow:hidden;}
-.hero-panel.inventory-redesign.inventory-workbench.inventory-tight {grid-template-rows:auto auto minmax(0,1fr) 26px 44px auto;}
 .hero-panel.vending-refresh :is(.vending-canvas,.vending-falling) {width:100%;height:100%;object-fit:contain;}
 .hero-panel.vending-refresh .vending-slots button:is(.selected,:focus-visible),
 .hero-panel.scrap-shop .robot-item-slot:is(.selected,:focus-visible) {outline:2px solid #f3ce75;outline-offset:-2px;border-color:#f3ce75!important;box-shadow:inset 0 0 0 3px #162d20;}
 /* Map setup uses the room's available height, with all choices visible. */
-/* Keep transaction feedback from resizing the character preview and item wells. */
-.hero-panel.inventory-redesign.inventory-workbench,
-.hero-panel.inventory-redesign.inventory-workbench.inventory-tight {grid-template-rows:auto auto minmax(0,1fr) 17px 44px auto!important;}
-.hero-panel.inventory-redesign.inventory-workbench>.inventory-selection {display:block;grid-template-rows:none;min-height:0;padding:2px 0;background:none;border:0;}
-.hero-panel.inventory-redesign.inventory-workbench>.inventory-selection.status-empty {visibility:hidden;}
-.hero-panel.inventory-redesign.inventory-workbench .inventory-selection>.storage-notice {white-space:normal;line-height:13px!important;max-height:13px!important;overflow:auto;}
 .hero-panel.scrap-shop {grid-template-rows:auto auto 82px 92px minmax(0,1fr) 40px auto auto!important;}
 .hero-panel.scrap-shop.inventory-compact {grid-template-rows:auto auto 58px 70px minmax(0,1fr) 36px auto auto!important;}
 .hero-panel.scrap-shop.inventory-tight {grid-template-rows:auto auto 40px 56px minmax(0,1fr) 30px auto auto!important;}

@@ -31,7 +31,7 @@ export function seedCoastalCritters(g,limit=18){
   }
   return animals;
 }
-export function tickCoastalCritter(g,a,dt,time,target){
+export function tickCoastalCritter(g,a,dt,time,target,habitat=coastalHabitat){
   const threat=(g.players||[]).filter(p=>p.hp>0&&!p.room).map(p=>({p,d:Math.hypot(p.x-a.x,p.y+14-a.y)})).filter(v=>v.d<75).sort((x,y)=>x.d-y.d)[0];
   const t=time+a.phase;
   let dx=(target?.x??a.homeX)+Math.sin(t*.65)*36-a.x,dy=(target?.y??a.homeY)+Math.cos(t*.45)*18-a.y;
@@ -40,7 +40,7 @@ export function tickCoastalCritter(g,a,dt,time,target){
   a.moving=false;
   for(const [mx,my] of [[dx/length*step,dy/length*step],[dx/length*step,0],[0,dy/length*step]]){
     const x=a.x+mx,y=a.y+my;
-    if(Math.abs(mx)+Math.abs(my)<.001||!coastalHabitat(g,a.kind,x,y))continue;
+    if(Math.abs(mx)+Math.abs(my)<.001||!habitat(g,a.kind,x,y))continue;
     a.x=x;a.y=y;a.faceX=mx||a.faceX;a.moving=true;break;
   }
 }

@@ -70,11 +70,15 @@ import {oathlessCaptainMotion,defaultOathlessCaptainMotion,replaceOathlessCaptai
 import {safariHunterMotion,defaultSafariHunterMotion,replaceSafariHunterMotion,drawSafariHunter} from './safari-hunter-motion.mjs';
 import {alanMotion,defaultAlanMotion,replaceAlanMotion,drawAlan} from './alan-motion.mjs';
 import {villagerMotion,defaultVillagerMotion,replaceVillagerMotion,drawVillager} from './villager-motion.mjs';
+import {alleyGoblinMotion,defaultAlleyGoblinMotion,replaceAlleyGoblinMotion,drawAlleyGoblin} from './alley-goblin-motion.mjs';
+import {gloamwhiskerMotion,defaultGloamwhiskerMotion,replaceGloamwhiskerMotion,drawGloamwhisker} from './gloamwhisker-motion.mjs';
 import {slimeMotion,defaultSlimeMotion,replaceSlimeMotion,drawSlime} from './slime-motion.mjs';
 import { CREATURE_PACK_SUBJECTS } from './creature-packs/index.mjs';
 import {ARENA_SUBJECTS} from './tv-arena-creatures.mjs';
 export const RIG_SUBJECTS = {
   ...ARENA_SUBJECTS,
+  alley_goblin:{name:'Alley goblin / short humanoid',data:alleyGoblinMotion,defaults:defaultAlleyGoblinMotion,replace:replaceAlleyGoblinMotion,draw:drawAlleyGoblin,sprite:'alley_goblin',selected:'head',palette:['legs'],shapeKeys:['bodyWidth'],tracks:['head','handL','handR','footL','footR'],clip:'idle',scale:7},
+  gloamwhisker_rat:{name:'Gloamwhisker rat / Nocturne critter',data:gloamwhiskerMotion,defaults:defaultGloamwhiskerMotion,replace:replaceGloamwhiskerMotion,draw:drawGloamwhisker,sprite:'gloamwhisker_rat',selected:'head',palette:Object.keys(gloamwhiskerMotion.palette),shapeKeys:Object.keys(gloamwhiskerMotion.shape),tracks:['head','frontPawR','rearPawL','tailTip'],clip:'walk',scale:10},
  graveyard_cat:{name:'Cemetery cat / Honey rig',data:honeyCatMotion,defaults:defaultHoneyCat,replace:replaceHoneyCat,draw:drawHoneyCat,sprite:'graveyard_cat',selected:'head',palette:Object.keys(honeyCatMotion.palette),shapeKeys:Object.keys(honeyCatMotion.shape),tracks:['head','tailTip','frontPawL','rearPawR'],clip:'walk',scale:6},
  marsh_firefly:{name:'Marsh fireflies / drifting lights',data:fireflyMotion,defaults:defaultFireflyMotion,replace:replaceFireflyMotion,draw:drawFireflyRig,sprite:'marsh_firefly',selected:'lightA',palette:Object.keys(fireflyMotion.palette),shapeKeys:Object.keys(fireflyMotion.shape),tracks:['lightA','lightB','lightC'],clip:'fly',scale:6},
   ghost:{name:'Ghost / spectral humanoid',data:ghostMotion,defaults:defaultGhostMotion,replace:replaceGhostMotion,draw:drawGhost,sprite:'ghost',selected:'head',palette:['head','body','arms','legs'],tracks:['handL','handR','footL','footR'],clip:'claw',scale:5},

@@ -17,6 +17,28 @@ export const PAD_NAMES = [
   "D-right",
 ];
 export const DEFAULT_MAPPING = {attack:2,jump:0,dodge:7,loot:1,trap:10,interact:3,pause:9,board:14,potion:4,block:6,controlCycle:5,inventory:8,portal:12,bait:13,field:11};
+const TRAIN_CAB_ACTIONS=['jump','attack','dodge','interact','pause'];
+export const isDpadButton=index=>index>=12&&index<=15;
+
+export function trainCabButtons(mapping=DEFAULT_MAPPING){
+  const bindings={},used=new Set();
+  for(const action of TRAIN_CAB_ACTIONS){
+    const index=mapping[action]??DEFAULT_MAPPING[action];
+    if(!isDpadButton(index)&&!used.has(index)){bindings[action]=index;used.add(index);}
+  }
+  for(const action of TRAIN_CAB_ACTIONS){
+    if(bindings[action]!==undefined)continue;
+    // A direction remapped elsewhere still cannot take over the cab's D-pad.
+    const index=[DEFAULT_MAPPING[action],0,2,3,7,9,4,5,6,8,10,11].find(i=>!used.has(i));
+    bindings[action]=index;used.add(index);
+  }
+  return bindings;
+}
+
+export function trainCabThrottleY(pad,stickY){
+  const up=!!pad.buttons[12]?.pressed,down=!!pad.buttons[13]?.pressed;
+  return up||down?Number(down)-Number(up):stickY;
+}
 const MAPPING_VERSION = 1;
 export const KEYBOARD_ACTION_CODES = {bait:'KeyT'};
 const PREVIOUS_MAPPING = {...DEFAULT_MAPPING,dodge:7,board:4,potion:5,block:6};

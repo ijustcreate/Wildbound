@@ -12,7 +12,15 @@ import {trainWorld} from './train-track.mjs';
 export const TRAIN_ART_SIZE={width:560,height:300,x:280,y:210};
 export const trainViewAngle=i=>Math.PI/2+i*Math.PI/4;
 export const trainViewIndex=a=>((Math.round((a-Math.PI/2)/(Math.PI/4))%8)+8)%8;
-const shade=(hex,k)=>'#'+[1,3,5].map(i=>Math.round(Math.max(0,Math.min(255,parseInt(hex.slice(i,i+2),16)*k))).toString(16).padStart(2,'0')).join('');
+const shades=new Map();
+function shade(hex,k){
+ const key=hex+':'+Math.round(k*1024);
+ if(shades.has(key))return shades.get(key);
+ const value='#'+[1,3,5].map(i=>Math.round(Math.max(0,Math.min(255,parseInt(hex.slice(i,i+2),16)*k))).toString(16).padStart(2,'0')).join('');
+ if(shades.size>=4096)shades.delete(shades.keys().next().value);
+ shades.set(key,value);
+ return value;
+}
 const pixel=n=>Math.round(n);
 function painter(ctx,car,{riders=[],world=null,occlusionOnly=false,exteriorFront=false,signatureOnly=false,visibilityBits=null,riderClip=null,maskFaces=null,actorMask=false,opaqueFaces=null,opaqueLines=null,wallVisibility=null,primitiveSink=null,occlusionCapture=false}={}){
  let wallDrawing=false;const a=car.a,ca=Math.cos(a),sa=Math.sin(a),project=([x,y,z=0])=>[pixel(ca*x-sa*y),pixel(sa*x+ca*y-z)];
@@ -20,9 +28,9 @@ function painter(ctx,car,{riders=[],world=null,occlusionOnly=false,exteriorFront
  const maskTransform=opaqueFaces?ctx.getTransform():null;
  const record=points=>{const m=maskTransform,face=points.map(([x,y])=>[m.a*x+m.c*y+m.e,m.b*x+m.d*y+m.f]);if(face.every(p=>p[0]<-1)||face.every(p=>p[0]>ctx.canvas.width+1)||face.every(p=>p[1]<-1)||face.every(p=>p[1]>ctx.canvas.height+1))return;opaqueFaces.push(face);};
  const path=points=>{ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();};
- function line(vertices,color,width=2){
+ function line(vertices,color,width=2,seatCushionId=null){
   if(signatureOnly||occlusionOnly&&!wallDrawing)return;
-  if(primitiveSink){primitiveSink({kind:'line',points:vertices,color,width,alpha:ctx.globalAlpha});return;}
+  if(primitiveSink){primitiveSink({kind:'line',points:vertices,color,width,alpha:ctx.globalAlpha,seatCushionId});return;}
   if(!riderClip&&!maskFaces&&!actorMask){const points=vertices.map(project);for(let i=1;i<points.length;i++)pixelLine(ctx,{x:points[i-1][0],y:points[i-1][1]},{x:points[i][0],y:points[i][1]},color,width);return;}
   const segments=riderClip?clipTrainLine(vertices,a,riderClip):vertices.slice(1).map((p,i)=>[vertices[i],p]);
   for(const segment of segments){
@@ -31,15 +39,15 @@ function painter(ctx,car,{riders=[],world=null,occlusionOnly=false,exteriorFront
    if(actorMask)ctx.globalCompositeOperation='source-atop';ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';ctx.stroke();
   }
  }
- function poly(vertices,color,outline=false){
+ function poly(vertices,color,outline=false,seatCushionId=null){
   if(signatureOnly||occlusionOnly&&!wallDrawing)return;
-  if(primitiveSink){primitiveSink({kind:'poly',points:vertices,color,alpha:ctx.globalAlpha});if(outline)line([...vertices,vertices[0]],outline===true?'#20242c':outline,1.5);return;}
+  if(primitiveSink){primitiveSink({kind:'poly',points:vertices,color,alpha:ctx.globalAlpha,seatCushionId});if(outline)line([...vertices,vertices[0]],outline===true?'#20242c':outline,1.5,seatCushionId);return;}
   const clipped=riderClip?clipTrainFace(vertices,a,riderClip):vertices;if(clipped.length<3)return;const points=clipped.map(project);
   if(maskFaces)maskFaces.push(points);else if(opaque(color))record(points);else {if(actorMask)ctx.globalCompositeOperation='source-atop';pixelPolygon(ctx,points.map(([x,y])=>({x,y})),color);}
   if(outline){const ink=outline===true?'#20242c':outline;if(riderClip||actorMask||maskFaces)line([...vertices,vertices[0]],ink,1.5);else{for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length];pixelLine(ctx,{x:a[0],y:a[1]},{x:b[0],y:b[1]},ink,1);}}}
  }
  const outsideBox=(x,y,z,w,h,depth)=>{if(!riderClip)return false;const cx=ca*x-sa*y,cy=sa*x+ca*y,hx=Math.abs(ca)*w/2+Math.abs(sa)*h/2,hy=Math.abs(sa)*w/2+Math.abs(ca)*h/2;if(cy+hy<sa*riderClip.x+ca*riderClip.y-1e-6)return true;if(actorMask&&maskTransform&&maskTransform.a===1&&maskTransform.d===1&&!maskTransform.b&&!maskTransform.c){const sx=cx+maskTransform.e,sy=cy+maskTransform.f;return sx+hx<-2||sx-hx>ctx.canvas.width+2||sy+hy-z<-2||sy-hy-z-depth>ctx.canvas.height+2;}return false;};
- const box=(x,y,z,w,h,depth,color,outline=false)=>{if(signatureOnly||occlusionOnly&&!wallDrawing||outsideBox(x,y,z,w,h,depth))return;const x0=x-w/2,x1=x+w/2,y0=y-h/2,y1=y+h/2,z1=z+depth,faces=[{v:[[x0,y0,z],[x1,y0,z],[x1,y0,z1],[x0,y0,z1]],n:-ca},{v:[[x0,y1,z],[x1,y1,z],[x1,y1,z1],[x0,y1,z1]],n:ca},{v:[[x0,y0,z],[x0,y1,z],[x0,y1,z1],[x0,y0,z1]],n:-sa},{v:[[x1,y0,z],[x1,y1,z],[x1,y1,z1],[x1,y0,z1]],n:sa}];for(const f of faces.filter(f=>f.n>0).sort((a,b)=>a.n-b.n))poly(f.v,shade(color,.68+f.n*.12),outline);poly([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],color,outline);};
+ const box=(x,y,z,w,h,depth,color,outline=false,seatCushionId=null)=>{if(signatureOnly||occlusionOnly&&!wallDrawing||seatCushionId&&seatCushionId===riderClip?.seatCushionId||outsideBox(x,y,z,w,h,depth))return;const x0=x-w/2,x1=x+w/2,y0=y-h/2,y1=y+h/2,z1=z+depth,faces=[{v:[[x0,y0,z],[x1,y0,z],[x1,y0,z1],[x0,y0,z1]],n:-ca},{v:[[x0,y1,z],[x1,y1,z],[x1,y1,z1],[x0,y1,z1]],n:ca},{v:[[x0,y0,z],[x0,y1,z],[x0,y1,z1],[x0,y0,z1]],n:-sa},{v:[[x1,y0,z],[x1,y1,z],[x1,y1,z1],[x1,y0,z1]],n:sa}];for(const f of faces.filter(f=>f.n>0).sort((a,b)=>a.n-b.n))poly(f.v,shade(color,.68+f.n*.12),outline,seatCushionId);poly([[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]],color,outline,seatCushionId);};
  const obscures=(x,y,z,w,h,depth)=>{const key=wallVisibility?[car.a,x,y,z,w,h,depth].join(':'):null;let fade=key?wallVisibility.get(key):undefined;if(fade===undefined){fade=trainWallOccludes(car,riders,x,y,z,w,h,depth);if(key)wallVisibility.set(key,fade);}visibilityBits?.push(fade?1:0);return fade;};
  const wallBox=(x,y,z,w,h,depth,color,outline=false)=>{const fade=obscures(x,y,z,w,h,depth);if(signatureOnly)return;if(occlusionOnly&&!fade&&!exteriorFront)return;if(exteriorFront&&sa*x+ca*y<0)return;if(fade&&!occlusionOnly&&!riderClip&&!occlusionCapture)return;wallDrawing=true;if(!fade)box(x,y,z,w,h,depth,color,outline);else{ctx.save();for(let dz=0;dz<depth;dz+=3){const height=z+dz;ctx.globalAlpha=height<27?1:Math.max(.12,.7-.57*((height-20)/45));box(x,y,height,w,h,Math.min(3,depth-dz),color,dz===0&&height<27?outline:false);}ctx.restore();}wallDrawing=false;};
  const windowPane=(x,y,z,w,h)=>{if(outsideBox(x,y,z,w,2,h))return;const fade=obscures(x,y,z,w,2,h);if(signatureOnly)return;if(occlusionOnly&&!fade&&!exteriorFront||fade&&!occlusionOnly&&!riderClip&&!occlusionCapture)return;if(exteriorFront&&sa*x+ca*y<0)return;wallDrawing=true;ctx.save();if(fade)ctx.globalAlpha*=.2;poly([[x-w/2,y,z],[x+w/2,y,z],[x+w/2,y,z+h],[x-w/2,y,z+h]],'#457881');const colors=vehicleReflectionColors(car,world||{time:0,scenery:[]});ctx.globalAlpha*=.4;for(let row=0;row<3;row++)for(let col=0;col<5;col++){const x0=x-w/2+w*col/5,x1=x-w/2+w*(col+1)/5,z0=z+h*row/3,z1=z+h*(row+1)/3;poly([[x0,y,z0],[x1,y,z0],[x1,y,z1],[x0,y,z1]],colors[(2-row)*8+Math.floor(col*8/5)]);}ctx.globalAlpha=fade?.2:1;
@@ -48,8 +56,15 @@ function painter(ctx,car,{riders=[],world=null,occlusionOnly=false,exteriorFront
   ctx.restore();wallDrawing=false;};
  return {project,poly,line,box,wallBox,windowPane};
 }
-function wheel(p,x,y,phase,large=true,details=true){const r=large?14:9,z=r-1,points=[];for(let i=0;i<16;i++){const a=i*Math.PI/8;points.push([x+Math.cos(a)*r,y,z+Math.sin(a)*r]);}p.poly(points,'#1c2630',true);const rim=points.map(v=>[x+(v[0]-x)*.82,y-.1,z+(v[2]-z)*.82]);p.poly(rim,'#78858a');p.poly(rim.map(v=>[x+(v[0]-x)*.72,y-.2,z+(v[2]-z)*.72]),'#37434d');if(details)for(let i=0;i<6;i++){const a=phase+i*Math.PI/3;p.line([[x,y-.4,z],[x+Math.cos(a)*r*.7,y-.4,z+Math.sin(a)*r*.7]],'#99a1a0',2);}p.box(x,y, z-2,5,3,4,'#b4a78b');}
-export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=false,doors={},painted=true,staticArt=false,riders=[],world=null,occlusionOnly=false,exteriorFront=false,signatureOnly=false,visibilityBits=null,cocoaTaken=new Set(),tablesOnly=false,furnitureForeground=false,riderClip=null,maskFaces=null,actorMask=false,opaqueFaces=null,opaqueRaster=null,opaqueLines=null,wallVisibility=null,primitiveSink=null,occlusionCapture=false,omitFurnitureId=null,wheelPass='all'}={}){
+function wheelSpokes(p,x,y,phase,r,from=0){
+ const z=r-1;
+ for(let i=0;i<6;i++){
+  const a=phase+i*Math.PI/3,dx=Math.cos(a),dz=Math.sin(a);
+  p.line([[x+dx*from,y-.4,z+dz*from],[x+dx*r*.7,y-.4,z+dz*r*.7]],'#99a1a0',2);
+ }
+}
+function wheel(p,x,y,phase,large=true,details=true){const r=large?14:9,z=r-1,points=[];for(let i=0;i<16;i++){const a=i*Math.PI/8;points.push([x+Math.cos(a)*r,y,z+Math.sin(a)*r]);}p.poly(points,'#1c2630',true);const rim=points.map(v=>[x+(v[0]-x)*.82,y-.1,z+(v[2]-z)*.82]);p.poly(rim,'#78858a');p.poly(rim.map(v=>[x+(v[0]-x)*.72,y-.2,z+(v[2]-z)*.72]),'#37434d');if(details)wheelSpokes(p,x,y,phase,r);p.box(x,y,z-2,5,3,4,'#b4a78b');}
+export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=false,doors={},painted=true,staticArt=false,riders=[],world=null,occlusionOnly=false,exteriorFront=false,signatureOnly=false,visibilityBits=null,cocoaTaken=new Set(),tablesOnly=false,furnitureForeground=false,riderClip=null,maskFaces=null,actorMask=false,opaqueFaces=null,opaqueRaster=null,opaqueLines=null,wallVisibility=null,primitiveSink=null,occlusionCapture=false,omitFurnitureId=null,wheelPass='all',wheelMotionOnly=false}={}){
  const key=car.kind+':'+part+':'+trainViewIndex(car.a),custom=painted&&d.art?.[key];
  if(custom&&!occlusionOnly&&!riderClip){drawTrainPixelSprite(ctx,custom,-TRAIN_ART_SIZE.x,-TRAIN_ART_SIZE.y);if(part==='machinery'&&car.kind==='engine')drawTrainWreath(painter(ctx,car),car);if(part==='wheels')drawWheelMotion(painter(ctx,car),car,distance);return;}
  if(custom&&riderClip){const faces=[];drawTrainPart(ctx,d,car,part,{time,distance,speed,engine,doors,painted:false,staticArt,riders,world,riderClip,maskFaces:faces,tablesOnly,furnitureForeground});if(!faces.length)return;ctx.save();ctx.beginPath();for(const face of faces){const area=face.reduce((sum,[x,y],i)=>{const b=face[(i+1)%face.length];return sum+x*b[1]-y*b[0];},0);if(area<0)face.reverse();face.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();}ctx.clip();if(actorMask)ctx.globalCompositeOperation='source-atop';drawTrainPixelSprite(ctx,custom,-TRAIN_ART_SIZE.x,-TRAIN_ART_SIZE.y);ctx.restore();if(actorMask&&opaqueRaster&&ctx.globalAlpha>=.999&&custom.palette.every(color=>color==='transparent'||color.length===7||color.endsWith('ff'))){opaqueRaster.save();opaqueRaster.beginPath();for(const face of faces){face.forEach(([x,y],i)=>i?opaqueRaster.lineTo(x,y):opaqueRaster.moveTo(x,y));opaqueRaster.closePath();}opaqueRaster.clip();drawTrainPixelSprite(opaqueRaster,custom,-TRAIN_ART_SIZE.x,-TRAIN_ART_SIZE.y);opaqueRaster.restore();}return;}
@@ -61,7 +76,21 @@ export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=f
  }
  if(part==='wheels'){
   const xs=car.kind==='engine'?[-L*.2,-L*.02,L*.16,L*.34]:car.kind==='tender'?[-L*.28,L*.28]:[-L*.34-12,-L*.34+12,L*.34-12,L*.34+12];
-  const sides=[-1,1].filter(side=>wheelPass==='all'||(side*Math.cos(car.a)>=-1e-6?wheelPass==='near':wheelPass==='far')).sort((a,b)=>a*Math.cos(car.a)-b*Math.cos(car.a));for(const side of sides){for(const x of xs)wheel(p,x,side*(W/2+1),phase,car.kind==='engine',!staticArt);if(car.kind==='engine'&&!staticArt){const z=13+Math.sin(phase)*7;p.line([[xs[0]+Math.cos(phase)*7,side*(W/2+1),z],[xs.at(-1)+Math.cos(phase)*7,side*(W/2+1),z]],'#c1c1ac',4);p.box(L*.35,side*(W/2-4),9,30,13,13,'#4c565c');p.line([[L*.35,side*(W/2+2),15],[L*.15+Math.cos(phase)*9,side*(W/2+2),z]],'#a9aaa2',3);}}
+  const engineWheel=car.kind==='engine';
+  const sides=[-1,1].filter(side=>wheelPass==='all'||(side*Math.cos(car.a)>=-1e-6?wheelPass==='near':wheelPass==='far')).sort((a,b)=>a*Math.cos(car.a)-b*Math.cos(car.a));
+  for(const side of sides){
+   const y=side*(W/2+1);
+   for(const x of xs){
+    if(wheelMotionOnly)wheelSpokes(p,x,y,phase,engineWheel?14:9,2.8);
+    else wheel(p,x,y,phase,engineWheel,!staticArt);
+   }
+   if(engineWheel&&!staticArt){
+    const z=13+Math.sin(phase)*7,crank=Math.cos(phase)*7;
+    p.line([[xs[0]+crank,y,z],[xs.at(-1)+crank,y,z]],'#c1c1ac',4);
+    p.box(L*.35,side*(W/2-4),9,30,13,13,'#4c565c');
+    p.line([[L*.35,side*(W/2+2),15],[L*.15+Math.cos(phase)*9,side*(W/2+2),z]],'#a9aaa2',3);
+   }
+  }
  }
  if(part==='body'){
   if(!d.art?.[car.kind+':trim:'+trainViewIndex(car.a)])for(const side of[-1,1].filter(side=>side*Math.cos(car.a)<-1e-6))p.line([[-L/2+6,side*(W/2+1),22],[L/2-6,side*(W/2+1),22]],P.lining,2);
@@ -115,7 +144,7 @@ export function drawTrainPart(ctx,d,car,part,{time=0,distance=0,speed=0,engine=f
     paintTrainSeat(furniture,o,car.kind,P,details);
    }
    if(o.kind==='console')paintTrainControls(furniture,o,P,engine,details);
-   if(o.kind==='firebox')paintTrainFirebox(furniture,o,engine);
+   if(o.kind==='firebox')paintTrainFirebox(furniture,o,engine,Math.sin(car.a)<=1e-6);
    if(o.kind==='lamp'){furniture.box(x,y,20,3,3,24,'#bda05d');furniture.box(x,y,44,9,9,7,'#e9cd87');}
   }
   if(details&&car.kind==='engine')paintTrainCabWindows(furniture,car,P);
@@ -145,22 +174,41 @@ export function drawTrainPixelSprite(ctx,s,x,y){let canvas=spriteCanvases.get(s)
 export function trainPartSprite(d,car,part,view){const existing=d.art[car.kind+':'+part+':'+view];if(existing)return structuredClone(existing);const s=TRAIN_ART_SIZE,canvas=document.createElement('canvas');canvas.width=s.width;canvas.height=s.height;const c=canvas.getContext('2d');c.translate(s.x,s.y);drawTrainPart(c,d,{...car,a:trainViewAngle(view)},part,{painted:false,staticArt:true});const rgba=c.getImageData(0,0,s.width,s.height).data,palette=['transparent'],map=new Map(),pixels=[];for(let i=0;i<rgba.length;i+=4){if(rgba[i+3]<128){pixels.push(0);continue;}const hex='#'+[rgba[i],rgba[i+1],rgba[i+2]].map(v=>(Math.round(v/8)*8>255?255:Math.round(v/8)*8).toString(16).padStart(2,'0')).join('');if(!map.has(hex)){map.set(hex,palette.length);palette.push(hex);}pixels.push(map.get(hex));}return{width:s.width,height:s.height,palette,pixels};}
 const livePartCaches=new WeakMap();
 const signatureContext={save(){},restore(){},globalAlpha:1};
+const ENGINE_REAR_PARTS=['chassis','wheels','body','machinery','furniture','trim','roof'];
+export function trainPaintOrder(d,car){
+ if(car.kind!=='engine'||Math.sin(car.a)>=-1e-6)return TRAIN_PARTS;
+ const view=trainViewIndex(car.a);
+ if(d.art?.['engine:furniture:'+view]||d.art?.['engine:machinery:'+view])return TRAIN_PARTS;
+ // On the cab side the boiler is behind the bulkhead, grate and cab controls.
+ return ENGINE_REAR_PARTS;
+}
+export function trainPartPhase(car,part,time=0){
+ const offset=car.index*.19||0;
+ if(part==='body'&&car.kind==='tender')return Math.floor((time+offset)*6);
+ if(part==='body'&&car.kind!=='tender')return Math.floor((time+offset)*1.25);
+ if(part==='furniture'&&car.kind==='compartments')return Math.floor((time+offset)*2);
+ return 0;
+}
 export function trainVisualPartCar(d,car,part){
- if(d.art?.[car.kind+':'+part+':'+trainViewIndex(car.a)]||part==='wheels'||part==='body'&&car.kind==='tender')return car;
+ if(d.art?.[car.kind+':'+part+':'+trainViewIndex(car.a)])return car;
  return {...car,a:Math.round(car.a/(Math.PI*2)*256)/256*Math.PI*2};
 }
 function livePart(ctx,d,car,part,options){
- if(typeof document==='undefined'||d.art?.[car.kind+':'+part+':'+trainViewIndex(car.a)]||part==='wheels'||part==='body'&&car.kind==='tender'){drawTrainPart(ctx,d,car,part,options);return;}
+ if(typeof document==='undefined'||d.art?.[car.kind+':'+part+':'+trainViewIndex(car.a)]){drawTrainPart(ctx,d,car,part,options);return;}
  if(part==='machinery'&&car.kind!=='engine'||part==='roof'&&car.kind==='tender')return;
  const angle=Math.round(car.a/(Math.PI*2)*256),posed=trainVisualPartCar(d,car,part),bits=[];
  if(options.riders?.length&&['body','furniture'].includes(part))drawTrainPart(signatureContext,d,posed,part,{...options,occlusionOnly:true,signatureOnly:true,visibilityBits:bits});
- const dynamic=part==='body'||part==='furniture',phase=dynamic?Math.floor((options.time||0)*(part==='body'?2:4)):0,doors=Object.entries(options.doors||{}).filter(([k])=>k.startsWith(car.id+':')).map(([k,v])=>k+':'+v).join(','),cups=[...(options.cocoaTaken||[])].filter(k=>k.startsWith(car.id+':')).join(','),key=[d.trackRevision||0,car.id,part,angle,car.length,car.width,phase,options.engine?1:0,options.occlusionOnly?1:0,options.exteriorFront?1:0,bits.join(''),doors,cups].join('|');
+ const phase=trainPartPhase(car,part,options.time||0),furniture=part==='furniture';
+ const doors=furniture?Object.entries(options.doors||{}).filter(([k])=>k.startsWith(car.id+':')).map(([k,v])=>k+':'+v).join(','):'';
+ const cups=furniture?[...(options.cocoaTaken||[])].filter(k=>k.startsWith(car.id+':')).join(','):'';
+ const key=[d.trackRevision||0,car.id,part,angle,car.length,car.width,phase,furniture&&car.kind==='engine'&&options.engine?1:0,options.occlusionOnly?1:0,options.exteriorFront?1:0,bits.join(''),doors,cups,part==='wheels'?options.wheelPass:'',part==='body'&&car.kind==='tender'&&options.speed>0?1:0].join('|');
  let cache=livePartCaches.get(d);if(!cache){cache={images:new Map(),pixels:0};livePartCaches.set(d,cache);}let image=cache.images.get(key);
- if(!image){const ca=Math.abs(Math.cos(posed.a)),sa=Math.abs(Math.sin(posed.a)),half=Math.ceil((ca*(car.length+35)+sa*(car.width+20))/2)+12,ground=Math.ceil((sa*(car.length+35)+ca*(car.width+20))/2)+12,top=ground+116,canvas=document.createElement('canvas');canvas.width=half*2;canvas.height=top+ground+20;const pen=canvas.getContext('2d');pen.translate(half,top);drawTrainPart(pen,d,posed,part,options);image={canvas,half,top,pixels:canvas.width*canvas.height};cache.images.set(key,image);cache.pixels+=image.pixels;while(cache.pixels>12*1024*1024&&cache.images.size>1){const first=cache.images.keys().next().value;cache.pixels-=cache.images.get(first).pixels;cache.images.delete(first);}}
+ if(!image){const ca=Math.abs(Math.cos(posed.a)),sa=Math.abs(Math.sin(posed.a)),half=Math.ceil((ca*(car.length+35)+sa*(car.width+20))/2)+12,ground=Math.ceil((sa*(car.length+35)+ca*(car.width+20))/2)+12,top=ground+(part==='wheels'?20:116),canvas=document.createElement('canvas');canvas.width=half*2;canvas.height=top+ground+20;const pen=canvas.getContext('2d');pen.translate(half,top);drawTrainPart(pen,d,posed,part,part==='wheels'?{...options,staticArt:true}:options);image={canvas,half,top,pixels:canvas.width*canvas.height};cache.images.set(key,image);cache.pixels+=image.pixels;while(cache.pixels>12*1024*1024&&cache.images.size>1){const first=cache.images.keys().next().value;cache.pixels-=cache.images.get(first).pixels;cache.images.delete(first);}}
  else{cache.images.delete(key);cache.images.set(key,image);}ctx.imageSmoothingEnabled=false;ctx.drawImage(image.canvas,-image.half,-image.top);
+ if(part==='wheels'&&!options.staticArt)drawTrainPart(ctx,d,posed,part,{...options,wheelMotionOnly:true});
 }
-export function drawTrainCar(ctx,d,car,options={},occupants){ctx.save();ctx.translate(car.x,car.y-car.z);for(const part of TRAIN_PARTS){if(part==='furniture'&&car.kind!=='engine'&&car.kind!=='tender'&&!options.riders?.length&&(options.roofAlpha??1)>=.995)continue;if(part==='roof'){occupants?.();if(!options.riders?.length)livePart(ctx,d,car,'body',{...options,occlusionOnly:true,exteriorFront:true});if(options.riders?.length)for(const wallPart of['body','furniture'])livePart(ctx,d,car,wallPart,{...options,occlusionOnly:true});ctx.globalAlpha=options.roofAlpha<.025?0:options.roofAlpha??1;}if(ctx.globalAlpha>0)livePart(ctx,d,car,part,{...options,wheelPass:part==='wheels'&&!d.art?.[car.kind+':wheels:'+trainViewIndex(car.a)]?'far':'all'});if(part==='body'&&!d.art?.[car.kind+':wheels:'+trainViewIndex(car.a)])livePart(ctx,d,car,'wheels',{...options,wheelPass:'near'});ctx.globalAlpha=1;}ctx.restore();}
-export function drawTrainTurnaround(canvas,d,{cutaway=false}={}){const c=canvas.getContext('2d');canvas.width=1120;canvas.height=960;c.fillStyle='#20352f';c.fillRect(0,0,1120,960);for(let v=0;v<8;v++){const ox=(v%2)*560+280,oy=Math.floor(v/2)*240+165;c.fillStyle='#e9d6aa';c.font='14px monospace';c.fillText(TRAIN_VIEWS[v],ox-250,oy-143);c.save();c.translate(ox,oy);c.scale(.95,.95);const car=d.cars[0];for(const part of TRAIN_PARTS){c.globalAlpha=cutaway&&part==='roof'?.12:1;drawTrainPart(c,d,{...car,a:trainViewAngle(v)},part,{engine:true,time:.5,distance:7,wheelPass:part==='wheels'&&!d.art?.[car.kind+':wheels:'+v]?'far':'all'});if(part==='body'&&!d.art?.[car.kind+':wheels:'+v])drawTrainPart(c,d,{...car,a:trainViewAngle(v)},'wheels',{engine:true,time:.5,distance:7,wheelPass:'near'});}c.restore();}}
+export function drawTrainCar(ctx,d,car,options={},occupants){ctx.save();ctx.translate(car.x,car.y-car.z);for(const part of trainPaintOrder(d,car)){if(part==='furniture'&&car.kind!=='engine'&&car.kind!=='tender'&&!options.riders?.length&&(options.roofAlpha??1)>=.995)continue;if(part==='roof'){occupants?.();if(!options.riders?.length)livePart(ctx,d,car,'body',{...options,occlusionOnly:true,exteriorFront:true});if(options.riders?.length)for(const wallPart of['body','furniture'])livePart(ctx,d,car,wallPart,{...options,occlusionOnly:true});ctx.globalAlpha=options.roofAlpha<.025?0:options.roofAlpha??1;}if(ctx.globalAlpha>0)livePart(ctx,d,car,part,{...options,wheelPass:part==='wheels'&&!d.art?.[car.kind+':wheels:'+trainViewIndex(car.a)]?'far':'all'});if(part==='body'&&!d.art?.[car.kind+':wheels:'+trainViewIndex(car.a)])livePart(ctx,d,car,'wheels',{...options,wheelPass:'near'});ctx.globalAlpha=1;}ctx.restore();}
+export function drawTrainTurnaround(canvas,d,{cutaway=false}={}){const c=canvas.getContext('2d');canvas.width=1120;canvas.height=960;c.fillStyle='#20352f';c.fillRect(0,0,1120,960);for(let v=0;v<8;v++){const ox=(v%2)*560+280,oy=Math.floor(v/2)*240+165;c.fillStyle='#e9d6aa';c.font='14px monospace';c.fillText(TRAIN_VIEWS[v],ox-250,oy-143);c.save();c.translate(ox,oy);c.scale(.95,.95);const car={...d.cars[0],a:trainViewAngle(v)};for(const part of trainPaintOrder(d,car)){c.globalAlpha=cutaway&&part==='roof'?.12:1;drawTrainPart(c,d,car,part,{engine:true,time:.5,distance:7,wheelPass:part==='wheels'&&!d.art?.[car.kind+':wheels:'+v]?'far':'all'});if(part==='body'&&!d.art?.[car.kind+':wheels:'+v])drawTrainPart(c,d,car,'wheels',{engine:true,time:.5,distance:7,wheelPass:'near'});}c.restore();}}
 
 function drawWheelMotion(p,car,distance){const L=car.length,W=car.width,phase=-distance/14,xs=car.kind==='engine'?[-L*.2,-L*.02,L*.16,L*.34]:car.kind==='tender'?[-L*.28,L*.28]:[-L*.34-12,-L*.34+12,L*.34-12,L*.34+12],r=car.kind==='engine'?14:9;for(const side of[-1,1]){const y=side*(W/2-4);for(const x of xs)for(let i=0;i<6;i++){const a=phase+i*Math.PI/3;p.line([[x,y,r-1],[x+Math.cos(a)*r*.7,y,r-1+Math.sin(a)*r*.7]],'#99a1a0',2);}if(car.kind==='engine'){const z=13+Math.sin(phase)*7;p.line([[xs[0]+Math.cos(phase)*7,side*(W/2+1),z],[xs.at(-1)+Math.cos(phase)*7,side*(W/2+1),z]],'#c1c1ac',4);p.line([[L*.35,side*(W/2+2),15],[L*.15+Math.cos(phase)*9,side*(W/2+2),z]],'#a9aaa2',3);}}}
 

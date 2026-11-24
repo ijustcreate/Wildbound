@@ -983,7 +983,7 @@ export function drawPlayer(
       {left:positions.shoulderL,right:positions.shoulderR},
       // The generic tattered cape is deliberately long; the Banshee cape is
       // fitted armor and should stop above the boots in every pose.
-      {direction:visualDirection??d,...(bansheeCape?{length:.86}:gear.cape==='alan_leaf_cape'?{length:.54}:{})},
+      {direction:visualDirection??d,...(bansheeCape?{length:.86}:gear.cape==='alan_leaf_cape'?{length:.54}:gear.cape==='alley_lantern_mantle'?{length:.68}:{})},
     );
     const rows=(bansheeCape?widenBansheeCape(clothRows):clothRows).map(row=>({...row,left:projectPoint(row.left,d),right:projectPoint(row.right,d),segments:row.segments.map(s=>({...s,left:projectPoint(s.left,d),right:projectPoint(s.right,d)}))}));
     const a=rows.at(-1).left,b=rows.at(-1).right;
@@ -1464,6 +1464,14 @@ export function drawPlayer(
           }
         }
         if(gear.chest==='hogwarts_student_robes')drawHogwartsHem(c,p,d);
+        else if(gear.chest==='alley_moonstitch_robe'){
+          const cloth=gearPalette(gear.chest,cosmetics.dye);
+          drawHogwartsHem(c,p,d,cloth);
+          if(!back){
+            pixel(p.chest.x-1,p.chest.y+1,1,3,cloth.trim);
+            pixel(p.chest.x,p.chest.y+3,2,1,cloth.trim);
+          }
+        }
         else if(!ITEMS[gear.chest]?.spectralRobe&&gear.chest!=='santa_coat'&&gear.chest!=='bone_carver_coat')wearableDetails(c, p, {chest:boneChest?null:gear.chest,shoulders:gear.shoulders}, {skin:pal.head}, d, time, cosmetics);
         keeperGearDetails(c,gear.chest,p,d,cosmetics.dye);
         if(gear.chest==='reaper_chest')reaperRibs(c,p,d);
@@ -1624,8 +1632,10 @@ export function drawPlayer(
       if (!human&&!nativeSkeleton) for (const name of ["earL", "earR"])
         if (visible(name))
           ellipse(c, p[name].x, p[name].y, 1.2, 1.8, pal.headShade);
-      if(nativeSkeleton||boneHead){
-        drawSkeletonSkull(c,p,d,boneHead?BONE_PALETTE:pal,visible,actor.skeletonCostume||boneHead?.76:model.nativeSkeletonRevision>=3?.76:1);
+      if(boneHead){
+        wear('head',h,()=>directionalHelmet(c,gear.head,h,d,cosmetics,time),d);
+      } else if(nativeSkeleton){
+        drawSkeletonSkull(c,p,d,pal,visible,actor.skeletonCostume||model.nativeSkeletonRevision>=3?.76:1);
       } else if (!humanHead) {
         ellipse(c, h.x, h.y, side ? 3.5 : 4.2, 5, pal.headShade);
         ellipse(c, h.x - 0.6, h.y - 1, side ? 2.8 : 3.6, 4, pal.head);
@@ -1685,9 +1695,10 @@ export function drawPlayer(
           c.restore();
         } else drawNativeHair(c, h, look, d, playerFrame(actor,time,model), playerAction(actor),'front');
       },d);
-      if (humanHead) drawHumanHead(c,facePoints,d,pal.head,faceLook,visible,true,pal.outline,'face');
+      if (humanHead&&model.type!=='zombie') drawHumanHead(c,facePoints,d,pal.head,faceLook,visible,true,pal.outline,'face');
       if(humanHead)drawHarryFace(c,facePoints,d,faceLook);
-      if(actor.appearance?.trainConductor){drawConductorMoustache(c,facePoints,d);drawConductorCap(c,h,d);}
+      if(actor.appearance?.trainConductor)drawConductorMoustache(c,facePoints,d);
+      if(actor.appearance?.trainConductor||actor.appearance?.trainTicketSeller)drawConductorCap(c,h,d);
       if(model.type==='zombie')drawZombieFace(c,facePoints,d,actor,time);
       // Hair is cosmetic and sits beneath head equipment.
       if (gear.head&&!boneHead)
@@ -1803,9 +1814,24 @@ export function drawPlayer(
       const left={x:tip.x-uy*5,y:tip.y+ux*5},right={x:tip.x+uy*5,y:tip.y-ux*5};
       limb(c,left,right,propAction==='mine'?3:5,'#55696b');limb(c,left,right,1,'#c8d4cb');
       pixel(tip.x,tip.y,2,2,'#d5b678');
-    }else{
+    }else if(actor.interactionArt!==false){
       const type=propAction==='found_unique'||propAction==='pickup'?actor.pickupItem:typeof actor.carryingItem==='string'?actor.carryingItem:actor.carryingItem?.type;
-      if(type&&ITEMS[type]){
+      if(actor.interactionArt==='openBook'){
+        pixel(mid.x-9,mid.y-7,18,8,'#352837');
+        pixel(mid.x-8,mid.y-7,7,5,back?'#895b55':'#e6d2a2');
+        pixel(mid.x+1,mid.y-7,7,5,back?'#6d535c':'#c5a780');
+        pixel(mid.x-1,mid.y-5,2,5,back?'#66465b':'#9d795c');
+        pixel(mid.x-7,mid.y-2,6,2,'#895b55');
+        pixel(mid.x+2,mid.y-2,5,2,'#704747');
+        if(!back){pixel(mid.x-6,mid.y-5,3,1,'#ad8d68');pixel(mid.x+2,mid.y-5,4,1,'#9d795c');}
+      }else if(actor.interactionArt==='seedling'){
+        pixel(mid.x-4,mid.y-6,8,5,'#422d2b');
+        pixel(mid.x-3,mid.y-5,6,3,'#977052');
+        pixel(mid.x-1,mid.y-12,2,7,'#597954');
+        pixel(mid.x-4,mid.y-11,4,2,'#789747');
+        pixel(mid.x+1,mid.y-13,4,3,'#91a85c');
+        pixel(mid.x-2,mid.y-4,2,1,'#bc8e60');
+      }else if(type&&ITEMS[type]){
         const size=propAction==='found_unique'?16:12,scale=size/24,x=mid.x-size/2,y=mid.y-size/2-2;
         paintItem({fillStyle:ink,fillRect(px,py,w,h){c.fillStyle=this.fillStyle;c.fillRect(Math.round(x+px*scale),Math.round(y+py*scale),Math.max(1,Math.round(w*scale)),Math.max(1,Math.round(h*scale)));}},type);
       }else{
@@ -1815,7 +1841,7 @@ export function drawPlayer(
     }
     for(const q of [a,b]){pixel(q.x-1,q.y-1,3,2,gear.gloves?gearPalette(gear.gloves).base:pal.head);}
   },'Interaction prop');
-  if(actor.appearance?.trainConductor)add(p.chest.depth+.35,()=>drawConductorDetails(c,p,d),'Conductor uniform',['chest','neck']);
+  if(actor.appearance?.trainConductor||actor.appearance?.trainTicketSeller)add(p.chest.depth+.35,()=>drawConductorDetails(c,p,d),'Conductor uniform',['chest','neck']);
   if(ITEMS[gear.back]?.scarf){const colors=ITEMS[gear.back].scarf;add(p.chest.depth+(back?.6:-.6),()=>drawScarfTails(c,positions,d,actor.scarfMotion,colors,projectPoint),'Scarf tails',['chest','pelvis']);queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:!back};add(p.chest.depth+.3,()=>drawStudentScarf(c,p,d,colors,true),'Scarf collar',['chest','neck']);queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:false};}
   if(actor.broomMount){add(p.pelvis.depth-.2,()=>drawBroom(c,p,d,actor.broomMount.item?.type),'Flying broom',['pelvis']);const art=(actor.itemArtItems?.[actor.broomMount.item?.type]||ITEMS[actor.broomMount.item?.type]||ITEMS.flying_broom)?.wornArt?.[d]?.['Flying broom'];if(art?.itemOnly)queue.at(-1).sprite=art;queue.at(-1).attachmentOrder={anchors:['Body and pelvis'],behind:true};}
   if(actor.broomMount&&actor.broomPet&&broomPassengerPainter){add(p.pelvis.depth-.1,()=>broomPassengerPainter(c,actor,p,d,time),'Broom critter passenger',['pelvis']);queue.at(-1).attachmentOrder={anchors:[0,1,7].includes(d)?['Flying broom']:['Flying broom','Body and pelvis','Leg L','Leg R'],behind:false};}

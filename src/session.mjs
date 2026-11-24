@@ -2,7 +2,7 @@ import {restoreWildLands, snapshotWildLands} from './wild-lands-session.mjs';
 import {clearSwordPolish} from './sword-charge-state.mjs';
 import {initializeBoundlessWorld,checkpointBoundlessWorld} from './boundless-world.mjs';
 import {restoreFollowerControl} from './follower-control.mjs';
-import { migrateEquipment, migrateLegacySupplies } from "./items.mjs";
+import { migrateEquipment, migrateLegacySupplies, refreshVitals } from "./items.mjs";
 import { Game } from "./core.mjs";
 import { snapshot } from "./rooms.mjs";
 import { generateWorld } from "./world.mjs";
@@ -97,6 +97,7 @@ export function restoreSession(saved) {
     if (p.jumpImpulse === undefined || p.jumpImpulse === 125 || p.jumpImpulse === 180 || p.jumpImpulse === 205) p.jumpImpulse = 230;
     if (p.jumpGravity === undefined || p.jumpGravity === 360 || p.jumpGravity === 720) p.jumpGravity = 1200;
     migrateEquipment(p);
+    if(p.field?.gardenManaWard!==undefined)refreshVitals(p);
     p.previousInput = {};
     p.charge = 0;clearSwordPolish(p);
     delete p.swordStrike;delete p.swordFacing;delete p.swordDash;delete p.swordDashRequested;p.swordChargeAim=false;p.swordHitPause=0;p.attack=0;

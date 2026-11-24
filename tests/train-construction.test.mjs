@@ -4,9 +4,9 @@ import {trainEngineProfile} from '../src/train-construction.mjs';
 import {trainShadowPolygons,drawTrainShadows} from '../src/train-shadows.mjs';
 
 const car={kind:'engine',length:240,width:96,x:500,y:300,z:0,a:0};
-test('fuller engine keeps smoke mouth and boiler proportions together',()=>{
+test('narrower boiler keeps its base and chimney seated on the engine',()=>{
  const p=trainEngineProfile(car);
- assert.ok(p.radius>car.width*.32);
+ assert.equal(p.radius,car.width*.34);
  assert.ok(p.centerZ-p.radius<20);
  assert.equal(p.stackTop-p.top,26);
 });

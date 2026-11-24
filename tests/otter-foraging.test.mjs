@@ -22,3 +22,13 @@ test('editable otter rig exposes tail, face, paws and find with distinct articul
  const swim=poseAt(m,'swim',0),stroke=poseAt(m,'swim',8),floating=poseAt(m,'belly_float',0);assert.notDeepEqual(swim.tailTip,stroke.tailTip);assert.notDeepEqual(swim.frontPawL,stroke.frontPawL);assert.ok(floating.belly[2]>floating.chest[2]);assert.ok(Math.abs(floating.frontPawL[1]-floating.find[1])<4);assert.ok(Math.abs(floating.frontPawR[1]-floating.find[1])<4);
  const custom=structuredClone(m);custom.clips.swim.keys[5].joints.tailTip[0]+=4;assert.ok(validateOtterMotion(custom));
 });
+
+test('all default otter loops return their tail, paws and face to the starting pose',()=>{
+ const {clips}=defaultOtterMotion();
+ for(const [name,clip]of Object.entries(clips).filter(([,clip])=>clip.loop)){
+  const first=clip.keys[0].joints,last=clip.keys.at(-1).joints;
+  for(const [joint,start]of Object.entries(first)){
+   assert.ok(start.every((coordinate,axis)=>Math.abs(coordinate-last[joint][axis])<1e-8),name+' '+joint);
+  }
+ }
+});

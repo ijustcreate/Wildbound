@@ -58,6 +58,14 @@ test('characters use the same blockers without self-shadowing the lantern carrie
  assert.equal(characterLightingAt({...frame,room:'upper'},{id:3,x:0,y:0}),null);
 });
 
+test('characters on tall railway surfaces sample the light at their world position and height',()=>{
+ const frame={sources:[{x:100,y:200,height:62,radius:15}],ambient:0};
+ const atWorld=characterLightingAt(frame,{x:100,y:200},{lift:40,bodyHeight:22});
+ const projected=characterLightingAt(frame,{x:100,y:160,characterSurfaceLift:40},{lift:0,bodyHeight:22});
+ assert.deepEqual(projected,atWorld);
+ assert.equal(projected.lights[0].strength,1);
+});
+
 test('destroyed wall sections transmit light while neighboring sections stay opaque',()=>{
  const wall={id:'wall',kind:'wall',x:50,y:-60,w:10,h:120,sectionDamage:{1:{broken:true}}},game={scenery:[],house:{walls:[wall]}},field=worldLightField(game,[source]);
  assert.equal(pointLightVisibility(field,source,{x:120,y:0,z:10}),1);

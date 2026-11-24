@@ -10,9 +10,18 @@ export const REGION_SHAPES={
 };
 const scale=points=>points.map(([x,y])=>[x*16000,y*9600]);
 const coast=scale(LAND_OUTLINE),island=scale(PORTAL_ISLAND),regions=Object.fromEntries(Object.entries(REGION_SHAPES).map(([k,v])=>[k,scale(v)]));
+// The Homestead valley extends north around the Overlook. Keep both Frostmere
+// snowfields and its station outside this tapered grass corridor.
+const homesteadValley=[
+ [7010,7136],[7232,6576],[7200,5680],[7312,5136],[7392,4688],[7600,4512],
+ [7890,4424],[8376,4424],[8720,4496],[8912,4736],[8976,5136],[9016,5696],
+ [9112,6192],[8976,6608],[9056,7152],
+];
 export function inWildPolygon(x,y,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;}return inside;}
+export const wildLandsOpenOcean=(x,y)=>!inWildPolygon(x,y,coast)&&!inWildPolygon(x,y,island);
 const segmentDistance=(x,y,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],u=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy||1)));return Math.hypot(x-a[0]-u*dx,y-a[1]-u*dy);};
 function edgeDistance(x,y,polygon){let best=Infinity;for(let i=0;i<polygon.length;i++)best=Math.min(best,segmentDistance(x,y,polygon[i],polygon[(i+1)%polygon.length]));return best;}
+export const wildLandsCoastDistance=(x,y)=>Math.min(edgeDistance(x,y,coast),edgeDistance(x,y,island));
 function smooth(points){const result=[],p=scale(points);for(let i=0;i<p.length-1;i++){const a=p[Math.max(0,i-1)],b=p[i],c=p[i+1],d=p[Math.min(p.length-1,i+2)];for(let step=0;step<12;step++){const t=step/12,t2=t*t,t3=t2*t;result.push([0,1].map(k=>.5*((2*b[k])+(-a[k]+c[k])*t+(2*a[k]-5*b[k]+4*c[k]-d[k])*t2+(-a[k]+3*b[k]-3*c[k]+d[k])*t3)));}}result.push(p.at(-1));return result;}
 function spatialLines(paths,margin){const bins=new Map();for(const points of paths)for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];for(let cy=Math.floor((Math.min(a[1],b[1])-margin)/512);cy<=Math.floor((Math.max(a[1],b[1])+margin)/512);cy++)for(let cx=Math.floor((Math.min(a[0],b[0])-margin)/512);cx<=Math.floor((Math.max(a[0],b[0])+margin)/512);cx++){const key=cx+cy*64;if(!bins.has(key))bins.set(key,[]);bins.get(key).push([a,b]);}}return (x,y)=>{let distance=Infinity;for(const [a,b]of bins.get(Math.floor(x/512)+Math.floor(y/512)*64)||[])distance=Math.min(distance,segmentDistance(x,y,a,b));return distance;};}
 export const WILD_RIVERS=[
@@ -25,7 +34,11 @@ export const WILD_TRAILS=[smooth([[.19,.20],[.205,.30],[.35,.40],[.50,.38],[.56,
 const trailDistance=spatialLines(WILD_TRAILS,85);
 export const WILD_BRIDGES=[{id:'woodland',x:10900,y:4710,w:760,h:110},{id:'bayou',x:12960,y:3230,w:110,h:720},{id:'south',x:8870,y:7600,w:150,h:820}];
 export const WILD_BIOMES=['forest','jungle','ice','graveyard','house','beach','swamp'];
-export function sketchBiome(x,y){for(const [kind,polygon]of Object.entries(regions))if(inWildPolygon(x,y,polygon))return kind;return 'forest';}
+export function sketchBiome(x,y){
+ if(x>=7010&&x<=9112&&y>=4424&&y<=7152&&inWildPolygon(x,y,homesteadValley))return 'house';
+ for(const [kind,polygon]of Object.entries(regions))if(inWildPolygon(x,y,polygon))return kind;
+ return 'forest';
+}
 const biomeCache=new Uint8Array(500*300).fill(255),terrainCache=new Uint8Array(500*300),pathCache=new Uint8Array(500*300);
 export function sketchTile(x,y){
  const tx=Math.floor(x/32),ty=Math.floor(y/32);if(tx<0||ty<0||tx>=500||ty>=300)return -1;
@@ -42,13 +55,21 @@ export function sketchTile(x,y){
 }
 export function sketchGround(x,y){const i=sketchTile(x,y);return i<0?'beach':WILD_BIOMES[biomeCache[i]];}
 export function sketchSurface(x,y){const i=sketchTile(x,y);return i<0?'water':['grass','water','shallow'][terrainCache[i]];}
+export function sketchBeachMargin(x,y){
+ if(inWildPolygon(x,y,island))return 380;
+ return Math.max(380-edgeDistance(x,y,coast),Math.min(2200-x,y-3200),y-8400);
+}
+const SHELF_VARIATION=15;
+function shelfVariation(x,y){
+ return 7*Math.sin(x*.047+y*.061)+5*Math.sin(x*.109-y*.079)+3*Math.sin(x*.191+y*.156);
+}
 // Continuous surface classification is for the pixel-art edge mask only. The
 // cached 32px classification above remains authoritative for movement/collision.
 export function sketchSurfaceAt(x,y){
  const main=inWildPolygon(x,y,coast),offshore=inWildPolygon(x,y,island),shore=edgeDistance(x,y,main?coast:offshore?island:coast);
- if(!main&&!offshore)return shore<110?'shallow':'water';
+ if(!main&&!offshore)return shore<110+shelfVariation(x,y)?'shallow':'water';
  const river=riverDistance(x,y);
- if(river<120)return 'water';
+ if(river<120+shelfVariation(x,y))return 'water';
  if(river<175)return 'shallow';
  if(sketchBiome(x,y)==='swamp'&&river>240&&Math.sin(x/380)*Math.sin(y/420)>.66)return 'shallow';
  return 'grass';
@@ -56,10 +77,11 @@ export function sketchSurfaceAt(x,y){
 // Distance fields are 1-Lipschitz: a tile farther than its half-diagonal
 // from every wet boundary cannot contain a shoreline pixel.
 export function sketchUniformSurfaceTile(x,y){
- x+=16;y+=16;const margin=23,main=inWildPolygon(x,y,coast),offshore=inWildPolygon(x,y,island),shore=edgeDistance(x,y,main?coast:offshore?island:coast);
- if(!main&&!offshore)return shore>110+margin?'water':shore<110-margin?'shallow':null;
+ // Leave a two-pixel apron for the crest geometry at wet/dry tile seams.
+ x+=16;y+=16;const margin=26,shelfMargin=margin+SHELF_VARIATION,main=inWildPolygon(x,y,coast),offshore=inWildPolygon(x,y,island),shore=edgeDistance(x,y,main?coast:offshore?island:coast);
+ if(!main&&!offshore)return shore>110+shelfMargin?'water':shore<110-shelfMargin&&shore>margin?'shallow':null;
  if(shore<margin)return null;const river=riverDistance(x,y);
- if(river<120-margin)return 'water';if(river>120+margin&&river<175-margin)return 'shallow';
+ if(river<120-shelfMargin)return 'water';if(river>120+shelfMargin&&river<175-margin)return 'shallow';
  if(river>175+margin&&((!inWildPolygon(x,y,regions.swamp)&&edgeDistance(x,y,regions.swamp)>margin)||Math.sin(x/380)*Math.sin(y/420)<.66-margin*(1/380+1/420)))return 'grass';return null;
 }
 export function wildLandsPathAt(x,y){const i=sketchTile(x,y);return i>=0&&!!pathCache[i];}

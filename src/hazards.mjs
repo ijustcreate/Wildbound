@@ -8,7 +8,8 @@ import { stat } from "./items.mjs";
 import { terrainHash } from "./world.mjs";
 import { creatures } from "./definitions.mjs";
 import {stampedeDestruction,tickDestruction} from './structure-destruction.mjs';
-import {igniteTallGrassAt} from './tall-grass.mjs';
+import {heatGround} from './terrain-fire.mjs';
+import {meltSnowAt} from './snow-surface.mjs';
 export const HAZARD_EVENTS = [
  {name:'A bargain with the bushes',type:'merchant',kind:'merchant',count:0,weight:5,verse:'A hat, a horse, a fire so bright.\nTrade well before they leave tonight.',tip:'Marlow Moss has set up camp away from the board. He stays until this map ends.'},
  {name:'The dunes take flight',type:'sandstorm',kind:'sandstorm',environment:'desert',count:0,weight:7,duration:45,intensity:1,verse:'The desert shakes its golden mane.\nHold fast until the dunes are tame.',tip:'Sand sweeps across the dunes. Stay together until the storm passes.'},
@@ -78,6 +79,7 @@ export function ignite(target, duration = 2, damage = 3) {
   target.burnTick ??= 0.5;
 }
 export function firePatch(g, x, y, life = 2.6, damage = 3) {
+  meltSnowAt(g,x,y,16);
   const tx = Math.floor(x / 32) * 32,
     ty = Math.floor(y / 32) * 32;
   let patch = g.firePatches.find((f) => f.x === tx && f.y === ty);
@@ -161,7 +163,7 @@ export function tickHazards(g, dt) {
   for (const b of g.fireballs || []) {
     const fromX=b.x,fromY=b.y;
     if(!advanceShot(g,b,dt,3))continue;
-    if(!b.ice&&!b.water){const steps=Math.max(1,Math.ceil(Math.hypot(b.x-fromX,b.y-fromY)/8));for(let i=0;i<=steps;i++)igniteTallGrassAt(g,fromX+(b.x-fromX)*i/steps,fromY+(b.y-fromY)*i/steps);}
+    if(!b.ice&&!b.water){const steps=Math.max(1,Math.ceil(Math.hypot(b.x-fromX,b.y-fromY)/8));for(let i=0;i<=steps;i++)heatGround(g,fromX+(b.x-fromX)*i/steps,fromY+(b.y-fromY)*i/steps);}
     b.life -= dt;
     b.trail -= dt;
     const cold=!!(b.ice||b.water);

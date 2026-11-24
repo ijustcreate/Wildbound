@@ -79,24 +79,17 @@ export function drawSwordChargeLane(c, p, time = 0) {
     c.fillStyle = palette.edge;
     c.fillRect(0, -15, length, 30);
     c.restore();
-    // A subdued keyline keeps the single colored border readable on pale ground.
-    c.save();
-    c.globalAlpha *= .45;
-    c.strokeStyle = SWORD_CHARGE_THEME.ink;
-    c.lineWidth = 2;
-    c.strokeRect(0, -15, length, 30);
-    c.restore();
     c.save();
     c.globalAlpha *= .52 + palette.power * .22;
-    c.strokeStyle = palette.edge;
-    c.lineWidth = 1;
-    c.strokeRect(0, -15, length, 30);
+    c.fillStyle = palette.edge;
+    c.fillRect(0, -15, length, 1);
+    c.fillRect(0, 14, length, 1);
     c.restore();
   }
   // The end edge alone communicates full charge or an obstruction.
   c.globalAlpha *= blocked ? .9 : ready ? .9 : .65;
   c.fillStyle = blocked ? SWORD_CHARGE_THEME.blocked : ready ? palette.core : palette.edge;
-  c.fillRect(pixel(length) - 1, -15, 1, 30);
+  c.fillRect(Math.max(0, pixel(length) - 1), -15, 1, 30);
   c.restore();
 }
 

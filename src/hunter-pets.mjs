@@ -8,14 +8,16 @@ import {companionMovement} from './companion-locomotion.mjs';
 import {controlledUnit} from './controlled-unit.mjs';
 
 export const TAMABLE_KINDS=['lion','wolf','bat','panther','tiger'];
+export const ADOPTABLE_SPIDER_KINDS=['spider','tarantula','jumping_spider'];
+const petKinds=new Set([...TAMABLE_KINDS,...ADOPTABLE_SPIDER_KINDS]);
 export const hunterPets=g=>g.players.filter(p=>!p.room).flatMap(p=>[p.hunterPet,p.ritualPet]).filter(Boolean);
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function petRecord(pet){
- if(!pet||!TAMABLE_KINDS.includes(pet.kind))return null;
+ if(!pet||!petKinds.has(pet.kind))return null;
  return Object.fromEntries(['kind','name','collar','hp','maxHp','damage','speed','downedRemaining'].map(k=>[k,pet[k]]));
 }
 export function restoreHunterPet(record){
- if(!record||!TAMABLE_KINDS.includes(record.kind))return null;
+ if(!record||!petKinds.has(record.kind))return null;
  const cfg=creatures[record.kind]?.stats||{};
  const maxHp=Math.max(100,Math.round((cfg.hp||60)*1.5));
  return {kind:record.kind,name:String(record.name||record.kind).slice(0,24),collar:/^#[0-9a-f]{6}$/i.test(record.collar)?record.collar:'#77bc87',

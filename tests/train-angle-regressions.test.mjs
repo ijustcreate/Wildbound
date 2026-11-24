@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {paintTrainMachinery} from '../src/train-craft.mjs';
-import {drawTrainPart} from '../src/train-art.mjs';
+import {drawTrainPart,trainPaintOrder,trainViewIndex} from '../src/train-art.mjs';
 import {defaultTrainDesign,trainInterior} from '../src/train-design.mjs';
 import {trainOcclusionGeometry} from '../src/train-occlusion-geometry.mjs';
 
@@ -19,6 +19,21 @@ test('engine faces and fittings face the camera through eight headings',()=>{
   const faces=polys.filter(q=>q.points.length===4&&q.points.some(p=>p[0]===-car.length*.02)&&q.points.some(p=>p[0]===car.length*.42));
   assert.ok(faces.length>0);
   for(const face of faces){const y=(face.points[0][1]+face.points[2][1])/2,z=(face.points[0][2]+face.points[2][2])/2-40;assert.ok(Math.cos(car.a)*y+z>0,'hidden boiler face view '+v);}
+ }
+});
+test('native rear boiler stays behind the lit cab fixtures across all headings',()=>{
+ const d=defaultTrainDesign(),ctx={globalAlpha:1,save(){},restore(){}};
+ for(let v=0;v<8;v++){
+  const car={...d.cars[0],a:v*Math.PI/4},calls=[],rear=Math.sin(car.a)<-1e-6;
+  const order=trainPaintOrder(d,car);
+  assert.equal(order.indexOf('machinery')<order.indexOf('furniture'),rear,'cab paint order '+v);
+  for(const part of order.filter(p=>['machinery','furniture'].includes(p)))drawTrainPart(ctx,d,car,part,{engine:true,primitiveSink:p=>calls.push(p)});
+  const plate=calls.findIndex(p=>p.color==='#373f43'),fire=calls.findIndex(p=>p.color==='#edb55d');
+  assert.equal(plate>=0,rear,'cab-facing iron plate '+v);
+  if(rear)assert.ok(fire>plate,'grate painted over the back plate '+v);
+  if(Math.sin(car.a)>1e-6)assert.equal(fire,-1,'hidden rear flame '+v);
+  const view=trainViewIndex(car.a),custom={...d,art:{['engine:machinery:'+view]:{}}};
+  assert.ok(trainPaintOrder(custom,car).indexOf('furniture')<trainPaintOrder(custom,car).indexOf('machinery'),'authored order '+v);
  }
 });
 test('coal is drawn between the far and near bunker walls in eight headings',()=>{

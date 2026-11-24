@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {defaultBeastMotion,validateBeastMotion,nativeBoarMotion} from '../src/beast-motion.mjs';
+import {defaultBeastMotion,validateBeastMotion,nativeBoarMotion,beastMotions,replaceBeastMotion} from '../src/beast-motion.mjs';
 import {defaultNightMotion,validateNightMotion,legacyNightMotion} from '../src/night-rigs.mjs';
 import {defaultSpiderMotion} from '../src/spider-motion.mjs';
 import {upgradeWowCreatureMotion} from '../src/wow-creature-transfer.mjs';
@@ -30,6 +30,20 @@ test('stored art and custom clips survive migration onto the boar and elephant d
   const result=upgradeWowCreatureMotion(saved,previous,fresh);
   assert.equal(result.palette.body,'#123456');assert.deepEqual(result.clips.walk,saved.clips.walk);assert.deepEqual(result.boneSprites,saved.boneSprites);
   assert.equal(result.motionSource.displayId,fresh.motionSource.displayId);
+ }
+});
+test('stock boar rushes articulate the rump while authored charge clips remain intact',()=>{
+ const before=structuredClone(beastMotions.boar);
+ const saved=JSON.parse(fs.readFileSync(new URL('../authored/rigs.json',import.meta.url))).beastMotions.boar;
+ try {
+  replaceBeastMotion('boar',saved);
+  const live=beastMotions.boar;
+  assert.notDeepEqual(poseAt(live,'charge',0).pelvis,poseAt(live,'charge',4).pelvis);
+  saved.clips.charge.keys[0].joints.pelvis=[1,2,3];
+  replaceBeastMotion('boar',saved);
+  assert.deepEqual(beastMotions.boar.clips.charge,saved.clips.charge);
+ } finally {
+  replaceBeastMotion('boar',before);
  }
 });
 test('elephant profiles show the near eye and hide the far eye',()=>{

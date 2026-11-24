@@ -9,11 +9,12 @@ export function characterLightingFrame(game,room=null,{occluded=true}={}){
 export function characterLightingAt(frame,actor,{lift=(actor.jumpHeight||0)+(actor.groundHeight||0),bodyHeight=22}={}){
  if(!frame)return null;
  if((frame.room||null)!==(actor.room||null))return null;
+ const surfaceLift=actor.characterSurfaceLift||0,y=actor.y+surfaceLift;
  const lights=frame.sources.map(source=>{
-  const sourceHeight=source.height??36,pointHeight=lift+bodyHeight;
-  const distance=Math.hypot(actor.x-source.x,actor.y-source.y,pointHeight-sourceHeight),radius=Math.max(1,source.radius||1);
-  const strength=Math.max(0,1-distance/radius)**2*(source.intensity??1)*pointLightVisibility(frame.field,source,{x:actor.x,y:actor.y,z:pointHeight},`actor:${actor.id}`);
-  return {...source,strength,dx:source.x-actor.x,dy:source.y-actor.y+pointHeight-sourceHeight};
+  const sourceHeight=source.height??36,pointHeight=surfaceLift+lift+bodyHeight;
+  const distance=Math.hypot(actor.x-source.x,y-source.y,pointHeight-sourceHeight),radius=Math.max(1,source.radius||1);
+  const strength=Math.max(0,1-distance/radius)**2*(source.intensity??1)*(source.flicker??1)*pointLightVisibility(frame.field,source,{x:actor.x,y,z:pointHeight},`actor:${actor.id}`);
+  return {...source,strength,dx:source.x-actor.x,dy:source.y-y+pointHeight-sourceHeight};
  }).filter(source=>source.strength>.015).sort((a,b)=>b.strength-a.strength).slice(0,4);
  return {sun:frame.sun||0,ambient:Math.max(0,Math.min(1,frame.ambient)),bodyHeight,lights};
 }

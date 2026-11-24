@@ -2,6 +2,7 @@ import {actorRadius,flies} from './navigation.mjs';
 import {enemyCanSeeTarget} from './enemy-sight.mjs';
 import {stationaryCreature} from './stationary-creatures.mjs';
 import {meleeBodyRadius} from './melee-geometry.mjs';
+import {activeGardenBench} from './diagon-garden-benches.mjs';
 const spacingRadius=a=>Math.max(actorRadius(a),meleeBodyRadius(a)*.75);
 
 // Separate living bodies after their independent AI steps. Movement still goes
@@ -9,6 +10,7 @@ const spacingRadius=a=>Math.max(actorRadius(a),meleeBodyRadius(a)*.75);
 export function separateActorBodies(game,dt){
   const players=(game.players||[]).filter(a=>a.hp>0&&!a.room&&!a.controlledFollowerId),enemies=[...(game.enemies||[]),...(game.ghosts||[]).filter(a=>a.wildTiger)].filter(a=>a.hp>0&&!a.room&&!a.graveEmergence&&!a.controlledBy);
   const actors=[...players,...enemies];
+  const seated=game.trainTest?.design.activeRoom==='diagon'?new Set(players.filter(p=>activeGardenBench(game,p))):null;
   for(let pass=0;pass<2;pass++)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){
     const a=actors[i],b=actors[j];
     if((a.room||null)!==(b.room||null))continue;
@@ -19,9 +21,10 @@ export function separateActorBodies(game,dt){
     if(d>=minimum)continue;
     const angle=d>1e-5?Math.atan2(dy,dx):(((a.id||i)*37+(b.id||j)*19)%360)*Math.PI/180;
     const push=Math.min((minimum-d)*.52,Math.max(1,dt*110)),ux=Math.cos(angle),uy=Math.sin(angle);
-    if(stationaryCreature(a)&&stationaryCreature(b))continue;
-    if(stationaryCreature(b))game.moveActor(a,-ux*push*2,-uy*push*2,flies(a));
-    else if(stationaryCreature(a))game.moveActor(b,ux*push*2,uy*push*2,flies(b));
+    const fixedA=seated?.has(a)||stationaryCreature(a),fixedB=seated?.has(b)||stationaryCreature(b);
+    if(fixedA&&fixedB)continue;
+    if(fixedB)game.moveActor(a,-ux*push*2,-uy*push*2,flies(a));
+    else if(fixedA)game.moveActor(b,ux*push*2,uy*push*2,flies(b));
     else if(players.includes(a)&&enemies.includes(b))game.moveActor(b,ux*push*2,uy*push*2,flies(b));
     else if(players.includes(b)&&enemies.includes(a))game.moveActor(a,-ux*push*2,-uy*push*2,flies(a));
     else {game.moveActor(a,-ux*push,-uy*push,flies(a));game.moveActor(b,ux*push,uy*push,flies(b));}

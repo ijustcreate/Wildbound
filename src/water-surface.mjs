@@ -3,12 +3,12 @@ import {waterAt} from './environment.mjs';
 const fragment=`precision highp float;
 uniform float time; varying vec2 uv;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
-float wave(vec2 p){return noise(p+vec2(time*.16,time*.09))*.65+noise(p*2.1-vec2(time*.12,time*.07))*.25+noise(p*4.3+time*.1)*.1;}
-void main(){vec2 p=uv*42.;float n=wave(p);vec2 slope=vec2(wave(p+vec2(.08,0))-n,wave(p+vec2(0,.08))-n)*8.;
+float noise(vec2 p,float period){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);return mix(mix(hash(mod(i,period)),hash(mod(i+vec2(1,0),period)),u.x),mix(hash(mod(i+vec2(0,1),period)),hash(mod(i+vec2(1,1),period)),u.x),u.y);}
+float wave(vec2 p){return noise(p+vec2(time*.16,time*.09),40.)*.65+noise(p*2.1-vec2(time*.12,time*.07),84.)*.25+noise(p*4.3+time*.1,172.)*.1;}
+void main(){vec2 p=uv*40.;float n=wave(p);vec2 slope=vec2(wave(p+vec2(.08,0))-n,wave(p+vec2(0,.08))-n)*8.;
 float light=pow(max(0.,dot(normalize(vec3(-slope,1.)),normalize(vec3(.4,.6,1.)))),18.);
 float foam=smoothstep(.74,.81,n)*.32;
-float ripple=pow(max(0.,sin(p.y*9.+sin(p.x*3.+time)*1.4+time*1.4)),22.)*smoothstep(.46,.68,n);
+ float ripple=pow(max(0.,sin(p.y*8.953539+sin(p.x*2.984513+time)*1.4+time*1.4)),22.)*smoothstep(.46,.68,n);
 vec3 color=mix(vec3(.035,.24,.32),vec3(.11,.52,.57),n);color+=light*vec3(.16,.24,.24)+foam+ripple*vec3(.13,.24,.23);gl_FragColor=vec4(color,1.);}`;
 let renderer,failed=false;
 export function waterShaderStatus(){return renderer?'webgl':failed?'fallback':'uninitialized';}
@@ -23,18 +23,28 @@ function init(){
  gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
  const location=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,2,gl.FLOAT,false,0,0);
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();renderer=null;failed=true;});canvas.addEventListener('webglcontextrestored',()=>{failed=false;});
- const surface=document.createElement('canvas');surface.width=surface.height=400;return {canvas,surface,pen:surface.getContext('2d'),gl,time:gl.getUniformLocation(program,'time'),frame:-1};
+ const surface=document.createElement('canvas');surface.width=surface.height=400;return {canvas,surface,pen:surface.getContext('2d'),gl,time:gl.getUniformLocation(program,'time'),frame:-1,patterns:new WeakMap()};
 }
 export function drawWaterSurface(c,g,x,y,w,h,options={}){
  if(!renderer&&!failed)try{renderer=init();}catch(e){failed=true;console.warn('Water shader fallback:',e.message);}
  const t=g.time||0;
- if(renderer){const r=renderer,frame=Math.floor(t*30);if(frame!==r.frame){r.gl.uniform1f(r.time,t);r.gl.drawArrays(r.gl.TRIANGLE_STRIP,0,4);r.pen.drawImage(r.canvas,0,0);r.frame=frame;}const sx=((x/4)%400+400)%400,sy=((y/4)%400+400)%400;c.drawImage(r.surface,sx,sy,Math.min(w/4,400-sx),Math.min(h/4,400-sy),x,y,w,h);}
+ if(renderer){
+  const r=renderer,frame=Math.floor(t*30);
+  if(frame!==r.frame){r.gl.uniform1f(r.time,t);r.gl.drawArrays(r.gl.TRIANGLE_STRIP,0,4);r.pen.drawImage(r.canvas,0,0);r.frame=frame;r.patterns=new WeakMap();}
+  let pattern=r.patterns.get(c);
+  if(!pattern){
+   pattern=c.createPattern(r.surface,'repeat');
+   pattern.setTransform({a:4,d:4});
+   r.patterns.set(c,pattern);
+  }
+  c.save();c.imageSmoothingEnabled=false;c.fillStyle=pattern;c.fillRect(x,y,w,h);c.restore();
+ }
  else{c.fillStyle='#246779';c.fillRect(x,y,w,h);c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.strokeStyle='#88d6d544';for(let row=Math.floor(y/12)*12;row<y+h;row+=12){c.beginPath();for(let px=x;px<=x+w;px+=4)c.lineTo(px,row+Math.sin(px*.08+t+row)*2);c.stroke();}c.restore();}
  const shallow=options.shallow??(waterAt(g,x+w/2,y+h/2)==='shallow');
  c.save();c.fillStyle=shallow?'#8fe5c58c':'#062e4940';c.fillRect(x,y,w,h);
  const wet=kind=>['water','shallow','bridge','floodbridge'].includes(kind);
  c.beginPath();c.rect(x,y,w,h);c.clip();c.lineWidth=1;
- for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){
+ if(options.shoreRipples!==false)for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]){
    const neighbor=waterAt(g,x+w/2+dx*w,y+h/2+dy*h);
    if(wet(neighbor)&&(!shallow||neighbor!=='water'))continue;
    const pulse=(t*.8+(x+y)*.004)%1,inset=2+pulse*5;

@@ -143,7 +143,8 @@ app.whenReady().then(async () => {
   const profilePath = path.join(app.getPath("userData"), "characters-v1.json");
   const sessionPath = path.join(app.getPath("userData"), "expedition-v1.json");
   const wildsSessionPath = path.join(app.getPath("userData"), "wilds-expedition-v1.json");
-  const checkpointPath = mode => mode === 'wilds' ? wildsSessionPath : sessionPath;
+  const freshWildsSessionPath = path.join(app.getPath("userData"), "wilds-fresh-expedition-v1.json");
+  const checkpointPath = mode => mode === 'wilds-fresh' ? freshWildsSessionPath : mode === 'wilds' ? wildsSessionPath : sessionPath;
   const store = require("./save-store.cjs");
   if(!process.argv.includes('--no-live-diagnostics')){
     const diagnostics=require('./live-diagnostics.cjs').createDiagnostics(app.getPath('userData'));

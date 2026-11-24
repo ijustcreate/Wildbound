@@ -1,5 +1,4 @@
-import {drawCarverCrown} from './bone-carver-art.mjs';
-import {drawWitchHat} from './broom-art.mjs';
+import {drawWitchHat} from './witch-hat-art.mjs';
 import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
 import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
@@ -7,8 +6,9 @@ import {drawSuccubusHorns} from './succubus-attachments.mjs';
 import {drawGhostHood} from './ghost-art.mjs';
 import {detailedProcedural,materialIndex} from './humanoid-hd.mjs';
 import {drawAlanTurtleHelmet} from './alan-gear-art.mjs';
-import {drawSantaHat} from './christmas-art.mjs';
 import {drawResolvedHeadwear,headwearStyle} from './resolved-headwear.mjs';
+import {drawDeathEaterMask} from './death-eater-masks.mjs';
+import {drawArenaCostumeTrim} from './diagon-arena-wardrobe.mjs';
 // Procedural pixel assets follow joint anchors and preserve eight-facing silhouettes.
 export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
   if(ITEMS[gear.chest]?.blankExplorer)return;
@@ -29,7 +29,9 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     // The torso raster already supplies the clean outer contour and broad
     // light/shadow planes. Add only one identifying construction detail per
     // garment family instead of outlining every row of cloth.
-    if(gear.chest==='armor'){
+    if(ITEMS[gear.chest]?.arenaCut){
+      drawArenaCostumeTrim(c,chest,d,ITEMS[gear.chest].arenaCut,material);
+    }else if(gear.chest==='armor'){
       const x=chest.x+(bottom.x-chest.x)*.75, y=chest.y+(bottom.y-chest.y)*.75;
       rect(x-(side?1:2),y,side?3:5,1,material.leather);
       if(!back)rect(x+(d===2?-1:d===6?1:0),y,1,1,material.trim);
@@ -96,17 +98,17 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
   }
 }
 export function directionalHelmet(c, id, h, d, cosmetics = {}, time = 0) {
-  if(id==='bone_carver_crown')return drawCarverCrown(c,h,d,time);
-  if(id==='witch_hat')return drawWitchHat(c,h,d);
-  if(id==='santa_hat')return drawSantaHat(c,h,d);
   const def=ITEMS[id];
   if(!def) return false;
-  if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics),materialIndex(id,'metal')))return true;
+  if(def.style==='witch')return drawWitchHat(c,h,d,id);
+  const style=headwearStyle(id,def);
+  if(id==='bone_carver_crown'||id==='santa_hat')return drawResolvedHeadwear(c,h,d,style,gearPalette(id),id,time);
+  if(detailedProcedural(c,h,pen=>directionalHelmet(pen,id,h,d,cosmetics,time),materialIndex(id,'metal')))return true;
   const p=gearPalette(id,cosmetics.dye),r=gearPixels(c,h);
   const back=d>=3&&d<=5,side=d===2||d===6;
   const front=d===0?0:d<4?-3:3;
-  const style=headwearStyle(id,def);
-  if(drawResolvedHeadwear(c,h,d,style,p,id))return true;
+  if(drawResolvedHeadwear(c,h,d,style,p,id,time))return true;
+  if(drawDeathEaterMask(c,h,d,id))return true;
   if(style==='succubus_horns'){drawSuccubusHorns(c,h,d,def.hornsPalette);return true;}
   if(style==='santa'){
     for(const [y,w] of [[-11,2],[-10,4],[-9,5],[-8,6],[-7,6],[-6,6],[-5,6]]){

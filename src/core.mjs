@@ -1,6 +1,7 @@
 import {BIOME_MIXED_EVENTS,encounterBiome,encounterContext,planBiomeEncounter,biomeEncounterSpot,mixedPressureAllows} from './biome-encounters.mjs';
 import {maintainEnemyGroupCombat,requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {tickSpeciesCombat} from './enemy-species-combat.mjs';
+import {tickWildBiomeLeash,wildBiomeTargets} from './wild-biome-spawns.mjs';
 import {chargeRecoveryTime,openChargeCounter} from './counterattack.mjs';
 import {launchMeleeTarget, tickWeaponKnockback} from './weapon-knockback.mjs';
 import {advanceCombatImpacts} from './combat-impact.mjs';
@@ -18,11 +19,13 @@ import {deliverStudentParcels} from './train-students.mjs';
 import {deliverTvRecovery} from './tv-recovery.mjs';
 import {tickChocolateFrogs} from './chocolate-frogs.mjs';
 import {tickHouseLiving} from './house-living.mjs';
-import {trainWorldBlocked,moveTrainRider} from './train-test.mjs';
+import {trainWorldBlocked,moveTrainRider,harvestNativeGravestone} from './train-test.mjs';
+import {movePirateShipPlayer} from './pirate-ship.mjs';
 import {tickStationOwls} from './station-owls.mjs';
 import {tickTrainTest} from './train-test.mjs';
+import {tickGardenManaWards} from './diagon-garden-ward.mjs';
 import {BONE_CARVER_EVENT,spawnBoneCarver} from './bone-carver.mjs';
-import {tickBroomFlight} from './broom-mount.mjs';
+import {broomFlightSpeed,tickBroomFlight} from './broom-mount.mjs';
 import {vehicleRollsOver} from './vehicle-ground.mjs';
 import {awakenCemeteryPumpkins} from './squashling-awakening.mjs';
 import {DRAGON_EVENTS,dragonBreath} from './dragon-events.mjs';
@@ -73,6 +76,9 @@ import {SUCCUBUS_EVENT,initializeSuccubus,tickSuccubus} from './succubus.mjs';
 import {IMP_EVENT,initializeImp,tickImp,tickImpHazards} from './imps.mjs';
 import {ZOMBIE_EVENT,initializeZombie,tickZombie} from './zombies.mjs';
 import {isCharmed,clearCharm,tickCharmStatuses,charmInputs,tickCharmedPlayer,charmCanTarget,playerCombatTargets} from './succubus-charm.mjs';
+import {arenaCanFight,arenaFighter,arenaPlayerSource,inDiagonArena} from './diagon-arena-layout.mjs';
+import {arenaKnockout} from './diagon-arena.mjs';
+import {championPower} from './arena-drink-state.mjs';
 import {seedWildFauna,tickWildFauna} from './wild-fauna.mjs';
 import {throwHeldChicken,tickChickenCarry} from './chicken-carry.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
@@ -97,6 +103,8 @@ import { creatureCue } from './sound-bank.mjs';
 import {iceMotion,snowAt} from './ice-world.mjs';
 import {hasAimWeapon, updateAimFacing} from './ranged-aim.mjs';
 import {collisionOffset, actorRadius, clearShot, navigateEnemy,flies} from './navigation.mjs';
+import {mountainMovementScale} from './wild-mountain-layout.mjs';
+import {tickMountainPursuit} from './wild-mountain-encounters.mjs';
 import {separateActorBodies} from './enemy-separation.mjs';
 import { initializeField, record, tickField } from "./field-systems.mjs";
 import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
@@ -129,6 +137,8 @@ import { meleeProfile, meleeCanHit, meleeBodyRadius } from './melee-geometry.mjs
 import {GRAVEYARD_EVENTS,GHOST_EVENT,cemeteryEvent} from './graveyard-events.mjs';
 import {strikeTallGrass} from './tall-grass.mjs';
 import {graveyardBlocked,harvestGravestone,tickGraveyard,GRAVE_EMERGENCE_SECONDS} from './graveyard-world.mjs';
+import {harvestNocturneGravestone} from './diagon-nocturne-rear.mjs';
+import {hitHogsmeadeDoor} from './hogsmeade.mjs';
 import {vehicleMotion,syncHouseVehicle,resolveVehicleImpact,tickVehicleEffects,houseVehicleForPlayer,vehicleDriver,vehicleColliderBlocked,hitVehicleTree} from './house-vehicles.mjs';
 import {spawnSurfaceEcology,tickSurfaceEcology,catchGraveyardCritter,startleGraveyardCats} from './graveyard-ecology.mjs';
 import {resetHouseWorlds,prepareHouseWorldTravel,tickHouseWorldTravel} from './house-worlds.mjs';
@@ -741,7 +751,7 @@ export class Game {
         // Player rigs are anchored at their visible feet. The legacy sprite
         // offset otherwise makes a short stump block empty ground above it.
         if(stump){const offset=from&&!from.kind?0:footOffset;return elevation<stump.height&&raisedSurfaceBlocked(stump,x,y+offset,radius,projectile?null:from,offset);}
-        return footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius);
+        return footprintHit(prop, this.spriteLibrary[prop.kind], x, y + footOffset, radius, projectile ? null : from, footOffset);
       })
     );
   }
@@ -758,11 +768,16 @@ export class Game {
     );
   }
   moveActor(actor, dx, dy, flying = false) {
+    if(this.trainTest&&actor.pirateRide)return movePirateShipPlayer(this,actor,dx,dy);
     if(this.trainTest&&actor.trainRide)return moveTrainRider(this,actor,dx,dy);
     const collider=this.players.includes(actor)?controlledFollower(this,actor)||actor:actor;
     if(stationaryCreature(collider)){actor.moving=false;actor.slideX=actor.slideY=0;return 0;}
     flying ||= flies(collider);
     const groundedForTerrain=!flying&&!actor.trainRide&&!actor.trainDeck&&!actor.broomMount&&!actor.wingHover&&!(actor.jumpHeight>0)&&!(actor.groundHeight>0);
+    if(groundedForTerrain&&this.trainTest?.design.wildLands){
+      const slope=mountainMovementScale(this.trainTest.design,actor.x,actor.y,dx,dy);
+      dx*=slope;dy*=slope;
+    }
     if(groundedForTerrain&&this.generatedEnvironment==='ice'){const snow=1-snowAt(this,actor.x,actor.y)*.45;dx*=snow;dy*=snow;}
     if(groundedForTerrain&&webSlow(this,actor)){dx*=.45;dy*=.45;}
     if (actor.field === undefined && actor.slowUntil > this.time) {
@@ -918,6 +933,7 @@ export class Game {
     this.log = this.log.slice(0, 5);
   }
   hurt(p, amount, source, {charge = false} = {}) {
+    if(inDiagonArena(this)&&this.players.includes(p)&&arenaPlayerSource(this,source)&&!arenaCanFight(this,source,p))return;
     if(this.players.includes(p)&&source?.id&&(this.enemies.includes(source)||(this.ghosts||[]).includes(source)))p.reindeerThreatId=source.id;
     if(p.holidayReindeer){if(p.hp>0&&!(p.invuln>0)){p.hp=Math.max(0,p.hp-Math.max(1,amount));p.invuln=.6;p.hit=.2;if(!p.hp){p.defeated=true;this.message('Your reindeer fell protecting you.');}}return;}
     if(this.players.includes(p)){
@@ -951,6 +967,7 @@ export class Game {
       return charge ? (blocked === 'caught' ? 'caught' : 'blocked') : undefined;
     }
     const guardBrace=p.guardWardTime>0?Math.max(0,Math.min(.5,stat(p,'guardBreakResist'))):0;
+    amount*=championPower(arenaPlayerSource(this,source));
     if(p.guardWardTime>0)p.guardWardTime=0;
     if(guardBrace)amount*=1-guardBrace;
     petPvPEvent(this,p,source);
@@ -970,6 +987,7 @@ export class Game {
     const healthBefore=p.hp;
     p.hp=Math.max(0,p.hp-amount);
     const healthLost=healthBefore-p.hp;
+    if(p.hp===0&&inDiagonArena(this)&&arenaKnockout(this,p,source))return charge?'hit':undefined;
     let protection=0.75;
     if (p.hp === 0 && p.field?.skills?.second_wind && !p.secondWindUsed) {
       p.hp = 35;
@@ -994,9 +1012,18 @@ export class Game {
       this.message(
         p.name + " is down! Stand nearby and hold Interact to revive.",
       );
-    if(charge && healthLost > 0)return 'hit';
+    if(charge && healthLost > 0){
+      if(source?.kind==='boar'&&p.hp>0&&this.players.includes(p)){
+        const travel=source.speciesCombat||source.tactics||source;
+        const dx=travel.dx??source.faceX??0,dy=travel.dy??source.faceY??0;
+        const length=Math.hypot(dx,dy);
+        if(length>0)this.moveActor(p,dx/length*18,dy/length*18);
+      }
+      return 'hit';
+    }
   }
   attack(p, charge = 0) {
+    if(inDiagonArena(this)&&!arenaFighter(this,p))return false;
     if(p.frozen>0)return false;
     if(this.worldTravel)return false;
     if(p.heldChickenId)return throwHeldChicken(this,p);
@@ -1100,7 +1127,7 @@ export class Game {
     const structureWeapon=!isCharmed(p)&&[p.equipment.hand1,p.equipment.hand2].some(id=>itemKind(id)==='sword');
     const hedgeHit=!isCharmed(p)&&blade&&damageOverlookMelee(this,p,damage,spin?96:melee.range,spin);
     const structureHit=hedgeHit||!isCharmed(p)&&(damageSupplyChestMelee(this,p,damage,spin?96:melee.range,spin)||structureWeapon&&damageStructureMelee(this,p,damage,spin?96:melee.range,spin));
-    stickHit=grassHit||!isCharmed(p)&&(harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
+    stickHit=grassHit||!isCharmed(p)&&(hitHogsmeadeDoor(this,p,damage,melee.range)||harvestNocturneGravestone(this,p,damage,melee.range)||harvestNativeGravestone(this,p,damage,melee.range)||harvestGravestone(this,p,damage,melee.range)||harvest(this, p, damage, melee.range, s=>{applyTorchHit(this,p,s);onFlamingHarvest(this,p,s);}));
     if(structureHit||toyHit||playHit){stickHit=true;this.persist();}
     if(hitNightEnemyVines(this,p,damage,melee.range))stickHit=true;
     if(cutLivingVines(this,p,melee.range)){stickHit=true;this.persist();}
@@ -1690,7 +1717,7 @@ export class Game {
       p.dashHeld = !!input.dodge;
       p.rooted = Math.max(0, (p.rooted || 0) - dt);
       p.jumanjiVineCooldown=Math.max(0,(p.jumanjiVineCooldown||0)-dt);
-      const normalSpeed=p.vehicleId?0:p.broomMount?210:(p.rooted>0?55:controlled?Math.max(34,controlled.speed||133)*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')):133*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')));
+      const normalSpeed=p.vehicleId?0:p.broomMount?broomFlightSpeed(p):(p.rooted>0?55:controlled?Math.max(34,controlled.speed||133)*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')):133*(p.field?.boon==="scout"?1.12:1)*(1+stat(p,'speedBonus')));
       const recoveryRatio=Math.max(0,Math.min(1,(p.dashRecovery||0)/(p.dashRecoveryDuration||.18)));
       const speed=p.dashTime>0?rules.dashSpeed:p.dashRecovery>0?normalSpeed+(rules.dashSpeed-normalSpeed)*recoveryRatio:normalSpeed*(p.walking&&!controlled?.72:1);
       if (p.dashTime > 0 || p.dashRecovery > 0) {
@@ -1712,7 +1739,9 @@ export class Game {
       if(tickEnemyFlinch(this,e,dt))continue;
       if(e.graveEmergence)continue;
       if(e.hp>0&&tickRaven(this,e,dt))continue;
-      const alive = targets.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p)));
+      const alive = wildBiomeTargets(this,e,targets.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p))));
+      if(tickWildBiomeLeash(this,e,dt,alive))continue;
+      if(tickMountainPursuit(this,e,dt,alive))continue;
       if(tickTacticalEnemy(this,e,dt,alive))continue;
       if(tickSpeciesCombat(this,e,dt,alive))continue;
       if(e.biomeMixed&&e.spawnReadyAt>this.time){e.moving=false;continue;}
@@ -2374,6 +2403,7 @@ export class Game {
       this.combatHitstop-=frozen;dt-=frozen;
       if(dt<=0)return;
     }
+    if(['play','won'].includes(this.phase)&&!this.paused&&!this.trainTest?.preparing&&!this.worldTravel)tickGardenManaWards(this,Math.max(0,Math.min(dt,.05)));
     deliverStudentParcels(this);
     if(!this.trainTest&&!this.tvWorld&&!this.remoteAuthoritative)deliverTvRecovery(this);
     if(!this.trainTest&&['play','won'].includes(this.phase))tickChocolateFrogs(this,dt);

@@ -60,6 +60,10 @@ export function merchantAction(g,p,action){
    const item=p.inventory[u.index];if(!item)return true;
    if(protectedItem(p,item.type)){u.notice='Unlock this item in Field Kit first.';return true;}
    const price=sellValue(item.type)*item.qty;m.stock.push({item:structuredClone(item),price,seller:p.profileId||p.id});p.inventory[u.index]=null;p.coins=(p.coins||0)+price;u.notice=`Sold for ${price} gold. Buy it back for exactly ${price}.`;
+   if(m.alleyShop&&ITEMS[item.type]?.owlCage){
+    const receipt=((g.trainTest.alleyPurchases??={})[p.id]??={spent:0,gold:0,items:[],delta:{}});
+    receipt.gold+=price;receipt.delta[item.type]=(receipt.delta[item.type]||0)-item.qty;
+   }
   }else{
    const entry=m.stock[u.index];if(!entry)return true;
    if(entry.seller&&entry.seller!==(p.profileId||p.id)){u.notice='Reserved for its original owner.';return true;}

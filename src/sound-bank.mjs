@@ -5,8 +5,14 @@ const oga=(names)=>names.split(',').map(n=>`assets/sfx/oga-rpg/${n}.ogg`);
 const ui=(names)=>({files:files('ui',names),bus:'ui',gain:.18,priority:70,group:'ui',polyphony:4,cooldown:70,maxDuration:1.6,spatial:false});
 const rpg=(names,gain=.28)=>({files:files('rpg',names),gain,priority:45,group:'action',polyphony:8,cooldown:110,distance:650});
 const impact=(name,gain=.26)=>({files:files('impact',`${name}_000,${name}_001,${name}_002`),gain,priority:50,group:'impact',polyphony:6,cooldown:110,distance:620});
+const recordedSteps=(name,gain=.13)=>({files:files('footsteps',`${name}-1,${name}-2,${name}-3`),gain});
+const streetFoley=(names,gain,options={})=>({
+ files:files('rpg',names),gain,alleyStreet:true,group:'alley-foley',priority:16,polyphony:3,
+ cooldown:180,distance:180,maxDuration:.55,...options,
+});
 export const CUES={
  rifle:impact('impactMetal_heavy',.5),stalkerStep:impact('footstep_grass',.22),
+ pirateCannon:{...impact('impactMining',.46),rate:.58,lowpass:1600,distance:1450,cooldown:180,maxDuration:1.1},
  stalkerBreath:{files:['assets/sfx/creatures/snarl.ogg'],gain:.09,rate:.55,maxDuration:1.1},
  focus:ui('select_001,select_002'),click:ui('click_001,click_002'),back:ui('back_001'),error:ui('error_003'),join:ui('confirmation_001'),ready:ui('confirmation_002'),save:ui('confirmation_003'),
  attack:rpg('knifeSlice,knifeSlice2'),bow:rpg('cloth1,cloth2'),magic:ui('glass_001,glass_002'),hit:impact('impactPunch_medium'),shield:impact('impactMetal_medium'),hurt:impact('impactPunch_heavy'),
@@ -14,8 +20,17 @@ export const CUES={
  roll:impact('impactWood_light'),event:ui('bong_001'),trap:rpg('metalLatch'),heal:ui('glass_003'),defeat:impact('impactSoft_heavy'),dodge:rpg('cloth3,cloth4'),dashWhoosh:{files:files('rpg','cloth3,cloth4'),gain:.18,rate:.62,maxDuration:.32,bus:'sfx',priority:52,group:'movement',polyphony:4,cooldown:140,distance:620},win:ui('confirmation_004'),lose:ui('error_008'),
  loot:rpg('handleCoins,handleCoins2'),drop:rpg('dropLeather'),equip:rpg('beltHandle1,beltHandle2'),inventory:rpg('bookOpen'),close:rpg('bookClose'),doorOpen:rpg('doorOpen_1,doorOpen_2'),doorClose:rpg('doorClose_1,doorClose_2'),
  harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),wallBreak:impact('impactWood_heavy',.34),treeBreak:impact('impactWood_heavy',.42),rockBreak:impact('impactMining',.4),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),level:ui('confirmation_003'),
- grass:impact('footstep_grass',.13),wood:impact('footstep_wood',.13),snow:impact('footstep_snow',.13),sand:impact('footstep_carpet',.13),water:rpg('footstep08,footstep09',.12),slide:ui('scratch_001'),
+ grass:impact('footstep_grass',.13),wood:impact('footstep_wood',.13),snow:impact('footstep_snow',.13),stone:impact('footstep_concrete',.11),carpet:impact('footstep_carpet',.13),
+ sand:recordedSteps('sand'),water:recordedSteps('water',.19),mud:recordedSteps('mud',.15),dirt:recordedSteps('dirt'),gravel:recordedSteps('gravel'),ice:recordedSteps('ice'),tile:recordedSteps('tile'),slide:ui('scratch_001'),
  wind:{files:['assets/sfx/ambience/wind.wav'],bus:'ambience',gain:.15},rain:{files:['assets/sfx/ambience/rain.ogg'],bus:'ambience',gain:.18},forest_ambient:{files:['assets/sfx/ambience/forest_ambient_20s_loop.wav'],bus:'ambience',gain:.10},
+ alley_ambient:{files:['assets/sfx/ambience/wind.wav'],bus:'ambience',gain:.047,lowpass:2400},
+ alleyClock:streetFoley('metalClick',.09,{rate:.9,distance:145,maxDuration:.24}),
+ alleyPages:streetFoley('bookFlip1,bookFlip2,bookFlip3',.085,{distance:145}),
+ alleyCloth:streetFoley('cloth1,cloth2',.07,{rate:.74,distance:175}),
+ alleyPerch:streetFoley('cloth3,cloth4',.085,{rate:1.24,distance:175,maxDuration:.3}),
+ alleyPost:streetFoley('metalLatch,metalClick',.09,{distance:170}),
+ alleyKettle:streetFoley('metalPot1,metalPot2,metalPot3',.11,{rate:1.05,distance:220}),
+ alleyStep:streetFoley('footstep00,footstep01,footstep03,footstep04',.085,{distance:140,maxDuration:.34}),
  desert_ambient:{files:['assets/sfx/ambience/desert-wind-06.mp3'],bus:'ambience',gain:.075,maxDuration:8},
  ice_ambient:{files:['assets/sfx/ambience/blizzard-wind-04.wav'],bus:'ambience',gain:.11},
  beach_ambient:{files:['assets/sfx/ambience/beach_waves_01.flac','assets/sfx/ambience/beach_waves_02.flac'],bus:'ambience',gain:.08},
@@ -25,8 +40,7 @@ export const CUES={
  house_ambient:{files:['assets/sfx/ambience/room-tone-54.wav'],bus:'ambience',gain:.055},
  graveyard_ambient:{files:['assets/sfx/ambience/horror-wind-whisper-38.wav'],bus:'ambience',gain:.055,maxDuration:6},
  shadow_ambient:{files:['assets/sfx/ambience/night-ambience-01.wav'],bus:'ambience',gain:.07},
- jump:rpg('cloth1,cloth2',.13),land:impact('impactSoft_medium',.21),splash:rpg('footstep08,footstep09',.24),
- stone:impact('footstep_concrete',.11),mud:rpg('footstep08,footstep09',.10),
+ jump:rpg('cloth1,cloth2',.13),land:impact('impactSoft_medium',.21),splash:{...recordedSteps('water',.26),rate:.84,group:'movement',priority:40,cooldown:200,distance:420,maxDuration:.55},
  repair:impact('impactMetal_light',.13),repairDone:ui('confirmation_003'),engineStart:impact('impactMetal_heavy',.22),engineRun:impact('impactMetal_light',.08),carHit:impact('impactMetal_heavy',.28),death:impact('impactSoft_heavy',.3),
 };
 // Explicit action aliases let custom controller/canvas UI share the same polished
@@ -59,8 +73,8 @@ CUES.buildPaint=ui('click_001,click_002');
 CUES.vehicleSkid=rpg('footstep08,footstep09',.18);
 CUES.bossPhase=ui('bong_001');
 CUES.rescue=CUES.win;
-// Mix policy is separate from the recorded source selection. No new asset downloads.
-for(const name of ['grass','wood','snow','sand','water','stone','mud','stalkerStep'])Object.assign(CUES[name],{group:'footstep',priority:15,polyphony:4,cooldown:190,distance:300,maxDuration:.45});
+// Share the player footstep voice budget across every surface.
+for(const name of ['grass','wood','snow','sand','water','stone','mud','dirt','gravel','ice','tile','carpet','stalkerStep'])Object.assign(CUES[name],{group:'footstep',priority:15,polyphony:4,cooldown:190,distance:300,maxDuration:.45});
 for(const name of ['attack','bow','magic','rifle'])Object.assign(CUES[name],{bus:'sfx',group:'weapon',priority:65,polyphony:6,cooldown:100,spatial:true,distance:650});
 for(const name of ['hurt','death','defeat','shield'])Object.assign(CUES[name],{priority:85,group:'critical',polyphony:6,cooldown:180});
 for(const name of ['event','win','lose','level','repairDone'])Object.assign(CUES[name],{priority:95,group:'notification',polyphony:3,cooldown:550});

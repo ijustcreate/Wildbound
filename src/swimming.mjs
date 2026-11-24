@@ -41,7 +41,7 @@ export function tickSwimBreath(g,p,input,dt){
  }
  p.waterEmit=Math.max(0,(p.waterEmit||0)-dt);
  if(p.swimming&&p.waterEmit===0&&underwater){
-  p.waterEmit=.28;g.effects||=[];
-  g.effects.push({particle:'bubbles',x:p.x-(p.faceX||0)*9,y:p.y-(p.faceY||1)*5,life:.65,duration:.65,seed:p.id||0});
+  p.waterEmit=.52;g.effects||=[];
+  g.effects.push({particle:'bubbles',swimDepth:p.diveDepth,x:p.x-(p.faceX||0)*3,y:p.y+2,life:.56,duration:.56,seed:p.id||0});
  }
 }

@@ -69,9 +69,9 @@ export const swordBladeTime=(t,action)=>action==='swipe_big'?(t<.30?t/.30*.36:t<
 
 // The telegraph and release share one world-space lane. Charge caps at 1.2s.
 export const swordCharging=p=>!!(p.swordChargeAim&&p.charge>0&&swordLoadout(p)&&p.hp>0&&!p.ui&&!p.room&&!p.swimming&&!p.stun&&!p.frozen&&!p.sleeping);
-export function paintSwordCharge(c,p,time){
+export function paintSwordCharge(c,p,time,lift=swordFloorLift(p)){
  if(!swordCharging(p))return;
- drawSwordChargeLane(c,{...p,y:p.y-swordFloorLift(p)},time);
+ drawSwordChargeLane(c,{...p,y:p.y-lift},time);
 }
 // Body-to-swept-rectangle contact. Checking only the enemy's center misses visible flanks;
 // the ordinary melee cone also excludes bodies already alongside the moving player.

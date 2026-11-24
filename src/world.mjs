@@ -1,5 +1,5 @@
 import {connectForestBridgeBanks} from './forest-bridges.mjs';
-import {REALMS,realmWorld,realmFootprint} from './realm-world.mjs';
+import {REALMS,realmWorld,realmFootprint,BAYOU_SHRINE_BASE} from './realm-world.mjs';
 import {templeLayout} from './temple.mjs';
 import {iceWorld} from './ice-world.mjs';
 import {beachWorld} from './beach-world.mjs';
@@ -177,8 +177,19 @@ export function propDepth(prop, sprite) {
     if (mask[i]) bottom = Math.max(bottom, Math.floor(i / sprite.width));
   return prop.y - prop.size / 2 + ((bottom + 0.5) * prop.size) / sprite.height;
 }
-export function footprintHit(prop, sprite, x, y, radius = 8) {
-  if(prop.realm){const b=realmFootprint(prop);if(b)return Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y-Math.max(b.y,Math.min(y,b.y+b.h)))<radius;
+export function footprintHit(prop, sprite, x, y, radius = 8, from = null, footOffset = 0) {
+  if(prop.realm){const b=realmFootprint(prop);if(b){
+      if(prop.kind==='bayou_shrine'&&from&&!Number.isFinite(prop.collisionWidth)){
+        // A player saved inside the old decorative shrine can step out.
+        const clearance=(px,py)=>{
+          const dx=Math.max(b.x-px,px-b.x-b.w),dy=Math.max(b.y-py,py-b.y-b.h);
+          return dx>0||dy>0?Math.hypot(Math.max(0,dx),Math.max(0,dy)):Math.max(dx,dy);
+        };
+        const next=clearance(x,y),previous=clearance(from.x,from.y+footOffset);
+        return next<radius&&next<=previous;
+      }
+      return Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y-Math.max(b.y,Math.min(y,b.y+b.h)))<radius;
+    }
     if(prop.kind==='root_arch'&&!prop.depleted)return [-.35,.35].some(dx=>Math.hypot(x-(prop.x+dx*prop.size),y-prop.rootY)<radius+prop.size*.065);return false;}
   // Cemetery obstacles are tested once by graveyardBlocked, not by the generic
   // square sprite fallback (which would block paths and the mausoleum doorstep).
@@ -233,6 +244,10 @@ export function footprintHit(prop, sprite, x, y, radius = 8) {
   return false;
 }
 export function isOccluded(prop, sprite, player) {
+  if(prop.kind==='bayou_shrine'&&(!sprite||sprite.nativeBayouLandmark)){
+    const scale=prop.size/128,base=prop.rootY??prop.y+prop.size*.19;
+    return !prop.fallen&&player.y+8<base&&player.y>base-100*scale&&Math.abs(player.x-prop.x)<(BAYOU_SHRINE_BASE.width/2+8)*scale;
+  }
   if(prop.realm)return !prop.fallen&&player.y+8<prop.rootY&&player.y>prop.rootY-prop.size*.92&&Math.abs(player.x-prop.x)<prop.size*.45;
   if(prop.graveyard&&prop.kind==='grave_forest_tree') {
     const base=prop.rootY??prop.y;

@@ -30,6 +30,23 @@ test('locked rush misses a sidestep, stops at a wall, and a heavy preparation hi
  e.faceX=-1;e.faceY=0;speciesPhase(e,'active',.58);g.moveActor=()=>0;tickSpeciesCombat(g,e,.02,[p]);assert.equal(e.speciesCombat.phase,'recover');assert.ok(e.speciesCombat.remaining>1.3);
  speciesPhase(e,'windup',.56);reactSpeciesHit(g,e,20,'physical',{heavy:true,p});assert.equal(e.speciesCombat.phase,'recover');
 });
+test('a landed boar rush pushes the hero once in the committed direction',()=>{
+ const {g,p,e}=setup('boar');
+ e.x=p.x+20;e.faceX=-1;e.faceY=0;
+ speciesPhase(e,'active',.58);
+ const origin=p.x,hp=p.hp;
+ tickSpeciesCombat(g,e,.02,[p]);
+ assert.ok(p.hp<hp);
+ assert.equal(p.x,origin-18);
+ for(let i=0;i<12;i++){g.time+=.02;tickSpeciesCombat(g,e,.02,[p]);}
+ assert.equal(p.x,origin-18);
+ const solid=setup('boar');
+ solid.e.x=solid.p.x+20;
+ solid.p.invuln=1;
+ speciesPhase(solid.e,'active',.58);
+ tickSpeciesCombat(solid.g,solid.e,.02,[solid.p]);
+ assert.equal(solid.p.x,origin);
+});
 test('support preparation can be interrupted without healing or spending mana',()=>{
  const {g,p,e}=setup('skeleton_caster');e.mana=50;e.maxMana=70;e.healCooldown=0;const ally={id:900,hp:10,maxHp:100,kind:'skeleton',x:e.x+20,y:e.y,group:e.group};g.enemies.push(ally);
  tickSpeciesCombat(g,e,.02,[p]);assert.equal(e.speciesCombat.support,'heal');reactSpeciesHit(g,e,5,'physical',{p,heavy:true});

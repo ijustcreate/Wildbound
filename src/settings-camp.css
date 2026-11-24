@@ -80,3 +80,39 @@
 
 #settings-dialog :is(button,input,select,summary).menu-focus{outline:.4cqw solid #ffd153!important;outline-offset:.5cqw;box-shadow:0 0 1.5cqw #ffbf49!important}
 #settings-dialog :is(.camp-select,.camp-range):has(.menu-focus){outline:.4cqw solid #ffd153;outline-offset:.3cqw;filter:drop-shadow(0 0 .6cqw #d59636)}
+
+#pause-dialog[data-camp-menu=true] { opacity: 0; pointer-events: none; }
+#pause-dialog[data-camp-menu=true]::backdrop { background: transparent; backdrop-filter: none; }
+#settings-dialog .camp-session-actions[hidden],
+#settings-dialog .camp-session-actions [hidden] { display: none !important; }
+#settings-dialog .camp-session-actions { margin: 0 0 2cqw; color: #fff0cf; font: 3.3cqw/1.3 Georgia, serif; }
+#settings-dialog .camp-session-actions summary {
+  padding: 1.6cqw 2cqw;
+  border: .4cqw solid #8f6838;
+  border-radius: 1cqw;
+  background: #30251a;
+  color: #f8e1b5;
+  font-weight: bold;
+  cursor: pointer;
+}
+#settings-dialog .camp-session-actions #pause-text { margin: 2cqw 0; color: #f8e1b5; font: 3cqw/1.4 Georgia, serif; }
+#settings-dialog .camp-session-actions :is(.pause-secondary, .pause-actions) { display: grid; gap: 1.5cqw; margin: 2cqw 0; }
+#settings-dialog .camp-session-actions .pause-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#settings-dialog .camp-session-actions button {
+  width: 100%;
+  min-width: 0;
+  min-height: 9cqw;
+  padding: 1.5cqw !important;
+  border: .4cqw solid #8b683c !important;
+  border-radius: 1cqw;
+  box-shadow: 0 .4cqw .4cqw #100c09;
+  background: linear-gradient(110deg, #ffe0a6, #dfb777) !important;
+  color: #20170e !important;
+  font: bold 3.1cqw/1.2 Georgia, serif !important;
+}
+#settings-dialog .camp-session-actions .hidden,
+#settings-dialog .camp-session-actions #pause-settings { display: none !important; }
+#settings-dialog .camp-session-actions :is(#pause-worlds, #reassign-button) { grid-column: 1/-1; }
+#settings-dialog .camp-session-actions #pause-last-encounter strong { display: block; margin-top: 1.5cqw; }
+#settings-dialog .camp-session-actions #pause-last-encounter p { margin: .7cqw 0 1.5cqw; }
+#settings-dialog .camp-session-actions .pause-control-help { margin: 2cqw 0 0; color: #e6cfaa; font: 2.7cqw/1.25 Georgia, serif; }

@@ -220,20 +220,20 @@ const woodSprites=new Map();
 const WOOD_SPRITE_LIMIT=512;let woodHits=0,woodMisses=0;
 export function treeWoodCacheStats(){
  let bytes=0;
- for(const entry of woodSprites.values())for(const part of ['trunk','branches','lower','upper']){
+ for(const entry of woodSprites.values())for(const part of ['trunk','branches','lower','upper','roots']){
   const sprite=entry[part];if(sprite)bytes+=sprite.width*sprite.height*4;
  }
  return {hits:woodHits,misses:woodMisses,entries:woodSprites.size,limit:WOOD_SPRITE_LIMIT,bytes};
 }
 function drawTreeWood(c,p,part){
  const tallPart=part==='lower'||part==='upper';
- const paint=tallPart?(pen,prop)=>drawTallOakWood(pen,prop,part):part==='trunk'?drawTreeTrunk:drawTreeBranches;
+ const paint=tallPart?(pen,prop)=>drawTallOakWood(pen,prop,part):part==='trunk'?drawTreeTrunk:part==='roots'?drawTreeRoots:drawTreeBranches;
  if(typeof document==='undefined'){paint(c,p);return;}
  const signature=[p.seed,p.x,p.y,treeType(p),p.treeVariant,p.realmPalette,forestSettings.branchSpread].join(':');
  let entry=woodSprites.get(signature);
  if(!entry){woodMisses++;entry={signature};if(woodSprites.size>=WOOD_SPRITE_LIMIT)woodSprites.delete(woodSprites.keys().next().value);}
  else {woodHits++;woodSprites.delete(signature);}woodSprites.set(signature,entry);
- const x=tallPart?56:48,y=tallPart?142:80;
+ const x=tallPart?56:part==='roots'?22:48,y=tallPart?142:part==='roots'?8:80;
  if(!entry[part]){
   const canvas=document.createElement('canvas');canvas.width=x*2;canvas.height=y+16;
   const pen=canvas.getContext('2d');pen.translate(x,y);paint(pen,p);entry[part]=canvas;
@@ -247,22 +247,24 @@ function drawTallTreeTier(c,p,time,g,tier){
  // Fade the finished tier as one image so overlapping leaf clumps stay even.
  if(!treeTierSurface){treeTierSurface=document.createElement('canvas');treeTierSurface.width=176;treeTierSurface.height=168;}
  const pen=treeTierSurface.getContext('2d');
- pen.setTransform(1,0,0,1,0,0);pen.clearRect(0,0,176,168);
+ pen.setTransform(1,0,0,1,0,0);pen.imageSmoothingEnabled=false;pen.clearRect(0,0,176,168);
  pen.translate(88,156);paint(pen);c.drawImage(treeTierSurface,-88,-156);
 }
 
 export function drawForestTree(c,p,time,g={},tier){
- const b=treeBase(p),s=p.size/64;c.save();c.translate(Math.round(b.x),Math.round(b.y));c.scale(s,s);
+ // This also runs inside OffscreenCanvas prop rasters. Snap the wood to the
+ // same native sampling as the leaves before compositing either layer.
+ const b=treeBase(p),s=p.size/64;c.save();c.imageSmoothingEnabled=false;c.translate(Math.round(b.x),Math.round(b.y));c.scale(s,s);
  const shape=treeStructure(p);c.transform(shape.width,0,shape.lean,shape.height,0,0);
  if(isTwoTierForestTree(p)){
   if(p.falling||p.fallen){
-   drawSplitTree(c,p,()=>{drawTreeWood(c,p,'lower');drawTreeRoots(c,p);},()=>{
+   drawSplitTree(c,p,()=>{drawTreeWood(c,p,'lower');drawTreeWood(c,p,'roots');},()=>{
     drawTreeFoliage(c,p,time,g,'lower');drawTallTreeTier(c,p,time,g,'upper');
    });
   }else{
    if(!tier||tier==='lower')drawTallTreeTier(c,p,time,g,'lower');
    if(!tier||tier==='upper')drawTallTreeTier(c,p,time,g,'upper');
-   if(!tier||tier==='roots')drawTreeRoots(c,p);
+   if(!tier||tier==='roots')drawTreeWood(c,p,'roots');
   }
  }else drawSplitTree(c,p,()=>drawTreeWood(c,p,'trunk'),()=>{drawTreeWood(c,p,'branches');drawTreeFoliage(c,p,time,g);});
  c.restore();

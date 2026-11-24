@@ -1,0 +1,19 @@
+# Wandmaker’s Garden and Greywake art review
+
+## Three passes
+
+1. **Layout and water.** Rebuilt the garden as a paved loop with three spurs. Benches sit in lawn alcoves with clear path footprints. The pool has a beveled stone rim and a dark, smooth center. It reflects the actual trees, reeds, and nearby explorers. A clipped, 20 Hz compositing surface distorts the reflection in horizontal pixel bands. Short animated wave crests stay in the outer part of the pool. The native comparison caught a bench corner and black seams at path intersections. The final paving layers share the same joins.
+2. **Plants, fixtures, and wildlife.** Placed 13 original garden fixtures, including ten editable animated recipes, and added 21 borderside placements between Diagon Alley and Nocturne. Plant types include catmint, iris, heather, cattail reeds, foxglove, aurelia, sword fern, inkcaps, silver thorn, and dusk lilies. The artwork review moved six fixtures clear of foreground tree canopies. Thirteen new residents have native outfits and daily routes. Six use the existing dialogue panel with two response branches each, including chime tuning, critter guidance, and three one-time samples. The prior 19 Alley visitors remain in their own schedule. Three Moonvein butterflies, one Gloamwhisker rat, and four Cobble-jumpers have native animated recipes, real net catches, icons, and persistent release state. Bottles hold butterflies and spiders. The rat uses a cage.
+3. **Greywake and loading.** Packed warm gravel and irregular flagstones read against cool rock and scree. Exposed strata, pine groups, snow patches, verge rocks, tufts, and marked ledges give the route more landmarks. The trail and descent collision still use shared world geometry. The terrain worker draws the detailed mountain behind an immediate coarse approach. A single atlas packs 18 prop recipes and 48 frames into 126,720 pixels, about 495 KiB at RGBA8. The gate schedules the first paving strips and atlas before the party enters. The northward approach prepares the garden ground. Street strips use 652 × 168 pixels per variant, replacing 1,800 × 168 canvases, and closed shopfronts share cached art by theme.
+
+## Verification
+
+The final source passed 45 focused Node checks, 17 garden checks, 74 prop checks, 69 resident checks, 17 critter checks, 63 mountain and harbor checks, and 16 real terrain Worker checks in muted Electron. The source garden review checks actual foot travel in both directions, continuous paving, real-source reflections, rim-only waves, four native cats, and shared cache sizes. Critter checks use the actual Attack input, containers, save reload, release, and preview transfer. Prop and mountain screenshots were reviewed at gameplay zoom. Device FPS was outside these checks.
+
+Native captures and receipts are in `test-output/mage-garden/`, `test-output/garden-props/`, `test-output/diagon-residents/`, `test-output/diagon-critters/`, and `test-output/pirate-harbors/`.
+
+## Desktop build 1.2.127
+
+The normal-profile executable is `dist/1.2.127/Wildbound-win32-x64/Wildbound.exe`. The versioned package was built at 2026-11-24T04:19:55.294Z from modified `Wildbound_worlds` source at `5b244635ab78e5a3c8e78ef21fdbabf60e505fd7`. `C:\Users\New User\Desktop\Wildbound Worlds (1.2.127).lnk` targets the project’s `Play Wildbound.cmd`, pins `dist\1.2.127\Wildbound-win32-x64`, and uses the project icon. The pinned launcher check and muted executable boot passed.
+
+The exact packaged game passed 17 garden, 74 prop, 69 resident, 362 broad Alley, 17 critter, 63 mountain gameplay, and 16 real terrain Worker checks in muted Electron with zero renderer or Worker errors. The broader source battery also passed 46 merchant, dialogue, footprint, Floo, and Quidditch regression cases. The package matched 1,916 runtime, authored rig, and asset files byte for byte with the checkout.

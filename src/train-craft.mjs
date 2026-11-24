@@ -23,10 +23,10 @@ export function paintTrainTable(p,o,P){
 export function paintTrainSeat(p,o,kind,P,details=true){
  const {x,y,w,h}=o,a=(o.facing??0)*Math.PI/2,dx=Math.round(Math.cos(a)),dy=Math.round(Math.sin(a)),bx=x-dx*w*.38,by=y-dy*h*.38,bw=dx?5:w,bh=dy?5:h;
  const cloth=kind==='seats'?'#7d8565':P.seats,wood='#614238';
- for(const sx of[-1,1])for(const sy of[-1,1])p.box(x+sx*(w/2-3),y+sy*(h/2-3),20,4,4,4,'#46372f');
- p.box(x,y,24,w,h,2,wood,true);
- p.box(x,y,26,w-3,h-3,1,shade(cloth,.66));
- p.box(x,y,27,w-5,h-5,1,shade(cloth,1.18));
+ for(const sx of[-1,1])for(const sy of[-1,1])p.box(x+sx*(w/2-3),y+sy*(h/2-3),20,4,4,4,'#46372f',false,o.id);
+ p.box(x,y,24,w,h,2,wood,true,o.id);
+ p.box(x,y,26,w-3,h-3,1,shade(cloth,.66),false,o.id);
+ p.box(x,y,27,w-5,h-5,1,shade(cloth,1.18),false,o.id);
  p.box(bx,by,25,bw,bh,14,wood,true);
  if(details){
  p.box(bx+dx,by+dy,28,dx?3:w-4,dy?3:h-4,9,shade(cloth,.92));
@@ -44,12 +44,20 @@ export function paintTrainMachinery(p,car,P){
  for(const side of[-1,1].filter(side=>side*Math.cos(car.a)<-1e-6))pipe(side);
  for(let j=0;j<24;j++){const a=j*Math.PI/12,b=(j+1)*Math.PI/12,mid=(a+b)/2;if(Math.cos(car.a)*Math.cos(mid)+Math.sin(mid)<=0)continue;const k=Math.max(.5,Math.round((.7+.48*Math.sin(mid))*8)/8);p.poly([[x0,Math.cos(a)*R,zc+Math.sin(a)*R],[x1,Math.cos(a)*R,zc+Math.sin(a)*R],[x1,Math.cos(b)*R,zc+Math.sin(b)*R],[x0,Math.cos(b)*R,zc+Math.sin(b)*R]],shade(P.body,k));}
  for(const x of[L*.04,L*.25])for(let j=0;j<24;j++){const a=j*Math.PI/12,b=(j+1)*Math.PI/12;if(Math.cos(car.a)*Math.cos((a+b)/2)+Math.sin((a+b)/2)<=0)continue;const pts=[[x,Math.cos(a)*R,zc+Math.sin(a)*R],[x,Math.cos(b)*R,zc+Math.sin(b)*R]];p.line(pts,shade(P.lining,.64),5);p.line(pts,P.lining,2);}
- if(Math.sin(car.a)<-1e-6)p.poly(Array.from({length:24},(_,j)=>{const a=j*Math.PI/12;return[x0-.5,Math.cos(a)*R,zc+Math.sin(a)*R];}),shade(P.body,.72),true);
  // Rounded smokebox face, with a recessed door rather than a square block.
  const face=(x,r)=>Array.from({length:20},(_,i)=>{const a=i*Math.PI*2/20;return[x,Math.cos(a)*r,zc+Math.sin(a)*r];});
  if(Math.sin(car.a)>=-1e-6){
  p.poly(face(x1+1,R*.92),'#202d34',true);p.poly(face(x1+2,R*.74),'#405056',true);p.poly(face(x1+3,R*.61),'#2c3a41');
  p.line([[x1+4,-8,zc],[x1+4,8,zc]],'#81918b',2);p.line([[x1+4,0,zc-8],[x1+4,0,zc+8]],'#81918b',2);
+ }else{
+  const back=x0-.5;
+  p.poly(face(back,R),'#252b32',true);
+  p.poly(face(back-.5,R*.9),'#56625f');
+  p.poly(face(back-1,R*.82),'#373f43');
+  for(const a of[Math.PI/6,Math.PI/2,Math.PI*5/6]){
+   const y=Math.cos(a)*R*.86,z=zc+Math.sin(a)*R*.86;
+   p.line([[back-1.5,y-1,z],[back-1.5,y+1,z]],'#a29471',2);
+  }
  }
  const fittings=[{x:L*.07,kind:'dome'},{x:L*.29,kind:'dome'},{x:L*.39,kind:'stack'}].sort((a,b)=>Math.sin(car.a)*(a.x-b.x));
  for(const fitting of fittings){const x=fitting.x,skin=zc+R;
@@ -162,16 +170,18 @@ export function paintTrainControls(p,o,P,running,details=true){
  const wheel=Array.from({length:17},(_,i)=>[x-2+Math.cos(i*Math.PI/8)*3.5,y+7,36+Math.sin(i*Math.PI/8)*3.5]);
  p.line(wheel,'#b29562',1);for(const a of[0,Math.PI/2])p.line([[x-2-Math.cos(a)*3,y+7,36-Math.sin(a)*3],[x-2+Math.cos(a)*3,y+7,36+Math.sin(a)*3]],'#b29562',1);
 }
-export function paintTrainFirebox(p,o,lit){
+export function paintTrainFirebox(p,o,lit,frontVisible=true){
  const {x,y,w,h}=o,front=x-w/2-.5,ry=Math.min(12,h*.35);
  p.box(x,y,20,w,h,25,'#2b383d',true);
+ p.line([[x-w*.3,y-h/2+2,45],[x+w*.3,y-h/2+2,45]],'#65766d',1);
+ if(!frontVisible)return;
  const opening=Array.from({length:16},(_,i)=>{const a=i*Math.PI/8;return[front,y+Math.cos(a)*ry,33+Math.sin(a)*9];});
  p.poly(opening,'#111e26',true);
  const ember=opening.map(([xx,yy,zz])=>[xx-.2,y+(yy-y)*.75,33+(zz-33)*.73]);p.poly(ember,lit?'#a94c32':'#422f2c');
  if(lit){p.poly([[front-.3,y-ry*.5,28],[front-.3,y-ry*.6,33],[front-.3,y-ry*.2,36],[front-.3,y,32],[front-.3,y+ry*.35,37],[front-.3,y+ry*.5,28]],'#edb55d');p.line([[front-.5,y-4,29],[front-.5,y,33],[front-.5,y+4,29]],'#ffe29a',2);}
+ else p.line([[front-.4,y-4,28],[front-.4,y-1,29],[front-.4,y+4,28]],'#a44b32',2);
  for(const dy of[-.55,0,.55])p.line([[front-.6,y+ry*dy,26],[front-.6,y+ry*dy,39]],'#263337',2);
  p.line([[front-1,y+ry+1,29],[front-1,y+ry+1,36]],'#b19463',2);
- p.line([[x-w*.3,y-h/2+2,45],[x+w*.3,y-h/2+2,45]],'#65766d',1);
 }
 export function paintTrainWallLining(p,car,P){
  const L=car.length,W=car.width,limit=L/2-42;

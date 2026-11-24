@@ -18,7 +18,7 @@ app.whenReady().then(async()=>{const win=new BrowserWindow({show:false,width:128
   const t=g.trainTest,p=g.players[0],a=view*Math.PI/4,ca=Math.cos(a),sa=Math.sin(a);t.route={points:[{x:2000-ca*10000,y:2000-sa*10000,z:0,s:0},{x:2000+ca*10000,y:2000+sa*10000,z:0,s:20000}],length:20000,id:'qa-straight'};t.routeSegments=[{at:-Infinity,route:t.route,offset:0}];t.otherRoutes=[];t.distance=10437;t.preparing=false;t.time=6;t.roof.compartments=0;g.enemies=[];
   const c=trainCars(t)[2],table=trainInterior(design,c).find(o=>o.kind==='table');t.cocoaTaken.add(c.id+':'+table.id);
   p.trainRide={car:c.index,x:table.x,y:12};Object.assign(p,trainWorld(c,p.trainRide.x,p.trainRide.y));
-  const seen=[];for(let i=0;i<6;i++){seen.push(trainPrompt(g,p));g.update(.02,{keyboard:{interact:true}});g.update(.02,{keyboard:{}});}
+  const seen=[];for(let i=0;i<6;i++){seen.push(trainPrompt(g,p));g.update(.02,{keyboard:{interact:true}});g.update(.02,{keyboard:{}});if(p.ui?.trainStudentGift){g.update(.02,{keyboard:{interact:true}});g.update(.02,{keyboard:{}});}}
   ok(['HARRY POTTER','HERMIONE GRANGER','RON WEASLEY'].every(n=>seen.some(s=>s.includes(n))),'all overlapping students reachable from aisle '+view);
   ok(Object.keys(p.npcQuests.train_students.received).length===3,'one gift from each student '+view);
   delete t.studentSpeech;t.time=6;renderer.draw(g,0);gc.drawImage(canvas,250,110,400,400,view%4*400,Math.floor(view/4)*400,400,400);gc.fillStyle='#ffe4aa';gc.font='14px sans-serif';gc.fillText('Walking / passengers · '+view,view%4*400+10,Math.floor(view/4)*400+24);

@@ -15,6 +15,7 @@ app.whenReady().then(async()=>{
    const step=()=>ctx.inputFrame(),release=()=>{pads.forEach(p=>{p.axes.fill(0);p.buttons.forEach(b=>{b.pressed=false;b.value=0})});step()},press=(i,b)=>{release();pads[i].buttons[b]={pressed:true,value:1};step()};
    const d=document.querySelector('#settings-dialog'),id=()=>document.activeElement.id;
    for(const screen of ['lobby','play'])for(const index of [0,1]){
+    const confirm=index===1?1:0,back=index===1?0:1;
     g.phase=screen;g.openingBoard=false;ctx.show(screen);release();press(index,9);release();
     assert(d.open&&d.dataset.ownerDevice==='pad:'+index,'Controller owns Start menu '+screen+' '+index);
     press(index,12);assert(document.activeElement.dataset.settingsTab==='display','Up reaches active tab '+screen+' '+index);
@@ -41,15 +42,17 @@ app.whenReady().then(async()=>{
     press(index,5);assert(d.querySelector('[data-settings-tab=controls]').getAttribute('aria-selected')==='true','RB reaches Controls '+screen+' '+index);
     const seen=new Set();for(let n=0;n<70;n++){seen.add(id());if(id()==='close-settings')break;press(index,13);}
     assert(seen.has('controller-layout')&&seen.has('stick-response')&&seen.has('aim-deadzone')&&seen.has('controller-vibration')&&seen.has('close-settings'),'Controls tab navigates to all main inputs and Done '+screen+' '+index);
-    press(index,0);assert(!d.open&&!ctx.paused,'Done works '+screen+' '+index);release();
+    press(index,confirm);assert(!d.open&&!ctx.paused,'Done works '+screen+' '+index);release();
     document.querySelector('#pause-button').click();assert(d.open&&d.dataset.ownerDevice==='keyboard','Mouse-opened menu starts with keyboard owner '+screen+' '+index);
-    press(index,13);assert(d.dataset.ownerDevice==='pad:'+index&&id()==='fullscreen-button','First intentional pad input takes mouse-opened menu '+screen+' '+index);
+    press(index,13);assert(d.dataset.ownerDevice==='keyboard'&&document.activeElement.matches('#camp-session-actions>summary'),'Pad input keeps mouse-opened menu with keyboard owner '+screen+' '+index);
+    document.querySelector('#close-settings').click();release();press(index,9);release();press(index,13);
+    assert(d.dataset.ownerDevice==='pad:'+index&&id()==='fullscreen-button','Pad reopens and navigates its own menu '+screen+' '+index);
     press(index===0?1:0,13);assert(d.dataset.ownerDevice==='pad:'+index&&id()==='fullscreen-button','Other pad cannot steal owner '+screen+' '+index);
     press(index,13);assert(id()==='cel-shading-toggle','Navigate after mouse takeover '+screen+' '+index);
     release();pads[index].axes[1]=1;step();assert(id()==='dynamic-shadows-toggle','Stick moves down '+screen+' '+index);
-    const before=document.activeElement.checked;pads[index].buttons[0]={pressed:true,value:1};step();assert(document.activeElement.checked!==before,'Confirm works while stick remains held '+screen+' '+index);
-    pads[index].buttons[0]={pressed:false,value:0};step();await new Promise(r=>setTimeout(r,360));step();assert(id()==='world-grid-toggle','Held stick repeats without neutral '+screen+' '+index);
-    release();press(index,9);pads[index].buttons[9].pressed=false;pads[index].axes[2]=.5;step();press(index,9);release();assert(d.open,'Right-stick drift does not lock reopening '+screen+' '+index);press(index,1);release();assert(!d.open,'Back closes '+screen+' '+index);
+    const before=document.activeElement.checked;pads[index].buttons[confirm]={pressed:true,value:1};step();assert(document.activeElement.checked!==before,'Confirm works while stick remains held '+screen+' '+index);
+    pads[index].buttons[confirm]={pressed:false,value:0};step();await new Promise(r=>setTimeout(r,360));step();assert(id()==='world-grid-toggle','Held stick repeats without neutral '+screen+' '+index);
+    release();press(index,9);pads[index].buttons[9].pressed=false;pads[index].axes[2]=.5;step();press(index,9);release();assert(d.open,'Right-stick drift does not lock reopening '+screen+' '+index);press(index,back);release();assert(!d.open,'Back closes '+screen+' '+index);
    }
    window.campNavQA={ctx,g,pads,checks,assert,press,release};
   })()`);

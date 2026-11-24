@@ -9,6 +9,7 @@ import {humanoidArtStatus} from './humanoid-hd.mjs';
 import {drawAnaconda} from './anaconda-art.mjs';
 import {drawWildFauna} from './wild-fauna-art.mjs';
 import {drawOtter} from './otter-motion.mjs';
+import {championPower} from './arena-drink-state.mjs';
 import {WILD_FAUNA_KINDS} from './wild-fauna-data.mjs';
 import {companionVisualActor} from './companion-locomotion.mjs';
 import {creaturePackVisualActor} from './creature-pack-animation-routing.mjs';
@@ -77,6 +78,7 @@ export class Animator {
     this.nightStampedeRevisions = { ...nightMotionRevisions };
   }
   draw(ctx, actor, time, size = 48) {
+    size*=championPower(actor);
     if(actor.kind==='baby_spider'&&!actor.sprite)actor={...actor,sprite:'spider'};
     actor=enemyCombatAnimation(actor,rigSubject(actor.sprite||actor.kind)?.data);
     if(typeof actor.id==='string')actor={...actor,id:visualActorId(actor.id)};
@@ -137,6 +139,32 @@ export class Animator {
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
     if (rigSubject(nameKey)) {
+      if((nameKey==='player'||nameKey?.startsWith('explorer'))&&actor.trainRide?.seat&&actor.animationAction==='train_sit'&&
+         !actor.rigOverride&&!actor.itemArtItems&&!actor.moving&&actor.hp>0&&!(actor.flash>0)&&!(actor.hit>0)&&
+         !(actor.attack>0)&&!(actor.charge>0)&&!actor.bowAiming&&!actor.swordPolish&&!actor.carryingItem&&
+         !actor.heldChickenId&&!actor.broomMount&&actor.equipment?.head!=='jack_o_lantern'&&
+         !['hand1','hand2'].some(slot=>ITEMS[actor.equipment?.[slot]]?.energyBlade)&&!playerLayers(actor,time).length){
+        this.seatedFrames??=new Map();
+        const clip=playerMotion.clips.train_sit,raw=playerFrame(actor,time,playerMotion,'train_sit');
+        const frame=Math.floor((clip.loop?(raw%clip.length+clip.length)%clip.length:raw)*2)/2;
+        const scarf=actor.scarfMotion?.tails?.map(t=>[Math.round(t.x),Math.round(t.y),Math.round(t.z)]);
+        const cape=actor.capeMotion&&[Math.round(actor.capeMotion.vx/20),Math.round(actor.capeMotion.vy/20),Math.floor(actor.capeMotion.phase*2)%13];
+        const key=JSON.stringify([nameKey,playerMotionRevision,humanoidArtStatus().revision,facingIndex(actor.faceX,actor.faceY),frame,
+          actor.appearance,actor.equipment,Object.values(actor.equipment||{}).map(id=>ITEMS[id]?.artRevision||0),actor.field?.cosmetics,
+          (actor.inventory||[]).filter(item=>ITEMS[item?.type]?.relic).slice(0,2).map(item=>item.type),scarf,cape,Math.sin(time*2)>0]);
+        let seat=this.seatedFrames.get(key);
+        if(seat)this.seatedFrames.delete(key);
+        else{
+          seat=document.createElement('canvas');seat.width=seat.height=512;
+          const pen=seat.getContext('2d');pen.scale(4,4);pen.translate(64,64);
+          rigSubject(nameKey).draw(pen,{...actor,playerFrame:frame},time);
+          if(this.seatedFrames.size>=40)this.seatedFrames.delete(this.seatedFrames.keys().next().value);
+        }
+        this.seatedFrames.set(key,seat);
+        ctx.imageSmoothingEnabled=false;
+        ctx.drawImage(this.litFrame(seat,lighting,size*8/3),Math.round(actor.x-size*4/3),Math.round(actor.y-size*4/3),size*8/3,size*8/3);
+        return;
+      }
       if(['spider','tarantula'].includes(nameKey)&&(!explicitPose||actor.enemyCombatFrame)&&!actor.rigOverride){
         this.spiderFrames??=new Map();
         const model=beastMotions[nameKey],action=spiderAction(actor),clip=model.clips[action]||model.clips.idle,raw=spiderFrame(actor,time,model);

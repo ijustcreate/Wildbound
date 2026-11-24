@@ -1,17 +1,23 @@
-import {requestTrainStationStop} from './train-autostop.mjs';
+import {requestConductorDestination,trainRouteStations} from './train-autostop.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {give} from './items.mjs';
-import {trainRiderWorld,trainWorld} from './train-track.mjs';
+import {trainCars,trainRiderWorld,trainWorld} from './train-track.mjs';
 import {drawPixelChat} from './pixel-chat.mjs';
 import {trainChatPlacement,rememberTrainChat} from './train-chat-placement.mjs';
 
 const coaches=cs=>cs.filter(c=>['compartments','seats','caboose'].includes(c.kind));
 const aisle=c=>c.kind==='compartments'?c.width/2-13:0;
+const closeChoice={label:'Back to the carriage',action:'close'};
+const conductorSpeech=(t,text)=>{t.conductorSpeech={text,started:t.time,until:t.time+7};};
+function conductorReach(p,n){
+ const r=p.trainRide;
+ return n&&r&&p.hp>0&&!r.seat&&!r.driving&&!r.gangway&&!n.gangway&&r.car===n.car&&Math.hypot(r.x-n.x,r.y-n.y)<30;
+}
 function state(g,cs){const cars=coaches(cs);if(!cars.length)return null;const c=cars[0];return g.trainTest.conductor??={car:c.index,x:0,y:aisle(c),direction:1,phase:'walk',step:0,waitUntil:0,faceX:-1,faceY:0};}
 export function tickTrainConductor(g,cs,dt,blocked){
  const t=g.trainTest;if(!t||t.derailed)return;const n=state(g,cs),cars=coaches(cs);if(!n)return;const c=cs[n.car];if(!c){delete t.conductor;return;}
  n.moving=false;if(t.time<n.waitUntil)return;
- const visitor=g.players.find(p=>p.hp>0&&p.trainRide&&!p.trainRide.seat&&!p.trainRide.gangway&&p.trainRide.car===n.car&&Math.hypot(p.trainRide.x-n.x,p.trainRide.y-n.y)<28);
+ const visitor=g.players.find(p=>conductorReach(p,n));
  if(visitor){const a=Math.atan2(visitor.trainRide.y-n.y,visitor.trainRide.x-n.x)+c.a;n.faceX=Math.cos(a);n.faceY=Math.sin(a);return;}
  const sign=-n.direction,end=sign*(c.length/2-14),speed=26;
  if(n.gangway){const [a,b]=[trainWorld(c,sign*(c.length/2-14),0),trainWorld(cs[n.gangway.to],-sign*(cs[n.gangway.to].length/2-14),0)],length=Math.hypot(b.x-a.x,b.y-a.y);n.gangway.progress=Math.min(1,n.gangway.progress+speed*dt/Math.max(1,length));n.moving=true;n.step+=speed*dt*.13;n.faceX=(b.x-a.x)/Math.max(1,length);n.faceY=(b.y-a.y)/Math.max(1,length);if(n.gangway.progress>=1){n.car=n.gangway.to;n.x=-sign*(cs[n.car].length/2-14);n.y=0;delete n.gangway;n.phase='enter';}return;}
@@ -24,14 +30,59 @@ export function trainConductor(g,cs){
  const actor={id:'train-conductor',name:'The Conductor',sprite:'player',kind:'player',hp:1,invincible:true,unattackable:true,x:q.x,y:q.y-20-q.z,faceX:n.faceX,faceY:n.faceY,moving:n.moving,walking:true,step:n.step,moveSpeed:n.moving?26:0,equipment:{},appearance:{...DEFAULT_APPEARANCE,trainConductor:true,hair:'sidepart',hairColor:'#67523d',skin:'#dbb08a',shirt:'#293c55',pants:'#26364b',shoes:'#282a32'}};
  return {id:'conductor',name:actor.name,car,local,ride:{car:n.car,x:n.x,y:n.y,...(n.gangway?{gangway:{...n.gangway}}:{})},actor};
 }
-export function nearbyTrainConductor(g,p,cs){const n=trainConductor(g,cs),r=p.trainRide;return n&&r&&p.hp>0&&!r.seat&&!r.driving&&!r.gangway&&!n.ride.gangway&&r.car===n.car.index&&Math.hypot(r.x-n.local.x,r.y-n.local.y)<30?n:null;}
+export function nearbyTrainConductor(g,p,cs){const n=trainConductor(g,cs);return conductorReach(p,n?.ride)?n:null;}
 export function interactTrainConductor(g,p,cs){
- const n=nearbyTrainConductor(g,p,cs);if(!n)return false;const t=g.trainTest;speech('Tickets, please! Keep your golden ticket for 10% more experience.');
+ const n=nearbyTrainConductor(g,p,cs);if(!n)return false;const t=g.trainTest;
+ let greeting='Tickets, please. I can tell you which platforms we serve and arrange a stop.';
  p.npcQuests??={};const s=p.npcQuests.train_students??={received:{},pending:[]};s.received??={};
- if(s.received.conductor||p.inventory.some(i=>i?.type==='golden_train_ticket'&&i.qty>0)){const request=requestTrainStationStop(g);speech(request.ok?request.message:'Your ticket is in order. Ask me for a stop once the engine is running.');}
- else if(!give(p.inventory,'golden_train_ticket',1))speech('Make one space in your backpack, then come back for your golden ticket.');
- else{s.received.conductor=true;t.studentRewards??={};(t.studentRewards[p.id]??=[]).push({id:'conductor',type:'golden_train_ticket',qty:1});g.onSound?.('pickup',p);}
- t.conductor.waitUntil=t.time+7;return true;
- function speech(text){t.conductorSpeech={text,started:t.time,until:t.time+7};}
+ if(!s.received.conductor&&!p.inventory.some(i=>i?.type==='golden_train_ticket'&&i.qty>0)){
+  if(!give(p.inventory,'golden_train_ticket',1))greeting='Make one space in your backpack for your golden ticket. We can still arrange a stop.';
+  else{
+   s.received.conductor=true;t.studentRewards??={};(t.studentRewards[p.id]??=[]).push({id:'conductor',type:'golden_train_ticket',qty:1});
+   greeting='Keep this golden ticket in your backpack for ten percent more experience. Where are you headed?';
+   g.onSound?.('pickup',p);if(t.persistent)g.persist?.();
+  }
+ }
+ p.ui={shop:'npc-dialogue',trainConductor:true,npcId:n.id,ownerDevice:p.device,node:'greeting',index:0,greeting};
+ p.consumeInput=true;p.charge=0;t.conductor.waitUntil=t.time+7;
+ conductorSpeech(t,greeting);return true;
 }
-export function drawConductorSpeech(c,g,cs,camera,w,h,actors){const n=trainConductor(g,cs),s=g.trainTest.conductorSpeech;if(!n||!s||s.until<g.trainTest.time||!g.players.some(p=>p.trainRide?.car===n.car.index))return;const b=drawPixelChat(c,{text:s.text,name:'Conductor',style:'box',anchorX:w/2+(n.actor.x-camera.x)*camera.zoom,anchorY:h/2+(n.actor.y-camera.y-36)*camera.zoom,width:w,height:h,topInset:62,theme:'night',page:Math.floor((g.trainTest.time-(s.started??s.until-7))/2.7),...trainChatPlacement(g,cs,camera,w,h,actors||[n.actor],n.id)});rememberTrainChat(g,n.id,b);return b;}
+
+function activeConductorDialogue(g,p){
+ const t=g.trainTest,u=p.ui;
+ return t&&!t.derailed&&u?.trainConductor&&u.ownerDevice===p.device&&conductorReach(p,t.conductor)?t:null;
+}
+
+export function trainConductorDialogueView(g,p){
+ const t=activeConductorDialogue(g,p),u=p.ui;
+ if(!t)return {text:'The conductor has moved on.',choices:[closeChoice]};
+ const npc=trainConductor(g,trainCars(t))?.actor,stops=trainRouteStations(t);
+ if(u.node==='stations')return {npc,title:'Stations on this line',text:stops.length?'Choose where you would like the train to stop.':'There are no platforms on this line.',notice:u.notice,choices:[...stops.map(stop=>({label:stop.name,action:'station:'+stop.id})),{label:'Back to the conductor',action:'greeting'},closeChoice]};
+ const destination=stops.find(stop=>stop.id===t.conductorDestination?.stationId);
+ return {npc,title:'Railway service',text:destination?'We are taking the train to '+destination.name+'.':u.greeting,choices:[{label:'Which station?',action:'stations'},closeChoice]};
+}
+
+export function trainConductorDialogueAction(g,p,action){
+ const t=activeConductorDialogue(g,p),u=p.ui;
+ if(!t||action==='close'){p.ui=null;p.consumeInput=true;return true;}
+ const {choices}=trainConductorDialogueView(g,p);
+ if(['next','prev','up','down'].includes(action)){
+  const step=action==='next'||action==='down'?1:-1;
+  u.index=(u.index+step+choices.length)%choices.length;return true;
+ }
+ if(action==='use')action=choices[u.index]?.action;
+ if(action?.startsWith('choice:'))action=choices[Number(action.slice(7))]?.action;
+ if(!choices.some(choice=>choice.action===action))return true;
+ if(action==='close'){p.ui=null;p.consumeInput=true;return true;}
+ if(action==='stations'||action==='greeting'){u.node=action;u.index=0;delete u.notice;return true;}
+ const result=requestConductorDestination(g,p,action.slice('station:'.length));
+ if(!result.ok){u.notice=result.message;return true;}
+ conductorSpeech(t,result.message);p.ui=null;p.consumeInput=true;
+ return true;
+}
+
+export function tickTrainConductorDialogue(g,p){
+ if(!activeConductorDialogue(g,p)){p.ui=null;p.consumeInput=true;}
+}
+
+export function drawConductorSpeech(c,g,cs,camera,w,h,actors){const n=trainConductor(g,cs),s=g.trainTest.conductorSpeech;if(!n||!s||s.until<g.trainTest.time||!g.players.some(p=>p.trainRide?.car===n.car.index&&!p.ui?.trainConductor))return;const b=drawPixelChat(c,{text:s.text,name:'Conductor',style:'box',anchorX:w/2+(n.actor.x-camera.x)*camera.zoom,anchorY:h/2+(n.actor.y-camera.y-36)*camera.zoom,width:w,height:h,topInset:62,theme:'night',page:Math.floor((g.trainTest.time-(s.started??s.until-7))/2.7),...trainChatPlacement(g,cs,camera,w,h,actors||[n.actor],n.id)});rememberTrainChat(g,n.id,b);return b;}

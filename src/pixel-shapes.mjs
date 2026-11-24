@@ -9,15 +9,17 @@ export function pixelPolygon(c,points,color){
  }
 }
 const volumes=new Map();export const PIXEL_VOLUME_CACHE_LIMIT=256;
-export function pixelVolume(c,center,rx,ry,rz,d,pal){
+export function pixelVolume(c,center,rx,ry,rz,d,pal,markings){
  rx=Math.max(.5,rx);ry=Math.max(.5,ry);rz=Math.max(.5,rz);
- const key=[rx,ry,rz,d,pal.body,pal.shade,pal.light,pal.outline].join(':');let spans=volumes.get(key);
+ const key=[rx,ry,rz,d,pal.body,pal.shade,pal.light,pal.outline,markings?.key].join(':');let spans=volumes.get(key);
  if(!spans){
   spans=[];const a=d*Math.PI/4,co=Math.cos(a),si=Math.sin(a),lim=Math.ceil(Math.max(rx,ry)+rz+1);
   for(let y=-lim;y<=lim;y++)for(let x=-lim;x<=lim;x++){
    const bx=x*co,by=-x*si,bz=-y,A=si*si/rx**2+co*co/ry**2+.25/rz**2,B=2*(bx*si/rx**2+by*co/ry**2+bz*.5/rz**2),C=bx*bx/rx**2+by*by/ry**2+bz*bz/rz**2-1,disc=B*B-4*A*C;if(disc<0)continue;
-   const depth=(-B+Math.sqrt(disc))/(2*A),nx=(bx+si*depth)/rx**2,ny=(by+co*depth)/ry**2,nz=(bz+.5*depth)/rz**2,light=(-.45*nx-.3*ny+.82*nz)/Math.hypot(nx,ny,nz);
-   const color=Math.sqrt(disc)/A<1.3?pal.outline||pal.shade:light>.72?pal.light:light>.08?pal.body:pal.shade,last=spans.at(-1);
+   const depth=(-B+Math.sqrt(disc))/(2*A),sx=bx+si*depth,sy=by+co*depth,sz=bz+.5*depth;
+   const nx=sx/rx**2,ny=sy/ry**2,nz=sz/rz**2,light=(-.45*nx-.3*ny+.82*nz)/Math.hypot(nx,ny,nz);
+   const material=markings?.material(sx/rx,sy/ry,sz/rz)||pal;
+   const color=Math.sqrt(disc)/A<1.3?pal.outline||pal.shade:light>.72?material.light:light>.08?material.body:material.shade,last=spans.at(-1);
    if(last&&last[1]===y&&last[3]===color&&last[0]+last[2]===x)last[2]++;else spans.push([x,y,1,color]);
   }
   if(volumes.size>=PIXEL_VOLUME_CACHE_LIMIT)volumes.delete(volumes.keys().next().value);volumes.set(key,spans);

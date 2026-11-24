@@ -2,6 +2,7 @@ import {defaultLionMotion, lionAction, lionFrame} from './lion-motion.mjs';
 import {withCompanionClips} from './companion-motion.mjs';
 import {poseAt, projectPoint, facingIndex, limb, ellipse, validateMotion} from './player-motion.mjs';
 import {paintLayers} from './render-order.mjs';
+import {drawWolfTail} from './wolf-tail-art.mjs';
 
 // Independent canine rig: long muzzle, upright ears, lean legs and a bushy low tail.
 export function defaultWolfMotion() {
@@ -46,7 +47,7 @@ export function drawWolf(c, actor, time, model=wolfMotion, suppliedPose=null) {
   const add=(bone,id,fn)=>q.push({bone,id,depth:p[bone].depth,fn});
   c.save();
   if(actor.alpha)c.scale(1.18,1.18);
-  add('tailBase','Bushy tail',()=>{limb(c,p.tailBase,p.tailMid,5,pal.shade);limb(c,p.tailMid,p.tailTip,4,pal.tail);ellipse(c,p.tailTip.x,p.tailTip.y,1.5,2,pal.shade);});
+  add('tailBase','Bushy tail',()=>drawWolfTail(c,p,pal));
   for(const side of ['L','R'])for(const front of [true,false]) {
     const a=(front?'shoulder':'hip')+side,b=(front?'elbow':'hock')+side,end=(front?'frontPaw':'rearPaw')+side;
     add(a,(front?'Front':'Rear')+' leg '+side,()=>{limb(c,p[a],p[b],3,pal.shade);limb(c,p[b],p[end],2,pal.legs);ellipse(c,p[end].x,p[end].y,2.1,1.3,pal.cream);});

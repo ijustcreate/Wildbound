@@ -5,6 +5,7 @@ import {otterMotion,defaultOtterMotion,replaceOtterMotion,drawOtterRig} from '..
 // motion; selected species use mapped donor M2 tracks on editable parts. The
 // turkey uses donor Stand and retains its native grounded strut/actions.
 import { poseAt, projectPoint, facingIndex } from '../player-motion.mjs';
+import {CRAB_PINCER_PHASES,stopCrabPincer} from '../crab-pincer.mjs';
 import { pixelLine, pixelPolygon, pixelVolume } from '../pixel-shapes.mjs';
 import { paintLayers } from '../render-order.mjs';
 import { defaultSpiderMotion, drawSpider } from '../spider-motion.mjs';
@@ -32,10 +33,10 @@ const specs = {
   fox_kit: { name:'Copperfur fox kit', form:'existing-fox', palette:null, shape:null, clips:['stalk','bite','retreat'], stats:[42,92,8], faction:'neutral', habitat:'forest', behavior:'skittish-wildlife' },
   llama: { name:'Llama', form:'quadruped', palette:{body:'#d7ceb9',shade:'#77716d',light:'#f4e9d2',face:'#8d6252',eye:'#241d1b',outline:'#40313a',muzzle:'#cba98b',mane:'#e8dec9',ear:'#8a6351'}, shape:{bodyWidth:7.2,bodyLength:12.5,bodyHeight:7,headRadius:4,legWidth:2.5,neckLength:15,earLength:9}, clips:['trot','spit-warning','kick'], stats:[62,64,8], faction:'neutral', habitat:'forest', behavior:'flee-then-spit-warning' },
   penguin: { name:'Flipper / ice penguin', form:'penguin', palette:{body:'#364656',shade:'#202c37',light:'#5c7180',face:'#edf0d9',eye:'#43bfc7',outline:'#17212b',beak:'#df9c45',feet:'#cb8140',belly:'#f2ead1'}, shape:{bodyWidth:10,bodyHeight:12,headRadius:4.5,legWidth:2,flipperLength:7}, clips:['waddle','slide','dive'], stats:[38,56,0], faction:'neutral', habitat:'ice-water-edge', behavior:'waddle-dive-flee' },
-  crab: { name:'Freshwater pincher crab', form:'crab', palette:{body:'#936d91',shade:'#59445e',light:'#c5a0c1',face:'#98758f',eye:'#5ed4cc',outline:'#342b3d',claw:'#b782ae',belly:'#bda7b8'}, shape:{bodyWidth:10,bodyLength:9,bodyHeight:5,headRadius:4,legWidth:2,clawWidth:4}, clips:['scuttle','pinch','raise-claws'], stats:[52,55,13], faction:'enemy', habitat:'beach', behavior:'side-scuttle-pincher' },
+  crab: { name:'Freshwater pincher crab', form:'crab', palette:{body:'#936d91',shade:'#59445e',light:'#c5a0c1',face:'#98758f',eye:'#5ed4cc',outline:'#342b3d',claw:'#b782ae',belly:'#bda7b8'}, shape:{bodyWidth:10,bodyLength:9,bodyHeight:5,headRadius:4,legWidth:2,clawWidth:4}, clips:['scuttle','pinch','raise-claws','recover'], stats:[52,55,13], faction:'enemy', habitat:'beach', behavior:'side-scuttle-pincher' },
   golden_retriever: { name:'Golden retriever', form:'quadruped', palette:{body:'#c78b43',shade:'#875832',light:'#efc971',face:'#d99f56',eye:'#2c221b',outline:'#50372a',muzzle:'#f1dab0',muzzleShade:'#c6a47a',mane:'#e5b75e',nose:'#352827',ear:'#a36b45'}, shape:{bodyWidth:8.5,bodyLength:14,bodyHeight:7.5,headRadius:5,legWidth:3,tailLength:10,tailWidth:4,earLength:4}, clips:['trot','sit','wag','fetch'], stats:[60,82,0], faction:'neutral', habitat:'house', behavior:'bond-with-bone-follow' },
   skunk: { name:'Highlands skunk', form:'quadruped', palette:{body:'#343640',shade:'#20222b',light:'#666775',face:'#41444c',eye:'#f6df9c',outline:'#181a22',muzzle:'#d0c4ad',stripe:'#f2ebd9',tail:'#30323d'}, shape:{bodyWidth:7.6,bodyLength:12.5,bodyHeight:6.8,headRadius:4.8,legWidth:2,tailLength:15,tailWidth:10.5}, clips:['amble','raise-tail','spray-warning'], stats:[40,54,4], faction:'neutral', habitat:'forest', behavior:'warning-spray-then-flee' },
-  river_otter: { name:'River otter', form:'otter', palette:{body:'#8c5638',shade:'#56382e',light:'#c58952',face:'#a96b43',eye:'#211a18',outline:'#342622',muzzle:'#eadcc1',belly:'#d8c7a6',nose:'#302426',feet:'#594034',ear:'#74452f'}, shape:{bodyWidth:8.1,bodyLength:12.5,bodyHeight:7,headRadius:5.1,legWidth:2.1,tailLength:10,tailWidth:5}, clips:['swim','groom'], stats:[44,82,0], faction:'neutral', habitat:'swamp', behavior:'shoreline-swimmer' },
+  river_otter: { name:'River otter', form:'otter', stats:[44,82,0], faction:'neutral', habitat:'swamp', behavior:'shoreline-swimmer' },
   triceratops: { name:'Jammer / triceratops', form:'quadruped', palette:{body:'#896747',shade:'#583d36',light:'#c79d67',face:'#98704e',eye:'#201d20',outline:'#342a2c',horn:'#eee0c5',frill:'#76564d'}, shape:{bodyWidth:12,bodyLength:16,bodyHeight:9,headRadius:7,legWidth:4,frillWidth:11,hornLength:8}, clips:['heavy-walk','warn','charge','headbutt'], stats:[220,44,26], faction:'neutral', habitat:'forest', behavior:'territorial-telegraphed-charge' },
   sheep: { name:'Sheep', form:'quadruped', palette:{body:'#dfd7bf',shade:'#a69e8b',light:'#f3eddc',face:'#51443e',eye:'#24201f',outline:'#4f4a45',muzzle:'#d4b596',wool:'#f0e7d2'}, shape:{bodyWidth:9.5,bodyLength:12.5,bodyHeight:8,headRadius:4.5,legWidth:3.2,woolPuffs:6}, clips:['graze','bleat','bound'], stats:[46,48,0], faction:'neutral', habitat:'forest', behavior:'flock-flee' },
   squirrel: { name:'Squirrel', form:'quadruped', palette:{body:'#a65b31',shade:'#64392f',light:'#d18448',face:'#bd7142',eye:'#241e1b',outline:'#3b2926',muzzle:'#e8c99e',tail:'#8e492d',tailLight:'#d68a4d',belly:'#e7d2ad',ear:'#a95335'}, shape:{bodyWidth:5,bodyLength:8,bodyHeight:5,headRadius:4,legWidth:1.5,tailLength:12,tailWidth:7}, clips:['scamper','freeze','leap'], stats:[22,112,0], faction:'neutral', habitat:'forest', behavior:'startle-scurry-tree' },
@@ -161,18 +162,6 @@ function skunkJoints(spec){
   j.tailBase.position=[0,-6,12];j.tailMid.position=[0,-12,18];j.tailTip.position=[0,-7-spec.shape.tailLength,24];
   return j;
 }
-function otterJoints(spec){
- const j=quadrupedJoints(spec);j.pelvis.position=[0,-2,10];j.chest.position=[0,2,12];j.neck.position=[0,6,14];j.head.position=[0,9,16];j.muzzle.position=[0,12,14];j.eyeL.position=[-2.2,10,18.2];j.eyeR.position=[2.2,10,18.2];j.earL.position=[-4,7,18.5];j.earR.position=[4,7,18.5];
- j.shoulderL.position=[-4.7,3,10];j.shoulderR.position=[4.7,3,10];j.elbowL.position=[-6,4,6];j.elbowR.position=[6,4,6];j.frontPawL.position=[-6.5,5,1];j.frontPawR.position=[6.5,5,1];j.hipL.position=[-4.6,-4,8];j.hipR.position=[4.6,-4,8];j.kneeL.position=[-6,-6,4];j.kneeR.position=[6,-6,4];j.rearPawL.position=[-6.3,-8,1];j.rearPawR.position=[6.3,-8,1];j.tailBase.position=[0,-7,9];j.tailMid.position=[0,-13,8];j.tailTip.position=[0,-19,7];return j;
-}
-function otterClipFor(model,action){
- const names=Object.keys(model.joints),frames=12,swimming=action==='swim';
- return {fps:swimming?12:10,length:frames,loop:action!=='groom',keys:Array.from({length:frames},(_,frame)=>{const phase=frame/frames*Math.PI*2,wave=Math.sin(phase),joints=Object.fromEntries(names.map(n=>[n,[0,0,0]]));
-  if(action==='groom'){const paw=Math.max(0,Math.sin(phase));joints.pelvis=[0,0,-1];joints.head=[0,1.5+Math.sin(phase)*.4,-1];joints.frontPawL=[0,2+paw*2,2+paw*2];joints.tailMid=[Math.sin(phase)*1.5,0,0];}
-  else if(swimming){joints.pelvis=[0,0,1.5+Math.sin(phase*2)*1];joints.chest=[0,0,1.3+Math.sin(phase*2-.35)*.85];joints.head=[0,1.1,1.6];for(const[side,sign]of[['L',1],['R',-1]]){joints['frontPaw'+side]=[sign*1.2,Math.sin(phase+sign*.7)*7,2+Math.max(0,Math.cos(phase+sign*.7))*4.5];joints['rearPaw'+side]=[sign*.8,Math.sin(phase+Math.PI+sign*.45)*5.5,1.4+Math.max(0,-Math.cos(phase+sign*.45))*3.2];}joints.tailMid=[Math.sin(phase-1)*5.2,0,Math.sin(phase-1)*1.6];joints.tailTip=[Math.sin(phase-1.5)*8,0,Math.sin(phase-1.5)*2.2];}
-  else{const stride=action==='run'?7.5:6;joints.pelvis=[0,0,.9+Math.abs(wave)*1.4];joints.chest=[0,0,Math.abs(wave)*.9];joints.head=[0,0,-Math.abs(wave)*.4];joints.frontPawL=[0,wave*stride,Math.max(0,wave)*4];joints.frontPawR=[0,-wave*stride,Math.max(0,-wave)*4];joints.rearPawL=[0,-wave*stride,Math.max(0,-wave)*3.8];joints.rearPawR=[0,wave*stride,Math.max(0,wave)*3.8];joints.tailMid=[Math.sin(phase-.65)*2.2,0,Math.sin(phase-1)*1.3];joints.tailTip=[Math.sin(phase-1)*4.5,0,Math.sin(phase-1.3)*2];}
-  return {frame,joints};})};
-}
 function squirrelClipFor(model,action){
   const names=Object.keys(model.joints),frames=action==='leap'?10:8,loop=action!=='leap';
   return {fps:action==='scamper'?14:action==='leap'?18:7,length:frames,loop,keys:Array.from({length:frames},(_,frame)=>{
@@ -209,8 +198,32 @@ function squirrelClipFor(model,action){
     return {frame,joints};
   })};
 }
+// Frame, lateral spread, reach, lift, and jaw opening. All three phases share
+// their boundary poses, so contact and recovery use the same claw attachment.
+const crabClawPhases={
+ 'raise-claws':[[0,0,0,0,.56],[2,1,-.6,3,.82],[5,2,-2,8,1],[7,2,-2,8,1]],
+ pinch:[[0,2,-2,8,1],[2,.25,3.5,6,.78],[4,-2.6,7,3.8,.02],[7,-2.6,7,3.8,.02]],
+ recover:[[0,-2.6,7,3.8,.02],[2,-1.8,4,1.8,.22],[7,0,0,0,.56]],
+};
+const crabClawTimeline=action=>crabClawPhases[action==='attack'?'pinch':action];
+function crabClawClip(action){
+ const timeline=crabClawTimeline(action);
+ return {fps:action==='recover'?12:16,length:8,loop:false,keys:timeline.map(([frame,spread,reach,lift])=>({
+  frame,joints:{clawL:[-spread,reach,lift],clawR:[spread,reach,lift]},
+ }))};
+}
+function crabJawOpening(action,frame,clip){
+ const timeline=crabClawTimeline(action);
+ if(!timeline)return .56;
+ const at=Math.max(0,Math.min(7,frame/Math.max(1,clip.length-1)*7));
+ const right=timeline.findIndex(key=>key[0]>at);
+ if(right<0)return timeline.at(-1)[4];
+ const [leftTime,,,,leftGap]=timeline[right-1],[rightTime,,,,rightGap]=timeline[right];
+ return leftGap+(rightGap-leftGap)*(at-leftTime)/(rightTime-leftTime);
+}
+
 function clipFor(model,action){
-  if(model.type==='river_otter')return otterClipFor(model,action);
+  if(model.type==='crab'&&crabClawTimeline(action))return crabClawClip(action);
   if(model.type==='golden_retriever'){
     const donorClip=goldenRetrieverWowClip(action);
     if(donorClip)return donorClip;
@@ -285,7 +298,7 @@ function clipFor(model,action){
   })};
 }
 function makeRig(kind,spec){
-  const joints=kind==='river_otter'?otterJoints(spec):kind==='squirrel'?squirrelJoints(spec):kind==='sheep'?sheepJoints(spec):kind==='skunk'?skunkJoints(spec):spec.form==='crab'?crabJoints():spec.form==='penguin'||spec.form==='turkey'?bipedJoints(spec.form):quadrupedJoints(spec);
+  const joints=kind==='squirrel'?squirrelJoints(spec):kind==='sheep'?sheepJoints(spec):kind==='skunk'?skunkJoints(spec):spec.form==='crab'?crabJoints():spec.form==='penguin'||spec.form==='turkey'?bipedJoints(spec.form):quadrupedJoints(spec);
   const model={version:1,artGeneration:1,type:kind,name:spec.name,palette:clone(spec.palette),shape:clone(spec.shape),joints:Object.fromEntries(Object.entries(joints).map(([name,joint])=>[name,{parent:joint.parent,position:[...joint.position]}])),visibility:Object.fromEntries(Object.keys(joints).map(name=>[name,Array.from({length:VIEWS},(_,d)=>!name.startsWith('eye')||(![3,4,5].includes(d)&&!(name==='eyeL'&&d===6)&&!(name==='eyeR'&&d===2)))])),clips:{}};
   const actions=new Set(['idle','walk','run','attack','hurt','death',...spec.clips]);if(kind==='sheep'||kind==='skunk')actions.add('freeze');if(kind==='skunk')actions.add('scurry');for(const action of actions)model.clips[action]=clipFor(model,action);
   if(kind==='turkey'){
@@ -302,7 +315,7 @@ function paintWildlife(c,actor,time,model,suppliedPose){
   const kind=model.type,s=specs[kind];if(!s)return null;
   if(kind==='jumping_spider')return drawSpider(c,{...actor,kind:'spider'},time,model,suppliedPose);
   if(kind==='fox_kit')return drawNightRig(c,{...actor,kind:'fox',sprite:'fox'},time,{...model,type:'fox'},suppliedPose);
-  const action=actor.animationAction||(kind==='river_otter'&&actor.swimming?'swim':actor.state),clip=model.clips[action]||model.clips[actor.moving?'run':'idle']||model.clips.idle;
+  const action=actor.animationAction||actor.state,clip=model.clips[action]||model.clips[actor.moving?'run':'idle']||model.clips.idle;
   const frame=Number.isFinite(actor.playerFrame)?actor.playerFrame:Number.isFinite(actor.poseTime)?actor.poseTime*(clip.length-1):actor.moving?(actor.step||0)/14*clip.length:time*clip.fps;
   const pose=suppliedPose||poseAt(model,model.clips[action]?action:actor.moving?'run':'idle',frame),d=facingIndex(actor.faceX,actor.faceY),p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)])),pal=model.palette,shape=model.shape,layers=[];
   const volume=(id,bone,rx,ry,rz,colors=pal)=>layers.push({id,bone,bones:[bone],depth:p[bone]?.depth||0,fn:()=>pixelVolume(c,pose[bone],rx,ry,rz,d,colors)});
@@ -406,6 +419,7 @@ function paintWildlife(c,actor,time,model,suppliedPose){
       }});
     }
   }else if(s.form==='crab'){
+    const opening=crabJawOpening(action,frame,clip);
     for(const side of ['L','R'])for(let i=0;i<3;i++){
       const root=`leg${i}${side}`,knee=`knee${i}${side}`,foot=`foot${i}${side}`;
       for(const [a,b] of [[root,knee],[knee,foot]])if(p[a]&&p[b]){
@@ -417,17 +431,18 @@ function paintWildlife(c,actor,time,model,suppliedPose){
       const shoulder=side==='L'?'clawL':'clawR';
       line('pincer arm '+side,['chest',shoulder],[p.chest,p[shoulder]],pal.outline,4);
       layers.push({id:'pincer arm fill '+side,bone:'chest',bones:['chest',shoulder],depth:p.chest.depth+.1,fn:()=>pixelLine(c,p.chest,p[shoulder],pal.body,2)});
-      volume('broad open pincer '+side,shoulder,shape.clawWidth*1.75,6.5,5.6,{...pal,body:pal.claw,light:pal.light,shade:pal.shade});
+      volume('broad open pincer '+side,shoulder,shape.clawWidth*1.28,4.7,4.25,{...pal,body:pal.claw,light:pal.light,shade:pal.shade});
       const claw=p[shoulder],chest=p.chest;
       if(claw&&chest)layers.push({id:'open pincer tips '+side,bone:shoulder,bones:[shoulder],depth:claw.depth+.28,fn:()=>{
         const dx=claw.x-chest.x,dy=claw.y-chest.y,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,nx=-uy,ny=ux;
         const at=(along,across)=>({x:Math.round(claw.x+ux*along*1.35+nx*across*1.35),y:Math.round(claw.y+uy*along*1.35+ny*across*1.35)});
-        const outline=[at(-1,2),at(1,2),at(4,3),at(3,1),at(1,0),at(3,-1),at(4,-3),at(1,-2),at(-1,-2)];
-        pixelPolygon(c,outline,pal.outline);
-        const fill=[at(-1,1),at(1,1),at(3,2),at(2,1),at(1,0),at(2,-1),at(3,-2),at(1,-1),at(-1,-1)];
-        pixelPolygon(c,fill,pal.claw);
-        const glint=[at(0,1),at(1,1),at(2,2)];
-        pixelPolygon(c,glint,pal.light);
+        const gap=.25+opening*3.5;
+        for(const jaw of [-1,1]){
+          const edge=(a,b)=>at(a,b*jaw);
+          pixelPolygon(c,[edge(-1,.3),edge(.5,2.8),edge(3.1,gap+1.3),edge(5.6,gap),edge(3.7,gap*.62),edge(1.6,.1)],pal.outline);
+          pixelPolygon(c,[edge(-.4,.8),edge(.8,2.1),edge(3.1,gap+.6),edge(4.55,gap),edge(3.3,gap*.73),edge(1.35,.55)],pal.claw);
+        }
+        pixelLine(c,at(.35,1.75),at(3.05,gap+.55),pal.light,1);
       }});
     }
     for(const side of ['L','R'])if(p['eye'+side]){
@@ -533,14 +548,9 @@ function paintWildlife(c,actor,time,model,suppliedPose){
     }
   }else{
     for(const side of ['L','R'])for(const pair of [['shoulder','elbow'],['elbow','frontPaw'],['hip','knee'],['knee','rearPaw']]){const a=pair[0]+side,b=pair[1]+side;if(p[a]&&p[b])line(a,[a,b],[p[a],p[b]],pal.outline,shape.legWidth+1);}
-    if(kind==='river_otter')for(const side of ['L','R'])for(const pair of [['shoulder','elbow'],['elbow','frontPaw'],['hip','knee'],['knee','rearPaw']]){const a=pair[0]+side,b=pair[1]+side;if(p[a]&&p[b])layers.push({id:'chestnut otter leg '+a,bone:a,bones:[a,b],depth:(p[a].depth+p[b].depth)*.5+.04,fn:()=>pixelLine(c,p[a],p[b],pal.body,Math.max(1.4,shape.legWidth))});}
-    if(kind==='river_otter'){
-      volume('low sleek otter body','pelvis',shape.bodyWidth,shape.bodyLength,shape.bodyHeight);
-      volume('connected shoulder mass','chest',shape.bodyWidth*.78,7,shape.bodyHeight*.86,{...pal,body:pal.body,light:pal.light,shade:pal.shade,outline:pal.body});
-      volume('warm cream throat and belly','chest',shape.bodyWidth*.49,4.5,shape.bodyHeight*.59,{...pal,body:pal.belly,light:'#eee0c5',shade:pal.muzzle,outline:pal.belly});
-    }else if(p.pelvis)volume(kind==='sheep'?'woolly oval body':'body','pelvis',shape.bodyWidth,shape.bodyLength,shape.bodyHeight);
+    if(p.pelvis)volume(kind==='sheep'?'woolly oval body':'body','pelvis',shape.bodyWidth,shape.bodyLength,shape.bodyHeight);
     if(kind==='golden_retriever'&&p.neck)volume('connected golden neck ruff','neck',5.5,5,6.2,{...pal,body:pal.mane,light:'#f4d88b',shade:pal.body,outline:pal.body});
-    if(p.chest&&kind!=='river_otter')volume('chest','chest',shape.bodyWidth*.72,6,shape.bodyHeight*.76,{...pal,body:pal.light,light:pal.light});
+    if(p.chest)volume('chest','chest',shape.bodyWidth*.72,6,shape.bodyHeight*.76,{...pal,body:pal.light,light:pal.light});
     if(kind==='squirrel'&&p.chest){
       volume('warm cream chest bib','chest',shape.bodyWidth*.56,3.4,shape.bodyHeight*.65,{...pal,body:pal.belly,light:'#f3e7ce',shade:pal.muzzle,outline:pal.body});
       if(p.head&&[0,1,2,6,7].includes(d))layers.push({id:'cream squirrel cheeks',bone:'head',bones:['head'],depth:p.head.depth+.06,fn:()=>{
@@ -572,13 +582,9 @@ function paintWildlife(c,actor,time,model,suppliedPose){
       }});
     }
     if(p.head&&kind!=='triceratops'&&kind!=='baby_triceratops')volume('head','head',kind==='squirrel'||kind==='golden_retriever'?shape.headRadius+1:shape.headRadius,kind==='squirrel'||kind==='golden_retriever'?4.4:4,kind==='squirrel'?4.8:kind==='golden_retriever'?5:4,{...pal,body:pal.face,light:pal.light,shade:pal.shade});
-    if(p.muzzle)volume(kind==='river_otter'?'broad pale otter muzzle':'muzzle','muzzle',kind==='river_otter'?3.1:s.form==='quadruped'&&kind==='golden_retriever'?3:2,kind==='river_otter'?2.8:3,kind==='river_otter'?1.9:2,{...pal,body:pal.muzzle||pal.face,light:kind==='river_otter'?'#f2e8d5':pal.light,shade:pal.shade,outline:pal.outline});
+    if(p.muzzle)volume('muzzle','muzzle',kind==='golden_retriever'?3:2,3,2,{...pal,body:pal.muzzle||pal.face});
     if(p.tailBase&&p.tailTip){
-      if(kind==='river_otter'&&p.tailMid){
-        layers.push({id:'broad tapered rudder tail',bone:'tailBase',bones:['tailBase','tailMid','tailTip'],depth:(p.tailBase.depth+p.tailMid.depth+p.tailTip.depth)/3-(d===0||d===4?100:0),fn:()=>{
-          const path=[p.tailBase,p.tailMid,p.tailTip];pixelLine(c,path[0],path[1],pal.outline,8.4);pixelLine(c,path[1],path[2],pal.outline,7);pixelLine(c,path[0],path[1],pal.body,6);pixelLine(c,path[1],path[2],pal.body,4.8);pixelLine(c,{x:path[0].x-1,y:path[0].y-1},{x:path[1].x-1,y:path[1].y-1},pal.light,1.3);
-        }});
-      }else if(kind==='squirrel'){
+      if(kind==='squirrel'){
         // A single curled plume replaces the old three blocky tail pillows.
         // It follows the same editable tail joints while staying one readable
         // warm silhouette in every projected facing.
@@ -626,11 +632,6 @@ function paintWildlife(c,actor,time,model,suppliedPose){
       if(kind==='golden_retriever'&&p.tailMid)volume('soft golden tail tuft','tailMid',3.2,4.1,3.2,{...pal,body:pal.mane,light:pal.light,shade:pal.body,outline:pal.body});
     }
     if(kind==='snail'&&p.shell)volume('amethyst shell','shell',shape.shellWidth,shape.shellLength,shape.shellHeight,{...pal,body:pal.shell,light:pal.shellLight,shade:pal.shellShade,outline:pal.outline});
-    if(kind==='river_otter'){
-      for(const side of ['L','R'])if(p['ear'+side])volume('small rounded otter ear '+side,'ear'+side,1.8,1.7,1.5,{...pal,body:pal.ear,light:pal.face,shade:pal.shade,outline:pal.outline});
-      for(const paw of ['frontPawL','frontPawR','rearPawL','rearPawR'])if(p[paw])volume('rounded otter paw '+paw,paw,2,2.4,1.35,{...pal,body:pal.feet,light:pal.body,shade:pal.shade,outline:pal.outline});
-      if(p.muzzle)layers.push({id:'small dark otter nose',bone:'muzzle',bones:['muzzle'],depth:p.muzzle.depth+.35,fn:()=>{const x=Math.round(p.muzzle.x),y=Math.round(p.muzzle.y)-1;c.fillStyle=pal.outline;pixelPolygon(c,[{x:x-2,y},{x:x+2,y},{x:x+1,y:y+2},{x,y:y+3},{x:x-1,y:y+2}],pal.nose);if([0,1,7].includes(d)){c.fillStyle=pal.outline;c.fillRect(x-1,y+3,1,2);c.fillRect(x+1,y+3,1,2);c.fillRect(x-3,y+2,2,1);c.fillRect(x+2,y+2,2,1);}else if(d===2||d===6){const sign=d===2?-1:1;pixelLine(c,{x:x+sign*2,y:y+1},{x:x+sign*5,y:y},pal.outline,1);pixelLine(c,{x:x+sign*2,y:y+3},{x:x+sign*5,y:y+4},pal.outline,1);}}});
-    }
     if(kind==='triceratops'||kind==='baby_triceratops'){
       if(p.frill){
         layers.push({id:'frill',bone:'frill',bones:['frill','head'],depth:p.frill.depth-.25,fn:()=>pixelVolume(c,pose.frill,shape.frillWidth,5,5,d,{...pal,body:pal.frill,light:pal.light,shade:pal.shade,outline:pal.outline})});
@@ -687,7 +688,6 @@ function paintWildlife(c,actor,time,model,suppliedPose){
   if(kind==='golden_retriever')for(const side of ['L','R'])if(p['eye'+side]&&model.visibility[`eye${side}`]?.[d]!==false){const eye=p['eye'+side];layers.push({id:'gentle eye '+side,bone:'head',bones:['head','eye'+side],depth:eye.depth+.22,fn:()=>{c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,3,3);c.fillStyle=pal.eye;c.fillRect(Math.round(eye.x),Math.round(eye.y),1,2);c.fillStyle='#fff0cf';c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,1,1);}});}
   else if(kind==='llama')for(const side of ['L','R'])if(p['eye'+side]&&model.visibility[`eye${side}`]?.[d]!==false){const eye=p['eye'+side];layers.push({id:'sweet llama eye '+side,bone:'head',bones:['head','eye'+side],depth:eye.depth+.18,fn:()=>{c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,3,3);c.fillStyle=pal.eye;c.fillRect(Math.round(eye.x),Math.round(eye.y)-1,1,2);c.fillStyle='#fff9e8';c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,1,1);}});}
   else if(kind==='skunk')for(const side of ['L','R'])if(p['eye'+side]){const eye=p['eye'+side];layers.push({id:'bright friendly skunk eye '+side,bone:'head',bones:['head','eye'+side],depth:eye.depth+.12,fn:()=>{c.fillStyle=pal.outline;c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,3,3);c.fillStyle=pal.eye;c.fillRect(Math.round(eye.x),Math.round(eye.y)-1,1,2);c.fillStyle='#fff8df';c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,1,1);}});}
-  else if(kind==='river_otter')for(const side of ['L','R'])if(p['eye'+side]&&model.visibility[`eye${side}`]?.[d]!==false){const eye=p['eye'+side];layers.push({id:'bright otter eye '+side,bone:'head',bones:['head','eye'+side],depth:eye.depth+.18,fn:()=>{const x=Math.round(eye.x),y=Math.round(eye.y);c.fillStyle=pal.outline;c.fillRect(x-1,y-1,3,3);c.fillStyle='#f2e5ca';c.fillRect(x-1,y-1,2,2);c.fillStyle=pal.eye;c.fillRect(x,y-1,1,2);c.fillStyle='#fff8e8';c.fillRect(x-1,y-1,1,1);}});}
   else if(kind!=='snail'&&kind!=='crab')for(const side of ['L','R'])if(p['eye'+side]){const eye=p['eye'+side];layers.push({id:'Eye '+side,bone:'head',bones:['head','eye'+side],depth:eye.depth+.1,fn:()=>{c.fillStyle=pal.eye;c.fillRect(Math.round(eye.x)-1,Math.round(eye.y)-1,2,2);}});}
   paintLayers(layers,model,d,c,p);return p;
 }
@@ -699,7 +699,9 @@ existingFox.joints.earL.position=[-3.6,10,23.5];existingFox.joints.earR.position
 existingFox.renderOrder=Array.from({length:8},()=>['Fox bushy tail','Fox rear leg L','Fox rear leg R','Fox body','Fox neck ruff','Fox front leg L','Fox front leg R','Fox head','Fox tall ear L','Fox tall ear R','Fox cream muzzle','Fox eye L','Fox eye R']);
 const spider=clone(defaultSpiderMotion('jumping_spider'));spider.type='jumping_spider';spider.name='Bouncer / native pounce over Bouncer Wowhead locomotion';spider.palette={...spider.palette,body:'#6b5141',face:'#86634b',light:'#bd9777',eye:'#e9dca7',band:'#a88061'};
 spider.clips.pounce=clipFor(spider,'pounce');
-const models=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[kind,kind==='fox_kit'?existingFox:kind==='jumping_spider'?spider:makeRig(kind,s)]));
+const models=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[
+  kind,kind==='river_otter'?otterMotion:kind==='fox_kit'?existingFox:kind==='jumping_spider'?spider:makeRig(kind,s),
+]));
 models.golden_retriever.motionDonorRevision=1;
 models.golden_retriever.provenance=clone(goldenRetrieverWowMotionProvenance);
 for(const [action,clip] of Object.entries(TRICERATOPS_WOW_MOTION.clips))models.triceratops.clips[`wowhead-${action}`]=clone(clip);
@@ -709,10 +711,8 @@ function validateModel(kind,m){const baseline=models[kind];if(!baseline||m?.type
 function defaultFor(kind){return()=>clone(models[kind]);}
 function replaceFor(kind){return model=>{if(!validateModel(kind,model))throw Error('Invalid wildlife rig: '+kind);for(const key of Object.keys(models[kind]))delete models[kind][key];Object.assign(models[kind],clone(model));};}
 const subject=(kind,s)=>({name:s.name,data:models[kind],defaults:defaultFor(kind),replace:replaceFor(kind),draw:(c,a,t,m=models[kind],pose=null)=>paintWildlife(c,{...a,kind},t,m,pose),sprite:kind==='fox_kit'?'fox':kind,selected:models[kind].joints.head?'head':'pelvis',palette:Object.keys(models[kind].palette),shapeKeys:Object.keys(models[kind].shape),tracks:Object.keys(models[kind].joints).filter(n=>/^(head|tail|frontPaw|rearPaw|foot|claw|horn|shell|wing)/.test(n)).slice(0,8),clip:kind==='fox_kit'?'walk':'run',scale:kind==='squirrel'||kind==='baby_triceratops'?7:kind==='crab'||kind==='snail'?6:5});
-const subjects=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[kind,subject(kind,s)]));
-// Dedicated articulated water/foraging rig replaces the generic wildlife drawing.
-models.river_otter=otterMotion;
-subjects.river_otter={name:'River otter / swimming and foraging',data:otterMotion,defaults:defaultOtterMotion,replace:replaceOtterMotion,draw:drawOtterRig,sprite:'river_otter',selected:'tailTip',palette:Object.keys(otterMotion.palette),shapeKeys:Object.keys(otterMotion.shape),tracks:['tailBase','tailMid','tailTip','tailEnd','frontPawL','frontPawR','head','find'],clip:'swim',scale:6};
+const otterSubject={name:'River otter / swimming and foraging',data:otterMotion,defaults:defaultOtterMotion,replace:replaceOtterMotion,draw:drawOtterRig,sprite:'river_otter',selected:'tailTip',palette:Object.keys(otterMotion.palette),shapeKeys:Object.keys(otterMotion.shape),tracks:['tailBase','tailMid','tailTip','tailEnd','frontPawL','frontPawR','head','find'],clip:'swim',scale:6};
+const subjects=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[kind,kind==='river_otter'?otterSubject:subject(kind,s)]));
 const defaults=Object.fromEntries(Object.entries(specs).map(([kind,s])=>{
   const rigType=s.form==='penguin'||s.form==='turkey'?'winged':'quadruped';
   const enemy=['jumping_spider','crab','triceratops'].includes(kind);
@@ -760,25 +760,30 @@ function roam(game,actor,dt,rate=.18){
 }
 function tickPincher(game,actor,target,dt){
   const d=Math.hypot(target.x-actor.x,target.y-actor.y)||1,dx=target.x-actor.x,dy=target.y-actor.y;
+  const begin=phase=>{
+    const timing=CRAB_PINCER_PHASES[phase];
+    actor.wildlifeBehaviorPhase=phase;actor.wildlifeBehaviorTime=timing.duration;
+    actor.animationAction=timing.clip;actor.state=phase==='attack'?'pinch':phase;actor.moving=false;
+  };
   actor.wildlifeCooldown=Math.max(0,(actor.wildlifeCooldown||0)-dt);
   if(actor.wildlifeBehaviorPhase==='windup'){
-    actor.wildlifeBehaviorTime-=dt;actor.animationAction='raise-claws';actor.state='windup';actor.moving=false;
-    if(actor.wildlifeBehaviorTime<=0){actor.wildlifeBehaviorPhase='attack';actor.wildlifeBehaviorTime=.16;}
+    actor.wildlifeBehaviorTime-=dt;actor.moving=false;
+    if(actor.wildlifeBehaviorTime<=0)begin('attack');
     return true;
   }
   if(actor.wildlifeBehaviorPhase==='attack'){
-    actor.wildlifeBehaviorTime-=dt;actor.animationAction='pinch';actor.state='pinch';actor.moving=false;
-    if(actor.wildlifeBehaviorTime<=0){if(d<54)game.hurt?.(target,actor.damage||12,actor);actor.wildlifeBehaviorPhase='recover';actor.wildlifeBehaviorTime=.65;actor.wildlifeCooldown=1.8;}
+    actor.wildlifeBehaviorTime-=dt;actor.moving=false;
+    if(actor.wildlifeBehaviorTime<=0){if(d<54)game.hurt?.(target,actor.damage||12,actor);begin('recover');actor.wildlifeCooldown=1.8;}
     return true;
   }
   if(actor.wildlifeBehaviorPhase==='recover'){
-    actor.wildlifeBehaviorTime-=dt;actor.animationAction='recover';actor.moving=false;
-    if(actor.wildlifeBehaviorTime<=0)actor.wildlifeBehaviorPhase='';
+    actor.wildlifeBehaviorTime-=dt;actor.moving=false;
+    if(actor.wildlifeBehaviorTime<=0)stopCrabPincer(actor);
     return true;
   }
   actor.faceX=dx/d;actor.faceY=dy/d;
   if(d>52){moveActor(game,actor,dx,dy,dt,1);actor.animationAction='scuttle';}
-  else if(actor.wildlifeCooldown<=0&&requestEnemyGroupTurn(game,actor,target)){actor.wildlifeBehaviorPhase='windup';actor.wildlifeBehaviorTime=.48;actor.moving=false;actor.animationAction='raise-claws';}
+  else if(actor.wildlifeCooldown<=0&&requestEnemyGroupTurn(game,actor,target))begin('windup');
   else {actor.moving=false;actor.animationAction='idle';}
   return true;
 }
@@ -809,7 +814,7 @@ function tickCharge(game,actor,target,dt){
   return true;
 }
 export function tickWildlifeActor(game,actor,dt,livingTargets=[]){
-  const kind=actor.wildlifePackKind;if(!specs[kind])return false;
+  const kind=actor.wildlifePackKind||(actor.kind==='crab'&&actor.wildSpawnKey?'crab':null);if(!specs[kind])return false;
   actor.wildlifeMoodTime=Math.max(0,(actor.wildlifeMoodTime||0)-dt);
   if(actor.hp<=0||actor.frozen>0||actor.stun>0)return false;
   if(kind==='golden_retriever'){
@@ -827,7 +832,7 @@ export function tickWildlifeActor(game,actor,dt,livingTargets=[]){
   }
   if(['crab','triceratops'].includes(kind)){
     const target=nearestLiving(game,actor,livingTargets);
-    if(!target){roam(game,actor,dt,kind==='crab'?.12:.08);return true;}
+    if(!target){if(kind==='crab')stopCrabPincer(actor);roam(game,actor,dt,kind==='crab'?.12:.08);return true;}
     return kind==='crab'?tickPincher(game,actor,target,dt):tickCharge(game,actor,target,dt);
   }
   const target=nearestLiving(game,actor,livingTargets);

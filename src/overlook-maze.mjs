@@ -2,7 +2,7 @@ import {give, ITEMS} from './items.mjs';
 import {emitGameplayFx} from './gameplay-fx.mjs';
 import {OVERLOOK_AXE, OVERLOOK_BUCKET, VILLA_OVERLOOK, WILDS_OVERLOOK, overlookNorth} from './overlook-maze-layout.mjs';
 
-const HEDGE_HEALTH = 50, HEDGE_HEIGHT = 72, CHEST_REACH = 56;
+const HEDGE_HEALTH = 50, HEDGE_HEIGHT = 72, CHEST_REACH = 64;
 const views = new WeakMap();
 
 export function overlookMazeFor(game) {
@@ -39,7 +39,7 @@ export function overlookPartArt(maze, part) {
   for (const [direction, ids] of part.neighbors.entries()) {
     if (ids.some(id => !overlookPartBroken(maze, maze.parts[id]))) mask |= 1 << direction;
   }
-  return {...part, mask, damage, broken: damage >= 1};
+  return {...part, entryEnd:part.entryEnd||part.southEntryEnd, mask, damage, broken: damage >= 1};
 }
 
 const clamp = (value, a, b) => Math.max(a, Math.min(b, value));
@@ -102,6 +102,25 @@ export function damageOverlookProjectile(game, bolt, radius) {
   return false;
 }
 
+export function damageOverlookVehicle(game,bumper,damage,halfWidth){
+  const maze=overlookMazeFor(game),radius=halfWidth+18;
+  if(!maze||bumper.x+radius<maze.x||bumper.x-radius>maze.x+maze.w||bumper.y+radius<maze.y||bumper.y-radius>maze.y+maze.h)return false;
+  const candidates=[...nearbyOverlookParts(maze,bumper.x,bumper.y,radius)].filter(part=>!overlookPartBroken(maze,part));
+  const hit=new Set(),sideX=-bumper.faceY,sideY=bumper.faceX;
+  for(let offset=-halfWidth;offset<=halfWidth;offset+=Math.max(8,halfWidth/3)){
+    const x=bumper.x+sideX*offset,y=bumper.y+sideY*offset;
+    let nearest=null,best=18;
+    for(const part of candidates){
+      const p=pointOnPart(part,x,y),distance=Math.hypot(p.x-x,p.y-y);
+      if(distance<best){nearest=part;best=distance;}
+    }
+    if(nearest)hit.add(nearest);
+  }
+  for(const part of hit)cutHedge(game,maze,part,damage);
+  if(hit.size)game.persist?.();
+  return hit.size>0;
+}
+
 export function nearOverlookChest(game, player) {
   const maze = overlookMazeFor(game);
   if (!maze || player.hp <= 0 || player.room || player.trainRide || player.vehicleId ||
@@ -111,15 +130,20 @@ export function nearOverlookChest(game, player) {
 
 export function interactOverlookChest(game, player) {
   const maze = nearOverlookChest(game, player);
-  if (!maze || maze.state.opened || !ITEMS[OVERLOOK_AXE]) return false;
+  if (!maze || !ITEMS[OVERLOOK_AXE]) return false;
+  const message=text=>{
+    if(game.trainTest)Object.assign(game.trainTest,{notice:text,noticeUntil:game.trainTest.time+3});
+    else game.message?.(text);
+  };
+  if (maze.state.opened) {message('The Cursed Axe has already been claimed.');return true;}
   if (!give(player.inventory, OVERLOOK_AXE, 1)) {
-    game.message?.('Make room in your pack for the axe.');
+    message('Make room in your backpack for the Cursed Axe.');
     return true;
   }
   maze.state.opened = true;
   game.onSound?.('chestOpen', maze.chest);
   emitGameplayFx(game, 'chest', maze.chest);
-  game.message?.('You found the Cursed Axe.');
+  message('You found the Cursed Axe.');
   game.persist?.();
   return true;
 }

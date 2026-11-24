@@ -21,4 +21,16 @@ License: https://creativecommons.org/publicdomain/zero/1.0/
 
 Original files are retained. Runtime processing normalizes peaks, varies pitch, fades and trims long calls, and applies stereo positioning and distance attenuation. Creature voices use pitch-treated monster recordings; they are not authentic recordings of every species. Monkey recordings are voice imitations. Rain and wind loops crossfade their endpoints. Extra source variants are retained for editing.
 
+## Surface footsteps
+
+The three variants per surface in `footsteps/` are CC0 recordings edited into individual steps. The edits isolate each impact, filter rumble, apply short fades and balance peaks for mono Ogg Vorbis playback.
+
+- ryansitz recorded the `water-*` samples. [Wading in Shallow Water](https://freesound.org/people/ryansitz/sounds/342932/)
+- Vrymaa recorded the `mud-*` samples. [Footsteps Mud - Walk & run](https://freesound.org/people/Vrymaa/sounds/770097/)
+- Fantozzi recorded the `sand-*` samples. qubodup sliced and submitted the upstream clips. [Fantozzi's Footsteps (Grass/Sand & Stone)](https://opengameart.org/content/fantozzis-footsteps-grasssand-stone)
+- Ismode recorded the `dirt-*` samples. [Footsteps on the Dirt](https://freesound.org/people/Ismode/sounds/853198/)
+- Nox_Sound recorded the `gravel-*` samples. [Footsteps Mountain Boots Gravel Mono](https://freesound.org/people/Nox_Sound/sounds/556002/)
+- Sonicquinn recorded the `ice-*` samples. [Footsteps Frozen Puddles](https://freesound.org/people/Sonicquinn/sounds/518789/)
+- Nox_Sound recorded the `tile-*` samples. [Footsteps Boots Tile Mono](https://freesound.org/people/Nox_Sound/sounds/530588/)
+
 Original encounter, travel and seal compositions: [encounters/CREDITS.md](encounters/CREDITS.md). Scores and reproducible recipes are in encounters/manifest.json.

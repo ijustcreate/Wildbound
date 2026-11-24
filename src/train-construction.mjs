@@ -1,6 +1,6 @@
 const tint=(hex,k)=>'#'+[1,3,5].map(i=>Math.min(255,Math.round(parseInt(hex.slice(i,i+2),16)*k)).toString(16).padStart(2,'0')).join('');
 export function trainEngineProfile(car){
- const radius=car.width*.38,centerZ=42;
+ const radius=car.width*.34,centerZ=42;
  return {radius,centerZ,top:centerZ+radius,stackTop:centerZ+radius+26};
 }
 export function paintTrainFrame(p,c,P){

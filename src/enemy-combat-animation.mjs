@@ -5,6 +5,8 @@ export function enemyCombatAnimation(actor,model){
  if(!profile||actor.hp<=0||actor.combatRole||actor.animationAction||actor.rigOverride||Number.isFinite(actor.playerFrame)||Number.isFinite(actor.poseTime))return actor;
  if(actor.tacticalBlocked&&actor.guardFlash>0)return {...actor,flash:0,hit:0,...(model?.clips?.block?{animationAction:'block',playerFrame:(model.clips.block.length-1)*.5}:{})};
  const phase=combatPhase(actor),s=actor.speciesCombat,read=actor.enemyCombatRead;
+ // Boar rushes use the planted gallop driven by distance travelled.
+ if(phase==='active'&&actor.kind==='boar'&&actor.state==='charge'&&model?.clips?.charge?.loop)return actor;
  const duration=s?.duration||read?.duration||actor.motionDuration||.65;
  const progress=s?clamp(1-s.remaining/Math.max(.01,duration)):clamp((read?.age||0)/Math.max(.01,duration));
  let names=[],frame=progress;

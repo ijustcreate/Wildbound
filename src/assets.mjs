@@ -7,6 +7,9 @@ import { Animator } from "./animation.mjs";
 import {loadHumanoidArt} from './humanoid-hd.mjs';
 import {celShadingEnabled} from './cel-shading.mjs';
 import {cutoutSurface} from './cutout-art.mjs';
+const SPRITE_CACHE_PIXELS=8*1024*1024;
+const SPRITE_CACHE_ENTRIES=256;
+
 export class Assets {
   constructor() {
     this.library = {};
@@ -14,17 +17,13 @@ export class Assets {
     this.overrides = {};
   }
   async load() {
-    await loadHumanoidArt();
-    this.animationBank = await (await fetch("assets/animations.json")).json();
-    this.library = await (await fetch("assets/library.json")).json();
-    Object.assign(
-      this.library,
-      await (await fetch("assets/parts.json")).json(),
-    );
-    Object.assign(
-      this.library,
-      await (await fetch("assets/animal-parts.json")).json(),
-    );
+    const read = name => fetch(`assets/${name}.json`).then(response=>response.json());
+    const [animations,library,parts,animalParts] = await Promise.all([
+      read('animations'),read('library'),read('parts'),read('animal-parts'),loadHumanoidArt(),
+    ]);
+    this.animationBank = animations;
+    this.library = Object.assign(library,parts,animalParts);
+    this.cache.clear();
     Object.assign(this.library,structuredClone(REALM_SPRITES),structuredClone(FAUNA_SPRITES));
     try {
       const saved = JSON.parse(
@@ -38,7 +37,12 @@ export class Assets {
       ensureFootprint(s, name);
   }
   canvas(name) {
-    if (this.cache.has(name)) return this.cache.get(name);
+    if (this.cache.has(name)) {
+      const cached = this.cache.get(name);
+      this.cache.delete(name);
+      this.cache.set(name,cached);
+      return cached;
+    }
     const s = this.library[name];
     if (!s) return null;
     const c = document.createElement("canvas");
@@ -49,7 +53,16 @@ export class Assets {
       0,
       0,
     );
-    this.cache.set(name, c);
+    if(c.width*c.height<=SPRITE_CACHE_PIXELS){
+      this.cache.set(name,c);
+      let pixels=0;
+      for(const image of this.cache.values())pixels+=image.width*image.height;
+      while(this.cache.size>SPRITE_CACHE_ENTRIES||pixels>SPRITE_CACHE_PIXELS){
+        const [key,image]=this.cache.entries().next().value;
+        this.cache.delete(key);
+        pixels-=image.width*image.height;
+      }
+    }
     return c;
   }
   save(name, s) {

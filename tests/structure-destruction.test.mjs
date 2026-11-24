@@ -27,6 +27,16 @@ const wall = (extra = {}) => ({kind: 'wall', x: 340, y: 280, w: 40, h: 120, ...e
 const bolt = (extra = {}) => ({x: 360, y: 340, vx: 260, vy: 0,
   size: 6, damage: 110, structureCharge: .5, ...extra});
 
+test('intact and sectional collision retain a strict rounded footprint', () => {
+  for (const b of [wall(), wall({sectionDamage: {2: {damage: 1, broken: false}}})]) {
+    assert.equal(sectionBlocked(b, 332, 300, 8), false, 'side tangency');
+    assert.equal(sectionBlocked(b, 333, 300, 8), true, 'side overlap');
+    assert.equal(sectionBlocked(b, 337, 276, 5), false, 'corner tangency');
+    assert.equal(sectionBlocked(b, 337, 276, 5.01), true, 'corner overlap');
+    assert.equal(sectionBlocked(b, 360, 300, 0), false);
+  }
+});
+
 test('40-pixel sections accumulate sparse damage and invalidate collision only on breaking', () => {
   assert.equal(WALL_SECTION_SIZE, 40);
   const {g} = setup(), b = wall();

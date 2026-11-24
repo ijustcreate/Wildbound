@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';import {ITEMS} from '../src/items.mjs';
-import {drawMagicBolt,magicBoltGlow} from '../src/magic-bolt-render.mjs';
+import {drawMagicBolt,magicBoltColor,magicBoltGlow,magicChargePalette} from '../src/magic-bolt-render.mjs';
 import {finishMagicBolt,drawMagicBurst} from '../src/magic-bolt-effects.mjs';
 import {drawFriendshipHearts} from '../src/friendship-hearts.mjs';
 const canvas=()=>{const calls=[],c=new Proxy({globalAlpha:1,calls},{set(o,k,v){if(k==='globalCompositeOperation')calls.push(['composite',v]);if(k==='fillStyle'||k==='strokeStyle')calls.push(['color',v]);o[k]=v;return true;},get(o,k){if(k in o)return o[k];return (...args)=>{assert.ok(args.every(v=>typeof v!=='number'||Number.isFinite(v)));calls.push([k,...args]);};}});return c;};
@@ -8,6 +8,16 @@ test('wand colour is preserved and basic glow is lower than premium glow',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('keyboard');p.mana=999;
  for(const type of ['starter_wand','wand','fire_wand','ice_wand','necromancer_wand','friendship_wand']){p.equipment.hand1=type;assert.equal(g.fireSpell(p),true);const b=g.spells.at(-1);assert.equal(b.color,ITEMS[type].artColor||ITEMS[type].color);assert.equal(b.glow,magicBoltGlow(ITEMS[type]));}
  assert.ok(magicBoltGlow(ITEMS.wand)<magicBoltGlow(ITEMS.necromancer_wand));assert.ok(magicBoltGlow(ITEMS.friendship_wand)<.05);
+});
+test('the charge palette takes its body colour from the actual spell of either wand hand',()=>{
+ const g=new Game(()=>.5),p=g.addPlayer('keyboard');p.mana=999;
+ for(const [slot,type] of [['hand1','fire_wand'],['hand2','ice_wand'],['hand1','mender_focus'],['hand2','friendship_wand']]){
+  p.equipment[slot]=type;
+  assert.equal(g.fireSpell(p,0,slot),true);
+  const bolt=g.spells.at(-1),color=magicBoltColor(ITEMS[type]);
+  assert.equal(magicChargePalette(color)[5],bolt.color);
+  assert.match(magicChargePalette(color)[6],/^#[0-9a-f]{6}$/);
+ }
 });
 test('coloured projectiles and bursts never use additive blending or white sparks',()=>{
  for(const color of ['#90baff','#ff7938','#7edcff','#b36de0']){const c=canvas();drawMagicBolt(c,{x:50,y:50,vx:260,vy:0,size:8,color,age:.5});assert.ok(c.calls.some(v=>v[0]==='color'&&v[1]===color));assert.ok(!c.calls.some(v=>v.includes('lighter')||v.includes('#edffff')||v.includes('#f2efff')));assert.ok(c.calls.filter(v=>v[0]==='ellipse').length<=7);

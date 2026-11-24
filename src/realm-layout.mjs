@@ -4,6 +4,7 @@ import {addShadowPools} from './shadow-forest-layout.mjs';
 // Native, deterministic environments. All coordinates and tuning remain plain save data.
 export const REALMS = ['swamp','caverns','shadow'];
 export const REALM_NAMES = {swamp:'Bayou Marsh',caverns:'Hollowdeep Caverns',shadow:'The Shadow Realm'};
+export const BAYOU_SHRINE_BASE = {width:76, depth:20};
 export const realmHash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export const REALM_ASSETS = {
  swamp:{mangrove:{type:'tree',size:220},old_cypress:{type:'tree',size:240},cypress_knee:{type:'rock',size:28},peat_boulder:{type:'rock',size:60},marsh_reeds:{size:38},bayou_lily:{size:24},marsh_fern:{size:34},moss_log:{type:'log',size:76},bayou_shrine:{size:210},bayou_ruin:{size:120},bayou_snag:{size:150},bayou_landing:{size:110}},

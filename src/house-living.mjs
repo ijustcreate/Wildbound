@@ -31,11 +31,13 @@ export function tickHouseLiving(g,dt,inputs={}){
  for(const p of g.players||[]){if(!p.bedRest)continue;
   if(p.bedRest.seed!==g.seed){delete p.bedRest;delete p.bedRestAge;p.sleeping=0;continue;}
   const i=inputs[p.device]||{},bed=(g.house?.furniture||[]).find(f=>f.kind==='bed'&&!f.destroyed&&f.x===p.bedRest.x&&f.y===p.bedRest.y);
-  if(!bed||p.room||p.ui||p.hp<=0||p.hit>0||Math.hypot(i.x||0,i.y||0)>.15||i.jump||i.attack||i.dodge){wakeFromBed(p);continue;}
+  const waking=Math.hypot(i.x||0,i.y||0)>.15||i.jump||i.attack||i.dodge;
+  if(p.bedRest.wakeAfterRelease&&!waking)delete p.bedRest.wakeAfterRelease;
+  if(!bed||p.room||p.ui||p.hp<=0||p.hit>0||waking&&!p.bedRest.wakeAfterRelease){wakeFromBed(p);continue;}
   p.sleeping=1;p.bedRestAge=(p.bedRestAge||0)+dt;p.hp=Math.min(p.maxHp||100,p.hp+(p.maxHp||100)*.16*dt);p.moving=false;
  }
 }
-export function drawHouseAppliances(c,g){
+export function drawHouseAppliances(c,g,showPrompt=true){
  for(const f of g.house?.furniture||[]){if(f.destroyed)continue;const {x,y,w,h}=f,t=g.time||0;
   if(f.kind==='stove'&&f.applianceOn){c.save();for(const [i,px]of [w*.27,w*.73].entries())for(const [j,py]of [h*.05,h*.48].entries()){
    const cx=x+px,cy=y+py,flame=2+Math.floor((Math.sin(t*15+i*3+j*5)+1)*1.4);c.fillStyle='#df7646';c.beginPath();c.ellipse(cx,cy+1,5,2.5,0,0,Math.PI*2);c.fill();
@@ -48,7 +50,7 @@ export function drawHouseAppliances(c,g){
    c.restore();
   }
  }
- const target=(g.players||[]).filter(p=>!p.bedRest).map(p=>houseLivingTarget(g,p)).find(Boolean);if(target){const label=target.kind==='wrapped_gift'?'Unwrap gift':target.kind==='bed'?'Sleep':(target.kind==='sink'?'Tap':'Stove')+(target.applianceOn?' off':' on');c.save();c.font='8px sans-serif';c.textAlign='center';c.fillStyle='#f0dfb7';c.fillText('Interact · '+label,target.x+target.w/2,target.y-23);c.restore();}
+ const target=showPrompt&&(g.players||[]).filter(p=>!p.bedRest).map(p=>houseLivingTarget(g,p)).find(Boolean);if(target){const label=target.kind==='wrapped_gift'?'Unwrap gift':target.kind==='bed'?'Sleep':(target.kind==='sink'?'Tap':'Stove')+(target.applianceOn?' off':' on');c.save();c.font='8px sans-serif';c.textAlign='center';c.fillStyle='#f0dfb7';c.fillText('Interact · '+label,target.x+target.w/2,target.y-23);c.restore();}
 }
 export function drawBedSleeper(c,p,time,animator){
  const b=p.bedRest;if(!b)return false;

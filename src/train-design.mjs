@@ -1,6 +1,7 @@
 import {defaultInterior,trainInterior} from './train-interior.mjs';
 export {defaultInterior,trainInterior};
 import {defaultRailwayStation,STATION_FLAVOR} from './railway-station.mjs';
+import {EAST_WILDS_WIDTH} from './wild-mountain-layout.mjs';
 export const TRAIN_DESIGN_KEY='wildbound-railway-library-v2',TRAIN_DRAFT_KEY='wildbound-railway-draft-v2';
 export const TRAIN_VIEWS=['South','Southwest','West','Northwest','North','Northeast','East','Southeast'];
 export const TRAIN_PARTS=['chassis','wheels','body','furniture','machinery','trim','roof'];
@@ -13,7 +14,7 @@ export function validateTrainDesign(raw){
  if(!raw||raw.version!==2)throw Error('Choose a version 2 railway design.');
  const d=clone(raw),finite=(n,a,b)=>Number.isFinite(n)&&n>=a&&n<=b;
  if(typeof d.name!=='string'||d.name.length>80)throw Error('Railway name must be at most 80 characters.');
- if(!finite(d.width,3000,16000)||!finite(d.height,3000,16000))throw Error('Map bounds must be 3000–16000 pixels.');
+ if(!finite(d.width,3000,d.wildLands?EAST_WILDS_WIDTH:16000)||!finite(d.height,3000,16000))throw Error(d.wildLands?'Wild Lands map bounds exceed the supported dimensions.':'Map bounds must be 3000–16000 pixels.');
  if(!d.river||!finite(d.river.x,300,d.width-300)||!finite(d.river.width,80,700))throw Error('River is outside the map.');
  if(!Array.isArray(d.nodes)||d.nodes.length<4||d.nodes.length>128)throw Error('Use 4–128 track control points.');
  const ids=new Set();for(const n of d.nodes){if(typeof n.id!=='string'||ids.has(n.id)||![n.x,n.y,n.z].every(Number.isFinite)||n.x<100||n.y<100||n.x>d.width-100||n.y>d.height-100||n.z<0||n.z>160)throw Error('Invalid or duplicate track point.');ids.add(n.id);}

@@ -15,7 +15,10 @@ test('one reachable position can claim all three students and cycle every conver
  const {g,p,t}=setup(),cs=trainCars(t),n=trainStudents(g,cs)[0];
  p.trainRide={car:n.car.index,x:n.room.table.x,y:12};t.cocoaTaken.add(n.car.id+':'+n.room.table.id);
  const seen=[];
- for(let i=0;i<6;i++){seen.push(trainPrompt(g,p));g.update(.02,{keyboard:{interact:true}});g.update(.02,{keyboard:{}});}
+ for(let i=0;i<6;i++){
+  seen.push(trainPrompt(g,p));g.update(.02,{keyboard:{interact:true}});g.update(.02,{keyboard:{}});
+  if(p.ui?.trainStudentGift){g.update(.02,{keyboard:{interact:true}});g.update(.02,{keyboard:{}});}
+ }
  for(const name of ['HARRY POTTER','HERMIONE GRANGER','RON WEASLEY'])assert.ok(seen.some(s=>s.includes(name)),name);
  assert.deepEqual(Object.keys(p.npcQuests.train_students.received).sort(),['harry','hermione','ron']);
  for(const type of ['nimbus_2000','standard_book_of_spells','chocolate_frog'])assert.equal(p.inventory.filter(i=>i?.type===type).reduce((n,i)=>n+i.qty,0),1);

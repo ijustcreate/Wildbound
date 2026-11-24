@@ -3,7 +3,7 @@ import {inWildLandmark} from './wild-landmark-buildings.mjs';
 import {VILLA_OVERLOOK,inOverlookGround,overlookNorth} from './overlook-maze-layout.mjs';
 import {wildLandsPathAt} from './wild-lands-geography.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
-import {WILD_LANDS_STOPS,wildLandsGround} from './wild-lands-world.mjs';
+import {WILD_LANDS_STOPS,wildLandsGround,wildLandsSurfaceAt} from './wild-lands-world.mjs';
 import {railwaySurface} from './railway-water.mjs';
 import {nearestTrainTrack} from './train-track.mjs';
 import {forestHash,forestNoise,routeDistance,clearingDistance,forestPavingAt} from './forest-landscape.mjs';
@@ -17,8 +17,29 @@ export function meadowTerrain(g,x,y){
  const p=boundlessRegionPlan(g,Math.floor(tx/50),Math.floor(ty/50));
  return p.terrain[((ty%50+50)%50)*50+(tx%50+50)%50];
 }
-export function meadowAllowed(g,x,y,margin=0){
- if(g.trainTest){const t=g.trainTest,d=t.design;if(d.wildLands&&(inWildLandmark(d,x,y,margin+12)||wildLandsPathAt(x,y)||WILD_LANDS_SITES.some(s=>!s.room&&Math.hypot(s.x-x,s.y-y)<300)||WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-x,s.y-y)<550)||!['forest','jungle','house'].includes(wildLandsGround(d,x,y))||d.activeRoom))return false;if(meadowTerrain(g,x,y)!=='grass')return false;const s=d.station;if(s&&(Math.abs(x-s.x)<s.w/2+44+margin&&Math.abs(y-s.y)<s.h/2+100+margin||Math.abs(x-s.platformX)<s.platformLength/2+20+margin&&Math.abs(y-s.platformY)<s.platformWidth/2+30+margin))return false;if(t.meadowRailField&&margin<=32)return railwayMeadowDistance(t.meadowRailField,x,y)>d.gauge/2+26+margin;t.meadowMask??=new Map();const key=Math.floor(x/16)+':'+Math.floor(y/16);let distance=t.meadowMask.get(key);if(distance===undefined){distance=Math.min(...[t.route,...(t.otherRoutes||[])].map(r=>nearestTrainTrack(r,Math.floor(x/16)*16+8,Math.floor(y/16)*16+8).distance));if(t.meadowMask.size>=16000)t.meadowMask.delete(t.meadowMask.keys().next().value);t.meadowMask.set(key,distance);}return distance>d.gauge/2+26+margin;}
+export function meadowAllowed(g,x,y,margin=0,bayouBlades=false){
+ if(g.trainTest){
+  const t=g.trainTest,d=t.design,biome=d.wildLands&&wildLandsGround(d,x,y),bayou=bayouBlades&&biome==='swamp';
+  if(d.wildLands&&(d.activeRoom||!bayou&&!['forest','jungle','house'].includes(biome)||
+   inWildLandmark(d,x,y,margin+12)||wildLandsPathAt(x,y)||
+   WILD_LANDS_SITES.some(s=>!s.room&&Math.hypot(s.x-x,s.y-y)<300)||WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-x,s.y-y)<550)))return false;
+  if(bayou){
+   // Leave shallow water and the crowded waterline to the wetland plants.
+   const edge=margin+2;
+   if(wildLandsSurfaceAt(d,x,y)!=='grass'||wildLandsSurfaceAt(d,x-edge,y)!=='grass'||wildLandsSurfaceAt(d,x+edge,y)!=='grass'||
+    wildLandsSurfaceAt(d,x,y-edge)!=='grass'||wildLandsSurfaceAt(d,x,y+edge)!=='grass')return false;
+  }else if(meadowTerrain(g,x,y)!=='grass')return false;
+  const s=d.station;
+  if(s&&(Math.abs(x-s.x)<s.w/2+44+margin&&Math.abs(y-s.y)<s.h/2+100+margin||Math.abs(x-s.platformX)<s.platformLength/2+20+margin&&Math.abs(y-s.platformY)<s.platformWidth/2+30+margin))return false;
+  if(t.meadowRailField&&margin<=32)return railwayMeadowDistance(t.meadowRailField,x,y)>d.gauge/2+26+margin;
+  t.meadowMask??=new Map();const key=Math.floor(x/16)+':'+Math.floor(y/16);let distance=t.meadowMask.get(key);
+  if(distance===undefined){
+   distance=Math.min(...[t.route,...(t.otherRoutes||[])].map(r=>nearestTrainTrack(r,Math.floor(x/16)*16+8,Math.floor(y/16)*16+8).distance));
+   if(t.meadowMask.size>=16000)t.meadowMask.delete(t.meadowMask.keys().next().value);
+   t.meadowMask.set(key,distance);
+  }
+  return distance>d.gauge/2+26+margin;
+ }
 
  if((g.generatedEnvironment||g.environment)==='shadow'){
   if(meadowTerrain(g,x,y)!=='shadow_soil')return false;

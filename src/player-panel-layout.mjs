@@ -32,7 +32,8 @@ export function panelWidth(player) {
   if (player.ui?.shop === 'robot-intro') return 440;
   if (player.ui?.storage === 'starter') return 540;
   if (player.ui?.loot) return ['victory', 'tv-victory'].includes(player.ui.storage) ? 440 : 620;
-  if (player.ui?.shop === 'robot' || !player.ui?.shop) return 480;
+  if (player.ui?.shop === 'robot') return 480;
+  if (player.ui && !player.ui.shop) return 520;
   if (player.ui?.shop === 'merchant') return 560;
   return player.room ? 800 : 480;
 }

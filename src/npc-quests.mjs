@@ -1,12 +1,25 @@
 import {emitGameplayFx} from './gameplay-fx.mjs';
 import {openBoneCarver,boneCarverView,boneCarverAction,tickBoneCarver,drawBoneCarver} from './bone-carver.mjs';
 import {openVillagerDialogue,villagerDialogueView,villagerDialogueAction} from './villagers.mjs';
+import {bellglassDialogueAction,bellglassDialogueView} from './divination.mjs';
 import {getNpcQuestConfig} from './npc-quest-data.mjs';
-import {ITEMS,give} from './items.mjs';
+import {ITEMS,give,take} from './items.mjs';
 import {merchantSites} from './traveling-merchant.mjs';
 import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {alanActor} from './alan-ally.mjs';
 import {openSantaDialogue,santaDialogueView,santaDialogueAction,drawSanta} from './christmas.mjs';
+import {trainStudentGiftAction,trainStudentGiftView} from './train-students.mjs';
+import {trainConductorDialogueAction,trainConductorDialogueView} from './train-conductor.mjs';
+import {alleyResidentDialogueAction,alleyResidentDialogueView} from './diagon-residents.mjs';
+import {nocturneSpiderAction,nocturneSpiderView,validNocturneSpiderTalk} from './nocturne-spider-merchant.mjs';
+import {nocturneDarkWizardAction,nocturneDarkWizardView,validNocturneDarkWizardTalk} from './nocturne-dark-wizards.mjs';
+import {quidditchDialogueAction,quidditchDialogueView} from './quidditch-dialogue.mjs';
+import {trainTicketDialogueAction,trainTicketDialogueView} from './train-ticket-dialogue.mjs';
+import {hogsmeadeDialogueAction,hogsmeadeDialogueView} from './hogsmeade.mjs';
+import {arenaBarAction,arenaBarView} from './diagon-arena.mjs';
+import {meridianClueAction,meridianClueView} from './diagon-meridian-clue.mjs';
+import {gringottsAction,gringottsView} from './gringotts-dialogue.mjs';
+import {tideglassDialogueAction,tideglassDialogueView} from './tideglass-quest.mjs';
 
 const clone=x=>structuredClone(x),distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const key=p=>p.profileId||String(p.id);
@@ -97,6 +110,19 @@ const carried=(p,item)=>(p.inventory||[]).reduce((n,s)=>n+(s?.type===item?s.qty|
 function progress(p,a){return a.contract.objective.type==='collect'?Math.min(a.contract.objective.count,carried(p,a.contract.objective.item)):a.progress||0;}
 function choicesForNode(config,node){const def=config.dialogue.nodes[node];return (def?.choices||[]).map(c=>({label:c.label,action:'node:'+c.next}));}
 export function npcDialogueView(g,p){
+  if(p.ui?.tideglassSurveyor)return tideglassDialogueView(g,p);
+  if(p.ui?.gringotts)return gringottsView(g,p);
+  if(p.ui?.bellglassDivination)return bellglassDialogueView(g,p);
+  if(p.ui?.meridianClerk)return meridianClueView(g,p);
+  if(p.ui?.arenaBar)return arenaBarView(g,p);
+  if(p.ui?.hogsmeadeNpc)return hogsmeadeDialogueView(g,p);
+  if(p.ui?.trainTicketStation)return trainTicketDialogueView(g,p);
+  if(p.ui?.trainConductor)return trainConductorDialogueView(g,p);
+  if(p.ui?.quidditchTalk)return quidditchDialogueView(g,p);
+  if(p.ui?.nocturneSpiderMerchant)return nocturneSpiderView(g,p);
+  if(p.ui?.nocturneDarkWizard)return nocturneDarkWizardView(g,p);
+  if(p.ui?.trainStudentGift)return trainStudentGiftView(g,p);
+  if(p.ui?.alleyResident)return alleyResidentDialogueView(g,p);
   if(p.ui?.npcId==='bone_carver')return boneCarverView(g,p);
   if(p.ui?.npcId==='santa')return santaDialogueView(g,p);
   if(p.ui?.villagerId)return villagerDialogueView(g,p);
@@ -141,6 +167,19 @@ function validTalk(g,p){const u=p.ui,npc=u?.npcId==='alan'?alanActor(g):(g.quest
 export function npcDialogueAction(g,p,action){
   if(villagerDialogueAction(g,p,action))return true;
   const u=p.ui;if(u?.shop!=='npc-dialogue')return false;
+  if(u.tideglassSurveyor)return tideglassDialogueAction(g,p,action);
+  if(u.bellglassDivination)return bellglassDialogueAction(g,p,action);
+  if(u.trainTicketStation)return trainTicketDialogueAction(g,p,action);
+  if(u.trainConductor)return trainConductorDialogueAction(g,p,action);
+  if(u.hogsmeadeNpc)return hogsmeadeDialogueAction(g,p,action,give);
+  if(u.arenaBar)return arenaBarAction(g,p,action,give);
+  if(u.meridianClerk)return meridianClueAction(g,p,action);
+  if(u.gringotts)return gringottsAction(g,p,action,take);
+  if(u.quidditchTalk)return quidditchDialogueAction(g,p,action);
+  if(u.nocturneSpiderMerchant)return nocturneSpiderAction(g,p,action);
+  if(u.nocturneDarkWizard)return nocturneDarkWizardAction(g,p,action);
+  if(u.trainStudentGift)return trainStudentGiftAction(g,p,action);
+  if(u.alleyResident)return alleyResidentDialogueAction(g,p,action);
   if(!validTalk(g,p)){p.ui=null;p.consumeInput=true;return true;}
   if(u.npcId==='bone_carver')return boneCarverAction(g,p,action);
   if(u.npcId==='santa')return santaDialogueAction(g,p,action);
@@ -233,7 +272,10 @@ export function tickNpcQuests(g,dt){
     npc.moving=false;if(talk){const d=distance(talk,npc)||1;npc.faceX=(talk.x-npc.x)/d;npc.faceY=(talk.y-npc.y)/d;}
   }
   g.questNpcs=(g.questNpcs||[]).filter(n=>!n.fled);
-  for(const p of g.players){if(p.ui?.shop==='npc-dialogue'&&!p.ui.villagerId&&!validTalk(g,p))p.ui=null;
+  for(const p of g.players){if(p.ui?.shop==='npc-dialogue'&&!p.ui.villagerId){
+    const u=p.ui,valid=u.nocturneDarkWizard?validNocturneDarkWizardTalk:u.nocturneSpiderMerchant?validNocturneSpiderTalk:validTalk;
+    if(!valid(g,p))p.ui=null;
+  }
     for(const s of Object.values(p.npcQuests||{})){const a=s.active;if(!a||p.hp<=0||p.room)continue;
       if(a.contract.objective.type==='visit'&&a.world===scene(g)&&a.target&&distance(p,a.target)<36&&a.progress<a.contract.objective.count){a.progress=a.contract.objective.count;g.message?.(`${p.name}: route surveyed. Return to the wayfarer.`);g.persist?.();}
     }

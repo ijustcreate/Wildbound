@@ -1,0 +1,12 @@
+# Wildbound Worlds 1.2.123
+
+- The native cat rig holds its head higher with readable ears. The six coats are tuxedo, black, ginger tabby, silver tabby, seal point, and seeded calico. Hedwig’s carrier is 30% smaller.
+- The Quidditch Supplies Portkey leads to a full pitch with loaner brooms, a return Portkey, and Gold and Violet teams. The trunk releases a carryable and throwable Quaffle, two Bludgers, and a Snitch. Three hoops per side score one point each. Bring the Snitch to your own stand for three points and the final result. Solo play fills both teams with native AI. The Firebolt flies at 225 px/s beside the existing 210 px/s brooms. Four additional books use the existing spell sockets.
+- Diagon Alley uses the standard 1.35 camera zoom, a narrower avenue, varied cobbles, material-sensitive steps and visible footprints. The tiered fountain has animated water and positional audio. Gringotts faces the street at its northern end under a marble dragon. Unsigned facades fill the side gaps. The Wandmaker’s Garden west of Ollivanders has four roaming cats, perched owls, a pool and floating sparks.
+- Nineteen residents follow daily routes with conversations and interactions. Nocturne’s north branch reaches Borgin and Burkes. Silas exchanges Dark Essence for three kinds of companion spider. Provoking either dark wizard in dialogue starts a real wand duel. Wins always drop essence and roll a 42% chance of one of three wearable masks with +2 spell damage.
+
+Visual references were used for shape and atmosphere. [Firebolt archive-based replica](https://cinereplicas.com/collections/collectible-broom-harry-potter/products/firebolt-new-edition) · [Blizzard’s Stormwind guide](https://worldofwarcraft.blizzard.com/en-us/news/20142731/welcome-to-stormwind-a-guided-tour).
+
+The exact 1.2.123 build passed 362 Alley, 41 resident, 12 merchandise/audio, 19 Quidditch, 11 garden, 18 duel, and 70 cat checks in muted Electron. The executable booted to the lobby. All 1,882 runtime files matched the checkout at packaging. Virtual input and graphics captures cover the tested routes. Physical gamepad feel and sustained display FPS were outside these checks.
+
+Build `dist/1.2.123/Wildbound-win32-x64/Wildbound.exe`, built 2026-11-24T03:34:37.332Z from modified source at `5b244635ab78e5a3c8e78ef21fdbabf60e505fd7`. The desktop shortcut `Wildbound Worlds (1.2.123).lnk` targets the project’s `Play Wildbound.cmd` with `-BuildDirectory "dist\1.2.123\Wildbound-win32-x64"` and uses the normal profile. Muted reports and captures are in `test-output/`.

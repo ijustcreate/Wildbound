@@ -1,7 +1,7 @@
 import {poseAt,projectPoint,facingIndex,validateMotion} from './player-motion.mjs';
 import {drawOtterPixels} from './otter-art.mjs';
 
-const rest={pelvis:['',0,-7,9],spine:['pelvis',0,0,10],chest:['spine',0,8,11],belly:['spine',0,1,5],neck:['chest',0,12,13],head:['neck',0,17,15],jaw:['head',0,22,11.5],muzzle:['head',0,23,13.5],nose:['muzzle',0,25.2,14.8],eyeL:['head',-6.4,22,17.5],eyeR:['head',6.4,22,17.5],earL:['head',-7.5,13,17.8],earR:['head',7.5,13,17.8],tailBase:['pelvis',0,-16,7],tailMid:['tailBase',0,-25,3.5],tailTip:['tailMid',-3,-35,1.5],tailEnd:['tailTip',-4,-41,1.4],find:['belly',0,3,16]};
+const rest={pelvis:['',0,-8,8],spine:['pelvis',0,0,8.8],chest:['spine',0,9,9.2],belly:['spine',0,1,4.8],neck:['chest',0,13,11],head:['neck',0,18,12.7],jaw:['head',0,22,9.9],muzzle:['head',0,23.6,11.8],nose:['muzzle',0,26,12.8],eyeL:['head',-6.1,22,14.9],eyeR:['head',6.1,22,14.9],earL:['head',-7,14,15.5],earR:['head',7,14,15.5],tailBase:['pelvis',0,-17,6.2],tailMid:['tailBase',0,-27,3.5],tailTip:['tailMid',-2,-37,1.8],tailEnd:['tailTip',-4,-43,1.5],find:['belly',0,3,16]};
 for(const [side,s]of [['L',-1],['R',1]])Object.assign(rest,{['shoulder'+side]:['chest',s*6,9,8],['elbow'+side]:['shoulder'+side,s*7,10,4.5],['frontPaw'+side]:['elbow'+side,s*7,13,2],['hip'+side]:['pelvis',s*6,-9,7],['knee'+side]:['hip'+side,s*7,-11,4],['rearPaw'+side]:['knee'+side,s*7,-7,1.7]});
 const base=()=>Object.fromEntries(Object.entries(rest).map(([n,v])=>[n,v.slice(1)]));
 const mix=(a,b,t)=>Object.fromEntries(Object.keys(a).map(n=>[n,a[n].map((v,i)=>v+(b[n][i]-v)*t)]));
@@ -14,9 +14,9 @@ function swimPose(phase){
  return p;
 }
 function floatPose(phase){
- const p=swimPose(phase*.5);p.pelvis=[0,-7,7];p.spine=[0,0,7];p.chest=[0,8,7.5];p.belly=[0,1,13.5];p.neck=[0,12,7];p.head=[0,17,8.5];
+ const p=swimPose(phase);p.pelvis=[0,-7,7];p.spine=[0,0,7];p.chest=[0,8,7.5];p.belly=[0,1,13.5];p.neck=[0,12,7];p.head=[0,17,8.5];
  // Head tips back to face the sky; muzzle, eyes and ears follow that rotation.
- for(const n of ['jaw','muzzle','nose','eyeL','eyeR','earL','earR']){const v=base()[n],dy=v[1]-17,dz=v[2]-15;p[n]=[v[0],17+dy*.45-dz*.89,8.5+dy*.89+dz*.45];}
+ for(const n of ['jaw','muzzle','nose','eyeL','eyeR','earL','earR']){const v=base()[n],dy=v[1]-rest.head[2],dz=v[2]-rest.head[3];p[n]=[v[0],17+dy*.45-dz*.89,8.5+dy*.89+dz*.45];}
  p.find=[0,3+Math.sin(phase)*.3,19];
  for(const [side,s]of [['L',-1],['R',1]]){p['shoulder'+side]=[s*6,7,11.5];p['elbow'+side]=[s*7,4,15];p['frontPaw'+side]=[s*3.5,3,18.5];p['hip'+side]=[s*5,-9,8];p['knee'+side]=[s*7,-11,7];p['rearPaw'+side]=[s*(8+Math.sin(phase+s)*.8),-8+Math.sin(phase+s),7];}
  return p;
@@ -41,7 +41,7 @@ export function defaultOtterMotion(){
  for(const [name,length,fps,loop]of [['idle',33,8,true],['walk',25,18,true],['run',25,25,true],['swim',33,18,true],['dive',19,20,false],['underwater',25,12,true],['surface',19,20,false],['roll',21,20,false],['belly_float',33,9,true],['eat',25,10,true],['return',19,18,false],['death',19,18,false]]){
   clips[name]={length,fps,loop,keys:Array.from({length},(_,frame)=>{const p=sample(name,frame/(length-1));return {frame,joints:Object.fromEntries(Object.keys(rest).map(n=>[n,p[n].map((v,i)=>v-joints[n].position[i])]))};})};
  }
- return {version:1,type:'river_otter',name:'River otter / swimming and foraging',joints,clips,ik:Object.fromEntries(['L','R'].flatMap(side=>[['frontPaw','shoulder','elbow',1],['rearPaw','hip','knee',-1]].map(([end,root,mid,bend])=>[end+side,{end:end+side,root:root+side,mid:mid+side,bend,enabled:true}]))),palette:{outline:'#302b28',shade:'#523e32',body:'#79553e',light:'#aa8258',cream:'#dfc69a',creamShade:'#ad9470',creamLight:'#f0dbaf',nose:'#242624',find:'#9b8ca5'},shape:{bodyWidth:8,bodyHeight:6.5,headWidth:9.5,headHeight:6.5,muzzleWidth:7.8,tailWidth:5.3,pawSize:2.8},visibility:Object.fromEntries(Object.keys(joints).map(n=>[n,Array(8).fill(true)])),provenance:{source:'Native Wildbound otter rig; hand-authored joint clips',revision:1}};
+ return {version:1,type:'river_otter',name:'River otter / swimming and foraging',joints,clips,ik:Object.fromEntries(['L','R'].flatMap(side=>[['frontPaw','shoulder','elbow',1],['rearPaw','hip','knee',-1]].map(([end,root,mid,bend])=>[end+side,{end:end+side,root:root+side,mid:mid+side,bend,enabled:true}]))),palette:{outline:'#302922',shade:'#513d30',body:'#795339',light:'#a97e52',cream:'#dfc59a',creamShade:'#ae916b',creamLight:'#f0deb7',nose:'#262320',find:'#9b8ca5'},shape:{bodyWidth:8.2,bodyHeight:6,headWidth:8.2,headHeight:5.8,muzzleWidth:7.2,tailWidth:4.7,pawSize:2.65},visibility:Object.fromEntries(Object.keys(joints).map(n=>[n,Array(8).fill(true)])),provenance:{source:'Native Wildbound otter rig; hand-authored joint clips',revision:2}};
 }
 export const otterMotion=defaultOtterMotion();
 export let otterMotionRevision=0;

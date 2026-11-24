@@ -41,7 +41,7 @@ function tallAviary(c) {
   block(c,-1,-35,1,2,brass[4]);
 }
 
-function brassCage(c, time) {
+function brassCage(c, time, variant='hedwig') {
   // The station cage and the emporium stock share the same native owl.
   // A low blue-green display plinth distinguishes the emporium from the platform.
   shape(c,teal[0],[[-24,-8],[-19,-14],[20,-14],[24,-9],[22,-2],[19,0],[-21,0]]);
@@ -52,7 +52,7 @@ function brassCage(c, time) {
   c.translate(-2,-14);
   c.scale(.81,.81);
   drawOwlCage(c,{x:0,y:0},false,'back');
-  drawCagedSnowyOwl(c,{x:0,y:0},time);
+  drawCagedSnowyOwl(c,{x:0,y:0,owlVariant:variant},time);
   drawOwlCage(c,{x:0,y:0});
   c.restore();
 }
@@ -97,7 +97,7 @@ function birchRoost(c, time) {
   block(c,-2,-32,4,1,timber[4]);
   block(c,-17,-40,4,2,timber[4]);
   block(c,12,-41,7,1,timber[4]);
-  drawSnowyOwl(c,{x:9,y:-41,faceX:-.7,faceY:1,owlPhase:'perch',hp:1,visualSeed:17},time,30);
+  drawSnowyOwl(c,{x:9,y:-41,faceX:-.7,faceY:1,owlPhase:'perch',hp:1,visualSeed:17,owlVariant:'archimedes'},time,35);
 }
 
 function seedBin(c) {
@@ -276,7 +276,10 @@ function deliveryCrate(c) {
 export default {
   keeper:{x:-10,y:-37},
   props:[
-    {id:'tall_aviary',label:'Teal timber aviary',w:55,h:65,x:-74,y:-58,solid:{width:50,depth:14},paint:tallAviary},
+    {id:'tall_aviary',label:'Teal timber aviary',w:55,h:65,x:-74,y:-58,solid:{width:50,depth:14},animated:true,paint:(c,time)=>{
+      tallAviary(c);
+      drawSnowyOwl(c,{x:-1,y:-25,faceX:1,faceY:1,owlPhase:'perch',hp:1,visualSeed:10,owlVariant:'pigwidgeon'},time,32);
+    }},
     {id:'brass_floor_cage',label:'Brass cage with snowy owl',w:49,h:62,x:-19,y:-52,solid:{width:42,depth:16},animated:true,paint:brassCage},
     {id:'wall_cage',label:'Wall hung cage',w:33,h:45,x:27,y:-62,paint:wallCage},
     {id:'birch_roost',label:'Forked birch roost',w:47,h:64,x:72,y:-46,solid:{width:25,depth:13},animated:true,paint:birchRoost},

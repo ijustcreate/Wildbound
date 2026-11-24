@@ -1,6 +1,7 @@
 import {waterAt} from './environment.mjs';
 import {isUndergroundRoom} from './underground-audio.mjs';
 import {weatherIntensity} from './wet-weather.mjs';
+import {DIAGON_AMBIENCE,diagonStreetListeners,inDiagonAudio} from './diagon-alley-audio.mjs';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
@@ -9,6 +10,11 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // every render frame or starting a voice for every water tile.
 export function worldAmbienceEmitters(game,listeners){
  const found=new Map();
+ if(inDiagonAudio(game)){
+  const street=diagonStreetListeners(listeners);
+  for(const emitter of DIAGON_AMBIENCE)addNear(found,street,emitter);
+  return [...found.values()];
+ }
  for(const listener of listeners){
   if(listener.room||listener.hp<=0||game.trainTest)continue;
   const cx=Math.floor(listener.x/32),cy=Math.floor(listener.y/32),radius=9;

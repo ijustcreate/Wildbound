@@ -3,7 +3,7 @@ import {projectPoint} from './player-motion.mjs';
 // One warm silhouette around joined anatomical volumes. Depth-tested surfaces
 // keep the cream muzzle/eyes on the face as the animal turns, not on its back.
 const sprites=new Map();
-export const OTTER_ART_REVISION=2,OTTER_CACHE_LIMIT=128;
+export const OTTER_ART_REVISION=3,OTTER_CACHE_LIMIT=128;
 function rasterOtter(model,pose,d,actor){
  const pal=model.palette,s=model.shape,fur=[pal.outline,pal.shade,pal.body,pal.light],cream=[pal.shade,pal.creamShade,pal.cream,pal.creamLight],dark=[pal.nose,pal.nose,pal.nose,pal.shade],shell=[pal.outline,pal.find,'#b8abc0','#e6d7cd'];
  const width=112,height=80,ox=56,oy=44,depths=new Float32Array(width*height).fill(-Infinity),colors=new Uint8Array(width*height),materials=[];
@@ -22,15 +22,20 @@ function rasterOtter(model,pose,d,actor){
  const visible=n=>model.visibility?.[n]?.[d]!==false;
  const at=(n,rx,ry,rz,material=fur,offset=[0,0,0])=>{if(visible(n))volume(pose[n].map((v,i)=>v+offset[i]),rx,ry,rz,material);};
  const link=(a,b,r1,r2)=>{if(!visible(b))return;const av=pose[a],bv=pose[b],steps=Math.max(2,Math.ceil(Math.hypot(...av.map((v,i)=>v-bv[i]))/3));for(let i=0;i<=steps;i++){const t=i/steps,r=r1+(r2-r1)*t;volume(av.map((v,k)=>v+(bv[k]-v)*t),r,r*1.3,r*.8);}};
- for(const [a,b,r1,r2]of [['pelvis','tailBase',s.tailWidth,s.tailWidth],['tailBase','tailMid',s.tailWidth,3.6],['tailMid','tailTip',3.6,1.8],['tailTip','tailEnd',1.8,.8]])link(a,b,r1,r2);
- for(const side of ['L','R'])for(const [a,b,end]of [['shoulder','elbow','frontPaw'],['hip','knee','rearPaw']]){link(a+side,b+side,3.2,2.3);link(b+side,end+side,2.3,2);at(end+side,s.pawSize,3.8,1.9);}
- at('pelvis',s.bodyWidth,9,s.bodyHeight);at('spine',s.bodyWidth,9,s.bodyHeight);at('chest',s.bodyWidth*.9,8,s.bodyHeight);link('chest','neck',6,5.5);
- at('belly',6.5,11,3,cream);at('neck',5,4,4,cream,[0,2,-1]);
- for(const side of ['L','R'])at('ear'+side,2.2,2,2.2);
- at('head',s.headWidth,7.8,s.headHeight);at('jaw',6,4.5,2.7,cream);
- for(const side of [-1,1])at('muzzle',s.muzzleWidth*.5,3.1,2.8,cream,[side*2.8,0,0]);
- at('nose',2.2,1.5,1.5,dark);
- for(const side of ['L','R']){at('eye'+side,1.65,1.35,1.65,dark);if(actor.hp>0)at('eye'+side,.6,.6,.65,cream,[.1,.7,.7]);}
+ const tail=s.tailWidth;
+ for(const [a,b,r1,r2]of [['pelvis','tailBase',tail*1.14,tail],['tailBase','tailMid',tail,tail*.64],['tailMid','tailTip',tail*.64,tail*.31],['tailTip','tailEnd',tail*.31,.64]])link(a,b,r1,r2);
+ for(const side of ['L','R'])for(const [a,b,end]of [['shoulder','elbow','frontPaw'],['hip','knee','rearPaw']]){
+  link(a+side,b+side,3.4,2.7);link(b+side,end+side,2.7,2.1);at(end+side,s.pawSize,3.3,1.9);
+ }
+ // Long overlapping shapes keep the shoulder, flanks and rump in one outline.
+ at('pelvis',s.bodyWidth*.93,10,s.bodyHeight*.91);at('spine',s.bodyWidth,12,s.bodyHeight);
+ at('chest',s.bodyWidth*.89,10,s.bodyHeight*.98);link('chest','neck',6.6,5.4);
+ at('belly',6.3,13,2.8,cream,[0,0,-.8]);at('neck',5.3,4.9,4,cream,[0,2,-1]);
+ for(const side of ['L','R'])at('ear'+side,2,1.65,1.9);
+ at('head',s.headWidth,7.2,s.headHeight);at('jaw',5.5,4.5,2.8,cream);
+ for(const side of [-1,1])at('muzzle',s.muzzleWidth*.52,3.05,2.65,cream,[side*2.7,0,0]);
+ at('nose',2.25,1.5,1.4,dark);
+ for(const side of ['L','R']){at('eye'+side,1.4,1.15,1.4,dark);if(actor.hp>0)at('eye'+side,.45,.5,.55,cream,[.1,.66,.65]);}
  const showFind=!!actor.otterFind||['belly_float','eat'].includes(actor.animationAction);
  if(showFind){at('find',4.1,3,1.8,shell);for(const x of [-2,0,2])at('find',1.3,2.2,1.4,shell,[x,1,1]);}
  const pixels=[],c={fillStyle:'',fillRect(x,y,w,h){pixels.push([x,y,w,h,this.fillStyle]);}};

@@ -1,6 +1,7 @@
 // Native pixel geometry shared by the playable bayou and its visual review.
 // Static habitat detail is baked once per editable ground chunk; motion is bounded.
 import {swampNoise,swampSurface} from './swamp-terrain.mjs';
+import {BAYOU_SHRINE_BASE} from './realm-layout.mjs';
 export const bayouHash=(x,y=0)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 const r=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));};
 function poly(c,pts,color){
@@ -12,7 +13,7 @@ function poly(c,pts,color){
 }
 function line(c,x,y,xx,yy,color,width=1){const n=Math.ceil(Math.max(Math.abs(xx-x),Math.abs(yy-y)));for(let i=0;i<=n;i++){const t=n?i/n:0;r(c,x+(xx-x)*t,y+(yy-y)*t,width,width,color);}}
 function grass(c,x,y,seed,light=false){
- for(let j=-2;j<=2;j++){const h=3+bayouHash(seed,j)*7;poly(c,[[x+j*2,y],[x+j*3-1,y-h],[x+j*2+1,y-3],[x+j*2+1,y]],j%2?(light?'#9da968':'#789451'):'#496c43');}
+ for(let j=-2;j<=2;j++){const h=3+bayouHash(seed,j)*5.5;poly(c,[[x+j*2,y],[x+j*2.5-1,y-h],[x+j*2+1,y-2],[x+j*2+1,y]],j%2?(light?'#9da968':'#789451'):'#496c43');}
 }
 export function drawBayouPlant(c,kind,x,y,seed=0){
  if(kind==='duckweed'){
@@ -28,7 +29,8 @@ export function drawBayouPlant(c,kind,x,y,seed=0){
  }else if(kind==='arrowhead'){
   for(let j=-1;j<=1;j++){const xx=x+j*8,yy=y-12-(j===0?5:0);line(c,x,y,xx,yy,'#64844f');poly(c,[[xx,yy-6],[xx+5,yy+4],[xx,yy+1],[xx-5,yy+4]],'#325e43');poly(c,[[xx,yy-5],[xx,yy+1],[xx-4,yy+3]],'#9aac64');}
  }else if(kind==='iris'){
-  grass(c,x,y,seed,true);line(c,x,y,x+1,y-15,'#73915b');poly(c,[[x-3,y-18],[x,y-16],[x+2,y-20],[x+4,y-16],[x+7,y-18],[x+5,y-13],[x,y-12]],'#aa98b0');r(c,x+1,y-15,2,2,'#e1c883');
+  grass(c,x,y,seed,true);line(c,x,y,x+1,y-12,'#73915b');
+  poly(c,[[x-2,y-14],[x,y-13],[x+2,y-16],[x+3,y-13],[x+5,y-15],[x+4,y-11],[x,y-10]],'#aa98b0');r(c,x+1,y-12,2,1,'#e1c883');
  }else if(kind==='reeds'){
   for(let j=-2;j<=2;j++){const h=9+bayouHash(seed,j)*13,xx=x+j*3;line(c,xx,y,xx+j,y-h,j%2?'#738c56':'#a1ac68');line(c,xx,y,xx-5,y-h*.65,'#5f834e');if(j%2===0){r(c,xx+j-1,y-h-4,2,5,'#5e4e35');r(c,xx+j-1,y-h-4,1,3,'#a18a57');}}
  }else grass(c,x,y,seed,true);
@@ -44,9 +46,11 @@ export function paintBayouHabitat(c,lookup,ox,oy){
   const x=2+Math.floor(bayouHash(i+ox,oy+31)*124),y=3+Math.floor(bayouHash(i+oy,ox+17)*122),s=surface(x,y),patch=swampNoise((ox+x*2)/65,(oy+y*2)/57),seed=Math.floor(bayouHash(ox+i,oy)*10000);
   if(s.kind==='bridge')continue;
   if(s.height>1.13){
-   if(patch>.4&&i%3===0)grass(c,x,y,seed,patch>.65);
+   // Use the existing cached sample budget to fill in the richer damp patches.
+   if(patch>.4&&(i%3===0||i%7===0&&patch>.52))grass(c,x,y,seed,patch>.65);
    else if(i%4===0){r(c,x,y,2+i%3,1,i%2?'#8e9860':'#445f42');if(i%8===0)r(c,x+2,y+1,2,1,'#a69b66');}
    if(i%57===0&&patch>.52)drawBayouPlant(c,i%2?'fern':'iris',x,y,seed);
+   else if(i%149===0&&patch>.61)drawBayouPlant(c,'iris',x,y,seed);
    if(i%43===0&&patch<.44){r(c,x-2,y,6,2,'#405b47');r(c,x,y,4,1,'#75917a');}
   }else if(s.height>.65&&s.height<1.12&&i%8===0)drawBayouPlant(c,['arrowhead','reeds','sedge','iris'][Math.floor(i/8)%4],x,y,seed);
   else if(s.height>-.5&&s.height<.6&&patch>.54&&i%13===0)drawBayouPlant(c,i%3?'duckweed':'lily',x,y,seed);
@@ -81,11 +85,33 @@ export function drawBayouLandmark(c,p,time=0){
   if(p.kind==='bayou_ruin'){
    for(let row=0;row<4;row++){stone(c,-28,-row*12,23,12);if(row<2)stone(c,16,-row*12,20,12);}stone(c,-31,-48,29,7);stone(c,19,6,19,9);drawBayouPlant(c,'fern',-29,8,13);
   }else{
-   for(const x of [-35,21]){for(let row=0;row<5;row++)stone(c,x,-row*12,17,12);stone(c,x-3,-60,23,7);}
+   const {width,depth}=BAYOU_SHRINE_BASE,left=-width/2;
+   poly(c,[[left,-8],[38,-8],[41,-1],[36,5],[-32,5],[-40,1]],'#304139');
+   r(c,left,-depth,width,depth,'#435b50');
+   r(c,left+2,-depth+1,width-4,depth-6,'#65765e');
+   r(c,left+1,-6,width-2,2,'#7f8e70');
+   r(c,left+2,-2,width-4,2,'#314940');
+   for(const x of [-21,3,25])r(c,x,-6,1,5,'#3c5347');
+
+   // A masonry back and a carved tablet read as an altar instead of an opening.
+   r(c,-21,-67,43,56,'#4c685e');
+   r(c,-21,-65,43,5,'#3b534b');
+   for(let row=0;row<4;row++)for(const x of [-22,-2,17]){
+    stone(c,x+(row%2===0?0:3),-14-row*11,x===17?9:22,11);
+   }
+   poly(c,[[-14,-14],[-14,-46],[-9,-53],[9,-53],[14,-47],[14,-14]],'#3b544d');
+   poly(c,[[-11,-17],[-11,-45],[-7,-50],[7,-50],[11,-46],[11,-17]],'#789082');
+   r(c,-9,-46,2,24,'#a0a991');
+   r(c,8,-44,2,22,'#4f6960');
+   poly(c,[[-7,-37],[0,-44],[7,-37],[0,-31]],'#435b52');
+   r(c,-1,-41,3,7,'#a0bca1');
+   r(c,-4,-28,8,2,'#597468');
+   stone(c,-15,-11,30,7);
+   r(c,-6,-21,12,3,'#b1c1a2');
+   r(c,-3,-23,6,2,'#d3cf98');
+   for(const x of [-35,21]){for(let row=0;row<5;row++)stone(c,x,-4-row*12,17,12);stone(c,x-3,-60,23,7);}
    stone(c,-39,-67,79,12);stone(c,-32,-79,65,9);stone(c,-21,-88,43,10);
-   poly(c,[[-17,-3],[-17,-48],[-10,-58],[7,-58],[16,-48],[16,-3]],'#1c3935');
-   stone(c,-12,-10,24,16);stone(c,-15,-26,30,5);r(c,-5,-32,10,5,'#557d6b');r(c,-2,-33,4,3,'#acd4a4');
-   // Carved eye, fissures and creeping vines echo the supplied ruined gateways.
+   // Keep the original carved crest, creeping vines and paired lamps.
    poly(c,[[-10,-71],[-4,-76],[5,-76],[12,-71],[5,-67],[-4,-67]],'#486a5e');r(c,-2,-74,4,5,'#b4bf92');
    for(let j=0;j<7;j++){r(c,-29+j%2*2,-61+j*6,3,4,'#5f8149');r(c,28-j%3,-77+j*5,3,3,'#87a15b');}
    for(const x of [-27,29]){r(c,x-3,-20,6,10,'#354a39');r(c,x-2,-19,4,5,Math.sin(time*3+x)>.2?'#efd18b':'#c5b16b');r(c,x-4,-22,8,2,'#99a17a');}
@@ -94,14 +120,20 @@ export function drawBayouLandmark(c,p,time=0){
  }c.restore();return true;
 }
 export function makeBayouLandmarkSprite(kind){
- const s={width:128,height:128,anchorY:100/128,nativeBayouLandmark:true,palette:['transparent'],pixels:Array(16384).fill(0),footprint:Array(16384).fill(0),occludes:true};
+ const anchorY=100;
+ const s={width:128,height:128,anchorY:anchorY/128,nativeBayouLandmark:true,palette:['transparent'],pixels:Array(16384).fill(0),footprint:Array(16384).fill(0),occludes:true};
  let t={x:0,y:0,s:1};const stack=[];
  const c={fillStyle:'',save(){stack.push({...t});},restore(){t=stack.pop();},translate(x,y){t.x+=x*t.s;t.y+=y*t.s;},scale(x){t.s*=x;},fillRect(x,y,w,h){
   let v=s.palette.indexOf(this.fillStyle);if(v<0){v=s.palette.length;s.palette.push(this.fillStyle);}
   const left=Math.round(t.x+x*t.s),top=Math.round(t.y+y*t.s),right=Math.round(t.x+(x+w)*t.s),bottom=Math.round(t.y+(y+h)*t.s);
   for(let yy=Math.max(0,top);yy<Math.min(128,bottom);yy++)for(let xx=Math.max(0,left);xx<Math.min(128,right);xx++)s.pixels[yy*128+xx]=v;
  }};
- drawBayouLandmark(c,{kind,x:64,rootY:100,size:128});return s;
+ drawBayouLandmark(c,{kind,x:64,rootY:anchorY,size:128});
+ if(kind==='bayou_shrine'){
+  const {width,depth}=BAYOU_SHRINE_BASE,left=64-width/2;
+  for(let y=anchorY-depth;y<anchorY;y++)s.footprint.fill(1,y*128+left,y*128+left+width);
+ }
+ return s;
 }
 export function drawBayouWaterMotion(c,g,bounds,at=(x,y)=>g.terrain?.[y*50+x]){
  const time=g.time||0;

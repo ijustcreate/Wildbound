@@ -65,6 +65,9 @@ export function drawBeachGulls(c,g,visible){
  const t=g.time||0;
  for(let i=0;i<7;i++){const x=140+((i*231+t*(i%2?11:16))%1310),y=190+Math.sin(t*.24+i)*54+i%3*55,p={x,y};
   if(!visible(p)||g.mapMode!=='boundless'&&g.bloom<3&&Math.hypot(x-800,y-800)>g.bloom*430)continue;
-  const flap=Math.round(Math.sin(t*4+i)*3);rect(c,x-5,y-flap,4,1,'#fff8e4');rect(c,x-2,y,4,2,'#f5f4df');rect(c,x+3,y-flap,4,1,'#fff8e4');rect(c,x,y+2,2,1,'#6d94a0');
+  drawBeachGull(c,p,t,i);
  }
+}
+export function drawBeachGull(c,{x,y},time,phase=0){
+ const flap=Math.round(Math.sin(time*4+phase)*3);rect(c,x-5,y-flap,4,1,'#fff8e4');rect(c,x-2,y,4,2,'#f5f4df');rect(c,x+3,y-flap,4,1,'#fff8e4');rect(c,x,y+2,2,1,'#6d94a0');
 }

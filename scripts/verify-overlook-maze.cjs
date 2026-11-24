@@ -194,7 +194,10 @@ async function verify() {
       if (y1 === y2) stamp(reference, x1, y1 - 4, x2, y1 + 4);
       else stamp(reference, x1 - 4, y1, x1 + 4, y2);
     }
+    const start=Math.ceil(sourceX(maze.southOpening.left)-x0-.5),end=Math.ceil(sourceX(maze.southOpening.right)-x0-.5);
+    for(let y=640-y0;y<648-y0;y++)reference.fill(0,y*width+start,y*width+end);
     for (const part of maze.parts) {
+      if(part.entranceGap)continue;
       const left = sourceX(part.x), top = sourceY(part.y);
       const right = sourceX(part.x + part.w), bottom = sourceY(part.y + part.h);
       if (left < x0 || top < y0 || right > x0 + width || bottom > y0 + height) {
@@ -215,7 +218,7 @@ async function verify() {
       ends.every(part => opening.y >= part.y && opening.y < part.y + part.h),
       `${label} exactly two trimmed hedge ends abut the real north opening`);
     const trims = overlookSubjects(maze, () => true, g).filter(subject => subject.hedge?.entryEnd);
-    assert(trims.length === 2 && trims.some(subject => subject.hedge.id === left.id) &&
+    assert(trims.length === 4 && trims.some(subject => subject.hedge.id === left.id) &&
       trims.some(subject => subject.hedge.id === right.id), `${label} native painter receives both trimmed ends`);
     const art = document.createElement('canvas'), top = Math.floor(opening.y) - 100;
     art.width = right.x + right.w - left.x;
@@ -276,6 +279,12 @@ async function verify() {
     const bounds = {left: maze.x, top: Math.min(maze.y, maze.entrance.y - 24), right: maze.x + maze.w,
       bottom: Math.max(maze.y + maze.h, maze.entrance.y + 24)};
     const hedge = (x, y) => overlookBlocked(g, x, y, actorRadius(p), 0, false);
+    const south={x:maze.southEntrance.x,y:maze.southOpening.y+23};
+    const southRoute=route(south,maze.chest,{...bounds,bottom:south.y+4},44,hedge,4);
+    assert(southRoute,`${label} south entrance connects to the chest`);
+    place(p,south);walk(g,p,southRoute);
+    capture(`${label}-south-entrance`,g,south,1.45);
+    place(p,threshold);
     const corridor = route({x: p.x, y: p.y}, maze.chest, bounds, 44, hedge, 4);
     assert(corridor && corridor.length * 4 > distance(p, maze.chest) * 1.14,
       `${label} has a winding, connected route from entrance to chest with hedges intact`);
@@ -289,6 +298,8 @@ async function verify() {
     pulse(g, {interact: true});
     assert(itemCount(g, p) === 0 && !maze.state.opened, `${label} a full backpack leaves the center chest closed`);
     p.inventory = backpack;
+    g.dropLoot(p.x+5,p.y,'stone',1,null,true);
+    assert(g.nearbyLoot(p),`${label} overlapping loose loot is within pickup range`);
     pulse(g, {interact: true});
     assert(itemCount(g, p) === 1 && maze.state.opened && p.inventory.some(entry => entry?.type === 'cursed_axe'),
       `${label} center chest grants one cursed axe after a successful interaction`);

@@ -3,13 +3,13 @@ import {ITEMS, stat} from './items.mjs';
 import {creatures} from './definitions.mjs';
 import {clearShot} from './navigation.mjs';
 import {rangedLaunchOrigin,rangedRenderSize} from './ranged-launch.mjs';
-import {chargedProjectileRange} from './projectile-range.mjs';
+import {chargedProjectileRange,chargedSpellDiameter} from './projectile-range.mjs';
 import {emitNoise} from './night-cycle.mjs';
 import {isCharmed} from './succubus-charm.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
-import {magicBoltGlow} from './magic-bolt-render.mjs';
+import {HEALING_COLOR,magicBoltColor,magicBoltGlow} from './magic-bolt-render.mjs';
 
-export const HEALING_COLOR = '#9cddff';
+export {HEALING_COLOR};
 export const HEALING_HOT_AMOUNT = 4;
 export const HEALING_HOT_TICKS = 3;
 export const HEALING_STACK_LIMIT = 3;
@@ -152,11 +152,11 @@ function makeHealingBolt(g,p,slot,origin,aim,cast) {
   return {owner:p.id,slot,room:p.room || null,magic:true,age:0,
     visualSeed:(p.id+1)*977+Math.round((g.time||0)*1000)+(slot==='hand2'?479:0),
     ...origin,vx:aim.x*260,vy:aim.y*260,life:3,remaining:chargedProjectileRange(strength*1.2),
-    size:6+Math.round(strength*8),damage:0,healing:true,healingAmount:def.healingAmount*(1+strength*.5)*outgoing,
+    size:chargedSpellDiameter(strength),damage:0,healing:true,healingAmount:def.healingAmount*(1+strength*.5)*outgoing+stat(p,'spellHealingFlat'),
     healingHot:!!def.healingHot||ITEMS[p.equipment.head]?.healingHalo===true,
     healingHotAmount:(Number(def.healingHotAmount)||HEALING_HOT_AMOUNT)*outgoing,
     healingSplashRadius:Number(def.healingSplashRadius)||0,healingSplashAmount:(Number(def.healingSplashAmount)||0)*outgoing,
-    color:HEALING_COLOR,glow:magicBoltGlow(def)};
+    color:magicBoltColor(def),glow:magicBoltGlow(def)};
 }
 
 function payHealingCast(g,p,cast) {

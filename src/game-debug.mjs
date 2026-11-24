@@ -41,8 +41,9 @@ export function createGameDebug({getGame,events,items,metrics,onPerformanceChang
     const reset=el('button','Reset performance samples');reset.dataset.debug='performance-reset';reset.onclick=()=>metrics.reset();root.append(reset);
     root.append(el('p','Live FPS, frame spikes, update/draw costs, scene counts and available JS memory. Profiling is session-only.'));
    }
-   const train=el('button','Test train level');train.dataset.debug='train-test';train.onclick=()=>{const result=enterTrainTest(getGame());say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(train);
-   const wild=el('button','Enter The Wild Lands');wild.dataset.debug='wild-lands';wild.onclick=()=>{const result=enterWildLands(getGame());say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(wild);
+   const train=el('button','Preview the railway');train.dataset.debug='train-test';train.onclick=()=>{const result=enterTrainTest(getGame());say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(train);
+   const wild=el('button','Preview The Wild Lands');wild.dataset.debug='wild-lands';wild.onclick=()=>{const result=enterWildLands(getGame());say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(wild);
+   root.append(el('p','Preview gear and loot are temporary. For a saved adventure, choose The Wilds at the Adventure Board.'));
    const destinations=el('select');destinations.ariaLabel='Wild Lands destination';destinations.dataset.debug='wild-destination';for(const stop of [...WILD_LANDS_STOPS,...WILD_LANDS_GATES,...WILD_LANDS_SITES.filter(s=>!s.room)])destinations.add(new Option(stop.name,stop.id));root.append(destinations);
    const travel=el('button','Travel to Wild Lands destination');travel.dataset.debug='wild-travel';travel.onclick=()=>{const result=wildLandsTravel(getGame(),destinations.value);say(result);if(result.ok){root.remove();onTrainEnter();}};root.append(travel);
    const overview=el('button','Wild Lands: toggle world overview');overview.dataset.debug='wild-overview';overview.onclick=()=>{const t=getGame().trainTest;if(!t?.design.wildLands){say({ok:false,message:'Enter The Wild Lands first.'});return;}t.wildLandsOverview=!t.wildLandsOverview;root.remove();onTrainEnter();};root.append(overview);

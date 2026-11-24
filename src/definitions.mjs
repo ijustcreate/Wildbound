@@ -5,6 +5,8 @@ import {honeyCatMotion,validateHoneyCat,replaceHoneyCat} from './honey-cat.mjs';
 import {fireflyMotion,validateFireflyMotion,replaceFireflyMotion} from './firefly-motion.mjs';
 import {shoreGoblinMotion,validateShoreGoblinMotion,replaceShoreGoblinMotion} from './shore-goblin-motion.mjs';
 import {villagerMotion,defaultVillagerMotion,validateVillagerMotion,replaceVillagerMotion} from './villager-motion.mjs';
+import {alleyGoblinMotion,validateAlleyGoblinMotion,replaceAlleyGoblinMotion} from './alley-goblin-motion.mjs';
+import {gloamwhiskerMotion,validateGloamwhiskerMotion,replaceGloamwhiskerMotion} from './gloamwhisker-motion.mjs';
 import {reaperMotion,validateReaperMotion,replaceReaperMotion} from './reaper-motion.mjs';
 import {safariHunterMotion,validateSafariHunterMotion,replaceSafariHunterMotion} from './safari-hunter-motion.mjs';
 import {alanMotion,validateAlanMotion,replaceAlanMotion} from './alan-motion.mjs';
@@ -714,6 +716,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if(d.safari_hunter&&!validateSafariHunterMotion(d.safari_hunter))throw Error('Invalid Safari Hunter rig');
   if(d.alan&&!validateAlanMotion(d.alan))throw Error('Invalid Alan Captain rig');
   if (d.villager && !validateVillagerMotion(d.villager)) throw Error('Invalid villager animation');
+  if (d.alley_goblin && !validateAlleyGoblinMotion(d.alley_goblin)) throw Error('Invalid alley goblin animation');
+  if (d.gloamwhisker_rat && !validateGloamwhiskerMotion(d.gloamwhisker_rat)) throw Error('Invalid Gloamwhisker rat animation');
   if (d.oathless_captain && !validateOathlessCaptainMotion(d.oathless_captain)) throw Error('Invalid Oathless Captain animation');
   if (d.shore_goblin && !validateShoreGoblinMotion(d.shore_goblin)) throw Error('Invalid shore goblin animation');
   if (d.dreadmane_lion && !validateDreadmaneLionMotion(d.dreadmane_lion)) throw Error('Invalid Dreadmane Lion animation');
@@ -764,6 +768,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if(d.marsh_firefly)replaceFireflyMotion(d.marsh_firefly);
   if (d.murk_wolf) replaceMurkWolfMotion(d.murk_wolf);
   if (d.villager) replaceVillagerMotion(d.villager);
+  if (d.alley_goblin) replaceAlleyGoblinMotion(d.alley_goblin);
+  if (d.gloamwhisker_rat) replaceGloamwhiskerMotion(d.gloamwhisker_rat);
   if (d.oathless_captain) replaceOathlessCaptainMotion(d.oathless_captain);
   if(d.grim_reaper)replaceReaperMotion(d.grim_reaper);
   if(d.safari_hunter)replaceSafariHunterMotion(d.safari_hunter);
@@ -794,6 +800,8 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     murk_wolf: murkWolfMotion,
     oathless_captain: oathlessCaptainMotion,
     villager: villagerMotion,
+    alley_goblin: alleyGoblinMotion,
+    gloamwhisker_rat: gloamwhiskerMotion,
     grim_reaper: reaperMotion,
     safari_hunter: safariHunterMotion,
     alan: alanMotion,
@@ -923,6 +931,8 @@ export function definitionPack(events, items) {
     murk_wolf: murkWolfMotion,
     oathless_captain: oathlessCaptainMotion,
     villager: villagerMotion,
+    alley_goblin: alleyGoblinMotion,
+    gloamwhisker_rat: gloamwhiskerMotion,
     grim_reaper: reaperMotion,
     safari_hunter: safariHunterMotion,
     alan: alanMotion,

@@ -16,19 +16,38 @@ test('the three native students share one compartment, with opposing seats and r
  approach(g,p,'harry');const speakers=[];for(const time of [0,7,14]){g.trainTest.time=time;speakers.push(studentSpeech(g,cs).npc.id);}assert.deepEqual(speakers,['harry','hermione','ron']);
 });
 
-test('real train Interact gives each gift once per hero and gifts survive leaving and re-entering',()=>{
- const {g,p,original}=setup();for(const student of TRAIN_STUDENTS){const {cs}=approach(g,p,student.id);assert.ok(trainPrompt(g,p).includes(student.name.toUpperCase()));assert.ok(trainInteraction(g,p,cs));assert.equal(count(p,student.gift),1);trainInteraction(g,p,cs);assert.equal(count(p,student.gift),1);}
+test('student conversations only grant a gift after acceptance, once per hero',()=>{
+ const {g,p,original}=setup();
+ for(const student of TRAIN_STUDENTS){
+  const {cs}=approach(g,p,student.id);
+  assert.ok(trainPrompt(g,p).includes(student.name.toUpperCase()));assert.ok(trainInteraction(g,p,cs));
+  assert.equal(p.ui.trainStudentGift,student.id);assert.equal(count(p,student.gift),0);
+  g.inventoryAction(p,'use');assert.equal(count(p,student.gift),1);
+  g.inventoryAction(p,'use');assert.equal(count(p,student.gift),1);
+ }
  leaveTrainTest(g);assert.equal(g.players[0],original);for(const n of TRAIN_STUDENTS)assert.equal(count(original,n.gift),1);
  enterTrainTest(g);const p2=g.players[0],{cs}=approach(g,p2,'harry');trainInteraction(g,p2,cs);assert.equal(count(p2,'nimbus_2000'),1);
 });
 
+test('declining closes the dialogue without spending the gift and lets another student speak',()=>{
+ const {g,p}=setup(),{n,cs}=approach(g,p,'harry');
+ g.trainTest.cocoaTaken.add(n.car.id+':'+n.room.table.id);
+ assert.ok(trainInteraction(g,p,cs));assert.equal(p.ui.trainStudentGift,'harry');
+ g.inventoryAction(p,'down');g.inventoryAction(p,'use');
+ assert.equal(p.ui,null);assert.equal(count(p,'nimbus_2000'),0);
+ assert.ok(!p.npcQuests?.train_students?.received?.harry);
+ assert.ok(trainInteraction(g,p,cs));assert.notEqual(p.ui.trainStudentGift,'harry');
+});
+
 test('a full bag does not consume a student gift, and train-only free space becomes a saved parcel on return',()=>{
- const {g,p,original}=setup(),full=()=>Array.from({length:BACKPACK_SLOTS},()=>({type:'sword',qty:1}));p.inventory=full();original.inventory=full();const {cs}=approach(g,p,'hermione');trainInteraction(g,p,cs);assert.ok(!p.npcQuests?.train_students?.received?.hermione);
- p.inventory.pop();trainInteraction(g,p,cs);assert.equal(count(p,'standard_book_of_spells'),1);leaveTrainTest(g);assert.equal(original.npcQuests.train_students.pending[0].type,'standard_book_of_spells');original.inventory.pop();deliverStudentParcels(g);assert.equal(count(original,'standard_book_of_spells'),1);assert.equal(original.npcQuests.train_students.pending.length,0);
+ const {g,p,original}=setup(),full=()=>Array.from({length:BACKPACK_SLOTS},()=>({type:'sword',qty:1}));p.inventory=full();original.inventory=full();const {cs}=approach(g,p,'hermione');trainInteraction(g,p,cs);g.inventoryAction(p,'use');assert.ok(!p.npcQuests?.train_students?.received?.hermione);assert.match(p.ui.notice,/backpack is full/);
+ p.inventory.pop();g.inventoryAction(p,'use');assert.equal(count(p,'standard_book_of_spells'),1);leaveTrainTest(g);assert.equal(original.npcQuests.train_students.pending[0].type,'standard_book_of_spells');original.inventory.pop();deliverStudentParcels(g);assert.equal(count(original,'standard_book_of_spells'),1);assert.equal(original.npcQuests.train_students.pending.length,0);
 });
 
 test('students cannot be interacted with from another compartment or outside the train',()=>{
- const {g,p}=setup(),{n}=approach(g,p,'harry');p.trainRide.x=n.room.left-3;assert.ok(!trainPrompt(g,p).includes('HARRY'));delete p.trainRide;assert.ok(!trainPrompt(g,p).includes('HARRY'));assert.equal(count(p,'nimbus_2000'),0);
+ const {g,p}=setup(),{n,cs}=approach(g,p,'harry');trainInteraction(g,p,cs);
+ p.trainRide.x=n.room.left-3;g.inventoryAction(p,'use');assert.equal(p.ui,null);
+ assert.ok(!trainPrompt(g,p).includes('HARRY'));delete p.trainRide;assert.ok(!trainPrompt(g,p).includes('HARRY'));assert.equal(count(p,'nimbus_2000'),0);
 });
 
 test('a table cup still wins when it is closer than a student, preserving hot chocolate interaction',()=>{
@@ -45,7 +64,7 @@ test('the book adds exactly three to real uncharged spells when socketed, withou
 });
 
 test('Ron’s frog refills health on the successful roll and consumed train gifts do not reappear',()=>{
- const {g,p,original}=setup(),{cs}=approach(g,p,'ron');trainInteraction(g,p,cs);p.hp=40;original.hp=40;p.ui={panel:'pack',index:p.inventory.findIndex(i=>i?.type==='chocolate_frog')};g.inventoryAction(p,'use');assert.equal(p.hp,p.maxHp);assert.equal(count(p,'chocolate_frog'),0);assert.ok(p.chocolateSparkleUntil>g.time);leaveTrainTest(g);assert.equal(original.hp,original.maxHp);assert.equal(count(original,'chocolate_frog'),0);assert.ok(original.npcQuests.train_students.received.ron);
+ const {g,p,original}=setup(),{cs}=approach(g,p,'ron');trainInteraction(g,p,cs);g.inventoryAction(p,'use');p.hp=40;original.hp=40;p.ui={panel:'pack',index:p.inventory.findIndex(i=>i?.type==='chocolate_frog')};g.inventoryAction(p,'use');assert.equal(p.hp,p.maxHp);assert.equal(count(p,'chocolate_frog'),0);assert.ok(p.chocolateSparkleUntil>g.time);leaveTrainTest(g);assert.equal(original.hp,original.maxHp);assert.equal(count(original,'chocolate_frog'),0);assert.ok(original.npcQuests.train_students.received.ron);
 });
 
 test('a healthy hero can use a frog for sparkles, without gaining the hot-chocolate damage buff',()=>{
@@ -53,8 +72,8 @@ test('a healthy hero can use a frog for sparkles, without gaining the hot-chocol
 });
 
 test('co-op claims belong to each explorer independently, including after a session round trip',async()=>{
- const {g,p,original}=setup();const other={...structuredClone(p),id:2,name:'Second visitor',inventory:[],npcQuests:{}};g.players.push(other);const originalOther={...structuredClone(original),id:2,inventory:[],npcQuests:{}};g.trainTest.returnPlayers.push(originalOther);
- for(const player of [p,other]){const {cs}=approach(g,player,'harry');trainInteraction(g,player,cs);assert.equal(count(player,'nimbus_2000'),1);}
+ const {g,p,original}=setup();const other={...structuredClone(p),id:2,device:'pad:0',name:'Second visitor',inventory:[],npcQuests:{}};g.players.push(other);const originalOther={...structuredClone(original),id:2,device:'pad:0',inventory:[],npcQuests:{}};g.trainTest.returnPlayers.push(originalOther);
+ for(const player of [p,other]){const {cs}=approach(g,player,'harry');trainInteraction(g,player,cs);g.inventoryAction(player,'use');assert.equal(count(player,'nimbus_2000'),1);}
  leaveTrainTest(g);assert.equal(count(original,'nimbus_2000'),1);assert.equal(count(originalOther,'nimbus_2000'),1);
  const {saveSession,restoreSession}=await import('../src/session.mjs');const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));assert.ok(restored.players.every(p=>p.npcQuests.train_students.received.harry));
 });

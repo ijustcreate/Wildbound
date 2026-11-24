@@ -1,3 +1,23 @@
+# Latest Wandmaker’s Garden seating — [Desktop build 1.2.128](history/2026-11-23-wandmakers-garden-benches.md)
+
+All four garden benches support sitting and occasional cat visits. The handoff records the normal-profile shortcut, co-op and save checks, and verification of the exact package.
+
+# Latest Wandmaker’s Garden and Greywake trail — [Desktop build 1.2.127](history/2026-11-23-garden-and-greywake-review.md)
+
+Three art and gameplay passes rebuild the garden pool, paths, fixtures, resident life, and catchable wildlife. Greywake has a distinct gravel tread and varied rock and alpine detail. The handoff records the bounded asset caches, exact build identity, and native verification.
+
+# Latest Wilds train performance, main house, and inventory — [Desktop build 1.2.125](history/2026-11-23-wilds-rides-homestead-and-inventory.md)
+
+The numbered desktop build includes native train render and streaming improvements, denser reactive GPU grass, the active main-game house in the Wilds, biome monsters, Greywake collision and jumps, matching wand charge colors, and larger backpack slots with floating details. The handoff records the measurements, check scope, and exact normal-profile shortcut.
+
+# Latest Quidditch, Nocturne duels, and the Wandmaker’s Garden — [Desktop build 1.2.123](history/2026-11-23-quidditch-mage-garden-and-nocturne.md)
+
+The numbered desktop build includes the playable pitch, Firebolt, narrower and closer Diagon Alley, nineteen residents, eleven shops, the garden, and the updated cats and owl cage. The exact packaged native checks and normal-profile shortcut are recorded in the handoff.
+
+# Latest Wilds, Diagon Alley, and offshore ships — [Desktop build 1.2.121](history/2026-11-23-wilds-diagon-and-offshore-ship.md)
+
+The verified normal-profile desktop build adds the expanded eastern Wilds, both playable ships, the refreshed Diagon Alley and Floo travel, faster startup, and the train dialogue and layering changes.
+
 # Combined numbered release — [Build workflow and release contents](history/2026-11-23-numbered-builds.md)
 
 This integrates the Overlook maze, native pixel recipes, forest variants, performance and encounter work. The desktop and browser builds are identified by their numbered manifests. Final local verification receipts are written to ignored `test-output/`.

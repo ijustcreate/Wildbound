@@ -5,6 +5,10 @@ import {generateWorld} from '../src/world.mjs';
 import {routeDistance,clearingDistance,forestPavingAt} from '../src/forest-landscape.mjs';
 import {meadowAllowed} from '../src/pixel-meadow.mjs';
 import {realmWorld} from '../src/realm-layout.mjs';
+import {wildLandsDesign} from '../src/wild-lands.mjs';
+import {buildTrainRoute} from '../src/train-track.mjs';
+import {wildLandsGround,wildLandsSurfaceAt} from '../src/wild-lands-world.mjs';
+import {wildLandsPathAt} from '../src/wild-lands-geography.mjs';
 
 test('shadow grass is dense and tall while leaving the clearing and void uncovered',()=>{
  const g={...realmWorld(42,'shadow'),seed:42,generatedEnvironment:'shadow'};
@@ -54,4 +58,20 @@ test('cutting changes patch state while keeping shader geometry stable',()=>{
  g.scenery[0].cut=true;g.scenery[0].charred=true;
  assert.deepEqual(grassFieldInstances(g),before);
  assert.ok(before.every((v,i)=>i%8!==6||v===0||v===1),'blades reference a stable patch state slot');
+});
+
+test('Bayou blades are short, dense and rooted on dry ground while the original floor mask stays intact',()=>{
+ const design=wildLandsDesign(),g={seed:75,trainTest:{design,route:buildTrainRoute(design)}};
+ const data=grassFieldInstances(g,{sx:11776,sy:1280,ex:12544,ey:1792},[]);
+ let count=0;
+ for(let i=0;i<data.length;i+=8){
+  if(data[i+7]!==-1)continue;
+  const [x,y,height]=data.subarray(i,i+3);count++;
+  assert.ok(height>=5&&height<10);
+  assert.equal(wildLandsGround(design,x,y),'swamp');
+  assert.equal(wildLandsPathAt(x,y),false);
+  assert.ok([[x,y],[x-4,y],[x+4,y],[x,y-4],[x,y+4]].every(([px,py])=>wildLandsSurfaceAt(design,px,py)==='grass'));
+  assert.equal(meadowAllowed(g,x,y),false,'cached Bayou coloring stays beneath the live grass');
+ }
+ assert.ok(count>1500&&count<10000,'dense Bayou grass remains bounded by the existing instance grid');
 });

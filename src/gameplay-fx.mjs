@@ -1,6 +1,9 @@
 import {drawParticleEffect,effects,particleFrameStats} from './particles.mjs';
 import {GAMEPLAY_FX} from './gameplay-fx-presets.mjs';
 import {ITEMS} from './items.mjs';
+import {magicBoltColor,magicChargePalette} from './magic-bolt-render.mjs';
+import {wandTipWorld} from './player-motion.mjs';
+import {drawManaWardSparkles} from './diagon-garden-ward-art.mjs';
 export {GAMEPLAY_FX};
 const limits=new WeakMap();
 export function emitGameplayFx(g,id,point,options={}){
@@ -37,7 +40,25 @@ export function actorGameplayStatuses(a,time){
 export function drawActorGameplayFx(c,g,a,size,layer='front'){
  const x=a.room?(a.roomX??a.x):a.x,y=(a.room?(a.roomY??a.y):a.y)-(a.jumpHeight||0)-(a.groundHeight||0),context={actor:a,time:g.time,size,layer};
  for(const id of actorGameplayStatuses(a,g.time))drawGameplayFx(c,id,x,y,g.time,Number(a.id)||0,context);
- if(layer==='front'&&a.hp>0&&a.charge>0&&['hand1','hand2'].some(slot=>ITEMS[a.equipment?.[slot]]?.magic))drawGameplayFx(c,'charge',x,y,g.time,Number(a.id)||0,context);
+ if(layer==='front')drawManaWardSparkles(c,a,g.time,x,y);
+ if(layer!=='front'||a.hp<=0||!(a.charge>0))return;
+ const effect=effects[GAMEPLAY_FX.charge.slot];
+ for(const slot of ['hand1','hand2']){
+  const def=ITEMS[a.equipment?.[slot]];
+  if(!def?.magic)continue;
+  const color=magicBoltColor(def),palette=magicChargePalette(color);
+  if(effect.pixelfx!=='arcane/spell-charge'){
+   drawGameplayFx(c,'charge',x,y,g.time,Number(a.id)||0,context,{start:palette[6],end:color});
+   continue;
+  }
+  const tip=wandTipWorld(a.room?{...a,x,y:a.roomY??a.y}:a,slot,g.time,undefined,size);
+  if(!tip)continue;
+  const angle=effect.pxAngle*Math.PI/180,localX=(effect.pxFlip?-15:15)*effect.pxScale,localY=-22*effect.pxScale;
+  const fxX=tip.x-(localX*Math.cos(angle)-localY*Math.sin(angle));
+  const fxY=tip.y-(localX*Math.sin(angle)+localY*Math.cos(angle));
+  drawGameplayFx(c,'charge',fxX,fxY,g.time,(Number(a.id)||0)+(slot==='hand2'?479:0),{layer},
+   {pxOptions:{...effect.pxOptions,palette}});
+ }
 }
 // Only local accents: existing weather, fog, trees and collectible wildlife remain authoritative.
 export function drawGameplayAtmosphere(c,g,camera,w,h,visible=()=>true){

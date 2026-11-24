@@ -2,7 +2,7 @@ import {damageRailwayBridge} from './train-bridges.mjs';
 import {nearbyScenery} from './performance.mjs';
 import {setTreeFallDirection} from './tree-fall.mjs';
 import {propBase} from './environment.mjs';
-import {damageOverlookProjectile} from './overlook-maze.mjs';
+import {damageOverlookProjectile,damageOverlookVehicle} from './overlook-maze.mjs';
 
 // Geometry remains authored as whole assets. Only damaged cells are serialized;
 // spatial indices, raster caches and cosmetic debris never enter a save/network snapshot.
@@ -56,7 +56,11 @@ function cells(b,x,y,r){
 }
 export function sectionBlocked(b,x,y,r=8){
   if(b.destroyed)return false;
-  if(!b.sectionDamage)return rectDistance(b,x,y)<r;
+  const dx=x-clamp(x,b.x,b.x+b.w);
+  if(!(Math.abs(dx)<r))return false;
+  const dy=y-clamp(y,b.y,b.y+b.h);
+  if(!(Math.abs(dy)<r))return false;
+  if(!b.sectionDamage)return !dx||!dy||Math.hypot(dx,dy)<r;
   return cells(b,x,y,r).some(({n,rect})=>!b.sectionDamage[n]?.broken&&rectDistance(rect,x,y)<r);
 }
 function burst(g,r,b,dx,dy,broken){
@@ -107,8 +111,10 @@ export function damageSupplyChestMelee(g,p,damage,range,spin=false){
 // A bumper damages only the exposed cells it actually spans. Kinetic damage
 // scales with speed; sample each lane once so wide cars open a usable gap.
 export function damageStructureVehicle(g,bumper,speed,halfWidth){
- if(!g.house||speed<14)return false;
+ if(speed<14)return false;
  const damage=8+speed*.45+speed*speed*.006,hit=new Map(),side={x:-bumper.faceY,y:bumper.faceX};
+ if(damageOverlookVehicle(g,bumper,damage,halfWidth))return true;
+ if(!g.house)return false;
  for(let offset=-halfWidth;offset<=halfWidth;offset+=Math.max(8,halfWidth/3)){
   const p={x:bumper.x+side.x*offset,y:bumper.y+side.y*offset};let best=null;
   for(const b of query(g,p.x,p.y,18))for(const cell of cells(b,p.x,p.y,18)){
@@ -163,12 +169,20 @@ export function tickDestruction(g,dt){
   if(s.dirty&&(g.time||0)-s.saveAt>=.35){s.dirty=false;s.saveAt=g.time||0;g.persist?.();}
 }
 export function destructionStats(g){return {particles:visuals.get(g)?.particles.length||0,particleLimit:DESTRUCTION_PARTICLE_LIMIT,rasterBytes:rasterPixels*8,rasterByteLimit:RASTER_PIXEL_LIMIT*8};}
-function paintDamage(c,g,b,n,record){
+function paintBrokenCellDebris(c,b,n,palette){
+  const r=at(b,n);
+  for(let i=0;i<7;i++){c.fillStyle=palette[i%2];c.fillRect(r.x+((n*17+i*11)%Math.max(1,r.w-4)),r.y+((n*13+i*7)%Math.max(1,r.h-3)),3+i%4,2+i%3);}
+}
+function splinterPalette(g,b){
+  const m=material(g,b);
+  return m==='stone'?['#7b8070','#a7aa8a']:m==='glass'?['#82b5b7','#b6ded6']:['#7d6040','#ba986a'];
+}
+function paintDamage(c,g,b,n,record,debris){
   const r=at(b,n),m=material(g,b);
   if(!record.broken&&record.damage<crackThreshold(g,b))return;
   if(record.broken){
-    const palette=m==='stone'?['#7b8070','#a7aa8a']:m==='glass'?['#82b5b7','#b6ded6']:['#7d6040','#ba986a'];
-    for(let i=0;i<7;i++){c.fillStyle=palette[i%2];c.fillRect(r.x+((n*17+i*11)%Math.max(1,r.w-4)),r.y+((n*13+i*7)%Math.max(1,r.h-3)),3+i%4,2+i%3);}
+    const palette=splinterPalette(g,b);
+    if(debris)paintBrokenCellDebris(c,b,n,palette);
     // Small attached splinters/stone teeth frame the breach without closing it.
     const nx=cols(b);c.fillStyle=palette[0];
     if(n%nx>0&&!b.sectionDamage?.[n-1]?.broken)c.fillRect(r.x,r.y+2,3,Math.max(2,r.h*.3));
@@ -181,24 +195,24 @@ function paintDamage(c,g,b,n,record){
 }
 // One raster per asset, patched only in cells that changed. No full-building
 // redraw, framebuffer reads, physics bodies, canvas filters or particle lights.
-export function drawBreakable(c,g,b,painter,style='default'){
+export function drawBreakable(c,g,b,painter,style='default',{debris=true}={}){
   // Rotate the intact cached leaf and its damage together. A cache allocated
   // for the closed doorway otherwise clips the open leaf to the wall thickness.
   if(style==='door:true'&&b.kind!=='garage'){
     c.save();c.translate(b.x+b.h,b.y);c.rotate(Math.PI/2);c.translate(-b.x,-b.y);
-    drawBreakable(c,g,b,(pen,door)=>painter(pen,{...door,open:false}),'door:false');c.restore();return;
+    drawBreakable(c,g,b,(pen,door)=>painter(pen,{...door,open:false}),'door:false',{debris});c.restore();return;
   }
   // Huge editor rectangles use one clipped draw instead of allocating giant
   // surfaces. Normal assets share a globally bounded LRU of paired rasters.
   const topPad=b.kind==='christmas_tree'?80:48;
   if(typeof document==='undefined'||(b.w+16)*(b.h+topPad+16)>512*1024){
-    if(!b.sectionDamage){painter(c,b);drawDebris(c,b);return;}c.save();c.beginPath();
+    if(!b.sectionDamage){painter(c,b);if(debris)drawStructureDebris(c,g,b);return;}c.save();c.beginPath();
     for(let n=0;n<cols(b)*rows(b);n++){const r=at(b,n);if(!b.sectionDamage[n]?.broken)c.rect(r.x,r.y,r.w,r.h);}
     c.clip();painter(c,b);c.restore();
-    for(const [n,record]of Object.entries(b.sectionDamage))paintDamage(c,g,b,Number(n),record);drawDebris(c,b);return;
+    for(const [n,record]of Object.entries(b.sectionDamage))paintDamage(c,g,b,Number(n),record,debris);if(debris)drawStructureDebris(c,g,b);return;
   }
   let cache=rasters.get(b);
-  const key=style+':'+(painter.artRevision||0)+':'+(b.kind==='window'&&!b.sectionDamage?!!b.broken:false)+':'+(b.kind==='wrapped_gift'?!!b.opened:'');
+  const key=style+':'+(painter.artRevision||0)+':'+debris+':'+(b.kind==='window'&&!b.sectionDamage?!!b.broken:false)+':'+(b.kind==='wrapped_gift'?!!b.opened:'');
   if(!cache||cache.style!==key){
     if(cache){rasterPixels-=cache.pixels;cache.source.width=cache.canvas.width=1;rasters.delete(b);}
     const pixels=(b.w+16)*(b.h+topPad+16);
@@ -216,20 +230,26 @@ export function drawBreakable(c,g,b,painter,style='default'){
       const height=r.h+(r.y+r.h===b.y+b.h?8:0);
       cc.clearRect(sx,sy,r.w,height);
       if(!record.broken)cc.drawImage(cache.source,sx,sy,r.w,height,sx,sy,r.w,height);
-      cc.save();cc.translate(8-b.x,cache.topPad-b.y);paintDamage(cc,g,b,n,record);cc.restore();cache.seen[key]=record.damage;
+      cc.save();cc.translate(8-b.x,cache.topPad-b.y);paintDamage(cc,g,b,n,record,debris);cc.restore();cache.seen[key]=record.damage;
     }
     cache.revision=b.destructionRevision;
   }
-  c.drawImage(cache.canvas,b.x-8,b.y-cache.topPad);drawDebris(c,b);
+  c.drawImage(cache.canvas,b.x-8,b.y-cache.topPad);if(debris)drawStructureDebris(c,g,b);
 }
-function drawDebris(c,b){if(!b.debris?.length)return;c.save();for(const p of b.debris){c.fillStyle=p.color;c.fillRect(Math.round(p.x),Math.round(p.y),p.w,p.h);}c.restore();}
+export function drawStructureDebris(c,g,b,{brokenCells=false}={}){
+ if(!b.debris?.length&&(!brokenCells||!b.sectionDamage))return;
+ c.save();
+ if(brokenCells&&b.sectionDamage){const palette=splinterPalette(g,b);for(const [n,record]of Object.entries(b.sectionDamage))if(record.broken)paintBrokenCellDebris(c,b,Number(n),palette);}
+ for(const p of b.debris||[]){c.fillStyle=p.color;c.fillRect(Math.round(p.x),Math.round(p.y),p.w,p.h);}
+ c.restore();
+}
 export function airborneDestruction(g){return (visuals.get(g)?.particles||[]).filter(p=>p.z>0&&!p.dust);}
 export function drawDestructionFragment(c,p){
  c.save();c.globalAlpha=Math.min(1,(p.life-p.age)*3);c.fillStyle=p.color;c.fillRect(Math.round(p.x),Math.round(p.y-p.z),p.size,Math.max(1,p.size-1));c.restore();
 }
-export function drawDestruction(c,g,visible=()=>true,{groundOnly=false}={}){
+export function drawDestruction(c,g,visible=()=>true,{groundOnly=false,airOnly=false}={}){
   if(!visuals.has(g))return;const s=state(g);if(!s.particles.length)return;c.save();
-  for(const p of s.particles){if(!visible(p))continue;const alpha=Math.min(1,(p.life-p.age)*3);if(!p.dust&&p.z>1){c.globalAlpha=alpha*.2;c.fillStyle='#292b26';c.fillRect(Math.round(p.x),Math.round(p.y),p.size+1,1);}c.globalAlpha=alpha*(p.dust?.25:1);c.fillStyle=p.color;
+  for(const p of s.particles){if(!visible(p)||airOnly&&(p.z<=0||p.dust))continue;const alpha=Math.min(1,(p.life-p.age)*3);if(!airOnly&&!p.dust&&p.z>1){c.globalAlpha=alpha*.2;c.fillStyle='#292b26';c.fillRect(Math.round(p.x),Math.round(p.y),p.size+1,1);}c.globalAlpha=alpha*(p.dust?.25:1);c.fillStyle=p.color;
     if(!groundOnly||p.z<=0||p.dust)c.fillRect(Math.round(p.x),Math.round(p.y-p.z),p.dust?p.size*2:p.size,p.dust?p.size*2:Math.max(1,p.size-1));}
   c.restore();
 }

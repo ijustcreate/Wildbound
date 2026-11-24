@@ -22,9 +22,9 @@ export function drawHouseFloor(c,h){
  c.save();c.imageSmoothingEnabled=false;c.drawImage(cached.canvas,cached.x,cached.y);c.restore();
 }
 export const houseFloorCacheInfo=h=>{const cached=floors.get(h);return cached?{width:cached.w,height:cached.height}:null;};
-export function drawHouseWall(c,b){
+export function drawHouseWall(c,b,{groundShadow=true}={}){
  const {x,y,w,h}=b,horizontal=w>h;c.save();
- c.fillStyle='#19232466';c.fillRect(x+3,y+5,w,h+3);
+ if(groundShadow){c.fillStyle='#19232466';c.fillRect(x+3,y+5,w,h+3);}
  if(b.kind==='fence'){
   c.fillStyle='#674a32';c.fillRect(x,y,w,h);c.fillStyle='#bd955c';c.fillRect(x+2,y+2,Math.max(1,w-4),Math.max(1,h-4));
   const length=horizontal?w:h;for(let n=0;n<length;n+=24){const px=x+(horizontal?n:0),py=y+(horizontal?0:n);c.fillStyle='#674a32';c.fillRect(px,py,Math.min(10,w),Math.min(20,h));c.fillStyle='#d4ae71';c.fillRect(px+2,py+1,Math.min(5,w-3),Math.min(17,h-2));c.fillStyle='#4f3d2b';c.fillRect(px+3,py+4,2,2);}c.restore();return;

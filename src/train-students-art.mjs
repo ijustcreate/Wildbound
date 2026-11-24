@@ -11,10 +11,16 @@ export function drawHarryFace(c,p,d,look){
  if(names.length===2)pixel(c,(p.eyeL.x+p.eyeR.x)/2-.5,(p.eyeL.y+p.eyeR.y)/2-1,1,.5,'#302d34');
  const q=p[d===2?'eyeL':'eyeR'];pixel(c,q.x-.5,q.y-5,.5,1,'#a26052');pixel(c,q.x-1,q.y-4,.5,1,'#a26052');pixel(c,q.x-.5,q.y-3,.5,1,'#a26052');
 }
-export function drawHogwartsHem(c,p,d){
- const back=d>=3&&d<=5,profile=d===2||d===6,ink='#272730',base='#383641',light='#504a58';
+export function drawHogwartsHem(c,p,d,{ink='#272730',base='#383641',light='#504a58',trim}={}){
+ const back=d>=3&&d<=5,profile=d===2||d===6;
  const poly=(points,color)=>{c.fillStyle=color;const top=Math.floor(Math.min(...points.map(q=>q.y))),bottom=Math.ceil(Math.max(...points.map(q=>q.y)));for(let y=top;y<=bottom;y++){const hits=[];for(let i=0;i<points.length;i++){const a=points[i],b=points[(i+1)%points.length];if((a.y<=y+.5&&b.y>y+.5)||(b.y<=y+.5&&a.y>y+.5))hits.push(a.x+(y+.5-a.y)*(b.x-a.x)/(b.y-a.y));}hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2)c.fillRect(Math.floor(hits[i]),y,Math.max(1,Math.ceil(hits[i+1]-hits[i])),1);}};
- for(const side of ['L','R']){const hip=p['hip'+side],knee=p['knee'+side],foot=p['foot'+side],sign=side==='L'?-1:1,width=profile?3:4,hem={x:knee.x+(foot.x-knee.x)*.4,y:knee.y+(foot.y-knee.y)*.4};poly([{x:hip.x-sign*1.5,y:hip.y-3},{x:hip.x+sign*width,y:hip.y-3},{x:hem.x+sign*(width+1),y:hem.y},{x:hem.x-sign*(back?2:1),y:hem.y}],ink);poly([{x:hip.x-sign*.6,y:hip.y-2},{x:hip.x+sign*(width-1),y:hip.y-2},{x:hem.x+sign*(width-.2),y:hem.y-1},{x:hem.x-sign*(back?1:.2),y:hem.y-1}],side==='L'?light:base);}
+ for(const side of ['L','R']){
+  const hip=p['hip'+side],knee=p['knee'+side],foot=p['foot'+side],sign=side==='L'?-1:1,width=profile?3:4;
+  const hem={x:knee.x+(foot.x-knee.x)*.4,y:knee.y+(foot.y-knee.y)*.4};
+  poly([{x:hip.x-sign*1.5,y:hip.y-3},{x:hip.x+sign*width,y:hip.y-3},{x:hem.x+sign*(width+1),y:hem.y},{x:hem.x-sign*(back?2:1),y:hem.y}],ink);
+  poly([{x:hip.x-sign*.6,y:hip.y-2},{x:hip.x+sign*(width-1),y:hip.y-2},{x:hem.x+sign*(width-.2),y:hem.y-1},{x:hem.x-sign*(back?1:.2),y:hem.y-1}],side==='L'?light:base);
+  if(trim)for(let i=0;i<width;i+=2)pixel(c,hem.x+sign*i,hem.y-1,1,.5,trim);
+ }
 }
 export function paintSchoolUniformIcon(c,type){
  const r=(x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(x,y,w,h);},ink='#292831',cloth='#3b3945',light='#625c69';

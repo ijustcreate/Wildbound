@@ -1,17 +1,14 @@
-import {drawWitchHat} from './broom-art.mjs';
+import {drawWitchHat} from './witch-hat-art.mjs';
 import {drawCarverCrown} from './bone-carver-art.mjs';
+import {drawHeadwearArtwork} from './headwear-art.mjs';
+import {hoodOpening} from './headwear-geometry.mjs';
+export {hoodOpening} from './headwear-geometry.mjs';
 // Skull-local pixel drawings. Union construction shapes before shading and
 // outlining the whole item; never outline each primitive. Five view plans plus
 // verified symmetric opposite views. Light stays upper-left as the object turns.
 export const HEADWEAR_ART_REVISION=7;
 const cache=new Map();
-const supported=new Set(['brim','safari','cap','circlet','crown','helmet','fullhelm','horned','hood','mask','santa','pumpkin','keeper','turtle','reaper','warlock','ghost','imp','succubus','banshee','halo']);
-export function hoodOpening(d){
- const view=Math.min(d,8-d),flip=d>4?-1:1;
- if(view>=3)return [];
- const points=view===2?[[-7,-4],[-3,-5],[0,-3],[0,2],[-3,4],[-6,3],[-7,0]]:view===1?[[-6,-4],[-3,-6],[0,-5],[2,-3],[2,2],[-1,4],[-5,3],[-6,0]]:[[-5,-3],[-4,-5],[-2,-5],[0,-4],[2,-5],[4,-4],[5,-2],[4,2],[2,4],[-2,4],[-5,2]];
- return points.map(([x,y])=>[x*flip,y]);
-}
+const supported=new Set(['brim','safari','cap','inkcap','circlet','crown','helmet','fullhelm','horned','hood','mask','santa','pumpkin','keeper','turtle','reaper','warlock','ghost','imp','succubus','banshee','halo']);
 export function headwearStyle(id,def){return ({reaper_hood:'reaper',keeper_crown:'keeper',imp_horns:'imp',succubus_horns:'succubus',warlock_hood:'warlock'})[id]||def.style||'brim';}
 // Behind the face, not over its forehead: short/bald hair must not leave a
 // transparent slit between the skull and the inside of the cowl.
@@ -26,8 +23,9 @@ export function drawHoodLining(c,h,d,color){
   xs.sort((a,b)=>a-b);for(let i=0;i+1<xs.length;i+=2)for(let x=Math.ceil(xs[i]-.5);x<xs[i+1]-.5;x++)c.fillRect(Math.round(h.x)+x,Math.round(h.y)+y,1,1);
  }
 }
-export function drawResolvedHeadwear(c,h,d,style,p,id=''){
- if(style==='witch')return drawWitchHat(c,h,d);if(style==='carver')return drawCarverCrown(c,h,d);
+export function drawResolvedHeadwear(c,h,d,style,p,id='',time=0){
+ if(drawHeadwearArtwork(c,h,d,id,p,time))return true;
+ if(style==='witch')return drawWitchHat(c,h,d,id);if(style==='carver')return drawCarverCrown(c,h,d);
  if(!supported.has(style))return false;
  const key=JSON.stringify([HEADWEAR_ART_REVISION,d,style,p,id]);let pixels=cache.get(key);
  if(!pixels){pixels=buildView(d,style,p,id);if(cache.size>=256)cache.delete(cache.keys().next().value);cache.set(key,pixels);}
@@ -83,7 +81,14 @@ function buildView(d,style,p,id){
  if(style==='ghost'){ink='#54786e';base='#b8d9c4';shadow='#82ad9e';highlight='#e1efce';}
  if(style==='reaper'){ink='#161921';base='#363b47';shadow='#252933';highlight='#58616c';}
  if(style==='halo'){ink='#aa793b';base='#edbd62';shadow='#d79443';highlight='#fff0b7';}
- if(['brim','cap','safari'].includes(style)){
+ if(style==='inkcap'){
+  const bill=side?-10:diag?-9:-10,tip=side?6:diag?5:2;
+  poly([[bill,-5],[-6,-8],[4,-8],[9,-6],[10,-4],[7,-2],[-7,-2],[bill,-3]]);
+  poly([[-5,-6],[-5,-9],[-2,-14],[tip,-18],[tip+2,-17],[tip-1,-12],[4,-9],[6,-6]]);
+  mark([[-4,-8],[-2,-13],[tip,-16],[tip-2,-11],[1,-8]],p.light);
+  rect(-5,-7,10,1,p.dark);
+  if(!back){const x=side?-6:diag?-4:1;rect(x,-8,2,2,p.trim);rect(x,-9,1,1,p.shine);}
+ }else if(['brim','cap','safari'].includes(style)){
   poly(cap);
   if(style==='safari')poly([[-5,-5],[-5,-8],[-2,-11],[2,-11],[5,-8],[6,-4]]);
   if(style==='cap'){

@@ -26,7 +26,7 @@ export class LobbyLanding {
     if (!this.active) return false;
     const player = this.join(device, pad);
     if (!player) return false;
-    if (pad) this.releasePads.add(pad.index);
+    if (pad && landingPadActive(pad)) this.suppressUntilRelease(pad);
     this.sync();return true;
   }
   handleKey(event) {
@@ -34,6 +34,7 @@ export class LobbyLanding {
     if (!this.activate('keyboard')) return false;
     event.preventDefault();event.stopImmediatePropagation();return true;
   }
+  suppressUntilRelease(pad) { this.releasePads.add(pad.index); }
   waitingForRelease(pad) {
     if (!this.releasePads.has(pad.index)) return false;
     if (!landingPadActive(pad)) this.releasePads.delete(pad.index);

@@ -40,7 +40,7 @@ function drawPlot(c,plot,seed) {
 }
 
 /** bounds are exclusive tile indices, tile32; no document/Image dependency. */
-export function drawGraveyardGround(c,g,bounds) {
+export function drawGraveyardGround(c,g,bounds,plotScale=1) {
   if(!g?.graveyard||g.generatedEnvironment!=='graveyard'||!bounds)return false;
   const endless=g.mapMode==='boundless';
   const b={sx:endless?Math.floor(bounds.sx):Math.max(0,Math.floor(bounds.sx)),sy:endless?Math.floor(bounds.sy):Math.max(0,Math.floor(bounds.sy)),
@@ -74,7 +74,8 @@ export function drawGraveyardGround(c,g,bounds) {
   // Plots are floor art, not tall sprites or blockers. The marker is at their head.
   for(const plot of g.graveyard.plots || []) {
     if(!visibleRect(plot,b)||g.mapMode!=='boundless'&&Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(plot.stoneX-800,plot.stoneY-800)>g.bloom*430||g.phase==='won')continue;
-    drawPlot(c,plot,seed);
+    const brush=plotScale===1?c:smallCemeteryBrush(c,plotScale,plot.stoneX??plot.x+plot.w/2,plot.y);
+    drawPlot(brush,plot,seed);
   }
   c.restore();return true;
 }
@@ -114,6 +115,29 @@ function stone(c,p,time) {
   if(p.hp<p.maxHp && time-(p.hitAt || 0)<3) {
     pixel(c,-16,9,32,4,'#23342d');pixel(c,-15,10,30*Math.max(0,p.hp/p.maxHp),2,'#abb58c');
   }
+}
+function stoneRubble(c,p){
+  pixel(c,-17,-1,34,5,'#2c3832');
+  for(const [x,y,w,h] of [[-14,-7,11,6],[-4,-10,12,9],[8,-5,8,5],[-19,-2,5,3],[14,1,5,3]]){
+    pixel(c,x,y,w,h,'#596960');
+    pixel(c,x+1,y+1,w-2,Math.max(1,h-3),'#859185');
+    pixel(c,x+1,y,w-3,2,'#a8ad94');
+  }
+  pixel(c,-4+(p.variant||0)*2,-6,2,2,'#4d6056');
+  pixel(c,-10,2,3,1,'#6f875f');
+}
+
+function smallCemeteryBrush(c,scale,anchorX=0,anchorY=0){
+  const fitX=x=>Math.round(anchorX+(x-anchorX)*scale);
+  const fitY=y=>Math.round(anchorY+(y-anchorY)*scale);
+  return {
+    set fillStyle(color){c.fillStyle=color;},
+    fillRect(x,y,w,h){
+      if(w<=0||h<=0)return;
+      const left=fitX(x),top=fitY(y);
+      c.fillRect(left,top,Math.max(1,fitX(x+w)-left),Math.max(1,fitY(y+h)-top));
+    },
+  };
 }
 function fence(c,p) {
   if(p.orientation==='vertical') {
@@ -211,16 +235,19 @@ function leaflessTree(c,p,forest=false) {
 
 export function drawGraveyardProp(c,p,time=0,g) {
   if(!p?.graveyard||!['gravestone','cemetery_fence','cemetery_gate','grave_fence','grave_gate','mausoleum','leafless_tree','grave_forest_tree','grave_candles','pumpkin_crop'].includes(p.kind))return false;
-  if(p.depleted && !['leafless_tree','grave_forest_tree'].includes(p.kind))return true;
+  const rubble=p.depleted&&p.kind==='gravestone'&&p.wildCemeteryScale;
+  if(p.depleted&&!rubble&&!['leafless_tree','grave_forest_tree'].includes(p.kind))return true;
   c.save();c.translate(Math.round(p.x),Math.round(p.rootY ?? p.y));
-  if(p.kind==='gravestone')stone(c,p,time);
+  const brush=p.wildCemeteryScale?smallCemeteryBrush(c,p.wildCemeteryScale):c;
+  if(rubble)stoneRubble(brush,p);
+  else if(p.kind==='gravestone')stone(brush,p,time);
   else if(p.kind==='cemetery_fence'||p.kind==='grave_fence')fence(c,p);
   else if(p.kind==='cemetery_gate'||p.kind==='grave_gate')gate(c,time,p);
   else if(p.kind==='pumpkin_crop')drawPumpkinCrop(c,{...p,x:0,y:0});
-  else if(p.kind==='mausoleum')mausoleum(c,p,time);
+  else if(p.kind==='mausoleum')mausoleum(brush,p,time);
   else if(p.kind==='leafless_tree')leaflessTree(c,p);
   else if(p.kind==='grave_forest_tree')leaflessTree(c,p,true);
-  else {candle(c,-5,0,time,p.x);if(p.variant)candle(c,4,-2,time,p.y);pixel(c,-10,2,19,3,'#4e5d43');}
+  else {candle(brush,-5,0,time,p.x);if(p.variant)candle(brush,4,-2,time,p.y);pixel(brush,-10,2,19,3,'#4e5d43');}
   if(p.kind==='pumpkin_crop'&&!p.picked&&(g?.players||[]).some(a=>!a.room&&!a.ui&&a.hp>0&&Math.hypot(a.x-p.x,a.y+14-p.rootY)<48)){
     c.fillStyle='#f4dfa7';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText('INTERACT · PICK PUMPKIN',0,-34);
   }

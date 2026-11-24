@@ -8,6 +8,20 @@ export function drawSwimmer(c,a,time,draw){
 export function drawBreath(c,a){
  if(!(a.breathVisible>0))return;c.save();c.globalAlpha*=a.breathVisible;c.fillStyle='#102b35';c.fillRect(a.x-17,a.y+10,34,6);c.fillStyle=a.breath<5?'#fa8976':'#a3efff';c.fillRect(a.x-16,a.y+11,32*Math.max(0,Math.min(1,a.breath/BREATH_SECONDS)),4);c.font='5px monospace';c.textAlign='center';c.fillStyle='#e0ffff';c.fillText('AIR',a.x,a.y+23);c.restore();
 }
+export function drawSwimBubbles(c,effect){
+ const age=Math.max(0,effect.duration-effect.life),depth=effect.swimDepth||0;
+ const alpha=c.globalAlpha*(1-depth*.78)*.58;
+ c.save();c.fillStyle='#b5e8e3';
+ for(let i=0;i<2;i++){
+  const step=age-i*.10;
+  if(step<0)continue;
+  const x=Math.round(effect.x+(i?3:-1)+Math.sin(step*8+effect.seed)*1.3);
+  const y=Math.round(effect.y+depth*5-step*16);
+  c.globalAlpha=alpha*Math.max(0,1-step/.5);
+  c.fillRect(x,y,i?1:2,1);
+ }
+ c.restore();
+}
 export function drawWaterline(c,a,time,draw,{bob=1,shift=0,radius=17}={}){
  const wave=Math.sin(time*2.7+(a.id||0))*.75*bob;
  c.save();c.beginPath();c.rect(a.x-radius*4,a.y-radius*4,radius*8,radius*4+1);c.clip();

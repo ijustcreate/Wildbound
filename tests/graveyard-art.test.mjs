@@ -39,6 +39,18 @@ test('grave plots and every new prop render with native pixels, including weathe
   assert.equal(c.depth,0);
 });
 
+test('Wild Lands grave plots keep their head anchor at a smaller native size',()=>{
+  const g=setup(),p=g.graveyard.plots[0];g.graveyard.plots=[p];
+  const original=canvas(),smaller=canvas(),bounds={sx:12,sy:13,ex:16,ey:17};
+  drawGraveyardGround(original,g,bounds);
+  drawGraveyardGround(smaller,g,bounds,.8);
+  const plot=c=>c.calls.find(v=>v[0]==='pixel'&&v.at(-1)==='#716e5c');
+  assert.deepEqual(plot(original).slice(1,5),[p.x,p.y,44,68]);
+  const [x,y,w,h]=plot(smaller).slice(1,5);
+  assert.ok(Math.abs(x+w/2-p.stoneX)<=.5);
+  assert.deepEqual([y,w,h],[p.y,36,54]);
+});
+
 test('emergence clips body below the dirt plane, passes a shifted copy and returns handled',()=>{
   const g=setup(),p=g.scenery.find(p=>p.kind==='gravestone');
   harvestGravestone(g,{x:p.x,y:p.rootY+24,faceX:0,faceY:-1,hp:100},48,78);

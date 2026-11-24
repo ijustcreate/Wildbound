@@ -61,7 +61,7 @@ module.exports = async function verifyQaRemediation({window,testOutput,app}) {
    train.wildExploration.opened.add('fern-glade');
    await document.querySelector('#progress-save-now').onclick();
   `);
-  const saveFile=path.join(app.getPath('userData'),'wilds-expedition-v1.json');
+  const saveFile=path.join(app.getPath('userData'),'wilds-fresh-expedition-v1.json');
   const saved=JSON.parse(await fs.readFile(saveFile,'utf8'));
   const classic=JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'expedition-v1.json'),'utf8'));
   check('Wilds and ordinary expeditions write different checkpoint files',saved.wilds?.progress.distance===8200&&classic.state.players[0].coins===121&&!classic.wilds);
@@ -71,11 +71,12 @@ module.exports = async function verifyQaRemediation({window,testOutput,app}) {
   const ready=once(window.webContents,'did-finish-load');
   window.reload();
   await ready;
-  await run("await wildboundBoot.ready;await document.querySelector('#continue-wilds').onclick();");
+  await run("await wildboundBoot.ready;await document.querySelector('#continue-wilds').onclick();document.querySelector('[data-confirm-explorer]').click();");
   await wait('wildboundPolishTest.game.trainTest?.persistent');
-  check('Continue The Wilds restores the actual disk save after a renderer reload',await run(String.raw`
-   const {game}=wildboundPolishTest,p=game.players[0],t=game.trainTest;
-   return p.coins===77&&p.xp===17&&p.inventory[0].type==='iron_sword'&&p.x===6100&&t.distance===8200&&t.wildExploration.opened.has('fern-glade');
+  check('Start The Wilds keeps profile progress and begins fresh inside the Homestead after reload',await run(String.raw`
+   const {wildHomestead}=await import('./src/wild-homestead-layout.mjs');
+   const {game}=wildboundPolishTest,p=game.players[0],t=game.trainTest,home=wildHomestead(t.design);
+   return p.coins===77&&p.xp===17&&p.inventory[0].type==='iron_sword'&&home.floors.some(f=>p.x>f.x&&p.x<f.x+f.w&&p.y>f.y&&p.y<f.y+f.h)&&t.distance===t.design.spawnDistance&&!t.wildExploration?.opened?.has('fern-glade');
   `));
   await run(String.raw`
    const {Game}=await import('./src/core.mjs');

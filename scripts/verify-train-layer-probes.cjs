@@ -8,10 +8,10 @@ app.whenReady().then(async()=>{const win=new BrowserWindow({show:false,width:128
  const {drawTrainCar,trainPartSprite,trainViewIndex}=await import('./src/train-art.mjs'),{drawTrainRiderLayer}=await import('./src/train-rider-layer.mjs');
  const {defaultTrainDesign}=await import('./src/train-design.mjs');
  const checks=[],images={},ok=(v,m)=>{if(!v)throw Error(m);checks.push(m);};
- function probe(kind,angle,local,height=0,{objects,doors={},painted=false,roof=0}={}){
+ function probe(kind,angle,local,height=0,{objects,doors={},painted=false,roof=0,seatCushionId}={}){
   const d=defaultTrainDesign(),def=d.cars.find(c=>c.kind===kind),car={...def,index:d.cars.indexOf(def),x:200,y:240,z:0,a:angle};if(objects)d.interiors[car.id]=objects;
   if(painted){const view=trainViewIndex(angle);const sprite=trainPartSprite(d,car,'furniture',view);sprite.palette=sprite.palette.map(c=>c==='transparent'?c:'#53c5a1');d.art[kind+':furniture:'+view]=sprite;}
-  const ca=Math.cos(angle),sa=Math.sin(angle),rider={x:local.x,y:local.y,height},actor={x:car.x+ca*local.x-sa*local.y,y:car.y+sa*local.x+ca*local.y-20,jumpHeight:height};
+  const ca=Math.cos(angle),sa=Math.sin(angle),rider={x:local.x,y:local.y,height,seatCushionId},actor={x:car.x+ca*local.x-sa*local.y,y:car.y+sa*local.x+ca*local.y-20,jumpHeight:height,trainStudent:!!seatCushionId};
   const canvas=document.createElement('canvas');canvas.width=canvas.height=400;const c=canvas.getContext('2d');c.fillStyle='#223745';c.fillRect(0,0,400,400);
   const options={design:d,riders:[rider],time:1,distance:0,speed:0,doors,cocoaTaken:new Set(),roofAlpha:roof};drawTrainCar(c,d,car,options);
   c.fillStyle='#23d4e7';c.fillRect(Math.floor(actor.x)+15,Math.floor(actor.y-height)-30,8,15);const before=c.getImageData(0,0,400,400).data;
@@ -32,6 +32,17 @@ app.whenReady().then(async()=>{const win=new BrowserWindow({show:false,width:128
  for(const a of [.13,.71,1.83,3.41,5.8])probe('caboose',a,{x:0,y:-25},0,{objects:[table]});
  const door={id:'probe-door',kind:'door',x:0,y:0,w:22,h:5,open:false},closed=probe('compartments',0,{x:0,y:-16},0,{objects:[door]}),open=probe('compartments',0,{x:0,y:-16},0,{objects:[door],doors:{'compartments:probe-door':true}});
  ok(closed.occluded>open.occluded,'open doorway restores body pixels hidden by closed leaf');
+ const bench={id:'probe-bench',kind:'seat',x:0,y:0,w:22,h:38,facing:0};
+ for(let view=0;view<8;view++){
+  const angle=view*Math.PI/4,local={x:0,y:0};
+  const support=probe('compartments',angle,local,0,{objects:[bench],seatCushionId:bench.id});
+  const visitor=probe('compartments',angle,local,0,{objects:[bench]});
+  ok(support.magenta>=visitor.magenta,'an assigned cushion does not cover its own rider '+view);
+  if(Math.sin(angle)<-.5){
+   const bare=probe('compartments',angle,local,0,{objects:[]});
+   ok(support.magenta<bare.magenta,'the near seat back still covers its seated rider '+view);
+  }
+ }
  return {checks,images};
  }catch(e){throw Error(e.stack)}})()`);
  for(const [name,data]of Object.entries(result.images))fs.writeFileSync(path.join(out,name+'.png'),Buffer.from(data.split(',')[1],'base64'));delete result.images;

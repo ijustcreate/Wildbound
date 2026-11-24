@@ -1,6 +1,7 @@
 import {ITEMS,itemKind} from './items.mjs';
 import {friendlyIceTarget} from './frost-prison.mjs';
 import {clearShot} from './navigation.mjs';
+import {arenaCanFight,arenaShotPermit,inDiagonArena} from './diagon-arena-layout.mjs';
 export const CHARM_SECONDS=5,CHARM_GRACE=2,CHARM_KISS_LIMIT=16;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const isCharmed=p=>Number.isFinite(p?.succubusCharm?.remaining)&&p.succubusCharm.remaining>0&&p.hp>0&&!p.room;
@@ -43,9 +44,10 @@ export function charmCanTarget(g,source,target){
 }
 export function playerCombatTargets(g,source){
  const owner=source?.owner??source?.id;
-  return [...(g.enemies||[]),...(g.ghosts||[]).filter(a=>a.wildTiger&&a.faction==='hostile'&&!a.room&&a.hp>0),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&(friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
+  return [...(g.enemies||[]),...(g.ghosts||[]).filter(a=>a.wildTiger&&a.faction==='hostile'&&!a.room&&a.hp>0),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&
+   (inDiagonArena(g)?arenaCanFight(g,source,p):friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>charmCanTarget(g,source,e));
 }
-export const charmShot=p=>({charmShot:isCharmed(p)});
+export const charmShot=p=>({charmShot:isCharmed(p),...arenaShotPermit(p)});
 export function tickCharmedPlayer(g,p,dt){
  const owner=charmOwner(g,p);if(!owner){clearCharm(p);return;}
  p.bowAiming=false;p.blocking=false;p.charge=0;p.slideX=p.slideY=0;delete p.queuedAttack;

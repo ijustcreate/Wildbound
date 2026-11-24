@@ -57,6 +57,12 @@ test('Tarantula gait advances by actual short steps instead of sliding for a hun
  assert.equal(spiderFrame(a,10,m),spiderFrame(a,0,m),'movement phase comes from distance');
 });
 
+test('The black spider completes a visible walk cycle over a short approach',()=>{
+ const m=defaultSpiderMotion('spider'),a={hp:70,speed:68,moving:true,step:42*.13};
+ assert.equal(spiderFrame(a,0,m),m.clips.walk.length);
+ assert.equal(spiderFrame(a,10,m),spiderFrame(a,0,m));
+});
+
 test('Frozen sand spiders stop moving and frozen timers expire',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('keyboard');g.start();g.house=null;g.scenery=[];g.terrain.fill('sand');
  const e={id:10,kind:'tarantula',x:500,y:600,hp:110,speed:48,frozen:.2,step:0};g.enemies=[e];Object.assign(p,{x:550,y:600});

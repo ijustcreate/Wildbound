@@ -1,3 +1,5 @@
+import {HOLLOW_ROOM} from './wild-mountain-layout.mjs';
+
 export const WILD_LANDS_SITES=[
  {id:'jade-court',name:'Jade Courtyard',x:3300,y:2900,kind:'ruins',item:'potion',qty:2},
  {id:'fern-glade',name:'Fern Glade',x:6500,y:3650,kind:'camp',item:'fruit',qty:4},
@@ -5,10 +7,12 @@ export const WILD_LANDS_SITES=[
  {id:'cemetery-cache',name:'Forgotten Burial Ground',x:3700,y:6350,kind:'graves',item:'arrow',qty:12},
  {id:'bayou-camp',name:'Reedwatch Camp',x:13200,y:2400,kind:'boardwalk',item:'fruit',qty:4},
  {id:'east-lookout',name:'Eastwood Lookout',x:13700,y:5100,kind:'camp',item:'arrow',qty:12},
- {id:'hearth',name:'The Old Homestead',x:8200,y:7300,kind:'garden',item:'potion',qty:2},
+ {id:'hearth',name:'The Old Homestead',x:8580,y:7456,kind:'garden',item:'potion',qty:2},
  {id:'driftwood',name:'Driftwood Cove',x:11300,y:8550,kind:'camp',item:'fruit',qty:4},
  {id:'grotto',name:'Crystal Grotto',x:8000,y:4450,kind:'crystals',room:'caverns',item:'potion',qty:2},
- {id:'reliquary',name:'Veil Reliquary',x:8000,y:4450,kind:'stones',room:'shadow',item:'potion',qty:2}
+ {id:'reliquary',name:'Veil Reliquary',x:8000,y:4450,kind:'stones',room:'shadow',item:'potion',qty:2},
+ {id:'greywake-summit',name:'Greywake Summit',x:17900,y:6500,kind:'lookout',item:'potion',qty:3},
+ {id:'hollow-cache',name:'Smuggler’s Cache',x:8570,y:5500,kind:'wreck-cache',room:HOLLOW_ROOM,item:'stamina_potion',qty:3},
 ];
 function state(t){return t.wildExploration??={discovered:new Set(),opened:new Set(),nextCheck:0};}
 export const wildSiteVisible=(d,site)=>(d.activeRoom||null)===(site.room||null);

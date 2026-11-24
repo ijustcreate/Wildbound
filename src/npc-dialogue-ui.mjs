@@ -112,12 +112,13 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
     if (!c) continue;
     c.clearRect(0, 0, canvas.width, canvas.height);
     if (!source) continue;
+    const nativeNpc=!player&&['alan','alley_goblin'].includes(source.sprite);
     c.save(); c.imageSmoothingEnabled = false;
     // The humanoid's origin is at its feet. Enlarge and move the legs below
     // the canvas edge, keeping the head/shoulders and equipped upper body.
     animator.draw(c, {
-      ...source, sprite: !player&&source.sprite==='alan'?'alan':!player&&source.villagerId?'villager':'explorer-teal', kind: !player&&source.sprite==='alan'?'alan':!player&&source.villagerId?'villager':'player',
-      x: canvas.width / 2, y: canvas.height + 34,
+      ...source, sprite:nativeNpc?source.sprite:!player&&source.villagerId?'villager':'explorer-teal', kind:nativeNpc?source.kind:!player&&source.villagerId?'villager':'player',
+      x: canvas.width / 2, y: canvas.height + (source.sprite==='alley_goblin'?4:34),
       // A dialogue portrait is a stable presentation render, never the live
       // actor's direction or movement state.
       faceX: 0, faceY: 1,

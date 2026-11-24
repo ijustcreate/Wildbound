@@ -73,9 +73,9 @@ import {drawWaterSurface} from './water-surface.mjs';
 import {drawBridges} from './bridges.mjs';
 import {vehicleSceneryDepth} from './vehicle-ground.mjs';
 import {terrainActorDepth} from './terrain-support.mjs';
-import {drawSwimmer,drawBreath,drawWaterline} from './swim-render.mjs';
+import {drawSwimmer,drawBreath,drawSwimBubbles,drawWaterline} from './swim-render.mjs';
 import {drawOtterWater} from './otter-water.mjs';
-import {drawBowAim,drawAimTrajectory,drawPounceAim} from './bow-aim.mjs';
+import {drawBowAim,drawPounceAim} from './bow-aim.mjs';
 import {viewCombatImpact} from './combat-impact.mjs';
 import {drawSinking} from './quicksand.mjs';
 import {QuicksandSurface} from './quicksand-surface.mjs';
@@ -307,9 +307,9 @@ export class Renderer {
     drawImpGround(ctx,game);
     drawWildFaunaTells(ctx,game,p=>canSee(game,p)&&this.visible(p,w,h,90));
   }
-  drawCombatGround(game,w,h,{omitTelegraphs=false}={}){const ctx=this.ctx;
+  drawCombatGround(game,w,h,{omitTelegraphs=false,paintWaterDonors}={}){const ctx=this.ctx;
     this.waterInteractions ||= new WaterInteractionRenderer();
-    this.waterInteractions.draw(ctx,game,this,w,h);
+    this.waterInteractions.draw(ctx,game,this,w,h,paintWaterDonors);
     for (const p of game.pickups)
       this.assets.draw(ctx, "fruit", p.x, p.y + Math.sin(this.age * 4) * 2, 26);
     for (const t of game.traps) {
@@ -489,6 +489,7 @@ export class Renderer {
       }else if(fx.dragonBreath){drawDragonBreath(ctx,fx);
       }else if(fx.swordImpact){paintSwordImpact(ctx,fx);
       }else if(fx.magicBolt){drawMagicBurst(ctx,fx);
+      }else if(fx.particle==='bubbles'&&fx.swimDepth!==undefined){drawSwimBubbles(ctx,fx);
       }else if(fx.particle){drawParticleEffect(ctx,fx.particle,fx.x,fx.y,Math.max(0,fx.duration-fx.life),Number(fx.seed)||0);
       } else if (fx.text) {
         ctx.textAlign = "center";
@@ -511,7 +512,13 @@ export class Renderer {
   draw(game, dt, {sealCapture=false}={}) {
     if(!this.splitChild&&!sealCapture&&this.drawMultiplayer(game,dt))return;
     const fxHero=game.current||game.players?.[0];if(fxHero)setPixelFxPreviewActor(fxHero,game.time,PLAYER_RENDER_SIZE);
-    if(game.trainTest){drawTrainTest(this,game,dt);finishSharedCamera(this,game,this.viewport.w,this.viewport.h);return;}
+    if(game.trainTest){
+      drawTrainTest(this,game,dt);
+      const {w,h}=this.viewport;
+      if(!game.trainTest.wildLandsOverview)this.lootPrompts(game,w,h);
+      finishSharedCamera(this,game,w,h);
+      return;
+    }
     if(game.worldTravel&&!sealCapture){drawWorldTravel(this,game,dt);return;}
     if(!sealCapture)warmWorldTravelArt(this,game);
     if(!sealCapture&&this.worldTravelArt)clearWorldTravelArt(this);
@@ -642,7 +649,7 @@ export class Renderer {
     for(const v of game.house?.vehicles||[])drawVehicleEffects(ctx,v);
     drawBansheeSteps(ctx,game);drawDeathSteps(ctx,game);
     drawZombieTells(ctx,game);
-    for(const p of game.players){paintSwordCharge(ctx,p,game.time);if(!p.pounceAim){drawBowAim(ctx,p,1,game.time);drawAimTrajectory(ctx,p,1,game.time,game);}}
+    for(const p of game.players){paintSwordCharge(ctx,p,game.time);if(!p.pounceAim)drawBowAim(ctx,p,1,game.time,game);}
 
     drawLivingEcosystem(ctx, game, 'ground');
     drawGraveyardEcology(ctx,game,'ground');

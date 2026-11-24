@@ -181,23 +181,36 @@ function emerge(g,stone,plot,roll,disturber) {
   plot.emergedKind=kind;
 }
 
+export function nearestGravestone(scenery,p,range,footOffset=14) {
+  const fx=Number.isFinite(p.faceX)?p.faceX:0,fy=Number.isFinite(p.faceY)?p.faceY:1,f=Math.hypot(fx,fy)||1;
+  let nearest=null,distance=range;
+  for(const s of scenery){
+    if(s.kind!=='gravestone'||!s.graveyard||s.depleted||!(s.hp>0))continue;
+    const dx=s.x-p.x,dy=s.rootY-(p.y+footOffset),d=Math.hypot(dx,dy);
+    if(!(d<=distance)||nearest&&d===distance)continue;
+    if(d&&(dx*fx+dy*fy)/d/f<Math.SQRT1_2)continue;
+    nearest=s;distance=d;
+  }
+  return nearest;
+}
+
+export function chipGravestone(g,p,stone,damage,time=g.time||0) {
+  stone.hp=Math.max(0,stone.hp-damage);stone.harvest=stone.maxHp-stone.hp;stone.hitAt=time;
+  p.gatherAction='mine';p.gatherTime=.55;g.onSound?.('mine',p);
+  if(stone.hp===0)stone.depleted=true;
+}
+
 /** Call before normal harvest. One nearest facing stone, one roll ONLY on break. */
 export function harvestGravestone(g,p,damage,range=64) {
   if(!active(g)||g.phase!=='play'||g.paused||!p||p.room||p.ui||p.hp<=0 ||
     !Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(damage)||damage<=0||!Number.isFinite(range)||range<=0)return false;
-  const fx=Number.isFinite(p.faceX)?p.faceX:0,fy=Number.isFinite(p.faceY)?p.faceY:1,f=Math.hypot(fx,fy)||1;
-  const hit=(g.scenery || []).filter(s=>s.kind==='gravestone'&&s.graveyard&&!s.depleted&&s.hp>0)
-    .map(s=>({s,dx:s.x-p.x,dy:s.rootY-(p.y+14)}))
-    .filter(h=>Math.hypot(h.dx,h.dy)<=range &&
-      (!Math.hypot(h.dx,h.dy)||(h.dx*fx+h.dy*fy)/Math.hypot(h.dx,h.dy)/f>=Math.SQRT1_2))
-    .sort((a,b)=>Math.hypot(a.dx,a.dy)-Math.hypot(b.dx,b.dy))[0];
-  if(!hit)return false;
-  const stone=hit.s,plot=g.graveyard.plots.find(p=>p.id===stone.plotId);
+  const stone=nearestGravestone(g.scenery||[],p,range);
+  if(!stone)return false;
+  const plot=g.graveyard.plots.find(p=>p.id===stone.plotId);
   if(!plot)return false;
-  stone.hp=Math.max(0,stone.hp-damage);stone.harvest=stone.maxHp-stone.hp;stone.hitAt=g.time || 0;
-  p.gatherAction='mine';p.gatherTime=.55;g.onSound?.('mine',p);
-  if(stone.hp===0) {
-    stone.depleted=true;plot.broken=true;g.graveyard.breakCount=(g.graveyard.breakCount || 0)+1;
+  chipGravestone(g,p,stone,damage);
+  if(stone.depleted) {
+    plot.broken=true;g.graveyard.breakCount=(g.graveyard.breakCount || 0)+1;
     // No quota, shared roll, compensating spawns, or retries. Every stone is independent.
     const roll=typeof g.random==='function'?g.random():graveyardHash(g.graveyard.seed,stone.x,stone.rootY+173);
     stone.breakRoll=roll;

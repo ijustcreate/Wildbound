@@ -7,8 +7,8 @@ const ENTRY_CROWN = 6;
 const NORTH = 1, EAST = 2, SOUTH = 4, WEST = 8;
 const CACHE_LIMIT = 176;
 const INK = '#203a29', CORE = '#2b4933', SHADE = '#34563a';
-const FROND = '#426741', FACE = '#4c7546', CROWN = '#5a8049';
-const LIT = '#6f9652', TIP = '#86a861', MUTED = '#59754a';
+const FROND = '#426841', FACE = '#517747', CROWN = '#61844d';
+const LIT = '#7c9a56', TIP = '#96ab68', MUTED = '#59754a';
 const WOOD = '#514633', BARK = '#745b3c', CUT = '#b28a52';
 const stamps = new Map();
 
@@ -114,6 +114,18 @@ function paintHedge(c, w, d, mask, variant, damage) {
     rect(c, faceL, front + 5, 1, 4, FACE);
   }
 
+  // Long side-facing runs have their own clipped shoulder and shaded base.
+  const flank = (x, leftSide) => {
+    const shade=leftSide?FACE:SHADE, light=leftSide?LIT:CROWN;
+    for (let y=3; y<d-1; y+=5) {
+      const step=(y+variant*2)%3, edgeAt=x+(leftSide?step:-step);
+      rect(c,edgeAt,y,2,Math.min(4,d-y),shade);
+      if ((y+variant)%3!==0) rect(c,edgeAt+(leftSide?2:-1),y+1,2,Math.min(2,d-y-1),light);
+    }
+  };
+  if (!west) flank(faceL,true);
+  if (!east) flank(Math.max(2,faceR-2),false);
+
   // A few foliage clusters break the planes. The cap stays clearly shorn.
   for (let col = 0; col < Math.max(1, Math.floor(w / 8)); col++) {
     const x = 2 + col * 7 + (variant + col * 2) % 3, lift = (col * 3 + variant) % 4;
@@ -124,6 +136,11 @@ function paintHedge(c, w, d, mask, variant, damage) {
     leaf(c, x - (lift & 1), front + 3 + lift, variant + col, FACE, SHADE);
     leaf(c, x - 1, front + 14 - lift, variant + col + 2, FROND, CORE);
     if (lift !== 2) leaf(c, x + 1, bottom - 7 - (lift & 1), variant + col + 1, SHADE, CORE);
+  }
+  for(let y=8;y<d-5;y+=9){
+    const mid=Math.floor(w*.42)+(variant+y)%3-1;
+    leaf(c,Math.min(w-6,Math.max(2,mid-2)),y,variant+y,FACE,SHADE);
+    if((y+variant)%4===0)rect(c,Math.min(w-4,mid),y-1,2,1,LIT);
   }
   if (!south) {
     const foot = 3 + variant * 7 % Math.max(1,w - 6), length = 3 + (variant & 1);
@@ -250,6 +267,10 @@ export function drawOverlookHedgeGround(c, part) {
     const inner = part.entryEnd === 'left' ? 2 : 0;
     rect(c, x + 2, y + h, w - inner, 4, '#162a2060');
     rect(c, x + 5, y + h + 4, w - 4 - inner, 3, '#162a203a');
+    for(let i=0;i<2;i++){
+      const px=x+4+((part.seed||0)+i*13)%Math.max(1,w-9),py=y+h+3+i*3;
+      rect(c,px,py,4,2,'#4f633b');rect(c,px+1,py-1,2,1,'#718052');
+    }
   }
 }
 

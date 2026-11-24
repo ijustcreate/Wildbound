@@ -1,4 +1,4 @@
-import {REALMS,realmAsset} from './realm-layout.mjs';
+import {REALMS,realmAsset,BAYOU_SHRINE_BASE} from './realm-layout.mjs';
 export * from './realm-layout.mjs';
 import {boundlessGeneratedTile} from './boundless-generation.mjs';
 export function realmVoidBlocked(g,x,y,r=8){
@@ -11,6 +11,10 @@ export function realmFootprint(p){
  const type=realmAsset(p.kind)?.type,s=p.size/64,y=p.rootY??p.y+p.size*.19;
  if(p.fallen)return {x:p.x-7*s,y:y-5*s,w:14*s,h:7*s,height:6*s};
  if(Number.isFinite(p.collisionWidth)&&Number.isFinite(p.collisionDepth))return p.collisionWidth>0&&p.collisionDepth>0?{x:p.x-p.collisionWidth/2,y:y-p.collisionDepth,w:p.collisionWidth,h:p.collisionDepth,height:p.surfaceHeight??999}:null;
+ if(p.kind==='bayou_shrine'){
+  const w=BAYOU_SHRINE_BASE.width*s/2,h=BAYOU_SHRINE_BASE.depth*s/2;
+  return {x:p.x-w/2,y:y-h,w,h,height:999};
+ }
  if(type==='tree')return {x:p.x-6*s,y:y-9*s,w:12*s,h:12*s,height:999};
  if(type==='rock'||type==='log')return {x:p.x-17*s,y:y-12*s,w:34*s,h:13*s,height:12*s};
  if(type==='crystal'||type==='mineral')return {x:p.x-12*s,y:y-9*s,w:24*s,h:12*s,height:999};

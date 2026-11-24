@@ -2,6 +2,8 @@ import {applyTreeFall} from './tree-fall.mjs';
 import {drawBiomeSprite} from './biome-sprites.mjs';
 import {dropIceRecipe} from './ice-crafting.mjs';
 import {drawWinterFixture} from './winter-night.mjs';
+import {drawIceChest} from './ice-chest-art.mjs';
+import {drawNativeIceScenery} from './native-ice-art.mjs';
 const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
 export const ICE_PROPS=['snow_tree','ice_rock','snow_drift','frost_shrub','ice_spire','frozen_log','winter_cache','winter_lodge','winter_lantern'];
 export const iceSolid=p=>['snow_tree','ice_rock','ice_spire','frozen_log','winter_cache','winter_lodge','winter_lantern'].includes(p.kind);
@@ -78,16 +80,11 @@ export function drawIceProp(c,p,time=0){if(!ICE_PROPS.includes(p.kind))return fa
  if(p.kind==='snow_tree'){
   r(-4,-35,8,35,'#665550');r(-2,-30,3,30,'#978172');
   for(let i=0;i<4;i++){const y=-61+i*12,w=9+i*5;poly([[0,y-9],[-w,y+15],[w,y+15]],'#285650');poly([[0,y-9],[-w+2,y+10],[-3,y+6],[5,y+11],[w-3,y+10]],i%2?'#d6e9eb':'#edf8f6');r(-w+3,y+13,w*2-6,2,'#86afb6');}
- }else if(['ice_rock','ice_spire'].includes(p.kind)){
-  const spikes=p.kind==='ice_spire'?[[-15,7,33],[5,12,59],[22,7,26]]:[[0,23,30]];
-  for(const [x,w,h]of spikes){poly([[x-w,-2],[x-w,-h+8],[x-2,-h],[x+w,-h+5],[x+w,0]],'#669caf');poly([[x-w,-h+8],[x-2,-h],[x+2,-h+8],[x+2,-1],[x-w,-2]],'#a8d5d9');poly([[x+2,-h+8],[x+w,-h+5],[x+w,0],[x+2,-1]],'#4c849e');poly([[x-w,-h+8],[x-2,-h],[x+w,-h+5],[x+2,-h+11]],'#d1eeee');r(x-w,-h+8,2,h-11,'#bde4df');
-   for(let i=0;i<7;i++){const yy=-h+13+hash(i,p.x)*Math.max(2,h-20);r(x-w+3+hash(p.y,i)*Math.max(2,w*2-6),yy,2,2,i%2?'#75b7c3':'#c3e5de');}
-   r(x-w,-h+6,w*2,3,'#eff5e6');r(x-w+2,-h+9,3,5,'#b8d9dc');r(x+w-5,-h+8,2,8,'#d7ebde');
-  }r(-25,-2,52,4,'#dfeee5');r(-21,-3,19,2,'#f7f8e9');
+ }else if(['ice_rock','ice_spire','frozen_log'].includes(p.kind)){
+  drawNativeIceScenery(c,p);
  }else if(p.kind==='snow_drift'){poly([[-29,0],[-20,-9],[-4,-14],[16,-10],[29,0]],'#c1dce4');poly([[-24,-2],[-17,-8],[-4,-12],[15,-8],[25,-2]],'#edf6f6');}
  else if(p.kind==='frost_shrub'){for(let i=-2;i<=2;i++){const x=i*9+Math.sin(time*1.4+p.x+i)*.8,y=-24+Math.abs(i)*4;r(x,-18-Math.abs(i)*3,3,22,'#6d6450');for(let j=0;j<4;j++){r(x-7+j*3,y+(j%2)*3,7,8,'#3e7370');r(x-6+j*3,y+(j%2)*3,5,3,'#91b7aa');r(x-6+j*3,y-1+(j%2)*3,4,2,'#e7f0df');}if(!p.used){r(x,y+8,4,4,'#9e4d61');r(x,y+8,2,1,'#e3a0a3');}}r(-22,-3,46,4,'#eaf5e3');}
- else if(p.kind==='frozen_log'){r(-28,-13,56,14,'#635344');r(-25,-10,49,2,'#a38b66');r(-25,-5,49,1,'#302e2b');r(-23,-12,2,12,'#302e2b');r(19,-12,2,12,'#302e2b');r(-30,-17,58,6,'#d5e7df');r(-27,-19,44,3,'#f0f3e3');r(-27,-11,3,9,'#493f40');r(24,-11,3,9,'#493f40');for(let i=0;i<5;i++)r(-22+i*10,-12,2,3+hash(i,p.x)*5,'#b3d6d8');r(-12,-23,4,8,'#77664e');r(-12,-24,4,2,'#dfece0');}
- else if(p.kind==='winter_cache'){r(-20,-24,40,25,'#536775');r(-22,p.used?-36:-26,44,8,'#89a3ac');r(-22,p.used?-38:-28,44,4,'#e7f6f7');r(-16,-22,3,21,'#c4ad74');r(13,-22,3,21,'#c4ad74');r(-4,-18,8,8,p.used?'#283f49':'#e4c77b');}
+ else if(p.kind==='winter_cache'){drawIceChest(c,0,-5,p.used);}
  c.restore();return true;
 }
 export function drawBlizzard(c,g,w,h){

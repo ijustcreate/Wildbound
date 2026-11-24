@@ -1,5 +1,7 @@
 import {block as b, shape as p, line, casework} from './diagon-shop-brush.mjs';
 import {drawBroom} from './broom-art.mjs';
+import {QUIDDITCH_SHOP_PORTKEY_LOCAL} from './quidditch-layout.mjs';
+import {drawQuidditchPortkey,warmQuidditchGround} from './quidditch-pitch-art.mjs';
 
 // Native orthographic shop view. Oxblood panels and worn green paint remain
 // muted around the strong broom silhouette and small gold display case.
@@ -33,7 +35,7 @@ function standingRack(c) {
   b(c,18,-3,5,3,teak[0]);
 }
 
-function nimbusDisplay(c) {
+function fireboltDisplay(c) {
   p(c,teak[0],[[-43,-12],[-43,-28],[-39,-33],[37,-33],[43,-28],[43,-12],[39,-8],[-39,-8]]);
   p(c,vermilion[1],[[-41,-12],[-41,-27],[-37,-31],[36,-31],[41,-27],[41,-13],[38,-10],[-38,-10]]);
   p(c,vermilion[2],[[-39,-12],[-38,-27],[-35,-29],[21,-29],[34,-26],[20,-15],[-22,-13]]);
@@ -42,7 +44,7 @@ function nimbusDisplay(c) {
   b(c,-26,-17,4,7,brass[2]);
   b(c,26,-17,4,7,brass[2]);
   // Same silhouette as the inventory and riding item, displayed broadside.
-  drawBroom(c,{pelvis:{x:-7,y:-22}},2,'nimbus_2000');
+  drawBroom(c,{pelvis:{x:-8,y:-24}},2,'firebolt');
   b(c,-10,-9,20,7,teak[0]);
   b(c,-8,-8,16,4,brass[2]);
   b(c,-6,-7,12,1,brass[4]);
@@ -221,7 +223,7 @@ function salesCounter(c) {
 export default {
   props: [
     define('standing-broom-rack',52,69,-64,-56,standingRack,{solid:{width:48,depth:14}}),
-    define('featured-nimbus',86,34,-1,-58,nimbusDisplay),
+    define('featured-firebolt',86,36,-1,-58,fireboltDisplay),
     define('broom-workbench',50,31,-78,24,workbench,{solid:{width:46,depth:19}}),
     define('broom-tool-panel',36,34,-84,-7,toolPanel),
     define('replacement-bristles',34,19,-86,2,bristles,{surface:'broom-workbench'}),
@@ -233,6 +235,8 @@ export default {
     define('keeper-gloves-stand',36,30,69,62,gloves,{solid:{width:30,depth:13}}),
     define('polishing-kit',22,14,-69,1,polish,{surface:'broom-workbench'}),
     define('match-clock',26,25,95,-94,splitClock),
+    define('pitch-portkey',38,51,QUIDDITCH_SHOP_PORTKEY_LOCAL.x,QUIDDITCH_SHOP_PORTKEY_LOCAL.y,
+      (c,time)=>{warmQuidditchGround();drawQuidditchPortkey(c,0,0,time,{outbound:true});},{animated:true}),
     define('quidditch-till',92,32,-7,-5,salesCounter,{solid:{width:92,depth:18}}),
   ],
 };

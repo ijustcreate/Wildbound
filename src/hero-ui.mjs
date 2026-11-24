@@ -81,8 +81,8 @@ export class HeroUI {
     // remains over the same screen position. Reconcile on movement so the new
     // slot still gets its hover details even if pointerenter had no new target.
     root.addEventListener('pointermove',event=>{
-      const button=event.target.closest?.('.hero-panel.chest-redesign .storage-slots button[data-mode]');
-      if(!button)return;
+      const button=event.target.closest?.('.hero-panel.chest-redesign .storage-slots button[data-mode],.hero-panel.inventory-workbench button[data-mode]');
+      if(!button?.showItemTooltip)return;
       const panel=button.closest('.hero-panel');
       if(panel.tooltipHover===button&&!panel.querySelector('.item-tooltip')?.hidden)return;
       panel.tooltipHover=button;
@@ -104,7 +104,7 @@ export class HeroUI {
       panel.tooltipAnchor?.removeAttribute('aria-describedby');
       panel.tooltipAnchor=button;panel.lastTooltipAnchor=button;
       const expanded=!!(panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===p.id));
-      tip.classList.toggle('tooltip-compact',!expanded);tip.classList.toggle('tooltip-expanded',expanded);tip.classList.remove('tooltip-docked');
+      tip.classList.toggle('tooltip-compact',!expanded);tip.classList.toggle('tooltip-expanded',expanded);
       const toggle=panel.querySelector('.inventory-details-toggle');if(toggle){toggle.disabled=false;toggle.setAttribute('aria-expanded',String(expanded));toggle.textContent=expanded?'Less':'Details';}
       tip.id=`item-tooltip-${p.id}`;
       tip.setAttribute('role','tooltip');
@@ -149,23 +149,25 @@ export class HeroUI {
       const scale=pr.width/panel.offsetWidth||1;
       const panelWidth=panel.clientWidth,panelHeight=panel.clientHeight;
       const local=rect=>({x:(rect.left-pr.left)/scale-panel.clientLeft,y:(rect.top-pr.top)/scale-panel.clientTop,w:rect.width/scale,h:rect.height/scale});
-      const shelf=panel.classList.contains('inventory-workbench')&&panel.querySelector('.inventory-selection');
-      if(shelf&&!expanded){
-        const box=local(shelf.getBoundingClientRect());if(p.ui?.notice)box.h=Math.max(34,box.h-14);tip.classList.add('tooltip-docked');tip.classList.remove('tooltip-above');
-        Object.assign(tip.style,{left:box.x+'px',top:box.y+'px',width:box.w+'px',height:box.h+'px'});
-      }else{
-        tip.style.width='';tip.style.height='';
-        const protectedAreas=[...panel.querySelectorAll('.item-grid,.paper-doll,.inventory-character,.current-inventory-actions,.storage-popup-actions')].map(node=>local(node.getBoundingClientRect()));
-        const placement=tooltipPlacement({width:panelWidth,height:panelHeight,tipWidth:tip.offsetWidth,tipHeight:tip.offsetHeight,anchor:local(r),protectedAreas});
-        tip.style.left=placement.x+'px';tip.style.top=placement.y+'px';tip.classList.toggle('tooltip-above',placement.side==='top');
-        tip.style.setProperty('--tether-x',Math.max(4,Math.min(placement.w-4,local(r).x-placement.x))+'px');
-      }
-      tip.hidden = false;
+      const anchor=local(r);
+      const protectedSelector=panel.classList.contains('inventory-workbench')
+        ?'.inventory-progress-row,.inventory-selection,.current-inventory-actions,.inventory-help'
+        :'.item-grid,.paper-doll,.inventory-character,.current-inventory-actions,.storage-popup-actions';
+      const protectedAreas=[...panel.querySelectorAll(protectedSelector)].map(node=>({
+        ...local(node.getBoundingClientRect()),weight:node.matches('.current-inventory-actions,.inventory-progress-row')?4:1,
+      }));
+      const placement=tooltipPlacement({width:panelWidth,height:panelHeight,tipWidth:tip.offsetWidth,tipHeight:tip.offsetHeight,anchor,protectedAreas});
+      tip.style.left=placement.x+'px';tip.style.top=placement.y+'px';
+      tip.classList.toggle('tooltip-above',placement.side==='top');
+      tip.dataset.side=placement.side;
+      tip.style.setProperty('--tether-x',Math.max(4,Math.min(placement.w-4,anchor.x+anchor.w/2-placement.x))+'px');
+      tip.style.setProperty('--tether-y',Math.max(4,Math.min(placement.h-4,anchor.y+anchor.h/2-placement.y))+'px');
     };
     const reconcile = () => {
-      const anchor=panel.contains(panel.tooltipHover)?panel.tooltipHover:panel.contains(panel.tooltipFocus)?panel.tooltipFocus:(panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===panel.hero?.id))&&panel.contains(panel.lastTooltipAnchor)?panel.lastTooltipAnchor:null;
+      const selected=p.device!=='keyboard'&&panel.querySelector('.storage-sheet.active .selected');
+      const anchor=panel.contains(panel.tooltipHover)?panel.tooltipHover:panel.contains(panel.tooltipFocus)?panel.tooltipFocus:(panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===panel.hero?.id))&&panel.contains(panel.lastTooltipAnchor)?panel.lastTooltipAnchor:selected;
       if(anchor?.showItemTooltip)anchor.showItemTooltip();
-      else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;panel.tooltipAnchor=null;}
+      else {const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;panel.tooltipAnchor?.removeAttribute('aria-describedby');panel.tooltipAnchor=null;}
     };
     button.addEventListener('pointerenter', () => {panel.tooltipHover=button;show();}, { passive:true });
     button.addEventListener('pointerleave', () => {if(panel.tooltipHover===button)panel.tooltipHover=null;reconcile();}, { passive:true });
@@ -213,6 +215,7 @@ export class HeroUI {
       const signature = [
         game.uiRevision || 0,
         p.name,
+        p.device,
         controlled?.id,controlled?.name,controlled?.kind,
         liveControllerFamily(p),
         p.level,
@@ -400,9 +403,9 @@ export class HeroUI {
         panel.tooltipExpanded=false;if(this.tooltipAltOwner===panel.hero.id)this.tooltipAlt=false;const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;
       }
       const selected=panel.querySelector('.storage-sheet.active .selected,.robot-item-slot.selected,.npc-dialogue-choice.selected,.merchant-row.selected,.vending-slots .selected,.vending-tray .selected,.vending-collect-all.selected');
-      if(panel.revealSelection&&!panel.classList.contains('inventory-redesign'))selected?.scrollIntoView({block:'nearest',inline:'nearest',container:'nearest'});
+      if(panel.revealSelection&&(!panel.classList.contains('inventory-redesign')||panel.classList.contains('npc-dialogue-session')))selected?.scrollIntoView({block:'nearest',inline:'nearest',container:'nearest'});
       if(panel.revealSelection&&panel.classList.contains('inventory-workbench')){
-        const grid=selected?.closest('.item-grid');if(grid&&grid.scrollHeight>grid.clientHeight+1)selected.scrollIntoView({block:'nearest',inline:'nearest'});
+        const grid=selected?.closest('.item-grid');if(grid&&grid.scrollHeight>grid.clientHeight+1)selected.scrollIntoView({block:'nearest',inline:'nearest',container:'nearest'});
       }
       if(!panel.hero?.ui?.socket&&!panel.hero?.ui?.bag&&!panel.hero?.ui?.split){
         if(panel.revealSelection){panel.tooltipHover=null;panel.tooltipFocus=null;}
@@ -800,13 +803,17 @@ export class HeroUI {
     const notice=el('small',detail,'storage-notice');summary.append(notice);
     const details=el('button','Details','inventory-details-toggle');details.type='button';details.disabled=true;details.setAttribute('aria-label','Toggle full item details');details.setAttribute('aria-keyshortcuts','Alt');details.setAttribute('aria-expanded',String(!!panel.tooltipExpanded));
     details.title=p.device==='keyboard'?'Inspect selected item · hold Alt':'Inspect selected item · press the right stick';
-    details.onclick=()=>{panel.tooltipExpanded=!panel.tooltipExpanded;const anchor=panel.tooltipAnchor||panel.lastTooltipAnchor;if(panel.contains(anchor))anchor.showItemTooltip?.();};summary.append(details);panel.append(summary);
+    details.onclick=()=>{panel.tooltipExpanded=!panel.tooltipExpanded;const anchor=panel.tooltipAnchor||panel.lastTooltipAnchor;if(panel.contains(anchor))anchor.showItemTooltip?.();};
+    const detailControls=panel.classList.contains('inventory-workbench')&&panel.querySelector('.inventory-progress-row');
+    if(detailControls)detailControls.insertBefore(details,detailControls.querySelector('.inventory-xp'));
+    else summary.append(details);
+    panel.append(summary);
     const actions=el('nav',null,'inventory-actions current-inventory-actions');actions.setAttribute('aria-label','Selected item actions');
     for(const option of options){
       const b=button('',option.id,()=>game.inventoryAction(p,option.action));
       b.disabled=!!option.reason;b.setAttribute('aria-label',option.label+' · '+option.key+(option.reason?' · '+option.reason:''));b.title=option.reason||option.label+' · '+option.key;
       const badge=option.key.replace(/Triangle/g,'△').replace(/Square/g,'□').replace(/Circle/g,'○').replace(/Cross/g,'×').replace(/Shift\+Del/g,'⇧Del');
-      const compactLabel={'Learn recipe':'Learn'}[option.label]||option.label;
+      const compactLabel={'Learn recipe':'Learn','Ask the crystal ball':'Ask','Eat magic mushroom':'Eat'}[option.label]||option.label;
       b.append(el('span',badge,'inventory-key'),el('span',compactLabel,'inventory-action-label'));
       if(option.id==='salvage-hold'){
         const ring=el('span',null,'salvage-ring');ring.setAttribute('role','progressbar');ring.setAttribute('aria-label','Salvage hold progress');ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');
@@ -960,8 +967,14 @@ export class HeroUI {
     else if(layout.size===1&&panel.classList.contains('chest-redesign'))
       box={...centeredPopupBox(bounds.width,bounds.height,520,620,18),side:'center'};
     if(panel.classList.contains('npc-dialogue-session')){
-      if(layout.size===1){const width=Math.min(860,Math.max(240,bounds.width-32)),height=Math.min(bounds.height-32,310);box={x:(bounds.width-width)/2,y:bounds.height-height-16,width,height,side:'bottom'};}
-      else{const height=Math.min(box.height,390);box={...box,y:box.y+box.height-height,height};}
+      if(layout.size===1){
+        const width=Math.min(680,bounds.width-24);
+        const height=Math.min(224,Math.max(150,bounds.height*.42),bounds.height-24);
+        box={x:(bounds.width-width)/2,y:bounds.height-height-12,width,height,side:'bottom'};
+      }else{
+        const height=Math.min(box.height,250);
+        box={...box,y:box.y+box.height-height,height};
+      }
     }
     if(panel.classList.contains('private-storage-room'))box=storagePanelBox(game,p,bounds,box);
     const {x, y, width, height, side} = box;

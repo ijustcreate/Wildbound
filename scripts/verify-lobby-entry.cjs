@@ -23,7 +23,7 @@ app.whenReady().then(async()=>{
    w.setContentSize(width,height);await pause();
    const layout=await js(`(()=>{const r=document.querySelector('.lobby-world').getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,iw:innerWidth,ih:innerHeight,buttons:[...document.querySelectorAll('#party-menu button')].filter(b=>b.getBoundingClientRect().height).map(b=>b.textContent),heading:getComputedStyle(document.querySelector('.party-heading')).display,help:getComputedStyle(document.querySelector('.party-help')).display,overflow:document.documentElement.scrollHeight>innerHeight};})()`);
    assert(layout.x===0&&layout.y===44&&layout.w===layout.iw&&layout.h===layout.ih-44&&!layout.overflow,'Room fills viewport below toolbar '+width+'x'+height);
-   assert(layout.buttons.join()==='Continue saved expedition,Continue The Wilds,Save backups,Studio'&&layout.heading==='none'&&layout.help==='none','Title shows expedition checkpoints, backups and Studio above the room '+width+'x'+height);
+   assert(layout.buttons.join()==='Continue saved expedition,Start The Wilds,Save backups,Studio'&&layout.heading==='none'&&layout.help==='none','Title shows expedition choices, backups and Studio above the room '+width+'x'+height);
    await capture('title-'+width+'x'+height);
   }
   w.setContentSize(1280,850);await pause();

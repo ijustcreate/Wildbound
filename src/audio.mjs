@@ -1,27 +1,86 @@
 import {waterAt} from './environment.mjs';
 import {boardTableSupport} from './board-table.mjs';
+import {contains} from './house-design.mjs';
+import {houseFloorZones} from './house-surfaces.mjs';
+import {waterBelowBridge} from './swimming.mjs';
+import {nativeWildBiome,nativeWildWorld} from './wild-native-biomes.mjs';
+import {wildLandsPathAt} from './wild-lands-geography.mjs';
+import {wildLandmarkBuildings} from './wild-landmark-buildings.mjs';
+import {clearingDistance,forestNoise,forestPavingAt,routeDistance} from './forest-landscape.mjs';
+import {nearestTrainTrack,railElevation} from './train-track.mjs';
+import {inRainPuddle} from './wet-weather.mjs';
 import {playThunder} from './thunder.mjs';
 import {CUES,creatureCue,SOUND_FILES} from './sound-bank.mjs';
 import {audioDistance,audioPosition,sameAudioRoom} from './adaptive-music-threat.mjs';
 import {isUndergroundRoom,createUndergroundReverb} from './underground-audio.mjs';
 import {worldAmbienceEmitters,weatherAudioState} from './world-ambience.mjs';
+import {DIAGON_FOLEY,diagonFloorMaterial,diagonStreetListeners,fillCascade,inDiagonAudio} from './diagon-alley-audio.mjs';
+import {alleyResidentsFor} from './diagon-residents.mjs';
+import {latestDiagonFootfall} from './diagon-footprints.mjs';
+import {HOLLOW_ROOM,mountainLand} from './wild-mountain-layout.mjs';
 const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
-export const AMBIENT_TRACKS={forest:'forest_ambient',desert:'desert_ambient',ice:'ice_ambient',house:'house_ambient',temple:'temple_ambient',graveyard:'graveyard_ambient',beach:'beach_ambient',swamp:'swamp_ambient',caverns:'cave_ambient',shadow:'shadow_ambient'};
+export const AMBIENT_TRACKS={forest:'forest_ambient',desert:'desert_ambient',ice:'ice_ambient',house:'house_ambient',temple:'temple_ambient',graveyard:'graveyard_ambient',beach:'beach_ambient',swamp:'swamp_ambient',caverns:'cave_ambient',shadow:'shadow_ambient',diagon:'alley_ambient'};
+const ambienceCutoff={water:1900,cascade:4200,steam:3100,fire:3600,rain:4800};
 export const AUDIO_LIMITS=Object.freeze({voices:24,cache:96,cooldowns:128,variants:96});
 function boundedSet(map,key,value,limit){map.delete(key);map.set(key,value);while(map.size>limit)map.delete(map.keys().next().value);}
+const surfaceCues=new Map(Object.entries({
+ grass:'grass',marsh_grass:'grass',dirt:'dirt',path:'gravel',gravel:'gravel',
+ wood:'wood',bridge:'wood',stone:'stone',temple_stone:'stone',cave_floor:'stone',shadow_soil:'stone',cement:'stone',
+ tile:'tile',checker:'tile',carpet:'carpet',snow:'snow',ice:'ice',sand:'sand',quicksand:'sand',
+ mud:'mud',water:'water',shallow:'water',floodbridge:'water',
+}));
+function floorCue(h,x,y){
+ if(!h)return;
+ if(h.furniture?.some(f=>f.kind==='rug'&&!f.destroyed&&contains(f,x,y)))return 'carpet';
+ const floor=h.floors?.findLast(f=>contains(f,x,y));
+ if(!floor)return;
+ if(h.temple)return 'stone';
+ const zone=houseFloorZones(h).findLast(f=>contains(f,x,y));
+ return surfaceCues.get(zone?.material||floor.material)||'wood';
+}
+function railwayFootstep(t,x,y){
+ const d=t.design;
+ if(d.wildLands&&(d.activeRoom===HOLLOW_ROOM||!d.activeRoom&&mountainLand(x,y)))return 'stone';
+ if(!d.activeRoom&&t.route){
+  for(const route of [t.route,...(t.otherRoutes||[])]){
+   const rail=nearestTrainTrack(route,x,y);
+   if(rail.distance<d.gauge/2+16&&railElevation(d,rail)<=2)return 'gravel';
+  }
+ }
+ if(!d.wildLands)return 'grass';
+ for(const h of wildLandmarkBuildings(d)){
+  const floor=floorCue(h,x,y);
+  if(floor)return floor;
+ }
+ if(!d.activeRoom&&wildLandsPathAt(x,y))return 'dirt';
+ const biome=nativeWildBiome(d,x,y);
+ if(biome==='jungle'||biome==='house'||biome==='forest')return 'grass';
+ const record=nativeWildWorld(t,x,y,biome);
+ const ground=record?.world.terrain[(Math.floor(y/32)-record.cy*50)*50+Math.floor(x/32)-record.cx*50];
+ if(['ice','snow','sand','mud','marsh_grass','cave_floor','shadow_soil','path'].includes(ground)||d.activeRoom&&['water','shallow'].includes(ground))return surfaceCues.get(ground);
+ return ({ice:'snow',beach:'sand',swamp:'grass',caverns:'stone',shadow:'stone'})[biome]||'grass';
+}
 export function footstepMaterial(game,p){
- if(game.trainTest&&p.swimming)return 'water';
- if(p.trainRide)return 'wood';
- if(p.room)return p.room==='temple-upper'||game.portals?.find(d=>d.id===p.room)?.oldWell?'stone':'wood';
- const ground=waterAt(game,p.x,p.y),biome=game.generatedEnvironment||game.environment;
- if(['water','shallow','floodbridge'].includes(ground))return 'water';
- if(ground==='mud')return 'mud';
- if(['bridge','wood'].includes(ground)||boardTableSupport(game,p.x,p.y)>0&&p.groundHeight>=16)return 'wood';
- if(game.house?.floors?.some(f=>p.x>=f.x&&p.y>=f.y&&p.x<f.x+f.w&&p.y<f.y+f.h))return 'wood';
- if(['stone','path','tile'].includes(ground)||biome==='temple')return 'stone';
- if(biome==='ice'||['snow','ice'].includes(ground))return 'snow';
- if(biome==='desert'||['sand','quicksand'].includes(ground))return 'sand';
- return 'grass';
+ const {x,y}=p;
+ if(p.pirateRide||p.trainRide||p.trainDeck||p.playLogId)return 'wood';
+ if(p.room){
+  const portal=game.portals?.find(d=>d.id===p.room);
+  return p.room==='temple-upper'||portal?.oldWell||portal?.mausoleum||portal?.crypt?'stone':'wood';
+ }
+ if(game.trainTest){
+  if(inDiagonAudio(game))return surfaceCues.get(diagonFloorMaterial(x,y))||'stone';
+  if(p.swimming||p.underBridge||waterAt(game,x,y)!=='grass')return 'water';
+  return railwayFootstep(game.trainTest,x,y);
+ }
+ if(p.groundHeight>=16&&boardTableSupport(game,x,y)>0)return 'wood';
+ const ground=p.underBridge?waterBelowBridge(game,x,y):waterAt(game,x,y);
+ if(['water','shallow','floodbridge'].includes(ground)||!p.groundHeight&&inRainPuddle(game,x,y))return 'water';
+ const plan=game.forestLandscape;
+ if(ground==='grass'&&plan?.routeField&&x>=0&&y>=0&&x<1600&&y<1600){
+  if(forestPavingAt(plan,x,y))return 'stone';
+  if(clearingDistance(x,y,plan.seed)>1&&routeDistance(plan,x,y)<13+forestNoise(x/70,y/70,plan.seed)*16)return 'dirt';
+ }
+ return floorCue(game.house,x,y)||surfaceCues.get(ground)||'grass';
 }
 export function landingCue(game,p){
  const material=footstepMaterial(game,p);
@@ -61,7 +120,8 @@ export class GameAudio {
  spatial(cue,actor){
   if(!actor||cue.spatial===false||cue.bus==='ui')return {attenuation:1,pan:0};
   let listener=null,distance=Infinity;
-  for(const p of this.listeners.length?this.listeners:this.listener?[this.listener]:[]){const d=audioDistance(actor,p);if(d<distance){listener=p;distance=d;}}
+  const listeners=cue.alleyStreet?(this.alleyListeners||[]):this.listeners.length?this.listeners:this.listener?[this.listener]:[];
+  for(const p of listeners){const d=audioDistance(actor,p);if(d<distance){listener=p;distance=d;}}
   if(!listener)return {attenuation:0,pan:0};
   const radius=cue.distance??650,falloff=clamp((distance-45)/(radius-45));
   const a=audioPosition(actor),p=audioPosition(listener);
@@ -81,31 +141,62 @@ export class GameAudio {
  }
  noiseBuffer(kind){
   this.worldNoise||=new Map();if(this.worldNoise.has(kind))return this.worldNoise.get(kind);
-  const c=this.ctx,b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),a=b.getChannelData(0);
-  let last=0;for(let i=0;i<a.length;i++){const white=Math.random()*2-1;last=last*.28+white*.72;a[i]=last*.72+white*.28;}
+  const c=this.ctx,b=c.createBuffer(1,c.sampleRate*(kind==='cascade'?5:2),c.sampleRate),a=b.getChannelData(0);
+  if(kind==='cascade')fillCascade(a,c.sampleRate);
+  else {let last=0;for(let i=0;i<a.length;i++){const white=Math.random()*2-1;last=last*.28+white*.72;a[i]=last*.72+white*.28;}}
   const overlap=Math.min(1024,Math.floor(a.length/8)),edge=a.length-overlap,anchor=a[edge-1],first=a[0];
   for(let i=0;i<overlap;i++){const f=i/(overlap-1);a[edge+i]=anchor*(1-f)+first*f;}
   this.worldNoise.set(kind,b);return b;
  }
  updateWorldAmbience(game,active){
-  const t=this.ctx.currentTime,desired=new Map();
+  const t=this.ctx.currentTime,desired=new Map(),scene=game.trainTest?.design?.activeRoom;
+  if(scene!==this.worldScene){this.worldScene=scene;this.worldScanAt=0;}
   if(active&&game.phase==='play'&&this.enabled&&this.settings.master>0&&this.settings.ambience>0){
    if(t>=this.worldScanAt){this.worldEmitters=worldAmbienceEmitters(game,this.listeners);this.worldScanAt=t+.35;}
+   const listeners=scene==='diagon'?this.alleyListeners||[]:this.listeners;
    for(const e of this.worldEmitters||[]){
-    const nearest=this.listeners.filter(p=>p.hp>0&&!p.room).map(p=>({p,d:Math.hypot(p.x-e.x,p.y-e.y)})).sort((a,b)=>a.d-b.d)[0];
-    if(!nearest||nearest.d>=e.radius)continue;
-    const attenuation=Math.max(0,1-nearest.d/e.radius),pan=Math.max(-.85,Math.min(.85,(e.x-nearest.p.x)/420));
-    desired.set(e.key,{kind:e.kind,pan,gain:(e.kind==='water' ? .055 : .025)*attenuation*attenuation});
+    let nearest=null,distance=e.radius;
+    for(const p of listeners){
+     if(p.hp<=0||p.room)continue;
+     const d=Math.hypot(p.x-e.x,p.y-e.y);
+     if(d<distance){nearest=p;distance=d;}
+    }
+    if(!nearest)continue;
+    const attenuation=1-distance/e.radius,pan=Math.max(-.85,Math.min(.85,(e.x-nearest.x)/420));
+    desired.set(e.key,{kind:e.kind,pan,gain:(e.gain??(e.kind==='water'?.055:.025))*attenuation*attenuation});
    }
   }
   for(const [key,target]of desired){let loop=this.worldLoops.get(key);
    if(!loop){const noise=this.noiseBuffer(target.kind),source=this.ctx.createBufferSource(),filter=this.ctx.createBiquadFilter(),gain=this.ctx.createGain(),pan=this.ctx.createStereoPanner();
-    source.buffer=noise;source.loop=true;filter.type='lowpass';filter.frequency.value=target.kind==='water'?1900:target.kind==='fire'?3600:target.kind==='rain'?4800:1250;
+    source.buffer=noise;source.loop=true;filter.type='lowpass';filter.frequency.value=ambienceCutoff[target.kind]||1250;
     source.connect(filter);filter.connect(gain);gain.connect(pan);pan.connect(this.buses.ambience);gain.gain.value=0;source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();pan.disconnect();};source.start(0,Math.random()*noise.duration);loop={source,filter,gain,pan,kind:target.kind};this.worldLoops.set(key,loop);
    }
-   loop.retireAt=0;loop.filter.frequency.setTargetAtTime(target.kind==='water'?1900:target.kind==='fire'?3600:target.kind==='rain'?4800:1250,t,.25);loop.pan.pan.setTargetAtTime(target.pan,t,.22);loop.gain.gain.setTargetAtTime(target.gain,t,.32);
+   loop.retireAt=0;loop.pan.pan.setTargetAtTime(target.pan,t,.22);loop.gain.gain.setTargetAtTime(target.gain,t,.32);
   }
   for(const [key,loop]of this.worldLoops)if(!desired.has(key)){if(!loop.retireAt){loop.retireAt=t+.85;loop.gain.gain.setTargetAtTime(0,t,.25);}if(t>=loop.retireAt){try{loop.source.stop(t);}catch{}this.worldLoops.delete(key);}}
+ }
+ updateDiagonFoley(game){
+  if(!this.alleyListeners?.length||!this.enabled||!this.settings.master||!this.settings.sfx){
+   this.alleyCueAt?.clear();return;
+  }
+  this.alleyCueAt??=new Map();
+  this.alleyResidentSteps??=new WeakMap();
+  const now=this.ctx.currentTime;
+  for(const source of DIAGON_FOLEY){
+   if(this.spatial(CUES[source.cue],source).attenuation<.02){this.alleyCueAt.delete(source);continue;}
+   const next=this.alleyCueAt.get(source);
+   if(next===undefined)this.alleyCueAt.set(source,now+1.1+Math.random()*2.4);
+   else if(now>=next){
+    this.alleyCueAt.set(source,now+source.interval*(.8+Math.random()*.45));
+    this.play(source.cue,source);
+   }
+  }
+  for(const resident of alleyResidentsFor(game)){
+   const stride=Math.floor(resident.step/3);
+   const previous=this.alleyResidentSteps.get(resident);
+   this.alleyResidentSteps.set(resident,stride);
+   if(resident.moving&&previous!==undefined&&stride!==previous)this.play('alleyStep',resident);
+  }
  }
  async updateWeatherBed(game,active){
   const state=active&&game.phase==='play'&&this.enabled&&this.settings.master&&this.settings.ambience>0?weatherAudioState(game,this.listeners):null;
@@ -165,7 +256,7 @@ export class GameAudio {
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(volume,t+attack);g.gain.setValueAtTime(volume,t+duration-release);g.gain.linearRampToValueAtTime(0,t+duration);
   s.connect(g);g.connect(p);p.connect(this.buses[cue.bus||'sfx']);
   const room=actor?actor.room||null:(this.listeners.length&&this.listeners.every(q=>q.room===this.listeners[0].room)?this.listeners[0].room:null);
-  if((cue.bus||'sfx')==='sfx'&&isUndergroundRoom(this.game,room)){
+  if((cue.bus||'sfx')==='sfx'&&(isUndergroundRoom(this.game,room)||this.game?.trainTest?.design?.activeRoom===HOLLOW_ROOM)){
     this.undergroundFx??=createUndergroundReverb(this.ctx,this.buses.sfx);p.connect(this.undergroundFx.input);
   }
   this.voices.add(s);this.voiceInfo.set(s,{...token,source:s});
@@ -188,19 +279,23 @@ export class GameAudio {
   if(!this.unlocked)return;
   if(this.game!==game||this.seed!==game.seed){
    this.cancelPending();this.previous=new WeakMap();this.playerState=new WeakMap();this.actorLast=new WeakMap();this.last.clear();this.worldScanAt=0;this.worldEmitters=[];this.game=game;this.seed=game.seed;
+   this.alleyCueAt?.clear();
    for(const s of this.voices)if(this.voiceInfo.get(s)?.group!=='ui')this.stopVoice(s);
   }
   this.listeners=(game.players||[]).filter(p=>p.hp>0);this.listener=this.listeners[0];
+  const inAlley=inDiagonAudio(game);
+  this.alleyListeners=inAlley&&active&&game.phase==='play'?diagonStreetListeners(this.listeners):[];
   this.updateVehicleEngines(game,active&&game.phase==='play');
   for(const s of this.voices){const info=this.voiceInfo.get(s);if(info?.actor&&this.spatial(info.cue,info.actor).attenuation<=.002)this.stopVoice(s);}
-  const biome=game.trainTest?'forest':game.generatedEnvironment||game.environment||'forest';
+  const biome=inAlley?'diagon':game.trainTest?game.trainTest.design?.activeRoom===HOLLOW_ROOM?'caverns':'forest':game.generatedEnvironment||game.environment||'forest';
   const ambientCue=AMBIENT_TRACKS[biome]||'wind';
   const inLobby=game.phase==='lobby',inRooms=this.listeners.length&&this.listeners.every(p=>p.room);
   const roomAmbient=biome==='temple'?'temple_ambient':this.listeners.some(p=>isUndergroundRoom(game,p.room))?'cave_ambient':'house_ambient';
   this.ambient(inLobby?'house_ambient':active&&!['won','lost'].includes(game.phase)&&this.listeners.length?(inRooms?roomAmbient:ambientCue):null);
   this.updateWorldAmbience(game,active&&game.phase==='play');
-  this.updateWeatherBed(game,active&&game.phase==='play');
-  const thunder=active&&game.phase==='play'&&game.weather?.type==='thunderstorm'&&this.listeners.some(p=>!p.room)?game.seed+':'+Math.floor(game.time/9):null;
+  this.updateDiagonFoley(game);
+  this.updateWeatherBed(game,active&&game.phase==='play'&&!inAlley);
+  const thunder=active&&game.phase==='play'&&!inAlley&&game.weather?.type==='thunderstorm'&&this.listeners.some(p=>!p.room)?game.seed+':'+Math.floor(game.time/9):null;
   if(thunder&&thunder!==this.thunderCycle&&this.voices.size+this.pending.size<AUDIO_LIMITS.voices)playThunder(this);this.thunderCycle=thunder;
   if(!active&&this.wasActive)this.cancelPending();this.wasActive=active;
   if(!active&&game.phase!=='lobby')return;
@@ -218,14 +313,24 @@ export class GameAudio {
   }
   for(const p of game.players||[]){
     const old=this.playerState.get(p),pos=audioPosition(p),air=(p.jumpHeight||0)>0,flying=!!(p.wingHover||p.broomMount),now=performance.now();let flightAt=old?.flightAt||now;
-   let distance=old?.distance||0;
+   const offFoot=flying||!!p.vehicleId;
+   const footfall=inAlley?latestDiagonFootfall(game,p):null;
+   let distance=inAlley?0:old?.distance||0;
    if(old){
     if(sameAudioRoom(old,p)&&p.hp>0){
-     const moved=p.trainRide?(old.trainCar===p.trainRide.car?Math.hypot(p.trainRide.x-old.trainX,p.trainRide.y-old.trainY):0):Math.hypot(pos.x-old.x,pos.y-old.y);
-     if(!air&&!old.air&&moved<80)distance+=moved;
-     if(distance>=30){this.play(footstepMaterial(game,p),p);distance%=30;}
+     if(inAlley){
+      if(footfall&&footfall!==old.footfall){
+       const material=footstepMaterial(game,p);
+       this.play({...CUES[material],key:'diagon-step:'+material,cooldown:100},p);
+      }
+     }else{
+      const moved=p.trainRide?(old.trainCar===p.trainRide.car?Math.hypot(p.trainRide.x-old.trainX,p.trainRide.y-old.trainY):0):Math.hypot(pos.x-old.x,pos.y-old.y);
+      if(offFoot||old.offFoot||moved>=80||old.trainCar!==p.trainRide?.car)distance=0;
+      else if(!air&&!old.air)distance+=moved;
+      if(distance>=30){this.play(footstepMaterial(game,p),p);distance%=30;}
+     }
      if(air&&!old.air&&(p.jumpVelocity||0)>0)this.play('jump',p);
-     if(!air&&old.air&&p.landTime>0)this.play(landingCue(game,p),p);
+     if(!offFoot&&!air&&old.air&&p.landTime>0)this.play(landingCue(game,p),p);
     }else distance=0;
     if(old.ui&&!p.ui)this.play('close',p);
     if(p.ui&&JSON.stringify(p.inventory)!==old.inventory)this.play('loot',p);
@@ -238,7 +343,7 @@ export class GameAudio {
     if(flying&&now-flightAt>(p.broomMount?760:520)){this.play(p.broomMount?'broomFlight':'flight',p);flightAt=now;}
    }
    if(p.robotRepair?.progress>0)this.play('repair',p);
-   this.playerState.set(p,{trainCar:p.trainRide?.car,trainX:p.trainRide?.x,trainY:p.trainRide?.y,x:pos.x,y:pos.y,room:p.room||null,air,distance,level:p.level,hp:p.hp,ui:!!p.ui,inventory:p.ui?JSON.stringify(p.inventory):null,burning:p.burning||0,slow:p.slow||0,gear:JSON.stringify(p.equipment),robotRepaired:!!p.robotRepaired,flying,flightAt:flying?flightAt:0});
+   this.playerState.set(p,{trainCar:p.trainRide?.car,trainX:p.trainRide?.x,trainY:p.trainRide?.y,x:pos.x,y:pos.y,room:p.room||null,air,offFoot,distance,footfall,level:p.level,hp:p.hp,ui:!!p.ui,inventory:p.ui?JSON.stringify(p.inventory):null,burning:p.burning||0,slow:p.slow||0,gear:JSON.stringify(p.equipment),robotRepaired:!!p.robotRepaired,flightAt:flying?flightAt:0});
   }
  }
 }

@@ -7,6 +7,7 @@ import {mountCampSettings,readCampInputSettings,shapeCampStick} from './src/sett
 import {renderVictoryReport,scrollVictoryReport} from './src/victory-ui.mjs';
 import {continueAfterDefeat} from './src/defeat-flow.mjs';
 import {enterWildLands} from './src/wild-lands.mjs';
+import {leaveTrainTest} from './src/train-test.mjs';
 import {stopRailwayStream} from './src/railway-stream.mjs';
 import {celShadingEnabled,setCelShading} from './src/cel-shading.mjs';
 import {worldGridSettings,setWorldGridSettings} from './src/world-grid.mjs';
@@ -15,14 +16,16 @@ import {hudIcon} from './src/hud-icons.mjs';
 import {tickMeltingIce} from './src/ice-crafting.mjs';
 import {petCard} from './src/hunter-pet-ui.mjs';
 import {RosterPortraits} from './src/roster-portrait.mjs';
+import {gardenManaWardRemaining} from './src/garden-mana-state.mjs';
 import { PlayableLobby } from './src/playable-lobby.mjs';
+import {BellglassScreenEffect} from './src/bellglass-screen-effect.mjs';
 import {loadHouseStorage} from './src/house-design.mjs';
 import {loadLocationStorage,activeLocationDesign,applyDungeonDesign} from './src/location-designs.mjs';
 import {applyActiveHouse,applyChangedHouse} from './src/apply-house.mjs';
 import { GameAudio } from './src/audio.mjs';
 import { creatureCue } from './src/sound-bank.mjs';
 import { openCharacterGallery } from "./src/character-gallery.mjs";
-import { controlLabels, KEYS, PAD_NAMES, DEFAULT_MAPPING, KEYBOARD_ACTION_CODES, normalizeMapping, serializeMapping, renderPlayerMappings, controllerFamily, controllerMenuButtons, controllerButtonNames, CONTROLLER_NAMES, vehiclePadInput, lobbyPadInput } from "./src/controls.mjs";
+import { controlLabels, KEYS, PAD_NAMES, DEFAULT_MAPPING, KEYBOARD_ACTION_CODES, normalizeMapping, serializeMapping, renderPlayerMappings, controllerFamily, controllerMenuButtons, controllerButtonNames, CONTROLLER_NAMES, vehiclePadInput, lobbyPadInput, isDpadButton, trainCabButtons, trainCabThrottleY } from "./src/controls.mjs";
 import { controllerGlyph } from './src/controller-glyphs.mjs';
 import { openControllerKeyboard, navigateControllerKeyboard } from "./src/controller-keyboard.mjs";
 import {drawCreationPreview,creationFamily,creationHelp,creationButtonLabels,creationMenuButtons} from './src/creation-preview.mjs';
@@ -125,6 +128,7 @@ try {
 const keys = new Set(),
   mouse = { x: 0, y: 0, down: false, active: false },
   previousPads = new Map(),
+  cabDpadRelease = new Map(),
   controllerClaims = new Map(),
   pendingControllerJoins = new Set(),
   pendingControllerSettings = new Set(),
@@ -135,20 +139,22 @@ const controllerClaimKey = (pad) =>
 const controllerSettingsRouter = createLobbySettingsControllerRouter();
 const trackDebugCode = createDebugCodeTracker();
 const pauseCheat = createPauseCheatTracker();
-const pauseCheatActive = () => screen==='play' && game.phase==='play' && paused && $('pause-dialog').open && [...document.querySelectorAll('dialog[open]')].at(-1)===$('pause-dialog');
+const campPauseOpen = () => $('settings-dialog').open && $('settings-dialog').dataset.pauseMenu==='true';
+const pauseMenuHost = () => campPauseOpen() ? $('settings-dialog') : $('pause-dialog');
+const pauseCheatActive = () => screen==='play' && game.phase==='play' && paused && $('pause-dialog').open && [...document.querySelectorAll('dialog[open]')].at(-1)===pauseMenuHost();
 function pressPauseCheat(device='keyboard'){
   if(pauseCheat.press(pauseCheatActive())){
     const owner=game.players.find(p=>p.device===device);
     if(owner)$('pause-dialog').dataset.debugOwnerId=String(owner.id);
     gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
-    gameDebug.open($('pause-dialog'));
+    $('pause-dev').click();
   }
 }
 function feedDebugCode(token,device='keyboard'){
   if(trackDebugCode(token)){
     gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});
     pause(undefined,device);
-    gameDebug.open($('pause-dialog'));
+    $('pause-dev').click();
   }
 }
 function requestControllerClaim(pad, key, joinRequested = false, settingsRequested = false) {
@@ -272,8 +278,11 @@ function gameSaveQueue(target) {
             index.unshift({id:data.id,name:data.session.state.localWorld.name,pack:data.session.state.localWorld.pack.name,seed:data.session.state.seed,savedAt:data.savedAt,regions:Object.keys(data.session.state.localWorld.regions).length});
             localStorage.setItem('wildbound-world-index',JSON.stringify(index));
           }
-        } else if (window.desktop) await window.desktop.saveSession(data,data.wilds?'wilds':undefined);
-        else localStorage.setItem(data.wilds?'wildbound-session-wilds':'wildbound-session', JSON.stringify(data));
+        } else {
+          const mode=data.wilds?.progress?.homeStart?'wilds-fresh':data.wilds?'wilds':undefined;
+          if(window.desktop)await window.desktop.saveSession(data,mode);
+          else localStorage.setItem(mode?'wildbound-session-'+mode:'wildbound-session',JSON.stringify(data));
+        }
       } finally { metrics.record('save',performance.now()-started); }
     }, {onChange: state => {
       target.saving = state.saving;
@@ -295,9 +304,13 @@ function persistLocalGame(target=game){
   return target.localWorld ? persistSession(target) : Promise.resolve();
 }
 let lastProfileFlush=null;
-async function flushProgress({allowProfileLoadFailure=false}={}) {
+const railwayPreview=()=>!!game.trainTest&&!game.trainTest.persistent;
+async function flushProgress({allowProfileLoadFailure=false,leaveRailwayPreview=false}={}) {
   if (rooms.role === 'client') return;
-  if(game.trainTest&&!game.trainTest.persistent){await profiles.savePromise;await gameSaves.get(game)?.flush();if(profiles.error&&!(profiles.loadError&&allowProfileLoadFailure))throw Error(profiles.error);return;}
+  if(railwayPreview()){
+    if(leaveRailwayPreview)leaveTrainTest(game);
+    else{await profiles.savePromise;await gameSaves.get(game)?.flush();if(profiles.error&&!(profiles.loadError&&allowProfileLoadFailure))throw Error(profiles.error);return;}
+  }
   const target=game;
   // Capture both stores before awaiting either; the active session stays open
   // if either record fails. No transition may discard a failed checkpoint.
@@ -309,11 +322,11 @@ async function flushProgress({allowProfileLoadFailure=false}={}) {
   if(profiles.error&&!(profiles.loadError&&allowProfileLoadFailure))throw Error(profiles.error);
   lastProfileFlush=Date.now();refreshSaveStatus();
 }
-window.wildboundFlushLocalWorld=()=>flushProgress({allowProfileLoadFailure:true});
+window.wildboundFlushLocalWorld=()=>flushProgress({allowProfileLoadFailure:true,leaveRailwayPreview:true});
 const continueExpedition=document.createElement('button');continueExpedition.id='continue-expedition';continueExpedition.className='text-button';continueExpedition.textContent='Continue saved expedition';
 const continueNotice=document.createElement('p');continueNotice.id='continue-expedition-notice';continueNotice.setAttribute('role','status');
-const continueWilds=document.createElement('button');continueWilds.id='continue-wilds';continueWilds.className='text-button';continueWilds.textContent='Continue The Wilds';
-continueWilds.onclick=()=>continueSavedExpedition('wilds',{button:continueWilds});
+const continueWilds=document.createElement('button');continueWilds.id='continue-wilds';continueWilds.className='text-button';continueWilds.textContent='Start The Wilds';
+continueWilds.onclick=()=>launchFreshWildsFromLobby(continueWilds);
 $('party-menu').append(continueExpedition,continueWilds,continueNotice);
 if(layoutRecoveryNotices.length||profiles.loadError){
   const storageNotice=document.createElement('p');storageNotice.setAttribute('role','status');
@@ -321,27 +334,38 @@ if(layoutRecoveryNotices.length||profiles.loadError){
   $('party-menu').append(storageNotice);
 }
 continueExpedition.onclick=()=>continueSavedExpedition();
+async function loadExpeditionCheckpoint(mode) {
+  if(window.desktop?.loadSession)return window.desktop.loadSession(mode);
+  const storageKey=mode==='wilds'?'wildbound-session-wilds':'wildbound-session';
+  return JSON.parse(localStorage.getItem(storageKey)||'null');
+}
+async function openExpeditionCheckpoint(saved,mode,{isCurrent,onOpen}={}) {
+  // Validate the checkpoint before replacing the current party or world.
+  if(Boolean(saved.wilds)!==(mode==='wilds'))throw Error('The checkpoint belongs to a different adventure mode.');
+  const next=restoreSession(structuredClone(saved));
+  if(next.localWorld)throw Error('Open this named world through Your living worlds.');
+  profiles.reconcileCheckpoint(next);
+  await rooms.stop();
+  if(isCurrent&&!isCurrent())return;
+  onOpen?.();
+  const stash=next.sharedStash;game=next;wireGame();game.sharedStash=stash;
+  for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+  delete $('settings-dialog').dataset.pauseMenu;
+  renderer=new Renderer($('game-canvas'),assets);renderer.showLootDetails=lootDetailsVisible;
+  keys.clear();mouse.down=false;mouse.dash=false;paused=false;fixedClock.reset();show('play');renderRoster();
+  if(game.phase==='lost')showDefeatMenu();
+  else if(disconnected().length)pause('Saved party restored. Reconnect its controllers or assign keyboard control.');
+}
 async function continueSavedExpedition(mode, {button=continueExpedition, notice=continueNotice}={}) {
   if(button.disabled)return;
+  const target=game;
   button.disabled=true;notice.textContent='Loading saved expedition…';
   try {
-    const storageKey=mode==='wilds'?'wildbound-session-wilds':'wildbound-session';
-    const saved=window.desktop?.loadSession?await window.desktop.loadSession(mode):JSON.parse(localStorage.getItem(storageKey)||'null');
+    const saved=await loadExpeditionCheckpoint(mode);
+    if(game!==target)return;
     if(!saved){notice.textContent='No expedition checkpoint yet. Start an adventure or open a saved local world.';if($('pause-dialog').open)$('pause-text').textContent=notice.textContent;return;}
-    // Restore into a separate object first; a damaged save cannot replace the
-    // current party, inventory or editor state.
-    if(Boolean(saved.wilds)!==(mode==='wilds'))throw Error('The checkpoint belongs to a different adventure mode.');
-    const next=restoreSession(structuredClone(saved));
-    if(next.localWorld)throw Error('Open this named world through Your living worlds.');
-    profiles.reconcileCheckpoint(next);
-    const stash=next.sharedStash;await rooms.stop();game=next;wireGame();game.sharedStash=stash;
-    for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
-    delete $('settings-dialog').dataset.pauseMenu;
-    renderer=new Renderer($('game-canvas'),assets);renderer.showLootDetails=lootDetailsVisible;
-    keys.clear();mouse.down=false;mouse.dash=false;paused=false;fixedClock.reset();show('play');renderRoster();
+    await openExpeditionCheckpoint(saved,mode,{isCurrent:()=>game===target});
     notice.textContent='';
-    if(game.phase==='lost')showDefeatMenu();
-    else if(disconnected().length)pause('Saved party restored. Reconnect its controllers or assign keyboard control.');
   } catch(error){notice.textContent='Could not continue: '+error.message+'. Existing saves and your party are unchanged.';if($('pause-dialog').open)$('pause-text').textContent=notice.textContent;}
   finally{button.disabled=false;}
 }
@@ -350,11 +374,13 @@ function refreshSaveStatus() {
   if(!node)return;
   const state={...gameSaves.get(game)?.state,error:game.saveError||gameSaves.get(game)?.state.error};
   if(game.phase==='lobby'&&!state.savedAt)state.savedAt=lastProfileFlush;
-  const text=rooms.role==='client'?'The host saves this expedition.':game.trainTest&&!game.trainTest.persistent?'Train test · expedition save unchanged.':saveStatusText(state,{profileError:profiles.error,profileSaving:profiles.saving});
+  const preview=railwayPreview();
+  const text=rooms.role==='client'?'The host saves this expedition.':preview?'Preview gear and loot are temporary. Shop purchases carry back when you leave. Start The Wilds from the lobby for a fresh expedition.':saveStatusText(state,{profileError:profiles.error,profileSaving:profiles.saving});
   if(node.textContent!==text)node.textContent=text;
   node.dataset.failed=String(!!(state?.error||profiles.error||game.saveError));
   const button=$('progress-save-now');
-  if(button)button.textContent=node.dataset.failed==='true'?'Retry saving':state.saving||profiles.saving?'Saving…':'Save now';
+  if(button)button.hidden=preview;
+  if(button&&!preview)button.textContent=node.dataset.failed==='true'?'Retry saving':state.saving||profiles.saving?'Saving…':'Save now';
 }
 let worldsWasPaused=false;
 function activateLocalGame(next){
@@ -370,7 +396,9 @@ const worldsUI=mountWorldsUI({getGame:()=>game,
   create:async options=>{
     if(!ready)throw Error('The game is still loading.');
     if(!game.players.length)throw Error('Choose explorers in the lobby first, then open Worlds again.');
-    await persistSession();if(game.saveError)throw Error(game.saveError);
+    if(railwayPreview())await flushProgress({leaveRailwayPreview:true});
+    else await persistSession();
+    if(game.saveError)throw Error(game.saveError);
     await rooms.stop();
     const next=createLocalWorld({...options,id:crypto.randomUUID(),party:game.players,
       sharedStash:game.sharedStash,profileRevisions:game.profileRevisions||profiles.revisions});
@@ -378,7 +406,7 @@ const worldsUI=mountWorldsUI({getGame:()=>game,
     await persistLocalGame(next);activateLocalGame(next);
   },
   load:async id=>{
-    await flushProgress({allowProfileLoadFailure:true});
+    await flushProgress({allowProfileLoadFailure:true,leaveRailwayPreview:true});
     const loadRecord=()=>window.desktop?.loadWorld?window.desktop.loadWorld(id):JSON.parse(localStorage.getItem('wildbound-world-'+id)||'null');
     let next;
     try{next=restoreLocalWorld(await loadRecord());}
@@ -452,9 +480,9 @@ function show(next) {
   if (next === "workshop") workshop?.render();
 }
 function newLobby({ keepParty = false, progressFlushed = false } = {}) {
-  if(game.trainTest?.persistent&&!progressFlushed){
+  if(game.trainTest&&!progressFlushed){
     const target=game;
-    return flushProgress().then(()=>{if(game===target)newLobby({keepParty,progressFlushed:true});}).catch(error=>pause('Could not save The Wilds. '+error.message));
+    return flushProgress({leaveRailwayPreview:true}).then(()=>{if(game===target)newLobby({keepParty,progressFlushed:true});}).catch(error=>pause('Could not save progress. '+error.message));
   }
   if(game.localWorld){const target=game;return persistLocalGame(target).then(()=>{if(game!==target)return;delete target.localWorld;newLobby({keepParty});}).catch(()=>worldsUI.open());}
   $('world-status-button').hidden=true;
@@ -769,8 +797,9 @@ function renderRoster() {
     : game.players;
   const elements = rosterPlayers.map((p, i) => {
     const el = document.createElement("div");
-    const hasMana = Boolean(ITEMS[p.equipment?.hand1]?.magic);
-    el.className = "roster-card" + (p === game.current ? " current" : "") + (hasMana ? " has-mana" : "");
+    const wardSeconds=Math.ceil(gardenManaWardRemaining(p));
+    const hasMana = wardSeconds>0||Boolean(ITEMS[p.equipment?.hand1]?.magic);
+    el.className = "roster-card" + (p === game.current ? " current" : "") + (hasMana ? " has-mana" : "") + (wardSeconds?" mana-ward":"");
     el.style.setProperty("--player", p.color);
     const name = document.createElement("div");
     name.className = "roster-name";
@@ -842,6 +871,11 @@ function renderRoster() {
       track.setAttribute("aria-valuemin", "0");
       track.setAttribute("aria-valuemax", String(p.maxMana || 100));
       track.setAttribute("aria-valuenow", String(Math.floor(p.mana ?? 100)));
+      if(wardSeconds){
+        const time=Math.floor(wardSeconds/60)+':'+String(wardSeconds%60).padStart(2,'0');
+        track.title='Mage Garden ward · '+time+' remaining';
+        track.setAttribute('aria-valuetext',label.textContent+' · '+track.title);
+      }
       const bar = document.createElement("i");
       bar.style.width = Math.max(0,Math.min(100,((p.mana ?? 100) / (p.maxMana || 100))*100)) + "%";
       track.append(bar,label);
@@ -910,7 +944,6 @@ function updateControlGuide(message){
   $('game-control-groups').replaceChildren(...groups);
 }
 function updateHud() {
-  $('board-button').hidden=!!game.trainTest;
   if(game.trainTest){
     const t=game.trainTest;$('round-label').textContent=t.design.wildLands?'THE WILD LANDS':'DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';
     updateControlGuide(t.persistent?'Jump at a raised door to board. Camp preserves your Wilds checkpoint.':'Jump at a raised door to board. Use Developer tools to return to your expedition.');
@@ -1059,7 +1092,7 @@ function restartSameLevel() {
   }
   wireGame();
   if(wilds){
-    const result=enterWildLands(game,{persistent:true});
+    const result=enterWildLands(game,{persistent:true,homeStart:true});
     if(result.ok){enterTrainScreen();game.persist();return;}
     $('continue-expedition-notice').textContent=result.message;
     newLobby({keepParty:true});return;
@@ -1141,20 +1174,19 @@ function pause(reason,device) {
   $("resume-button").classList.toggle("hidden", ended);
   $("resume-button").textContent = inLobby ? "Back to lobby" : "Resume expedition";
   $("restart-button").textContent = inLobby ? "New party" : "New expedition";
+  $("quit-button").textContent = railwayPreview() ? "Leave railway preview" : "Save and return to landing";
+  refreshSaveStatus();
   $("reassign-button").classList.toggle(
     "hidden",
     !disconnected().length || game.players.some((p) => p.device === "keyboard"),
   );
   const pad=Array.from(navigator.getGamepads?.()||[]).find(candidate=>candidate&&device==='pad:'+candidate.index);
   const buttonLabels=pad?controllerButtonNames(controllerFamily(pad)):null;
-  dialog.querySelector('.pause-control-help').textContent=pad?`${buttonLabels[controllerMenuButtons(pad).confirm]} confirm · ${buttonLabels[controllerMenuButtons(pad).back]} back · D-pad select`:'Enter confirm · Esc back';
-  if (!$('settings-dialog').open) showPauseLayer(ended?$('restart-button'):$('resume-button'));
-}
-function showPauseLayer(control){
-  const dialog=$('pause-dialog');
+  document.querySelector('.pause-control-help').textContent=pad?`${buttonLabels[controllerMenuButtons(pad).confirm]} confirm · ${buttonLabels[controllerMenuButtons(pad).back]} back · D-pad select`:'Enter confirm · Esc back';
+  dialog.dataset.campMenu='true';
   if(!dialog.open)dialog.showModal();
-  focusDialogControl(dialog,control);
-  control.scrollIntoView({block:'nearest'});
+  if(!campPauseOpen())openSettings(device||'keyboard',true);
+  if(reason){selectSettingsTab('display');$('camp-session-actions').open=true;}
 }
 function transitionTrainScreen(next){
   for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
@@ -1165,42 +1197,48 @@ function transitionTrainScreen(next){
   show(next);paused=false;keys.clear();mouse.down=false;mouse.dash=false;pauseCheat.reset();fixedClock.reset();
   if(next==='lobby'){playableLobby?.sync();renderLobby();}else updateHud();
 }
-function startWildsExpedition(player,done){
+let pendingFreshWilds=null;
+async function launchFreshWildsFromLobby(button){
+ if(button.disabled||screen!=='lobby')return;
+ button.disabled=true;
+ try{
+  const device=controllerDialogDevice||'keyboard';
+  const player=game.players.find(p=>p.device===device)||game.players[0]||game.addPlayer(device);
+  if(!player)return;
+  const result=await startWildsExpedition(player);
+  continueNotice.textContent=result?.ok===false?result.reason:'';
+ }finally{button.disabled=false;}
+}
+function continueFreshWildsAfterSelection(player){
+ const pending=pendingFreshWilds;
+ if(pending?.game!==game||pending.playerId!==player.id)return;
+ pendingFreshWilds=null;
+ startWildsExpedition(player,pending.done).then(result=>{
+  if(result?.ok===false)continueNotice.textContent=result.reason;
+ });
+}
+async function startWildsExpedition(player,done=()=>{}){
+ if(startWildsExpedition.pending)return;
  const target=game;
- const unfinished=target.players.find(p=>!profiles.data.heroes.some(hero=>hero.id===p.profileId));
- if(unfinished){nameNewCharacter(unfinished,()=>startWildsExpedition(player,done));return;}
- const launch=()=>{
-  if(game!==target||screen!=='lobby')return;
-  const result=enterWildLands(target,{persistent:true});
-  if(!result.ok){$('continue-expedition-notice').textContent=result.message;return;}
+ const isCurrent=()=>game===target&&screen==='lobby';
+ startWildsExpedition.pending=true;
+ try {
+  if(!isCurrent())return;
+  const unfinished=target.players.find(p=>!profiles.data.heroes.some(hero=>hero.id===p.profileId));
+  if(unfinished){
+   pendingFreshWilds={game:target,playerId:unfinished.id,done};
+   transitionTrainScreen('lobby');playableLobby.openCharacterStation(unfinished);
+   return;
+  }
+  pendingFreshWilds=null;
+  const result=enterWildLands(target,{persistent:true,homeStart:true});
+  if(!result.ok)return {ok:false,reason:result.message};
   done();
   enterTrainScreen();
   target.persist();
- };
- const request=async()=>{
-  const saved=window.desktop?.loadSession?await window.desktop.loadSession('wilds'):JSON.parse(localStorage.getItem('wildbound-session-wilds')||'null');
-  if(game!==target||screen!=='lobby')return;
-  if(!saved){launch();return;}
-  const confirmation=document.createElement('dialog');
-  confirmation.className='wilds-start-dialog';
-  confirmation.setAttribute('aria-label','Start a new Wilds expedition');
-  confirmation.dataset.ownerDevice=player.device;
-  confirmation.innerHTML='<h2>The Wilds</h2><p>A Wilds expedition is already saved. Starting a fresh expedition replaces its map progress and train position.</p><button type="button" data-wilds-resume>Continue saved Wilds</button><button type="button" data-wilds-new>Start fresh</button><button type="button" data-wilds-cancel>Cancel</button>';
-  document.body.append(confirmation);
-  confirmation.addEventListener('close',()=>confirmation.remove());
-  confirmation.querySelector('[data-wilds-resume]').onclick=()=>{
-   confirmation.close();
-   continueWilds.click();
-  };
-  confirmation.querySelector('[data-wilds-new]').onclick=()=>{confirmation.close();launch();};
-  confirmation.querySelector('[data-wilds-cancel]').onclick=()=>confirmation.close();
-  confirmation.showModal();
-  confirmation.querySelector('[data-wilds-resume]').focus();
- };
- if(startWildsExpedition.pending||document.querySelector('.wilds-start-dialog[open]'))return;
- startWildsExpedition.pending=true;
- return request().catch(error=>{$('continue-expedition-notice').textContent='Could not read The Wilds checkpoint. '+error.message;})
-  .finally(()=>{startWildsExpedition.pending=false;});
+ }catch(error){
+  return {ok:false,reason:'Could not open The Wilds. '+error.message};
+ }finally{startWildsExpedition.pending=false;}
 }
 function enterTrainScreen(){if(!game.trainTest)return;audio.unlock();game.trainTest.returnScreen??=screen;transitionTrainScreen('play');}
 function leaveTrainScreen(previousScreen){transitionTrainScreen(previousScreen==='lobby'?'lobby':'play');}
@@ -1212,7 +1250,9 @@ function resume() {
   }
   $("settings-dialog").close();
   delete $("settings-dialog").dataset.pauseMenu;
+  $('settings-dialog').querySelector('.game-debug-console')?.remove();
   $("pause-dialog").close();
+  delete $('pause-dialog').dataset.campMenu;
   pauseCheat.reset();
   $('pause-dialog').querySelector('.game-debug-console')?.remove();
   paused = false;
@@ -1281,6 +1321,9 @@ $('pause-dialog').addEventListener('focusin', e => {
   e.target.closest('button,input,select,summary')?.classList.add('menu-focus');
 });
 $('pause-dialog').addEventListener('focusout', e => e.target.classList.remove('menu-focus'));
+$('pause-dialog').addEventListener('close', () => {
+  if(!$('pause-dialog').open)delete $('pause-dialog').dataset.campMenu;
+});
 $("pause-dialog").addEventListener("cancel", (e) => {
   e.preventDefault();
   if($('pause-dialog').querySelector('.game-debug-console')){
@@ -1303,7 +1346,7 @@ function setDefeatConfirmation(confirming){
 }
 async function departDefeat(button,action){
  button.disabled=true;
- try{await flushProgress();await action();}
+ try{await flushProgress({leaveRailwayPreview:true});await action();}
  catch(error){$('defeat-status').textContent='Could not save the expedition. '+error.message;}
  finally{button.disabled=false;}
 }
@@ -1324,8 +1367,10 @@ $("quit-button").onclick = async () => {
   if(leavingGame)return;
   leavingGame=true;
   const button=$('quit-button');button.disabled=true;
+  const preview=railwayPreview(),returnScreen=game.trainTest?.returnScreen;
   try {
-    await flushProgress();
+    await flushProgress({leaveRailwayPreview:true});
+    if(preview){leaveTrainScreen(returnScreen);return;}
     $("settings-dialog").close();delete $("settings-dialog").dataset.pauseMenu;
     $("pause-dialog").close();paused=false;keys.clear();mouse.down=false;newLobby({progressFlushed:true});
   } catch(error) {
@@ -1343,8 +1388,8 @@ pauseBackups.onclick=()=>fieldKit.openBackups(controllerDialogDevice||'keyboard'
 savePanel.append(saveStatus,saveNow,pauseBackups);document.querySelector('.pause-actions').prepend(savePanel);
 const continueFromPause=document.createElement('button');continueFromPause.id='pause-continue-expedition';continueFromPause.type='button';continueFromPause.textContent='Continue saved expedition';continueFromPause.hidden=true;
 continueFromPause.onclick=async()=>{continueFromPause.disabled=true;try{await continueExpedition.onclick();}finally{continueFromPause.disabled=false;}};
-const continueWildsFromPause=document.createElement('button');continueWildsFromPause.id='pause-continue-wilds';continueWildsFromPause.type='button';continueWildsFromPause.textContent='Continue The Wilds';continueWildsFromPause.hidden=true;
-continueWildsFromPause.onclick=()=>continueSavedExpedition('wilds',{button:continueWildsFromPause});
+const continueWildsFromPause=document.createElement('button');continueWildsFromPause.id='pause-continue-wilds';continueWildsFromPause.type='button';continueWildsFromPause.textContent='Start The Wilds';continueWildsFromPause.hidden=true;
+continueWildsFromPause.onclick=()=>launchFreshWildsFromLobby(continueWildsFromPause);
 document.querySelector('.pause-actions').append(continueFromPause,continueWildsFromPause);
 const recoveryButton=document.createElement('button');recoveryButton.id='recover-ground';recoveryButton.type='button';recoveryButton.textContent='Help · Move to safe ground';
 document.querySelector('.pause-actions').append(recoveryButton);
@@ -1408,17 +1453,30 @@ document.querySelectorAll('[data-settings-tab]').forEach(button => {
 let controllerDialogDevice = null;
 function openSettings(device = controllerDialogDevice || 'keyboard', fromPause = false) {
   const dialog = $("settings-dialog");
-  if (dialog.open) return;
-  if (screen === "play"&&!paused){pause(undefined,device);fromPause=true;}
+  if (dialog.open&&!fromPause) return;
+  if (screen === "play"&&!paused){pause(undefined,device);return;}
+  const actions=$('camp-session-actions');
+  actions.hidden=!fromPause;
   if(fromPause){
     dialog.dataset.pauseMenu="true";
-    $("pause-dialog").close();
+    actions.open=false;
+    actions.querySelector('summary').textContent=screen==='lobby'?'Lobby actions':'Expedition actions';
+    if(!actions.querySelector('#pause-text')){
+      const secondary=document.querySelector('.pause-secondary');
+      secondary.append($('pause-dev'));
+      const choices=document.querySelector('.pause-actions');
+      choices.append($('pause-pvp'),$('pause-difficulty'));
+      actions.append($('pause-text'),secondary,choices,$('pause-last-encounter'),document.querySelector('.pause-control-help'));
+    }
+    $('pause-worlds').parentNode.append($('pause-worlds'));
+  }else{
+    delete dialog.dataset.pauseMenu;
   }
-  $("close-settings").textContent=fromPause?'Back to pause menu':'Done';
+  $('close-settings').textContent='✓  DONE';
   dialog.dataset.ownerDevice = device;
   const pad = Array.from(navigator.getGamepads?.() || []).find(pad => pad && device === 'pad:' + pad.index);
   dialog.dataset.controllerFamily = pad ? controllerFamily(pad) : 'keyboard';
-  dialog.showModal();
+  if(!dialog.open)dialog.showModal();
   selectSettingsTab('display');
   renderPlayerMappings($("player-mappings"), game, mapping);
   const hero = game.players[0];
@@ -1429,13 +1487,21 @@ function openSettings(device = controllerDialogDevice || 'keyboard', fromPause =
   focusSettingsPanel();
 }
 function closeSettings() {
-  const returningToPause=!!$("settings-dialog").dataset.pauseMenu;
+  const dialog=$('settings-dialog');
   musicPicker.close();
-  $("settings-dialog").close();
-  delete $("settings-dialog").dataset.pauseMenu;
-  delete $("settings-dialog").dataset.ownerDevice;
-  delete $("settings-dialog").dataset.controllerFamily;
-  if(returningToPause&&paused)showPauseLayer($('reassign-button').classList.contains('hidden')?$('pause-settings'):$('reassign-button'));
+  if(dialog.dataset.pauseMenu&&paused){
+    if(disconnected().length){
+      resume();
+      selectSettingsTab('display');
+      $('camp-session-actions').open=true;
+      focusDialogControl(dialog,$('reassign-button'));
+    }else resume();
+    return;
+  }
+  dialog.close();
+  delete dialog.dataset.pauseMenu;
+  delete dialog.dataset.ownerDevice;
+  delete dialog.dataset.controllerFamily;
 }
 $("settings-button").onclick = () => openSettings();
 $("close-settings").onclick = closeSettings;
@@ -1447,7 +1513,9 @@ for (const type of ['keydown', 'cancel']) $("settings-dialog").addEventListener(
 }, true);
 $("settings-dialog").addEventListener('cancel',event=>{
   event.preventDefault();
-  if(musicPicker.picker.open){musicPicker.close();musicPicker.picker.querySelector("summary").focus();}
+  const debug=$('settings-dialog').querySelector('.game-debug-console');
+  if(debug){debug.remove();$('pause-dev').focus();}
+  else if(musicPicker.picker.open){musicPicker.close();musicPicker.picker.querySelector("summary").focus();}
   else closeSettings();
 });
 $("settings-dialog").addEventListener('close', () => {
@@ -1676,7 +1744,10 @@ function dialogController(pad, previous) {
   if(dialog.dataset.ownerDevice && dialog.dataset.ownerDevice!=='pad:'+pad.index)return;
   const menuButtons=controllerMenuButtons(pad);
   dialog.updateControllerFamily?.(controllerFamily(pad),menuButtons);
-  if(dialog.id==='pause-dialog'&&pad.buttons[mapping.pause]?.pressed&&!previous[mapping.pause]){resume();return;}
+  if(dialog===pauseMenuHost()&&pad.buttons[mapping.pause]?.pressed&&!previous[mapping.pause]){
+    if(campPauseOpen())closeSettings();else resume();
+    return;
+  }
   if(dialog.id==='victory-results'){
     if((pad.buttons[0]?.pressed&&!previous[0])||(pad.buttons[1]?.pressed&&!previous[1]))dialog.close();
     else if(pad.buttons[12]?.pressed&&!previous[12])scrollVictoryReport(dialog,-1);
@@ -1762,7 +1833,7 @@ function dialogController(pad, previous) {
   if (active < 0 && (left || right || up || down || accept)) {
     selected = controls[0];
     selected.focus();
-  } else if (active >= 0 && dialog.id==='pause-dialog' && (left||right||up||down) && !(selected instanceof HTMLSelectElement) && !dialog.querySelector('.game-debug-console')) {
+  } else if (active >= 0 && (dialog.id==='pause-dialog'||selected?.closest('#camp-session-actions .pause-actions')) && (left||right||up||down) && !(selected instanceof HTMLSelectElement) && !dialog.querySelector('.game-debug-console')) {
     selected = dialogNeighbour(controls,selected,left?-1:right?1:0,up?-1:down?1:0);
     selected.focus();
   } else if (active >= 0 && (up || down)) {
@@ -1826,6 +1897,27 @@ function inputFrame() {
     // Solo mouse-started expeditions should work as soon as a controller is used.
     const device = "pad:" + pad.index;
     const playerForPad = game.players.find((p) => p.device === device);
+    const inCab=screen==='play'&&!!playerForPad?.trainRide?.driving&&game.trainTest?.driver===playerForPad.id&&!playerForPad.ui;
+    const cabBindings=inCab?trainCabButtons(mapping):null;
+    const cabDirections=cabDpadRelease.get(pad.index)||(inCab?new Set():null);
+    if(cabDirections){
+      for(const index of [12,13,14,15]){
+        if(!pad.buttons[index]?.pressed)cabDirections.delete(index);
+        else if(inCab)cabDirections.add(index);
+      }
+      if(cabDirections.size)cabDpadRelease.set(pad.index,cabDirections);
+      else cabDpadRelease.delete(pad.index);
+    }
+    const blockedDirection=index=>isDpadButton(index)&&(inCab||cabDirections?.has(index));
+    const cabActionButtons=cabBindings&&Object.values(cabBindings);
+    const buttonFor=action=>cabBindings?.[action]??mapping[action];
+    const pressed=action=>{
+      const index=buttonFor(action);
+      return !joinedNow&&!blockedDirection(index)&&
+        (cabBindings?.[action]!==undefined||!cabActionButtons?.includes(index))&&!!pad.buttons[index]?.pressed;
+    };
+    const directionPressed=index=>!blockedDirection(index)&&!!pad.buttons[index]?.pressed;
+    const lobbyMember = screen==='lobby'&&playableLobby?.state.members.get(playerForPad?.id);
     if (playerForPad) {
       playerForPad.controllerFamily = controllerFamily(pad);
       playerForPad.controllerName = CONTROLLER_NAMES[playerForPad.controllerFamily];
@@ -1851,7 +1943,7 @@ function inputFrame() {
     }
     const settingsAction = controllerSettingsRouter.route({
       pad, previous, screen, dialog: openDialog, pendingOpen: pendingControllerSettings.has(claimKey),
-      explorerSelected:game.players.some(p=>p.device===device&&p.profileId),
+      explorerSelected:!!lobbyMember?.spawned,
     });
     pendingControllerSettings.delete(claimKey);
     if (settingsAction) {
@@ -1892,7 +1984,7 @@ function inputFrame() {
       !modal &&
       screen === "play" &&
       game.players.some((p) => p.device === device) &&
-      pad.buttons[mapping.field]?.pressed &&
+      pressed('field') &&
       !playerForPad?.ui &&
       !previous[mapping.field]
     ) {
@@ -1936,8 +2028,7 @@ function inputFrame() {
       if(!lootOwner.ui)modalControllerHeld.add(pad.index);
       continue;
     }
-    const pressed = (key) => !joinedNow && (pad.buttons[mapping[key]]?.pressed || false);
-    if(!joinedNow&&pressed('pause')&&!previous[mapping.pause]&&screen==='lobby'&&game.players.some(p=>p.device===device&&p.profileId)){
+    if(!joinedNow&&lobbyMember?.spawned&&!lobbyMember.panel&&pressed('pause')&&!previous[mapping.pause]){
       if(paused&&$('pause-dialog').open)resume();
       else if(!modal)pause(undefined,device);
       inputs[device]={};
@@ -1947,10 +2038,16 @@ function inputFrame() {
     if(!joinedNow && pad.buttons[3]?.pressed && !previous[3] && pauseCheatActive())pressPauseCheat(device);
     if (screen === 'play' && !modal && !joinedNow) {
       const debugButtons = [[12,'up'],[13,'down'],[14,'left'],[15,'right'],[0,'a'],[1,'b'],[8,'select'],[9,'start']];
-      for (const [index,token] of debugButtons) if (pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token,device);
+      for (const [index,token] of debugButtons) if (!blockedDirection(index)&&pad.buttons[index]?.pressed && !previous[index]) feedDebugCode(token,device);
     }
     if (screen === "lobby") {
       if(!modal && !joinedNow) lobbyController(pad, previous);
+      if(playerForPad&&!game.players.includes(playerForPad)){
+        lobbyLanding?.suppressUntilRelease(pad);
+        inputs[device]={};
+        previousPads.set(pad.index,pad.buttons.map(button=>button.pressed));
+        continue;
+      }
       inputs[device] = joinedNow || modal ? {} : {x:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,y:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,walkX:Math.abs(pad.axes[0]||0)>.18?pad.axes[0]:0,walkY:Math.abs(pad.axes[1]||0)>.18?pad.axes[1]:0,tvLeft:!!pad.buttons[14]?.pressed,tvRight:!!pad.buttons[15]?.pressed,tvA:!!pad.buttons[0]?.pressed,tvX:!!pad.buttons[2]?.pressed,lobbyInteract:pressed('interact'),summon:false,interact:pressed('interact'),attack:pressed('attack'),jump:pressed('jump'),dodge:pressed('dodge'),block:pressed('block'),trap:pressed('trap'),potion:pressed('potion'),bait:pressed('bait'),aimX:pad.axes[2]||0,aimY:pad.axes[3]||0,inventory:pressed('inventory'),next:!!pad.buttons[15]?.pressed||(pad.axes[0]||0)>.5,prev:!!pad.buttons[14]?.pressed||(pad.axes[0]||0)<-.5,up:!!pad.buttons[12]?.pressed||(pad.axes[1]||0)<-.5,down:!!pad.buttons[13]?.pressed||(pad.axes[1]||0)>.5,panel:!!pad.buttons[4]?.pressed||!!pad.buttons[5]?.pressed,use:!!pad.buttons[0]?.pressed,offhand:!!pad.buttons[3]?.pressed&&!pad.buttons[6]?.pressed,sockets:!!pad.buttons[3]?.pressed&&!!pad.buttons[6]?.pressed,close:!!pad.buttons[1]?.pressed};
       inputs[device].tvDown=!!pad.buttons[13]?.pressed;
       inputs[device].tvUp=!!pad.buttons[12]?.pressed;
@@ -1973,7 +2070,7 @@ function inputFrame() {
     )
       boardPinned = !boardPinned;
     const controllerPlayer = game.players.find((p) => p.device === device);
-    const lootTogglePressed = pad.buttons[15]?.pressed && !previous[15];
+    const lootTogglePressed = directionPressed(15) && !previous[15];
     if (
       screen === "play" &&
       !playableLobby?.isPlayingTelevision(device) &&
@@ -1985,22 +2082,23 @@ function inputFrame() {
       lootDetailsVisible = !lootDetailsVisible;
       if (renderer) renderer.showLootDetails = lootDetailsVisible;
     }
-    if (pressed("pause") && !previous[mapping.pause] && screen === "play" && game.players.some((p) => p.device === device)) {
+    if (pressed("pause") && !previous[buttonFor('pause')] && screen === "play" && game.players.some((p) => p.device === device)) {
       if (paused && $("pause-dialog").open && game.phase === "play") resume();
       else if (!modal) pause(undefined,device);
     }
     const dead = (v) => (Math.abs(v || 0) < 0.18 ? 0 : v);
     const campInput=readCampInputSettings();
     const continuousAim=shapeCampStick(pad.axes[2]||0,pad.axes[3]||0,campInput);
-    if(campInput.vibration&&!modal&&pressed('attack')&&!previous[mapping.attack]){
+    if(campInput.vibration&&!modal&&pressed('attack')&&!previous[buttonFor('attack')]){
       try{pad.vibrationActuator?.playEffect('dual-rumble',{duration:65,strongMagnitude:.12,weakMagnitude:.2})?.catch(()=>{});}catch{}
     }
     inputs["pad:" + pad.index] = {
       ...(!joinedNow?vehiclePadInput(pad):{vehicleGas:0,vehicleBrake:0,vehicleReverse:false}),
       x: lootTogglePressed ? 0 : dead(pad.axes[0]),
-      y: dead(pad.axes[1]),
+      y: inCab?trainCabThrottleY(pad,dead(pad.axes[1])):dead(pad.axes[1]),
       aimX: continuousAim.x,
       aimY: continuousAim.y,
+      quidditchBall: !!pad.buttons[2]?.pressed,
       attack: pressed("attack"),
       loot: pressed("loot"),
       jump: pressed("jump"),
@@ -2015,10 +2113,10 @@ function inputFrame() {
       inventory: pressed("inventory"),
       portal: pressed("portal"),
       bait: pressed("bait"),
-      next: !!pad.buttons[15]?.pressed || dead(pad.axes[0]) > 0.5,
-      prev: lootTogglePressed&&!controllerPlayer?.ui ? false : (!!pad.buttons[14]?.pressed || dead(pad.axes[0]) < -0.5),
-      up: !!pad.buttons[12]?.pressed || dead(pad.axes[1]) < -0.5,
-      down: !!pad.buttons[13]?.pressed || dead(pad.axes[1]) > 0.5,
+      next: !inCab&&(directionPressed(15)||dead(pad.axes[0])>.5),
+      prev: !inCab&&!(lootTogglePressed&&!controllerPlayer?.ui)&&(directionPressed(14)||dead(pad.axes[0])<-.5),
+      up: !inCab&&(directionPressed(12)||dead(pad.axes[1])<-.5),
+      down: !inCab&&(directionPressed(13)||dead(pad.axes[1])>.5),
       panel: !!pad.buttons[4]?.pressed || !!pad.buttons[5]?.pressed,
       use: !!pad.buttons[0]?.pressed,
       store: !!pad.buttons[2]?.pressed && !pad.buttons[6]?.pressed,
@@ -2077,6 +2175,7 @@ function inputFrame() {
     tvUp:keys.has("ArrowUp"),
     tvA:keys.has("KeyZ"),
     tvX:keys.has("KeyX"),
+    quidditchBall:keys.has("KeyX"),
     x:
       (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) -
       (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0),
@@ -2138,7 +2237,7 @@ function frame(now) {
       window.desktop.reportDiagnostics({screen,phase:game.phase,paused,focused:document.hasFocus(),
         focusedPanelOwner:document.activeElement?.closest('[data-owner-device]')?.dataset.ownerDevice,
         countdown:playableLobby?.state.countdown,
-        players:game.players.map(p=>{const s=screen==='lobby'?playableLobby?.state.members.get(p.id):p;return {id:p.id,name:p.name,device:p.device,profileSelected:!!p.profileId,x:s?.x,y:s?.y,ready:p.ready,disconnected:p.lobbyDisconnected,panel:s?.panel,input:inputs[p.device]};}),
+        players:game.players.map(p=>{const s=screen==='lobby'?playableLobby?.state.members.get(p.id):p;return {id:p.id,name:p.name,device:p.device,profileSelected:screen==='lobby'?!!s?.spawned:!!p.profileId,x:s?.x,y:s?.y,ready:p.ready,disconnected:p.lobbyDisconnected,panel:s?.panel,input:inputs[p.device]};}),
         controllers:Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>({index:p.index,id:p.id,claimed:controllerClaims.has(p.index),axes:p.axes,buttons:p.buttons.map((b,i)=>b.pressed?i:-1).filter(i=>i>=0)})),
         settings:{map:$('environment').value,difficulty:$('difficulty').value,dice:Number($('dice-count').value)},errors:diagnosticErrors});
     }
@@ -2180,7 +2279,10 @@ function frame(now) {
         saveAge = 0;
       }
       renderer.animator.metrics = metrics;
-      metrics.measure("world", () => renderer.draw(game, dt));
+      metrics.measure("world", () => {
+        renderer.draw(game, dt);
+        (renderer.bellglassEffect??=new BellglassScreenEffect()).draw(renderer.ctx,game);
+      });
       metrics.measure("inventory", () =>
         heroUI.draw(
           game,
@@ -2189,8 +2291,7 @@ function frame(now) {
         ),
       );
       fieldKit.tick(now / 1000);
-      const boardVisible =
-        !game.trainTest&&(boardPinned || !!game.roll);
+      const boardVisible = boardPinned || !!game.roll;
       if(game.roll){boardPinned=false;$('event-card').classList.add('hidden');}
       $("board-panel").classList.toggle("hidden", !boardVisible);
       $("board-panel").classList.toggle('board-sequence',!!game.roll);
@@ -2274,7 +2375,7 @@ try {
   designer.dialog.addEventListener("close", () => {
     if (screen === "play" && !$("pause-dialog").open && !$("defeat-dialog").open) paused = false;
   });
-  playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound,onTrainEnter:enterTrainScreen,startWilds:startWildsExpedition});
+  playableLobby = new PlayableLobby({root:$('lobby'),game:()=>game,profiles,start:startGame,sound,onTrainEnter:enterTrainScreen,startWilds:startWildsExpedition,onExplorerSelected:continueFreshWildsAfterSelection});
   playableLobby.showLootDetails=()=>lootDetailsVisible;
   lobbyLanding=new LobbyLanding({area:playableLobby.area,available:()=>screen==='lobby'&&game.players.length===0,join:(device,pad)=>{const player=game.addPlayer(device);if(!player)return null;if(pad){player.controllerFamily=controllerFamily(pad);player.controllerName=CONTROLLER_NAMES[player.controllerFamily];}renderLobby();playableLobby.sync();sound('join');return player;}});
   ready = true;

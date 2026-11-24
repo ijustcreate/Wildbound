@@ -993,7 +993,7 @@ export class FieldKit {
       this.lastStatus = time;
       this.status.textContent = [
         g.trainTest
-          ? (g.trainTest.persistent?'The Wild Lands · explore on foot or by train':'Railway test · explore freely')
+          ? (g.trainTest.persistent?'The Wild Lands · explore on foot or by train':'Railway preview · temporary gear and loot')
           : g.realm
           ? 'Persistent Forest · explore freely'
           : g.current

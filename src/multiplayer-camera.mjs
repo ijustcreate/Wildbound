@@ -24,7 +24,14 @@ export function cameraFit(players,w,h,s=CAMERA_DEFAULTS){
  const needed=Math.min(w/(maxX-minX+s.padding*2),h/(maxY-minY+s.padding*2));
  return {x:(minX+maxX)/2,y:(minY+maxY)/2,zoom:clamp(needed,s.minZoom,s.maxZoom),needed};
 }
+const belowDeck=p=>p.pirateRide?.level==='hold';
+function separateShipFloors(group){
+ const aboard=group.filter(belowDeck);
+ return aboard.length&&aboard.length<group.length?[aboard,group.filter(p=>!belowDeck(p))]:null;
+}
 function divide(group){
+ const floors=separateShipFloors(group);
+ if(floors)return floors;
  let best=null;
  for(const axis of ['x','y']){const sorted=[...group].sort((a,b)=>a[axis]-b[axis]||String(a.id).localeCompare(String(b.id)));for(let i=1;i<sorted.length;i++){const gap=sorted[i][axis]-sorted[i-1][axis];if(!best||gap>best.gap)best={gap,groups:[sorted.slice(0,i),sorted.slice(i)]};}}
  return best.groups;
@@ -41,14 +48,14 @@ export class MultiplayerCamera {
   let changed=false;
   while(this.groups.length<Math.min(4,players.length)){
    this.groups=orderGroups(this.groups,order);const rects=cameraRects(this.groups.length,w,h,s);let worst=-1,fit=Infinity;
-   this.groups.forEach((g,i)=>{const bounds=this.availableBounds?.get(g.map(p=>p.id).join(','))||rects[i],f=cameraFit(g,bounds.w,bounds.h,s).needed;if(g.length>1&&f<s.minZoom&&f<fit){worst=i;fit=f;}});
+   this.groups.forEach((g,i)=>{const bounds=this.availableBounds?.get(g.map(p=>p.id).join(','))||rects[i],f=separateShipFloors(g)?0:cameraFit(g,bounds.w,bounds.h,s).needed;if(g.length>1&&f<s.minZoom&&f<fit){worst=i;fit=f;}});
    if(worst<0)break;this.groups.splice(worst,1,...divide(this.groups[worst]));changed=true;
   }
   this.groups=orderGroups(this.groups,order);let candidate=null;
   // Full regroup first, then pairwise merges. Require extra room before merging.
   const candidates=this.groups.length>1?[[players]]:[];
   for(let i=0;i<this.groups.length;i++)for(let j=i+1;j<this.groups.length;j++)candidates.push(this.groups.filter((_,k)=>k!==j).map((g,k)=>k===i?[...g,...this.groups[j]]:g));
-  for(const raw of candidates){const groups=orderGroups(raw,order);const rects=cameraRects(groups.length,w,h,s);if(groups.every((g,i)=>g.length===1||cameraFit(g,rects[i].w,rects[i].h,s).needed>=s.minZoom/s.mergeRatio)){candidate=groups;break;}}
+  for(const raw of candidates){const groups=orderGroups(raw,order);const rects=cameraRects(groups.length,w,h,s);if(groups.every((g,i)=>g.length===1||!separateShipFloors(g)&&cameraFit(g,rects[i].w,rects[i].h,s).needed>=s.minZoom/s.mergeRatio)){candidate=groups;break;}}
   this.mergeTarget=candidate;const key=candidate?signature(candidate):'';
   this.mergeAge=!changed&&key&&key===this.mergeKey?this.mergeAge+Math.max(0,dt):0;if(key!==this.mergeKey)this.mergeReady='';this.mergeKey=key;
   const wait=Math.max(s.mergeDelay,s.mergeFade);this.mergeProgress=candidate?.length===1?Math.max(0,Math.min(1,(this.mergeAge-(wait-s.mergeFade))/s.mergeFade)):0;

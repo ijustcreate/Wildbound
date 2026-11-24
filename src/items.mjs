@@ -4,6 +4,14 @@ import {SKILLS,skillScrollId} from './field-skills.mjs';
 import {CHRISTMAS_ITEMS,SANTA_EQUIPMENT} from './christmas-items.mjs';
 import {SKELETON_ARMOR_ITEMS} from './skeleton-equipment.mjs';
 import {critterContainer} from './critter-containers.mjs';
+import {WIZARDING_SHOP_GOODS} from './wizarding-shop-goods.mjs';
+import {DEATH_EATER_MASKS} from './death-eater-masks.mjs';
+import {DIAGON_CRITTER_ITEMS} from './diagon-critter-species.mjs';
+import {ARENA_COSTUMES} from './diagon-arena-wardrobe.mjs';
+import {EMPORIUM_OWL_ITEMS} from './owl-emporium.mjs';
+import {GARDEN_MANA_BONUS,gardenManaWardRemaining} from './garden-mana-state.mjs';
+import {ARENA_DRINK_ITEMS} from './arena-drink-state.mjs';
+import {WRONG_TURN_KEY,WRONG_TURN_KEY_ITEM} from './wrong-turn-key.mjs';
 export const SLOTS = [
   "head",
   "neck",
@@ -18,6 +26,10 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  ...ARENA_DRINK_ITEMS,
+  ...ARENA_COSTUMES,
+  ...EMPORIUM_OWL_ITEMS,
+  ...DIAGON_CRITTER_ITEMS,
   golden_train_ticket:{name:'Golden Train Ticket',base:'treasure',stack:1,rarity:'rare',sellPrice:0,supplyOnly:true,description:'A gift from the train conductor. Gain 10% more experience while this ticket is in your backpack. Extra tickets do not stack.'},
   cursed_axe:{name:'Cursed Axe',base:'sword',slot:'hand1',stack:1,damage:29,reach:84,rarity:'unique',supplyOnly:true,color:'#a64655',artColor:'#68767e',curseEyeColor:'#f64256',description:'An iron axe from the heart of the Overlook Maze. Its crimson inlay turns your eyes red while you hold it.'},
   energy_blade_red:{name:'Red energy blade',base:'sword',slot:'hand1',stack:1,damage:34,reach:90,rarity:'unique',color:'#ff3949',artColor:'#ff263f',fire:true,energyBlade:true,supplyOnly:true,bladeColor:'#ff263f',lightSource:{radius:190,intensity:.72,color:'#ff263f'},description:'A humming red energy sword. Burns targets and casts a red glow; the blade powers down after ten seconds without an attack.'},
@@ -26,6 +38,7 @@ export const ITEMS = {
   blank_explorer_costume:{name:'Blank explorer costume',base:'armor',slot:'chest',stack:1,armor:0,sockets:0,rarity:'common',artColor:'#858f90',color:'#858f90',blankExplorer:true,supplyOnly:true,devOnly:true,sellPrice:0,description:'A quiet grey explorer disguise with a subtle question mark. Used by unclaimed explorers. Developer-only costume; never found in normal loot.'},
   ...BONE_CARVER_ITEMS,
   car_key:{name:'Car key',stack:1,rarity:'common',color:'#e6c66f',description:'A keepsake brass car key. Vehicles can be driven without a key.'},
+  [WRONG_TURN_KEY]:WRONG_TURN_KEY_ITEM,
   car_engine_part:{name:'Replacement engine part',stack:1,rarity:'common',color:'#84939a',description:'An optional engine spare. Vehicles are ready to drive without repairs.'},
   pumpkin:{name:'Pumpkin',stack:12,color:'#ed962f',material:true,sellPrice:1,description:'Picked from a cemetery pumpkin patch. Equip a knife in either hand to reveal Carve in your backpack.'},
   jack_o_lantern:{name:'Jack-o’-lantern',base:'hat',slot:'head',stack:1,armor:2,sockets:0,supplyOnly:true,color:'#ed962f',artColor:'#ed962f',style:'pumpkin',description:'A carved pumpkin helmet with flickering fiery eyes. Armor +2. Drop it to decorate the ground.'},
@@ -59,6 +72,7 @@ export const ITEMS = {
   flying_broom:{name:'Witch’s flying broom',stack:1,color:'#bd984f',rarity:'unique',mount:true,sellPrice:90,description:'Use outdoors to mount and fly. B / loot button: dismount and return the broom. A released captured pet can ride behind you.'},
   nimbus_2000:{name:'Repaired Nimbus 2000',base:'flying_broom',stack:1,color:'#c69a4d',rarity:'unique',mount:true,sellPrice:120,questReward:true,description:'Harry Potter’s old Nimbus 2000, carefully repaired with two brass bindings. Use outdoors to fly; dismount to return it to your backpack.'},
   standard_book_of_spells:{name:'Standard Book of Spells',base:'trinket',trinket:true,spellDamage:3,stack:1,rarity:'unique',color:'#9c5345',artColor:'#9c5345',questReward:true,description:'Hermione Granger’s spare textbook. Socket into compatible gear: +3 spell damage. No bonus while loose in your backpack.'},
+  ...Object.fromEntries(Object.entries(WIZARDING_SHOP_GOODS).map(([id,item])=>[id,{...item}])),
   chocolate_frog:{name:'Chocolate Frog',base:'potion',food:true,stack:10,color:'#70462f',artColor:'#70462f',rarity:'uncommon',questReward:true,description:'Always grants 5 minutes of sparkles. 50%: refill health. 50%: escape as a brown frog at your feet, with no healing. Catch it with a net and an empty bottle to try again.'},
   caught_snowy_owl:{name:'Snowy Owl Â· travel cage',stack:1,captureContainer:'critter_cage',color:'#e9eadc',sellPrice:18,description:'Your snowy owl companion. Use outdoors to release it and recover the empty cage.'},
   diagon_ice_cream:{name:'Fortescueâ€™s ice cream',base:'potion',food:true,stack:10,heal:35,color:'#e9c9af',supplyOnly:true,description:'Strawberry ice cream from Diagon Alley. Restores health.'},
@@ -67,8 +81,19 @@ export const ITEMS = {
   hogwarts_trousers:{name:'Hogwarts uniform trousers',base:'pants',slot:'pants',stack:1,supplyOnly:true,rarity:'rare',armor:2,color:'#4b4650',artColor:'#4b4650',description:'Hogwarts uniform set: neatly fitted charcoal trousers.'},
   hogwarts_shoes:{name:'Hogwarts school shoes',base:'boots',slot:'feet',stack:1,supplyOnly:true,rarity:'rare',armor:2,color:'#49372e',artColor:'#49372e',description:'Hogwarts uniform set: polished brown school shoes.'},
   hogwarts_cuffs:{name:'Hogwarts uniform cuffs',base:'gloves',slot:'gloves',stack:1,supplyOnly:true,rarity:'rare',armor:1,color:'#87828a',artColor:'#87828a',description:'Hogwarts uniform set: grey cuffs beneath the robe sleeves.'},
+  alley_inkcap:{name:'Inkcap hat',base:'hat',slot:'head',style:'inkcap',stack:1,supplyOnly:true,rarity:'uncommon',armor:2,color:'#65466b',artColor:'#65466b',trimColor:'#cca46b',description:'A plum felt hat with a crooked peak and a brass nib pin. Armor +2.'},
+  alley_moonstitch_robe:{name:'Moonstitch robe',base:'armor',slot:'chest',style:'robe',stack:1,supplyOnly:true,rarity:'rare',armor:4,maxMana:8,color:'#47597b',artColor:'#47597b',trimColor:'#b6c9d0',description:'A navy walking robe with a silver crescent and stitched split hems. Armor +4, maximum mana +8.'},
+  alley_lantern_mantle:{name:'Lanternkeeper mantle',base:'cape',slot:'cape',stack:1,supplyOnly:true,rarity:'uncommon',armor:2,color:'#8d5140',artColor:'#8d5140',trimColor:'#d6a154',description:'A short russet shoulder cape with amber edging. Armor +2.'},
+  alley_copperweave_gloves:{name:'Copperweave gloves',base:'gloves',slot:'gloves',stack:1,supplyOnly:true,rarity:'uncommon',armor:1,color:'#607153',artColor:'#607153',trimColor:'#b77b55',description:'Moss-dyed work gloves with copper cuffs. Armor +1.'},
+  alley_ashwood_wand:{name:'Silver-vein ash wand',base:'wand',slot:'hand1',eitherHand:true,magic:true,damage:23,manaCost:11,stack:1,supplyOnly:true,rarity:'rare',color:'#afd392',artColor:'#796050',description:'A dark ash shaft with a silver band and a pale green focus. Casts 23 damage for 11 mana.'},
+  alley_lodestone_brooch:{name:'Lodestone brooch',base:'trinket',trinket:true,manaRegen:1,stack:1,supplyOnly:true,rarity:'rare',color:'#75aba3',artColor:'#75aba3',description:'A sea-green stone held by four brass claws. Socket into compatible gear for +1 mana regenerated per second.'},
+  alley_moonmint_tonic:{name:'Moonmint tonic',base:'potion',food:true,heal:45,stack:10,supplyOnly:true,rarity:'uncommon',color:'#7bbfaf',artColor:'#7bbfaf',description:'A cool mint tonic that restores up to 45 health when used from your backpack.'},
+  floo_powder:{name:'Floo Powder',stack:20,supplyOnly:true,rarity:'uncommon',color:'#71bc83',description:'Stand inside a linked fireplace and Interact. Each journey uses one pinch.'},
   mounted_broom:{name:'Broom · in flight',stack:1,color:'#78977a',mountReservation:true,supplyOnly:true,npcOnly:true,description:'Your broom is in flight. B / loot button returns it to this reserved slot.'},
-  witch_hat:{name:'Crooked witch hat',slot:'head',stack:1,armor:2,color:'#6d8051',rarity:'rare',style:'witch',description:'A wide green brim, crooked point and a brass buckle. Armor +2.'},
+  witch_hat:{name:'Crooked witch hat',slot:'head',stack:1,armor:2,color:'#5c734b',rarity:'rare',style:'witch',description:'Moss-green cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
+  witch_hat_plum:{name:'Crooked witch hat (Ink Plum)',base:'hat',slot:'head',stack:1,armor:2,color:'#725783',rarity:'rare',style:'witch',supplyOnly:true,description:'Ink-plum cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
+  witch_hat_slate:{name:'Crooked witch hat (Midnight Slate)',base:'hat',slot:'head',stack:1,armor:2,color:'#526d85',rarity:'rare',style:'witch',supplyOnly:true,description:'Midnight-slate cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
+  witch_hat_russet:{name:'Crooked witch hat (Ember Russet)',base:'hat',slot:'head',stack:1,armor:2,color:'#975f44',rarity:'rare',style:'witch',supplyOnly:true,description:'Ember-russet cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Picked-up relics go here first. Relics inside grant their passive bonuses while you carry this bag.' },
   crafting_bag: { name: 'Crafting Pouch', stack: 1, color: '#83bb92', bag: { slots: 1, category: 'crafting' }, description: 'One crafting supply slot. Holds one stack.' },
   relic_dust:{name:'Relic Dust',stack:999,color:'#c6b38d',material:true,sellPrice:1,description:'Salvaged from unwanted gear. Sell later; stacks to 999.'},
@@ -1085,7 +1110,7 @@ ITEMS.groveheart_focus={name:'Groveheart Focus',base:'wand',slot:'hand1',stack:1
 ITEMS.bogglass_charm={name:'Bogglass Charm',base:'charm',slot:'neck',stack:1,rarity:'rare',maxMana:10,manaRegen:.4,poisonResist:.25,style:'bogglass',color:'#4c9589',artColor:'#4d9c8d',description:'A green glass drop set in a reed-wrapped frame. +10 maximum mana, +0.4 mana/sec, and 25% poison resistance.'};
 ITEMS.wayfinder_quiver={name:'Wayfinder Quiver',base:'quiver',slot:'back',stack:1,rarity:'rare',bowDrawSpeed:.1,arrowSpeed:.2,style:'dunewind',color:'#b98b53',artColor:'#ae7946',description:'A narrow desert quiver for long shots. Arrows travel 20% faster; bows draw 10% faster.'};
 export const ARCANIST_SET=Object.freeze(['arcanist_circlet','arcanist_robe','arcanist_gloves']);
-Object.assign(ITEMS,CHRISTMAS_ITEMS,SKELETON_ARMOR_ITEMS);
+Object.assign(ITEMS,CHRISTMAS_ITEMS,SKELETON_ARMOR_ITEMS,DEATH_EATER_MASKS);
 for(const [color,base,trim] of [['yellow','#c69e3c','#423c35'],['green','#347256','#b9c4b1'],['red','#943e39','#d1a65d'],['blue','#3e618f','#b59b6e']])ITEMS['hogwarts_scarf_'+color]={name:'Hogwarts scarf · '+color,base:'scarf',slot:'back',scarf:[base,trim],stack:1,supplyOnly:true,rarity:'uncommon',color:base,artColor:base,description:'A '+color+' house scarf worn in the back slot. Two cloth tails sway and flap as you move.'};
 export const GEAR_SETS={
  hogwarts:{name:'Hogwarts Uniform',groups:[['hogwarts_student_robes'],['hogwarts_trousers'],['hogwarts_shoes'],['hogwarts_cuffs']],three:{maxMana:10},full:{manaRegen:1},threeText:'+10 maximum mana',fullText:'Regenerate 1 mana/sec'},
@@ -1111,13 +1136,16 @@ for(const [id,item] of Object.entries(ITEMS))if(item.slot){
  if((item.stack??1)===1&&['sword','dagger','bow','wand','staff','rifle','boomerang','scythe','shield','armor','hat','charm'].includes(item.base||id)&&!item.utility)item.sockets??=item.twoHanded?2:1;
 }
 for(const [id,name,mana,regen,rarity,color] of [['azure_bead','Azure bead',15,0,'common','#70c9ec'],['moon_prism','Moon prism',25,0,'rare','#b49cfa'],['starheart','Starheart',40,0,'unique','#80f4d5'],['mana_rune','Mana rune',0,1,'common','#78d6e8'],['void_sigil','Void sigil',0,2,'rare','#9f82e8'],['astral_heart','Astral heart',0,3,'unique','#e48cff']])ITEMS[id]={name,base:'trinket',trinket:true,maxMana:mana,manaRegen:regen,stack:1,rarity,color,artColor:color,description:`Socket into compatible gear: +${regen?regen+' mana/sec':mana+' maximum mana'}. No bonus while loose in your bag.`};
+ITEMS.tideglass_lens={name:'Tideglass Lens',base:'trinket',trinket:true,maxMana:12,manaRegen:2,stack:1,
+ rarity:'unique',supplyOnly:true,color:'#6dcccb',artColor:'#6dcccb',
+ description:'The first lens from Stormwatch Beacon. Socket into compatible gear for +12 maximum mana and +2 mana/sec.'};
 export const socketCount=type=>ITEMS[type]?.slot&&!ITEMS[type]?.trinket?Math.max(0,Math.min(3,Math.floor(Number(ITEMS[type].sockets)||0))):0;
 export function setProgress(p,id){const def=GEAR_SETS[id];if(!def)return null;const worn=new Set(Object.values(p.equipment||{}));const checks=def.groups.map(group=>({ids:group,equipped:group.some(type=>worn.has(type))}));const count=checks.filter(g=>g.equipped).length;return {...def,id,checks,count,complete:count===checks.length};}
 export function setStat(p,key){let n=0;for(const id of Object.keys(GEAR_SETS)){const s=setProgress(p,id);if(s.count>=2)n+=s.two?.[key]||0;if(s.count>=3)n+=s.three?.[key]||0;if(s.complete)n+=s.full[key]||0;}return n;}
 export function hasSetSkill(p,skill){return Object.entries(GEAR_SETS).some(([id,def])=>def.skills?.includes(skill)&&setProgress(p,id).complete);}
 export function gearStat(type,sockets,key){return (Number(ITEMS[type]?.[key])||0)+(sockets||[]).reduce((n,id)=>n+(ITEMS[id]?.trinket?Number(ITEMS[id][key])||0:0),0);}
 export function refreshVitals(p){
- const level=Math.max(1,Number(p.level)||1);p.maxHp=100+(level-1)*8+stat(p,'maxHp');p.maxMana=100+(level-1)*6+stat(p,'maxMana');
+ const level=Math.max(1,Number(p.level)||1);p.maxHp=100+(level-1)*8+stat(p,'maxHp');p.maxMana=100+(level-1)*6+stat(p,'maxMana')+(gardenManaWardRemaining(p)>0?GARDEN_MANA_BONUS:0);
  p.hp=Math.min(p.hp??p.maxHp,p.maxHp);p.mana=Math.min(p.mana??p.maxMana,p.maxMana);
 }
 export function socketTrinket(p,target,index){
@@ -1154,7 +1182,10 @@ export const itemKind = (id) => ITEMS[id]?.base || id;
 // Preserve non-stackable gear, socketed items and container instances.
 for(const [id,item]of Object.entries(ITEMS)){
  if(item.stack>1||id.startsWith('caught_'))item.stack=999;
- if(id.startsWith('caught_'))item.description=(item.description||'A captured critter.')+' Use: release as a follower for this level. Recapture before quitting or it is lost. Salvage: consumes the creature, returns its jar/cage and produces Dark Essence.';
+ if(id.startsWith('caught_'))item.description=(item.description||'A captured critter.')+(item.diagonCritter?
+  ' Use: release into its Diagon Alley habitat and recover its container.':
+  ' Use: release as a follower for this level. Recapture before quitting or it is lost.')+
+  ' Salvage: consumes the creature, returns its jar/cage and produces Dark Essence.';
 }
 export function itemStats(id) {
   const i = ITEMS[id];
@@ -1167,6 +1198,7 @@ export function itemStats(id) {
     i.meleeBurn ? `Burn ${i.meleeBurn.damage} / 0.5 sec for ${i.meleeBurn.duration} sec · ignites struck trees` : "",
     i.shot ? `Aimed shot · range ${i.shot.range}` : "",
     i.magic ? `Mana ${i.manaCost} per cast` : "",
+    i.manaDiscount ? `Spell mana cost −${Math.round(i.manaDiscount*100)}%` : '',
     i.healingAmount ? `Spell healing ${i.healingAmount}–${i.healingAmount*1.5}` : '',
     i.outgoingSpellHealing ? `Outgoing spell healing +${Math.round(i.outgoingSpellHealing*100)}%` : '',
     i.incomingSpellHealing ? `Incoming spell healing +${Math.round(i.incomingSpellHealing*100)}%` : '',
@@ -1175,6 +1207,7 @@ export function itemStats(id) {
     i.arrowSpeed ? `Arrow speed +${Math.round(i.arrowSpeed*100)}%` : '',
     i.armor ? `Armor +${i.armor}` : "",
     i.spellDamage ? `Spell damage +${i.spellDamage}` : '',
+    i.spellHealingFlat ? `Spell healing +${i.spellHealingFlat}` : '',
     i.maxHp ? `Health +${i.maxHp}` : '',
     i.maxMana ? `Mana +${i.maxMana}` : '',
     i.manaRegen ? `Mana regen +${i.manaRegen}/sec` : '',
