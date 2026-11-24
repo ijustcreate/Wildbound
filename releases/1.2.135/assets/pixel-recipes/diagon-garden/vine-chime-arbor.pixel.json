@@ -1,0 +1,166 @@
+{
+  "width": 44,
+  "height": 47,
+  "x": -22,
+  "y": -44,
+  "palette": {
+    "a": "#25322f",
+    "b": "#9b6b4a",
+    "c": "#e6b883",
+    "d": "#253f34",
+    "e": "#497c5d",
+    "f": "#70a774",
+    "g": "#493b31",
+    "h": "#677e70",
+    "i": "#76543d",
+    "j": "#bf9368",
+    "k": "#f6deb0",
+    "l": "#b98453",
+    "m": "#ecc28a",
+    "n": "#758679",
+    "o": "#a2ad92"
+  },
+  "rows": [
+    "............................................",
+    "............................................",
+    "............................................",
+    "...............aaaaaaaaaaaaa................",
+    "..............aabbbbbbbbbbbba...............",
+    "............aaabbbbbbbbbbbbbbaa.............",
+    "...........aabbbccccccccccccbbba............",
+    ".........aaabbcdbbbbbbbbbbbbccbbaa..........",
+    ".........abbbcdedbbbbbbbbbbbbbccbba.........",
+    "........abbbeffeedbbbbbbbbbbbbbbbbb.........",
+    "........abbddeeeeegggggggggbbbbbbbba........",
+    ".......abbedddeehaaaahaaaahgbbbebbbb........",
+    ".......effeeddgeh....h....h.effeebbba.......",
+    "......adeeeeegaah....h....h..eeeeebbba......",
+    "......abdeeegba.h....h....h...eeebbbba......",
+    ".....abdddedba..h....h....h...aegbbbbba.....",
+    ".....aiidddeda..h....h....h....abeiiiaa.....",
+    ".....ajieffee...h....h....h...effeeiiaa.....",
+    ".....ajiieeeee..h....h....h....eeeeeiaa.....",
+    ".....ajiideee...h....h....h.....eeeiiaa.....",
+    ".....ajieddea...h....h....h.....jeiiiaa.....",
+    ".....effeedda...h....h..aklla...jieiiaa.....",
+    ".....aeeeeeaa...h....h..aklla..effeeiaa.....",
+    ".....ajeeedaa.aklla..h..aklla...eeeeeaa.....",
+    ".....ajieddaa.aklla..h.aalllaa..eeeeiaa.....",
+    ".....ajidddaa.aklla..h.ammmmmaffeeeiiaa.....",
+    ".....ajdddiaaaalllaa.h........eeeeeiiaa.....",
+    ".....ajdddiaaammmmmaklla..k....eeeiiiaa.....",
+    ".....ajiiiiaa......aklla........eiiiiaa.....",
+    ".....ajiiiiaa...k..aklla........jiiiiaa.....",
+    ".....ajiiiiaa.....aalllaa.......jiiiiaa.....",
+    ".....ajiiiiaa.....ammmmma.......jiiiiaa.....",
+    ".....ajiiiiaa...................jiiiiaa.....",
+    ".....ajiiiiaa........k..........jiiiiaa.....",
+    ".....ajiiiiaa...................jiiiiaa.....",
+    ".....ajiiiiaa...................jiiiiaa.....",
+    ".....njiiiiaa..................njiiiiaa.....",
+    "....annnnnnnaa.................nnnnnnnaa....",
+    "...annnnnnnnna................nnnnnnnnna....",
+    "..aannnnnnnnnna...............nnnnnnnnnna...",
+    "..aooooooooooona.............ooooooooooona..",
+    "...nnnnnnnnnnnn..............nnnnnnnnnnnn...",
+    "...nnnnnnnnnnna..............nnnnnnnnnnna...",
+    "...nnnnnnnnnnn...............nnnnnnnnnnn....",
+    "....aaaaaaaaaa.................aaaaaaaaa....",
+    "............................................",
+    "............................................"
+  ],
+  "frames": [
+    {
+      "duration": 220
+    },
+    {
+      "duration": 190,
+      "patches": [
+        {
+          "x": 13,
+          "y": 16,
+          "rows": [
+            "............._h...",
+            "..._h........_h...",
+            "..._h........_h...",
+            "..._h..h_...._h...",
+            "..._h..h_...._h...",
+            "..._h..h_.._ak.la.",
+            "..._h..h_.._ak.la.",
+            "._ak.lah_.._ak.la.",
+            "._ak.lah_._.a..l.a",
+            "._ak.lah_._a....ma",
+            "_.a..l.h_.........",
+            "_a...akl.a_.._k...",
+            ".....akl.a_.......",
+            "..._kakl.a_.......",
+            "....a.l..a._......",
+            "....am....a_......",
+            "..................",
+            ".......k_........."
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 240,
+      "patches": [
+        {
+          "x": 13,
+          "y": 14,
+          "rows": [
+            "..._h........_h....",
+            "..._h..h_...._h....",
+            "..._h..h_...._h....",
+            "..._h..h_...._h....",
+            "..._h..h_...._h....",
+            "..._h..h_...._.h...",
+            "..._.h.h_...._.h...",
+            "..._.h.h_..__aklla.",
+            "..._.h.h_..__aklla.",
+            ".__aklha_..__aklla.",
+            ".__aklha_.__aa.llaa",
+            ".__aklha_.__a...mma",
+            "__aa.lhaa..........",
+            "__a.aklla__.._.k...",
+            "....aklla__........",
+            "..._aklla__........",
+            "...aall.aa__.......",
+            "...amm...a__.......",
+            "...................",
+            "......k._.........."
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 190,
+      "patches": [
+        {
+          "x": 13,
+          "y": 16,
+          "rows": [
+            "............._h...",
+            "..._h........_h...",
+            "..._h........_h...",
+            "..._h..h_...._h...",
+            "..._h..h_...._h...",
+            "..._h..h_.._ak.la.",
+            "..._h..h_.._ak.la.",
+            "._ak.lah_.._ak.la.",
+            "._ak.lah_._.a..l.a",
+            "._ak.lah_._a....ma",
+            "_.a..l.h_.........",
+            "_a...akl.a_.._k...",
+            ".....akl.a_.......",
+            "..._kakl.a_.......",
+            "....a.l..a._......",
+            "....am....a_......",
+            "..................",
+            ".......k_........."
+          ]
+        }
+      ]
+    }
+  ]
+}

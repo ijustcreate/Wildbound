@@ -1,0 +1,119 @@
+{
+  "width": 19,
+  "height": 11,
+  "x": -9,
+  "y": -9,
+  "palette": {
+    "o": "#25363e",
+    "g": "#437878",
+    "h": "#72aaa1",
+    "l": "#83bbbc",
+    "v": "#d7e0b8",
+    "i": "#d8f8d9",
+    "a": "#d8a974",
+    "b": "#37414e"
+  },
+  "rows": [
+    ".oo.............oo.",
+    ".ohgo.........ogho.",
+    ".oglhgo.....oghlgo.",
+    "..olvlgo...oglvlo..",
+    "..oglihgo.oghiglo..",
+    "...ogligobogilgo...",
+    "...oogllobollgoo...",
+    "....ogalobolago....",
+    "....oghgoboghgo....",
+    ".....oo..bo.oo.....",
+    ".........bo........"
+  ],
+  "frames": [
+    {
+      "duration": 58,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_oo_____________oo_",
+            "_ohgo_________ogho_",
+            "_oglhgo_____oghlgo_",
+            "__olvlgo___oglvlo__",
+            "__oglihgo_oghiglo__",
+            "___ogligobogilgo___",
+            "___oogllobollgoo___",
+            "____ogalobolago____",
+            "____oghgoboghgo____",
+            "_____oo__bo_oo_____",
+            "_________bo________"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 56,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "___oo_________oo___",
+            "___ohgo_____ogho___",
+            "___oglhgo_oghlgo___",
+            "____olvlobolvlo____",
+            "____oghgoboghgo____",
+            "_____olgoboglo_____",
+            "_____olhobohlo_____",
+            "______olobolo______",
+            "_______oobo________",
+            "_________bo________",
+            "_________bo________"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 45,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_______o_o_o_______",
+            "______ogo_ogo______",
+            "______olobolo______",
+            "_______ogbgo_______",
+            "_______oibio_______",
+            "_______ogbgo_______",
+            "________obo________",
+            "________obo________",
+            "_________bo________",
+            "_________bo________",
+            "___________________"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 57,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "____oo_________oo__",
+            "____ohgo_____ogho__",
+            "____oglhgo_oghlgo__",
+            "_____oglioboilgo___",
+            "____ooglgbglgoo____",
+            "_____ollobollo_____",
+            "_____olgoboglo_____",
+            "______ohoboho______",
+            "_______oobo________",
+            "_________bo________",
+            "_________bo________"
+          ]
+        }
+      ]
+    }
+  ]
+}
