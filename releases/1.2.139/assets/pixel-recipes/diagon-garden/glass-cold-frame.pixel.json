@@ -1,0 +1,111 @@
+{
+  "width": 56,
+  "height": 37,
+  "x": -28,
+  "y": -34,
+  "palette": {
+    "a": "#25322f",
+    "b": "#ecc28a",
+    "c": "#27454e",
+    "d": "#336775",
+    "e": "#47818a",
+    "f": "#497c5d",
+    "g": "#89614a",
+    "h": "#70a8a5",
+    "i": "#9abb82",
+    "j": "#b1d7c1",
+    "k": "#76543d",
+    "l": "#493b31",
+    "m": "#b98453",
+    "n": "#9b6b4a"
+  },
+  "rows": [
+    "........................................................",
+    "........................................................",
+    "......................................a.................",
+    "...............................aaaaaaaaaa...............",
+    ".......................aaaaaaaaaaabbbbaaaa..............",
+    "................aaaaaaaaaaaabbbbbbccdcbbaaaa............",
+    "........aaaaaaaaaaaaabbbbbbbccddddeeeedcbbaaaa..........",
+    ".......aaaaaaaabbbbbbcccddbdeeeeeefdddeedcbbaaaa........",
+    ".......aaacbbbbccdddddeeeggbddddffffddddeedfbbaaa.......",
+    "......aaacbdddddhhheeedddfggbgddiifffddddfeefcbbaaa.....",
+    "......aaacbdehhhdddddddffffdgbgdfffffddddiifeedcbbaaa...",
+    ".....aaacbddhddfdddddddiifffdbgdffffffdfdfffffeedcbaa...",
+    "....aaaacbdhdjjffddddddffffffbgfdddddffffffffffddcbaa...",
+    "....aaacbdhjjiifffdddfdfffffbgfffddddiifffdddddddbaaa...",
+    "...aaacbdhjfdfffffdffffdddddbgfffddddfffffdddddddbaaa...",
+    "...aaacbhffffffffffiifffddddbgffffdddffffffdddddcbkaa...",
+    "..aaacbddiifffdddddfffffddddbgddddddddddddddddddcbkla...",
+    "..aakkbcdfffffdddddffffffdddbgddddddddddddddddddbllla...",
+    "..aakkcbdffffffdddddddddddddbgddddddddddddddddddbllla...",
+    "..aakkkbcddddddddddddddddddbgdddddddccccccccbbbbblllaa..",
+    "..aakkkkbddddddddddddddccccbgcccccbbbbbbbbblllllllllaa..",
+    "..aakkkkbcdcccccccccccccbbbbgbbbbllllllllllkkkllllllaa..",
+    "..aakkkkkbccccbbbbbbbbbllllllllllkkkkkkkkkkkkkllllllaa..",
+    "...akkkkkbbbbllllllllllgbbbgggkkkkkmmkkkkkkkkmmlllllaa..",
+    "...akkkklllllkkkkkkkkkngggggggkkkknkkkkkkkkknkllllllaa..",
+    "...akkkkknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknlllllllaa..",
+    "...akkkkknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknlllllllaa..",
+    "...akkkkknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknlllllllaa..",
+    "...akkkkknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknllllllaa...",
+    "...aakkkknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknllllaaa....",
+    "...aaaakknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknlllaaa.....",
+    ".....aaaknkkkkkkkkkkkknkkkkkkkkkkknkkkkkkkkknklaaa......",
+    "......aaakaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.......",
+    "........aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa........",
+    ".........a..............................................",
+    "........................................................",
+    "........................................................"
+  ],
+  "frames": [
+    {
+      "duration": 330
+    },
+    {
+      "duration": 330,
+      "patches": [
+        {
+          "x": 10,
+          "y": 11,
+          "rows": [
+            "............jj",
+            "...ff.....jj..",
+            ".dd......j....",
+            "d............."
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 330,
+      "patches": [
+        {
+          "x": 10,
+          "y": 10,
+          "rows": [
+            "...........................jj",
+            ".........................jj..",
+            "...ff...................j....",
+            ".dd..........................",
+            "d............................"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 330,
+      "patches": [
+        {
+          "x": 10,
+          "y": 12,
+          "rows": [
+            "...ff.............................jj",
+            ".dd.............................jj..",
+            "d..............................j...."
+          ]
+        }
+      ]
+    }
+  ]
+}
