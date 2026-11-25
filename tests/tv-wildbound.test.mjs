@@ -181,7 +181,7 @@ test('lobby switches to the TV world without starting or mutating its regular ga
   state.sync(game.players);Object.assign(state.members.get(hero.id),{spawned:true,panel:null,x:785,y:165});
   television.join(hero.id);television.completed=true;
   const lobby=Object.create(PlayableLobby.prototype);
-  Object.assign(lobby,{getGame:()=>game,state,television,practice:{stepPractice(){}},showTvGuide(){},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});
+  Object.assign(lobby,{getGame:()=>game,state,television,practice:{players:[],stepPractice(){}},showTvGuide(){},sync(){},draw(){},panels:{replaceChildren(){}},area:{querySelector:()=>({textContent:''})},root:{querySelector:()=>({textContent:''})}});
   lobby.update(.016,{});
   assert.ok(lobby.tvWildbound instanceof TvWildbound);
   const firstScenes=lobby.tvWildbound.scenes.map(scene=>scene.name);
