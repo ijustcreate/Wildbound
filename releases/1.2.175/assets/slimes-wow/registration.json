@@ -1,0 +1,136 @@
+{
+  "added": "slime",
+  "preserved": [
+    "version",
+    "player",
+    "warlock",
+    "grim_reaper",
+    "safari_hunter",
+    "alan",
+    "banshee",
+    "succubus",
+    "imp",
+    "zombie",
+    "ghost",
+    "alligator",
+    "skeletonMotions",
+    "lion",
+    "tiger",
+    "wolf",
+    "murk_wolf",
+    "dreadmane_lion",
+    "shore_goblin",
+    "oathless_captain",
+    "villager",
+    "bat",
+    "rhino",
+    "creatureMotions",
+    "beastMotions",
+    "nightMotions"
+  ],
+  "preservedSha256": {
+    "version": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "player": "3afea595848b355331292f4b63f65f121d2f42bc2f9e079d04e00b842e4d609f",
+    "warlock": "02bcb830a73aabb2c99ce5c44092d25d68192767ab9e2a9f13b748c12ffc1be3",
+    "grim_reaper": "4926754435a34442852f6a09742f84b4c221a28e39775e6dbb26ccedb087483f",
+    "safari_hunter": "d1a22713a6bccf64e52c35760c3856978423075137f3878c3eb32d0c4f685ace",
+    "alan": "17e5b4718a4fb5bd9022dfacaeea9054fa9014bc5310d9a96b279c94fd872b18",
+    "banshee": "5093b4c8070a906a7f3f1755856fafb58c0749ae8ae0850782ff77070ac2f423",
+    "succubus": "f55521e1f9f98fe6bf67ffe7c93936923a9804890cf748b32bbe163300140e7a",
+    "imp": "234b3c82b135681ae6d6502dfbe0c7496c1f3949b8118aa972b78e2a2a21f287",
+    "zombie": "69fed76c7f9417ac6b43df45230874d479fc7b44d7cc8a9c710764251d26a1cd",
+    "ghost": "e792e581211cf64c012b1a10e17fc089945bf049fe228e44892efb0e93bfd186",
+    "alligator": "13f490048234d4aecdeb924d813e4a51ff1b3fe3d20afeee1d1b1b68d2f90d27",
+    "skeletonMotions": "0b995c3454bd405b7ec9272a2de71cc737a022006768508eac019575d6475e50",
+    "lion": "d4f9b19caf192ce28dc8b74bdcd66f05359549980efb858bb988381b4553e6bd",
+    "tiger": "68ce38d413e96c38520c31c6a9bc67433f6bed351961fdb1d9ea487efb15587b",
+    "wolf": "bdcd0453faba39a327c61c71c30d6f489f7a700a65498db0ec7f1484bb7f64ea",
+    "murk_wolf": "bab7856ada779e945b8f7878b7fa1a2c26c2bb51040df42ec967a0f7dc6b9217",
+    "dreadmane_lion": "b91a1491f4a1ca6ab4898f8fca46183422e2da0d56c4deca6a768ec6aa7daa9d",
+    "shore_goblin": "f7c6f570f75ebdcd5641813d97f6eecc5d7bbddb5d45109b762844593aeef03e",
+    "oathless_captain": "8a21b936006675c31abea0e60e7223ebb75cfef36a01ab50f38a50fd266436f6",
+    "villager": "a9fc65cd6c74e97e7e2429d1eb239d69596fd087c2d1d29c01ffd81d6181c5ce",
+    "bat": "5a5ff94265a18fb846f45aebb5067db21f23be535cdffc0cb679551092aaa8ab",
+    "rhino": "7411b0d281ac1d5d2a44b21046d9dfeb864b24af1862535b1ec2cc6dd8b40736",
+    "creatureMotions": "1aa0fd83a6fdc0e95ace1854654ef3802a135df79708d0b7045917b4b1e29850",
+    "beastMotions": "8f5aaf9726f555f553d46a5e04070430f562222a72d1c773476475627c119ace",
+    "nightMotions": "5568dd8e5c0fca69f0c483f23c07b35072e542f4d269dc3c090ff61e0cfd22b0"
+  },
+  "source": {
+    "reference": "https://www.wowhead.com/npc=222603/slime#modelviewer",
+    "npcId": 222603,
+    "displayId": 114801,
+    "modelFileId": 3457112,
+    "sourceUrl": "https://wow.zamimg.com/modelviewer/live/m2/3457112.m2",
+    "sourceSha256": "92312377bb951f53c2ad0fd5e3dac1baf518ed9b9901158f44bca7d9466fad77",
+    "sourceBones": 72,
+    "sourceSequences": 7,
+    "distinctSequences": 7,
+    "mappedBones": {
+      "core": 26,
+      "crest": 48,
+      "rimL": 28,
+      "rimR": 31,
+      "eyeL": 70,
+      "eyeR": 71,
+      "gelL": 35,
+      "gelR": 36
+    },
+    "scale": 20,
+    "axes": "WoW (X forward,Y left,Z up) -> Wildbound (Y,X,Z)",
+    "rootMotion": "Native shape handles are relative to the body control; game locomotion owns horizontal travel.",
+    "clips": {
+      "idle": {
+        "sequence": 0,
+        "animationId": 0,
+        "duration": 2.667,
+        "loop": true,
+        "sourceName": "Stand"
+      },
+      "run": {
+        "sequence": 1,
+        "animationId": 5,
+        "duration": 0.867,
+        "loop": true,
+        "sourceName": "Run"
+      },
+      "walk": {
+        "sequence": 2,
+        "animationId": 4,
+        "duration": 2.267,
+        "loop": true,
+        "sourceName": "Walk"
+      },
+      "hurt": {
+        "sequence": 3,
+        "animationId": 9,
+        "duration": 0.833,
+        "loop": false,
+        "sourceName": "CombatWound"
+      },
+      "attack": {
+        "sequence": 4,
+        "animationId": 16,
+        "duration": 1,
+        "loop": false,
+        "sourceName": "AttackUnarmed"
+      },
+      "attack_alt": {
+        "sequence": 5,
+        "animationId": 16,
+        "duration": 1,
+        "loop": false,
+        "sourceName": "AttackUnarmed"
+      },
+      "death": {
+        "sequence": 6,
+        "animationId": 1,
+        "duration": 5.333,
+        "loop": false,
+        "sourceName": "Death"
+      }
+    },
+    "rights": "Blizzard source motion tracks; original Wildbound pixel artwork. The source mesh and texture are not bundled into the game."
+  },
+  "registeredSlimeSha256": "593cf6a02b106f97da2f4338f600ff14d1dc9b79fbbbe3da1057fe6bbac055fd"
+}

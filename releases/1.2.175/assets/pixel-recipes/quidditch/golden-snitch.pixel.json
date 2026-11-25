@@ -1,0 +1,28 @@
+{
+  "width": 13,
+  "height": 13,
+  "x": -7,
+  "y": -7,
+  "palette": {
+    "K": "#6b4830",
+    "D": "#a67142",
+    "B": "#cc984e",
+    "T": "#e9ba67",
+    "L": "#f7de9d"
+  },
+  "rows": [
+    ".............",
+    "...KKKKKKK...",
+    "..KKBBBBBKK..",
+    "..KBTTTTBBKK.",
+    ".KKBLLLDDDBK.",
+    ".KBTTTTTDBBK.",
+    ".KDTTTTBLBDK.",
+    ".KDDBBBBDDDK.",
+    ".KDKKDDDDDDK.",
+    ".KKDDKKDDDKK.",
+    "..KKDDDDDKK..",
+    "...KKKKKKK...",
+    "............."
+  ]
+}

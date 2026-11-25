@@ -1,0 +1,41 @@
+/* Compact conversation overlay: one speaker, slate and ivory, quiet selection. */
+.hero-panel.npc-dialogue-session {
+  --dialogue-frame:none; background:linear-gradient(145deg,#243440,#17242d)!important;
+  color:#ece7dc!important;border:1px solid #6d7981!important;border-image:none!important;
+  margin:0!important;border-radius:6px;padding:11px 13px 8px!important;overflow:hidden!important;min-width:0;min-height:0;
+  box-shadow:0 10px 35px #030b11a0,inset 0 1px #a3b2b329!important;
+  font-family:'Trebuchet MS','Segoe UI',sans-serif;
+}
+.hero-panel.npc-dialogue-session>header {display:none!important;}
+.hero-panel.npc-dialogue-session>[data-action=close] {position:absolute!important;top:7px!important;right:9px!important;width:28px!important;height:28px!important;min-width:0!important;min-height:0!important;padding:0!important;background:none!important;border:0!important;border-image:none!important;border-radius:3px!important;box-shadow:none!important;color:#a9b5bc!important;font:22px/1 system-ui!important;image-rendering:auto!important;}
+.hero-panel.npc-dialogue-session>[data-action=close]:hover {color:#fff4d5!important;background:#ffffff0a!important;}
+.hero-panel.npc-dialogue-session .npc-dialogue {display:grid!important;grid-template-columns:76px minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:4px 12px;min-height:0;overflow:hidden;}
+.hero-panel.npc-dialogue-session .npc-dialogue-cast {display:block!important;grid-column:1;grid-row:1;min-width:0;align-self:start;}
+.hero-panel.npc-dialogue-session .npc-dialogue-person {margin:0!important;border:0!important;border-image:none!important;box-shadow:none!important;background:transparent!important;border-radius:0;}
+.hero-panel.npc-dialogue-session .npc-dialogue-portrait {display:block;width:100%!important;height:auto!important;max-height:105px!important;object-fit:contain;background:radial-gradient(ellipse at 50% 62%,#65776a52,#1c2b3500 70%)!important;image-rendering:pixelated;}
+.hero-panel.npc-dialogue-session .npc-dialogue-body {grid-column:2;grid-row:1;display:flex;flex-direction:column;min-width:0;min-height:0;padding:0 4px 0 0;overflow:auto;scrollbar-color:#63747c #1c2b34;}
+.hero-panel.npc-dialogue-session .npc-dialogue-heading {display:block;flex:none;margin:0 24px 4px 0;}
+.hero-panel.npc-dialogue-session .npc-dialogue-heading h2 {margin:0 0 1px;color:#eadcc0;font:600 18px/1.15 Georgia,serif;letter-spacing:.015em;}
+.hero-panel.npc-dialogue-session .npc-dialogue-subtitle {display:block;color:#92a4ac;font:11px/1.3 'Segoe UI',sans-serif;letter-spacing:.025em;}
+.hero-panel.npc-dialogue-session .npc-dialogue-text {flex:none;min-height:0!important;padding:0!important;margin:0 0 5px!important;border:0!important;background:none!important;color:#e5e8e4;font:14px/1.35 'Trebuchet MS','Segoe UI',sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;}
+.hero-panel.npc-dialogue-session .npc-dialogue-choices {display:flex!important;flex-direction:column;gap:3px;flex:none;margin:0;padding:4px 0 0;border-top:1px solid #49606a66;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice {display:grid!important;grid-template-columns:15px minmax(0,1fr);width:100%;min-height:26px;margin:0!important;padding:4px 8px!important;row-gap:1px;text-align:left;border:1px solid transparent!important;border-image:none!important;border-radius:3px;background:transparent!important;color:#cbd4d6!important;box-shadow:none!important;outline:none!important;font:13px/1.25 'Trebuchet MS','Segoe UI',sans-serif;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice:is(.selected,:focus-visible) {border:1px solid #82929c!important;border-image:none!important;background:linear-gradient(90deg,#3d5263,#304350)!important;color:#f4ecd9!important;box-shadow:inset 2px 0 #c2ae83!important;outline:none!important;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice:hover {background:#344855!important;border-color:#5c7280!important;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice strong {font:500 13px/1.25 'Trebuchet MS','Segoe UI',sans-serif;color:inherit!important;}
+.hero-panel.npc-dialogue-session .npc-dialogue-choice-key {font:600 13px/1 'Segoe UI',sans-serif;min-width:0;color:#c2ae83!important;align-self:center;}
+.hero-panel.npc-dialogue-session .npc-dialogue-choice-detail {grid-column:2;color:#a6b5bb!important;font:11px/1.4 'Segoe UI',sans-serif;}
+.hero-panel.npc-dialogue-session button.npc-dialogue-choice:disabled {opacity:.48;background:transparent!important;}
+.hero-panel.npc-dialogue-session .npc-dialogue-help {grid-column:1/-1;grid-row:2;display:block;margin:0;padding:4px 0 0;text-align:right;border-top:1px solid #4a5e6666;color:#8499a5;font:10px/1.3 'Segoe UI',sans-serif;letter-spacing:.015em;}
+.hero-panel.npc-dialogue-session .npc-dialogue-quest {flex:none;margin:0 0 10px;padding:8px 10px;border:0;border-left:2px solid #a3906b;background:#0a17222e;color:#d9e0dc;}
+.hero-panel.npc-dialogue-session .npc-dialogue-quest p,.hero-panel.npc-dialogue-session .npc-dialogue-quest small {color:#9fb0b7;font:11px/1.4 'Segoe UI',sans-serif;}
+.hero-panel.npc-dialogue-session .npc-dialogue-quest progress {height:5px;accent-color:#9cadb1;}
+.hero-panel.npc-dialogue-session .npc-dialogue-notice {color:#d2bd96;font:12px/1.4 'Segoe UI',sans-serif;}
+.hero-panel.npc-dialogue-session.party-panel .npc-dialogue {grid-template-columns:56px minmax(0,1fr);gap:4px 8px;}
+@container npc-dialogue (min-width:540px){
+ .hero-panel.npc-dialogue-session button.npc-dialogue-choice:has(.npc-dialogue-choice-detail):not(:disabled) {
+  grid-template-columns:15px minmax(0,1.1fr) minmax(0,1fr);
+ }
+ .hero-panel.npc-dialogue-session button.npc-dialogue-choice:not(:disabled) .npc-dialogue-choice-detail {grid-column:3;}
+}
+@container npc-dialogue (max-width:400px){.hero-panel.npc-dialogue-session .npc-dialogue{grid-template-columns:50px minmax(0,1fr);gap:4px 8px}.hero-panel.npc-dialogue-session .npc-dialogue-heading h2{font-size:16px}.hero-panel.npc-dialogue-session .npc-dialogue-text{font-size:13px}}

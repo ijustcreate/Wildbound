@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "generator": "built-in image_gen.imagegen",
+  "style": "Mossroot forest ruins; common teal/moss palette; nearest-neighbor logical pixel grid",
+  "layers": [
+    {
+      "id": "far-valley",
+      "file": "far-valley-v1.png",
+      "width": 1774,
+      "height": 887,
+      "logicalWidth": 512,
+      "logicalHeight": 256,
+      "transparent": false,
+      "sha256": "27ba8d372e1e44796a85ae2c2afe1cd6d53f4c60ae953eb3943328fb0b0fceb8"
+    },
+    {
+      "id": "ruin-aqueduct",
+      "file": "ruin-aqueduct-v1.png",
+      "width": 1774,
+      "height": 887,
+      "logicalWidth": 512,
+      "logicalHeight": 256,
+      "transparent": true,
+      "sha256": "699c4c3f6d82eb821e61349e4b584b366801f63cbbb99a6cd848def98c4ae7a8"
+    },
+    {
+      "id": "mid-forest",
+      "file": "mid-forest-v1.png",
+      "width": 1774,
+      "height": 887,
+      "logicalWidth": 512,
+      "logicalHeight": 256,
+      "transparent": true,
+      "sha256": "d4b14a11571c82a5f8245627d1c88457d14ec3bd51e73f14b56b9261cf63fb8f"
+    },
+    {
+      "id": "near-canopy",
+      "file": "near-canopy-v1.png",
+      "width": 1774,
+      "height": 887,
+      "logicalWidth": 512,
+      "logicalHeight": 256,
+      "transparent": true,
+      "sha256": "aa3ab3a713cf1654293fb29fdcff461f10456f5509efa4ef0f161825b08bb4af"
+    }
+  ],
+  "journeyBoard": {
+    "file": "journey-board-v1.png",
+    "width": 1774,
+    "height": 887,
+    "logicalWidth": 512,
+    "logicalHeight": 256,
+    "sha256": "805c660a809bf91291099389b6a4876600dc58360c57bf94d7e42cc23a060984"
+  },
+  "boardSkin": {
+    "file": "board-mossroot-v1.png",
+    "width": 1515,
+    "height": 1038,
+    "sha256": "8263b2940295adec649c56fa54198c3508fd094c37299f0386e14cfb7362b697",
+    "generator": "built-in image_gen.imagegen",
+    "foreground": "Original forest path, frame and center well preserved by native clipping; BOARD_TILE_PIXELS unchanged"
+  }
+}

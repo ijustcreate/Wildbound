@@ -1,0 +1,87 @@
+{
+  "width": 27,
+  "height": 31,
+  "x": -13,
+  "y": -30,
+  "palette": {
+    "o": "#293630",
+    "i": "#404d46",
+    "v": "#748379",
+    "m": "#533e34",
+    "q": "#b19861",
+    "F": "#f9e3ac",
+    "z": "#c77e4e"
+  },
+  "rows": [
+    "...........................",
+    "...........................",
+    "...........................",
+    "...............z...........",
+    "...............zz..........",
+    "............z.zzz..........",
+    "...........zzzzqzz.........",
+    "...........zzzqqqz.........",
+    "..........zzzqqqqzz........",
+    ".........zzzqqqqqqz........",
+    "........zzzqqqFqqqzz.......",
+    ".....ooozzzqqFFFqqozoo.....",
+    "...ooooozzzqqFFFqqzoooo....",
+    "..oooovvzzzqqFFFFqzvoooo...",
+    "...oiiiqiiiqiiiqiiiqiiioo..",
+    "...ooiiqiiiqiiiqiiiqiioo...",
+    "....ooiqiiiqiiiqiiiqoi.o...",
+    ".....ooimmmmmmmmmmmiioo....",
+    "......oommmmmmmmmmmooo.....",
+    "......oooooooooooooo.o.....",
+    ".......oooooooooooooo......",
+    "...........iviii...........",
+    "...........iviii...........",
+    "...........iviii...........",
+    "...........iviii...........",
+    ".......ooooiviiiooo........",
+    ".....ooooooiviiiooooo......",
+    "....ooooooooooooooooooo....",
+    "...oooovvvvvvvvvvvvooo.o...",
+    "....ooooooooooooooooo.o....",
+    ".....ooooooooooooooooo....."
+  ],
+  "frames": [
+    {
+      "duration": 155
+    },
+    {
+      "duration": 125,
+      "patches": [
+        {
+          "x": 10,
+          "y": 4,
+          "rows": [
+            "_z_____",
+            "___z___",
+            "__zz___",
+            "_zqzz__",
+            "__qqzz_",
+            "_zqFqz_"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 185,
+      "patches": [
+        {
+          "x": 10,
+          "y": 4,
+          "rows": [
+            "_____z_",
+            "__z____",
+            "_zz_z__",
+            "_zqzz__",
+            "_zqFzz_",
+            "_zFFqz_"
+          ]
+        }
+      ]
+    }
+  ]
+}
