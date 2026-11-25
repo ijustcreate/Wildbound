@@ -74,7 +74,8 @@ function canvas() {
     translate(x, y) {this.x += x; this.y += y;},
     fillRect(x, y, w, h) {calls.push({kind: 'rect', x: x + this.x, y: y + this.y, w, h, color: this.fillStyle, alpha: this.globalAlpha});},
     fillText(text, x, y) {calls.push({kind: 'text', text, x, y});},
-    strokeText() {}, beginPath() {}, rect() {}, clip() {}, scale() {},
+    strokeText() {}, beginPath() {}, rect() {}, clip() {}, scale() {}, rotate() {},
+    moveTo() {}, lineTo() {}, bezierCurveTo() {}, closePath() {}, stroke() {}, fill() {},
   };
   return c;
 }

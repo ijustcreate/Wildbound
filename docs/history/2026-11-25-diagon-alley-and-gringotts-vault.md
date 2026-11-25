@@ -22,3 +22,5 @@ Sirius Black blinks, glances left, and turns forward again on a 4.8-second loop.
 Muted source and packaged Electron sampled every frame in the Nocturne connector. The image returned exactly to idle, its screen anchor stayed fixed, and pixels outside the portrait remained identical. All 28 focused alley and pixel-recipe tests passed. Captures and the frame report are in `test-output/sirius-portrait-animation/`.
 
 The normal-profile `1.2.178` package was used to verify the portrait before the checkout advanced to `1d7d016828832dde460986ddba403c30ee26799a`. Its executable passed muted lobby boot and all three portrait files matched the source.
+
+The delivered normal-profile build is `1.2.184`, packaged from the modified checkout at `4f5a265aff90222b12527182211abf2c90c0ed17`. Its three portrait files matched the checkout by hash. The exact executable passed muted lobby boot and the in-alley animation check. The `Wildbound Worlds (1.2.184).lnk` shortcut targets `Play Wildbound.cmd` with `-BuildDirectory "dist\1.2.184\Wildbound-win32-x64"` and passed the launcher check.
