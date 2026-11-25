@@ -1,0 +1,107 @@
+{
+  "width": 22,
+  "height": 9,
+  "x": -10,
+  "y": -7,
+  "palette": {
+    "o": "#302d39",
+    "g": "#645966",
+    "h": "#928593",
+    "m": "#463e4c",
+    "e": "#bf8c9b",
+    "t": "#bb9da7"
+  },
+  "rows": [
+    ".............oeo......",
+    "......ooooooogeoo.....",
+    ".....ogghhhgggegho....",
+    "....oghhggggggghohto..",
+    "...oggggmgggmgggmttt..",
+    "..tooggggggggggmmmoo..",
+    ".tt..ooggmggmmmoo.....",
+    "tt.....oomo..to.......",
+    "........oo...o........"
+  ],
+  "frames": [
+    {
+      "duration": 85,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_____________oeo______",
+            "______ooooooogeoo_____",
+            "_____ogghhhgggegho____",
+            "____oghhggggggghohto__",
+            "___oggggmgggmgggmttt__",
+            "__tooggggggggggmmmoo__",
+            "_tt__ooggmggmmmoo_____",
+            "tt_____oomo__to_______",
+            "________oo___o________"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 85,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_____________oeo______",
+            "______ooooooogeoo_____",
+            "_____ogghhhgggegho____",
+            "____ogghggggggghohto__",
+            "__ttooggmgggmgggmttt__",
+            "_tt__ooggmgggggmmmoo__",
+            "tt_____ooommmoo_______",
+            "________to_____to_____",
+            "_________oo___oo______"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 85,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_____________oeo______",
+            "______ooooooogeoo_____",
+            "_____ogghhhgggegho____",
+            "___toghhggggggghohto__",
+            "_ttoogggmgggmgggmttt__",
+            "tt___ogggggggggmmmoo__",
+            "______ooggmgoo________",
+            "_______to__oomo_______",
+            "_______o_____oo_______"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 85,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_____________oeo______",
+            "______ooooooogeoo_____",
+            "_____ogghhhgggegho____",
+            "____oghhggggggghohto__",
+            "___oogggmgggmgggmttt__",
+            "tttooggggggggggmmmoo__",
+            "_____ooggmggmmmoo_____",
+            "______to_____too______",
+            "_______oo____o________"
+          ]
+        }
+      ]
+    }
+  ]
+}

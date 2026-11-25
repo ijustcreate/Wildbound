@@ -1,0 +1,136 @@
+{
+  "width": 49,
+  "height": 49,
+  "x": -24,
+  "y": -46,
+  "palette": {
+    "a": "#25322f",
+    "b": "#f6deb0",
+    "c": "#b98453",
+    "d": "#27454e",
+    "e": "#336775",
+    "f": "#b1d7c1",
+    "g": "#fae6bb",
+    "h": "#253f34",
+    "i": "#47818a",
+    "j": "#70a774",
+    "k": "#ac78a7",
+    "l": "#ead4d4",
+    "m": "#70a8a5",
+    "n": "#497c5d",
+    "o": "#76543d",
+    "p": "#e6b883",
+    "q": "#bf9368"
+  },
+  "rows": [
+    ".................................................",
+    ".................................................",
+    "....................abbbba.......................",
+    "....................abbbbc.......................",
+    "....................accccca......................",
+    "....................accccca......................",
+    "................aaaaaadaaaaaa....................",
+    "...............aaaaaddddedddddaa.................",
+    "...............aaaddddeeeeeedddaaa...............",
+    "..............aadddeeeeeeeeeeeedaaa..............",
+    ".............aaddeeeeeeeeeeeeeeeddaa.............",
+    "............aaddeeeffeeeeeeeeeeeedda.............",
+    "............aadeeffeeeeeeeeeeeeeeeeda............",
+    "...........aadeefeeeeeeeeeeeeeeeeeeeaa...........",
+    "..........aadeefeeeeeeeeeeeeeeeeeeeeeaa..........",
+    "..........adeefeeeeeeeeeeegeeeeeeeeeeaa..........",
+    ".........aadefeeeeeeeeeeegggeeeeeeeeedaa.........",
+    ".........addefeeeeeeeeeeeegeeeeeeeeeeeaa.........",
+    "........aadeefeeeeeeeeeeeeeeeeeeheeieeda.........",
+    "........aadeefeeeeeheeeeeeeeeeehjheieedaa........",
+    "........addefeeeeehjheeeeeeeehhjhheeiedda........",
+    "........addefeeehhhjheeeeehahhhjhhheieedaa.......",
+    ".......aadeefeeeehhhjheeehakahjhhheeeiedaa.......",
+    ".......addeeeeeehhhhahehhalkkajhheeeeiedaa.......",
+    ".......addeeeeehjhhakahhakkkkkahheeeeieda........",
+    ".......addeeehhhhjalkkahhakkkahheheeeidda........",
+    "........ddemeehhhakkkkkahnakahhejjheiedda........",
+    "........ddemeeeehhakkkahhhhaahjjnhheiddaa........",
+    "........ddmeeeeeehhakahhhhnakanhhhhhidda.........",
+    "........ddmeeeehhhhhahhhhhalkkahhhheidda.........",
+    "........ddeeeehhhhhhhhhhhakkkkkahhhhddda.........",
+    "........ddddehhhhhhhhhhhhnakkkahhhhhhdda.........",
+    "........dddddhhhhhhhhhhhnhhakahhhhhhddda.........",
+    "........adddddhhhhhhhhhhhhhhahhhhhhhddda.........",
+    ".......aaaddddhhhhhhhhhhhhhhhhhhhhhdddaaa........",
+    ".......aaoodddhdddddddddddddddddddddoooaa........",
+    ".......ooooodddddddddddddddddddddddoooooa........",
+    ".......ooooooooooooooooooooooooooooooooooo.......",
+    "......ooooooooooooooooooooooooooooooooooooo......",
+    ".....aoooooooooooooooooooooooooooooooooooooo.....",
+    "....appppppppppppppppppppppppppppppppppppppooa...",
+    "...aaoooooooooooooooooooooooooooooooooooooooaa...",
+    "...aooooqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqoooaa...",
+    "...aaooooooooooooooooooooooooooooooooooooooaa....",
+    "....aaoooooooooooooooooooooooooooooooooooooaa....",
+    "....aaaoooooooooooooooooooooooooooooooooooaaa....",
+    "....aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa....",
+    ".................................................",
+    "................................................."
+  ],
+  "frames": [
+    {
+      "duration": 280
+    },
+    {
+      "duration": 280,
+      "patches": [
+        {
+          "x": 25,
+          "y": 15,
+          "rows": [
+            ".e......",
+            "eee.....",
+            ".e....g.",
+            ".....ggg",
+            "......g."
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 280,
+      "patches": [
+        {
+          "x": 25,
+          "y": 15,
+          "rows": [
+            ".e.......",
+            "eee......",
+            ".e.......",
+            ".........",
+            ".........",
+            ".........",
+            ".........",
+            ".......g.",
+            "......ggg",
+            ".......g."
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 280,
+      "patches": [
+        {
+          "x": 24,
+          "y": 15,
+          "rows": [
+            "..e.",
+            ".eee",
+            "..e.",
+            "....",
+            ".g..",
+            "ggg.",
+            ".g.."
+          ]
+        }
+      ]
+    }
+  ]
+}

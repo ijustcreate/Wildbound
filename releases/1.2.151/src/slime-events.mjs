@@ -1,0 +1,9 @@
+export const SLIME_EVENTS = [
+  { name:'The green that moved', environment:'forest', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'A green patch quivers beneath the trees.\nThree hungry blobs wobble free.', tip:'Let their hop windup finish, then dodge the short lunge.' },
+  { name:'Oasis broth', environment:'desert', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'A golden ripple stirs the sand.\nThe oasis has a sticky hand.', tip:'Draw the amber slimes onto firm ground and punish their slow hops.' },
+  { name:'Jelly under ice', environment:'ice', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'Blue shapes gather under snow.\nThe frozen puddles start to go.', tip:'The ice slimes recover slowly after each hop.' },
+  { name:'Gel in the jade stair', environment:'temple', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'Old green stone begins to shine.\nThree soft guardians leave the shrine.', tip:'Watch the wobble before each close-range strike.' },
+  { name:'Tidepool blobs', environment:'beach', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'The tide pools tremble in the sun.\nThree bright blobs begin to run.', tip:'Keep your footing clear of the water and dodge the hop.' },
+  { name:'Grave ooze', environment:'graveyard', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'The earth exhales a violet gleam.\nThe graves have made a hungry dream.', tip:'The grave slimes are slow, but their hop can catch a careless hero.' },
+  { name:'Pantry pudding', environment:'house', kind:'slime', count:3, hp:46, speed:43, damage:8, weight:8, verse:'The pantry jar has lost its lid.\nSomething sweet is not what it hid.', tip:'Stay together and strike between its short hops.' },
+];

@@ -1,0 +1,102 @@
+{
+  "width": 1254,
+  "height": 1254,
+  "sprites": {
+    "panel": {
+      "x": 39,
+      "y": 75,
+      "width": 262,
+      "height": 250
+    },
+    "header": {
+      "x": 340,
+      "y": 75,
+      "width": 266,
+      "height": 250
+    },
+    "slot-dark": {
+      "x": 648,
+      "y": 75,
+      "width": 267,
+      "height": 250
+    },
+    "slot-paper": {
+      "x": 957,
+      "y": 75,
+      "width": 260,
+      "height": 250
+    },
+    "button": {
+      "x": 24,
+      "y": 418,
+      "width": 282,
+      "height": 117
+    },
+    "button-selected": {
+      "x": 329,
+      "y": 417,
+      "width": 287,
+      "height": 120
+    },
+    "button-pressed": {
+      "x": 640,
+      "y": 418,
+      "width": 284,
+      "height": 117
+    },
+    "button-disabled": {
+      "x": 949,
+      "y": 418,
+      "width": 284,
+      "height": 117
+    },
+    "close": {
+      "x": 58,
+      "y": 655,
+      "width": 210,
+      "height": 212
+    },
+    "settings": {
+      "x": 358,
+      "y": 653,
+      "width": 224,
+      "height": 223
+    },
+    "inventory": {
+      "x": 657,
+      "y": 637,
+      "width": 246,
+      "height": 247
+    },
+    "speaker": {
+      "x": 983,
+      "y": 661,
+      "width": 224,
+      "height": 208
+    },
+    "music": {
+      "x": 63,
+      "y": 968,
+      "width": 205,
+      "height": 205
+    },
+    "coin": {
+      "x": 366,
+      "y": 957,
+      "width": 208,
+      "height": 216
+    },
+    "left": {
+      "x": 681,
+      "y": 965,
+      "width": 208,
+      "height": 208
+    },
+    "right": {
+      "x": 983,
+      "y": 965,
+      "width": 208,
+      "height": 207
+    }
+  }
+}

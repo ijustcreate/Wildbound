@@ -1,0 +1,87 @@
+{
+  "width": 13,
+  "height": 9,
+  "x": -6,
+  "y": -7,
+  "palette": {
+    "k": "#262d2b",
+    "o": "#414b35",
+    "a": "#a4a96a",
+    "b": "#84935d",
+    "g": "#5c703f",
+    "h": "#dfbd78"
+  },
+  "rows": [
+    "..k.....k....",
+    "k..kooook..k.",
+    ".k.oaaaok.k..",
+    "..kobgbko....",
+    "k..khghkk..k.",
+    ".kkkooookkk..",
+    "..k.k..k.k...",
+    ".k..k..k..k..",
+    "............."
+  ],
+  "frames": [
+    {
+      "duration": 91,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "__k_____k____",
+            "k__kooook__k_",
+            "_k_oaaaok_k__",
+            "__kobgbko____",
+            "k__khghkk__k_",
+            "_kkkooookkk__",
+            "__k_k__k_k___",
+            "_k__k__k__k__",
+            "_____________"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 91,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "_k_______k___",
+            "__kkooook___k",
+            "___oaaaok_kk_",
+            "kkkobgbko_k__",
+            "___khghkk____",
+            "__kkooookkk__",
+            "_k__k__k___k_",
+            "k____k_k_____",
+            "_____________"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 88,
+      "patches": [
+        {
+          "x": 0,
+          "y": 0,
+          "rows": [
+            "___k____k____",
+            "__kkooookk___",
+            "k__oaaaok__k_",
+            "_kkobgbkokk__",
+            "___khghkk____",
+            "k_kkooook__k_",
+            "_k__k__k_kk__",
+            "____k___k____",
+            "_____________"
+          ]
+        }
+      ]
+    }
+  ]
+}

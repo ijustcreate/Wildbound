@@ -1,0 +1,100 @@
+{
+  "width": 40,
+  "height": 34,
+  "x": -20,
+  "y": -31,
+  "palette": {
+    "a": "#25322f",
+    "b": "#c5c5a7",
+    "c": "#a2ad92",
+    "d": "#758679",
+    "e": "#27454e",
+    "f": "#47818a",
+    "g": "#70a8a5",
+    "h": "#b1d7c1",
+    "i": "#374b45",
+    "j": "#566760"
+  },
+  "rows": [
+    "........................................",
+    "........................................",
+    "........................................",
+    ".............aaaaaaaaaaaaaa.............",
+    ".........aaaabbbbbbbbbbbbbcaaaa.........",
+    "......aabbbbbcccccccccccccbbbbbaadb.....",
+    "....aabbccccceeeeeeeeeeeeecccccbbdba....",
+    "...abbcceeeeeffffffffffffffeeeeccddca...",
+    "..abccceeffffggggggggggffffffffecddcca..",
+    "..accceeffgggffffffffffffffffhhfecccca..",
+    ".iacccceeffffffffffffffffffffffecccccai.",
+    "..iacccceeeeeffffffffffffffeeeecccccaii.",
+    "..iiaaccccccceeeeeeeeeeeeeccccccccaaii..",
+    "...iddaaaccccccccccccccccccccccaaaddii..",
+    "...iiddddaaaaccccccccccccccaaaaddddii...",
+    "....iiiddddddaaaaaaaaaaaaaaddddddddii...",
+    "......iiddddddddddddddddddddddddiii.....",
+    ".......iiiddddddddddddddddddddiii.......",
+    ".........iiiiiiiiiiiiiiiiiiiiii.........",
+    "...............adbbdddddd...............",
+    "..............addbbdddddd...............",
+    "..............addbbdddddd...............",
+    ".............aaddbbddddda...............",
+    "...........aaaaddbbdddddaaa.............",
+    "..........aaaajdddddddddjjjaaa..........",
+    "........aaaajjjjdddddjjjjjjjaaaa........",
+    "........aacccccccdccccccccccjjaa........",
+    ".......aajjjjjjjjjjjjjjjjjjjjjjaa.......",
+    ".......aaaajjjjjjjjjjjjjjjjjjjaaa.......",
+    "........aaaajjjjjjjjjjjjjjjjjaa.........",
+    "..........aaaaaaaaaaaaaaaaaaaa..........",
+    "...........aaaaaaaaaaaaaaaaa............",
+    "........................................",
+    "........................................"
+  ],
+  "frames": [
+    {
+      "duration": 400
+    },
+    {
+      "duration": 230,
+      "patches": [
+        {
+          "x": 27,
+          "y": 7,
+          "rows": [
+            "hh..",
+            "....",
+            "..ff"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 200,
+      "patches": [
+        {
+          "x": 25,
+          "y": 7,
+          "rows": [
+            "hh....",
+            "......",
+            "....ff"
+          ]
+        }
+      ]
+    },
+    {
+      "duration": 230,
+      "patches": [
+        {
+          "x": 24,
+          "y": 8,
+          "rows": [
+            "hh.....",
+            ".....ff"
+          ]
+        }
+      ]
+    }
+  ]
+}

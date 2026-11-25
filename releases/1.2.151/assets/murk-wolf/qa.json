@@ -1,0 +1,134 @@
+{
+  "poses": 9536,
+  "body": "native wolf-style pixel drawing",
+  "head": "native wolf-style pixel drawing",
+  "sourceAnimations": 24,
+  "joints": 32,
+  "clips": 28,
+  "independentParts": [
+    "eyeL",
+    "eyeR",
+    "earL",
+    "earR",
+    "muzzle",
+    "nose",
+    "jaw"
+  ],
+  "layers": [
+    {
+      "id": "Murk tail",
+      "bone": "tailBase",
+      "size": [
+        13,
+        7
+      ]
+    },
+    {
+      "id": "Rear leg R",
+      "bone": "hipR",
+      "size": [
+        10,
+        13
+      ]
+    },
+    {
+      "id": "Rear leg L",
+      "bone": "hipL",
+      "size": [
+        9,
+        13
+      ]
+    },
+    {
+      "id": "Murk body",
+      "bone": "spine",
+      "size": [
+        13,
+        19
+      ]
+    },
+    {
+      "id": "Front leg L",
+      "bone": "shoulderL",
+      "size": [
+        9,
+        25
+      ]
+    },
+    {
+      "id": "Front leg R",
+      "bone": "shoulderR",
+      "size": [
+        8,
+        26
+      ]
+    },
+    {
+      "id": "Murk skull",
+      "bone": "head",
+      "size": [
+        13,
+        12
+      ]
+    },
+    {
+      "id": "Murk ear L",
+      "bone": "earL",
+      "size": [
+        5,
+        6
+      ]
+    },
+    {
+      "id": "Murk ear R",
+      "bone": "earR",
+      "size": [
+        5,
+        5
+      ]
+    },
+    {
+      "id": "Murk jaw",
+      "bone": "jaw",
+      "size": [
+        5,
+        12
+      ]
+    },
+    {
+      "id": "Murk muzzle",
+      "bone": "muzzle",
+      "size": [
+        6,
+        7
+      ]
+    },
+    {
+      "id": "Murk eye L",
+      "bone": "eyeL",
+      "size": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "Murk eye R",
+      "bone": "eyeR",
+      "size": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": "Murk nose",
+      "bone": "nose",
+      "size": [
+        4,
+        4
+      ]
+    }
+  ],
+  "valid": true,
+  "gameStudio": true,
+  "errors": []
+}
