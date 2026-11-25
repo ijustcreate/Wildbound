@@ -1,0 +1,12 @@
+[data-web-feedback-open][hidden], #web-feedback-dialog [hidden] { display: none; }
+#web-feedback-dialog { max-width: min(31rem, calc(100vw - 2rem)); }
+#web-feedback-dialog form { display: grid; gap: .55rem; }
+#web-feedback-dialog h2, #web-feedback-dialog p { margin: 0; }
+#web-feedback-dialog label { font-weight: 650; }
+#web-feedback-dialog select, #web-feedback-dialog textarea {
+  width: 100%; box-sizing: border-box; font: inherit; padding: .55rem;
+  color: #f5ecd0; background: #102620; border: 1px solid #78885e; border-radius: .25rem;
+}
+#web-feedback-dialog textarea { resize: vertical; min-height: 5.5rem; max-height: 35vh; }
+#web-feedback-dialog [data-feedback-status] { min-height: 1.35em; }
+#web-feedback-dialog .web-feedback-actions { display: flex; justify-content: flex-end; gap: .65rem; }
