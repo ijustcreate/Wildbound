@@ -31,6 +31,7 @@ export const DEFAULT_APPEARANCE = {
   hair: "crop",
   hairColor: "#593923",
 };
+export const EXPLORER_PRESET = Object.freeze({ ...DEFAULT_APPEARANCE, shirt: '#39745b', pants: '#665b87' });
 export function shade(color) {
   return (
     "#" +
@@ -51,10 +52,7 @@ export function appearanceControls(root, value, changed, options = {}) {
   root.classList.toggle("compact-appearance", !!options.compact);
   if (options.compact) {
     const presets = {
-      Explorer: {
-        skin: "#d9ab76", shirt: "#39745b", pants: "#665b87",
-        shoes: "#49372d", hair: "crop", hairColor: "#593923",
-      },
+      Explorer: EXPLORER_PRESET,
       Sunward: {
         skin: "#865437", shirt: "#d3b562", pants: "#49372d",
         shoes: "#272c35", hair: "curls", hairColor: "#272c35",

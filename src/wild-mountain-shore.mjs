@@ -29,6 +29,13 @@ export function greywakeShoreAt(x,y){
  return y<water?'sand':'shallow';
 }
 
+export function greywakeShoreDepth(x,y){
+ const {left,top,right,bottom}=GREYWAKE_SHORE_BOUNDS;
+ if(x<left||x>=right||y<top||y>=bottom)return null;
+ const [,water,reef]=coastAt(x);
+ return Math.max(0,(y-water)/Math.max(1,reef-water));
+}
+
 const dry=['#bfa476','#c3a879','#c9ad7c','#cfb483','#d3b889'];
 const damp=['#a18d68','#a9926d','#af986f','#b59d73'];
 const tileSize=512,rasterScale=2,tiles=new Map();

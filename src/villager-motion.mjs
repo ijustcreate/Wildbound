@@ -18,6 +18,7 @@ import { drawItem } from "./item-art.mjs";
 import {gearPalette,fittedGear,fittedShield,withBootPose} from './gear-art.mjs';
 import {wearableDetails,directionalHelmet} from './wearable-art.mjs';
 import {capeRows} from './cape-motion.mjs';
+import {witchHatMotion} from './witch-hat-motion.mjs';
 const add = (a, b) => a.map((v, i) => v + b[i]),
   sub = (a, b) => a.map((v, i) => v - b[i]),
   mul = (a, s) => a.map((v) => v * s),
@@ -633,7 +634,10 @@ export function drawVillager(c, a, t, m = villagerMotion, suppliedPose = null) {
     for(const [slot,bone,depth]of [['shoulders','shoulder'+side,.5],['gloves','hand'+side,.6],['feet','foot'+side,.6]])if(gear[slot])part(bone,'Villager '+slot+' '+side,[bone],()=>wear(gear[slot],p[bone],()=>slot==='feet'?withBootPose(c,p[bone],p['knee'+side],()=>fittedGear(c,gear[slot],p[bone],d,side,cosmetics.dye)):fittedGear(c,gear[slot],p[bone],d,side,cosmetics.dye)),p[bone].depth+depth);
   }
   if(gear.chest||gear.pants)part('chest','Villager armor details',['chest','pelvis','kneeL','kneeR'],()=>wearableDetails(c,p,{chest:gear.chest,pants:gear.pants},{skin:spec.skin},d,t,cosmetics),p.chest.depth+.6);
-  if(gear.head&&!cosmetics.hideHelmet)part('head','Villager headwear',['head'],()=>wear(gear.head,p.head,()=>directionalHelmet(c,gear.head,p.head,d,cosmetics)),p.head.depth+10);
+  if(gear.head&&!cosmetics.hideHelmet)part('head','Villager headwear',['head'],()=>wear(gear.head,p.head,()=>{
+    const motion=ITEMS[gear.head]?.style==='witch' ? witchHatMotion(a,t,d,action,frame/(clip.loop?clip.length:Math.max(1,clip.length-1))) : undefined;
+    return directionalHelmet(c,gear.head,p.head,d,cosmetics,0,motion);
+  }),p.head.depth+10);
   if(gear.hand2&&gear.hand2!=='occupied')part('handL','Villager offhand',['handL'],()=>wear(gear.hand2,p.handL,()=>ITEMS[gear.hand2]?.base==='shield'||gear.hand2==='shield'?fittedShield(c,gear.hand2,p.handL,d,a.blocking,cosmetics.dye):drawItem(c,gear.hand2,p.handL.x,p.handL.y,15)),p.handL.depth+.8);
   if(gear.neck&&!back)part('chest','Villager necklace',['chest'],()=>wear(gear.neck,p.chest,()=>{const pal=gearPalette(gear.neck,cosmetics.dye);limb(c,{x:p.chest.x-2,y:p.chest.y-2},{x:p.chest.x,y:p.chest.y+2},1,pal.trim);limb(c,{x:p.chest.x+2,y:p.chest.y-2},{x:p.chest.x,y:p.chest.y+2},1,pal.trim);c.fillStyle=pal.light;c.fillRect(Math.round(p.chest.x)-1,Math.round(p.chest.y)+2,2,2);}),p.chest.depth+.8);
   if(gear.back)part('chest','Villager back gear',['chest'],()=>wear(gear.back,p.chest,()=>drawItem(c,gear.back,p.chest.x+(d===2?4:d===6?-4:0),p.chest.y+5,14)),p.chest.depth+(back?4:-4));

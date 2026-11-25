@@ -4,6 +4,7 @@ import {wildLandsPathAt} from './wild-lands-geography.mjs';
 const ring=[[-49,-29],[49,-25],[-45,36],[45,37],[0,-55]];
 const scenery=[[-73,0],[73,0],[-26,65],[28,61]];
 const roles=['melee','spear','healer','melee','spear'];
+const oldEastFlotsam={x:15082,y:4980};
 
 // Hand-picked stretches of dry beach with open ground between the camp and the shore.
 export const MERLOCK_CAMPS=[
@@ -16,18 +17,37 @@ export const MERLOCK_CAMPS=[
  ['sunfish-bank',10328,8734,4],
  ['last-drift',12198,8610,3],
  ['ray-shore',14298,7484,5],
- ['east-flotsam',15082,4980,2]
+ ['east-flotsam',15330,4120,2]
 ].map(([id,x,y,count],i)=>{
  const key='merlock-camp:'+id;
- const members=ring.slice(0,count).map(([dx,dy],index)=>({
-  key:key+':'+index,kind:'shore_goblin',role:roles[index],index,x:x+dx,y:y+dy
- }));
+ const members=ring.slice(0,count).map(([dx,dy],index)=>{
+  const post={key:key+':'+index,kind:'shore_goblin',role:roles[index],index,x:x+dx,y:y+dy};
+  // This stamp sends hibernated guards from the old default posts to the coast.
+  if(id==='east-flotsam')post.layout=`${post.x},${post.y}`;
+  return post;
+ });
  return {key,biome:'beach',x,y,members,seed:43+i*79,variant:i%3};
 });
 const byCamp=new Map(MERLOCK_CAMPS.map(camp=>[camp.key,camp]));
-export const merlockCampOf=enemy=>byCamp.get(enemy.merlockCamp);
+export const merlockCampOf=enemy=>enemy.merlockCampCenter??byCamp.get(enemy.merlockCamp);
 export const MERLOCK_CAMP_WAKE=760;
 export const MERLOCK_CAMP_AGGRO=204;
+
+export function restoreEastFlotsam(g){
+ const t=g.trainTest,camp=byCamp.get('merlock-camp:east-flotsam');
+ for(const layer of [g,t.alleyActors,t.hollowSurfaceActors,t.wildBiomeRoomActors?.surface]){
+  for(const enemy of layer?.enemies??[]){
+   if(enemy.merlockCamp!==camp.key||enemy.faction!=='enemy'||enemy.hp<=0||enemy.wildSpawnLayout!=null)continue;
+   const post=camp.members[enemy.merlockPost];
+   if(!post||enemy.wildSpawnKey!==post.key)continue;
+   const [dx,dy]=ring[post.index],center=enemy.merlockCampCenter;
+   if(enemy.homeX!==oldEastFlotsam.x+dx||enemy.homeY!==oldEastFlotsam.y+dy||
+      center&&(center.x!==oldEastFlotsam.x||center.y!==oldEastFlotsam.y))continue;
+   Object.assign(enemy,{x:post.x,y:post.y,homeX:post.x,homeY:post.y,
+    merlockCampCenter:{x:camp.x,y:camp.y},wildSpawnLayout:post.layout});
+  }
+ }
+}
 
 export function merlockCampGround(design,camp){
  return [[0,0],...ring,...scenery].every(([dx,dy])=>{

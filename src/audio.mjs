@@ -286,7 +286,7 @@ export class GameAudio {
  update(game,active){
   if(!this.unlocked)return;
   if(this.game!==game||this.seed!==game.seed){
-   this.cancelPending();this.previous=new WeakMap();this.playerState=new WeakMap();this.actorLast=new WeakMap();this.last.clear();this.worldScanAt=0;this.worldEmitters=[];this.game=game;this.seed=game.seed;
+   this.cancelPending();this.previous=new WeakMap();this.playerState=new WeakMap();this.playerLevels=new Map();this.actorLast=new WeakMap();this.last.clear();this.worldScanAt=0;this.worldEmitters=[];this.game=game;this.seed=game.seed;
    this.alleyCueAt?.clear();
    for(const s of this.voices)if(this.voiceInfo.get(s)?.group!=='ui')this.stopVoice(s);
   }
@@ -319,7 +319,11 @@ export class GameAudio {
    if(old&&e.hp>0&&e.moving){stepDistance+=Math.hypot(e.x-old.x,e.y-old.y);if(stepDistance>=86){if(this.spatial(CUES.creatureStep,e).attenuation>.015)this.play('creatureStep',e);stepDistance%=86;}}
    this.previous.set(e,{kind:e.kind,attack:e.attack||0,state:e.state,hp:e.hp,x:e.x,y:e.y,stepDistance});
   }
+  let partyLeveledUp = false;
+  const playerLevels = new Map();
   for(const p of game.players||[]){
+   if(p.level>this.playerLevels.get(p.id))partyLeveledUp=true;
+   playerLevels.set(p.id,p.level);
     const old=this.playerState.get(p),pos=audioPosition(p),air=(p.jumpHeight||0)>0,flying=!!(p.wingHover||p.broomMount),now=performance.now();let flightAt=old?.flightAt||now;
    const offFoot=flying||!!p.vehicleId;
    const footfall=inAlley?latestDiagonFootfall(game,p):null;
@@ -344,15 +348,16 @@ export class GameAudio {
     if(p.ui&&JSON.stringify(p.inventory)!==old.inventory)this.play('loot',p);
     if((p.burning||0)>old.burning+.1)this.play('hurt',p);
     if((p.slow||0)>old.slow+.1)this.play('web',p);
-    if(p.level>old.level)this.play('level',p);
     if(JSON.stringify(p.equipment)!==old.gear)this.play('equip',p);
     if(p.hp<=0&&old.hp>0)this.play('death',p);
     if(p.robotRepaired&&!old.robotRepaired)this.play('repairDone',p);
     if(flying&&now-flightAt>(p.broomMount?760:520)){this.play(p.broomMount?'broomFlight':'flight',p);flightAt=now;}
    }
    if(p.robotRepair?.progress>0)this.play('repair',p);
-   this.playerState.set(p,{trainCar:p.trainRide?.car,trainX:p.trainRide?.x,trainY:p.trainRide?.y,x:pos.x,y:pos.y,room:p.room||null,air,offFoot,distance,footfall,level:p.level,hp:p.hp,ui:!!p.ui,inventory:p.ui?JSON.stringify(p.inventory):null,burning:p.burning||0,slow:p.slow||0,gear:JSON.stringify(p.equipment),robotRepaired:!!p.robotRepaired,flightAt:flying?flightAt:0});
+   this.playerState.set(p,{trainCar:p.trainRide?.car,trainX:p.trainRide?.x,trainY:p.trainRide?.y,x:pos.x,y:pos.y,room:p.room||null,air,offFoot,distance,footfall,hp:p.hp,ui:!!p.ui,inventory:p.ui?JSON.stringify(p.inventory):null,burning:p.burning||0,slow:p.slow||0,gear:JSON.stringify(p.equipment),robotRepaired:!!p.robotRepaired,flightAt:flying?flightAt:0});
   }
+  this.playerLevels=playerLevels;
+  if(partyLeveledUp)this.play('level');
  }
 }
 

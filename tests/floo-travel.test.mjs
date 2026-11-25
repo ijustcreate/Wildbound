@@ -9,6 +9,7 @@ import {leaveTrainTest,trainPrompt,trainWorldBlocked} from '../src/train-test.mj
 import {merchantAction,merchantRows} from '../src/traveling-merchant.mjs';
 import {enterWildLands} from '../src/wild-lands.mjs';
 import {snapshotWildLands} from '../src/wild-lands-session.mjs';
+import {GREYHAVEN_HEARTH} from '../src/wild-castle.mjs';
 
 const powder=p=>p.inventory.find(item=>item?.type==='floo_powder')?.qty||0;
 const step=(g,input={})=>g.update(.05,{keyboard:input});
@@ -129,4 +130,43 @@ test('the Three Broomsticks Use menu chooses either fireplace and only cross-lay
  assert.equal(powder(p),0);
  assert.ok(flooFireGreen(g,THREE_BROOMSTICKS_HEARTH.id));
  assert.ok(Math.hypot(p.x-THREE_BROOMSTICKS_HEARTH.x,p.y-THREE_BROOMSTICKS_HEARTH.y)<27);
+});
+
+test('Greyhaven kitchen connects both ways and keeps each interior on its own layer',()=>{
+ const {g,p,saves}=setup(true),t=g.trainTest;
+ const visitor=g.addPlayer('gamepad-0','Visitor');
+ give(p.inventory,'floo_powder',4);
+ const kitchen=GREYHAVEN_HEARTH;
+ const surfaceLoot={id:'floo-test-surface',x:17840,y:2300,type:'potion',qty:1};
+ const kitchenLoot={id:'floo-test-kitchen',x:16480,y:5540,type:'potion',qty:1};
+ g.loot=[surfaceLoot];
+ function depart(from,to){
+  step(g);
+  if(from===kitchen)Object.assign(p,kitchen.approach);
+  else walkInto(g,p,from);
+  assert.match(trainPrompt(g,p),/USE FLOO POWDER/);
+  step(g,{interact:true});
+  assert.equal(p.ui?.flooHearth,from.id);
+  if(to===kitchen)assert.equal(npcDialogueView(g,p).choices.find(c=>c.action==='floo:'+to.id)?.label,kitchen.name);
+  select(g,p,to.id);
+  assert.ok(flooFireGreen(g,from.id));
+  waitForFlame(g);
+  assert.equal(t.design.activeRoom||null,to.room);
+  assert.ok(flooFireGreen(g,to.id));
+  for(const hero of [p,visitor])assert.equal(trainWorldBlocked(g,hero.x,hero.y,9),false);
+  assert.ok(Math.hypot(p.x-visitor.x,p.y-visitor.y)>=20);
+ }
+ depart(HOMESTEAD_HEARTH,kitchen);
+ assert.deepEqual({x:p.x,y:p.y},kitchen.landing);
+ assert.equal(saves.at(-1).design.activeRoom,kitchen.room);
+ assert.ok(!g.loot.includes(surfaceLoot));
+ g.loot.push(kitchenLoot);
+ depart(kitchen,ALLEY_SHOP_HEARTH);
+ assert.ok(t.alleyReturn);
+ assert.ok(!g.loot.includes(kitchenLoot));
+ depart(ALLEY_SHOP_HEARTH,kitchen);
+ assert.ok(g.loot.includes(kitchenLoot));
+ depart(kitchen,HOMESTEAD_HEARTH);
+ assert.ok(g.loot.includes(surfaceLoot));
+ assert.equal(powder(p),0);
 });

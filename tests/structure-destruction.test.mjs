@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';
+import {structureBlocked, withStructureCollisionQueries} from '../src/expansion.mjs';
 import {saveSession, restoreSession} from '../src/session.mjs';
 import {propBase, tickEnvironment} from '../src/environment.mjs';
 import {
@@ -35,6 +36,38 @@ test('intact and sectional collision retain a strict rounded footprint', () => {
     assert.equal(sectionBlocked(b, 337, 276, 5.01), true, 'corner overlap');
     assert.equal(sectionBlocked(b, 360, 300, 0), false);
   }
+});
+
+test('combat collision reuses candidate cells and checks live door, glass and placement state', () => {
+  const {g} = setup(), door = wall({kind: 'door', x: 258});
+  const window = wall({kind: 'window', x: 375}), table = wall({kind: 'table', x: 510});
+  const distantWall = wall({x: 750});
+  g.house.walls.push(window, distantWall);
+  g.house.doors.push(door);
+  g.house.furniture.push(table);
+  const blocked = (x, y, radius, elevation, projectile) =>
+    structureBlocked(g,x,y,radius,false,14,elevation,projectile);
+  const points = [249,250,251,256,299,374,380,503,512,745];
+  const probes = points.flatMap(x => [8,34,55].flatMap(r =>
+    [[x,300,r,0,false],[x,300,r,20,true]]));
+  const expected = probes.map(args => blocked(...args));
+  withStructureCollisionQueries(g, () => {
+    assert.deepEqual(probes.map(args => blocked(...args)),expected);
+    door.open = true;
+    assert.equal(blocked(251,300,8,0,false),false);
+    window.broken = true;
+    assert.equal(blocked(380,300,8,20,true),false);
+    assert.equal(blocked(380,300,8,0,false),true);
+    distantWall.x = 256;
+    g.house.destructionRevision = 1;
+    assert.equal(blocked(251,300,8,0,false),true);
+    g.house.walls = [];
+    assert.equal(blocked(251,300,8,0,false),false);
+    g.house.walls.push(wall({x:256}));
+    assert.equal(blocked(251,300,8,0,false),true);
+  });
+  g.house.walls[0].x = 750;
+  assert.equal(blocked(251,300,8,0,false),false);
 });
 
 test('40-pixel sections accumulate sparse damage and invalidate collision only on breaking', () => {

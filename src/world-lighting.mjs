@@ -7,7 +7,7 @@ import {isTwoTierForestTree,twoTierForestTreeHeight,treeStructure} from './fores
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 export const lightOwner=p=>p.lightOwner??(p.id!==undefined?`prop:${p.id}`:`prop:${p.kind}:${p.x}:${p.y}`);
 const geometryCache=new WeakMap();
-const geometryFields=['id','kind','size','x','y','rootY','width','depth','height','lightHeight','lightOpacity','lightBlocker','fallen','falling','depleted','destroyed'];
+const geometryFields=['id','kind','size','x','y','rootY','width','depth','height','lightHeight','lightOpacity','lightBlocker','fallen','falling','depleted','destroyed','bushBurnAt'];
 export function propLightGeometry(p){
  if(p.lightGeometry)return p.lightGeometry;
  const tallHeight=isTwoTierForestTree(p)?twoTierForestTreeHeight(p):0;
@@ -23,7 +23,7 @@ function buildPropLightGeometry(p,tallHeight){
  const height=Math.max(2,p.lightHeight||p.height||tallHeight||size*(tree?1.05:bush?.65:.42));
  const rx=Math.max(3,(p.width||size)*.44),ry=Math.max(3,(p.depth||size*.4)*.5);
  const base={owner,x:p.x,y:rootY,rx,ry,minZ:0,maxZ:height,opacity:p.lightOpacity??1};
- if(p.depleted||p.destroyed||p.lightBlocker===false)return {owner,x:p.x,y:rootY,height,rx,ry,tree,volumes:[]};
+ if(p.depleted||p.destroyed||bush&&Number.isFinite(p.bushBurnAt)||p.lightBlocker===false)return {owner,x:p.x,y:rootY,height,rx,ry,tree,volumes:[]};
  let volumes=[];
  if(tree){
   const trunk={...base,rx:Math.max(3,size*.065),ry:Math.max(3,size*.06),maxZ:p.fallen||p.falling?size*.1:height*.82,shape:'cylinder'};
@@ -54,7 +54,7 @@ export function worldLightField(game,sources,room=null){
  // Reuse that frame's field before rebuilding a signature over every prop.
  if(game.time>0&&previous?.frameKey===frameKey&&previous.scenery===game.scenery&&previous.house===game.house&&previous.supplyChests===game.supplyChests)return previous.field;
  const nearbyProps=game.mapMode==='boundless'?[...new Set(sources.flatMap(s=>nearbyScenery(game.scenery||[],s.x,s.y,(s.radius||280)+160)))]:game.scenery||[];
- const revision=nearbyProps.map(p=>[p.id,p.kind,p.size,p.width,p.depth,p.height,p.lightHeight,p.lightOpacity,p.lightBlocker,p.x,p.y,p.rootY,p.fallen,p.falling,p.depleted,p.destroyed,p.chipped].join(',')).join(';');
+ const revision=nearbyProps.map(p=>[p.id,p.kind,p.size,p.width,p.depth,p.height,p.lightHeight,p.lightOpacity,p.lightBlocker,p.x,p.y,p.rootY,p.fallen,p.falling,p.depleted,p.destroyed,p.chipped,p.bushBurnAt].join(',')).join(';');
  const chestRevision=(game.supplyChests||[]).map(p=>[p.id,p.x,p.y,p.opened].join(',')).join(';');
  const tableRevision=JSON.stringify([game.phase,game.openingBoard,game.eventTestBoard])+chestRevision;
  const houseRevision=tableRevision+[...(game.house?.walls||[]),...(game.house?.doors||[]),...(game.house?.furniture||[])].map(p=>[p.id,p.kind,p.x,p.y,p.w,p.h,p.height,p.surfaceHeight,p.open,p.destroyed,p.broken,JSON.stringify(p.sectionDamage||{})].join(',')).join(';');
@@ -91,43 +91,76 @@ export function localLightStrength(field,source,point,owner=null){
  return attenuation*(source.intensity??1)*pointLightVisibility(field,source,point,owner);
 }
 const colorRGB=color=>/^#[\da-f]{6}$/i.test(color||'')?color.slice(1).match(/../g).map(n=>parseInt(n,16)):[255,199,111];
+const groundLightMaskOpacity=.8;
+const groundLightColorOpacity=.38/groundLightMaskOpacity;
+// A fixture can have several bulbs while sharing an owner for occlusion.
+const groundLightSlot=({owner,x,y})=>owner&&!String(owner).startsWith('prop:')?owner:`${owner||''}:${x}:${y}`;
+
+function paintGroundLight(ctx,source,canvas,radius,opacity){
+ ctx.save();ctx.imageSmoothingEnabled=true;ctx.globalAlpha*=opacity*clamp(source.flicker??1);
+ ctx.drawImage(canvas,source.x-radius,source.y-(source.groundLift||0)-radius,radius*2,radius*2);
+ ctx.restore();
+}
 
 export class WorldLightRenderer{
  constructor(){this.props=new Map();this.pending=new Map();this.frameIndex=0;this.bytes=0;this.limit=24*1024*1024;}
  drawGround(ctx,frame,visible=()=>true){
   if(!frame?.sources.length)return;
+  ctx.save();ctx.globalCompositeOperation='screen';
   for(const source of frame.sources){
    const radius=Math.min(500,source.radius||1);if(!visible(source,radius))continue;
    // Bounded low-resolution light buffer, composited below scenery. Soft source
    // sampling yields a narrow penumbra, not a second dark shadow overlay.
    const cells=Math.ceil(radius/4),width=cells*2,step=radius/cells;
-   const slot=source.owner||`${source.x}:${source.y}`;
+   const slot=groundLightSlot(source);
    this.groundSlots??=new Map();let entry=this.groundSlots.get(slot);
    const casters=frame.field?.near(source)||[];
    const movingCasters=casters.filter(v=>String(v.owner).startsWith('actor:')&&v.owner!==source.owner).map(v=>[v.owner,Math.round(v.x/4),Math.round(v.y/4),Math.round(v.minZ/4),Math.round(v.maxZ/4)].join(',')).join(';');
-   const signature=[Math.round(source.x/8),Math.round(source.y/8),Math.round((source.height||30)/4),source.color,source.intensity,radius,frame.field?.staticRevision??frame.field?.revision,movingCasters].join(':');
+   const groundLift=source.groundLift||0,height=(source.height??30)-groundLift;
+   const signature=[Math.round(source.x/8),Math.round(source.y/8),Math.round(height/4),source.color,source.intensity,radius,frame.field?.staticRevision??frame.field?.revision,movingCasters].join(':');
    if(!entry||entry.signature!==signature){
     const canvas=entry?.canvas||document.createElement('canvas');if(canvas.width!==width||canvas.height!==width)canvas.width=canvas.height=width;
     const c=canvas.getContext('2d'),rgb=colorRGB(source.color),falloff=c.createRadialGradient(cells,cells,0,cells,cells,cells);
-    const heightFalloff=clamp(1-(source.height??30)/radius),alpha=(source.intensity??1)*.38*heightFalloff;
+    const heightFalloff=clamp(1-height/radius),alpha=(source.intensity??1)*groundLightMaskOpacity*heightFalloff;
     for(const [stop,level]of [[0,1],[.35,.55],[.7,.16],[1,0]])falloff.addColorStop(stop,`rgba(${rgb.join(',')},${alpha*level})`);
     c.clearRect(0,0,width,width);c.fillStyle=falloff;c.fillRect(0,0,width,width);
     c.save();c.translate(cells,cells);c.scale(1/step,1/step);c.translate(-source.x,-source.y);c.globalCompositeOperation='destination-out';c.fillStyle='#000';
+    const groundSource=groundLift?{...source,height}:source;
     for(const volume of casters){
      if(source.owner!==undefined&&volume.owner===source.owner)continue;
-     const polygon=groundShadowPolygon(source,volume,radius);if(!polygon.length)continue;
+     const polygon=groundShadowPolygon(groundSource,volume,radius);if(!polygon.length)continue;
      c.globalAlpha=volume.opacity??1;c.beginPath();polygon.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();
     }
     c.restore();const bytes=width*width*4;this.groundBytes=(this.groundBytes||0)+bytes-(entry?.bytes||0);entry={signature,canvas,bytes};this.groundSlots.set(slot,entry);
    }
-   ctx.save();ctx.globalCompositeOperation='screen';ctx.imageSmoothingEnabled=true;
-   if(source.flicker!==undefined)ctx.globalAlpha*=clamp(source.flicker);
-   ctx.drawImage(entry.canvas,source.x-radius,source.y-radius,radius*2,radius*2);ctx.restore();
+   paintGroundLight(ctx,source,entry.canvas,radius,groundLightColorOpacity);
    this.groundSlots.delete(slot);this.groundSlots.set(slot,entry);
   }
   // Small crystal pools should not evict one another every frame: bound bytes,
   // not merely light count. Reuse textures without resetting their backing store.
   while(this.groundSlots?.size>256||this.groundBytes>8*1024*1024){const key=this.groundSlots.keys().next().value;this.groundBytes-=this.groundSlots.get(key).bytes;this.groundSlots.delete(key);}
+  ctx.restore();
+ }
+ drawNightVeil(ctx,frame,bounds,w,h,dark){
+  const {left,top,right,bottom}=bounds,spanX=right-left,spanY=bottom-top;
+  const color=`rgba(9,20,39,${dark*.48})`;
+  if(!frame?.sources.length){ctx.fillStyle=color;ctx.fillRect(left,top,spanX,spanY);return;}
+  // The screen-sized veil uses the same cached light envelopes as the ground.
+  // A low-resolution surface is enough for the soft falloff in each camera.
+  this.nightVeil??=document.createElement('canvas');
+  const mask=this.nightVeil,width=Math.max(1,Math.ceil(w/2)),height=Math.max(1,Math.ceil(h/2));
+  if(mask.width!==width||mask.height!==height){mask.width=width;mask.height=height;}
+  const pen=mask.getContext('2d');
+  pen.setTransform(1,0,0,1,0,0);pen.globalCompositeOperation='source-over';pen.clearRect(0,0,width,height);
+  pen.fillStyle=color;pen.fillRect(0,0,width,height);
+  const sx=width/spanX,sy=height/spanY;
+  pen.setTransform(sx,0,0,sy,-left*sx,-top*sy);
+  pen.globalCompositeOperation='destination-out';
+  for(const source of frame.sources){
+   const glow=this.groundSlots?.get(groundLightSlot(source));
+   if(glow)paintGroundLight(pen,source,glow.canvas,Math.min(500,source.radius||1),1);
+  }
+  ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(mask,left,top,spanX,spanY);ctx.restore();
  }
  drawProp(ctx,prop,paint,frame,tier){
   if(!frame?.sources.length||prop.falling||prop.burning)return paint(ctx);
@@ -217,7 +250,12 @@ function shadePropPixels(entry,g,prop,frame,lights){
   const rgb=colorRGB(s.color);mask.clearRect(0,0,w,h);tint.clearRect(0,0,6,8);visibility.clearRect(0,0,6,8);
   for(const b of blocks){
    const amount=localLightStrength(frame.field,s,{x:b.wx,y:g.y,z:b.z},g.owner);if(amount<.005)continue;
-   const lx=s.x-b.wx,ly=s.y-g.y,lz=(s.height??30)-b.z,len=Math.hypot(lx,ly,lz)||1,diffuse=Math.max(0,(b.nx*lx+b.ny*ly+b.nz*lz)/len);
+   const lx=s.x-b.wx,ly=s.y-g.y,lz=(s.height??30)-b.z,len=Math.hypot(lx,ly,lz)||1;
+   const facing=(b.nx*lx+b.ny*ly+b.nz*lz)/len;
+   // Overlapping leaf planes catch a little light around each lobe. Trunks
+   // retain the sharper response of the solid bark face.
+   const foliage=g.bush||g.tree&&b.z>g.height*.49;
+   const diffuse=Math.max(0,foliage?(facing+.2)/1.2:facing);
    tint.fillStyle=`rgba(${rgb.join(',')},${Math.min(.3,amount*diffuse*.32)})`;tint.fillRect(b.col,b.row,1,1);
    visibility.fillStyle=`rgba(${rgb.join(',')},${Math.min(.72,amount*1.05)})`;visibility.fillRect(b.col,b.row,1,1);
   }

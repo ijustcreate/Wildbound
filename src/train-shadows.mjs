@@ -1,4 +1,5 @@
 import {trainEngineProfile} from './train-construction.mjs';
+import {addPixelShadowPolygon} from './pixel-shadow.mjs';
 
 function hull(points){
  const p=points.slice().sort((a,b)=>a.x-b.x||a.y-b.y),cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x),lower=[],upper=[];
@@ -15,10 +16,11 @@ export function trainShadowPolygons(c){
  const ca=Math.cos(c.a),sa=Math.sin(c.a),project=(x,y,z)=>({x:Math.round(c.x+ca*x-sa*y+z*.48),y:Math.round(c.y+sa*x+ca*y+z*.32)});
  return parts.map(o=>{const points=[];for(const x of[o.x-o.w/2,o.x+o.w/2])for(const y of[o.y-o.h/2,o.y+o.h/2])for(const z of[0,o.z+(c.z||0)])points.push(project(x,y,z));return hull(points);});
 }
-export function drawTrainShadows(ctx,cars){
+export function drawTrainShadows(ctx,cars,bounds){
  const active=cars.filter(c=>!(c.sink>=1));if(!active.length)return;
  ctx.save();ctx.globalAlpha*=Math.max(0,1-Math.max(...active.map(c=>c.sink||0)));
- ctx.beginPath();for(const c of active)for(const poly of trainShadowPolygons(c)){poly.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();}
+ ctx.beginPath();
+ for(const c of active)for(const poly of trainShadowPolygons(c))addPixelShadowPolygon(ctx,poly.map(p=>[p.x,p.y]),2,bounds);
  // One union fill: adjacent roof/boiler shadows do not stack darker patches.
  ctx.fillStyle='#10282148';ctx.fill();ctx.restore();
 }

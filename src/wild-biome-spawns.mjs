@@ -4,6 +4,7 @@ import {streamRegion} from './railway-stream.mjs';
 import {nearestTrainTrack} from './train-track.mjs';
 import {WILD_LANDS_EXIT,WILD_LANDS_GATES,WILD_LANDS_STOPS,wildHash,wildLandsGround,wildLandsSurfaceAt} from './wild-lands-world.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
+import {coastalSiteSurface} from './wild-coastal-sites.mjs';
 import {WILD_HOMESTEAD,WILDS_OVERLOOK,inOverlookGround} from './overlook-maze-layout.mjs';
 import {PIRATE_SHIP_BERTH} from './pirate-ship.mjs';
 import {wildLandsPathAt} from './wild-lands-geography.mjs';
@@ -13,8 +14,11 @@ import {tideglassIntersects,tideglassSafePoint} from './tideglass-layout.mjs';
 import {stopCrabPincer} from './crab-pincer.mjs';
 import {wildHomesteadAt} from './wild-homestead-layout.mjs';
 import {inBayouGoblinHut} from './bayou-goblin-hut-layout.mjs';
-import {MERLOCK_CAMPS,MERLOCK_CAMP_AGGRO,MERLOCK_CAMP_WAKE,merlockCampGround,merlockCampOf,strollMerlockCamp} from './wild-merlock-camps.mjs';
+import {MERLOCK_CAMP_AGGRO,MERLOCK_CAMP_WAKE,merlockCampGround,merlockCampOf,strollMerlockCamp} from './wild-merlock-camps.mjs';
+import {effectiveMerlockCamps} from './live-edit-spawns.mjs';
 import {interruptShoreGoblin} from './shore-goblin-state.mjs';
+import {mossbellSafePoint} from './wild-slime-hollow-site.mjs';
+import {moonveilSafePoint} from './wild-runic-sanctuary-site.mjs';
 
 const biomeGroups={
  forest:[['wolf','wolf'],['boar'],['vine','snake'],['beetle','spider']],
@@ -50,7 +54,7 @@ export function wildBiomeSafe(t,x,y){
  return (d.wildStops||WILD_LANDS_STOPS).some(s=>Math.abs(x-s.x)<625&&Math.abs(y-(s.y-100))<420)||
   WILD_LANDS_GATES.some(s=>distance(s,point)<285)||
   WILD_LANDS_SITES.some(s=>!s.room&&distance(s,point)<(s.id==='hearth'?450:170))||
-  inOverlookGround(WILDS_OVERLOOK,x,y,100)||inBayouGoblinHut(x,y,235)||distance(PIRATE_SHIP_BERTH,point)<520||
+  mossbellSafePoint(x,y)||moonveilSafePoint(x,y)||Boolean(coastalSiteSurface(x,y))||inOverlookGround(WILDS_OVERLOOK,x,y,100)||inBayouGoblinHut(x,y,235)||distance(PIRATE_SHIP_BERTH,point)<520||
   wildLandsGround(d,x,y)==='mountain'||tideglassIntersects(x-1,y-1,x+1,y+1)&&tideglassSafePoint(x,y);
 }
 
@@ -108,6 +112,8 @@ function spawn(g,plan,member,point,record){
  if(member.role){
   enemy.name='Merlock';
   enemy.merlockCamp=plan.key;enemy.merlockPost=member.index;
+  enemy.merlockCampCenter={x:plan.x,y:plan.y};
+  if(member.layout)enemy.wildSpawnLayout=member.layout;
   enemy.shoreRole=member.role;enemy.shoreColor=member.role==='healer'?2:member.role==='spear'?1:0;
   enemy.animationAction='idle';
  }
@@ -127,7 +133,7 @@ function spawn(g,plan,member,point,record){
 
 function wakeMerlockCamps(g,t,anchors,live,active){
  const d=t.design;
- for(const camp of MERLOCK_CAMPS){
+ for(const camp of effectiveMerlockCamps(g)){
   if(!anchors.some(p=>distance(p,camp)<MERLOCK_CAMP_WAKE))continue;
   const nearby=live.filter(e=>distance(e,camp)<WAKE_FAR).length;
   const pending=camp.members.filter(member=>{
@@ -137,14 +143,16 @@ function wakeMerlockCamps(g,t,anchors,live,active){
   if(!pending.length||pending.length+nearby>MAX_LOCAL||pending.length+live.length>MAX_LIVE)continue;
   if(!merlockCampGround(d,camp)||!streamRegion(t,camp.x,camp.y,8))continue;
   if([t.route,...(t.otherRoutes||[])].some(route=>route&&nearestTrainTrack(route,camp.x,camp.y).distance<200))continue;
-  const points=pending.map(member=>({member,record:t.wildBiomeSpawns?.[member.key]}));
-  if(points.some(({member,record})=>{
-   const point=record?.home||member;
+  const points=pending.map(member=>{
+   const record=t.wildBiomeSpawns?.[member.key];
+   return {member,record,point:record?.home&&record.layout===member.layout?record.home:member};
+  });
+  if(points.some(({point})=>{
    return wildBiomeSafe(t,point.x,point.y)||g.blocked(point.x,point.y,13)||
     anchors.some(p=>distance(p,point)<32)||live.some(e=>distance(e,point)<25);
   }))continue;
-  for(const {member,record} of points){
-   const enemy=spawn(g,camp,member,record?.home||member,record);
+  for(const {member,record,point} of points){
+   const enemy=spawn(g,camp,member,point,record);
    if(!enemy)continue;
    if(record?.defeatedAt!=null)delete t.wildBiomeSpawns[member.key];
    active.add(member.key);live.push(enemy);
@@ -186,7 +194,7 @@ function hibernate(g,t,anchors){
    (far??=new Set()).add(e);
    const progress=t.wildBiomeSpawns??={};
    progress[e.wildSpawnKey]={home:{x:e.homeX,y:e.homeY},...(e.hp<e.maxHp?{hp:e.hp}:{}),
-    ...(e.wildWolfPackSize?{wolfPackSize:e.wildWolfPackSize}:{})};
+    ...(e.wildWolfPackSize?{wolfPackSize:e.wildWolfPackSize}:{}),...(e.wildSpawnLayout?{layout:e.wildSpawnLayout}:{})};
   }else live.push(e);
  }
  if(far)g.enemies=g.enemies.filter(e=>!far.has(e));

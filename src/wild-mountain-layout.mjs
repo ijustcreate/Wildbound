@@ -24,6 +24,7 @@ export const MOUNTAIN_DESCENTS=[
  {id:'cave-trail-ledge',launch:[15949,7271],landing:[15886,7388],duration:.73},
  {id:'snowline-ledge',launch:[16606,6542],landing:[16705,6722],duration:.94},
 ];
+export const MOUNTAIN_OCEAN_DESCENT={id:'summit-ocean-ledge',launch:[18042,6475],landing:[18820,6475],duration:2.3,water:true};
 export const MOUNTAIN_CAVE_TRAIL=[
  MOUNTAIN_ASCENT[1],[15780,7420,0,102],[16130,7710,0,108],[16440,7970,0,100],[16680,8170,0,115],
 ];
@@ -109,45 +110,74 @@ export function mountainHeight(d,x,y){
 }
 
 export function mountainDescentLaunch(d,p,mx,my){
- if(d.activeRoom||!d.wildLands||!mountainLand(p.x,p.y))return null;
+ if(d.activeRoom||!d.wildLands||!inMountainBounds(p.x,p.y))return null;
+ const height=mountainHeight(d,p.x,p.y);
  const intent=Math.hypot(mx,my);
- if(intent<.24)return null;
- return MOUNTAIN_DESCENTS.find(link=>{
+ if(height<=20||intent<.24)return null;
+ const ocean=MOUNTAIN_OCEAN_DESCENT;
+ if(mx/intent>.72&&inside(MOUNTAIN_SUMMIT,p.x,p.y)&&Math.hypot(p.x-ocean.launch[0],p.y-ocean.launch[1])<=78)return ocean;
+ const marked=MOUNTAIN_DESCENTS.find(link=>{
   const [x,y]=link.launch,[lx,ly]=link.landing,vx=lx-x,vy=ly-y;
-  return Math.hypot(p.x-x,p.y-y)<39&&mountainHeight(d,p.x,p.y)>mountainHeight(d,lx,ly)+20&&
-   (mx*vx+my*vy)/(Math.hypot(vx,vy)*intent)>.56;
- })||null;
+  return Math.hypot(p.x-x,p.y-y)<39&&height>mountainHeight(d,lx,ly)+20&&(mx*vx+my*vy)/(Math.hypot(vx,vy)*intent)>.56;
+ });
+ if(marked)return marked;
+
+ // An ordinary jump along the trail stays ordinary. Cross a cliff only when
+ // there is a lower surface with room to land directly ahead of the player.
+ let crossedLedge=false;
+ const dx=mx/intent,dy=my/intent;
+ for(let distance=10;distance<=220;distance+=5){
+  const x=p.x+dx*distance,y=p.y+dy*distance;
+  if(!mountainLand(x,y))return null;
+  const below=mountainHeight(d,x,y),blocked=mountainTerrainBlocked(d,x,y,12);
+  if(below>height+18)return null;
+  if(crossedLedge&&!blocked&&below<height-20){
+   return {id:'nearby-trail-drop',landing:[x,y],duration:Math.max(.48,distance/190)};
+  }
+  crossedLedge||=blocked||below<height-18;
+  if(!crossedLedge&&distance>=35)return null;
+ }
+ return null;
+}
+
+function descentLink(motion){
+ if(motion.id===MOUNTAIN_OCEAN_DESCENT.id)return MOUNTAIN_OCEAN_DESCENT;
+ if(motion.id==='nearby-trail-drop')return motion;
+ return MOUNTAIN_DESCENTS.find(item=>item.id===motion.id);
 }
 
 export function mountainDescentCorridor(d,p,x,y){
  const motion=p?.mountainDescent;
- if(!motion||d.activeRoom||!mountainLand(x,y))return false;
- const link=MOUNTAIN_DESCENTS.find(item=>item.id===motion.id);
- return !!link&&segment([motion.x,motion.y],link.landing,x,y).distance<=15;
+ if(!motion||d.activeRoom)return false;
+ const link=descentLink(motion);
+ return !!link&&(link.water||mountainLand(x,y))&&segment([motion.x,motion.y],link.landing,x,y).distance<=15;
 }
 
 export function beginMountainDescent(d,p,link){
  p.mountainDescent={id:link.id,x:p.x,y:p.y,z:mountainHeight(d,p.x,p.y),elapsed:0};
+ if(link.id==='nearby-trail-drop')Object.assign(p.mountainDescent,{landing:link.landing,duration:link.duration});
 }
 
 export function advanceMountainDescent(g,p,dt){
  const motion=p.mountainDescent,d=g.trainTest.design;
  if(!motion)return false;
- const link=MOUNTAIN_DESCENTS.find(item=>item.id===motion.id);
+ const link=descentLink(motion);
  if(!link||d.activeRoom){delete p.mountainDescent;return false;}
  const [x,y]=link.landing;
  const distance=Math.hypot(x-motion.x,y-motion.y)||1;
- const duration=link.duration*distance/Math.hypot(x-link.launch[0],y-link.launch[1]);
+ const duration=link.launch?link.duration*distance/Math.hypot(x-link.launch[0],y-link.launch[1]):link.duration;
  motion.elapsed=Math.min(duration,motion.elapsed+dt);
  const t=motion.elapsed/duration,dx=motion.x+(x-motion.x)*t-p.x,dy=motion.y+(y-motion.y)*t-p.y;
  p.faceX=(x-motion.x)/distance;p.faceY=(y-motion.y)/distance;
  p.moving=false;
  g.moveActor(p,dx,dy);
  const base=mountainHeight(d,p.x,p.y),landing=mountainHeight(d,x,y);
- const absolute=motion.z+(landing-motion.z)*t+Math.sin(t*Math.PI)*39;
+ const rise=link.water?110:39,fall=landing-motion.z;
+ const absolute=link.water?motion.z+rise*t+(fall-rise)*t*t:motion.z+fall*t+Math.sin(t*Math.PI)*rise;
+ const velocity=(link.water?rise+2*(fall-rise)*t:fall+Math.cos(t*Math.PI)*rise*Math.PI)/duration;
  const landed=t>=1&&Math.hypot(x-p.x,y-p.y)<=5;
  Object.assign(p,{jumpHeight:landed?0:Math.max(.01,absolute-base),jumpAge:motion.elapsed,
-  jumpVelocity:landed?0:(landing-motion.z+Math.cos(t*Math.PI)*39*Math.PI)/duration,trainGround:base});
+  jumpVelocity:landed?0:velocity,trainGround:base});
  if(landed){
   delete p.mountainDescent;
   Object.assign(p,{x,y,trainGround:landing,landTime:.2,dashTime:0});

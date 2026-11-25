@@ -1,4 +1,5 @@
 import {drawItem} from './item-art.mjs';
+import {drawMinimapPlayer} from './minimap-player.mjs';
 import {blueCryptLayout} from './mausoleum-layout.mjs';
 import {drawBlueCryptBase} from './mausoleum-art.mjs';
 import {drawDungeonDecor} from './dungeon-decor.mjs';
@@ -17,6 +18,8 @@ import {drawFlyingArrow,drawArrowTrail} from './embedded-arrow.mjs';
 import {merchantSites} from './traveling-merchant.mjs';
 import {UNDERGROUND_VIEW} from './underground-view.mjs';
 import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
+import {corpseCleanupProgress,corpseOpacity,drawCorpseCleanup} from './corpse-pose.mjs';
+import {drawActorLevelUp} from './gameplay-fx.mjs';
 
 export const CRYPT_TITLE = 'The mausoleum crypt';
 export const CRYPT_BOSS_KIND = 'crypt_skeleton_boss';
@@ -540,10 +543,16 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
   const actors=[...s.enemies.filter(e=>(e.hp>0||e.defeated&&(e.deathTimer||0)<3.5)&&e.state!=='dormant'&&knownPoint(e)).map(e=>({...e,cryptEnemy:true})),...g.players.filter(q=>q.room===d.id).map(q=>({...q,x:q.roomX,y:q.roomY,kind:q.kind,sprite:'player'})),...activePatronuses(g,d.id).filter(knownPoint)].sort((a,b)=>a.y-b.y);
   for(const actor of actors){
     if(actor.patronus){animator?.draw(c,actor,time,43);continue;}
-    c.save();c.globalAlpha=.4;disc(c,actor.x,actor.y+1,8,3,'#080a14');c.restore();
+    const cleanupProgress=corpseCleanupProgress(actor);
+    if(cleanupProgress>=1)continue;
+    c.save();c.globalAlpha=.4*corpseOpacity(cleanupProgress);disc(c,actor.x,actor.y+1,8,3,'#080a14');c.restore();
     if(animator){const boss=actor.kind===CRYPT_BOSS_KIND;
       if(actor.cryptPitFall){const t=Math.min(1,actor.cryptPitFall.time/.85),scale=1-t*.85;c.save();c.globalAlpha*=1-t;c.translate(actor.x,actor.y+t*t*42);c.scale(scale,scale);animator.draw(c,{...actor,x:0,y:0,jumpHeight:0,groundHeight:0,animationAction:'jump_fall'},time,PLAYER_RENDER_SIZE);c.restore();continue;}
-      animator.draw(c,{...actor,room:d.id,...(boss?{kind:'skeleton',sprite:'skeleton',equipment:{hand1:'crypt_flame_sword',hand2:'coffin_lid_shield'}}:{}),sprite:boss?'skeleton':actor.cryptEnemy?actor.kind:'player'},time,actor.cryptEnemy?creatureRenderSize(boss?'skeleton':actor.kind):PLAYER_RENDER_SIZE);
+      const size=actor.cryptEnemy?creatureRenderSize(boss?'skeleton':actor.kind):PLAYER_RENDER_SIZE;
+      const draw=()=>animator.draw(c,{...actor,room:d.id,...(boss?{kind:'skeleton',sprite:'skeleton',equipment:{hand1:'crypt_flame_sword',hand2:'coffin_lid_shield'}}:{}),sprite:boss?'skeleton':actor.cryptEnemy?actor.kind:'player'},time,size);
+      if(actor.corpseCleanup)drawCorpseCleanup(c,actor,actor,size,draw);
+      else draw();
+      if(!actor.cryptEnemy)drawActorLevelUp(c,g,actor,actor.x,actor.y-(actor.jumpHeight||0));
     }
   }
   const runtime=s.worldRuntime||{};
@@ -583,6 +592,6 @@ export function drawMausoleumRoom(c, g, p, d, camera, animator = null,view=UNDER
   }
   // Scaled minimap fits the longer crypt inside the existing 320px panel.
   for (const index of s.explored) if (s.tiles[index]===1) rect(c, w-56 + Math.floor(index % s.width * .7), top+3 + Math.floor(Math.floor(index / s.width) * .7), 1, 1, '#797482');
-  rect(c, w-56 + Math.floor(p.roomX / TILE * .7), top+3 + Math.floor(p.roomY / TILE * .7), 2, 2, p.color || '#87b8f2');
+  drawMinimapPlayer(c, w-55 + Math.floor(p.roomX / TILE * .7), top+4 + Math.floor(p.roomY / TILE * .7), p, .72);
   c.restore(); return true;
 }

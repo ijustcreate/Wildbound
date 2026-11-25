@@ -26,7 +26,7 @@ export function drawDepthCorners(c,g,x,y){
   for(const k of riverCorners((tx,ty)=>waterAt(g,tx*32+16,ty*32+16),x/32,y/32)){
     if(k.a!=='shallow'||k.b!=='shallow')continue;
     for(let v=0;v<14;v+=2)for(let u=0;u<14;u+=2){const d=Math.hypot(u+1,v+1);if(d>14)continue;
-      c.fillStyle=d>11?'#8fe5c536':'#8fe5c58c';c.fillRect(x+(k.dx<0?u:30-u),y+(k.dy<0?v:30-v),2,2);
+      c.fillStyle=d>11?'#9eaa7715':'#a6b18135';c.fillRect(x+(k.dx<0?u:30-u),y+(k.dy<0?v:30-v),2,2);
     }
   }
 }

@@ -3,9 +3,30 @@ import {ensureSkeletonEquipment} from './skeleton-equipment.mjs';
 import {CONTROLLED_WATER_FIELDS} from './controlled-water.mjs';
 import {updateAnacondaBody} from './anaconda-body.mjs';
 import {creatureEgg} from './stationary-creatures.mjs';
-import {navigateEnemy} from './navigation.mjs';
+import {actorRadius,navigateEnemy} from './navigation.mjs';
 
 const heroFollowActors=new WeakMap();
+const FOLLOW_SPEED=145;
+const FOLLOW_DISTANCE=56;
+const ESCAPE_TURNS=[0,Math.PI/4,-Math.PI/4,Math.PI/2,-Math.PI/2,Math.PI];
+
+function separationDirection(game,actor,follower,dx,dy,distance,spacing){
+  let x=dx/(distance||1),y=dy/(distance||1);
+  if(distance<=.01){
+    // Make room on the creature's shoulder when both actors occupy one point.
+    const faceX=follower.faceX||0,faceY=follower.faceY||0,length=Math.hypot(faceX,faceY);
+    x=length?(-.6*faceX+.8*faceY)/length:1;
+    y=(-.6*faceY-.8*faceX)/(length||1);
+  }
+  const radius=actorRadius(actor);
+  for(const angle of ESCAPE_TURNS){
+    const cos=Math.cos(angle),sin=Math.sin(angle),tx=x*cos-y*sin,ty=x*sin+y*cos;
+    if(!game.blocked?.(actor.x+tx*radius,actor.y+ty*radius,radius,false,true)&&
+       !game.blocked?.(follower.x+tx*spacing,follower.y+ty*spacing,radius,false,true))return {x:tx,y:ty};
+  }
+  return {x,y};
+}
+
 export function followControlledUnit(game,player,follower,dt){
   const pet=player.controlPetPosition;
   if(!pet)return;
@@ -13,21 +34,27 @@ export function followControlledUnit(game,player,follower,dt){
   const elapsed=Math.max(0,Math.min(.1,dt||0));
   if(!elapsed||game.paused)return;
   let actor=heroFollowActors.get(pet);
-  if(!actor){actor={id:player.id,heroFollower:true,faction:'ally',allyOwner:player.id,speed:145};heroFollowActors.set(pet,actor);}
+  if(!actor){actor={id:player.id,heroFollower:true,faction:'ally',allyOwner:player.id,speed:FOLLOW_SPEED};heroFollowActors.set(pet,actor);}
   actor.x=pet.x;actor.y=pet.y;actor.hp=player.hp;actor.step=pet.step||0;
-  const distance=Math.hypot(follower.x-pet.x,follower.y-pet.y);
-  if(distance>80)actor.following=true;
-  if(distance<=56)actor.following=false;
-  if(actor.following){
-    const gap=Math.max(0,distance-56),ratio=gap/(distance||1);
-    const target={x:pet.x+(follower.x-pet.x)*ratio,y:pet.y+(follower.y-pet.y)*ratio};
+  const dx=pet.x-follower.x,dy=pet.y-follower.y,distance=Math.hypot(dx,dy);
+  const clearance=Math.max(32,actorRadius(follower)+actorRadius(actor)+8);
+  const spacing=Math.max(FOLLOW_DISTANCE,clearance+16);
+  if(actor.leader!==follower){actor.leader=follower;actor.following=false;actor.separation=null;}
+  if(distance>spacing+24)actor.following=true;
+  if(distance<=spacing+.01)actor.following=false;
+  if(distance>=spacing-1)actor.separation=null;
+  if(distance<clearance)actor.separation ||= separationDirection(game,actor,follower,dx,dy,distance,spacing);
+  if(actor.following||actor.separation){
+    const direction=actor.separation||{x:dx/distance,y:dy/distance};
+    const target={x:follower.x+direction.x*spacing,y:follower.y+direction.y*spacing};
     if(game.moveActor&&game.blocked)navigateEnemy(game,actor,target,elapsed);
     else{
-      const step=Math.min(gap,145*elapsed),dx=(follower.x-pet.x)/(distance||1)*step,dy=(follower.y-pet.y)/(distance||1)*step;
-      if(!game.blocked?.(actor.x+dx,actor.y+dy,8)){actor.x+=dx;actor.y+=dy;}
+      const x=target.x-pet.x,y=target.y-pet.y,d=Math.hypot(x,y);
+      const travel=Math.min(d,FOLLOW_SPEED*elapsed)/(d||1);
+      if(!game.blocked?.(actor.x+x*travel,actor.y+y*travel,actorRadius(actor))){actor.x+=x*travel;actor.y+=y*travel;}
     }
-    const dx=actor.x-pet.x,dy=actor.y-pet.y,travel=Math.hypot(dx,dy);
-    if(travel>.01){pet.x=actor.x;pet.y=actor.y;pet.faceX=dx/travel;pet.faceY=dy/travel;pet.moving=true;pet.walking=true;pet.step=(pet.step||0)+travel*.13;pet.locomotionSpeed=travel/elapsed;}
+    const movedX=actor.x-pet.x,movedY=actor.y-pet.y,travel=Math.hypot(movedX,movedY);
+    if(travel>.01){pet.x=actor.x;pet.y=actor.y;pet.faceX=movedX/travel;pet.faceY=movedY/travel;pet.moving=true;pet.walking=true;pet.step=(pet.step||0)+travel*.13;pet.locomotionSpeed=travel/elapsed;}
   }
   pet.swimming=waterAt(game,pet.x,pet.y)==='water';
   pet.diveDepth=0;pet.breath=20;pet.breathVisible=0;pet.drownClock=0;pet.room=null;

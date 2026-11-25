@@ -26,6 +26,7 @@ function validate(data, kind) {
     throw Error("Invalid expedition save");
   if(kind==="house"&&(!Array.isArray(data.library?.designs)||typeof data.library.active!=="string"))throw Error("Invalid house library");
   if(kind==='locations'&&(!data.layouts||typeof data.layouts!=='object'||Object.keys(data.layouts).length>32))throw Error('Invalid location library');
+  if(kind==='liveEdits'&&(!data.scenes||typeof data.scenes!=='object'||Array.isArray(data.scenes)))throw Error('Invalid live edits');
   return data;
 }
 async function read(file, kind) {
@@ -52,7 +53,7 @@ function write(file, data, kind) {
     .catch(() => {})
     .then(async () => {
       await fs.mkdir(path.dirname(file), { recursive: true });
-      if (["profiles", "house", "locations"].includes(kind)) await preserveInvalidFile(file, kind);
+      if (["profiles", "house", "locations", "liveEdits"].includes(kind)) await preserveInvalidFile(file, kind);
       await fs.writeFile(file + ".tmp", body);
       try {
         const old = JSON.parse(await fs.readFile(file, "utf8"));

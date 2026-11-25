@@ -1,6 +1,9 @@
 import {HOLLOW_ROOM} from './wild-mountain-layout.mjs';
 import {give,ITEMS} from './items.mjs';
 import {emitGameplayFx} from './gameplay-fx.mjs';
+import {WILD_SLIME_HOLLOW} from './wild-slime-hollow-site.mjs';
+import {MOONVEIL_CIRCLE} from './wild-runic-sanctuary-site.mjs';
+import {WILD_COASTAL_SITES} from './wild-coastal-sites.mjs';
 
 export const VEIL_GLAIVE_CHEST=Object.freeze({
  id:'veil-glaive-chest',name:'Veilkeeper’s Chest',x:8816,y:5370,kind:'glaive-chest',room:'shadow',item:'glaive',qty:1,reach:70
@@ -13,17 +16,20 @@ export const WILD_LANDS_SITES=[
  {id:'cemetery-cache',name:'Forgotten Burial Ground',x:3700,y:6350,kind:'graves',item:'arrow',qty:12},
  {id:'bayou-camp',name:'Reedwatch Camp',x:13200,y:2400,kind:'boardwalk',item:'fruit',qty:4},
  {id:'east-lookout',name:'Eastwood Lookout',x:13700,y:5100,kind:'camp',item:'arrow',qty:12},
+ WILD_SLIME_HOLLOW,
+ MOONVEIL_CIRCLE,
  {id:'hearth',name:'The Old Homestead',x:8580,y:7456,kind:'garden',item:'potion',qty:2},
  {id:'driftwood',name:'Driftwood Cove',x:11300,y:8550,kind:'camp',item:'fruit',qty:4},
  {id:'grotto',name:'Crystal Grotto',x:8000,y:4450,kind:'crystals',room:'caverns',item:'potion',qty:2},
  {id:'reliquary',name:'Veil Reliquary',x:8000,y:4450,kind:'stones',room:'shadow',item:'potion',qty:2},
  VEIL_GLAIVE_CHEST,
  {id:'greywake-summit',name:'Greywake Summit',x:17900,y:6500,kind:'lookout',item:'potion',qty:3},
+ ...WILD_COASTAL_SITES,
  {id:'hollow-cache',name:'Smuggler’s Cache',x:8570,y:5500,kind:'wreck-cache',room:HOLLOW_ROOM,item:'stamina_potion',qty:3},
 ];
 function state(t){return t.wildExploration??={discovered:new Set(),opened:new Set(),nextCheck:0};}
 export const wildSiteVisible=(d,site)=>(d.activeRoom||null)===(site.room||null);
-export function nearbyWildSite(g,p){const t=g.trainTest;if(!t?.design.wildLands||p.trainRide||t.design.activeRoom==='diagon')return null;return WILD_LANDS_SITES.find(s=>wildSiteVisible(t.design,s)&&(s!==VEIL_GLAIVE_CHEST||p.hp>0&&!p.room&&!p.swimming&&!p.broomMount)&&Math.hypot(p.x-s.x,p.y-s.y)<(s.reach??125))||null;}
+export function nearbyWildSite(g,p){const t=g.trainTest;if(!t?.design.wildLands||p.trainRide||t.design.activeRoom==='diagon')return null;return WILD_LANDS_SITES.find(s=>s.item&&wildSiteVisible(t.design,s)&&(s!==VEIL_GLAIVE_CHEST||p.hp>0&&!p.room&&!p.swimming&&!p.broomMount)&&Math.hypot(p.x-s.x,p.y-s.y)<(s.reach??125))||null;}
 export function tickWildLandsContent(g){
  const t=g.trainTest;if(!t?.design.wildLands||t.wildLandsOverview)return;const data=state(t);if(t.time<data.nextCheck)return;data.nextCheck=t.time+.25;
  for(const s of WILD_LANDS_SITES){if(!wildSiteVisible(t.design,s)||data.discovered.has(s.id)||!g.players.some(p=>p.hp>0&&!p.trainRide&&Math.hypot(p.x-s.x,p.y-s.y)<420))continue;

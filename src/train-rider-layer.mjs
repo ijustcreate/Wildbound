@@ -44,7 +44,7 @@ function riderMatte(cache,key,size,maker){
  return image;
 }
 function paintRiderOcclusion(c,m,occluders,left,top,composite){
- const opaqueFaces=[],opaqueLines=new Map(),maskPath={path:new Path2D(),count:0};
+ const opaqueFaces=[],opaqueLines=new Map(),maskPath={path:new Path2D(),count:0,lines:new Map()};
  m.save();m.translate(-left,-top);c.save();c.translate(-left,-top);
  for(const {car,rider,options}of occluders){
   c.save();c.translate(car.x,car.y-car.z);m.save();m.translate(car.x,car.y-car.z);
@@ -68,7 +68,12 @@ function paintRiderOcclusion(c,m,occluders,left,top,composite){
   face.forEach(([x,y],i)=>i?maskPath.path.lineTo(x,y):maskPath.path.moveTo(x,y));maskPath.path.closePath();
  }
  m.fillStyle='#ffffff';m.fill(maskPath.path);m.strokeStyle='#ffffff';m.lineCap='butt';m.lineJoin='round';
- for(const [width,segments]of opaqueLines){m.beginPath();for(const [a,b]of segments){m.moveTo(a[0],a[1]);m.lineTo(b[0],b[1]);}m.lineWidth=width;m.stroke();}
+ for(const [width,segments]of opaqueLines){
+  let path=maskPath.lines.get(width);
+  if(!path){path=new Path2D();maskPath.lines.set(width,path);}
+  for(const [a,b]of segments){path.moveTo(a[0],a[1]);path.lineTo(b[0],b[1]);}
+ }
+ for(const [width,path]of maskPath.lines){m.lineWidth=width;m.stroke(path);}
  return opaqueFaces.length+maskPath.count;
 }
 // Composite foreground faces onto this actor alone. Repainting a region of the

@@ -5,7 +5,7 @@ import {saveSession,restoreSession} from '../src/session.mjs';
 import {enterWildLands} from '../src/wild-lands.mjs';
 import {trainPrompt} from '../src/train-test.mjs';
 import {wildHomesteadAt,wildHomesteadBoardTable} from '../src/wild-homestead-layout.mjs';
-import {homesteadBoardSuction,homesteadBoardView} from '../src/homestead-board.mjs';
+import {dismissHomesteadBoardResult,homesteadBoardSuction,homesteadBoardView} from '../src/homestead-board.mjs';
 import {wildLandsSurfaceAt} from '../src/wild-lands-world.mjs';
 import {boardTableSupport} from '../src/board-table.mjs';
 
@@ -102,4 +102,59 @@ test('A pawn at the center calls Wildbound at the table and may start a fresh lo
  assert.notEqual(t.homesteadBoard,s);
  assert.equal(t.homesteadBoard.roll.startProgress,0);
  assert.equal(g.roll,null);
+});
+
+function trail35(){
+ const fixture=setup(),{g,p,q,b}=fixture;
+ roll(g,p.device,1,2);
+ step(g,88);
+ const s=g.trainTest.homesteadBoard;
+ Object.assign(s.pawns[0],{progress:26,boardProgress:26});
+ Object.assign(s,{locked:true,turn:0,turnOrder:[p.id,q.id]});
+ g.eventDuration=20;
+ Object.assign(q,{x:b.x+90,y:b.y+56});
+ roll(g,p.device,4,5);
+ return {...fixture,s};
+}
+
+test('a saved Trail 35 result dismisses from the reassigned roller controller and the next explorer can roll',()=>{
+ const {g,p,q,b,s}=trail35();
+ assert.equal(s.roll.total,9);
+ assert.equal(dismissHomesteadBoardResult(g),false,'dice and pawn movement cannot be skipped');
+ step(g,73);
+ assert.deepEqual(s.event,{name:'TRAIL 35',tip:'9 rolled'});
+ assert.equal(s.roll.resolved,true);
+
+ const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
+ const board=restored.trainTest.homesteadBoard;
+ const roller=restored.players.find(player=>player.id===p.id),next=restored.players.find(player=>player.id===q.id);
+ roller.device='pad:1';
+ restored.update(.05,{[next.device]:{use:true}});
+ assert.ok(homesteadBoardView(restored,true).roll,'other explorers cannot confirm the roller’s result');
+ step(restored,4,{[roller.device]:{use:true,jump:true}});
+ assert.equal(homesteadBoardView(restored,true),null);
+ assert.equal(roller.jumpHeight,0,'the dismiss button is not also a jump');
+ assert.equal(board.pawns[0].progress,35);
+ assert.equal(board.turnOrder[board.turn],next.id);
+ assert.equal(board.portal,undefined);
+ Object.assign(next,{x:b.x+32,y:b.y+56});
+ step(restored,27);
+ roll(restored,next.device,1,2);
+ assert.equal(board.roll.playerId,next.id);
+});
+
+test('holding Interact through a roll leaves the result visible until a fresh interaction or Close',()=>{
+ const {g,p,s}=trail35();
+ step(g,74,{[p.device]:{interact:true}});
+ assert.ok(s.roll.resolved);
+ step(g,1);
+ step(g,1,{[p.device]:{interact:true}});
+ assert.equal(s.roll,null);
+ assert.equal(s.pawns[0].progress,35);
+
+ const close=trail35();
+ step(close.g,74);
+ assert.equal(dismissHomesteadBoardResult(close.g),true);
+ assert.equal(dismissHomesteadBoardResult(close.g),false);
+ assert.equal(close.s.pawns[0].progress,35);
 });

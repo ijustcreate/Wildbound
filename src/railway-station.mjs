@@ -1,7 +1,7 @@
 import {drawCagedSnowyOwl,drawOwlCage} from './snowy-owl-art.mjs';
 import {railwayStream,streamImage} from './railway-stream.mjs';
 import {wildLandmarkBuildings} from './wild-landmark-buildings.mjs';
-import {drawStationCargo} from './station-prop-art.mjs';
+import {drawStationCargo,STATION_LANTERN_GLASS} from './station-prop-art.mjs';
 import {buildTrainRoute,nearestTrainTrack,sampleTrainRoute} from './train-track.mjs';
 import {
  drawStationBackwall, drawStationBuilding, drawStationFloorDetails, drawStationForecourt,
@@ -134,7 +134,7 @@ function baseStationLamps(d,time){
  if(!s)return [];
  const lights=[...stationEntranceLights(s),...platformLanterns(d)];
  for(const p of s.props) {
-  if(p.kind==='lantern')lights.push({x:p.x,y:p.y,r:72,raise:31});
+  if(p.kind==='lantern')lights.push({x:p.x,y:p.y,kind:p.kind,r:72,raise:31});
   if(p.kind==='brazier')lights.push({x:p.x,y:p.y,r:61,raise:21});
  }
  return lights.map((l,i)=>({...l,gain:.65+Math.sin(time*4+i)*.05}));
@@ -203,6 +203,7 @@ export function drawStationLights(c,d,time,night){
   for(const local of baseStationLamps(world,time)) {
    const l=stationPoint(world,local);
    if(view&&(l.x+l.r<view.left||l.x-l.r>view.right||l.y+l.r<view.top||l.y-l.r>view.bottom))continue;
+   if(local.kind==='lantern')l.glass=stationPoint(world,{x:local.x+STATION_LANTERN_GLASS.x,y:local.y+STATION_LANTERN_GLASS.y});
    drawStationLightPool(c,l,night);
   }
  }

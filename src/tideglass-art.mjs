@@ -1,7 +1,8 @@
-import {TIDEGLASS_BEACON,TIDEGLASS_CAMP,TIDEGLASS_SIGNALS,TIDEGLASS_VAULT,
+import {GREYHAVEN_APPROACH_PATH,TIDEGLASS_BEACON,TIDEGLASS_CAMP,TIDEGLASS_SIGNALS,TIDEGLASS_VAULT,
  TIDEGLASS_PATHS,tideglassEdge,tideglassIntersects,tideglassPathDistance} from './tideglass-layout.mjs';
 import {TIDEGLASS_SURVEYOR,tideglassBeaconLit,tideglassSignalLit} from './tideglass-quest.mjs';
 import {paintTideglassBeacon,paintTideglassCamp} from './tideglass-landmark-art.mjs';
+import {castleSiteAt} from './wild-castle-site.mjs';
 
 const stone=['#263e43','#374e52','#4b6464','#627775','#80928a','#a1aaa0'];
 const brass=['#564942','#7c644c','#ad895f','#d0ad7c'];
@@ -113,7 +114,7 @@ function coastPlants(cx,cy){
  for(let i=0;i<23;i++){
   const r=hash(cx*41+i*13,cy*73+i*17),s=hash(cx*89-i*17,cy*41+i*83),x=cx*320+20+r*280,y=cy*320+20+s*280;
   const edge=tideglassEdge(x,y);
-  if(edge<14||tideglassPathDistance(x,y)<52||[TIDEGLASS_CAMP,TIDEGLASS_BEACON,...TIDEGLASS_SIGNALS].some(a=>Math.hypot(x-a.x,y-a.y)<153))continue;
+  if(edge<14||castleSiteAt(x,y,14)||tideglassPathDistance(x,y)<52||[TIDEGLASS_CAMP,TIDEGLASS_BEACON,...TIDEGLASS_SIGNALS].some(a=>Math.hypot(x-a.x,y-a.y)<153))continue;
   const tone=hash(cy+i, cx-i);
   result.push({x,y,tone,size:9+Math.floor(tone*14),rock:tone>.82,seed:i});
  }
@@ -146,7 +147,9 @@ export function drawTideglassGround(c,t,bounds){
    const x=ax+dx*d/length,y=ay+dy*d/length;
    if(!sight(bounds,x,y,50)||tideglassEdge(x,y)<18)continue;
    const n=hash(x,y),side=((i+Math.floor(d/38))%2?1:-1)*26;
-   box(c,x-dy/length*side,y+dx/length*side,8+Math.round(n*5),4,n>.48?'#a29375':'#4e6460');
+   const warm=path===GREYHAVEN_APPROACH_PATH&&x>17000;
+   box(c,x-dy/length*side,y+dx/length*side,8+Math.round(n*5),4,
+    warm?(n>.48?'#b69a68':'#92754e'):(n>.48?'#a29375':'#4e6460'));
   }
  }
 }

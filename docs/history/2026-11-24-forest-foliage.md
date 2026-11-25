@@ -1,0 +1,13 @@
+# Forest foliage and shadow pass
+
+The forest reference showed stepped leaf silhouettes, overlapping sprays, deep recesses, and small olive highlights. The old broadleaf crowns used large rounded color bands. The shared canopy brush now draws layered leaf sprays at the native pixel grid. It uses tapered needle fans on pines and copper and amber on autumn maples. The brighter planes sit toward the upper left. Lower leaves, trunk forks, and root joints carry deeper colors. The new shrub brush applies the same approach at understory scale, with separate dark interiors and small leaf accents.
+
+Tree crown clusters retain the shared world-space wind and use cached native-pixel flutter poses. Shrub tips use the same breeze with their bases anchored. Existing seasons, prop identities, depth ordering, collision, and harvesting still use their original paths. Classic, Boundless, and the native railway and Wild Lands scenery use the revised art. Ground contact and cast shadows use the existing lighting passes. Local point lights now pick up more leaf color across the elevated canopy, and the rail scenery draws the same rooted ground shade at play scale.
+
+Muted source Electron passed 38 tree-variant, 31 understory, and 3 wind and season checks without renderer errors. The wind sequence changed 13,675 crown pixels and kept the root region fixed. Separate shrub samples retained fixed bases through calm wind, a thunderstorm, and player rustle. The native forest was reviewed at the same camera scale in daylight and by torchlight. Wild Lands was reviewed in a native grove. Compare the captures in `test-output/foliage-review/`.
+
+The broad live-checkout test run stopped after a subprocess timeout during concurrent castle work. An isolated desktop snapshot based on the 1.2.150 runtime plus the foliage changes passed the 38 tree and 31 understory Electron checks, with zero renderer errors. The snapshot preserves the 1.2.150 runtime outside this art and lighting pass.
+
+Desktop 1.2.153 packaged the isolated snapshot from `a6cee9bc55ad12ed58df5c3d27b150449f31ef26` and modified source. The build parsed 1,198 runtime files and matched all 16 changed runtime files and shrub exports to the tested snapshot. The exact executable reached the lobby in a muted smoke test with zero renderer errors. The separate muted Wild Lands review captured the softer directional tree shadows on the same snapshot.
+
+The numbered shortcut `C:/Users/New User/Desktop/Wildbound Worlds (1.2.153).lnk` targets `Play Wildbound.cmd` with `-BuildDirectory "dist\1.2.153\Wildbound-win32-x64"`. The launcher check selected `dist/1.2.153/Wildbound-win32-x64/Wildbound.exe` and the normal save profile. See `test-output/foliage-review/desktop-build.json` for the exact build receipt.

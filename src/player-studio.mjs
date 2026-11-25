@@ -34,6 +34,7 @@ import { saveRigSpriteOverride, removeRigSpriteOverride } from "./rig-sprite-sto
 import { ANGLE_JOINTS, jointAngle, wrapAngle } from "./joint-angles.mjs";
 import { BoneTools, transformBones } from './bone-tools.mjs';
 import {RigLivePreview} from './rig-live-preview.mjs';
+import { loadCreatureMotion } from './creature-packs/index.mjs';
 const copy = (v) => structuredClone(v);
 export class RigStudio {
   constructor(save) {
@@ -74,7 +75,27 @@ export class RigStudio {
     this.definition.replace(model);
   }
   setSubject(subject) {
+    this.loadingSubject = null;
     if (!SUBJECTS[subject] || subject === this.subject) return;
+    const load = loadCreatureMotion(subject);
+    if (load) {
+      const selection = { subject };
+      this.loadingSubject = selection;
+      if (this.$?.('.ps-status')) this.message('Loading ' + SUBJECTS[subject].name + '…');
+      return load.then(() => {
+        if (this.loadingSubject !== selection) return;
+        this.setSubject(subject);
+        if (this.root?.isConnected) this.mount(this.root);
+      }, error => {
+        if (this.loadingSubject !== selection) return;
+        this.loadingSubject = null;
+        if (this.root?.isConnected) {
+          this.$('.ps-subject').value = this.subject;
+          this.message('Could not load creature motion. Select the rig to try again.');
+        }
+        console.warn('Creature rig motion failed to load', subject, error);
+      });
+    }
     const fields = [
       "clip",
       "frame",
@@ -97,6 +118,7 @@ export class RigStudio {
     );
     this.subject = subject;
     this.surface=null;
+    this.projectedJoints=null;
     this.scale = this.definition.scale || 7;
     Object.assign(
       this,
@@ -160,8 +182,7 @@ export class RigStudio {
       picker.append(new Option(subject.name || key.replaceAll("_", " "), key));
     picker.value = this.subject;
     picker.onchange = () => {
-      this.setSubject(picker.value);
-      this.mount(root);
+      if (!this.setSubject(picker.value)) this.mount(root);
     };
     $(".ps-toolbar").prepend(picker);
     for(const tool of ['ik','shear','scale']) {
@@ -195,7 +216,9 @@ export class RigStudio {
       label.append(input);
       shape.append(label);
     }
-    $(".ps-status").textContent = this.definition.name + " · shared rig editor";
+    $(".ps-status").textContent = this.loadingSubject
+      ? 'Loading ' + SUBJECTS[this.loadingSubject.subject].name + '…'
+      : this.definition.name + " · shared rig editor";
     const visibility = document.createElement("div");
     visibility.className = "ps-visibility";
     visibility.innerHTML =
@@ -678,8 +701,10 @@ card.append(edit);
         this.remember();
         model.boneSprites ??= {};
         for (const key of changed) {
-          const {x, y} = parts.find(layer => layer.id === key).sprite;
+          const {x, y, humanoidBaseFit} = parts.find(layer => layer.id === key).sprite;
           const sprite = {...drafts.get(key), x, y};
+          if(humanoidBaseFit===true)sprite.humanoidBaseFit=true;
+          else delete sprite.humanoidBaseFit;
           model.boneSprites[key] ??= {};
           model.boneSprites[key][direction] = sprite;
           saveRigSpriteOverride(subject, key, direction, sprite);
@@ -756,6 +781,7 @@ card.append(edit);
       villagerId: this.subject==='villager'?(this.villagerVariant||'april'):undefined,
       sprite: this.definition.sprite,
       kind: this.definition.sprite,
+      stockExplorerPreview: this.subject==='player',
       faceX,
       faceY,
       animationAction: this.mode === "setup" ? "idle" : this.clip,
@@ -958,6 +984,9 @@ card.append(edit);
     };
   }
   get viewCenterX() { return this.root?.querySelector('.ps-canvas')?.width / 2 || 280; }
+  stagePoint({x,y}) {
+    return {x:this.viewCenterX+this.panX+x*this.scale,y:315+this.panY+y*this.scale};
+  }
   zoomAt(factor, point = { x: this.viewCenterX, y: 190 }) {
     const base = this.definition.scale || 7,
       old = this.scale;
@@ -994,14 +1023,8 @@ card.append(edit);
     const candidates = Object.entries(pose)
       .filter(([name])=>this.model.joints[name].editor?.selectable!==false)
       .map(([n, p]) => {
-        const q = projectPoint(p, this.direction);
-        return {
-          n,
-          d: Math.hypot(
-            mouse.x - (this.viewCenterX + this.panX + q.x * this.scale),
-            mouse.y - (315 + this.panY + q.y * this.scale),
-          ),
-        };
+        const point=this.projectedJoints?.[n]||this.stagePoint(projectPoint(p,this.direction));
+        return {n,d:Math.hypot(mouse.x-point.x,mouse.y-point.y)};
       })
       .sort((a, b) =>
         Math.abs(a.d - b.d) < 3 &&
@@ -1022,6 +1045,7 @@ card.append(edit);
     this.dragging = {
       start: mouse,
       pose: this.pose(),
+      projectedParent:this.projectedJoints?.[this.model.joints[this.selected].parent],
       rest: copy(this.model.joints),
       model: copy(this.model),
     };
@@ -1083,17 +1107,12 @@ card.append(edit);
     const parent = this.model.joints[this.selected].parent;
     if (this.tool === "rotate" && parent) {
       const center = projectPoint(drag.pose[parent], this.direction);
+      const pivot = drag.projectedParent || this.stagePoint(center);
       rot = {
         center,
         angle:
-          Math.atan2(
-            (mouse.y - 315 - this.panY) / this.scale - center.y,
-            (mouse.x - this.viewCenterX - this.panX) / this.scale - center.x,
-          ) -
-          Math.atan2(
-            (drag.start.y - 315 - this.panY) / this.scale - center.y,
-            (drag.start.x - this.viewCenterX - this.panX) / this.scale - center.x,
-          ),
+          Math.atan2(mouse.y-pivot.y,mouse.x-pivot.x) -
+          Math.atan2(drag.start.y-pivot.y,drag.start.x-pivot.x),
       };
     }
     this.editPositions(
@@ -1262,7 +1281,8 @@ card.append(edit);
       sc.scale(partDensity,partDensity);
       sc.translate(48, 64);
       captureLayers(this.model);
-      try { this.definition.draw(sc, actor, this.frame/(this.model.clips[this.clip].fps||12), this.model, p); }
+      let rendered;
+      try { rendered=this.definition.draw(sc, actor, this.frame/(this.model.clips[this.clip].fps||12), this.model, p); }
       finally { releaseLayers(this.model);sc.restore(); }
       c.globalAlpha = alpha;
       c.drawImage(
@@ -1273,10 +1293,11 @@ card.append(edit);
         96 * this.scale,
       );
       c.globalAlpha = 1;
+      return rendered;
     };
     if (this.onion && this.mode === "animate")
       paint(poseAt(this.model, this.clip, this.frame - 1), 0.2);
-    paint(pose);
+    const rendered=paint(pose);
     this.refreshBoneSprites();
     const layerNames=renderLayers(this.model,this.direction);
     if(this.layerSelect && JSON.stringify(layerNames)!==this.layerNames){
@@ -1285,18 +1306,11 @@ card.append(edit);
       this.layerNames=JSON.stringify(layerNames);
     }
     this.graph?.draw();
-    const projected = Object.fromEntries(
-      Object.entries(pose).map(([n, v]) => {
-        const p = projectPoint(v, this.direction);
-        return [
-          n,
-          {
-            x: this.viewCenterX + this.panX + p.x * this.scale,
-            y: 315 + this.panY + p.y * this.scale,
-          },
-        ];
-      }),
-    );
+    const playerPoints=this.definition.draw===drawPlayer?rendered:null;
+    const projected=Object.fromEntries(Object.entries(pose).map(([name,value])=>[
+      name,this.stagePoint(playerPoints?.[name]||projectPoint(value,this.direction)),
+    ]));
+    this.projectedJoints=playerPoints?projected:null;
     if (this.bones)
       for (const [n, j] of Object.entries(this.model.joints)) {
         const p = projected[n],

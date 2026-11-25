@@ -3,7 +3,7 @@ import {solveTwoBone} from './ik.mjs';
 import {LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 export const TARGET_REPORT_SECONDS=60;
 export const targetReportAlpha=t=>t.hits>0?Math.min(1,Math.max(0,(t.reportRemaining||0)/3)):0;
-export const lobbyPropDepth=o=>o.y+(o.id==='board'?30:o.id==='television'?22:o.id==='difficulty'?10:20);
+export const lobbyPropDepth=o=>o.depth??o.y+(o.id==='board'?30:o.id==='television'?22:o.id==='difficulty'?10:20);
 export function lobbyActorDepth(actor,furniture,objects){
  const elevation=(actor.jumpHeight||0)+(actor.groundHeight||0),radius=8;
  return furniture.reduce((depth,f)=>{
@@ -16,7 +16,8 @@ export function canUseLobbyTV(state,actor=state,controllers=[{x:721,y:225},{x:84
  if(!state||state.y<210||state.y>270||(actor?.jumpHeight||state.jumpHeight||0)>0||(actor?.groundHeight||state.groundHeight||0)>0||actor?.wingHover||state.wingHover)return false;
  return controllers.some(pad=>Math.hypot(state.x-pad.x,state.y-pad.y)<=34);
 }
-export function lobbyObjectNearby(o,players,members,controllers){return players.some(p=>{const s=members.get(p.id);return s?.spawned&&!p.room&&!p.lobbyDisconnected&&(o.id==='television'?canUseLobbyTV(s,s,controllers):Math.hypot(s.x-o.x,s.y-o.y)<100);});}
+export function lobbyObjectInReach(o,state,controllers){return o.id==='television'?canUseLobbyTV(state,state,controllers):Math.hypot(state.x-o.x,state.y-o.y)<(o.reach??100);}
+export function lobbyObjectNearby(o,players,members,controllers){return players.some(p=>{const s=members.get(p.id);return s?.spawned&&!p.room&&!p.lobbyDisconnected&&lobbyObjectInReach(o,s,controllers);});}
 let seatModel,seatRevision=-1,surface;
 export function lobbySeatedModel(){
   if(seatRevision===playerMotionRevision&&seatModel)return seatModel;

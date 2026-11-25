@@ -1,11 +1,19 @@
 const offer={label:'Exchange 5 Dark Essence · Receive 50 gold',action:'exchange'};
 const account={label:'How does the exchange work?',action:'account'};
+const vaults={label:'What’s behind the vault door?',action:'vaults'};
+const back={label:'Back to the counter',action:'counter'};
 const leave={label:'Leave the counter',action:'close'};
+const topics={
+ account:'Five portions of Dark Essence buy fifty gold. I weigh the essence here, then count the coin where you can see it.',
+ vaults:'The door at the back leads to your personal storage room. Every explorer gets their own room. When you step back out, you’ll return to the entrance you used.',
+};
 
 export function gringottsView(g,p){
  const ui=p.ui;
  if(g.trainTest?.design.activeRoom!=='diagon'||ui.ownerDevice!==p.device)return {text:'The exchange counter is closed.',choices:[leave]};
- return {npc:ui.gringotts,text:ui.notice||'Good day. Place the essence on the scale. I’ll count the gold where you can see it.',choices:[offer,account,leave]};
+ const topic=topics[ui.node];
+ return {npc:ui.gringotts,text:topic||'Griphook, at your service. Are you here to exchange Dark Essence, or do you have a question for me?',
+  choices:topic?[offer,back,leave]:[offer,account,vaults,leave]};
 }
 
 export function gringottsAction(g,p,action,take){
@@ -17,7 +25,10 @@ export function gringottsAction(g,p,action,take){
  if(action==='use')action=choices[ui.index]?.action;
  if(action?.startsWith('choice:'))action=choices[Number(action.slice(7))]?.action;
  if(action==='close'){p.ui=null;p.consumeInput=true;return true;}
- if(action==='account'){ui.notice='Five portions of Dark Essence buy fifty gold. You need the full five before the scale will balance.';return true;}
+ if(!choices.some(choice=>choice.action===action))return true;
+ if(action==='counter'||action==='account'||action==='vaults'){
+  ui.node=action;ui.index=1;delete ui.notice;return true;
+ }
  if(action!=='exchange')return true;
  const t=g.trainTest,original=t.returnPlayers?.find(explorer=>explorer.id===p.id);
  const receipt=t.persistent?null:((t.alleyPurchases??={})[p.id]??={spent:0,gold:0,items:[],delta:{}});

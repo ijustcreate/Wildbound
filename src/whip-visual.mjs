@@ -1,4 +1,5 @@
 import {combatPhase,combatWeaponVector,SWING_ACTIONS} from './combat-animation.mjs';
+import {drawTrialWhipLash} from './hand-gear-melee-art.mjs';
 
 export const WHIP_SEGMENTS=18;
 const smooth=(a,b,t)=>{const v=Math.max(0,Math.min(1,(t-a)/(b-a)));return v*v*(3-2*v);};
@@ -22,27 +23,31 @@ export function sampleWhip(action,t,side='R',out=new Float32Array((WHIP_SEGMENTS
 
 const points=new Float32Array((WHIP_SEGMENTS+1)*3);
 const projected=new Float32Array((WHIP_SEGMENTS+1)*2);
-export function drawWhip(c,hand,action,t,side,d,project,color='#d35b54'){
+export function drawWhip(c,hand,action,t,side,d,project,color='#d35b54', weaponId=null){
  const shape=sampleWhip(action,t,side,points);
  for(let i=0;i<=WHIP_SEGMENTS;i++){
   const q=project([points[i*3],points[i*3+1],points[i*3+2]],d);
   projected[i*2]=hand.x+q.x;projected[i*2+1]=hand.y+q.y;
  }
  c.save();c.lineCap='round';c.lineJoin='round';
- // One outline and two tapered strokes; a readable braided lash, not a beaded line.
- const path=(from,to)=>{
-  c.beginPath();
-  for(let i=from;i<=to;i++){
-   if(i===from)c.moveTo(projected[i*2],projected[i*2+1]);else c.lineTo(projected[i*2],projected[i*2+1]);
-  }
-  c.stroke();
- };
- c.strokeStyle='#352923';c.lineWidth=3;path(0,WHIP_SEGMENTS);
- c.strokeStyle=color;c.lineWidth=1.9;path(0,11);c.lineWidth=1;path(11,WHIP_SEGMENTS);
- c.strokeStyle='#efa590';c.lineWidth=.65;path(1,9);
- const grip={x:projected[2]-hand.x,y:projected[3]-hand.y};
- c.strokeStyle='#573d2a';c.lineWidth=4;c.beginPath();c.moveTo(hand.x,hand.y);c.lineTo(hand.x+grip.x,hand.y+grip.y);c.stroke();
- c.strokeStyle='#e4bc75';c.lineWidth=1.4;c.beginPath();c.moveTo(hand.x+grip.x*.75,hand.y+grip.y*.75);c.lineTo(hand.x+grip.x,hand.y+grip.y);c.stroke();
+ if(weaponId==='succubus_whip'){
+  drawTrialWhipLash(c,hand,projected,WHIP_SEGMENTS);
+ }else{
+  // One outline and two tapered strokes; a readable braided lash, not a beaded line.
+  const path=(from,to)=>{
+   c.beginPath();
+   for(let i=from;i<=to;i++){
+    if(i===from)c.moveTo(projected[i*2],projected[i*2+1]);else c.lineTo(projected[i*2],projected[i*2+1]);
+   }
+   c.stroke();
+  };
+  c.strokeStyle='#352923';c.lineWidth=3;path(0,WHIP_SEGMENTS);
+  c.strokeStyle=color;c.lineWidth=1.9;path(0,11);c.lineWidth=1;path(11,WHIP_SEGMENTS);
+  c.strokeStyle='#efa590';c.lineWidth=.65;path(1,9);
+  const grip={x:projected[2]-hand.x,y:projected[3]-hand.y};
+  c.strokeStyle='#573d2a';c.lineWidth=4;c.beginPath();c.moveTo(hand.x,hand.y);c.lineTo(hand.x+grip.x,hand.y+grip.y);c.stroke();
+  c.strokeStyle='#e4bc75';c.lineWidth=1.4;c.beginPath();c.moveTo(hand.x+grip.x*.75,hand.y+grip.y*.75);c.lineTo(hand.x+grip.x,hand.y+grip.y);c.stroke();
+ }
  if(shape.crack>.12){
   const x=projected[WHIP_SEGMENTS*2],y=projected[WHIP_SEGMENTS*2+1];
   c.globalAlpha*=shape.crack;c.strokeStyle='#fff2cb';c.lineWidth=1;

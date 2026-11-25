@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {lightVolumeInterval,pointLightVisibility} from '../src/realtime-shadows.mjs';
 import {propLightGeometry,worldLightField,localLightStrength,groundShadowPolygon} from '../src/world-lighting.mjs';
+import {scenePropCasters} from '../src/scene-casters.mjs';
 import {characterLightingAt,characterLightingFrame} from '../src/character-lighting.mjs';
 import {lightAt} from '../src/night-cycle.mjs';
 
@@ -20,6 +21,24 @@ test('solid bushes, rocks and custom ruins block light at their real height',()=
   assert.ok(g.volumes.length,kind);assert.ok(pointLightVisibility({volumes:g.volumes},source,{x:120,y:0,z:10})<.05,kind);
   assert.equal(pointLightVisibility({volumes:g.volumes},{...source,height:100},{x:120,y:0,z:90}),1,kind+' does not act infinitely tall');
  }
+});
+test('woodland cast shadows follow the plant shape and disappear when foliage is gone',()=>{
+ const tree={id:1,kind:'tree',treeType:'oak',x:100,y:100,rootY:120,size:80};
+ const bush={id:2,kind:'bush',x:140,y:100,rootY:108,size:40};
+ const game={scenery:[tree,bush]};
+ const first=scenePropCasters(game);
+ assert.equal(first.casters[0].y,tree.rootY);
+ assert.equal(first.casters[0].shadowShape,'forest_canopy');
+ assert.equal(first.casters[1].shadowShape,'forest_bush');
+ const field=worldLightField(game,[source]);
+ assert.ok(field.volumes.some(v=>v.owner==='prop:2'));
+ tree.treeType='pine';bush.bushBurnAt=0;
+ const next=scenePropCasters(game);
+ assert.ok(next.revision>first.revision);
+ assert.equal(next.casters.length,1);
+ assert.equal(next.casters[0].shadowShape,'forest_conifer');
+ assert.ok(next.casters[0].radiusX<first.casters[0].radiusX);
+ assert.ok(!worldLightField(game,[source]).volumes.some(v=>v.owner==='prop:2'));
 });
 test('closed supply chests are solid box-shaped dynamic light blockers and opening removes the blocker',()=>{
  const chest={id:'supply:1',x:60,y:0,opened:false},game={time:0,phase:'play',supplyChests:[chest],scenery:[]};

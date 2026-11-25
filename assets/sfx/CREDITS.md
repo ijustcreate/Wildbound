@@ -34,3 +34,5 @@ The three variants per surface in `footsteps/` are CC0 recordings edited into in
 - Nox_Sound recorded the `tile-*` samples. [Footsteps Boots Tile Mono](https://freesound.org/people/Nox_Sound/sounds/530588/)
 
 Original encounter, travel and seal compositions: [encounters/CREDITS.md](encounters/CREDITS.md). Scores and reproducible recipes are in encounters/manifest.json.
+
+The original `ui/level-up.wav` cue is an ascending C5, E5, G5, C6 mallet phrase with a soft E5 at the finish, synthesized from decaying sine partials for Wildbound.

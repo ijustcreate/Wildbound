@@ -12,7 +12,8 @@ import {drawAlleyPaving,drawNocturnePaving,streetLamp,drawAlleyFountain,paintAll
  DIAGON_STREET_LAMPS,NOCTURNE_WALL_CANDLES,drawNocturneWallCandles} from './diagon-alley-street-art.mjs';
 import {drawNocturneRearGround,queueNocturneGraves,drawNightglassRearDoor,NIGHTGLASS_REAR_DOOR} from './diagon-nocturne-rear.mjs';
 import {drawAlleyStreetLighting,drawAlleyDust,drawAlleyReflectedLight,drawNocturneStreetFog} from './diagon-street-lighting.mjs';
-import {queueAlleyWayfinding,drawNocturneRatHoles,drawOllivandersPassage,drawNocturneThreshold,queueNocturneConnectorWall} from './diagon-wayfinding.mjs';
+import {GARDEN_STREET_CURB_OPENING,drawGardenStreetJunction,queueAlleyWayfinding,drawNocturneRatHoles,drawOllivandersPassage,drawNocturneThreshold,queueNocturneConnectorWall} from './diagon-wayfinding.mjs';
+import {queueNocturneWallNotices} from './nocturne-wall-notices.mjs';
 import {DIAGON_PORTAL_COLOR,paintDiagonBrickWing,queueDiagonEntryPlaza} from './diagon-entry-plaza.mjs';
 import {inGardenPond} from './diagon-garden-ward.mjs';
 import {drawActorGameplayFx} from './gameplay-fx.mjs';
@@ -22,6 +23,8 @@ import {drawPortalFlash} from './portal-transition.mjs';
 import {queueAlleyStreetProps} from './diagon-alley-props.mjs';
 import {shape} from './diagon-shop-brush.mjs';
 import {alleyResidentsFor,drawAlleyResidentActivity} from './diagon-residents.mjs';
+import {drawDiagonVisitingCreature} from './diagon-visiting-creature-art.mjs';
+import {paintDiagonVisitorForm} from './diagon-visitor-render.mjs';
 import {drawDiagonFootprints} from './diagon-footprints.mjs';
 import {drawMageGardenGround,queueMageGarden,insideMageGarden} from './diagon-mage-garden.mjs';
 import {queueNocturneSpiderStall} from './nocturne-spider-merchant.mjs';
@@ -31,13 +34,20 @@ import {queueHunterOwlPets} from './hunter-pet-render.mjs';
 import {queueAlleyGardenProps} from './diagon-garden-props.mjs';
 import {queueDiagonCritters} from './diagon-critter-art.mjs';
 import {nocturneCatFor,NOCTURNE_RAT_HOLES} from './diagon-garden-cats.mjs';
+import {queueNocturneWallCat} from './diagon-wall-cat.mjs';
 import {diagonCritterPrompt} from './diagon-critters.mjs';
 import {activeGardenBench,gardenBenchActor} from './diagon-garden-benches.mjs';
 import {actionInputLabel} from './action-prompts.mjs';
 import {prepareDiagonGardenApproach} from './diagon-alley-assets.mjs';
+import {drawAlleyPerimeter} from './alley-perimeter-art.mjs';
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 const mainPaving={...ALLEY,right:8900};
 const nocturnePaving=[...NOCTURNE_STREETS,...ALLEY_SHOPS.filter(s=>s.district==='nocturne').map(alleyShopGround)];
+const shopCurbOpenings=side=>ALLEY_SHOPS.filter(shop=>!shop.district&&!shop.frontEntrance&&(shop.x<8000)===(side==='west'))
+ .map(shop=>[shop.y-24,shop.y+28]);
+const curbOpenings={west:[...shopCurbOpenings('west'),GARDEN_STREET_CURB_OPENING,
+ [OLLIVANDERS_PASSAGE.y+3,OLLIVANDERS_PASSAGE.y+OLLIVANDERS_PASSAGE.h-3]],
+ east:[...shopCurbOpenings('east'),[NOCTURNE_CONNECTOR.y+2,NOCTURNE_CONNECTOR.y+NOCTURNE_CONNECTOR.h-2]]};
 function text(c,t,x,y,size=14,color='#eee0b4'){c.font=`${size}px Georgia`;c.textAlign='center';c.fillStyle=color;c.fillText(t,x,y);c.textAlign='start';}
 export function drawAlleyGate(c,g){const a=alleyGate(g);if(!a)return;const t=g.trainTest,open=t.alleyOpened,progress=open?Math.min(1,(t.time-t.alleyOpenedAt)/.65):0;
  c.save();c.translate(Math.round(a.x),Math.round(a.y));
@@ -77,25 +87,19 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
  const visible=(x,y,padX,padY)=>Math.abs(x-cam.x)<halfWidth+padX&&Math.abs(y-cam.y)<halfHeight+padY;
  if(g.players.some(p=>p.x<8200&&p.y<4470))prepareDiagonGardenApproach();
  const shops=ALLEY_SHOPS.filter(s=>visible(s.x,s.y,250,350));
- rect(c,bounds.left,bounds.top,w/cam.zoom+2,h/cam.zoom+2,'#121820');
- // The walkable geometry is the same cutout used by movement. The setback
- // behind the shops recedes into stepped blue shadow on the unlit side.
- for(const [padding,color] of [[32,'#19212a'],[18,'#212b33'],[7,'#2d373c']]){
-  for(const area of ALLEY_PATHS)rect(c,area.x-padding,area.y-padding,area.w+padding*2,area.h+padding*2,color);
- }
+ drawAlleyPerimeter(c,bounds,visible,ALLEY_PATHS);
  c.save();c.beginPath();
  for(const area of ALLEY_PATHS)c.rect(area.x,area.y,area.w,area.h);
  c.clip();
  rect(c,bounds.left,bounds.top,w/cam.zoom+2,h/cam.zoom+2,'#535456');
- drawAlleyPaving(c,mainPaving,bounds);
+ drawAlleyPaving(c,mainPaving,bounds,curbOpenings);
  c.restore();
  drawNocturnePaving(c,nocturnePaving,bounds);
  drawNocturneThreshold(c,visible);
  drawNocturneRearGround(c,g,visible);
  drawNocturneRatHoles(c,NOCTURNE_RAT_HOLES,visible);
  drawMageGardenGround(c,g,visible,renderer.animator);
- drawOllivandersPassage(c,OLLIVANDERS_PASSAGE,visible);
- drawDiagonFootprints(c,g,visible);
+ drawGardenStreetJunction(c,visible);
  if(visible(8000,4040,90,80))paintAlleyHeadstone(c,8000,4082);
  const objects=[];
  queueMageGarden(c,g,visible,objects);
@@ -110,7 +114,9 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
  queueNocturneDarkWizards(c,g,visible,objects,renderer.animator,bounds);
  queueNocturneGraves(c,g,visible,objects);
  queueAlleyWayfinding(c,visible,objects);
- queueNocturneConnectorWall(c,NOCTURNE_CONNECTOR,visible,objects);
+ queueNocturneConnectorWall(c,visible,objects);
+ queueNocturneWallNotices(c,visible,objects,g.time*1000);
+ queueNocturneWallCat(c,g.time,visible,objects);
  queueDiagonEntryPlaza(c,visible,objects);
  for(const frontage of alleyFrontages){
   if(!visible(frontage.x,frontage.y,frontage.halfWidth+23,frontage.halfDepth+80))continue;
@@ -121,6 +127,8 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
   if(s.id==='ollivanders')assembleOllivanders(c,s,g,objects);
   else assembleAlleyShop(c,s,g,objects,renderer.animator);
  }
+ drawOllivandersPassage(c,OLLIVANDERS_PASSAGE,visible);
+ drawDiagonFootprints(c,g,visible);
  renderer.drawWorldLoot(g,w,h);
  if(visible(NIGHTGLASS_REAR_DOOR.x,NIGHTGLASS_REAR_DOOR.y,38,70))
   objects.push({depth:NIGHTGLASS_REAR_DOOR.y+NIGHTGLASS_REAR_DOOR.halfSpan,paint:()=>drawNightglassRearDoor(c,!!t.nocturneCemetery?.door)});
@@ -128,7 +136,7 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
   if(visible(x,y,34,73))objects.push({depth:y,paint:()=>streetLamp(c,x,y,district,g.time)});
  for(const candle of NOCTURNE_WALL_CANDLES)
   if(visible(candle.x,candle.y,24,52))objects.push({depth:candle.y+4,paint:()=>drawNocturneWallCandles(c,candle,g.time)});
- const actors=[...g.players,...alleyResidentsFor(g)];
+ const actors=[...g.players.filter(p=>!p.room),...alleyResidentsFor(g)];
  for(const p of actors)if(visible(p.x,p.y,80,100))objects.push({depth:p.y,player:gardenBenchActor(g,p)});
  for(const e of g.enemies||[])if(e.borginReflection&&(e.hp>0||(e.deathTimer||0)<1.7)&&visible(e.x,e.y,64,85)){
   objects.push({depth:e.y,player:e,size:PLAYER_RENDER_SIZE});
@@ -145,11 +153,18 @@ export function drawDiagonAlley(renderer,g,w,h){const c=renderer.ctx,t=g.trainTe
  for(const a of objects.sort((a,b)=>a.depth-b.depth)){
   if(a.paint)a.paint();
   if(a.shopAsset)drawOllivandersSubject(c,a);
+  if(a.player?.visitorCreature){
+   drawDiagonVisitingCreature(c,a.player,g.time);
+   continue;
+  }
   if(a.player){
    const size=a.size||PLAYER_RENDER_SIZE;
-   const paint=p=>renderer.animator.draw(c,p,g.time,size);
+   const paint=(p,scale=size)=>renderer.animator.draw(c,p,g.time,scale);
    if(inGardenPond(a.player))drawSwimmer(c,a.player,g.time,paint);
-   else paint(a.player);
+   else {
+    const conversation=a.player.residentId==='hermione'?g.players.find(p=>p.ui?.alleyResident===a.player.id)?.ui:undefined;
+    paintDiagonVisitorForm(c,a.player,g.time,size,paint,false,conversation);
+   }
    drawActorGameplayFx(c,g,a.player,size,'front');
   }
   if(a.owl)drawSnowyOwl(c,a.owl,g.time);

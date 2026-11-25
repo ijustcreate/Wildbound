@@ -57,7 +57,7 @@ test('all tree families split above stationary roots, with bounded falling pose 
 });
 test('winter tree snow uses small scalloped drifts instead of broad rectangular tiers',()=>{
  const {c,ops}=mockCanvas();drawForestTree(c,{kind:'snow_tree',x:100,y:100,size:64},0,{generatedEnvironment:'ice'});
- const snow=ops.filter(o=>o[0]==='pixel'&&['#8caeb9','#d3e8eb','#f0faf5'].includes(o[1]));
+ const snow=ops.filter(o=>o[0]==='pixel'&&['#849bb7','#cadbec','#edf3fa'].includes(o[1]));
  assert.ok(snow.length>50);assert.ok(snow.every(o=>o[4]<26));
 });
 test('whip has wind-up, extension, snap and recovery and reuses a fixed rope buffer',()=>{

@@ -1,4 +1,6 @@
 import {block as b, shape as p, line as l, casework} from './diagon-shop-brush.mjs';
+import {GRINGOTTS_VAULT_OFFSET,gringottsVaultProgress} from './gringotts-vault.mjs';
+import {paintGringottsVault} from './gringotts-vault-art.mjs';
 
 const ink='#36383b', stone='#9c9f97', pale='#d9d0b7', cream='#eee0bd';
 const brass='#b99a61', gleam='#dfc182', mahogany=[ink,'#59433c','#79554b','#a58063','#c49e73'];
@@ -57,15 +59,6 @@ function drawers(c) {
   }
   b(c,-26,-5,52,2,'#a39d87');
 }
-function vault(c) {
-  p(c,ink,[[-27,0],[-27,-41],[-20,-54],[-9,-62],[12,-62],[23,-52],[27,-40],[27,0]]);
-  p(c,'#656f72',[[-24,-3],[-24,-40],[-18,-52],[-8,-59],[10,-59],[21,-50],[24,-38],[24,-3]]);
-  p(c,ink,[[-20,-33],[-14,-45],[-6,-50],[9,-50],[17,-42],[20,-33],[17,-18],[7,-12],[-7,-12],[-16,-20]]);
-  p(c,'#7a8b88',[[-17,-33],[-12,-43],[-5,-47],[8,-47],[15,-40],[17,-31],[14,-20],[6,-15],[-6,-15],[-13,-21]]);
-  l(c,'#afb2a1',-15,-38,-7,-45);l(c,'#a6aa9b',-8,-31,9,-31,2);
-  l(c,brass,-6,-36,7,-25,2);l(c,brass,-6,-25,7,-36,2);b(c,-3,-34,6,6,gleam);
-  b(c,-20,-31,5,4,brass);b(c,15,-31,5,4,brass);b(c,-23,-5,46,2,pale);
-}
 function trolley(c) {
   casework(c,-17,-6,34,19,7,mahogany);
   l(c,brass,-17,-24,-22,-34,2);l(c,gleam,-22,-34,-13,-34,2);
@@ -115,7 +108,8 @@ const props=[
   {id:'velvet-counting-tray',w:30,h:12,x:27,y:-25,paint:tray,surface:'marble-teller-desk'},
   {id:'galleon-stacks',w:36,h:13,x:25,y:-26,paint:galleons,surface:'marble-teller-desk'},
   {id:'deposit-drawer-wall',w:63,h:63,x:-67,y:-63,paint:drawers,solid:{width:62,depth:13}},
-  {id:'round-vault-door',w:56,h:63,x:47,y:-65,paint:vault,solid:{width:54,depth:12}},
+  {id:'round-vault-door',w:57,h:64,...GRINGOTTS_VAULT_OFFSET,animated:true,
+    paint:(c,time,g)=>paintGringottsVault(c,time,g?gringottsVaultProgress(g):0),solid:{width:54,depth:12}},
   {id:'coin-trolley',w:47,h:35,x:-78,y:56,paint:trolley,solid:{width:34,depth:13}},
   {id:'bank-quill-and-ink',w:24,h:25,x:-46,y:-27,paint:quill,surface:'marble-teller-desk'},
   {id:'banker-chair',w:24,h:33,x:-63,y:-39,paint:chair,solid:{width:18,depth:11}},

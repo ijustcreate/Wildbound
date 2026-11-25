@@ -42,7 +42,7 @@ body #board-panel > .board-status {
 #board-panel #close-board {flex:0 0 30px;width:30px;height:30px;min-height:0;padding:0;border:0;border-radius:3px;color:#f5e7c5;font:22px/1 system-ui;}
 #board-panel #close-board:hover {background:#f5e7c51a;}
 #board-panel #close-board:focus-visible {outline:2px solid #edcd85;outline-offset:0;}
-body #board-panel.board-sequence #close-board {display:none;}
+body #board-panel.board-sequence #close-board:disabled {display:none;}
 body #board-panel #board-closeup {width:100%!important;height:auto!important;aspect-ratio:560/380;}
 body #board-panel #board-caption,
 body #board-panel.board-sequence #board-caption {

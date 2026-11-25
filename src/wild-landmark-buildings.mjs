@@ -46,9 +46,9 @@ function drawTempleLandmarkFloor(c,h){
   const canvas=document.createElement('canvas');
   canvas.width=f.w;canvas.height=f.h;
   const pen=canvas.getContext('2d');pen.translate(-f.x,-f.y);paintTempleLandmark(pen,f);
-  saved={canvas,x:f.x,y:f.y};templeFloors.set(h,saved);
+  saved={canvas};templeFloors.set(h,saved);
  }
- c.drawImage(saved.canvas,saved.x,saved.y);
+ c.drawImage(saved.canvas,f.x,f.y);
 }
 const paving=new WeakMap();
 function drawHomesteadPaths(c,house){

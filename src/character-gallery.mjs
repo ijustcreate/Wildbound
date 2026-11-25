@@ -29,7 +29,7 @@ export function openCharacterGallery({profiles,game,player,onChange,onNew}) {
     if(useButton){useButton.disabled=!available(hero);useButton.setAttribute('aria-label','Use '+hero.name);}
     if(removeButton){removeButton.disabled=!available(hero);removeButton.setAttribute('aria-label','Delete '+hero.name);}
     const c=portrait.getContext('2d');c.clearRect(0,0,110,125);c.save();c.imageSmoothingEnabled=false;c.translate(55,113);c.scale(2.5,2.5);
-    drawPlayer(c,{...hero,faceX:0,faceY:1,animationAction:'idle',playerFrame:0},0);c.restore();
+    drawPlayer(c,{...hero,stockExplorerPreview:true,faceX:0,faceY:1,animationAction:'idle',playerFrame:0},0);c.restore();
     if(previousButton){const list=heroes(),i=list.findIndex(h=>h.id===selected);previousButton.hidden=i<=0;nextButton.hidden=i>=list.length-1;dots.textContent=list.length>1?'•'.repeat(Math.min(i,2))+' ● '+'•'.repeat(Math.min(list.length-i-1,2)):'';dots.setAttribute('aria-label','Character '+(i+1)+' of '+list.length);}
     previewName.dataset.character=hero.id;previewName.disabled=!available(hero);previewName.textContent=hero.name;details.textContent='Lv '+(hero.level||1)+' · '+(hero.coins||0)+' gold';
   };

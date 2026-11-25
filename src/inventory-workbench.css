@@ -262,8 +262,13 @@
 }
 .wizard-card-popover header strong {font:700 15px/1.2 Georgia,serif;}
 .wizard-card-popover .wizard-card-progress {color:#e0c893; font:12px/1.2 system-ui;}
-.wizard-card-portrait {
+.wizard-card-portrait, .wizard-card-placeholder {
   display:block; width:auto; height:clamp(83px,30vh,148px); max-width:100%; image-rendering:pixelated;
+}
+.wizard-card-placeholder {
+  display:grid; place-items:center; box-sizing:border-box; aspect-ratio:132/148;
+  border:3px double #9c8567; background:#312b42; box-shadow:inset 0 0 0 7px #211d31;
+  color:#d6ba83; font:700 3rem/1 Georgia,serif;
 }
 .wizard-card-copy {text-align:center; max-width:100%;}
 .wizard-card-copy h3 {margin:0 0 3px; font:700 17px/1.15 Georgia,serif; color:#ffe4ab;}
@@ -273,4 +278,11 @@
   margin:0; min-height:28px; min-width:33px; padding:0 7px; border:1px solid #92794f; border-radius:3px;
   background:#40364f; color:#f6e4bd; font:700 17px/1 system-ui; text-shadow:none;
 }
-.hero-panel .wizard-card-popover button:disabled {opacity:.42;}
+.wizard-card-slots {display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); width:100%; gap:4px;}
+#hero-overlays .hero-panel .wizard-card-popover button.wizard-card-slot {
+  display:grid; place-items:center; min-width:0; min-height:24px; padding:0!important;
+  border-radius:2px; font:700 11px/1 system-ui;
+  white-space:nowrap; overflow-wrap:normal; word-break:normal;
+}
+.hero-panel .wizard-card-popover button.wizard-card-slot.is-missing {background:#2c263b;color:#c7b898;border-color:#62556a;}
+.hero-panel .wizard-card-popover button.wizard-card-slot[aria-current="true"] {outline:2px solid #e5c689;outline-offset:-2px;}

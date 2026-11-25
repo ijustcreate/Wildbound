@@ -3,6 +3,8 @@ import {inWildLandmark} from './wild-landmark-buildings.mjs';
 import {VILLA_OVERLOOK,inOverlookGround,overlookNorth} from './overlook-maze-layout.mjs';
 import {wildLandsPathAt} from './wild-lands-geography.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
+import {WILD_SLIME_HOLLOW} from './wild-slime-hollow-site.mjs';
+import {MOONVEIL_CIRCLE} from './wild-runic-sanctuary-site.mjs';
 import {WILD_LANDS_STOPS,wildLandsGround,wildLandsSurfaceAt} from './wild-lands-world.mjs';
 import {railwaySurface} from './railway-water.mjs';
 import {nearestTrainTrack} from './train-track.mjs';
@@ -22,7 +24,7 @@ export function meadowAllowed(g,x,y,margin=0,bayouBlades=false){
   const t=g.trainTest,d=t.design,biome=d.wildLands&&wildLandsGround(d,x,y),bayou=bayouBlades&&biome==='swamp';
   if(d.wildLands&&(d.activeRoom||!bayou&&!['forest','jungle','house'].includes(biome)||
    inWildLandmark(d,x,y,margin+12)||wildLandsPathAt(x,y)||
-   WILD_LANDS_SITES.some(s=>!s.room&&Math.hypot(s.x-x,s.y-y)<300)||WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-x,s.y-y)<550)))return false;
+   WILD_LANDS_SITES.some(s=>s!==WILD_SLIME_HOLLOW&&!s.room&&Math.hypot(s.x-x,s.y-y)<(s===MOONVEIL_CIRCLE?142:300))||WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-x,s.y-y)<550)))return false;
   if(bayou){
    // Leave shallow water and the crowded waterline to the wetland plants.
    const edge=margin+2;

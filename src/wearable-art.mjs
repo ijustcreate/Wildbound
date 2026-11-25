@@ -1,4 +1,5 @@
 import {drawWitchHat} from './witch-hat-art.mjs';
+import {drawMerlinHat} from './merlin-hat-art.mjs';
 import { ITEMS } from "./items.mjs";
 import { gearPalette, gearPixels } from './gear-art.mjs';
 import {bansheeHood,bansheeCuirass} from './banshee-gear-art.mjs';
@@ -100,10 +101,11 @@ export function wearableDetails(c, p, gear, look, d, time, cosmetics = {}) {
     rect(head.x - 1, head.y + 4, 3, 1, look.hairColor || "#593923");
   }
 }
-export function directionalHelmet(c, id, h, d, cosmetics = {}, time = 0) {
+export function directionalHelmet(c, id, h, d, cosmetics = {}, time = 0, witchMotion) {
   const def=ITEMS[id];
   if(!def) return false;
-  if(def.style==='witch')return drawWitchHat(c,h,d,id);
+  if(id==='greyhaven_starwatch_hat')return drawMerlinHat(c,h,d,witchMotion);
+  if(def.style==='witch')return drawWitchHat(c,h,d,id,witchMotion);
   if(id==='pirate_captain_hat')return drawPirateCaptainHat(c,h,d);
   if(id==='one_eyed_willy_eyepatch')return drawWillyEyepatch(c,h,d);
   const style=headwearStyle(id,def);

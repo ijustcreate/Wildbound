@@ -196,6 +196,9 @@ app.whenReady().then(async () => {
   const locationDesignPath=path.join(app.getPath('userData'),'location-designs-v1.json');
   ipcMain.handle('location-designs-load',()=>store.read(locationDesignPath,'locations'));
   ipcMain.handle('location-designs-save',(_e,data)=>store.write(locationDesignPath,data,'locations'));
+  const liveEditsPath=path.join(app.getPath('userData'),'live-edits-v1.json');
+  ipcMain.handle('live-edits-load',()=>store.read(liveEditsPath,'liveEdits'));
+  ipcMain.handle('live-edits-save',(_e,data)=>store.write(liveEditsPath,data,'liveEdits'));
   const { RoomTransport } = require("./network.cjs");
   const room = new RoomTransport((data) => {
     if (!window.isDestroyed()) window.webContents.send("room-event", data);

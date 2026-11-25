@@ -17,6 +17,7 @@ import {drawMagicBolt} from './magic-bolt-render.mjs';
 import {drawHunterPet} from './hunter-pet-render.mjs';
 import {finishMagicBolt} from './magic-bolt-effects.mjs';
 import {drawRoomSpellEffects} from './room-spell-effects.mjs';
+import {drawSpriteStackProp} from './sprite-stack-props.mjs';
 import {collectRoomLoot,drawRoomLootItem,nearbyRoomLoot,roomLootPrompt} from './room-loot.mjs';
 import {UNDERGROUND_VIEW} from './underground-view.mjs';
 import {PLAYER_RENDER_SIZE,creatureRenderSize} from './render-settings.mjs';
@@ -514,6 +515,11 @@ export function drawOldWell(c, d, time = 0) {
   if (d.mausoleum) {drawMausoleumEntrance(c, d, time); return;}
   c.save(); c.translate(Math.round(d.x), Math.round(d.y)); c.imageSmoothingEnabled = false;
   pixelDisc(c, 0, 4, 34, 17, '#1a211c');
+  if (drawSpriteStackProp(c, 'old_well', 0, 0, time)) {
+    bucket(c, 35, 12);
+    c.restore();
+    return;
+  }
   pixelDisc(c, 0, -2, 29, 22, '#50534a'); pixelDisc(c, 0, -10, 29, 16, '#9c9b7e');
   pixelDisc(c, 0, -10, 21, 11, '#272e28'); pixelDisc(c, 0, -8, 16, 7, '#101b1b');
   for (let x = -24; x <= 24; x += 12) {rect(c, x, 1, 1, 13, '#353d35'); rect(c, x + 2, 2, 7, 2, '#757d62');}

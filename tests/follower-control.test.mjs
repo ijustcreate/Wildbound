@@ -71,6 +71,42 @@ test('hero follows behind the controlled creature and returns at its following p
  const x=p.controlPetPosition.x;cycleFollowerControl(g,p);assert.equal(p.x,x);
 });
 
+test('controller handoff spaces an overlapping hero and large creature and returns at the hero position',()=>{
+ const g=new Game(()=>.5),device='pad:0',p=g.addPlayer(device,'Hero');
+ g.phase='play';g.openingBoard=false;g.house=null;g.scenery=[];g.terrain.fill('grass');g.blocked=()=>false;
+ Object.assign(p,{x:800,y:800,faceX:1,faceY:0});
+ const dragon={id:9001,kind:'dragon',allyOwner:p.id,faction:'ally',hp:100,maxHp:100,speed:100,x:p.x,y:p.y,faceX:1,faceY:0};
+ g.enemies=[dragon];
+ g.update(.02,{[device]:{controlCycle:true}});
+ assert.equal(p.controlledFollowerId,dragon.id);
+ const hero=p.controlPetPosition,gap=()=>Math.hypot(hero.x-dragon.x,hero.y-dragon.y);
+ assert.ok(gap()>0,'the hero steps clear on the handoff frame');
+ for(let i=0;i<50;i++)g.update(.02,{[device]:{}});
+ assert.ok(gap()>=72,'the hero leaves extra clearance for a large creature');
+ const start=hero.x;
+ for(let i=0;i<90;i++)g.update(.02,{[device]:{x:1}});
+ assert.ok(hero.x>start+100,'the hero trails the moving creature');
+ assert.ok(gap()>=70&&gap()<100);
+ const position=[hero.x,hero.y];
+ g.update(.02,{[device]:{controlCycle:true}});
+ assert.equal(p.controlledFollowerId,undefined);
+ assert.deepEqual([p.x,p.y],position);
+});
+
+test('the following hero steps aside when the controlled creature comes back into its space',()=>{
+ const p={id:1,hp:100,controlPetPosition:{x:110,y:100}},f={id:2,kind:'wolf',x:55,y:100};
+ const g={blocked:(x,y)=>x>=146};
+ for(let i=0;i<30;i++)followControlledUnit(g,p,f,1/60);
+ assert.deepEqual([p.controlPetPosition.x,p.controlPetPosition.y],[110,100]);
+ f.x=104;
+ for(let i=0;i<60;i++)followControlledUnit(g,p,f,1/60);
+ const hero=p.controlPetPosition;
+ assert.ok(hero.x<146,'the hero avoids the obstacle while stepping aside');
+ assert.ok(Math.hypot(hero.x-f.x,hero.y-f.y)>=54);
+ assert.notEqual(hero.y,100,'the hero uses a clear direction when the direct retreat is blocked');
+ assert.equal(hero.moving,false);
+});
+
 test('controlled-creature attack stays combat while Interact opens nearby supplies',()=>{
  const g=new Game(()=>.5),p=g.addPlayer('pad:0','Hero');g.start();g.openingBoard=false;
  const chest=g.supplyChests[0],wolf={id:9001,kind:'wolf',allyOwner:p.id,faction:'ally',hp:70,maxHp:70,damage:12,speed:40,x:chest.x,y:chest.y,faceX:1,faceY:0,inventory:[],equipment:{},equipmentSockets:{}};

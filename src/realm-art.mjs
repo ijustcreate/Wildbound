@@ -103,7 +103,10 @@ export function drawRealmProp(c,p,time,g={},renderOptions={}){
  if(p.depleted&&!p.falling){c.restore();return true;}
  if(!renderOptions.dynamicShadows&&resourceType==='crystal'){const glow=c.createRadialGradient(p.x,y-20,1,p.x,y-20,p.size*.8*resourceScale);glow.addColorStop(0,p.kind==='shadow_obsidian'?'#73b9cc26':'#83dbd833');glow.addColorStop(1,'#83dbd800');c.fillStyle=glow;c.fillRect(p.x-p.size*resourceScale,y-p.size*resourceScale,p.size*2*resourceScale,p.size*2*resourceScale);}
  if(p.kind==='wither_tree'&&(!library?.[p.kind]||library[p.kind].nativeShadowTree)){drawShadowForestTree(c,p,y,time,g,resourceScale);}
- else if(p.falling){c.translate(p.x,y);applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);}
+ else if(p.falling){
+  c.translate(p.x,y);applyTreeFall(c,p,Math.min(1,p.falling/1.1)*Math.PI/2);c.globalAlpha*=Math.max(0,1-Math.max(0,p.falling-1)*2);
+  if(!drawLivingSwampTree(c,p,0,time,library,0))drawRealmSprite(c,p.kind,0,0,p.size*resourceScale,library);
+ }
  else if(['marsh_reeds','marsh_fern'].includes(p.kind)){c.translate(p.x,y);c.rotate(Math.sin(time*1.2+p.x*.1)*.025);drawRealmSprite(c,p.kind,0,0,p.size,library);}
  else if(!drawShadowWoodlandProp(c,p,y,time,g,library,resourceScale)&&!drawLivingSwampTree(c,p,y,time,library))drawRealmSprite(c,p.kind,p.x,y,p.size*resourceScale,library,g.generatedEnvironment==='shadow'&&!p.distant);
  if(realmTree(p)&&p.harvest&&!p.falling&&time-(p.hitAt||0)<4){c.fillStyle='#c9bd83';c.fillRect(p.x-15,y+8,30*Math.min(1,p.harvest/(p.maxHarvest||90)),3);}
@@ -111,20 +114,21 @@ export function drawRealmProp(c,p,time,g={},renderOptions={}){
 }
 // Cache two alpha layers, never regenerate tree geometry for a wind frame.
 const livingTrees=new Map();
-export function drawLivingSwampTree(c,p,y,time=0,library){
+export function drawLivingSwampTree(c,p,y,time=0,library,x=p.x){
  if(typeof document==='undefined')return false;
  if(!['old_cypress','mangrove'].includes(p.kind)||library?.[p.kind]&&!library[p.kind].nativeSwampTree)return false;
- const seed=p.treeVariantSeed??Math.floor(realmHash(p.x,p.rootY??p.y)*100000),varied=true,key=`${p.kind}:${seed}:${varied}`;
+ const seed=p.treeVariantSeed??Math.floor(realmHash(p.x,p.rootY??p.y)*100000),key=`${p.kind}:${seed}`;
  let entry=livingTrees.get(key);
  if(!entry){
   const raster=s=>{const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const pen=canvas.getContext('2d');for(let i=0;i<s.pixels.length;i++)if(s.pixels[i]){pen.fillStyle=s.palette[s.pixels[i]];pen.fillRect(i%128,Math.floor(i/128),1,1);}return canvas;};
-  entry={body:raster(makeSwampTreeSprite(p.kind,{seed,varied,part:'body'})),moss:raster(makeSwampTreeSprite(p.kind,{seed,varied,part:'moss'}))};
+  const type=p.kind==='old_cypress'?'cypress':'mangrove';
+  entry={body:raster(makeSwampTreeSprite(p.kind,{seed,varied:true,part:'body'})),moss:raster(makeSwampTreeSprite(p.kind,{seed,varied:true,part:'moss'})),curtains:swampMossCurtains(type,seed,true)};
   if(livingTrees.size>=32)livingTrees.delete(livingTrees.keys().next().value);livingTrees.set(key,entry);
  }
- const scale=p.size/128,left=p.x-p.size/2,top=y-p.size*61/64;
+ const scale=p.size/128,left=x-p.size/2,top=y-p.size*61/64;
  c.imageSmoothingEnabled=false;c.drawImage(entry.body,left,top,p.size,p.size);
- const type=p.kind==='old_cypress'?'cypress':'mangrove',phase=(p.windSeed??p.seed??p.x*.013+p.y*.017);
- for(const [x,my,h]of swampMossCurtains(type,seed,varied))for(let band=0;band<3;band++){
+ const phase=p.windSeed??p.seed??p.x*.013+p.y*.017;
+ for(const [x,my,h]of entry.curtains)for(let band=0;band<3;band++){
   const sy=Math.floor(my+122+band*h/3),height=Math.floor(my+122+(band+1)*h/3)-sy+(band===2?1:0);
   const sway=Math.round(Math.sin(time*1.35+phase+x*.13)*2.2*band/2);
   c.drawImage(entry.moss,x+60,sy,8,height,left+(x+60+sway)*scale,top+sy*scale,8*scale,height*scale);

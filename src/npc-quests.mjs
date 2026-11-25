@@ -23,11 +23,16 @@ import {tideglassDialogueAction,tideglassDialogueView} from './tideglass-quest.m
 import {bayouGoblinDialogueAction,bayouGoblinDialogueView} from './bayou-goblin-hut.mjs';
 import {patronusDialogueAction,patronusDialogueView} from './patronus-dialogue.mjs';
 import {mysteryDialogue,mysteryDialogueAction} from './mystery-inc.mjs';
+import {castleResidentDialogue,castleResidentDialogueAction} from './wild-castle-residents.mjs';
+import {greyhavenCastDialogue,greyhavenCastDialogueAction} from './greyhaven-cast.mjs';
+import {lagoonMermaidDialogue,lagoonMermaidDialogueAction} from './lagoon-mermaids.mjs';
 import {flooDialogueAction,flooDialogueView} from './floo-travel.mjs';
 import {ALLEY_SHOP_HEARTH} from './diagon-alley.mjs';
 import {lupinDialogueNpc} from './remus-lupin.mjs';
 import {borginDialogueAction,borginDialogueView,validBorginDialogue} from './borgin-heart-dialogue.mjs';
+import {openShadowTrackerDialogue,shadowTrackerAction,shadowTrackerView,validShadowTrackerDialogue} from './shadow-tracker.mjs';
 import {pirateCrewDialogue,pirateCrewDialogueAction} from './pirate-crew.mjs';
+import {drawWaterActor} from './actor-water-art.mjs';
 
 const clone=x=>structuredClone(x),distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const key=p=>p.profileId||String(p.id);
@@ -97,6 +102,7 @@ export function openNpcDialogue(g,p){
   if(openSantaDialogue(g,p))return true;
   if(openVillagerDialogue(g,p))return true;
   if(p.ui||p.room||p.hp<=0||g.phase!=='play')return false;
+  if(openShadowTrackerDialogue(g,p))return true;
   const alan=alanActor(g);
   if(alan&&!alan.dialogueResolved&&distance(alan,p)<=68){
     p.ui={shop:'npc-dialogue',ownerDevice:p.device,npcId:'alan',node:'story',index:0};
@@ -118,9 +124,13 @@ const carried=(p,item)=>(p.inventory||[]).reduce((n,s)=>n+(s?.type===item?s.qty|
 function progress(p,a){return a.contract.objective.type==='collect'?Math.min(a.contract.objective.count,carried(p,a.contract.objective.item)):a.progress||0;}
 function choicesForNode(config,node){const def=config.dialogue.nodes[node];return (def?.choices||[]).map(c=>({label:c.label,action:'node:'+c.next}));}
 export function npcDialogueView(g,p){
+  if(p.ui?.shadowTracker)return shadowTrackerView(g,p);
   if(p.ui?.borginHeart)return borginDialogueView(g,p);
   if(p.ui?.flooHearth)return flooDialogueView(g,p,ALLEY_SHOP_HEARTH);
   if(p.ui?.mysteryVisitor)return mysteryDialogue(g,p);
+  if(p.ui?.castleResident)return castleResidentDialogue(g,p);
+  if(p.ui?.greyhavenCast)return greyhavenCastDialogue(g,p);
+  if(p.ui?.lagoonMermaid)return lagoonMermaidDialogue(g,p);
   if(p.ui?.pirateCrew)return pirateCrewDialogue(g,p);
   if(p.ui?.lupin)return patronusDialogueView(g,p);
   if(p.ui?.tideglassSurveyor)return tideglassDialogueView(g,p);
@@ -181,9 +191,13 @@ function validTalk(g,p){const u=p.ui,npc=u?.npcId==='alan'?alanActor(g):(g.quest
 export function npcDialogueAction(g,p,action){
   if(villagerDialogueAction(g,p,action))return true;
   const u=p.ui;if(u?.shop!=='npc-dialogue')return false;
+  if(u.shadowTracker)return shadowTrackerAction(g,p,action);
   if(u.borginHeart)return borginDialogueAction(g,p,action);
   if(u.flooHearth)return flooDialogueAction(g,p,ALLEY_SHOP_HEARTH,action);
   if(u.mysteryVisitor)return mysteryDialogueAction(g,p,action);
+  if(u.castleResident)return castleResidentDialogueAction(g,p,action);
+  if(u.greyhavenCast)return greyhavenCastDialogueAction(g,p,action);
+  if(u.lagoonMermaid)return lagoonMermaidDialogueAction(g,p,action);
   if(u.pirateCrew)return pirateCrewDialogueAction(g,p,action);
   if(u.lupin)return patronusDialogueAction(g,p,action);
   if(u.tideglassSurveyor)return tideglassDialogueAction(g,p,action);
@@ -293,7 +307,7 @@ export function tickNpcQuests(g,dt){
   }
   g.questNpcs=(g.questNpcs||[]).filter(n=>!n.fled);
   for(const p of g.players){if(p.ui?.shop==='npc-dialogue'&&!p.ui.villagerId){
-    const u=p.ui,valid=u.borginHeart?validBorginDialogue:u.lupin?lupinDialogueNpc:u.nocturneDarkWizard?validNocturneDarkWizardTalk:u.nocturneSpiderMerchant?validNocturneSpiderTalk:validTalk;
+    const u=p.ui,valid=u.shadowTracker?validShadowTrackerDialogue:u.borginHeart?validBorginDialogue:u.lupin?lupinDialogueNpc:u.nocturneDarkWizard?validNocturneDarkWizardTalk:u.nocturneSpiderMerchant?validNocturneSpiderTalk:validTalk;
     if(!valid(g,p))p.ui=null;
   }
     for(const state of Object.values(p.npcQuests||{})){
@@ -311,17 +325,26 @@ export function tickNpcQuests(g,dt){
   if(g.questSpawnTimer<=0){g.questSpawnTimer=1;for(const npc of g.questNpcs||[])for(const p of g.players)if(p.npcQuests?.[npc.npcId]?.active)establishObjective(g,p,npc);}
 }
 export function drawQuestNpc(c,g,npc,animator){
+  const paint=actor=>drawWaterActor(c,g,actor,48,pose=>animator.draw(c,pose,g.time,48));
+  if(npc.shadowTracker){
+    paint(npc);
+    c.save();c.textAlign='center';c.font='bold 10px sans-serif';c.fillStyle='#d5c8ed';c.fillText(npc.name,npc.x,npc.y-51);
+    if(g.players.some(p=>p.hp>0&&!p.room&&!p.ui&&distance(npc,p)<=64)){
+      c.font='9px sans-serif';c.fillStyle='#efd5a1';c.fillText('Interact · Talk',npc.x,npc.y+17);
+    }
+    c.restore();return;
+  }
   if(npc.boneCarver){drawBoneCarver(c,g,npc,animator);return;}
   if(npc.santa){drawSanta(c,g,npc,animator);return;}
   if(npc.rescueExplorer){
     const actor={...npc,sprite:'player',equipment:npc.equipment||{},appearance:npc.appearance||DEFAULT_APPEARANCE,
       animationAction:npc.rescueReady?(npc.moving?'run':'idle'):npc.animationAction};
-    animator.draw(c,actor,g.time,48);
+    paint(actor);
     c.save();c.textAlign='center';c.font='bold 10px sans-serif';c.fillStyle=npc.rescueReady?'#b6e8d6':'#e8d2a0';c.fillText(npc.rescueReady?'Explorer · Safe': 'Lost Explorer',npc.x,npc.y-46);
     if(npc.rescueReady){c.font='9px sans-serif';c.fillStyle='#efd5a1';c.fillText('Interact · Thank',npc.x,npc.y+18);c.fillStyle='#ead090';c.fillRect(npc.x-1,npc.y-59,3,7);c.fillRect(npc.x-1,npc.y-49,3,2);}
     c.restore();return;
   }
-  const config=getNpcQuestConfig();animator.draw(c,{...npc,sprite:'player',equipment:config.equipment,appearance:config.appearance},g.time,48);
+  const config=getNpcQuestConfig();paint({...npc,sprite:'player',equipment:config.equipment,appearance:config.appearance});
   c.save();c.textAlign='center';c.font='bold 10px sans-serif';c.fillStyle='#b6e8d6';c.fillText(config.name,npc.x,npc.y-94);
   c.font='9px sans-serif';c.fillStyle='#efd5a1';c.fillText(npc.talked?'Talked to':'Interact · Talk',npc.x,npc.y+18);c.fillStyle='#ead090';c.fillRect(npc.x-1,npc.y-110,3,7);c.fillRect(npc.x-1,npc.y-100,3,2);c.restore();
 }

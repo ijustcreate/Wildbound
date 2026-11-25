@@ -67,9 +67,10 @@ export function drawBankReeds(c,p,time,g){
 export function drawForestGround(c,g,visible=()=>true,{dynamicShadows=false,shaderGrass=false}={}){
  const data=forestDecor(g),landscape=hasForestLandscape(g);c.save();
  if(landscape){const cameraVisible=visible;visible=p=>cameraVisible(p)&&(g.phase!=='won'||houseKeepsWorld(g))&&(g.bloom>=3||Math.hypot(p.x-800,p.y-800)<g.bloom*430);drawLandscapeCover(c,g,visible,shaderGrass);}
- for(const p of g.scenery||[])if(['tree','snow_tree','palm'].includes(p.kind)&&visible(p)){
- if(landscape&&p.kind!=='palm'){if(!dynamicShadows)drawCanopyShadow(c,p,g);continue;}
- if(!dynamicShadows){const b=p.kind==='palm'?palmBase(p):treeBase(p);c.fillStyle=p.fallen?'#102b224d':'#0b25234f';c.beginPath();c.ellipse(b.x+5,b.y+3,p.size*(p.fallen?.13:.34),p.size*(p.fallen?.05:.12),0,0,Math.PI*2);c.fill();}}
+ for(const p of g.scenery||[]){
+  if(['tree','snow_tree','bush','frost_shrub'].includes(p.kind)&&visible(p))drawCanopyShadow(c,p,g.time,!dynamicShadows);
+  if(!dynamicShadows&&p.kind==='palm'&&visible(p)){const b=palmBase(p);c.fillStyle=p.fallen?'#102b224d':'#0b25234f';c.beginPath();c.ellipse(b.x+5,b.y+3,p.size*(p.fallen?.13:.34),p.size*(p.fallen?.05:.12),0,0,Math.PI*2);c.fill();}
+ }
  for(const l of data.leaves)if(visible(l)&&waterBodyAt(g,l.x,l.y)!=='pool'){
  const season=treeSeason(l.tree,g);if(season==='winter')continue;rect(c,l.x+l.dx,l.y+l.dy,3,1.5,season==='autumn'?['#a97442','#c79c51','#785742'][l.seed%3]:['#7e8448','#687643','#a18c53'][l.seed%3]);}
  for(const p of data.banks)if(visible(p)&&waterBodyAt(g,p.x,p.y)==='natural'){
@@ -111,4 +112,18 @@ export function drawFallingLeaves(c,g,visible=()=>true,scenery=g.scenery||[]){
   }
  }
 }
-export function drawBush(c,p,time,{dynamicShadows=false,windStrength=1}={}){const s=p.size/40,b=p.y+p.size*.19;c.save();c.translate(p.x,b);c.scale(s,s);if(!dynamicShadows){c.fillStyle='#17392e66';c.beginPath();c.ellipse(0,1,17,5,0,0,Math.PI*2);c.fill();}const sway=Math.sin(time*24+p.x)*(p.rustle||0)*3+forestWind(p.x,b,time,windStrength)*.8;for(let i=0;i<3;i++){crown(c,(i-1)*10+sway,-8-(i===1?5:0),11,9,'#274f35',i);crown(c,(i-1)*10-2+sway,-12-(i===1?5:0),8,5,'#5e8247',i);for(let j=0;j<5;j++)rect(c,(i-1)*10-7+j*3+sway,-13+hash(j,i)*7,2,2,'#92a65b');}c.restore();}
+export function drawBush(c,p,time,{dynamicShadows=false,windStrength=1}={}){
+ const root=p.rootY??p.y+p.size*.19,scale=p.size/40;
+ if(!dynamicShadows){
+  c.fillStyle='#17392e66';c.beginPath();c.ellipse(p.x,root+scale,17*scale,5*scale,0,0,Math.PI*2);c.fill();
+ }
+ if(drawForestAsset(c,{...p,rootY:root,forestAsset:p.forestAsset||'forest_round_shrub_large'},time))return;
+ // Headless callers can still paint without allocating a browser sprite.
+ c.save();c.translate(p.x,root);c.scale(scale,scale);
+ const sway=Math.sin(time*24+p.x)*(p.rustle||0)*3+forestWind(p.x,root,time,windStrength)*.8;
+ for(let i=0;i<3;i++){
+  crown(c,(i-1)*10+sway,-8-(i===1?5:0),11,9,'#274f35',i);
+  crown(c,(i-1)*10-2+sway,-12-(i===1?5:0),8,5,'#5e8247',i);
+ }
+ c.restore();
+}

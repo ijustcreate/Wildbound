@@ -63,6 +63,26 @@ test('the album completes at 20 distinct cards, saves, and opens an independentl
  assert.deepEqual(wizardCardIds(collection(player.inventory)),ids);
 });
 
+test('a partial album navigates the full catalog without changing the saved cards',()=>{
+ const {game,player}=setup();
+ const types=[WIZARD_CARDS[12].id,WIZARD_CARDS[2].id];
+ player.inventory=[{type:WIZARD_CARD_COLLECTION,qty:1,contents:contents(...types)}];
+ game.openInventory(player);
+ game.inventoryAction(player,'use');
+ assert.equal(player.ui.wizardCards.index,2);
+ game.inventoryAction(player,'prev');
+ assert.equal(player.ui.wizardCards.index,1);
+ game.inventoryAction(player,'wizard-card:19');
+ assert.equal(player.ui.wizardCards.index,19);
+ game.inventoryAction(player,'wizard-card:20');
+ assert.equal(player.ui.wizardCards.index,19);
+ game.inventoryAction(player,'next');
+ assert.equal(player.ui.wizardCards.index,0);
+ game.inventoryAction(player,'prev');
+ assert.equal(player.ui.wizardCards.index,19);
+ assert.deepEqual(wizardCardIds(collection(player.inventory)),types);
+});
+
 test('a first card survives a full backpack and both cards fit one slot after a slot opens',()=>{
  let {game,player}=setup();
  player.inventory=Array.from({length:32},()=>({type:'sword',qty:1}));

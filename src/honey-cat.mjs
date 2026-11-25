@@ -3,6 +3,7 @@ import {poseAt,projectPoint,facingIndex,validateMotion} from './player-motion.mj
 import {pixelVolume,pixelLine,pixelPolygon} from './pixel-shapes.mjs';
 import {paintLayers} from './render-order.mjs';
 import {honeyCatCoat} from './honey-cat-coats.mjs';
+import {drawRuneboundAntler,drawRuneboundRuff,drawRuneboundTail,runeboundCatCoat} from './runebound-cat-art.mjs';
 
 const stockPalette={body:'#3e4147',shade:'#272f35',light:'#646d70',outline:'#222c30',cream:'#ebe4cd',eye:'#b7ce77',nose:'#ce9b89'};
 const headLift={neck:1,head:2.8,jaw:2.8,eyeL:2.8,eyeR:2.8,earL:2.8,earR:2.8};
@@ -36,14 +37,25 @@ function drawCatEar(c,pose,d,side,near,colors,inner){
 }
 
 export function drawHoneyCat(c,a,time=0,model=honeyCatMotion,supplied=null){
+ const runebound=a.runeboundCat||a.kind==='runebound_cat';
  const action=a.animationAction||(a.hp<=0&&a.hp!==undefined?'death':a.moving?(a.idle==='run'?'run':'walk'):a.idle==='sleep'?'sleep':a.idle==='sit'?'sit':'idle');
- const chosen=model.clips[action]?action:'idle',clip=model.clips[chosen],frame=a.playerFrame??(['sit','sleep'].includes(chosen)?clip.length-1:time*clip.fps),pose=supplied||poseAt(model,chosen,frame),d=facingIndex(a.faceX,a.faceY),p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)])),q=[],pal=model.palette;
- const coat=Object.keys(stockPalette).every(key=>pal[key]===stockPalette[key])?honeyCatCoat(a):null;
+ const chosen=model.clips[action]?action:'idle',clip=model.clips[chosen];
+ const fixedPose=['sit','sleep'].includes(chosen)||(runebound&&chosen==='death');
+ const progress=runebound&&Number.isFinite(a.animationProgress)?a.animationProgress:1;
+ const frame=a.playerFrame??(fixedPose?(clip.length-1)*progress:time*clip.fps);
+ let pose=supplied||poseAt(model,chosen,frame);
+ if(!supplied&&chosen==='sleep'&&a.restBlend<1){
+  const standing=poseAt(model,'idle',0);
+  pose=Object.fromEntries(Object.entries(pose).map(([joint,coords])=>[joint,coords.map((v,i)=>standing[joint][i]+(v-standing[joint][i])*a.restBlend)]));
+ }
+ const d=facingIndex(a.faceX,a.faceY),p=Object.fromEntries(Object.entries(pose).map(([n,v])=>[n,projectPoint(v,d)])),q=[],pal=model.palette;
+ const coat=runebound?runeboundCatCoat:Object.keys(stockPalette).every(key=>pal[key]===stockPalette[key])?honeyCatCoat(a):null;
  const fur=coat?.fur||{body:pal.body,shade:pal.shade,light:pal.light,outline:pal.outline};
  const white={...fur,body:pal.cream,light:'#fff4da',shade:'#a9b7a7'};
  const paws=coat?.paws||white,bib=coat?.bib||white,muzzle=coat?.muzzle||white;
  const add=(id,bone,fn,depth=p[bone].depth)=>{if(model.visibility[bone]?.[d]!==false)q.push({id,bone,bones:[bone],depth,fn});};
- add('Cat flexible tail','tailMid',()=>{
+ if(runebound)add('Runebound cat plume tail','tailMid',()=>drawRuneboundTail(c,pose,d,chosen,time));
+ else add('Cat flexible tail','tailMid',()=>{
   pixelLine(c,p.tailBase,p.tailMid,fur.outline,3);
   if(coat)pixelLine(c,p.tailBase,p.tailMid,fur.body,2);
   pixelLine(c,p.tailMid,p.tailTip,coat?.tip.body||fur.body,2);
@@ -54,20 +66,22 @@ export function drawHoneyCat(c,a,time=0,model=honeyCatMotion,supplied=null){
  });
  add('Cat body','chest',()=>{const mid=pose.pelvis.map((v,i)=>(v+pose.chest[i])/2);pixelVolume(c,mid,4,9,4.5,d,fur,coat?.bodyPattern);});
  add('Cat white bib','neck',()=>pixelVolume(c,pose.neck,3,3.5,4,d,bib));
+ if(runebound)add('Runebound cat chest ruff','neck',()=>drawRuneboundRuff(c,pose,d),p.neck.depth+(d<3||d>5?.3:-.3));
  add('Cat head','head',()=>pixelVolume(c,pose.head,4.6,4,4.4,d,fur,coat?.headPattern));
  for(const side of ['L','R']){
   const bone='ear'+side,other=side==='L'?'earR':'earL',near=p[bone].depth>=p[other].depth;
   const ear=(side==='R'&&coat?.earRight)||coat?.ears||fur;
   add('Cat ear '+side,bone,()=>drawCatEar(c,pose,d,side,near,ear,pal.nose),p.head.depth+(near ? .42 : -.6));
+  if(runebound)add('Runebound cat antler '+side,bone,()=>drawRuneboundAntler(c,pose,d,side,near),p.head.depth+(near?.46:-.64));
  }
  if(![3,4,5].includes(d))add('Cat cream muzzle','jaw',()=>{
   pixelVolume(c,pose.jaw,3,2.3,1.8,d,muzzle);const j=p.jaw;
-  c.fillStyle=pal.nose;c.fillRect(Math.round(j.x),Math.round(j.y)-1,2,1);
+  c.fillStyle=coat?.nose||pal.nose;c.fillRect(Math.round(j.x),Math.round(j.y)-1,2,1);
   for(const sign of[-1,1])pixelLine(c,{x:j.x+sign*2,y:j.y},{x:j.x+sign*5,y:j.y-1},coat?muzzle.light:pal.cream,1);
  },p.head.depth+.2);
  for(const side of ['L','R'])add('Cat eye '+side,'eye'+side,()=>{
   const e=p['eye'+side];c.fillStyle=fur.outline;c.fillRect(Math.round(e.x)-1,Math.round(e.y)-1,3,2);
-  if(chosen!=='sleep'){c.fillStyle=coat?.eye||pal.eye;c.fillRect(Math.round(e.x)-1,Math.round(e.y),2,1);}
+  if(chosen!=='sleep'&&!(runebound&&chosen==='death')){c.fillStyle=coat?.eye||pal.eye;c.fillRect(Math.round(e.x)-1,Math.round(e.y),2,1);}
  },p.head.depth+.8);
  paintLayers(q,model,d,c,p);return p;
 }

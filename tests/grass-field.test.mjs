@@ -9,6 +9,7 @@ import {wildLandsDesign} from '../src/wild-lands.mjs';
 import {buildTrainRoute} from '../src/train-track.mjs';
 import {wildLandsGround,wildLandsSurfaceAt} from '../src/wild-lands-world.mjs';
 import {wildLandsPathAt} from '../src/wild-lands-geography.mjs';
+import {WHEAT_HEAD,WHEAT_STEM} from '../src/wheat-grass.mjs';
 
 test('shadow grass is dense and tall while leaving the clearing and void uncovered',()=>{
  const g={...realmWorld(42,'shadow'),seed:42,generatedEnvironment:'shadow'};
@@ -58,6 +59,27 @@ test('cutting changes patch state while keeping shader geometry stable',()=>{
  g.scenery[0].cut=true;g.scenery[0].charred=true;
  assert.deepEqual(grassFieldInstances(g),before);
  assert.ok(before.every((v,i)=>i%8!==6||v===0||v===1),'blades reference a stable patch state slot');
+});
+
+test('wheat stalks and ears share their roots and cut state across streamed chunks',()=>{
+ const p={id:'wheat',kind:'tall_grass',grassVariant:'wheat',x:512,y:480,rootY:512,size:80,tuftSeed:17};
+ const g={seed:42,terrain:Array(2500).fill('grass'),forestLandscape:{routeField:new Float32Array(10000).fill(200)},scenery:[p]};
+ for(const sx of [256,512]){
+  const bounds={sx,sy:480,ex:sx+256,ey:544};
+  const geometry=grassFieldInstances(g,bounds,[p],()=>5),stalks=[];
+  for(let i=0;i<geometry.length;i+=8)if(geometry[i+6]===5)stalks.push(geometry.slice(i,i+8));
+  assert.ok(stalks.length>=30);
+  for(let i=0;i<stalks.length;i+=2){
+   const [stem,ear]=stalks.slice(i,i+2);
+   assert.deepEqual(stem.slice(0,7),ear.slice(0,7));
+   assert.equal(stem[7],WHEAT_STEM);
+   assert.equal(ear[7],WHEAT_HEAD);
+   assert.ok(stem[2]>=35&&stem[2]<=56&&stem[0]>=sx&&stem[0]<bounds.ex);
+  }
+  p.cut=true;
+  assert.deepEqual(grassFieldInstances(g,bounds,[p],()=>5),geometry);
+  p.cut=false;
+ }
 });
 
 test('Bayou blades are short, dense and rooted on dry ground while the original floor mask stays intact',()=>{

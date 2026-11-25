@@ -429,7 +429,7 @@ body #board-panel.board-sequence #board-caption{font-size:13px;color:#f3f4df}
 @media(prefers-reduced-motion:reduce){.roster-portrait-glow,.roster-card .health-track i::after,.roster-card .mana-track i::after{animation:none}}
 .minion-dot{width:12px;height:12px;border-radius:50%;border:1px solid #d1ecff;background:conic-gradient(#70bdff var(--cooldown),#16334e 0);box-shadow:0 0 3px #70bdff}
 .roster-minions .minion-dot{box-shadow:0 0 5px #70bdff,0 0 10px #70bdff77}
-body #board-panel.board-sequence #close-board{visibility:hidden;}
+body #board-panel.board-sequence #close-board:disabled{visibility:hidden;}
 @media (max-width: 1100px) {
   .field-kit {
     font-size: 13px;

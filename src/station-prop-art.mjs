@@ -1,4 +1,6 @@
 import {drawOwlCage,drawCagedSnowyOwl} from './snowy-owl-art.mjs';
+import {drawSpriteStackProp} from './sprite-stack-props.mjs';
+export const STATION_LANTERN_GLASS = Object.freeze({x:11, y:-26});
 // Station study: stepped silhouettes, broad material planes, dark openings.
 // Native pixels remain readable at gameplay size; no bitmap or save replacement.
 export function drawStationCargo(c,kind,x,y,time=0){
@@ -33,6 +35,7 @@ export function drawStationCargo(c,kind,x,y,time=0){
   r(x-28,y-6,57,5,'#343d37');r(x-26,y-7,53,2,'#b9a073');r(x+24,y-36,3,31,'#b99861');r(x+18,y-39,9,3,'#e1c28b');
   c.save();c.translate(0,Math.round(bob));box(-22,-27,29,19,'#70473b','#ab7453','#493a32');r(x-17,y-26,3,17,'#c7a36b');r(x+1,y-26,3,17,'#c7a36b');box(-6,-40,20,12,'#63776b','#9ca88c','#3c554c');r(x+1,y-43,7,2,'#343e36');r(x+3,y-38,4,5,'#d6bb87');c.restore();
  }else if(kind==='lantern'){
+  if(drawSpriteStackProp(c,kind,x,y,time))return true;
   p([[-7,0],[-7,-4],[-3,-7],[-3,-46],[1,-49],[8,-49],[11,-46],[11,-39],[8,-39],[8,-44],[1,-44],[1,-7],[5,-4],[5,0]],'#35453d');r(x-2,y-42,1,35,'#8c9677');
   p([[1,-37],[5,-42],[13,-42],[18,-37],[17,-34],[16,-22],[19,-19],[0,-19],[3,-23],[3,-34]],'#403e31');
   r(x+5,y-34,9,11,'#e9ac51');r(x+6,y-33,5,8,'#ffdda0');r(x+7,y-32,2,5,'#fff1bf');r(x+12,y-34,2,13,'#856b42');r(x+2,y-37,15,3,'#b89a60');r(x+1,y-22,17,3,'#a58652');

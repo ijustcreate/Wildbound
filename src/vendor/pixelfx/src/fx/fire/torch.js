@@ -7,8 +7,8 @@ export const meta = {
   name: "Torch",
   desc: "A wall torch on an iron bracket: a licking flame leaping off a pitch-soaked wrap, licks and puffs torn off its tips, smoke, embers, a flickering light on the wall.",
   tags: ["fire", "torch", "prop", "light", "wall", "dungeon", "loop"],
-  size: [72, 120],
-  origin: [36, 94],
+  size: [168, 208],
+  origin: [84, 146],
   duration: 2,
   loop: true,
   fps: 30,
@@ -84,6 +84,7 @@ export function draw(p, t, o) {
   burn(p, t, TONGUES, {
     H, D, NL, S, x: 0, y: BASE, height: 20, lean: 0.12, spread: 4,
     puffs: 10, licks: 5, smoke: 7, smokeSize: 2.3, smokeLife: [1.3, 2.1], embers: 7, glowR: 48, glow: 1.25, wind: 2,
+    trailX: o.trailX, trailY: o.trailY,
     mid: () => {if(!o.gameplay)wrap(p, W, I, H, t);},
   });
 }

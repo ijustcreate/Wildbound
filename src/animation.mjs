@@ -3,6 +3,8 @@ import {drawTacticalTell} from './combat-tactics-state.mjs';
 import {visualActorId} from './animation-id.mjs';
 import {drawGorilla} from './temple.mjs';
 import {CapeInertia} from './cape-inertia.mjs';
+import {witchHatFrame,WitchHatInertia} from './witch-hat-motion.mjs';
+import {merlinBeardFrame} from './merlin-outfit-art.mjs';
 import {LocomotionHistory} from './native-locomotion.mjs';
 import {characterLightingAt,shadeCharacterSurface} from './character-lighting.mjs';
 import {humanoidArtStatus} from './humanoid-hd.mjs';
@@ -20,6 +22,7 @@ import {beastMotions,beastMotionRevisions} from './beast-motion.mjs';
 import {beetleAction,beetleFrame} from './beetle-motion.mjs';
 import {spiderAction,spiderFrame} from './spider-motion.mjs';
 import {ScarfInertia} from './school-scarves.mjs';
+import {headwearDrawSubject,recordHeadwearTarget,renderedHeadwearFit,wornHeadwear} from './live-edit-headwear.mjs';
 import {drawBee,drawBeeHive} from './bee-art.mjs';
 import {drawTsetse} from './tsetse-art.mjs';
 import {drawRaven} from './raven-art.mjs';
@@ -33,7 +36,14 @@ import {
   playerFrame,
   playerAction,
   playerLayers,
+  drawPlayer,
+  directionVector,
+  playerHeadwearFacing,
+  playerHeadwearPickingBounds,
+  playerWitchHatMotion,
+  isDefaultExplorer,
 } from "./player-motion.mjs";
+import {drawVillager} from './villager-motion.mjs';
 import {
   lionAction,
   lionFrame,
@@ -56,6 +66,7 @@ import {
 } from "./rhino-motion.mjs";
 import { facingIndex } from "./player-motion.mjs";
 import {drawPatronus} from './patronus-art.mjs';
+import {drawHeldTorchFlame,hasHeldTorch} from './torch-flame.mjs';
 // Poses are independent of frame rate. Rasterize articulated parts at 64px,
 // then scale with nearest-neighbour sampling to retain actual pixel edges.
 export class Animator {
@@ -84,21 +95,49 @@ export class Animator {
     size=(actor.shackBoggart?actor.boggartSize??size:size)*championPower(actor)*shrinkingScale(actor);
     if(actor.kind==='baby_spider'&&!actor.sprite)actor={...actor,sprite:'spider'};
     actor=enemyCombatAnimation(actor,rigSubject(actor.sprite||actor.kind)?.data);
+    const rig=rigSubject(actor.sprite||actor.kind);
+    const headwear=rig?.draw===drawPlayer?headwearDrawSubject(this.liveHeadwearGame,actor):null;
     if(typeof actor.id==='string')actor={...actor,id:visualActorId(actor.id)};
     if((actor.sprite==='player'||actor.sprite?.startsWith('explorer')||!actor.kind)&&playerMotion.locomotionRevision>=1){
       this.locomotionHistory??=new LocomotionHistory();
       actor={...actor,...this.locomotionHistory.sample(actor,time,playerAction(actor),playerFrame(actor,time))};
     }
-    if(actor.equipment?.cape||actor.field?.cosmetics?.cape){this.capeInertia??=new CapeInertia();actor={...actor,capeMotion:this.capeInertia.sample(actor,time)};}
+    if(headwear?.previewView!=null){
+      const [faceX,faceY]=directionVector(headwear.previewView);
+      actor={...actor,faceX,faceY,liveHeadwearPreviewView:headwear.previewView};
+    }
+    const headwearView=headwear?playerHeadwearFacing(actor,rig.data):null;
+    const liveHeadwearFit=headwear?.key&&renderedHeadwearFit(this.liveHeadwearGame,headwear.key,headwearView);
+    if(liveHeadwearFit)actor={...actor,liveHeadwearFit};
+    if((rig?.draw===drawPlayer||rig?.draw===drawVillager)&&ITEMS[wornHeadwear(actor)]?.style==='witch'){
+      this.witchHatInertia??=new WitchHatInertia();
+      actor={...actor,witchHatInertia:this.witchHatInertia.sample(actor,time)};
+    }
+    const cape=actor.equipment?.cape||actor.field?.cosmetics?.cape;
+    const torch=rig?.draw===drawPlayer&&hasHeldTorch(actor);
+    if(cape||torch){
+      this.capeInertia??=new CapeInertia();
+      const motion=this.capeInertia.sample(actor,time);
+      if(cape)actor={...actor,capeMotion:motion};
+      if(torch)actor={...actor,torchMotion:motion};
+    }
     if(ITEMS[actor.equipment?.back||actor.field?.cosmetics?.back]?.scarf){this.scarfInertia??=new ScarfInertia();actor={...actor,scarfMotion:this.scarfInertia.sample(actor,time)};}
     const groundActor=actor;
     if(actor.kind==='imp'){size*=.7;if(actor.hp>0)actor={...actor,y:actor.y-(actor.impFlightHeight??20)};}
     if(actor.kind==='succubus'&&actor.hp>0&&actor.succubusFlightHeight>0)actor={...actor,y:actor.y-actor.succubusFlightHeight};
     if(actor.kind==='bat'&&actor.roostHeight>0)actor={...actor,y:actor.y-actor.roostHeight};
     if(actor.jumpHeight>0||actor.groundHeight>0)actor={...actor,y:actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)};
-    const character=rigSubject(actor.sprite||actor.kind)?.data?.joints?.handL;
+    const character=rig?.data?.joints?.handL;
     const lighting=character&&this.lighting&&characterLightingAt(this.lighting,groundActor,{lift:groundActor.y-actor.y,bodyHeight:22*size/48});
-    const paint=()=>withPlayerPoseCache(()=>{const result=celShadingEnabled()&&character?this.drawCutoutCharacter(ctx,actor,time,size,lighting):this.drawActor(ctx,actor,time,size,lighting);drawTacticalTell(ctx,actor,time,size);return result;});
+    const paint=()=>withPlayerPoseCache(()=>{
+      if(headwear?.picking&&ctx.globalAlpha>=.9){
+        const {bounds,hatBounds}=playerHeadwearPickingBounds(actor,time,size,rig.data,headwear.itemId);
+        recordHeadwearTarget(this.liveHeadwearGame,headwear,bounds,hatBounds,headwearView);
+      }
+      const result=celShadingEnabled()&&character?this.drawCutoutCharacter(ctx,actor,time,size,lighting):this.drawActor(ctx,actor,time,size,lighting);
+      drawTacticalTell(ctx,actor,time,size);
+      return result;
+    });
     if (this.metrics?.enabled)
       return this.metrics.measure("animation", () =>
         paint(),
@@ -110,9 +149,11 @@ export class Animator {
     if(source.width!==320){source.width=source.height=320;}
     const c=source.getContext('2d');c.resetTransform();c.clearRect(0,0,320,320);c.globalAlpha=1;c.filter='none';c.globalCompositeOperation='source-over';c.imageSmoothingEnabled=false;
     const scale=96/size;c.setTransform(scale,0,0,scale,160,160);
-    this.drawActor(c,{...actor,x:0,y:0},time,size,null);
+    const torches=[];
+    this.drawActor(c,{...actor,x:0,y:0},time,size,null,(x,y,seed)=>torches.push({x,y,seed}));
     const surface=cutoutSurface(source,{pixelScale:2,outputScale:4}),span=160*size/48;
     ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(this.litFrame(surface,lighting,span),actor.x-span/2,actor.y-span/2,span,span);ctx.restore();
+    for(const {x,y,seed} of torches)drawHeldTorchFlame(ctx,actor.x+x,actor.y+y,time,seed,size/48,actor.torchMotion);
   }
   litFrame(surface,lighting,worldWidth){
     if(!lighting?.lights.length)return surface;
@@ -122,7 +163,7 @@ export class Animator {
     const c=target.getContext('2d');c.clearRect(0,0,target.width,target.height);c.imageSmoothingEnabled=false;c.drawImage(surface,0,0);
     shadeCharacterSurface(target,lighting,{pixelsPerWorld:surface.width/worldWidth});return target;
   }
-  drawActor(ctx, actor, time, size = 48,lighting=null) {
+  drawActor(ctx, actor, time, size = 48,lighting=null,paintTorch) {
     if(actor.kind==='river_otter'){drawOtter(ctx,actor,time,size);return;}
     if(drawRaven(ctx,actor,time,size))return;
     if(actor.kind==='anaconda'){drawAnaconda(ctx,actor,time);return;}
@@ -141,31 +182,37 @@ export class Animator {
     actor=creaturePackVisualActor(actor);
     // Players have exactly one animation path. Old sheets and creature modes
     // cannot override the shared player definition loaded by Animation Studio.
-    if (rigSubject(nameKey)) {
+    const subject=rigSubject(nameKey);
+    if (subject) {
+      const torch=subject.draw===drawPlayer&&hasHeldTorch(actor);
+      const tallHat = wornHeadwear(actor) === 'greyhaven_starwatch_hat';
       if((nameKey==='player'||nameKey?.startsWith('explorer'))&&actor.trainRide?.seat&&actor.animationAction==='train_sit'&&
          !actor.rigOverride&&!actor.itemArtItems&&!actor.moving&&actor.hp>0&&!(actor.flash>0)&&!(actor.hit>0)&&
          !(actor.attack>0)&&!(actor.charge>0)&&!actor.bowAiming&&!actor.swordPolish&&!actor.carryingItem&&
-         !actor.heldChickenId&&!actor.broomMount&&actor.equipment?.head!=='jack_o_lantern'&&
+         !actor.heldChickenId&&!actor.broomMount&&!torch&&actor.equipment?.head!=='jack_o_lantern'&&
          !['hand1','hand2'].some(slot=>ITEMS[actor.equipment?.[slot]]?.energyBlade)&&!playerLayers(actor,time).length){
         this.seatedFrames??=new Map();
         const clip=playerMotion.clips.train_sit,raw=playerFrame(actor,time,playerMotion,'train_sit');
         const frame=Math.floor((clip.loop?(raw%clip.length+clip.length)%clip.length:raw)*2)/2;
         const scarf=actor.scarfMotion?.tails?.map(t=>[Math.round(t.x),Math.round(t.y),Math.round(t.z)]);
         const cape=actor.capeMotion&&[Math.round(actor.capeMotion.vx/20),Math.round(actor.capeMotion.vy/20),Math.floor(actor.capeMotion.phase*2)%13];
-        const key=JSON.stringify([nameKey,playerMotionRevision,humanoidArtStatus().revision,facingIndex(actor.faceX,actor.faceY),frame,
-          actor.appearance,actor.equipment,Object.values(actor.equipment||{}).map(id=>ITEMS[id]?.artRevision||0),actor.field?.cosmetics,
-          (actor.inventory||[]).filter(item=>ITEMS[item?.type]?.relic).slice(0,2).map(item=>item.type),scarf,cape,Math.sin(time*2)>0]);
+        if(ITEMS[wornHeadwear(actor)]?.style==='witch')actor={...actor,witchHatMotion:playerWitchHatMotion(actor,time)};
+        const key=JSON.stringify([nameKey,playerMotionRevision,humanoidArtStatus().revision,facingIndex(actor.faceX,actor.faceY),playerHeadwearFacing(actor),frame,
+          actor.appearance,isDefaultExplorer(actor),actor.equipment,Object.values(actor.equipment||{}).map(id=>ITEMS[id]?.artRevision||0),actor.field?.cosmetics,
+          (actor.inventory||[]).filter(item=>ITEMS[item?.type]?.relic).slice(0,2).map(item=>item.type),scarf,cape,Math.sin(time*2)>0,actor.liveHeadwearFit,
+          actor.witchHatMotion&&witchHatFrame(actor.witchHatMotion),merlinBeardFrame(actor,time)]);
+        const halfSpan=tallHat?72:64,drawSize=size*halfSpan/24;
         let seat=this.seatedFrames.get(key);
         if(seat)this.seatedFrames.delete(key);
         else{
-          seat=document.createElement('canvas');seat.width=seat.height=512;
-          const pen=seat.getContext('2d');pen.scale(4,4);pen.translate(64,64);
+          seat=document.createElement('canvas');seat.width=seat.height=halfSpan*8;
+          const pen=seat.getContext('2d');pen.scale(4,4);pen.translate(halfSpan,halfSpan);
           rigSubject(nameKey).draw(pen,{...actor,playerFrame:frame},time);
           if(this.seatedFrames.size>=40)this.seatedFrames.delete(this.seatedFrames.keys().next().value);
         }
         this.seatedFrames.set(key,seat);
         ctx.imageSmoothingEnabled=false;
-        ctx.drawImage(this.litFrame(seat,lighting,size*8/3),Math.round(actor.x-size*4/3),Math.round(actor.y-size*4/3),size*8/3,size*8/3);
+        ctx.drawImage(this.litFrame(seat,lighting,drawSize),Math.round(actor.x-drawSize/2),Math.round(actor.y-drawSize/2),drawSize,drawSize);
         return;
       }
       if(['spider','tarantula'].includes(nameKey)&&(!explicitPose||actor.enemyCombatFrame)&&!actor.rigOverride){
@@ -217,7 +264,7 @@ export class Animator {
         !(actor.hit > 0) &&
         !actor.equipment?.cape &&
         !actor.field?.cosmetics?.cape &&
-        !actor.shoulderBroom &&
+        !actor.shoulderBroom && !torch &&
         !ITEMS[actor.equipment?.back||actor.field?.cosmetics?.back]?.scarf &&
         actor.equipment?.head !== 'jack_o_lantern' && actor.equipment?.head !== 'bone_carver_crown' && actor.equipment?.gloves !== 'bone_carver_claws' &&
         playerAction(actor) === "idle" && !playerLayers(actor,time).length && !actor.locomotionTransition && !actor.locomotionTurning
@@ -233,26 +280,34 @@ export class Animator {
                 clip.length) *
                 2,
             ) / 2;
+        if(ITEMS[wornHeadwear(actor)]?.style==='witch')actor={...actor,witchHatMotion:playerWitchHatMotion(actor,time)};
         const key = JSON.stringify([
           humanoidArtStatus().revision,
           facingIndex(actor.faceX, actor.faceY),
+          playerHeadwearFacing(actor),
           frame,
           actor.equipment,
           Object.values(actor.equipment||{}).map(id=>ITEMS[id]?.artRevision||0),
           actor.appearance,
+          actor.greyhavenCostume,
+          isDefaultExplorer(actor),
           actor.field?.cosmetics,
           (actor.inventory || [])
             .filter((i) => ITEMS[i?.type]?.relic)
             .slice(0, 2)
             .map((i) => i.type),
           Math.sin(time * 2) > 0,
+          actor.liveHeadwearFit,
+          actor.witchHatMotion&&witchHatFrame(actor.witchHatMotion),
+          merlinBeardFrame(actor,time),
         ]);
+        const halfSpan=tallHat?72:48,drawSize=size*halfSpan/24;
         let surface = this.playerFrames.get(key);
         if (!surface) {
           surface = document.createElement("canvas");
-          surface.width = surface.height = 384;
+          surface.width = surface.height = halfSpan*8;
           const cc = surface.getContext("2d");
-          cc.scale(4,4);cc.translate(48,48);cc.imageSmoothingEnabled=false;
+          cc.scale(4,4);cc.translate(halfSpan,halfSpan);cc.imageSmoothingEnabled=false;
           rigSubject(nameKey).draw(cc, { ...actor, playerFrame: frame }, time);
           if (this.playerFrames.size >= 64)
             this.playerFrames.delete(this.playerFrames.keys().next().value);
@@ -260,11 +315,11 @@ export class Animator {
         }
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(
-          this.litFrame(surface,lighting,size*2),
-          Math.round(actor.x - size),
-          Math.round(actor.y - size),
-          size * 2,
-          size * 2,
+          this.litFrame(surface,lighting,drawSize),
+          Math.round(actor.x - drawSize/2),
+          Math.round(actor.y - drawSize/2),
+          drawSize,
+          drawSize,
         );
         return;
       }
@@ -364,15 +419,30 @@ export class Animator {
         );
         return;
       }
-      const subject=rigSubject(nameKey),humanoid=!!(subject.data?.joints?.handL&&subject.data?.joints?.footL&&!subject.data.skeleton&&!subject.data.robot);
+      const humanoid=!!(subject.data?.joints?.handL&&subject.data?.joints?.footL&&!subject.data.skeleton&&!subject.data.robot);
       // Native articulated pixel parts use a bounded surface at detail resolution.
       const detailed=humanoid||['murk_wolf','dreadmane_lion','slime'].includes(nameKey);
-      const surface=detailed?this.humanoidSurface:this.rigSurface;
+      let surface=detailed?this.humanoidSurface:this.rigSurface;
+      if(detailed&&tallHat){
+        if(!this.tallHumanoidSurface){
+          this.tallHumanoidSurface=document.createElement('canvas');
+          this.tallHumanoidSurface.width=this.tallHumanoidSurface.height=576;
+        }
+        surface=this.tallHumanoidSurface;
+      }
+      const halfSpan=surface.width/(detailed?8:2),drawSize=size*halfSpan/24;
       const c = surface.getContext("2d");
       c.clearRect(0, 0, surface.width, surface.height);
       c.save();
       if(detailed)c.scale(4,4);
-      c.translate(detailed?64:128,detailed?64:128);
+      c.translate(halfSpan,halfSpan);
+      // Capture the transformed wick while painting the item. Draw the plume on
+      // the scene canvas so the actor raster cannot crop the flame or its glow.
+      const torches=[];
+      if(torch)actor={...actor,collectHeldTorch:(x,y,seed)=>{
+        const m=c.getTransform();
+        torches.push({x:m.a*x+m.c*y+m.e,y:m.b*x+m.d*y+m.f,seed});
+      }};
       const cfg = creatures[nameKey];
       const motionDuration =
         actor.state === "windup"
@@ -394,13 +464,18 @@ export class Animator {
       rigSubject(nameKey).draw(c, (actor.tactics||NIGHT_KINDS.includes(nameKey)||nameKey==='dreadmane_lion') ? actor : { ...actor, motionDuration }, time);
       c.restore();
       ctx.imageSmoothingEnabled = false;
+      const x=Math.round(actor.x-drawSize/2),y=Math.round(actor.y-drawSize/2);
       ctx.drawImage(
-        this.litFrame(surface,lighting,size*(detailed?8:16)/3),
-        Math.round(actor.x - size * (detailed?4:8) / 3),
-        Math.round(actor.y - size * (detailed?4:8) / 3),
-        size * (detailed?8:16) / 3,
-        size * (detailed?8:16) / 3,
+        this.litFrame(surface,lighting,drawSize),
+        x,y,
+        drawSize,
+        drawSize,
       );
+      if(torches.length){
+        const pixel=drawSize/surface.width;
+        const paint=paintTorch??((x,y,seed)=>drawHeldTorchFlame(ctx,x,y,time,seed,size/48,actor.torchMotion));
+        for(const wick of torches)paint(x+wick.x*pixel,y+wick.y*pixel,wick.seed);
+      }
       return;
     }
     if (rig?.mode === "rig") {

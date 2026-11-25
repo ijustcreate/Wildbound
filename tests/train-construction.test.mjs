@@ -19,9 +19,12 @@ test('train shadows project finite pixel silhouettes at eight headings and bridg
  }
  assert.deepEqual(trainShadowPolygons({...car,sink:1}),[]);
 });
-test('overlapping train shadow silhouettes use one fill without ellipses',()=>{
- let fills=0,polygons=0;
- const c={globalAlpha:1,save(){},restore(){},beginPath(){},moveTo(){polygons++;},lineTo(){},closePath(){},fill(){fills++;}};
+test('overlapping train shadow silhouettes fill stepped pixel spans once',()=>{
+ let fills=0;
+ const spans=[];
+ const c={globalAlpha:1,save(){},restore(){},beginPath(){},rect(...args){spans.push(args);},fill(){fills++;}};
  drawTrainShadows(c,[car,{...car,x:650,kind:'caboose'}]);
- assert.equal(fills,1);assert.ok(polygons>=7);
+ assert.equal(fills,1);
+ assert.ok(spans.length>7);
+ assert.ok(spans.every(([x,y,width,height])=>x%2===0&&y%2===0&&width%2===0&&height===2));
 });

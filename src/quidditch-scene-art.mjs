@@ -107,7 +107,8 @@ export function drawQuidditchScene(renderer,g,w,h,bounds){
  const viewer=local.find(p=>!p.ui&&p.broomMount);
  if(viewer&&w>=350){
   const keyboard=viewer.device==='keyboard',buttons=controllerButtonNames(viewer.controllerFamily||'generic');
-  const help=keyboard?'X play ball · J rise · Space descend · C dismount':buttons[2]+' play ball · '+buttons[0]+' rise · '+buttons[7]+' descend · '+buttons[1]+' dismount';
+  const dash=actionInputLabel(g,viewer,'dodge');
+  const help=keyboard?'X play ball · J rise · K descend · '+dash+' dash · C dismount':buttons[2]+' play ball · '+actionInputLabel(g,viewer,'jump')+' rise · D-pad ↓ descend · '+dash+' dash · '+actionInputLabel(g,viewer,'loot')+' dismount';
   c.save();c.textAlign='center';c.font='11px system-ui';c.strokeStyle='#162722';c.lineWidth=3;
   c.strokeText(help,w/2,h-16);c.fillStyle='#e5ddbd';c.fillText(help,w/2,h-16);c.restore();
  }

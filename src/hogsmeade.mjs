@@ -28,7 +28,7 @@ export const HOGSMEADE_NPCS=[
   line:'A hot butterbeer by the hearth first, then you can tell me what news came down the hill.'},
  {id:'zonko',name:'Zonko',title:'Jokeshop proprietor',x:8466,y:3921,faceX:.3,faceY:1,
   building:'zonkos',appearance:{hair:'crop',hairColor:'#b48c57',shirt:'#c09253',pants:'#514565'},
-  equipment:{head:'witch_hat_ember_russet'},line:'Mind the teacups. The little white one took the tip off my measuring spoon.'},
+  equipment:{head:'witch_hat_russet'},line:'Mind the teacups. The little white one took the tip off my measuring spoon.'},
  {id:'hagrid',name:'Rubeus Hagrid',title:'Keeper of Keys and Grounds',x:8719,y:4199,faceX:-.6,faceY:1,
   appearance:{hair:'waves',hairColor:'#4f392e',shirt:'#7b593f',pants:'#454a46',facialHair:'fullbeard'},
   line:'The Shack’s been empty for years. If ye hear scratching upstairs, mind where ye put yer feet.'},

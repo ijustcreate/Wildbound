@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Game } from "../src/core.mjs";
 import { saveSession, restoreSession } from "../src/session.mjs";
+import { activeLevelUp } from "../src/level-up.mjs";
+import { snapshot } from "../src/rooms.mjs";
+import { trainingPoints } from "../src/training-points.mjs";
 
 test("Enemy item rolls are one tenth of former rates", () => {
   let seed = 42;
@@ -56,4 +59,37 @@ test("Collecting an XP shower can award multiple levels without losing value", (
   for(const other of [...g.xpOrbs]){p.x=other.x;p.y=other.y;assert.ok(g.collectXP(p,other));}
   assert.equal(p.level, 4);
   assert.equal(p.xp, 0);
+  assert.equal(p.levelUp.from, 1);
+  assert.equal(p.levelUp.to, 4);
+});
+
+test("Party level-ups report each hero's earned points and only travel in active combat snapshots", () => {
+  const g = new Game(() => .5);
+  const a = g.addPlayer("keyboard"), b = g.addPlayer("pad:0");
+  g.start();
+  Object.assign(a, {level: 1, xp: 49});
+  Object.assign(b, {level: 2, xp: 99});
+  const aPoints = trainingPoints(a), bPoints = trainingPoints(b), sounds = [];
+  g.onSound = cue => sounds.push(cue);
+  g.time = 20;
+
+  const award = amount => {
+    const orb = {x: a.x, y: a.y, amount, readyAt: 0};
+    g.xpOrbs.push(orb);
+    assert.equal(g.collectXP(a, orb), true);
+  };
+  award(1);
+  assert.deepEqual(a.levelUp, {at: 20, updatedAt: 20, from: 1, to: 2});
+  assert.deepEqual(b.levelUp, {at: 20, updatedAt: 20, from: 2, to: 3});
+  g.time = 20.2;
+  award(100);
+  assert.deepEqual(a.levelUp, {at: 20, updatedAt: 20.2, from: 1, to: 3});
+  assert.equal(trainingPoints(a), aPoints + 2);
+  assert.equal(trainingPoints(b), bPoints + 1);
+  assert.ok(!sounds.includes("heal"));
+  assert.deepEqual(snapshot(g, {combatPresentation: true}).players[0].levelUp, a.levelUp);
+  assert.ok(saveSession(g).state.players.every(hero => !hero.levelUp));
+  g.time = 22.1;
+  assert.equal(activeLevelUp(a, g.time), null);
+  assert.ok(snapshot(g, {combatPresentation: true}).players.every(hero => !hero.levelUp));
 });

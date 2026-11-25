@@ -50,7 +50,7 @@ export function drawAlleyStreetLighting(c,renderer,g,bounds,visible,{lamps,candl
  c.clip();
  if(renderer.dynamicShadows&&bounds.left<8890){
   c.save();c.beginPath();c.rect(bounds.left,bounds.top,8890-bounds.left,bounds.bottom-bounds.top);c.clip();
-  drawOutdoorSunShadows(c,g,props,nearbyActors,{strength:day*.85});c.restore();
+  drawOutdoorSunShadows(c,g,props,nearbyActors,{strength:day*.85,bounds,view:renderer});c.restore();
  }
  (renderer.worldLights??=new WorldLightRenderer()).drawGround(c,frame,(p,r)=>visible(p.x,p.y,r,r));
  c.restore();

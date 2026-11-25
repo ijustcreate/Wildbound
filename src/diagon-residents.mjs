@@ -114,14 +114,18 @@ function residentRoute(actor,destination,to,blocked){
 
 function makeResident(resident,index,time,blocked,gardenResident=false,iceCreamShop){
  const place=resident.stops[scheduledShift(resident,time)];
- const stroll=place==='sweets'&&iceCreamShop&&fortescueResidentStart(iceCreamShop,resident.id,blocked);
+ const stroll=!resident.visitorCreature&&place==='sweets'&&iceCreamShop&&fortescueResidentStart(iceCreamShop,resident.id,blocked);
  const position=stroll||placePoint(index,place,blocked);
  const {faceX,faceY}=places[place];
+ const elf=resident.visitorForm==='elf';
  return {
   id:'alley-resident:'+resident.id,residentId:resident.id,name:resident.name,title:resident.title,
-  sprite:'player',kind:'player',hp:1,appearance:{...DEFAULT_APPEARANCE,...resident.look},equipment:{...resident.equipment},
+  sprite:elf?'alley_goblin':'player',kind:elf?'alley_goblin':'player',hp:1,appearance:{...DEFAULT_APPEARANCE,...resident.look},equipment:{...resident.equipment},
   x:position.x,y:position.y,faceX,faceY,place,targetPlace:place,path:[],step:0,walking:true,moving:false,
   movementGait:'idle',moveSpeed:0,lastSocialAt:-Infinity,
+  ...(elf?{goblinRole:'diagon-helper'}:{}),
+  ...(resident.visitorCreature?{visitorCreature:true}:{}),
+  ...(resident.visitorForm?{visitorForm:resident.visitorForm}:{}),
   ...(resident.shoulderBroom?{shoulderBroom:resident.shoulderBroom}:{}),
   ...(gardenResident?{gardenResident:true}:{}),
  };
@@ -230,7 +234,7 @@ export function tickAlleyResidents(g,dt,blocked,nearStationaryWizard,iceCreamSho
    }
    const conversation=companions.get(actor.id);
    if(conversation){lookToward(actor,conversation);continue;}
-   if(iceCreamShop&&!actor.gardenResident&&tickFortescueResident(actor,resident,destination,time,dt,blocked,fortescue))continue;
+   if(iceCreamShop&&!actor.gardenResident&&!actor.visitorCreature&&tickFortescueResident(actor,resident,destination,time,dt,blocked,fortescue))continue;
    if(time<(actor.socialUntil||0)&&actor.place===destination)continue;
    walkResident(actor,resident,index,destination,time,dt,blocked);
    if(actor.gardenResident&&!actor.moving&&actor.place===destination)gardenRoutine(actor,time);
@@ -342,6 +346,7 @@ export function alleyResidentDialogueAction(g,p,action){
  if(action==='close')return close();
  if(choices.some(choice=>choice.action===action)&&action?.startsWith('resident:')){
   ui.node=action.slice(9);ui.index=0;
+  if(actor.residentId==='hermione'&&(ui.node==='topic'||ui.node.startsWith('reply:')))ui.residentGestureAt=g.time;
   delete ui.residentResponse;
   if(actor.gardenResident&&ui.node.startsWith('reply:')){
    const reply=byId.get(actor.residentId).topic.replies[Number(ui.node.slice(6))];

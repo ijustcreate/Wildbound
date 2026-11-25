@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld("desktop", {
   saveHouseDesigns: (data) => ipcRenderer.invoke("house-designs-save", data),
   loadLocationDesigns:()=>ipcRenderer.invoke('location-designs-load'),
   saveLocationDesigns:data=>ipcRenderer.invoke('location-designs-save',data),
+  loadLiveEdits:()=>ipcRenderer.invoke('live-edits-load'),
+  saveLiveEdits:data=>ipcRenderer.invoke('live-edits-save',data),
   loadProfiles: () => ipcRenderer.invoke("profiles-load"),
   loadSession: (mode) => ipcRenderer.invoke("session-load", mode),
   saveSession: (data,mode) => ipcRenderer.invoke("session-save", data, mode),

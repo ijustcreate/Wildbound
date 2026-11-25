@@ -6,6 +6,7 @@ import {MEADOW_CHUNK,meadowAllowed,meadowTerrainKey,paintPixelMeadow} from './pi
 import {GrassWake,vegetationWindGLSL,vegetationWindStrength} from './vegetation-motion.mjs';
 import {grassRootBurned,drawGrassBurnMarks} from './tall-grass.mjs';
 import {wildLandsGround} from './wild-lands-world.mjs';
+import {forEachWheatStalk,WHEAT_STEM,WHEAT_HEAD} from './wheat-grass.mjs';
 
 const vertex=`#version 300 es
 precision highp float;
@@ -25,24 +26,26 @@ float valueNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(m
 ${vegetationWindGLSL}
 void main(){
  vec2 root=blade.xy;float t=segment.y,height=blade.z;
+ bool wheat=variation.w>=${WHEAT_STEM}.0,ear=variation.w==${WHEAT_HEAD}.0;
  color=vec3(0.);gl_Position=vec4(2.,2.,0.,1.);
  vec2 rootScreen=(root-camera)*zoom;
  if(any(greaterThan(abs(rootScreen),view*.5+vec2(height*zoom+12.))))return;
- if(front>.5&&variation.w<.5)return;
+ if((front>.5&&variation.w<.5)||(front>1.5&&!wheat))return;
  if(front>.5)for(int i=0;i<vehicleCount;i++)if(all(lessThan(abs(root-vehicles[i].xy),vehicles[i].zw)))return;
  if(bloom<3.&&distance(root,vec2(800.))>bloom*430.)return;
  int patchIndex=int(variation.z)-1;
  vec4 patchProperties=vec4(0.);
  if(patchIndex>=0)patchProperties=texelFetch(patchStates,ivec2(patchIndex%1024,patchIndex/1024),0);
  if(patchProperties.r>.75)return;
- if(patchProperties.r>.25){if(front>.5)return;height=4.+hash21(root)*3.;}
+ bool cut=patchProperties.r>.25;
+ if(cut){if(front>.5||ear)return;height=4.+hash21(root)*3.;}
  float pressure=0.,push=0.,inFront=0.;
  for(int i=0;i<actorCount;i++){
   vec2 delta=root-actors[i].xy;float radius=actors[i].w,d2=dot(delta,delta);
   if(d2>radius*radius)continue;
-  float d=sqrt(d2),weight=1.-smoothstep(3.,radius,d);
+  float d=sqrt(d2),weight=1.-smoothstep(wheat?10.:3.,radius,d);
   pressure=max(pressure,weight);push+=delta.x/max(4.,d)*weight;
-  if(actors[i].z>0.&&abs(delta.x)<12.&&delta.y>=0.&&delta.y<12.)inFront=1.;
+  if(actors[i].z>0.&&abs(delta.x)<(wheat?19.:12.)&&delta.y>=0.&&delta.y<(wheat?27.:12.))inFront=1.;
  }
  vec2 wakeUV=(root-wakeOrigin)/wakeSpan;
  if(all(greaterThanEqual(wakeUV,vec2(0.)))&&all(lessThan(wakeUV,vec2(1.)))){
@@ -50,13 +53,31 @@ void main(){
   pressure=max(pressure,wake.r);push+= (wake.g*2.-1.)*wake.r;
  }
  float wave=vegetationWind(root,time,windStrength);
- float curve=variation.x+wave*height*.28+clamp(push,-1.2,1.2)*height*1.2;
+ float curve=variation.x+wave*height*(wheat?.33:.28)+clamp(push,-1.2,1.2)*height*(wheat?.72:1.2);
  float width=blade.w*(1.-t*.93);
- vec2 p=root+vec2(curve*t*t+segment.x*width,-height*t*(1.-pressure*.55));
+ if(wheat){
+  if(ear){
+   float rim=t<.01?.30:t<.5?1.:t<.99?.76:.24;
+   width=blade.w*rim;
+   t=.73+t*.27;
+  }else{
+   width=clamp(blade.w*.4,1.05,1.75);
+   if(!cut)t*=.75;
+  }
+ }
+ vec2 p=root+vec2(curve*t*t+segment.x*width,-height*t*(1.-pressure*(wheat?.63:.55)));
  p=floor(p*0.5)*2.;
  vec2 screen=(p-camera)*zoom;
  gl_Position=vec4(screen.x/(view.x*.5),-screen.y/(view.y*.5),0.,1.);
  if(front>.5&&inFront<.5)gl_Position=vec4(2.,2.,0.,1.);
+ if(wheat){
+  vec3 straw=mix(vec3(.44,.32,.17),vec3(.81,.63,.32),t);
+  vec3 grain=mix(vec3(.68,.47,.23),vec3(.99,.88,.59),smoothstep(.73,.95,t));
+  grain*=segment.x<0.?1.06:.89;
+  color=(ear?grain:straw)*variation.y;
+  if(dot(patchProperties.gba,vec3(1.))>0.)color=mix(color,patchProperties.gba,.26);
+  return;
+ }
  vec3 low=vec3(.25,.39,.20),mid=vec3(.40,.54,.25),tip=vec3(.60,.70,.36);
  bool bayou=variation.w<-.5;
  if(bayou){low=vec3(.25,.34,.21);mid=vec3(.43,.53,.30);tip=vec3(.63,.66,.42);}
@@ -75,7 +96,7 @@ void main(){pixel=vec4(color,1.);}`;
 export function grassFieldInstances(g,bounds={sx:0,sy:0,ex:1600,ey:1600},patches=(g.scenery||[]).filter(p=>p.kind==='tall_grass'),slot=p=>patches.indexOf(p)+1){
  const rows=[],{sx,sy,ex,ey}=bounds,shadow=g.generatedEnvironment==='shadow',spacing=shadow?10:12;
  const design=g.trainTest?.design,wilds=design?.wildLands&&!design.activeRoom;
- // The last vertex field selects base grass, tall grass, or short Bayou grass.
+ // The last field selects the blade style, including wheat stems and ears.
  const add=(x,y,h,w,lean,shade,style,patch=0)=>{if(x>=sx&&x<ex&&y>=sy&&y<ey)rows.push([x,y,h,w,lean,shade,patch,style]);};
  for(let y=Math.ceil(sy/spacing)*spacing;y<ey;y+=spacing)for(let x=Math.ceil(sx/spacing)*spacing;x<ex;x+=spacing){
   const n=forestHash(x+g.seed,y),bayou=wilds&&wildLandsGround(design,x,y)==='swamp';
@@ -93,6 +114,15 @@ export function grassFieldInstances(g,bounds={sx:0,sy:0,ex:1600,ey:1600},patches
  }
  for(const p of patches){
   const scale=p.size/80,root=p.rootY??p.y+p.size*.4,index=slot(p);
+  if(p.grassVariant==='wheat'){
+   forEachWheatStalk(p,(x,y,h,lean,width,tone)=>{
+    const px=p.x+x*scale,py=root+y*scale;
+    if(px<sx||px>=ex||py<sy||py>=ey||!meadowAllowed(g,px,py)||grassRootBurned(p,px,py))return;
+    add(px,py,h*scale,width*scale,lean*scale,tone,WHEAT_STEM,index);
+    add(px,py,h*scale,width*scale,lean*scale,tone,WHEAT_HEAD,index);
+   });
+   continue;
+  }
   for(let y=-9;y<=9;y+=6)for(let x=-36;x<=36;x+=6){
    const n=forestHash(x+(p.tuftSeed||p.x),y+p.y);
    if((x/39)**2+(y/12)**2>1+n*.12)continue;
@@ -157,6 +187,7 @@ export class GrassFieldRenderer{
    const patches=nearby.filter(p=>p.kind==='tall_grass'&&Math.abs(p.x-camera.x)<halfX+260&&Math.abs((p.rootY??p.y)-camera.y)<halfY+230);
    if(this.nextSlot+patches.length>=32768){for(const b of this.chunks.values())gl.deleteBuffer(b.buffer);this.chunks.clear();this.patchSlots.clear();this.nextSlot=0;this.gpuBytes=0;}
    this.visiblePatches=patches;
+   (this.pendingWheat??=new Set()).clear();
    const slot=p=>{let i=this.patchSlots.get(p.id??p);if(i===undefined){i=this.nextSlot++;this.patchSlots.set(p.id??p,i);}return i+1;};
    for(const p of patches){
     const i=slot(p)-1,state=[p.charred?255:p.cut?128:0,0,0,0];
@@ -167,16 +198,18 @@ export class GrassFieldRenderer{
    for(let cy=Math.floor((camera.y-halfY)/256);cy<=Math.floor((camera.y+halfY)/256);cy++)for(let cx=Math.floor((camera.x-halfX)/256);cx<=Math.floor((camera.x+halfX)/256);cx++){
     const x=cx*256,y=cy*256;if(g.mapMode!=='boundless'&&(x>=(g.trainTest?.design.width||1600)||y>=(g.trainTest?.design.height||1600)||x+256<=0||y+256<=0))continue;
     const key=cx+','+cy,local=patches.filter(p=>Math.abs(p.x-x-128)<180&&Math.abs((p.rootY??p.y)-y-128)<160);
-    const terrainKey=meadowTerrainKey(g,x,y),geometryKey=local.map(p=>[slot(p),p.x,p.y,p.rootY,p.size,p.tuftSeed,p.grassShade,p.grassBurnRevision||0].join(',')).join(';');
+    const terrainKey=meadowTerrainKey(g,x,y),geometryKey=local.map(p=>[slot(p),p.x,p.y,p.rootY,p.size,p.tuftSeed,p.grassShade,p.grassVariant,p.grassBurnRevision||0].join(',')).join(';');
     let entry=this.chunks.get(key);
     if(!entry||entry.terrainKey!==terrainKey||entry.geometryKey!==geometryKey){
      let prepared;
      const stream=g.trainTest&&railwayStream(g.trainTest),geometryOnly=!!g.trainTest?.design.wildLands;
      if(stream){
       const base=stream.baseGrass.get(`${g.trainTest.design.activeRoom||'surface'}:${x}:${y}:${g.seed||42}`);
+      const wheat=local.filter(p=>p.grassVariant==='wheat');
       if(geometryOnly&&!local.length&&base)prepared={data:base};
-      else prepared=streamImage(g.trainTest,'grass','grass:'+terrainKey+':'+geometryKey,{x,y,local,slots:local.map(slot),seed:g.seed||42,geometryOnly},160);
+      else prepared=streamImage(g.trainTest,'grass','grass:'+terrainKey+':'+geometryKey,{x,y,local,slots:local.map(slot),seed:g.seed||42,geometryOnly},wheat.length?175:160);
       if(!prepared){
+       for(const p of wheat)this.pendingWheat.add(p);
        if(g.trainTest.streamCoverage)g.trainTest.streamCoverage.grassPending++;
        if(!entry&&base)prepared={data:base,base:true};
        else if(!entry||entry.terrainKey!==terrainKey){if(g.trainTest.streamCoverage)g.trainTest.streamCoverage.grassHoles++;continue;}
@@ -205,7 +238,8 @@ export class GrassFieldRenderer{
   const realmAnimals=env==='shadow'?[g.realmState,...(g.boundlessLoadedChunks||[]).map(r=>r.realmState)].filter(Boolean).flatMap(s=>(s.animals||[]).filter(a=>a.kind==='shadow_stag').map(a=>({...a,hp:1,realmGrassActor:true}))):[];
   const allActors=[...(g.players||[]),...(g.enemies||[]),...realmAnimals];
   const activeActors=allActors.filter(a=>!a.room&&a.hp>0&&!a.swimming&&!a.trainRide&&!a.pirateRide&&!a.vehicleId&&!(a.jumpHeight>8));
-  if(front&&env!=='shadow'&&!(this.visiblePatches||[]).some(p=>!p.cut&&!p.charred&&activeActors.some(a=>Math.abs(p.x-a.x)<65&&Math.abs((p.rootY??p.y)-a.y)<50))){this.active=true;return true;}
+  const wheatOnly=front==='wheat';
+  if(front&&(env!=='shadow'||wheatOnly)&&!(this.visiblePatches||[]).some(p=>(!wheatOnly||p.grassVariant==='wheat')&&!p.cut&&!p.charred&&activeActors.some(a=>Math.abs(p.x-a.x)<(p.grassVariant==='wheat'?70:65)&&Math.abs((p.rootY??p.y)-a.y)<50))){this.active=true;return true;}
   const {pixelStep,width,height}=grassRasterLayout(w,h,camera.zoom);
   const rasterCamera={x:Math.round(camera.x/32)*32,y:Math.round(camera.y/32)*32,zoom:camera.zoom};
   const viewW=width*pixelStep*camera.zoom,viewH=height*pixelStep*camera.zoom;
@@ -219,14 +253,14 @@ export class GrassFieldRenderer{
   const active=activeActors.filter(a=>Math.abs(a.x-camera.x)<w/camera.zoom&&Math.abs(a.y-camera.y)<h/camera.zoom).slice(0,8);
   const actorKey=active.map(a=>Math.round(a.x/2)+','+Math.round(a.y/2)).join(';');
   const rate=active.some(a=>a.moving)?30:20,animationTime=Math.floor((g.time||0)*rate)/rate;
-  const rasterKey=[rasterCamera.x,rasterCamera.y,width,height,pixelStep,animationTime,this.stateRevision,this.geometryRevision,actorKey,g.bloom,vegetationWindStrength(g)].join(':');
+  const rasterKey=[rasterCamera.x,rasterCamera.y,width,height,pixelStep,animationTime,this.stateRevision,this.geometryRevision,actorKey,g.bloom,vegetationWindStrength(g),front].join(':');
   const slotName=front?'frontRaster':'backRaster';this.rasterViews??=new WeakMap();let view=this.rasterViews.get(viewKey);if(!view){view={};this.rasterViews.set(viewKey,view);}let raster=view[slotName];
   const composite=()=>{c.save();c.imageSmoothingEnabled=false;c.globalAlpha*=g.trainTest?.floorLod?.detailAlpha??1;c.drawImage(raster.canvas,rasterCamera.x-width*pixelStep/2,rasterCamera.y-height*pixelStep/2,width*pixelStep,height*pixelStep);c.restore();};
   if(raster?.key===rasterKey){composite();this.active=true;return true;}
   if(this.canvas.width<GRASS_BUFFER_WIDTH||this.canvas.height<GRASS_BUFFER_HEIGHT){this.canvas.width=GRASS_BUFFER_WIDTH;this.canvas.height=GRASS_BUFFER_HEIGHT;}
   gl.viewport(0,0,width,height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(this.program);gl.bindVertexArray(this.vao);
   gl.uniform2f(u.camera,rasterCamera.x,rasterCamera.y);gl.uniform2f(u.view,viewW,viewH);gl.uniform1f(u.zoom,camera.zoom);
-  gl.uniform1f(u.time,animationTime);gl.uniform1f(u.bloom,g.mapMode==='boundless'?3:g.bloom??3);gl.uniform1f(u.front,front?1:0);
+  gl.uniform1f(u.time,animationTime);gl.uniform1f(u.bloom,g.mapMode==='boundless'?3:g.bloom??3);gl.uniform1f(u.front,wheatOnly?2:front?1:0);
   gl.uniform1f(u.windStrength,vegetationWindStrength(g));gl.uniform2f(u.wakeOrigin,wakeX,wakeY);gl.uniform1f(u.wakeSpan,wakeSpan);
   gl.uniform1f(u.shadowRealm,env==='shadow'?1:0);
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.wakeTexture);gl.uniform1i(u.wakeField,1);

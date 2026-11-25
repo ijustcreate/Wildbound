@@ -7,6 +7,7 @@ export const DIAGON_STREET=Object.freeze({x:7760+DIAGON_STREET_INSET,y:3905,w:48
 export const NOCTURNE_LANE=Object.freeze({x:8970+NOCTURNE_STREET_INSET,y:4535,w:246-2*NOCTURNE_STREET_INSET,h:1073});
 export const DIAGON_PAVER_LANE=Object.freeze({x:7810+inset(380),w:380-2*inset(380)});
 export const NOCTURNE_CONNECTOR=Object.freeze({x:8180-DIAGON_STREET_INSET,y:5181,w:1030+DIAGON_STREET_INSET,h:105});
+export const NOCTURNE_PAVEMENT_START=DIAGON_PAVER_LANE.x+DIAGON_PAVER_LANE.w+57;
 
 export const diagonLaneX=x=>Math.round(DIAGON_CENTER+(x-DIAGON_CENTER)*LANE_SCALE);
 export const nocturneLaneX=x=>Math.round(NOCTURNE_CENTER+(x-NOCTURNE_CENTER)*LANE_SCALE);

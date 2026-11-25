@@ -2,6 +2,7 @@ import {stationEntrance} from '../src/station-building.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {give} from '../src/items.mjs';
+import {useBroom} from '../src/broom-mount.mjs';
 import {railwayStations,stationBlocked,stationDeckAt,tickStationCats,platformSamples} from '../src/railway-station.mjs';
 import {EVENTS,Game} from '../src/core.mjs';
 import {enterTrainTest,leaveTrainTest,spawnOutside} from '../src/train-test.mjs';
@@ -11,6 +12,16 @@ const setup=enter=>{const g=new Game(()=>.5);g.addPlayer('keyboard');g.start();c
 for(const [name,enter]of [['railway',enterTrainTest],['Wild Lands',enterWildLands]]){
  test(name+' uses normal charged melee contact and timers',()=>{const {g,p}=setup(enter);const e={id:901,kind:'lion',x:p.x+40,y:p.y,hp:1000,maxHp:1000,speed:0,damage:0,frozen:100,state:'hunt',cooldown:99,faceX:-1,faceY:0};g.enemies=[e];g.update(.02,{keyboard:{attack:true}});assert.ok(p.charge>0);g.update(.02,{keyboard:{}});assert.ok(p.attack>0);assert.equal(e.hp,1000);for(let i=0;i<8;i++)g.update(.02,{});assert.ok(e.hp<1000);for(let i=0;i<40;i++)g.update(.02,{});assert.equal(p.attack,0);});
  test(name+' uses normal dash speed, cooldown and release latch',()=>{const {g,p}=setup(enter);const before={x:p.x,y:p.y};g.update(.02,{keyboard:{x:1,dodge:true}});assert.ok(p.dashTime>0);assert.ok(Math.hypot(p.x-before.x,p.y-before.y)>6);const cooldown=p.dodge;for(let i=0;i<30;i++)g.update(.02,{keyboard:{dodge:true}});assert.equal(p.dashTime,0);assert.ok(p.dodge<cooldown);});
+ test(name+' keeps dash available when riding a broom outdoors',()=>{
+  const {g,p}=setup(enter);
+  p.inventory=[{type:'nimbus_2000',qty:1}];
+  assert.ok(useBroom(g,p,0));
+  const {x,y}=p;
+  g.update(.025,{keyboard:{x:1,dodge:true}});
+  assert.ok(p.broomMount&&p.dashTime>0&&p.jumpHeight>0);
+  assert.ok(Math.hypot(p.x-x,p.y-y)>8);
+  assert.equal(p.dodge,2.7);
+ });
  test(name+' retains expedition state and renders functional ranged shots beyond old map bounds',()=>{const {g,p,original}=setup(enter);p.equipment.hand1='bow';give(p.inventory,'arrow',10);g.update(.02,{keyboard:{attack:true}});g.update(.02,{keyboard:{}});assert.ok(g.arrows.length>0);const a=g.arrows[0],x=a.x;g.update(.02,{});assert.ok(a.x>x&&!a.stuck);leaveTrainTest(g);assert.equal(g.players,original);assert.notEqual(original[0].inventory,p.inventory);});
  test(name+' dashes inside coaches without passing solid walls',()=>{const {g,p}=setup(enter),c=trainCars(g.trainTest)[2];p.trainRide={car:2,x:0,y:0};Object.assign(p,trainWorld(c,0,0));g.update(.02,{keyboard:{x:Math.cos(c.a),y:Math.sin(c.a),dodge:true}});assert.ok(p.dashTime>0);assert.ok(p.trainRide);});
 }

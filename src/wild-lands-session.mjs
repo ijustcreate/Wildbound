@@ -12,7 +12,7 @@ const TRAIN_PROGRESS=[
  'wildBiomeSpawns','wildBiomeRoomActors','diagonCritterState','nativeGravestoneDamage','nocturneCemetery','hogsmeade','wrongTurnDoors',
  'pirateCrew','pirateWreckCrew',
  'arena','arenaSerial','wildCoastalCaught','alleyGroundLoot','arenaGroundLoot','pitchGroundLoot','pitchEntranceLoot','nocturneBoss','homesteadBoard','tickTockDefeated','hollowStalactites',
- 'borginMirrorFight','borginMirrorClaims','borginMirrorReturns',
+ 'borginMirrorFight','borginMirrorClaims','borginMirrorReturns','greyhavenBridgeRaised','wildSlimeHollow','moonveilSanctuary',
 ];
 
 export function snapshotWildLands(train) {

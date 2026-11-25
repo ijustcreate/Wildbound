@@ -96,7 +96,18 @@ export function drawSlime(c, actor, time, model=slimeMotion, suppliedPose=null) 
   const eyes=()=>{
     for(const name of ['eyeL','eyeR']){
       if(model.visibility?.[name]?.[d]===false)continue;
-      const sourceEye=pose[name], eyeLocal=core.map((v,i)=>v+(sourceEye[i]-v)*(i===0?.5:i===1?.6:.72)), eye=projectPoint(eyeLocal,d), side=name==='eyeL'?-1:1, x=Math.round(eye.x),y=Math.round(eye.y);
+      const sourceEye=pose[name], eyeLocal=core.map((v,i)=>v+(sourceEye[i]-v)*(i===0?.5:i===1?.6:.72));
+      const eye=projectPoint(eyeLocal,d), side=name==='eyeL'?-1:1;
+      if(actor.wildSlimeRole==='boss'){
+        // The giant slime's squash exposes more of the native eye travel. Keep
+        // the fallback eye patch attached to the body bands during the slam.
+        const anchor=projectPoint(translated(core,-side*size*.30,size*.36,height*.35),d);
+        const limit=(n,min,max)=>Math.max(min,Math.min(max,n));
+        eye.x=limit(eye.x,anchor.x-2,anchor.x+2);
+        eye.x=limit(eye.x,p.core.x-size*.5,p.core.x+size*.5);
+        eye.y=limit(eye.y,p.core.y-height*.28,p.core.y-height*.17);
+      }
+      const x=Math.round(eye.x),y=Math.round(eye.y);
       // Each eye is a separate editable pixel patch on the wobbling face.
       // Stair-stepped oval sockets keep the face soft and gelatinous rather than goggled.
       c.fillStyle=pal.outline;
@@ -107,7 +118,7 @@ export function drawSlime(c, actor, time, model=slimeMotion, suppliedPose=null) 
       c.fillStyle=pal.highlight;c.fillRect(x-1,y-3,1,2);
     }
   };
-  add('Slime eyes',['eyeL','eyeR'],p.eyeL.depth+10,eyes);
+  add('Slime eyes',['eyeL','eyeR'],(actor.wildSlimeRole==='boss'?p.core.depth:p.eyeL.depth)+10,eyes);
   const detail=()=>{
     const mark=(x,y,color,w=2,h=2)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
     const front=projectPoint(translated(core,0,size*.3,height*.45),d), side=projectPoint(translated(core,-size*.35,-size*.18,height*.28),d),variation=(actor.slimeVariant||0)*2;

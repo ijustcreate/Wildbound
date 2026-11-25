@@ -7,6 +7,7 @@ import {drawWildFauna} from './wild-fauna-art.mjs';
 import {drawMonarchFairyDragon} from './monarch-fairy-dragon.mjs';
 import {drawAxolotl} from './axolotl.mjs';
 import {seedMarshFireflies,tickMarshFirefly,firefliesAwake,drawMarshFirefly} from './swamp-fireflies.mjs';
+import {tickShadowTracker} from './shadow-tracker.mjs';
 export const REALM_FAUNA={swamp:['bayou_frog','marsh_firefly','nutria'],caverns:['cave_cricket','blind_fish','olm'],shadow:['dusk_moth','veil_beetle','shadow_stag','monarch_fairy_dragon']};
 const colors={bayou_frog:['#3f6550','#9cac69'],marsh_firefly:['#596b48','#e8e69a'],nutria:['#71543e','#b9976a'],cave_cricket:['#6a6963','#babca4'],blind_fish:['#b7bbaa','#ede2cb'],olm:['#cf9fac','#f3d1d5'],dusk_moth:['#796584','#ceb5ce'],veil_beetle:['#4d5c71','#9ca6c1'],pale_hart:['#a6a4bc','#e2dfdf']};
 function makeOlmSprite(view){
@@ -152,7 +153,7 @@ export function seedRealmLife(g){
  seedMarshFireflies(g);
  return state.animals;
 }
-export function tickRealmLife(g,dt){for(const ctx of realmContexts(g))tickRegionLife(ctx,dt);}
+export function tickRealmLife(g,dt){for(const ctx of realmContexts(g))tickRegionLife(ctx,dt);tickShadowTracker(g,dt);}
 function tickRegionLife(g,dt){
  if(!REALMS.includes(g.generatedEnvironment)||g.phase!=='play'||g.paused)return;
  if(g.generatedEnvironment==='shadow'&&!g.realmEditor){dressUnderworld(g,(tx,ty)=>realmTerrainAt(g,tx,ty));ensureShadowExit(g);}

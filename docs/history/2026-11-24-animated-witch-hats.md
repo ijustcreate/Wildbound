@@ -1,0 +1,9 @@
+# Animated Crooked Witch Hats
+
+The supplied animation showed a wide, shallow brim and a soft crown with follow-through. The new Wildbound drawing keeps a planted band and brass clasp, a light felt rim, and a dark underside. Eight skull-relative views reuse the native player grid. The new Parchment finish uses warm ivory with a brown band. Madam Malkin’s stocks it for 30 gold alongside the three existing shop colors. Moss remains a crypt reward.
+
+The crown follows turns and movement with a damped spring. The brim flexes at its edges, and the crown adds a delayed flick around attacks and casts. The native artwork shares a bounded cache of 25 pixel poses per view and keeps the band fixed throughout the motion. Authored worn art and per-facing Live Edit fits retain priority.
+
+The source checkout passed 204 muted Electron checks with zero renderer errors, including Backpack equip for all five finishes, Item Studio drawing in all eight facings, and six native animation actions. Focused Node checks covered shop stock in existing expeditions, the fixed band across all 200 sprite poses, Live Edit fits, and the standing and seated render caches. The animated comparison and turnaround are in `test-output/witch-hat-motion/`.
+
+Desktop build **1.2.154** uses the verified 1.2.150 desktop snapshot with the hat changes applied. The package is based on `a6cee9bc55ad12ed58df5c3d27b150449f31ef26` with modified source. All ten changed runtime modules match the staged snapshot by hash. `dist/1.2.154/Wildbound-win32-x64/Wildbound.exe` booted to the lobby in the muted smoke test. Its packaged game passed the same 204 muted Electron checks with zero renderer errors. The verified normal-profile desktop shortcut `Wildbound Worlds (1.2.154).lnk` points to `Play Wildbound.cmd -BuildDirectory "dist\1.2.154\Wildbound-win32-x64"`.

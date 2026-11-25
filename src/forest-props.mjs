@@ -1,5 +1,6 @@
 import {vegetationWind,vegetationWindStrength} from './vegetation-motion.mjs';
 import {drawMushroomGrass,mushroomGrassBend} from './forest-grounding-art.mjs';
+import {paintWoodlandShrub} from './forest-shrub-art.mjs';
 // Native pixel silhouettes inspired by the supplied woodland prop sheet.
 // IDs are stable editor/save identifiers; labels describe the actual prop.
 export const FOREST_PROP_ASSETS=Object.freeze({
@@ -27,12 +28,6 @@ export const FOREST_PROP_ASSETS=Object.freeze({
 const hash=(x,y=0)=>{const v=Math.sin(x*127.1+y*311.7)*43758.5453;return v-Math.floor(v);};
 const sprites=new Map();
 const MUSHROOM_POINTS=[null,[[0,0,1]],[[-7,0,1],[8,3,.7]],[[-10,1,.85],[3,-5,1.1],[13,4,.65]]];
-const shrubs=[
- {paint:['#254734','#40633b','#557b46','#76954e'],lobes:[[-13,-14,12,13],[1,-21,15,16],[16,-10,10,12]],flower:'#eee2a6'},
- {paint:['#294a3c','#3c674f','#568060','#79a177'],lobes:[[-16,-11,11,12],[-5,-17,12,16],[9,-20,14,17],[20,-9,8,8]],flower:'#c79bab'},
- {paint:['#384b2c','#526738','#708143','#92984f'],lobes:[[-19,-9,9,10],[-10,-16,13,15],[7,-14,13,13],[19,-7,9,10]],berry:'#bd774d'},
- {paint:['#234537','#335f48','#4b7960','#6a9270'],lobes:[[-15,-10,11,11],[1,-17,14,14],[15,-15,12,14]],berry:'#a6779b'},
-];
 export function forestAssetFor(p){
  if(FOREST_PROP_ASSETS[p.forestAsset])return p.forestAsset;
  if(!p.procedural)return null;
@@ -83,22 +78,7 @@ export function paintForestAsset(c,id,variant=0,style={}){
   poly([[-10,-16],[-16,-25],[-14,-32],[-10,-34],[-8,-31],[-11,-29],[-10,-24],[-5,-19]],'#47733b');
   poly([[5,-18],[8,-28],[13,-33],[18,-32],[20,-27],[17,-25],[17,-29],[13,-29],[10,-23]],'#649343');r(-15,-19,4,2,'#7ea74b');r(13,-13,3,2,'#7ea74b');
  }else if(a.family==='shrub'){
-  const {paint:[ink,shade,body,light],lobes,flower,berry}=shrubs[variant%shrubs.length];
-  const growth=[[-1,.28],[-.94,-.17],[-.68,-.53],[-.45,-.56],[-.21,-.91],[.16,-.86],[.39,-.66],[.7,-.65],[.94,-.34],[1,.14],[.76,.45],[.46,.51],[.19,.66],[-.2,.53],[-.64,.57]];
-  poly([[-24,-3],[-18,-9],[18,-10],[26,-3],[19,1],[10,-1],[7,2],[1,0],[-7,2],[-12,-1],[-21,1]],ink);
-  for(let i=0;i<lobes.length;i++){
-   const [x,y,rx,ry]=lobes[i];
-   poly(growth.map(([u,v])=>[x+u*rx,y+v*ry]),ink);
-   poly(growth.map(([u,v])=>[x+u*rx*.89,y-1+v*ry*.86]),shade);
-   poly([[-.81,-.25],[-.48,-.52],[-.2,-.75],[.2,-.67],[.62,-.52],[.68,-.22],[.39,-.03],[.27,.28],[-.15,.23],[-.43,.38],[-.68,.12]].map(([u,v])=>[x+u*rx,y+v*ry]),body);
-   r(x-rx*.40,y-ry*.49,4,1,light);r(x-rx*.61,y-ry*.27,3,2,light);
-   if(i%2===variant%2){
-    r(x+rx*.42,y-ry*.05,3,2,shade);
-    if(flower){r(x+2,y-3,3,1,flower);r(x+3,y-4,1,3,flower);r(x+3,y-3,1,1,'#c6975d');}
-    if(berry){r(x+4,y-2,2,2,berry);r(x+1,y-5,2,2,berry);}
-   }
-  }
-  r(-22,-3,2,3,shade);r(21,-4,3,4,shade);r(-11,-1,3,2,shade);
+  paintWoodlandShrub(poly,r,variant,style.windPose??0);
  }
  if(a.family==='porcini'||a.family==='agaric'){
   const red=a.family==='agaric',points=MUSHROOM_POINTS[a.count];
@@ -134,16 +114,23 @@ export function paintForestAsset(c,id,variant=0,style={}){
 }
 export function drawForestAsset(c,p,time=0,g={}){
  const id=forestAssetFor(p);if(!id)return false;
- const a=FOREST_PROP_ASSETS[id],variant=Math.floor(hash(p.x,p.y)*4),key=id+':'+variant+':'+(p.realmPalette||'forest');
+ const a=FOREST_PROP_ASSETS[id],variant=Math.floor(hash(p.x,p.y)*4);
+ const root=p.rootY??p.y+(p.size||48)*.19,scale=(p.size||64)/64;
+ const shadow=p.realmPalette==='shadow',shrub=a.family==='shrub';
+ const sways=shrub||a.family==='tuft'||a.family==='cattail'||a.family==='flower';
+ const breeze=sways?vegetationWind(p.x,root,time,vegetationWindStrength(g)):0;
+ const rustle=shrub?Math.sin(Math.floor(time*12)/12*24+p.x)*(p.rustle||0):0;
+ // Leaf tips use three baked poses; the rooted shear shares the same breeze as the grass.
+ const windPose=shrub&&!shadow?Math.max(-1,Math.min(1,Math.round(rustle-breeze))):0;
+ const key=`${id}:${variant}:${p.realmPalette||'forest'}:${windPose}`;
  let sprite=sprites.get(key);if(!sprite){
   if(typeof document==='undefined')return false;
-  sprite=document.createElement('canvas');sprite.width=sprite.height=64;paintForestAsset(sprite.getContext('2d'),id,variant,{shadow:p.realmPalette==='shadow',mushroomGrass:false});
+  sprite=document.createElement('canvas');sprite.width=sprite.height=64;paintForestAsset(sprite.getContext('2d'),id,variant,{shadow,windPose,mushroomGrass:false});
   if(a.scale!==1){const base=sprite;sprite=document.createElement('canvas');sprite.width=sprite.height=64;const pen=sprite.getContext('2d');pen.imageSmoothingEnabled=false;pen.drawImage(base,32-Math.round(32*a.scale),55-Math.round(55*a.scale),Math.round(64*a.scale),Math.round(64*a.scale));}
   if(sprites.size>=160)sprites.delete(sprites.keys().next().value);sprites.set(key,sprite);
  }
- const root=p.rootY??p.y+(p.size||48)*.19,scale=(p.size||64)/64;
  c.save();c.imageSmoothingEnabled=false;c.translate(Math.round(p.x),Math.round(root));
- if(['shrub','tuft','cattail','flower'].includes(a.family))c.transform(1,0,vegetationWind(p.x,root,time,vegetationWindStrength(g))*.025+(p.plantBend||0),1,0,0);
+ if(sways)c.transform(1,0,breeze*.025-rustle*.04+(p.plantBend||0),1,0,0);
  c.scale(scale,scale);c.drawImage(sprite,-32,-55);c.restore();
  if((a.family==='porcini'||a.family==='agaric')&&p.realmPalette!=='shadow'){
   const frameScale=scale*a.scale,bend=mushroomGrassBend(p,g,root);

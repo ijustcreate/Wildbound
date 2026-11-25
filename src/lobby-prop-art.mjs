@@ -74,6 +74,103 @@ function legs(c, halfWidth, bottom = 21) {
   }
 }
 
+export function drawLobbyDeskBell(c, o, ringAge) {
+  at(c, o, () => {
+    shadow(c, 58); legs(c, 29, 15);
+    rect(c, P.ink, -29, -20, 58, 27);
+    rect(c, P.wood, -27, -18, 54, 18);
+    rect(c, P.woodEdge, -27, -18, 53, 2);
+    rect(c, P.woodShade, -27, 0, 54, 5);
+    rect(c, P.woodLight, -25, 1, 50, 1);
+    rect(c, P.greenDark, -16, -16, 32, 13);
+    rect(c, P.green, -15, -15, 30, 10);
+    const pressed = ringAge < .11 ? 2 : 0;
+    rect(c, P.ink, -10, -9, 20, 4);
+    rect(c, P.brassDark, -9, -11, 18, 3);
+    rect(c, P.brass, -7, -16, 14, 6);
+    rect(c, P.brassLight, -5, -17, 9, 2);
+    rect(c, P.brassLight, -6, -15, 2, 4);
+    rect(c, P.brassDark, -2, -22 + pressed, 4, 5 - pressed);
+    rect(c, P.brassLight, -3, -23 + pressed, 6, 2);
+    if (ringAge >= 0 && ringAge < .6) {
+      const spread = 13 + Math.floor(ringAge * 13);
+      c.globalAlpha *= 1 - ringAge / .6;
+      for (const x of [-spread, spread - 2]) {
+        rect(c, P.brassLight, x, -19, 2, 4);
+        rect(c, P.brassLight, x + Math.sign(x) * 3, -23, 2, 3);
+      }
+    }
+  });
+}
+
+export function drawLobbyFireplace(c, goal, goalTime) {
+  at(c, goal, () => {
+    rect(c, '#29292288', -38, -1, 80, 8);
+    rect(c, P.ink, -35, -48, 70, 49);
+    rect(c, '#625146', -33, -46, 66, 45);
+    for (const y of [-39, -29, -19, -9]) {
+      rect(c, '#493c36', -32, y, 64, 1);
+      rect(c, '#837062', -31, y + 1, 61, 1);
+      rect(c, '#493c36', y % 3 === 0 ? -24 : 25, y + 1, 1, 8);
+    }
+    rect(c, '#392f2b', -24, -34, 48, 32);
+    rect(c, '#252721', -20, -31, 40, 29);
+    rect(c, '#68564a', -26, -32, 4, 29);
+    rect(c, '#4e4038', 22, -32, 4, 29);
+    rect(c, P.ink, -38, -51, 76, 7);
+    rect(c, '#ae8c70', -37, -51, 74, 2);
+    rect(c, '#746055', -37, -49, 74, 3);
+    rect(c, '#544239', -37, -4, 74, 6);
+    rect(c, '#a58367', -35, -4, 70, 2);
+    const metal = goalTime > 0 ? '#efbd60' : '#776858';
+    for (let x = -19; x <= 19; x += 7) rect(c, metal, x, -17, 2, 12);
+    rect(c, metal, -20, -8, 40, 2);
+    rect(c, '#b78250', -17, -13, 34, 1);
+  });
+}
+
+const HOP_FABRICS = {
+  'hop-stool': ['#614332', '#9c664d', '#c28863'],
+  'hop-ottoman': ['#274039', '#487565', '#7ca087'],
+  'hop-bench': ['#51404f', '#7d5a71', '#a77f91'],
+};
+
+export function drawLobbyHopFurniture(c, f) {
+  const x = Math.round(f.x), y = Math.round(f.y - f.surfaceHeight);
+  const front = y + f.h;
+  const [shade, fabric, highlight] = HOP_FABRICS[f.id];
+  rect(c, '#22291f55', x + 2, f.y + f.h - 3, f.w + 4, 8);
+  for (const foot of [x + 3, x + f.w - 8]) {
+    rect(c, P.woodDark, foot, front - 2, 5, f.surfaceHeight + 2);
+    rect(c, P.woodLight, foot + 1, front, 1, f.surfaceHeight - 2);
+  }
+  rect(c, P.ink, x, y + 2, f.w, f.h + 3);
+  rect(c, shade, x + 1, y + 1, f.w - 2, f.h + 2);
+  rect(c, fabric, x + 2, y + 2, f.w - 4, f.h - 3);
+  rect(c, highlight, x + 3, y + 2, f.w - 6, 2);
+  rect(c, highlight, x + 4, front - 4, f.w - 8, 1);
+  for (const tuft of [.3, .7]) rect(c, shade, x + Math.round(f.w * tuft), y + Math.floor(f.h / 2), 2, 2);
+}
+
+export function drawLobbyPlayBall(c, ball) {
+  const x = Math.round(ball.x), y = Math.round(ball.y);
+  rect(c, '#29251f66', x - 7, y + 1, 16, 5);
+  const rise = ball.goalTime > 0 ? 10 : 0;
+  const cy = y - 5 - rise;
+  rect(c, P.ink, x - 4, cy - 7, 8, 14);
+  rect(c, P.ink, x - 6, cy - 6, 12, 12);
+  rect(c, P.ink, x - 7, cy - 5, 14, 10);
+  rect(c, P.ink, x - 8, cy - 4, 16, 8);
+  rect(c, '#ad6248', x - 4, cy - 6, 8, 11);
+  rect(c, '#ad6248', x - 6, cy - 5, 12, 9);
+  rect(c, '#ad6248', x - 7, cy - 4, 14, 7);
+  rect(c, '#df9e6f', x - 5, cy - 5, 8, 2);
+  rect(c, '#d48861', x - 6, cy - 3, 3, 4);
+  const seam = Math.round(Math.sin(ball.roll) * 4);
+  rect(c, '#f2cb88', x + seam - 1, cy - 3, 2, 7);
+  rect(c, '#713e35', x - 5, cy + 4, 9, 1);
+}
+
 const MAP_PALETTES = Object.freeze({
   random: ['#92995f', '#567e71'], forest: ['#72966b', '#385d47'],
   desert: ['#d4ad62', '#ac7442'], ice: ['#bcd3ce', '#779fa9'],

@@ -1,10 +1,12 @@
 import {CROSSFIRE_EVENT} from './combat-tactics-state.mjs';
 import {COMBO_ENCOUNTERS, hasEncounterLayout} from './encounter-layout-data.mjs';
 import {BIOME_MIXED_EVENTS} from './biome-encounters.mjs';
+import {SMOKE_MONSTER_EVENT} from './smoke-monster-event.mjs';
 import {honeyCatMotion,validateHoneyCat,replaceHoneyCat} from './honey-cat.mjs';
 import {fireflyMotion,validateFireflyMotion,replaceFireflyMotion} from './firefly-motion.mjs';
 import {shoreGoblinMotion,validateShoreGoblinMotion,replaceShoreGoblinMotion} from './shore-goblin-motion.mjs';
 import {villagerMotion,defaultVillagerMotion,validateVillagerMotion,replaceVillagerMotion} from './villager-motion.mjs';
+import {lagoonMermaidMotion,validateLagoonMermaidMotion,replaceLagoonMermaidMotion} from './lagoon-mermaid-rig.mjs';
 import {alleyGoblinMotion,validateAlleyGoblinMotion,replaceAlleyGoblinMotion} from './alley-goblin-motion.mjs';
 import {gloamwhiskerMotion,validateGloamwhiskerMotion,replaceGloamwhiskerMotion} from './gloamwhisker-motion.mjs';
 import {reaperMotion,validateReaperMotion,replaceReaperMotion} from './reaper-motion.mjs';
@@ -716,6 +718,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if(d.safari_hunter&&!validateSafariHunterMotion(d.safari_hunter))throw Error('Invalid Safari Hunter rig');
   if(d.alan&&!validateAlanMotion(d.alan))throw Error('Invalid Alan Captain rig');
   if (d.villager && !validateVillagerMotion(d.villager)) throw Error('Invalid villager animation');
+  if (d.lagoon_mermaid && !validateLagoonMermaidMotion(d.lagoon_mermaid)) throw Error('Invalid lagoon mermaid animation');
   if (d.alley_goblin && !validateAlleyGoblinMotion(d.alley_goblin)) throw Error('Invalid alley goblin animation');
   if (d.gloamwhisker_rat && !validateGloamwhiskerMotion(d.gloamwhisker_rat)) throw Error('Invalid Gloamwhisker rat animation');
   if (d.oathless_captain && !validateOathlessCaptainMotion(d.oathless_captain)) throw Error('Invalid Oathless Captain animation');
@@ -768,6 +771,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
   if(d.marsh_firefly)replaceFireflyMotion(d.marsh_firefly);
   if (d.murk_wolf) replaceMurkWolfMotion(d.murk_wolf);
   if (d.villager) replaceVillagerMotion(d.villager);
+  if (d.lagoon_mermaid) replaceLagoonMermaidMotion(d.lagoon_mermaid);
   if (d.alley_goblin) replaceAlleyGoblinMotion(d.alley_goblin);
   if (d.gloamwhisker_rat) replaceGloamwhiskerMotion(d.gloamwhisker_rat);
   if (d.oathless_captain) replaceOathlessCaptainMotion(d.oathless_captain);
@@ -800,6 +804,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     murk_wolf: murkWolfMotion,
     oathless_captain: oathlessCaptainMotion,
     villager: villagerMotion,
+    lagoon_mermaid: lagoonMermaidMotion,
     alley_goblin: alleyGoblinMotion,
     gloamwhisker_rat: gloamwhiskerMotion,
     grim_reaper: reaperMotion,
@@ -869,7 +874,7 @@ export function applyDefinitions(d, events, items, { spriteOverrides = true } = 
     // their authored event list and modifications, then append only native
     // pack cards that are missing from that older save.
     const retainedNames = new Set([...importedEvents, ...added].map(event => event.name));
-    const missingPackNames = new Set([...CREATURE_PACK_EVENTS,CROSSFIRE_EVENT,...COMBO_ENCOUNTERS,...BIOME_MIXED_EVENTS]
+    const missingPackNames = new Set([...CREATURE_PACK_EVENTS,CROSSFIRE_EVENT,...COMBO_ENCOUNTERS,...BIOME_MIXED_EVENTS,SMOKE_MONSTER_EVENT]
       .filter(event => !retainedNames.has(event.name))
       .map(event => event.name));
     // Preserve the current runtime ordering for every newly added card. Pack
@@ -931,6 +936,7 @@ export function definitionPack(events, items) {
     murk_wolf: murkWolfMotion,
     oathless_captain: oathlessCaptainMotion,
     villager: villagerMotion,
+    lagoon_mermaid: lagoonMermaidMotion,
     alley_goblin: alleyGoblinMotion,
     gloamwhisker_rat: gloamwhiskerMotion,
     grim_reaper: reaperMotion,

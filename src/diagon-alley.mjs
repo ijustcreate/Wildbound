@@ -32,10 +32,12 @@ import {LOCKSMITH_LOOK} from './diagon-locksmith.mjs';
 import {WRONG_TURN_KEY} from './wrong-turn-key.mjs';
 import {interactWrongTurnDoor,tickWrongTurnDoors,wrongTurnDoorBlocked,wrongTurnDoorPrompt} from './wrong-turn-doors.mjs';
 import {planWildGroundArrivals,travelThroughWrongTurn} from './wrong-turn-travel.mjs';
+import {switchWildLandsLayer} from './wild-lands-world.mjs';
 import {EMPORIUM_OWL_STOCK} from './owl-emporium.mjs';
 import {transferPreviewCompanions} from './hunter-pets.mjs';
 import {NOCTURNE_REAR_AREAS,nocturneGraveBlocked,nocturneCemeteryInteraction,interactNocturneCemetery,restoreNocturneCemeteryGhosts} from './diagon-nocturne-rear.mjs';
 import {enterDiagonArena} from './diagon-arena.mjs';
+import {GRINGOTTS_VAULT_OFFSET,gringottsVaultPrompt,interactGringottsVault,tickGringottsVault} from './gringotts-vault.mjs';
 import {diagonEntryBlocked} from './diagon-entry-plaza.mjs';
 import {DIAGON_STREET,DIAGON_STREET_INSET,NOCTURNE_CONNECTOR,NOCTURNE_LANE,NOCTURNE_STREET_INSET} from './alley-street-layout.mjs';
 export const ALLEY={left:7100,right:9688,top:3720,bottom:5750,entry:{x:8000,y:5660}};
@@ -66,6 +68,7 @@ export const ALLEY_SHOPS=[
 });
 const portkeyShop=ALLEY_SHOPS.find(shop=>shop.id==='quidditch');
 const meridianShop=ALLEY_SHOPS.find(shop=>shop.id==='meridian-hall');
+export const ALLEY_BANK_VAULT=mirroredShopPoint(ALLEY_SHOPS.find(shop=>shop.id==='gringotts'),GRINGOTTS_VAULT_OFFSET);
 export const ALLEY_PITCH_PORTKEY=mirroredShopPoint(portkeyShop,QUIDDITCH_SHOP_PORTKEY_LOCAL);
 const curios=ALLEY_SHOPS.find(shop=>shop.id==='nocturne-curios');
 export const BORGIN_MIRROR_STORE=ALLEY_SHOPS.find(shop=>shop.id===BORGIN_MIRROR_SHOP);
@@ -119,12 +122,15 @@ export const inDiagon=g=>g.trainTest?.design.activeRoom==='diagon';
 export const holdingWand=p=>[p.equipment?.hand1,p.equipment?.hand2].some(i=>itemKind(typeof i==='string'?i:i?.type)==='wand');
 const nearMeridianChart=p=>Math.hypot(p.x-MERIDIAN_ARENA_ENTRANCE.x,p.y-MERIDIAN_ARENA_ENTRANCE.y)<=24;
 const nearMeridianClerk=p=>Math.abs(p.x-(meridianShop.x-61))<27&&p.y>=meridianShop.y-7&&p.y<meridianShop.y+45;
-export function alleyGate(g){const t=g.trainTest;if(!t?.design.wildLands||t.design.activeRoom)return null;const w=railwayStations(t.design)[0];if(!w)return null;return {x:w.station.x+w.station.w/2+80,y:w.station.y+35,station:w.station.name};}
+function surfaceAlleyGate(design){const w=railwayStations(design)[0];if(!w)return null;return {x:w.station.x+w.station.w/2+80,y:w.station.y+35,station:w.station.name};}
+export function alleyGate(g){const d=g.trainTest?.design;return d?.wildLands&&!d.activeRoom?surfaceAlleyGate(d):null;}
 export function alleyPrompt(g,p){
  if(p.hp<=0||p.trainRide)return '';
  const hearth=flooPrompt(g,p,ALLEY_SHOP_HEARTH);
  if(hearth!==null)return hearth;
  if(inDiagon(g)){
+  const vault=gringottsVaultPrompt(g,p,ALLEY_BANK_VAULT);
+  if(vault)return vault;
   const cemetery=nocturneCemeteryInteraction(g,p);
   if(cemetery)return cemetery.label;
   const bench=gardenBenchPrompt(g,p,(x,y,r)=>alleyBlocked(g,x,y,r));
@@ -168,8 +174,13 @@ export function switchAlleyLayer(g,room){
  t.design.activeRoom=room||undefined;
 }
 function travel(g,room,point,travellers=g.players,effect){
- const t=g.trainTest;
- switchAlleyLayer(g,room);
+ const t=g.trainTest,source=t.design.activeRoom||null;
+ if(source!==(room||null)){
+  if(source==='diagon')switchAlleyLayer(g,null);
+  else if(source)switchWildLandsLayer(g,null);
+  if(room==='diagon')switchAlleyLayer(g,room);
+  else if(room)switchWildLandsLayer(g,room);
+ }
  t.wildLandsOverview=false;
  t.notice=room?'Welcome to Diagon Alley. Explore the shops and return through the golden arch.':'Returned to Jungle Ruins station.';
  t.noticeUntil=t.time+4;
@@ -185,6 +196,7 @@ function travel(g,room,point,travellers=g.players,effect){
 export function interactAlley(g,p){if(p.hp<=0||p.trainRide)return false;const t=g.trainTest;if(!t?.design.wildLands)return false;
  if(startFlooTravel(g,p,ALLEY_SHOP_HEARTH))return true;
  if(inDiagon(g)){
+  if(interactGringottsVault(g,p,ALLEY_BANK_VAULT))return true;
   if(interactNocturneCemetery(g,p))return true;
   if(interactGardenBench(g,p,(x,y,r)=>alleyBlocked(g,x,y,r)))return true;
   if(nearMeridianChart(p))return enterDiagonArena(g,p,MERIDIAN_ARENA_ENTRANCE.id);
@@ -199,11 +211,14 @@ export function interactAlley(g,p){if(p.hp<=0||p.trainRide)return false;const t=
   if(Math.hypot(p.x-ALLEY_PITCH_PORTKEY.x,p.y-ALLEY_PITCH_PORTKEY.y)<26)return visitQuidditchPitch(g,p,ALLEY_PITCH_PORTKEY);
   if(openQuidditchKitShop(g,p,portkeyShop))return true;
   if(openNocturneSpiderMerchant(g,p))return true;
-  if(Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<80){travel(g,null,t.alleyReturn);return true;}
+  if(Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<80){
+   if(g.players.some(q=>q.room)){g.message('Everyone must leave storage before returning to the station.');return true;}
+   travel(g,null,t.alleyReturn);return true;
+  }
   const s=nearbyAlleyShop(g,p);
   if(!s)return openNocturneDarkWizard(g,p)||openAlleyResidentDialogue(g,p,nearbyAlleyResident(g,p,(x,y,r)=>alleyBlocked(g,x,y,r)));
   if(s.id==='gringotts'){
-   p.ui={shop:'npc-dialogue',gringotts:{...alleyMerchantActor(s),name:s.owner,title:'Gringotts exchange clerk'},ownerDevice:p.device,index:0,node:'exchange'};
+   p.ui={shop:'npc-dialogue',alleyShop:s.id,gringotts:{...alleyMerchantActor(s),name:s.owner,title:s.name},ownerDevice:p.device,index:1,node:'counter'};
    p.consumeInput=true;return true;
   }
   t.alleyMerchants??={};const m=t.alleyMerchants[s.id]??={...s,shopTitle:s.name,trainTailor:true,alleyShop:true,stock:s.stock.map(([type,price])=>({item:{type,qty:1},price})),revision:0,greeting:s.line,visual:alleyMerchantActor(s)};
@@ -217,7 +232,7 @@ export function interactAlley(g,p){if(p.hp<=0||p.trainRide)return false;const t=
  const gate=alleyGate(g);if(!gate||Math.hypot(p.x-gate.x,p.y-gate.y)>110)return false;
  if(!t.alleyOpened){if(!holdingWand(p)){g.message('The old bricks stir. Hold a wand to reveal the passage.');return true;}t.alleyOpened=true;t.alleyOpenedAt=t.time;prepareDiagonArrival(ALLEY);g.onSound?.('magic',p);g.message('The bricks fold away… Diagon Alley awaits.');return true;}
  if(t.time-t.alleyOpenedAt<.65)return true;
- if(g.players.some(q=>q.trainRide)){g.message('Everyone must leave the train before entering Diagon Alley.');return true;}
+ if(g.players.some(q=>q.trainRide||q.room)){g.message('Everyone must leave the train or storage before entering Diagon Alley.');return true;}
  t.alleyReturn={x:gate.x,y:gate.y+65};travel(g,'diagon',{x:8000,y:5560});return true;
 }
 export function nearbyAlleyShop(g,p){
@@ -290,23 +305,27 @@ export function transferAlleyPurchases(g,t){let changed=false;for(const original
  }return changed;}
 
 function completeHearthTravel(g,hearth,p,travellers,arrivals){
- const t=g.trainTest,gate=alleyGate(g);
+ const t=g.trainTest;
  if(!t.persistent){
   const {delta}=alleyReceipt(g,p);
   delta.floo_powder=(delta.floo_powder||0)-1;
  }
- if(hearth.room&&!t.alleyReturn&&gate)t.alleyReturn={x:gate.x,y:gate.y+65};
+ if(hearth.room==='diagon'&&!t.alleyReturn){
+  const gate=surfaceAlleyGate({...t.design,activeRoom:undefined});
+  if(gate)t.alleyReturn={x:gate.x,y:gate.y+65};
+ }
  travel(g,hearth.room,{arrivals},travellers,'floo');
- t.notice=hearth.id==='three-broomsticks'?'The Three Broomsticks':hearth.room?'Nocturne Curios':'Wilds Homestead';
+ t.notice=hearth.name||(hearth.id==='three-broomsticks'?'The Three Broomsticks':hearth.room==='diagon'?'Nocturne Curios':'Wilds Homestead');
  g.persist?.();
 }
 
 export function tickAlley(g,dt){const t=g.trainTest;if(!t?.design.wildLands)return;
  if(t.flooTransfer&&tickFlooTravel(g,ALLEY_SHOP_HEARTH,
-  (hearth,travellers)=>planWildGroundArrivals(g,hearth.room,{x:hearth.x,y:hearth.y+19},travellers,72),
+  (hearth,travellers)=>planWildGroundArrivals(g,hearth.room,hearth.landing||{x:hearth.x,y:hearth.y+19},travellers,72),
   (...args)=>completeHearthTravel(g,...args)))return;
- const gate=alleyGate(g),p=g.players.find(p=>p.hp>0&&!p.trainRide&&!p.ui&&!p.room&&(inDiagon(g)?Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<24:gate&&t.alleyOpened&&t.time-t.alleyOpenedAt>.65&&Math.hypot(p.x-gate.x,p.y-(gate.y-12))<24));if(p)interactAlley(g,p);
+ const gate=alleyGate(g),p=g.players.every(p=>!p.room)&&g.players.find(p=>p.hp>0&&!p.trainRide&&!p.ui&&(inDiagon(g)?Math.hypot(p.x-ALLEY.entry.x,p.y-ALLEY.entry.y)<24:gate&&t.alleyOpened&&t.time-t.alleyOpenedAt>.65&&Math.hypot(p.x-gate.x,p.y-(gate.y-12))<24));if(p)interactAlley(g,p);
  if(!inDiagon(g))return;
+ tickGringottsVault(g,ALLEY_BANK_VAULT,dt);
  if(tickWrongTurnDoors(g,travelThroughWrongTurn))return;
  restoreNocturneCemeteryGhosts(g);
  // Older saves could place an explorer on what is now a dark service yard.

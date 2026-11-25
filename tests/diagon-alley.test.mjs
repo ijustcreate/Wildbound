@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {Game} from '../src/core.mjs';import {enterWildLands} from '../src/wild-lands.mjs';import {leaveTrainTest,trainInteraction,trainWorldBlocked} from '../src/train-test.mjs';
-import {alleyGate,interactAlley,ALLEY_SHOPS,ALLEY_CLOSED_FRONTAGES,DIAGON_STREET,alleyBlocked,inDiagon,insideNocturne} from '../src/diagon-alley.mjs';import {merchantAction,merchantRows} from '../src/traveling-merchant.mjs';
+import {alleyGate,alleyPrompt,interactAlley,ALLEY_SHOPS,ALLEY_CLOSED_FRONTAGES,DIAGON_STREET,alleyBlocked,inDiagon,insideNocturne} from '../src/diagon-alley.mjs';import {merchantAction,merchantRows} from '../src/traveling-merchant.mjs';
+import {npcDialogueView} from '../src/npc-quests.mjs';
 import {ALLEY_SHOP_ROOMS, mirroredShopPoint, shopCutawayOpen} from '../src/diagon-shop-rooms.mjs';
 import {alleyShopAssets} from '../src/diagon-shop-scenes.mjs';
 import {NIGHTGLASS_REAR_DOOR,NOCTURNE_GRAVES} from '../src/diagon-nocturne-rear.mjs';
@@ -14,12 +15,12 @@ const bankCounter=s=>({x:s.x,y:s.y+24});
 function setup(){const g=new Game(()=>.5),original=g.addPlayer('keyboard');g.phase='play';g.openingBoard=false;g.persist=()=>{};g.onSound=()=>{};assert.ok(enterWildLands(g).ok);g.trainTest.preparing=false;return {g,p:g.players[0],original};}
 function enter(g,p){const gate=alleyGate(g);Object.assign(p,{x:gate.x,y:gate.y+60});p.equipment.hand1='starter_wand';assert.ok(trainInteraction(g,p));g.trainTest.time+=1;assert.ok(trainInteraction(g,p));assert.ok(inDiagon(g));}
 
-test('Madam Malkin stocks all three new hat colors in existing expeditions',()=>{
+test('Madam Malkin stocks all four shop hat colors in existing expeditions',()=>{
  const {g,p,original}=setup();
- original.coins=p.coins=100;
+ original.coins=p.coins=130;
  enter(g,p);
  const shop=ALLEY_SHOPS.find(s=>s.id==='malkins');
- const hats=['witch_hat_plum','witch_hat_slate','witch_hat_russet'];
+ const hats=['witch_hat_plum','witch_hat_slate','witch_hat_russet','witch_hat_parchment'];
  Object.assign(p,shopApproach(shop));
  assert.ok(interactAlley(g,p));
  const savedMerchant=g.trainTest.alleyMerchants.malkins;
@@ -84,6 +85,28 @@ test('the west garden spur reaches the locksmith counter and leaves the north th
 test('alley purchases charge once and carry back, full bag and poor buyers do not lose money',()=>{const {g,p,original}=setup();original.coins=p.coins=500;enter(g,p);const s=ALLEY_SHOPS[0];Object.assign(p,{x:s.x+130,y:s.y+12});interactAlley(g,p);const start=p.coins;merchantAction(g,p,'use');assert.equal(count(p,'starter_wand'),1);assert.equal(p.coins,start-35);p.coins=0;merchantAction(g,p,'use');assert.equal(count(p,'starter_wand'),1);leaveTrainTest(g);assert.equal(count(original,'starter_wand'),1);assert.equal(original.coins,465);});
 test('Gringotts rejects sandbox-only essence without crediting permanent gold',()=>{const {g,p,original}=setup();give(p.inventory,'dark_essence',5);original.coins=p.coins=10;enter(g,p);const shop=ALLEY_SHOPS.find(s=>s.id==='gringotts');Object.assign(p,bankCounter(shop));assert.ok(interactAlley(g,p));g.inventoryAction(p,'choice:0');assert.equal(count(p,'dark_essence'),5);assert.equal(p.coins,10);leaveTrainTest(g);assert.equal(original.coins,10);});
 test('Gringotts asks before exchanging five essence for fifty gold and transfers the trade atomically',()=>{const {g,p,original}=setup();give(original.inventory,'dark_essence',5);give(p.inventory,'dark_essence',5);original.coins=p.coins=10;enter(g,p);const s=ALLEY_SHOPS.find(s=>s.id==='gringotts');Object.assign(p,bankCounter(s));interactAlley(g,p);assert.equal(count(p,'dark_essence'),5);assert.equal(p.coins,10);g.inventoryAction(p,'choice:0');assert.equal(count(p,'dark_essence'),0);assert.equal(p.coins,60);g.inventoryAction(p,'choice:0');assert.equal(p.coins,60);leaveTrainTest(g);assert.equal(original.coins,60);assert.equal(count(original,'dark_essence'),0);});
+test('Interact opens and advances Griphook’s conversation from the central bank aisle',()=>{
+ const {g,p,original}=setup();enter(g,p);
+ const bank=ALLEY_SHOPS.find(s=>s.id==='gringotts');
+ for(const actor of [p,original])give(actor.inventory,'dark_essence',5);
+ Object.assign(p,{x:bank.x,y:bank.y+68,coins:10});
+ assert.equal(alleyPrompt(g,p),'TALK TO GRIPHOOK');
+ g.update(.05,{keyboard:{interact:true}});
+ assert.equal(npcDialogueView(g,p).npc.sprite,'alley_goblin');
+ assert.equal(npcDialogueView(g,p).npc.name,'Griphook');
+ assert.equal(p.ui.alleyShop,bank.id);
+ g.update(.05,{keyboard:{}});
+ g.update(.05,{keyboard:{interact:true}});
+ assert.match(npcDialogueView(g,p).text,/five portions of Dark Essence/i);
+ assert.equal(p.coins,10);
+ assert.equal(count(p,'dark_essence'),5);
+ g.inventoryAction(p,'choice:1');
+ g.inventoryAction(p,'choice:2');
+ assert.match(npcDialogueView(g,p).text,/personal storage room/);
+ assert.match(npcDialogueView(g,p).text,/return to the entrance you used/);
+ g.inventoryAction(p,'close');
+ assert.equal(p.ui,null);
+});
 test('a station owl is released once, follows, flies, lands, and needs a cage to recapture',()=>{const {g,p}=setup(),c=stationOwlCages(g)[0];assert.ok(c);Object.assign(p,{x:c.x,y:c.y+35});assert.ok(openOwlCage(g,p));tickStationOwls(g,.05);assert.equal(g.stationOwls.length,1);assert.ok(!openOwlCage(g,p));const a=g.stationOwls[0];p.x+=180;p.moving=true;for(let i=0;i<120;i++)tickStationOwls(g,.05);assert.ok(Math.hypot(a.x-p.x,a.y-p.y)<70);assert.ok(a.owlHeight>0);p.moving=false;for(let i=0;i<120;i++)tickStationOwls(g,.05);assert.equal(a.owlPhase,'perch');assert.equal(a.owlHeight,0);p.equipment.hand1='critter_net';assert.ok(catchStationOwl(g,p));assert.ok(p.npcQuests.snowy_owl.active);give(p.inventory,'critter_cage');assert.ok(catchStationOwl(g,p));assert.equal(count(p,'caught_snowy_owl'),1);assert.equal(count(p,'critter_cage'),0);assert.ok(!p.npcQuests.snowy_owl.active);const i=p.inventory.findIndex(a=>a?.type==='caught_snowy_owl');assert.ok(releaseStationOwl(g,p,i));assert.ok(p.npcQuests.snowy_owl.active);assert.equal(count(p,'critter_cage'),1);assert.equal(count(p,'caught_snowy_owl'),0);});
 test('owl adoption and net cage contents survive returning to expedition and a profile clone',()=>{const {g,p,original}=setup(),c=stationOwlCages(g)[0];give(original.inventory,'critter_cage');give(p.inventory,'critter_cage');Object.assign(p,{x:c.x,y:c.y});openOwlCage(g,p);tickStationOwls(g,.01);p.equipment.hand1='critter_net';catchStationOwl(g,p);leaveTrainTest(g);assert.equal(count(original,'caught_snowy_owl'),1);assert.equal(count(original,'critter_cage'),0);assert.equal(original.npcQuests.snowy_owl.active,false);const record=structuredClone(original.npcQuests);assert.equal(record.snowy_owl.name,'Snowy Owl');});
 test('portal epoch snaps camera on first destination draw with no intermediate pan',()=>{const g={players:[],onSound(){}},r={camera:{x:50,y:80,zoom:1}};snapPortalCamera(r,g,{x:50,y:80,zoom:1});spellTransition(g);assert.equal(snapPortalCamera(r,g,{x:8000,y:5560,zoom:1.35}),true);assert.deepEqual(r.camera,{x:8000,y:5560,zoom:1.35});assert.equal(snapPortalCamera(r,g,{x:20,y:20,zoom:1}),false);});

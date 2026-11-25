@@ -10,6 +10,9 @@ import {useChocolateFrog} from './train-students.mjs';
 import {collectNocturneDarkWizardLoot,dropNocturneDarkWizardLoot} from './nocturne-dark-wizards.mjs';
 import {collectNocturneBossLoot,dropNocturneBossLoot} from './nocturne-boss.mjs';
 import {recordWildBiomeDefeat} from './wild-biome-spawns.mjs';
+import {dropWildSlimeHollowLoot,recordWildSlimeHollowPickup} from './wild-slime-hollow.mjs';
+import {smokeMonsterProjectileHit} from './smoke-monster.mjs';
+import {hitGreyhavenArrow} from './greyhaven-outlaws.mjs';
 import {interactHouseLiving} from './house-living.mjs';
 import {interactPlayground,useApple} from './playground.mjs';
 import {swordLoadout} from './sword-feel.mjs';
@@ -25,6 +28,7 @@ import {weaponHitContext} from './dark-essence.mjs';
 import {victoryRewards} from './victory-chest.mjs';
 import {resetTrials,trialSummary,TRIAL_LETTER} from './expedition-trials.mjs';
 import {trainingPoints,awardTrainingPoint} from './training-points.mjs';
+import {activeLevelUp,startLevelUp} from './level-up.mjs';
 import {carvePumpkin,pickPumpkin} from './pumpkins.mjs';
 import {useChristmasItem,interactToyTrain,hitToyTrain} from './christmas.mjs';
 import {ensureSkeletonEquipment} from './skeleton-equipment.mjs';
@@ -83,7 +87,8 @@ import {tickReturnedHeartGlow} from './returned-heart-glow.mjs';
 import {tickBellglassMushroom} from './bellglass-mushroom-state.mjs';
 import {BROOM_SPEED_POTION,drinkBroomSpeedPotion,tickBroomSpeedPotion} from './broom-speed-potion.mjs';
 import {eatFortescueIceCream,isFortescueIceCream,tickFortescueIceCream} from './fortescue-ice-cream.mjs';
-import {WIZARD_CARD_COLLECTION,wizardCardCount} from './wizard-card-collection.mjs';
+import {WIZARD_CARD_COLLECTION,wizardCardIds} from './wizard-card-collection.mjs';
+import {WIZARD_CARDS} from './wizard-cards.mjs';
 import {tickMeltingIce} from './ice-crafting.mjs';
 import { givePickup,storeInBag,takeFromBag } from './inventory-containers.mjs';
 import {rangedLaunchOrigin,rangedRenderSize} from './ranged-launch.mjs';
@@ -466,9 +471,10 @@ export const adventureMethods = {
     )
       return false;
     this.xpOrbs = this.xpOrbs.filter((o) => o !== orb);
-    emitGameplayFx(this,'xp',{x:p.x,y:p.y-18});
     // Preserve co-op progression: gathering an orb shares its XP with the party.
+    let celebrate = false;
     for (const hero of this.players) {
+      const previousLevel = hero.level;
       trainingPoints(hero);
       hero.xp = Math.round((hero.xp+ticketExperience(hero,orb.amount))*1e6)/1e6;
       while (hero.xp >= hero.level * 50) {
@@ -478,15 +484,27 @@ export const adventureMethods = {
         hero.hp+=8;hero.mana=(hero.mana||0)+6;refreshVitals(hero);
         this.message(hero.name + " reached level " + hero.level);
       }
+      if (hero.level > previousLevel) {
+        startLevelUp(this, hero, previousLevel);
+        celebrate = true;
+      }
     }
-    this.effects.push({
-      x: p.x,
-      y: p.y - 25,
-      text: "+" + Number(ticketExperience(p,orb.amount).toFixed(1)) + " XP",
-      color: "#a3eafa",
-      life: 0.8,
-    });
-    if (this.time >= (this.xpSoundAt || 0)) {
+    if(activeLevelUp(p,this.time)){
+      this.effects=this.effects.filter(effect=>effect.xpCollector!==p.id);
+    }else{
+      emitGameplayFx(this,'xp',{x:p.x,y:p.y-18},{xpCollector:p.id});
+      this.effects.push({
+        x: p.x,
+        y: p.y - 25,
+        text: "+" + Number(ticketExperience(p,orb.amount).toFixed(1)) + " XP",
+        xpCollector:p.id,
+        color: "#a3eafa",
+        life: 0.8,
+      });
+    }
+    if (celebrate) {
+      this.xpSoundAt = this.time + .6;
+    } else if (this.time >= (this.xpSoundAt || 0)) {
       this.onSound("heal");
       this.xpSoundAt = this.time + 0.15;
     }
@@ -554,6 +572,7 @@ export const adventureMethods = {
     this.loot = this.loot.filter((i) => i !== l);
     collectNocturneDarkWizardLoot(this,p,l);
     collectNocturneBossLoot(this,p,l);
+    recordWildSlimeHollowPickup(this,l);
     actionFeedback(this,p,{key:l.type,text:stolenHeartName(l)||ITEMS[l.type]?.name||l.type,quantity:l.qty||1});
     this.persist();
     return true;
@@ -642,6 +661,7 @@ export const adventureMethods = {
   enterRoom(p, door) {
     if(door?.oldWell)return enterOldWell(this,p,door);
     if(door?.forestTravel)return false; // Legacy journey portals are retired.
+    if(door?.bankVault&&door.owner!==p.id)return false;
     if (p.hp <= 0 || p.room || dist(p, door) > 26) return false;
     spellTransition(this,p);
     p.room = door.id;
@@ -759,8 +779,11 @@ export const adventureMethods = {
       const album=p.inventory[u.wizardCards.packIndex];
       if(album?.type!==WIZARD_CARD_COLLECTION||action==='close'||action==='panel'||action.startsWith('panel:'))delete u.wizardCards;
       else if(['next','down','use','prev','up'].includes(action)){
-        const size=Math.max(1,wizardCardCount(album));
+        const size=WIZARD_CARDS.length;
         u.wizardCards.index=(u.wizardCards.index+(['prev','up'].includes(action)?-1:1)+size)%size;
+      }else if(action.startsWith('wizard-card:')){
+        const slot=Number(action.slice('wizard-card:'.length));
+        if(Number.isInteger(slot)&&slot>=0&&slot<WIZARD_CARDS.length)u.wizardCards.index=slot;
       }
       return;
     }
@@ -826,7 +849,9 @@ export const adventureMethods = {
     const storage = this.storageFor(p);
     const selected = p.inventory[u.index];
     if(['use','equip'].includes(action)&&u.panel==='pack'&&!u.shop&&selected?.type===WIZARD_CARD_COLLECTION){
-      u.wizardCards={index:0,packIndex:u.index};
+      const owned=new Set(wizardCardIds(selected));
+      const first=WIZARD_CARDS.findIndex(card=>owned.has(card.id));
+      u.wizardCards={index:Math.max(0,first),packIndex:u.index};
       return;
     }
     if(['use','equip'].includes(action)&&u.panel==='pack'&&!u.shop&&useBroom(this,p,u.index))return;
@@ -1154,7 +1179,7 @@ export const adventureMethods = {
         old = p.previousInput || {},
         edge = (k) => !!i[k] && !old[k];
       if(p.broomReleaseLatch){if(!i.loot)delete p.broomReleaseLatch;else i.loot=false;}
-      if(p.broomMount&&!p.ui){if(edge('loot')){dismountBroom(this,p);i.loot=false;}i.attack=i.jump=i.dodge=i.block=i.trap=i.controlCycle=i.interact=false;}
+      if(p.broomMount&&!p.ui){if(edge('loot')){dismountBroom(this,p);i.loot=false;}i.attack=i.jump=i.block=i.holdPosition=i.trap=i.controlCycle=i.interact=false;}
       if(p.nativeCryptActive&&p.room&&!p.ui){
         if(edge('inventory'))this.openInventory(p);
         oldWellRoomStep(this,p,i,dt);p.previousInput={...i};p.consumeInput=true;continue;
@@ -1413,7 +1438,9 @@ export const adventureMethods = {
         if(this.projectileBlocked(bolt.x,bolt.y,(bolt.size||6)/2,true,bolt)){bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         if(bolt.fire&&igniteBushAt(this,bolt.x,bolt.y,(bolt.size||6)/2)){bolt.life=0;finishMagicBolt(this,bolt,true);break;}
         const target = targets.find(
-          (e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,bolt,(bolt.size||6)/2):e.hp > 0 && dist(e, bolt) < (e.tickTockCrocodile?48:16) + (bolt.size || 6) / 2 && clearShot(this,bolt,e),
+          (e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,bolt,(bolt.size||6)/2):e.hp > 0 &&
+            (e.smokeMonsterRole?smokeMonsterProjectileHit(e,bolt,16,(bolt.size||6)/2):dist(e,bolt)<
+            (e.tickTockCrocodile?48:e.wildSlimeRole==='boss'?e.hitRadius:16)+(bolt.size||6)/2)&&clearShot(this,bolt,e),
         );
         if (target) {
           finishMagicBolt(this,bolt,true);
@@ -1467,6 +1494,7 @@ export const adventureMethods = {
         a.z += a.vz * s-.5*gravity*s*s;
         a.vz -= gravity * s;
         if(a.z<=18&&(this.toyTrains||[]).length){const speed=Math.hypot(a.vx,a.vy)||1;if(hitToyTrain(this,{x:a.x,y:a.y,faceX:a.vx/speed,faceY:a.vy/speed},0)){a.remove=true;a.stuck=true;break;}}
+        if(this.trainTest?.design.wildLands&&hitGreyhavenArrow(this,a,previous.x,previous.y)){a.remove=true;a.stuck=true;break;}
         if(this.projectileBlocked(a.x,a.y,1,true,a)){
           const impactHeight=a.z,impactX=a.x,impactY=a.y;
           a.angle=arrowVisualAngle(a);
@@ -1485,10 +1513,10 @@ export const adventureMethods = {
         const target = a.hostile
           ? [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(p=>p.pet)].find((p) => !p.room && p.hp > 0 && !isCharmed(p) && samePirateCombatFloor(a,p) && dist(p, a) < 16 && clearShot(this,a,p))
           : playerCombatTargets(this,a).find((e) => e.kind==='anaconda'?anacondaProjectileHit(this,e,a,1,a.z):e.hp > 0 &&
-            (e.practiceTarget
+            (e.smokeMonsterRole ? a.z>0&&smokeMonsterProjectileHit(e,a,a.z,1) : e.practiceTarget
               ? a.z>0 && Math.hypot(a.x-e.x,(a.y-a.z)-(e.y-18))<23
-              : dist(e,a)<(e.tickTockCrocodile?57:19) && a.z<38) && clearShot(this,a,e));
-        if (target && (target.practiceTarget || a.z < 38)) {
+              : dist(e,a)<(e.tickTockCrocodile?57:e.wildSlimeRole==='boss'?e.hitRadius:19) && a.z<38) && clearShot(this,a,e));
+        if (target && (target.practiceTarget || target.smokeMonsterRole || a.z < 38)) {
           this.onSound("hit",a);
           if(a.rock)this.effects.push({particle:'rock-fragments',x:a.x,y:a.y-a.z,life:.42,duration:.42,seed:a.owner||0});
           if (a.hostile || this.players.includes(target)) {
@@ -1726,6 +1754,7 @@ export const adventureMethods = {
     );
   },
   enemyLoot(e) {
+    if(dropWildSlimeHollowLoot(this,e))return;
     if(dropNocturneBossLoot(this,e))return;
     if(dropNocturneDarkWizardLoot(this,e))return;
     recordWildBiomeDefeat(this,e);

@@ -4,13 +4,13 @@ import {wildHomestead} from './wild-homestead-layout.mjs';
 import {nativeWildProps,drawNativeWildTile,nativeWildBiome} from './wild-native-biomes.mjs';
 import {drawPortal} from './portal-art.mjs';
 import {drawProp} from './environment.mjs';
-import {sketchBiome,sketchUniformSurfaceTile,wildLandsPathAt,WILD_BRIDGES,REGION_SHAPES} from './wild-lands-geography.mjs';
+import {eastWoodlandLakeDepth,eastWoodlandUniformTile,sketchBiome,sketchUniformSurfaceTile,wildLandsPathAt,mossbellPathAt,WILD_BRIDGES,REGION_SHAPES} from './wild-lands-geography.mjs';
 import {WILD_LANDS_SITES,wildSiteVisible,VEIL_GLAIVE_CHEST} from './wild-lands-content.mjs';
 import {drawStarterChest} from './starter-chest.mjs';
 import {drawIceChest} from './ice-chest-art.mjs';
 import {drawVeilkeeperChest} from './glaive-art.mjs';
 import {forestGroundTone} from './forest-art.mjs';
-import {drawWaterSurface} from './water-surface.mjs';
+import {drawWildWater,wildCoastShelf,wildOceanAt} from './wild-water-art.mjs';
 import {drawWildSandTile,wildSandTone} from './wild-sand-art.mjs';
 import {drawRailwayFloorFallback} from './railway-floor-fallback.mjs';
 import {wildHash,wildLandsGround,wildLandsSurface,wildLandsSurfaceAt,WILD_LANDS_STOPS,WILD_LANDS_GATES,WILD_LANDS_EXIT} from './wild-lands-world.mjs';
@@ -19,57 +19,71 @@ import {HOLLOW_ROOM,MOUNTAIN_BOUNDS} from './wild-mountain-layout.mjs';
 import {GREYWAKE_SHORE_BOUNDS} from './wild-mountain-shore.mjs';
 import {drawMountainMap} from './wild-mountain-art.mjs';
 import {tideglassEdge,tideglassIntersects} from './tideglass-layout.mjs';
-import {drawTideglassGroundTile,drawTideglassMapMarks,tideglassGroundTone} from './tideglass-ground-art.mjs';
+import {castleMoatTone,drawTideglassGroundTile,drawTideglassMapMarks,tideglassGroundTone} from './tideglass-ground-art.mjs';
+import {GREYHAVEN,castleMoatIntersects,castleOuterBankIntersects,castleSurface} from './wild-castle-site.mjs';
+import {drawCastleMapMark} from './wild-castle-exterior.mjs';
+import {WILD_SLIME_HOLLOW} from './wild-slime-hollow-site.mjs';
+import {MOONVEIL_CIRCLE} from './wild-runic-sanctuary-site.mjs';
+import {coastalSiteIntersects} from './wild-coastal-sites.mjs';
+import {drawMermaidLagoonMap,mermaidLagoonGroundTone,mermaidLagoonWaterTone} from './wild-mermaid-lagoon.mjs';
+import {drawSkullRockMap,skullRockGround} from './wild-skull-rock.mjs';
 const COLORS={forest:['#4a663c','#4b673d','#4c683e'],jungle:['#3d6339','#3e643a','#3f653b'],ice:['#bccfd0','#c4d6d5','#b3c9cd'],graveyard:['#354b43','#394e47','#3d5148'],house:['#526f40','#587645','#5e7947'],beach:['#b9a57b','#c5b188','#cdb992'],swamp:['#465c42','#4c6145','#40573e'],caverns:['#35434c','#3c4a53','#414e56'],mountain:['#48594c','#4b5d50','#536255'],shadow:['#343547','#393a50','#3e3c54'],water:['#235765','#265e6c','#2b6470'],shallow:['#59918e','#629e98','#6ba49b']};
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 const nativePlan={seed:42,routes:[],landmarks:[],routeField:new Float32Array(10000).fill(200),paving:{cells:Array(576).fill(0)}};
 const waterMasks=new WeakMap();
 const coastDirections=[[-1,0],[1,0],[0,-1],[0,1]];
+const wetCell=(cells,col,row)=>Number(cells[row+2][col+2]!=='grass');
+
+function coastNormal(cells,col,row){
+ let nx=0,ny=0;
+ for(let i=-2;i<=2;i++){
+  const weight=3-Math.abs(i);
+  nx+=(wetCell(cells,col+2,row+i)-wetCell(cells,col-2,row+i))*weight;
+  ny+=(wetCell(cells,col+i,row+2)-wetCell(cells,col+i,row-2))*weight;
+ }
+ const magnitude=Math.hypot(nx,ny);
+ if(magnitude)return [nx/magnitude,ny/magnitude];
+ return coastDirections.find(([dx,dy])=>!wetCell(cells,col-dx,row-dy));
+}
+
 export function nativeWaterRuns(d,x,y){
  const mountain=x+32>MOUNTAIN_BOUNDS.left&&x<MOUNTAIN_BOUNDS.right&&y+32>MOUNTAIN_BOUNDS.top&&y<MOUNTAIN_BOUNDS.bottom;
  const tideglass=!d.activeRoom&&tideglassIntersects(x,y,x+32,y+32)?tideglassEdge(x+16,y+16):-Infinity;
- if(tideglass>42&&!mountain)return {x,y,wet:[],shallow:[],shore:[]};
+ const castle=!d.activeRoom&&castleMoatIntersects(x-4,y-4,x+36,y+36);
+ const coastal=!d.activeRoom&&coastalSiteIntersects(x-4,y-4,x+36,y+36);
+ const woodland=d.activeRoom?undefined:eastWoodlandUniformTile(x,y);
+ if(!mountain&&!castle&&!coastal){
+  if(woodland==='grass'||woodland===undefined&&tideglass>42)return {x,y,wet:[],shallow:[],shore:[]};
+  if(woodland==='water')return {x,y,wet:[[x,y,32,32]],shallow:[],shore:[]};
+ }
  const greywake=x+32>GREYWAKE_SHORE_BOUNDS.left&&x<GREYWAKE_SHORE_BOUNDS.right&&y+32>GREYWAKE_SHORE_BOUNDS.top&&y<GREYWAKE_SHORE_BOUNDS.bottom;
- if(!d.activeRoom&&!mountain&&!greywake&&tideglass<-132&&!d.wildStops?.some(s=>Math.abs(x+16-s.x)<612&&y+32>s.y-390&&y<s.y+100)){
+ if(!d.activeRoom&&!mountain&&!greywake&&!coastal&&tideglass<-132&&!d.wildStops?.some(s=>Math.abs(x+16-s.x)<612&&y+32>s.y-390&&y<s.y+100)){
   const uniform=sketchUniformSurfaceTile(x,y);
   if(uniform)return {x,y,wet:uniform==='grass'?[]:[[x,y,32,32]],shallow:uniform==='shallow'?[[x,y,32,32]]:[],shore:[]};
  }
  const wet=[],shallow=[],shore=[],cells=[];
- for(let row=-1;row<=16;row++){
+ for(let row=-2;row<=17;row++){
   const line=[];
-  for(let col=-1;col<=16;col++)line.push(wildLandsSurfaceAt(d,x+col*2+1,y+row*2+1));
+  for(let col=-2;col<=17;col++)line.push(wildLandsSurfaceAt(d,x+col*2+1,y+row*2+1));
   cells.push(line);
  }
  for(let row=0;row<16;row++){
   let wetStart=-1,shallowStart=-1;
   for(let col=0;col<=16;col++){
-   const py=y+row*2,px=x+col*2,kind=col<16?cells[row+1][col+1]:'grass';
+   const py=y+row*2,px=x+col*2,kind=col<16?cells[row+2][col+2]:'grass';
    if(kind!=='grass'&&wetStart<0)wetStart=col;
    if(kind==='grass'&&wetStart>=0){wet.push([x+2*wetStart,py,2*(col-wetStart),2]);wetStart=-1;}
    if(kind==='shallow'&&shallowStart<0)shallowStart=col;
    if(kind!=='shallow'&&shallowStart>=0){shallow.push([x+2*shallowStart,py,2*(col-shallowStart),2]);shallowStart=-1;}
-   if(kind==='grass')continue;
-   for(const [dx,dy] of coastDirections)if(cells[row+1-dy][col+1-dx]==='grass')shore.push([px,py,dx,dy]);
+   if(kind!=='grass'&&coastDirections.some(([dx,dy])=>!wetCell(cells,col+dx,row+dy))){
+    const [nx,ny]=coastNormal(cells,col,row);
+    shore.push([px+1,py+1,nx,ny]);
+   }
   }
  }
  return {x,y,wet,shallow,shore};
 }
 
-function drawWildShoreCrests(c,tiles,time){
- for(const shore of tiles)for(const [x,y,dx,dy] of shore){
-  const along=dx?y:x;
-  const phase=(time*.52+x*.013+y*.009)%1;
-  const swell=Math.sin(along*.146+time*.85)+.46*Math.sin(along*.29-time*1.1);
-  if(swell<.05)continue;
-  const width=dx?1:2,height=dy?1:2,inset=2+Math.floor(phase*5);
-  c.fillStyle=phase<.54?'#a5d9bd80':'#8fc4ac54';
-  c.fillRect(x+dx*inset,y+dy*inset,width,height);
-  if(swell>.97){
-   c.fillStyle='#8eccb23e';
-   c.fillRect(x+dx*(inset+5),y+dy*(inset+5),width,height);
-  }
- }
-}
 export function wildWaterTileMask(x,y,d,t,requestedChunks){
  if(typeof Path2D==='undefined')return null;
  let cache=waterMasks.get(d);
@@ -87,24 +101,38 @@ export function wildWaterTileMask(x,y,d,t,requestedChunks){
    requestedChunks?.set(chunkKey,data);
   }
   tile=data?.tiles[(ty-cy/32)*16+tx-cx/32];
-  if(!tile)return null;
+  if(!tile){
+   // Use the same mask while its Worker tile arrives so the narrow moat
+   // never shows a square edge between fallback fill and animated water.
+   if(d.activeRoom||!castleMoatIntersects(x,y,x+32,y+32))return null;
+   tile=nativeWaterRuns(d,x,y);
+  }
  }else tile=nativeWaterRuns(d,x,y);
  let mask=null;
  if(tile.wet.length){
-  mask={wet:new Path2D(),shallow:new Path2D(),hasWet:true,hasShallow:!!tile.shallow.length,shore:tile.shore};
+  const [wx,wy,width,height]=tile.wet[0];
+  mask={wet:new Path2D(),shallow:new Path2D(),hasWet:true,hasShallow:!!tile.shallow.length,
+   shore:tile.shore,sampleX:wx+width/2,sampleY:wy+height/2};
   for(const run of tile.wet)mask.wet.rect(...run);
   for(const run of tile.shallow)mask.shallow.rect(...run);
  }
  if(cache.size>=6000)cache.delete(cache.keys().next().value);
  cache.set(key,mask);return mask;
 }
+function coastalSiteTone(d,x,y,surface){
+ if(d.activeRoom)return null;
+ if(surface!=='grass')return mermaidLagoonWaterTone(x,y);
+ return mermaidLagoonGroundTone(x,y)??(skullRockGround(x,y)?wildSandTone(x,y):null);
+}
 function floorColor(d,x,y,detail=false){
  const water=wildLandsSurface(d,x,y);
+ const coastal=coastalSiteTone(d,x,y,water);if(coastal)return coastal;
+ if(water==='water'&&!d.activeRoom&&castleSurface(x,y)==='water')return castleMoatTone(x,y);
  if(water==='grass'&&!d.activeRoom){
   const eastern=tideglassGroundTone(x,y);
   if(eastern)return eastern;
  }
- if(water==='grass'&&!d.activeRoom&&wildLandsPathAt(x,y))return '#94876c';
+ if(water==='grass'&&!d.activeRoom&&wildLandsPathAt(x,y))return mossbellPathAt(x,y)?'#9f8659':'#94876c';
  if(water==='grass'&&!detail&&wildLandsGround(d,x,y)==='beach')return wildSandTone(x,y);
  const biome=water==='grass'?nativeWildBiome(d,x,y):water,kind=biome==='beach'?sketchBiome(x,y):biome;
  return ['forest','jungle','house'].includes(kind)?forestGroundTone(nativePlan,x,y):COLORS[kind][Math.floor(wildHash(x/32,y/32)*3)];
@@ -113,23 +141,59 @@ function drawWildFloorFallback(c,d,x,y,span){
  const room=d.activeRoom||'surface';
  drawRailwayFloorFallback(c,d,x,y,span,span===512?32:64,(wx,wy)=>{
   const surface=wildLandsSurface(d,wx,wy);
+  const coastal=coastalSiteTone(d,wx,wy,surface);if(coastal)return coastal;
+  if(surface==='water'&&!d.activeRoom&&castleSurface(wx,wy)==='water')return castleMoatTone(wx,wy);
   if(surface==='grass'&&!d.activeRoom){const eastern=tideglassGroundTone(wx,wy);if(eastern)return eastern;}
-  if(surface==='grass'&&!d.activeRoom&&wildLandsPathAt(wx,wy))return '#94876c';
+  if(surface==='grass'&&!d.activeRoom&&wildLandsPathAt(wx,wy))return mossbellPathAt(wx,wy)?'#9f8659':'#94876c';
   const kind=surface==='grass'?wildLandsGround(d,wx,wy):surface;
   if(kind==='beach')return wildSandTone(wx,wy);
   const palette=COLORS[kind]||COLORS.forest;
   return palette[Math.floor(wildHash(wx/32,wy/32)*3)];
  },room);
 }
+
+let castleBankFloor;
+function drawCastleBankFloor(c,bounds){
+ const {moat}=GREYHAVEN;
+ const left=Math.floor(moat.left/32)*32-64,top=Math.floor(moat.top/32)*32-64;
+ const right=Math.ceil(moat.right/32)*32+64,bottom=Math.ceil(moat.bottom/32)*32+64;
+ if(bounds.left>=right||bounds.right<=left||bounds.top>=bottom||bounds.bottom<=top)return;
+ const width=right-left,height=bottom-top,scale=2;
+ if(!castleBankFloor){
+  castleBankFloor=document.createElement('canvas');
+  castleBankFloor.width=width/scale;
+  castleBankFloor.height=height/scale;
+  const pen=castleBankFloor.getContext('2d');
+  for(let y=top;y<bottom;y+=32)for(let x=left;x<right;x+=32){
+   if(castleOuterBankIntersects(x-48,y-48,x+80,y+80))drawTideglassGroundTile(pen,x,y,left,top,scale);
+  }
+ }
+ c.imageSmoothingEnabled=false;
+ c.drawImage(castleBankFloor,left,top,width,height);
+}
+function paintMapTerrain(pen,d,width,height,step){
+ const scaleX=d.width/width,scaleY=d.height/height,half=step/2;
+ for(let y=0;y<height;y+=step)for(let x=0;x<width;x+=step)
+  rect(pen,x,y,step,step,floorColor(d,(x+half)*scaleX,(y+half)*scaleY));
+}
+function paintMapMarkers(pen){
+ drawMountainMap(pen);drawTideglassMapMarks(pen);drawCastleMapMark(pen,GREYHAVEN.x,GREYHAVEN.y,24);drawMossbellMapMark(pen);drawMoonveilMapMark(pen);
+ drawMermaidLagoonMap(pen);drawSkullRockMap(pen);
+}
 function miniLayer(t){
  if(t.wildMap)return t.wildMap;if(railwayStream(t))return streamImage(t,'map','map',{size:320,height:192},40);const canvas=document.createElement('canvas');canvas.width=320;canvas.height=192;const pen=canvas.getContext('2d'),d={...t.design,activeRoom:null};
- for(let y=0;y<canvas.height;y+=2)for(let x=0;x<canvas.width;x+=2)rect(pen,x,y,2,2,floorColor(d,(x+1)*d.width/canvas.width,(y+1)*d.height/canvas.height));
- pen.save();pen.scale(canvas.width/d.width,canvas.height/d.height);drawMountainMap(pen);drawTideglassMapMarks(pen);pen.restore();t.wildMap=canvas;return canvas;
+ paintMapTerrain(pen,d,canvas.width,canvas.height,2);
+ pen.save();pen.scale(canvas.width/d.width,canvas.height/d.height);paintMapMarkers(pen);pen.restore();t.wildMap=canvas;return canvas;
 }
 function overviewLayer(t){
- const revision=t.wildExploration?.opened.size||0;if(t.wildOverview&&t.wildOverviewRevision===revision)return t.wildOverview;const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=720;const pen=canvas.getContext('2d'),d={...t.design,activeRoom:null};pen.scale(canvas.width/d.width,canvas.height/d.height);
- pen.imageSmoothingEnabled=false;pen.drawImage(miniLayer(t),0,0,d.width,d.height);
- const savedVisible=t.visibleForest,all=wildLandsProps(t,{left:0,top:0,right:d.width,bottom:d.height});t.visibleForest=savedVisible;
+ const revision=t.wildExploration?.opened.size||0;if(t.wildOverview&&t.wildOverviewRevision===revision)return t.wildOverview;const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=720;const pen=canvas.getContext('2d'),d={...t.design,activeRoom:null};
+ paintMapTerrain(pen,d,canvas.width,canvas.height,4);
+ pen.scale(canvas.width/d.width,canvas.height/d.height);pen.imageSmoothingEnabled=false;paintMapMarkers(pen);
+ const savedVisible=t.visibleForest,savedZoom=t.viewZoom;
+ let all;
+ t.viewZoom=.05;
+ try{all=wildLandsProps(t,{left:0,top:0,right:d.width,bottom:d.height});}
+ finally{t.visibleForest=savedVisible;t.viewZoom=savedZoom;}
  for(const prop of all){const x=prop.x,y=prop.rootY||prop.y;if(prop.kind==='gravestone'){rect(pen,x-14,y-30,28,30,'#9caaa0');continue;}rect(pen,x-5,y-15,10,18,'#69533f');const winter=prop.kind==='snow_tree';rect(pen,x-38,y-90,76,66,winter?'#466868':'#294d36');rect(pen,x-28,y-105,56,60,winter?'#c5d5ce':'#47713b');}
  drawWildLandsLandmarks(pen,{...t,design:d,viewZoom:.05},{left:0,top:0,right:d.width,bottom:d.height});t.wildOverview=canvas;t.wildOverviewRevision=revision;return canvas;
 }
@@ -139,6 +203,7 @@ export function drawWildLandsFloor(c,t,bounds,overview=false,g=null){
  if(overview&&!d.activeRoom){c.imageSmoothingEnabled=false;if(railwayStream(t)){const image=streamImage(t,'overview','overview:'+(t.wildExploration?.opened.size||0),{size:1200,height:720,opened:[...(t.wildExploration?.opened||[])]},10)||miniLayer(t);if(image)c.drawImage(image,0,0,d.width,d.height);}else c.drawImage(overviewLayer(t),0,0,d.width,d.height);return;}
 
  const far=(t.viewZoom||1)<.3,chunkSize=far?2048:512,tile=far?32:16,scale=chunkSize/256;
+ let refineBank=far;
  t.wildFloorChunks??=new Map();
  const stream=railwayStream(t);
  if(stream){
@@ -147,6 +212,7 @@ export function drawWildLandsFloor(c,t,bounds,overview=false,g=null){
   let lod=t.floorLod;if(!lod||lod.room!==(d.activeRoom||'surface'))lod=t.floorLod={room:d.activeRoom||'surface',far,transition:false};if(!far&&lod.far){lod.transition=true;delete lod.start;}lod.far=far;
   let alpha=1;if(!far&&lod.transition){if(!missing)lod.start??=performance.now();alpha=lod.start===undefined?0:Math.min(1,(performance.now()-lod.start)/300);if(alpha===1)lod.transition=false;}lod.detailAlpha=far?0:alpha;
   if(missing||alpha<1){
+   refineBank=true;
    const lowerTiles=new Set(),room=d.activeRoom||'surface';
    for(const q of tiles){
     if(q.image&&alpha===1)continue;
@@ -175,23 +241,43 @@ export function drawWildLandsFloor(c,t,bounds,overview=false,g=null){
   c.imageSmoothingEnabled=false;c.drawImage(canvas,cx*chunkSize,cy*chunkSize,chunkSize,chunkSize);
  }
  }
+ if(refineBank&&g&&!d.activeRoom)drawCastleBankFloor(c,bounds);
  if(g&&!far&&!d.activeRoom){
-  const requestedChunks=new Map(),shoreTiles=[];
+  const requestedChunks=new Map(),coastalBanks=[],freshBanks=[];
   const left=Math.floor(bounds.left/32)*32,top=Math.floor(bounds.top/32)*32;
   const width=Math.ceil(bounds.right/32)*32-left,height=Math.ceil(bounds.bottom/32)*32-top;
-  const wet=new Path2D(),shallows=new Path2D();
-  let hasWet=false,hasShallows=false;
+  let wet=null,ocean=null,inland=null,lake=null,lagoon=null,coastalShallows=null;
+  const freshShallows=new Path2D(),shelf=[];
   for(let y=top;y<bounds.bottom;y+=32)for(let x=left;x<bounds.right;x+=32){
    const mask=wildWaterTileMask(x,y,d,t,requestedChunks);
    if(!mask)continue;
-   wet.addPath(mask.wet);hasWet=true;
-   if(mask.hasShallow){shallows.addPath(mask.shallow);hasShallows=true;}
-   if(mask.shore.length)shoreTiles.push(mask.shore);
+   (wet??=new Path2D()).addPath(mask.wet);
+   mask.lagoon??=Boolean(mermaidLagoonWaterTone(mask.sampleX,mask.sampleY));
+   if(mask.lagoon){
+    (lagoon??=new Path2D()).addPath(mask.wet);
+    if(mask.shore.length)freshBanks.push(mask.shore);
+    continue;
+   }
+   mask.lake??=eastWoodlandLakeDepth(mask.sampleX,mask.sampleY)>=0;
+   if(mask.lake){
+    (lake??=new Path2D()).addPath(mask.wet);
+    if(mask.shore.length)freshBanks.push(mask.shore);
+    continue;
+   }
+   mask.ocean??=wildOceanAt(mask.sampleX,mask.sampleY);
+   if(mask.ocean){
+    (ocean??=new Path2D()).addPath(mask.wet);
+    if(mask.shore.length)coastalBanks.push(mask.shore);
+    if(!mask.hasShallow)continue;
+    (coastalShallows??=new Path2D()).addPath(mask.shallow);
+    (mask.shelf??=wildCoastShelf(x,y)).forEach((band,index)=>(shelf[index]??=new Path2D()).addPath(band));
+   }else{
+    (inland??=new Path2D()).addPath(mask.wet);
+    if(mask.shore.length)freshBanks.push(mask.shore);
+    if(mask.hasShallow)freshShallows.addPath(mask.shallow);
+   }
   }
-  // One continuous shader fill keeps adjacent tiles from independently anti-aliasing.
-  if(hasWet){c.save();c.clip(wet);drawWaterSurface(c,g,left,top,width,height,{shallow:false,shoreRipples:false});c.restore();}
-  if(hasShallows){c.fillStyle='#79c6a188';c.fill(shallows);}
-  drawWildShoreCrests(c,shoreTiles,g.time||0);
+  if(wet)return ()=>drawWildWater(c,g,{left,top,width,height},{wet,ocean,inland,lake,lagoon,coastalShallows,freshShallows,shelf,coastalBanks,freshBanks});
  }
 }
 export function wildLandsProps(t,bounds){
@@ -236,6 +322,15 @@ export function drawVeilGlaiveChest(c,t){
 }
 function drawExplorationSites(c,t,bounds,depthSortedCache=false){
  for(const site of WILD_LANDS_SITES){if(!wildSiteVisible(t.design,site)||!visiblePoint(bounds,site,500))continue;const x=site.x,y=site.y;
+  if(!site.item){
+   if((t.viewZoom||1)<.12){
+    if(site===WILD_SLIME_HOLLOW)drawMossbellMapMark(c);
+    if(site===MOONVEIL_CIRCLE)drawMoonveilMapMark(c);
+    c.save();c.font='bold 162px system-ui';c.textAlign='center';c.strokeStyle='#273a2e';c.lineWidth=62;
+    c.strokeText(site.name,x,y-235);c.fillStyle='#f1daa2';c.fillText(site.name,x,y-235);c.restore();
+   }
+   continue;
+  }
   if(site.kind==='boardwalk'){rect(c,x-220,y-160,440,320,'#716448');for(let i=-210;i<220;i+=20)rect(c,x+i,y-156,3,312,'#a38b61');}
   if(site.kind==='stones')for(let i=0;i<7;i++){const a=i*Math.PI*2/7,px=x+Math.cos(a)*190,py=y+Math.sin(a)*150;const kind=site.room==='shadow'?'veil_stone':site.room?'limestone_shelf':'ice_rock';drawProp(c,{kind,x:px,y:py,rootY:py,size:55,...(site.room?{realm:site.room}:{}),variant:i%4,procedural:true},t.time,{environment:'ice',generatedEnvironment:'ice',phase:'play',scenery:[]},{dynamicShadows:true});}
   if(site.kind==='camp'){rect(c,x-110,y-85,80,55,'#4d6041');for(let i=0;i<4;i++)rect(c,x-105+i*18,y-90-i%2*8,20,12,'#a49970');rect(c,x+100,y-15,100,18,'#6f553b');rect(c,x+112,y-12,85,3,'#ad8b59');}
@@ -244,6 +339,18 @@ function drawExplorationSites(c,t,bounds,depthSortedCache=false){
   const opened=t.wildExploration?.opened.has(site.id);c.save();c.translate(x,y);c.scale(.35,.35);drawStarterChest(c,{x:0,y:0},opened?1:0);c.restore();
   if((t.viewZoom||1)>.25){c.fillStyle='#ded5b2';c.font='11px system-ui';c.textAlign='center';c.fillText(site.name,x,y-100);c.textAlign='left';}
  }
+}
+function drawMoonveilMapMark(c){
+ const {x,y}=MOONVEIL_CIRCLE;
+ rect(c,x-100,y-67,200,139,'#394239');
+ for(const [dx,dy] of [[0,-58],[-72,-16],[72,-16],[-45,45],[45,45]])
+  rect(c,x+dx-18,y+dy-18,36,36,'#d5b7e7');
+}
+function drawMossbellMapMark(c){
+ const {x,y}=WILD_SLIME_HOLLOW;
+ rect(c,x-98,y-57,196,122,'#354934');
+ rect(c,x-65,y-80,130,124,'#e6c98b');
+ rect(c,x-31,y-50,62,61,'#67553b');
 }
 export function drawWildLandsLandmarks(c,t,bounds,g=null){
  const d=t.design;if(!d.activeRoom){if(!g)drawWildLandsCrossings(c,d,bounds);drawCemeteryFence(c,bounds);}if(d.activeRoom){

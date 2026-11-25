@@ -90,7 +90,7 @@ function garden(shop){
 
 export function assembleAlleyShop(c,shop,g,objects,animator=null) {
   const side=shopEntrySide(shop),room=ALLEY_SHOP_ROOMS[shop.id];
-  const open=shopCutawayOpen(shop,g.players)||shop.id==='floreans'&&shopCutawayOpen(shop,g.trainTest?.alleyVisitors||[]);
+  const open=shopCutawayOpen(shop,g.players.filter(p=>!p.room))||shop.id==='floreans'&&shopCutawayOpen(shop,g.trainTest?.alleyVisitors||[]);
   groundShop(c,shop,side,open,room.props);
   for(const plant of garden(shop))objects.push({depth:plant.rootY,paint:()=>drawForestAsset(c,plant,g.time,g)});
   if(!open){

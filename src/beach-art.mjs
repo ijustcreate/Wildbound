@@ -1,54 +1,88 @@
 import {beachShore,BEACH_PIER} from './beach-world.mjs';
 import {waterAt} from './environment.mjs';
 import {drawNativeBeachProp} from './beach-props.mjs';
-const hash=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n);};
+import {createBeachSurfChunk,paintBeachSurfChunk} from './beach-surf.mjs';
 const load=path=>{if(typeof Image==='undefined')return null;const i=new Image();i.src=new URL(path,import.meta.url).href;return i;};
 export const beachBackdrop=load('../assets/beach-background-v1.png');
 export const BEACH_GROUND_CACHE_LIMIT=40;
 const caches=new WeakMap();
 export const beachCacheSize=g=>caches.get(g)?.chunks.size||0;
 const rect=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
-// Static terrain is cached in viewport-sized chunks; animation is a separate
-// bounded pass, never saved particle actors or a full-world image allocation.
+
+// Sample the same stable shoreline and depth field that the ground raster uses.
+// The advancing foam is decorative and does not change the water beneath actors.
+export function beachVisualWaterDepth(g,x,y){
+ const chunk=caches.get(g)?.chunks.get(Math.floor(x/256)+':'+Math.floor(y/256));
+ if(!chunk)return null;
+ if(!chunk.surface)return 0;
+ const col=Math.floor((x-chunk.x0)/2),row=Math.floor((y-chunk.y0)/2);
+ const index=row*chunk.surface.width+col;
+ const cover=Math.max(0,Math.min(1,-chunk.coastDistance[index]/13));
+ return cover*Math.min(1,.12+chunk.oceanDepth[index]*1.25);
+}
+
+function beachBedAt(g,x,y){
+ const kind=waterAt(g,x,y);
+ if(kind!=='bridge'&&kind!=='floodbridge'&&kind!=='wood')return kind;
+ const shore=beachShore(x,g.seed);
+ return y<shore-62?'water':y<shore+18?'shallow':'sand';
+}
+
+function drawRockWash(c,g,left,top,right,bottom){
+ const time=g.time||0;
+ for(const rock of g.scenery||[]){
+  if(rock.kind!=='rock'||!rock.coastal||rock.depleted)continue;
+  const x=rock.x,y=rock.rootY??rock.y+rock.size*.19;
+  if(x<left-40||x>right+40||y<top-20||y>bottom+20)continue;
+  const kind=waterAt(g,x,y);
+  if(kind!=='shallow'&&kind!=='water')continue;
+  const tide=(1+Math.sin(time*.91+x*.068+y*.012))*.5;
+  const rx=(rock.beachFootprint?.[0]??rock.size*.24)+4+tide*7;
+  const ry=(rock.beachFootprint?.[1]??rock.size*.10)+3+tide*4;
+  for(let i=0;i<38;i++){
+   const angle=i*Math.PI/19+Math.sin(time*.62)*.11;
+   const crest=Math.sin(angle*7+x)+Math.sin(angle*4-time*1.1);
+   if(crest<-.42-tide*.85)continue;
+   const wx=x+Math.cos(angle)*(rx+crest),wy=y+Math.sin(angle)*(ry+crest*.7);
+   const water=waterAt(g,wx,wy);
+   if(water!=='shallow'&&water!=='water')continue;
+   rect(c,wx,wy,crest>.7?5:3,tide>.62?2:1,crest>.45?'#fff7d5b5':'#f5efbe70');
+  }
+ }
+}
+
+// The ground and sampled depth stay cached, while the tide advances on a
+// separate low-resolution layer shared by every viewport looking at the beach.
 export function drawBeachGround(c,g,{sx,sy,ex,ey}){
- let cache=caches.get(g);if(!cache||cache.terrain!==g.terrain||cache.seed!==g.seed){cache={terrain:g.terrain,seed:g.seed,chunks:new Map()};caches.set(g,cache);}
+ let cache=caches.get(g);
+ if(!cache||cache.terrain!==g.terrain||cache.seed!==g.seed||cache.mapMode!==g.mapMode||cache.weather!==g.weather?.type){
+  cache={terrain:g.terrain,seed:g.seed,mapMode:g.mapMode,weather:g.weather?.type,chunks:new Map()};
+  caches.set(g,cache);
+ }
+ const time=g.time||0;
+ const nativeCoast=g.mapMode==='boundless'?null:x=>x>=16&&x<=1584?beachShore(x,g.seed)+18:NaN;
  for(let cy=Math.floor(sy/8);cy<Math.ceil(ey/8);cy++)for(let cx=Math.floor(sx/8);cx<Math.ceil(ex/8);cx++){
-  const key=cx+':'+cy;let canvas=cache.chunks.get(key);
-  if(!canvas){canvas=document.createElement('canvas');canvas.width=canvas.height=256;const cc=canvas.getContext('2d');
-   for(let yy=0;yy<256;yy+=4)for(let xx=0;xx<256;xx+=4){
-    const x=cx*256+xx,y=cy*256+yy,n=(Math.sin(x*.006)+Math.cos(y*.009)+Math.sin((x+y)*.023)+3)/6;
-    let kind=waterAt(g,x+2,y+2);
-    if(kind==='bridge'||kind==='floodbridge'){const shore=beachShore(x,g.seed);kind=y<shore-62?'water':y<shore+18?'shallow':'sand';}
-    const near=y<beachShore(x,g.seed)+70;
-    const colors=kind==='water'?['#17677e','#217a8d','#248b99','#309ead']:kind==='shallow'?['#59b9b2','#73c7bc','#8bd5c7','#a5dfcd']:['wood','bridge','floodbridge'].includes(kind)?['#85634c','#9b7858','#ab8963','#b9976d']:kind==='grass'?['#47694d','#527955','#658553','#78945b']:near?['#c9b88c','#d2c59b','#dfd3aa','#e8ddb5']:['#e2bd82','#e9c68e','#f0d29c','#f5dcad'];
-    rect(cc,xx,yy,4,4,colors[Math.min(3,Math.floor(n*4))]);
-    const r=hash(x+g.seed,y);if(r>.966&&kind==='sand')rect(cc,xx,yy,2,1,'#fff0ca');
-    if(['wood','bridge','floodbridge'].includes(kind)&&(y%16===0||x%32===0))rect(cc,xx,yy,4,1,'#5d4838');
-   }
-   if(cache.chunks.size>=BEACH_GROUND_CACHE_LIMIT)cache.chunks.delete(cache.chunks.keys().next().value);cache.chunks.set(key,canvas);
+  const key=cx+':'+cy;
+  let chunk=cache.chunks.get(key);
+  if(!chunk){
+   chunk=createBeachSurfChunk(cx*256,cy*256,256,(x,y)=>beachBedAt(g,x,y),g.seed,nativeCoast);
+   if(cache.chunks.size>=BEACH_GROUND_CACHE_LIMIT)cache.chunks.delete(cache.chunks.keys().next().value);
+  }else{
+   cache.chunks.delete(key);
   }
-  c.drawImage(canvas,cx*256,cy*256);
- }
- const t=g.time||0;
- for(let y=sy;y<ey;y++)for(let x=sx;x<ex;x++){
-  const wx=x*32,wy=y*32,kind=waterAt(g,wx+16,wy+16);
-  if(g.phase==='won'||g.mapMode!=='boundless'&&g.bloom<3&&Math.hypot(wx+16-800,wy+16-800)>g.bloom*430){rect(c,wx,wy,32.5,32.5,'#888a8e');continue;}
-  if(!['water','shallow'].includes(kind))continue;
-  const shimmer=Math.sin(t*1.4+x*.8+y*.6);
-  rect(c,wx+4+(shimmer+1)*3,wy+10,10+hash(x,y)*9,1,kind==='water'?'#a0e8e455':'#eeffdf80');
-  rect(c,wx+15,wy+25,9,1,'#b9f0e63b');
-  // White surf advances inside shallow water, never masks the walkable beach.
-  if(kind==='shallow'){
-   if(waterAt(g,wx+16,wy+48)==='sand'){const off=4+((t*7+x*2)%23);rect(c,wx,wy+off,32,3,'#f6f7dcbb');rect(c,wx+3,wy+off-3,25,1,'#d5f8e7aa');}
-   if(waterAt(g,wx+48,wy+16)==='sand')rect(c,wx+26+Math.sin(t+x)*2,wy+3,2,24,'#fff8db99');
-   if(g.mapMode==='boundless'){if(waterAt(g,wx+16,wy-16)==='sand')rect(c,wx+2,wy+3+Math.sin(t+x)*2,27,2,'#fff8db99');if(waterAt(g,wx-16,wy+16)==='sand')rect(c,wx+3+Math.sin(t+y)*2,wy+3,2,24,'#fff8db99');}
+  cache.chunks.set(key,chunk);
+  c.drawImage(chunk.ground,chunk.x0,chunk.y0);
+  if(chunk.surface){
+   paintBeachSurfChunk(chunk,time);
+   c.drawImage(chunk.surface,chunk.x0,chunk.y0,256,256);
   }
  }
- // Continuous coherent wave crests, with pixel steps instead of tile borders.
- if(g.mapMode!=='boundless')for(let row=0;row<4;row++)for(let x=Math.max(0,sx*32);x<Math.min(1600,ex*32);x+=4){
-  const y=beachShore(x,g.seed)-42-row*70+Math.sin(x*.022+t*.9+row)*5+Math.sin(t*.6+row)*8;
-  if(y<sy*32||y>ey*32||waterAt(g,x,y)==='wood'||g.mapMode!=='boundless'&&g.bloom<3&&Math.hypot(x-800,y-800)>g.bloom*430)continue;
-  rect(c,x,y,4,row===0?3:1,row===0?'#f8f5d9cc':'#a5e8de66');
+ drawRockWash(c,g,sx*32,sy*32,ex*32,ey*32);
+ if(g.phase==='won'||g.mapMode!=='boundless'&&g.bloom<3){
+  for(let y=sy;y<ey;y++)for(let x=sx;x<ex;x++){
+   const wx=x*32,wy=y*32;
+   if(g.phase==='won'||Math.hypot(wx+16-800,wy+16-800)>g.bloom*430)rect(c,wx,wy,32.5,32.5,'#888a8e');
+  }
  }
  const p=BEACH_PIER;
  // Rails and piling caps leave the center lane entirely walkable.

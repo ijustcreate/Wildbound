@@ -1,6 +1,6 @@
 import {isolateItemSprite,itemArtLayers} from './item-layer-art.mjs';
 import {InlinePixelEditor} from './inline-pixel-editor.mjs';
-import { drawPlayer,playerPose,playerMotion,directionVector,DIRECTIONS } from './player-motion.mjs';
+import { drawPlayer,hasFittedHumanoidGear,playerPose,playerMotion,directionVector,DIRECTIONS } from './player-motion.mjs';
 import { paintItem,clearItemArtCache } from './item-art.mjs';
 import { captureLayers,releaseLayers,capturedLayers } from './render-order.mjs';
 import { DEFAULT_APPEARANCE } from './appearance.mjs';
@@ -29,7 +29,11 @@ export class ItemStudioPreview {
   editIcon(){const c=document.createElement('canvas');c.width=c.height=24;const ctx=c.getContext('2d');paintItem(ctx,this.id);const data=ctx.getImageData(0,0,24,24).data,palette=['transparent'],pixels=[];for(let i=0;i<576;i++){if(data[i*4+3]<128){pixels.push(0);continue;}const color='#'+[data[i*4],data[i*4+1],data[i*4+2]].map(n=>n.toString(16).padStart(2,'0')).join('');if(!palette.includes(color))palette.push(color);pixels.push(palette.indexOf(color));}const item=this.items[this.id];this.pixelEditor=new InlinePixelEditor(this.root.querySelector('.item-inline-editor'),{width:24,height:24,x:0,y:0,palette,pixels},{title:'Inventory icon',onChange:s=>{item.artPixels=s.pixels.map(i=>i?s.palette[i]:null);this.edited();},onRestore:()=>{delete item.artPixels;this.edited();this.editIcon();}});}
   actor(equipped=true) {
     const def=this.items[this.id],[faceX,faceY]=directionVector(this.direction);
-    return {itemArtItems:this.items,faceX,faceY,appearance:DEFAULT_APPEARANCE,...(equipped&&def.mount?{broomMount:{time:this.frame/12}}:{}),equipment:equipped&&def.slot?{[def.slot]:this.id}:{},inventory:equipped&&def.relic?[{type:this.id,qty:1}]:[],animationAction:this.clip,playerFrame:this.frame};
+    const worn=def.slot?{[def.slot]:this.id}:{};
+    // The with/without render pair must share a pose when extracting item pixels.
+    return {itemArtItems:this.items,faceX,faceY,appearance:DEFAULT_APPEARANCE,
+      _keepExplorerFittedPose:hasFittedHumanoidGear(worn)||!!def.mount,_isolatedHeadwear:def.slot==='head',
+      ...(equipped&&def.mount?{broomMount:{time:this.frame/12}}:{}),equipment:equipped?worn:{},inventory:equipped&&def.relic?[{type:this.id,qty:1}]:[],animationAction:this.clip,playerFrame:this.frame};
   }
   animate(dt) {
     const data=JSON.stringify(this.items[this.id]);

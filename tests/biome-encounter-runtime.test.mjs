@@ -14,7 +14,10 @@ function setup(zone='forest',n=1){
  return g;
 }
 test('new normal cards append after the saved roster and keep valid native species',()=>{
- const index=EVENTS.findIndex(e=>e.biomeMixed);assert.equal(index,EVENTS.length-cards.length);assert.equal(EVENTS[75].kind,'shore_goblin');assert.ok(EVENTS.findIndex(e=>e.name==='Crossfire patrol')<index);
+ const index=EVENTS.findIndex(e=>e.biomeMixed);
+ assert.deepEqual(EVENTS.slice(index,index+cards.length).map(e=>e.name),cards.map(e=>e.name));
+ assert.equal(EVENTS[75].kind,'shore_goblin');
+ assert.ok(EVENTS.findIndex(e=>e.name==='Crossfire patrol')<index);
  for(const e of cards)for(const u of e.enemies)assert.ok(creatures[u.kind],u.kind);
 });
 test('normal random selection naturally reaches a biome mixed patrol by the fourth combat card',()=>{

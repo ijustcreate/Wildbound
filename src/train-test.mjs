@@ -54,11 +54,25 @@ import {tickNightCycle} from './night-cycle.mjs';
 import {swordStep} from './sword-feel.mjs';
 import {hasAimWeapon,updateAimFacing,updateBowAimBlend} from './ranged-aim.mjs';
 import {itemKind} from './items.mjs';
-import {wildLandsInteract,wildLandsBlocked,wildLandsGatePrompt} from './wild-lands-world.mjs';
+import {wildLandsInteract,wildLandsBlocked,wildLandsGatePrompt,switchWildLandsLayer} from './wild-lands-world.mjs';
+import {castleBridgeIsRaised,castleBridgeSupport,castleInteriorBlocked,castlePrompt,castleStory,interactCastle,tickCastleSeat} from './wild-castle.mjs';
+import {beginCastleAtriumDrop,tickCastleAtriumDrop} from './wild-castle-atrium.mjs';
+import {castleResidentPrompt,interactCastleResident,tickCastleResidents} from './wild-castle-residents.mjs';
+import {greyhavenCastPrompt,interactGreyhavenCast,tickGreyhavenCast} from './greyhaven-cast.mjs';
+import {greyhavenMimBlocked} from './greyhaven-mim.mjs';
+import {greyhavenDuelDeckAt,tickGreyhavenOutlawPlayer} from './greyhaven-outlaws.mjs';
+import {greyhavenStableBlocked,tickGreyhavenStablePlayer} from './greyhaven-stables.mjs';
+import {castleExteriorBlocked} from './wild-castle-site.mjs';
+import {castleLandscapeBlocked} from './wild-castle-landscape.mjs';
 import {interactTideglass,tideglassPrompt} from './tideglass-quest.mjs';
+import {interactLagoonMermaid,lagoonMermaidPrompt} from './lagoon-mermaids.mjs';
 import {HOLLOW_ROOM,advanceMountainDescent,beginMountainDescent,mountainDescentCorridor,mountainDescentLaunch,mountainHeight,mountainLand,mountainTerrainBlocked,mountainTrail} from './wild-mountain-layout.mjs';
 import {tickMountainEncounters} from './wild-mountain-encounters.mjs';
 import {tickWildBiomeSpawns} from './wild-biome-spawns.mjs';
+import {coastalSiteBlocked} from './wild-coastal-sites.mjs';
+import {interactWildSlimeCheckpoint,tickWildSlimeHollow,wildSlimeCheckpointPrompt} from './wild-slime-hollow.mjs';
+import {tickMoonveilSanctuary} from './wild-runic-sanctuary.mjs';
+import {moonveilCatOutside,moonveilStoneBlocked} from './wild-runic-sanctuary-site.mjs';
 import {catchableWildCoastalCritter,tickWildCoastalCritters} from './wild-coastal-critters.mjs';
 import {inQuidditch,interactQuidditchScene,quidditchScenePrompt,tickQuidditchScene} from './quidditch-scene.mjs';
 import {quidditchFieldBlocked} from './quidditch-layout.mjs';
@@ -294,12 +308,17 @@ export function trainInteraction(g,p,cs=trainCars(g.trainTest)){
  if(inDiagonArena(g))return interactDiagonArena(g,p);
  if(inQuidditch(g))return interactQuidditchScene(g,p);
  const t=g.trainTest,r=p.trainRide,c=r?cs[r.car]:null;
+ if(!r&&interactCastle(g,p,switchWildLandsLayer))return true;
  if(!r&&interactFlooHearth(g,p))return true;
+ if(!r&&interactGreyhavenCast(g,p))return true;
+ if(castleStory(t.design.activeRoom))return interactCastleResident(g,p);
  if(!r&&openTrainTicketDialogue(g,p))return true;
  if(!r&&interactHogsmeade(g,p))return true;
  if(!r&&interactTideglass(g,p))return true;
+ if(!r&&interactLagoonMermaid(g,p))return true;
  if(!r&&interactBayouGoblin(g,p))return true;
  if(!r&&interactMystery(g,p))return true;
+ if(!r&&interactWildSlimeCheckpoint(g,p))return true;
  if(interactOverlookChest(g,p))return true;
  if(interactPirateShip(g,p))return true;
  if(interactAlley(g,p)||openOwlCage(g,p)||interactWildLandsSite(g,p)||wildLandsInteract(g,p)||!r&&interactNativeIce(g,p))return true;
@@ -321,15 +340,25 @@ export function trainInteraction(g,p,cs=trainCars(g.trainTest)){
 function closerTrainCocoa(g,p,cs){const t=g.trainTest,r=p.trainRide,c=r&&cs[r.car];if(!c||c.kind!=='compartments')return null;const cup=trainInterior(t.design,c).filter(o=>o.kind==='table').slice(0,2).find(o=>!t.cocoaTaken.has(c.id+':'+o.id)&&Math.hypot(o.x-r.x,o.y-r.y)<30);if(!cup)return null;const npc=nearbyTrainStudent(g,p,cs)||nearbyTrainTailor(g,p,cs);return !npc||Math.hypot(cup.x-r.x,cup.y-r.y)<Math.hypot(npc.local.x-r.x,npc.local.y-r.y)?cup:null;}
 export function trainPrompt(g,p){
  if(inQuidditch(g))return quidditchScenePrompt(g,p);
- const t=g.trainTest,cs=trainCars(t),r=p.trainRide,names=controllerButtonNames(p.controllerFamily||'generic'),key=p.device==='keyboard'?'E':names[3],jump=p.device==='keyboard'?'J':names[0];
+ const t=g.trainTest,r=p.trainRide,names=controllerButtonNames(p.controllerFamily||'generic'),key=p.device==='keyboard'?'E':names[3],jump=p.device==='keyboard'?'J':names[0];
+ const castle=castlePrompt(g,p);if(castle)return key+' · '+castle;
+ const greyhaven=!r&&greyhavenCastPrompt(g,p);
+ if(greyhaven)return greyhaven.interact===false?greyhaven.text:key+' · '+(greyhaven.text||greyhaven);
+ if(castleStory(t.design.activeRoom)){
+  const prompt=alleyFlooPrompt(g,p)||castleResidentPrompt(g,p);
+  return prompt?key+' · '+prompt:'';
+ }
+ const cs=trainCars(t);
  const ship=pirateShipPrompt(g,p);if(p.pirateRide||ship)return ship?key+' · '+ship:'';
  if(!r){
   const floo=alleyFlooPrompt(g,p);if(floo)return key+' · '+floo;
   const booth=nearbyTrainTicketBooth(g,p);if(booth)return key+' · TICKET OFFICE · '+booth.stationName.toUpperCase();
   const hogsmeade=hogsmeadePrompt(g,p);if(hogsmeade)return key+' · '+hogsmeade;
   const tideglass=tideglassPrompt(g,p);if(tideglass)return key+' · '+tideglass;
+  const mermaid=lagoonMermaidPrompt(g,p);if(mermaid)return key+' · '+mermaid;
   const goblin=bayouGoblinPrompt(g,p);if(goblin)return key+' · '+goblin;
   const mystery=mysteryPrompt(g,p);if(mystery)return key+' · '+mystery;
+  const mossbell=wildSlimeCheckpointPrompt(g,p);if(mossbell)return key+' · '+mossbell;
   const magic=alleyPrompt(g,p)||owlPrompt(g,p);if(magic)return key+' · '+magic;
   const ice=nearbyNativeIce(g,p);if(ice)return key+' · '+(ice.kind==='winter_cache'?'WINTER SUPPLIES':'FROST BERRIES');
   const site=nearbyWildSite(g,p);
@@ -386,11 +415,15 @@ export function tickTrainTest(g,dt,inputs){
  }
  const t=g.trainTest;if(!t)return false;const costs={};let markTime=performance.now();const mark=name=>{const now=performance.now();costs[name]=now-markTime;markTime=now;};syncStationAssets(g);mark('station-assets');if(inDiagon(g))g.house={walls:[],doors:[],furniture:[],floors:[],pools:[],vehicles:[]};if(t.preparing)return true;if(!['play','won'].includes(g.phase))return true;dt=Math.max(0,Math.min(dt,.05));t.time+=dt;g.time+=dt;const d=t.design;
  if(d.wildLands)tickNightCycle(g,dt);else if(g.sky)g.sky.elapsed=(g.sky.elapsed+dt)%480;
+ const atriumDropping=tickCastleAtriumDrop(g);
+ if(castleStory(d.activeRoom))tickCastleResidents(g,dt);
+ tickGreyhavenCast(g,dt);
  tickLupin(g);tickWildLandsContent(g);tickAlley(g,dt);tickPirateShip(g,dt);tickTickTockCrocodile(g);tickMountainEncounters(g);tickWildBiomeSpawns(g);
  tickWildCoastalCritters(g,dt);
  tickShackBoggart(g);
  if(g.portals.length)tickPortalClosures(g,dt,g.portals.filter(d=>d.railwayScene&&privateStoragePortal(d)));
- tickCharmStatuses(g,dt);inputs=charmInputs(g,inputs);tickField(g,dt,inputs);g.tickWorldLoot?.(dt);tickGhosts(g,dt);tickHunterPets(g,dt,inputs);tickVillagers(g,dt);tickWildHomestead(g,dt,inputs);
+ tickCharmStatuses(g,dt);inputs=charmInputs(g,inputs);tickField(g,dt,inputs);g.tickWorldLoot?.(dt);tickGhosts(g,dt);tickHunterPets(g,dt,inputs);tickVillagers(g,dt);
+ const dismissedBoardPlayer=tickWildHomestead(g,dt,inputs);
  mark('globals');const previousDistance=t.distance,previousRoute=t.route,previousEngine=trainCars(t)[0];
  const previousSpeed=t.speed,ticketApproach=advanceRailwayTicket(g,dt);
  let delta=t.speed-previousSpeed;
@@ -400,12 +433,24 @@ export function tickTrainTest(g,dt,inputs){
  const cs=trainCars(t);tickRailwayLoot(g,cs);tickTrainConductor(g,cs,dt,trainInteriorBlocked);tickChocolateFrogs(g,dt);tickStationOwls(g,dt);t.audioEngine=cs[0];tickTrainJourney(g,dt,previousDistance,previousRoute,cs[0]);tickTrainImpacts(g,previousEngine,cs[0]);mark('movement-impacts');tickStationCats(t,dt,g.players);mark('cats');
  if(t.speed>2&&t.time>(t.nextChuff||0)){cue(g,'chuff',cs[0]);t.nextChuff=t.time+Math.max(.09,26/(t.speed+25));}if(t.speed>12&&t.time>(t.nextClack||0)){cue(g,'clack',cs[2]);t.nextClack=t.time+Math.max(.16,65/t.speed);}
  if(t.driver&&!g.players.some(p=>p.id===t.driver&&p.trainRide?.driving)){t.driver=null;}
- for(const p of g.players){const old=t.previous.get(p.id)||{},input=trainPlayerInput(g,p,inputs,old),use=input.interact&&!old.interact,jump=input.jump&&!old.jump;t.previous.set(p.id,{...input});if(input.inventory&&!old.inventory){if(p.ui)p.ui=null;else g.openInventory?.(p);}
+ for(const p of g.players){const old=t.previous.get(p.id)||{},input=trainPlayerInput(g,p,inputs,old),use=input.interact&&!old.interact,jump=input.jump&&!old.jump;t.previous.set(p.id,{...input});
+  if(atriumDropping||t.greyhavenAtriumDrop){p.moving=false;p.walking=false;p.charge=0;continue;}
+  if(input.inventory&&!old.inventory){if(p.ui)p.ui=null;else g.openInventory?.(p);}
   tickEnergyBlade(g,p,dt);
   if(p.trainRide){const ride=p.trainRide,car=cs[ride.car];if(car){p.trainVisualLift=20+car.z;const carried=trainRiderWorld(cs,ride);p.x=carried.x;p.y=carried.y;if(ride.seat){p.faceX=Math.cos(car.a+ride.facing);p.faceY=Math.sin(car.a+ride.facing);}}}
   p.consumeInput=!!p.ui;tickPlayerIce(p,dt);const swordPause=g.tickPlayerCombatTimers?.(p,dt)||0;g.tickHeroVitals?.(p,dt);
-  if(homesteadBoardHolds(g,p)){p.moving=false;p.walking=false;p.charge=0;continue;}
-  if(p.mountainDescent&&advanceMountainDescent(g,p,dt)){p.trainVisualLift=p.trainGround;continue;}
+  if(homesteadBoardHolds(g,p)||p.id===dismissedBoardPlayer){p.moving=false;p.walking=false;p.charge=0;continue;}
+  if(p.mountainDescent&&advanceMountainDescent(g,p,dt)){
+   if(!p.mountainDescent){
+    updateTrainWater(t,p);
+    if(p.swimming){
+     g.effects.push({particle:'jump-splash',x:p.x,y:p.y,life:1,duration:1,seed:p.id||0});
+     g.onSound?.('splash',p);
+     tickSwimBreath(g,p,input,dt);
+    }
+   }
+   p.trainVisualLift=p.trainGround;continue;
+  }
   if(p.ui){
    p.charge=0;p.moving=false;
    if(p.ui.trainTicketStation)tickTrainTicketDialogue(g,p);
@@ -414,7 +459,7 @@ export function tickTrainTest(g,dt,inputs){
    if(!p.ui)continue;
    if(p.ui.trainStudentGift&&(!p.trainRide||t.derailed))p.ui=null;
    else{
-    if((p.ui.trainTicketStation||p.ui.trainConductor||p.ui.trainStudentGift||p.ui.alleyResident||p.ui.nocturneSpiderMerchant||p.ui.nocturneDarkWizard||p.ui.borginHeart||p.ui.bellglassDivination||p.ui.lupin||p.ui.pirateCrew||p.ui.bayouGoblin||p.ui.hogsmeadeNpc||p.ui.flooHearth||p.ui.mysteryVisitor)&&use&&!input.close)input.use=true;
+    if((p.ui.trainTicketStation||p.ui.trainConductor||p.ui.trainStudentGift||p.ui.alleyResident||p.ui.nocturneSpiderMerchant||p.ui.nocturneDarkWizard||p.ui.borginHeart||p.ui.gringotts||p.ui.bellglassDivination||p.ui.lupin||p.ui.pirateCrew||p.ui.bayouGoblin||p.ui.hogsmeadeNpc||p.ui.flooHearth||p.ui.mysteryVisitor||p.ui.castleResident||p.ui.greyhavenCast||p.ui.lagoonMermaid)&&use&&!input.close)input.use=true;
     for(const action of ['close','next','prev','down','up','panel','use','offhand','sockets','store','drop','dropOne','pick','split']){
      if(!p.ui)break;
      if(input[action]&&!old[action])g.inventoryAction?.(p,action);
@@ -428,6 +473,10 @@ export function tickTrainTest(g,dt,inputs){
   if(p.hp<=0){g.tickDownedPlayer?.(p,dt,inputs);p.moving=false;continue;}
   if(isCharmed(p)){tickCharmedPlayer(g,p,dt);continue;}
   if(p.stun>0||p.frozen>0||p.sleeping>0){p.moving=false;continue;}
+  if(tickCastleSeat(g,p,input,old))continue;
+  if(d.wildLands&&(tickGreyhavenStablePlayer(g,p,input,old,dt)||tickGreyhavenOutlawPlayer(g,p,input,old,dt)))continue;
+  if(!p.trainRide&&!p.pirateRide&&!p.vehicleId&&!p.room&&!p.broomMount&&!p.wingHover&&
+     beginCastleAtriumDrop(g,p,mx,my,jump))continue;
   if(jump&&!p.trainRide&&!p.pirateRide&&!p.vehicleId&&!p.room&&!p.broomMount&&!p.wingHover){
    const ledge=mountainDescentLaunch(d,p,mx,my);
    if(ledge&&startJump(p)){
@@ -449,7 +498,8 @@ export function tickTrainTest(g,dt,inputs){
   if(!p.pirateRide){
    if(jump&&!p.broomMount){
     const underDeck=p.underBridge||p.swimming&&railwayWater(d,p.x,p.y)&&
-     (bridgeSupportAt(t,p.x,p.y)||stationDeckAt(d,p.x,p.y)>0);
+     (bridgeSupportAt(t,p.x,p.y)||stationDeckAt(d,p.x,p.y)>0||castleBridgeSupport(t,p.x,p.y)>0||
+      d.wildLands&&!d.activeRoom&&greyhavenDuelDeckAt(p.x,p.y)>0);
     if(r?.seat)stand(t,c,r);
     else if(r?.driving){delete r.driving;t.driver=null;mx=my=0;notice(t,'Controls released. Steam setting held.');}
     else if(!underDeck)startJump(p);
@@ -506,6 +556,8 @@ export function tickTrainTest(g,dt,inputs){
  tickBorginHeartPond(g);
  tickDiagonFootprints(g);mark('players');t.fallingScenery??=new Set();for(const o of g.scenery||[])if(o.falling)t.fallingScenery.add(o);if(t.fallingScenery.size){const view=Object.create(g);view.scenery=[...t.fallingScenery];tickSceneryFalls(view,dt);for(const o of t.fallingScenery)if(!o.falling)t.fallingScenery.delete(o);}
  tickDestruction(g,dt);tickNightEquipment(g,dt);
+ tickWildSlimeHollow(g);
+ tickMoonveilSanctuary(g);
  // Actors may sample a pursuit line many times while the cars stay fixed for this tick.
  combatCollisionCars.set(t,{distance:t.distance,route:t.route});
  try{g.tickProjectiles?.(dt);g.tickCombatActors?.(dt);}finally{combatCollisionCars.delete(t);}
@@ -531,6 +583,10 @@ function tickTrainJunction(t,travel){if(!t.pendingRoute||travel<=0)return;const 
 // Swimming is a lower traversal layer. Only a walker entering along the bridge
 // from the bank acquires the deck; a swimmer never snaps up when crossing rails.
 export function updateTrainWater(t,p,previous=p){
+ if(castleStory(t.design.activeRoom)){
+  p.trainDeck=false;p.underBridge=false;p.trainGround=0;p.swimming=false;p.diveDepth=0;
+  return;
+ }
  if(t.design.activeRoom==='diagon'){
   p.trainDeck=false;p.underBridge=false;p.trainGround=0;
   p.swimming=p.hp>0&&!(p.jumpHeight>0)&&!p.broomMount&&!p.wingHover&&!p.vehicleId&&railwayWater(t.design,p.x,p.y);
@@ -539,8 +595,9 @@ export function updateTrainWater(t,p,previous=p){
  }
  const d=t.design,q=[t.route,...(t.otherRoutes||[])].map(route=>nearestTrainTrack(route,p.x,p.y)).sort((a,b)=>a.distance-b.distance)[0];
  const surface=railwaySurface(d,p.x,p.y),water=surface!=='grass';
- const stationFloor=stationDeckAt(d,p.x,p.y),railSupport=bridgeSupportAt(t,p.x,p.y);
- const bridge=water&&(railSupport||stationFloor>0),deckHeight=bridge?Math.max(stationFloor,railElevation(d,q)):0;
+ const stationFloor=stationDeckAt(d,p.x,p.y),railSupport=bridgeSupportAt(t,p.x,p.y),
+  castleDeck=castleBridgeSupport(t,p.x,p.y)||(d.wildLands&&!d.activeRoom?greyhavenDuelDeckAt(p.x,p.y):0);
+ const bridge=water&&(railSupport||stationFloor>0||castleDeck>0),deckHeight=bridge?castleDeck||Math.max(stationFloor,railElevation(d,q)):0;
  const oldDeck=p.trainDeck,oldGround=p.trainGround||0,airborne=p.jumpHeight>0;
  const fromBank=!railwayWater(d,previous.x,previous.y)&&!p.swimming;
  const clearsDeck=airborne&&p.jumpHeight+oldGround>=deckHeight;
@@ -556,7 +613,17 @@ export function updateTrainWater(t,p,previous=p){
 export function trainWorldBlocked(g,x,y,radius=7,flying=false,ignoreWater=false,height=0,projectile=false,from=null){
  if(inDiagonArena(g))return diagonArenaBlocked(x,y,radius);
  if(inQuidditch(g))return quidditchFieldBlocked(x,y,radius,height,g.trainTest.quidditch);
- const t=g.trainTest,d=t.design;if(inDiagon(g))return alleyBlocked(g,x,y,radius,projectile?null:from,height);if(alleyBlocked(g,x,y,radius))return true;if(x<radius||y<radius||x>d.width-radius||y>d.height-radius)return true;
+ const t=g.trainTest,d=t.design,story=castleStory(d.activeRoom);
+ if(d.wildLands&&!d.activeRoom){
+  if(from?.runeboundCat&&!projectile&&moonveilCatOutside(x,y,radius))return true;
+  if(!flying&&height<46&&moonveilStoneBlocked(x,y,radius))return true;
+  if(!flying&&height<46&&castleLandscapeBlocked(x,y,radius,from))return true;
+  if(!flying&&height<40&&greyhavenStableBlocked(g,x,y,radius,from))return true;
+ }
+ if(story)return castleInteriorBlocked(story,x,y,radius)||story===3&&greyhavenMimBlocked(g,x,y,radius,height,from);
+ const duelDeck=d.wildLands&&!d.activeRoom&&greyhavenDuelDeckAt(x,y);
+ if(d.wildLands&&!d.activeRoom&&!duelDeck&&castleExteriorBlocked(x,y,radius,castleBridgeIsRaised(t),from))return true;
+ if(inDiagon(g))return alleyBlocked(g,x,y,radius,projectile?null:from,height);if(alleyBlocked(g,x,y,radius))return true;if(x<radius||y<radius||x>d.width-radius||y>d.height-radius)return true;
  if(hogsmeadeBlocked(g,x,y,radius,height))return true;
  if(bayouGoblinHutBlocked(d,x,y,radius,height,from,projectile,flying))return true;
  if(!flying&&boardTableBlocked(g,x,y,radius,height,from))return true;
@@ -571,15 +638,15 @@ export function trainWorldBlocked(g,x,y,radius=7,flying=false,ignoreWater=false,
  if(projectile)for(const c of collisionCars(t)){const q=trainLocal(c,{x,y});if(Math.abs(q.x)>c.length/2+radius||Math.abs(q.y)>c.width/2+radius)continue;if(Math.abs(q.y)>c.width/2-5-radius&&!trainSideDoorway(c,q.x)||Math.abs(q.x)>c.length/2-5-radius&&Math.abs(q.y)>12)return true;if(c.kind==='engine'&&q.x>-c.length*.07&&Math.abs(q.y)<c.width/2-16)return true;for(const item of trainInterior(d,c)){const o=item.kind==='door'?trainDoorGeometry(item,t.doors[c.id+':'+item.id]??item.open):item;if(!['wall','door','console','firebox','table'].includes(o.kind))continue;if(Math.abs(q.x-o.x)<o.w/2+radius&&Math.abs(q.y-o.y)<o.h/2+radius)return true;}}
  const descent=from?.mountainDescent&&mountainDescentCorridor(d,from,x,y);
  if(d.wildLands&&from&&!projectile&&!descent&&Math.abs(mountainHeight(d,from.x,from.y)-mountainHeight(d,x,y))>18)return true;
- if(flying)return d.wildLands&&!d.activeRoom&&!descent&&mountainTerrainBlocked(d,x,y,radius);
- if(!ignoreWater&&railwaySurface(d,x,y)==='water')return true;
+ if(flying)return d.wildLands&&!d.activeRoom&&!descent&&(mountainTerrainBlocked(d,x,y,radius)||coastalSiteBlocked(x,y,radius));
+ if(!ignoreWater&&railwaySurface(d,x,y)==='water'&&!castleBridgeSupport(t,x,y)&&!duelDeck)return true;
  if(d.wildLands&&!descent&&wildLandsBlocked(d,x,y,t,radius))return true;
  const authored=d.wildLands&&(d.activeRoom===HOLLOW_ROOM||!d.activeRoom&&(mountainLand(x,y)||mountainTrail(x,y)));
- return !!(stationBlocked(d,x,y,radius,height)||structureBlocked(g,x,y,radius,false,0,height,projectile,from,flying)||!authored&&railwayForestBlocked(t,x,y,projectile?null:from));
+ return !!(stationBlocked(d,x,y,radius,height)||structureBlocked(g,x,y,radius,false,0,height,projectile,from,flying)||!authored&&!descent&&railwayForestBlocked(t,x,y,projectile?null:from));
 }
 
 export function moveTrainRider(g,p,dx,dy){
  const r=p.trainRide,c=trainCars(g.trainTest)[r.car];if(!c||r.seat||r.driving||r.gangway)return 0;const old={x:r.x,y:r.y};walkInside(g.trainTest,c,r,Math.cos(c.a)*dx+Math.sin(c.a)*dy,-Math.sin(c.a)*dx+Math.cos(c.a)*dy,p.jumpHeight||p.groundHeight||0);const world=trainWorld(c,r.x,r.y);p.x=world.x;p.y=world.y;return Math.hypot(r.x-old.x,r.y-old.y);
 }
 
-function trainPlayerInput(g,p,inputs,old){const input={...playerInput(g.players,p,inputs)};if(p.broomMount&&!p.ui){if(input.loot&&!old.loot)dismountBroom(g,p);for(const key of ['attack','dodge','block','trap','controlCycle','interact'])input[key]=false;}return input;}
+function trainPlayerInput(g,p,inputs,old){const input={...playerInput(g.players,p,inputs)};if(p.broomMount&&!p.ui){if(input.loot&&!old.loot)dismountBroom(g,p);for(const key of ['attack','block','holdPosition','trap','controlCycle','interact'])input[key]=false;}return input;}

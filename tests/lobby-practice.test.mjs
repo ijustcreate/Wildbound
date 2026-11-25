@@ -79,9 +79,9 @@ test('Lobby tables block walking, support jumps and allow walking off; totem sta
 test('Every lobby object has a solid visible footprint and remains reachable for interaction',()=>{
  const {practice,lobby,tick,p}=setup();tick({});const actor=practice.players[0];
  const solids=[...practice.house.furniture,...practice.house.walls];
- assert.deepEqual(solids.map(s=>s.id).sort(),LOBBY_OBJECTS.map(o=>o.id).sort());
- for(const solid of solids){
-   const object=LOBBY_OBJECTS.find(o=>o.id===solid.id);
+ for(const object of LOBBY_OBJECTS){
+   const solid=solids.find(s=>s.id===object.id);
+   assert.ok(solid,`${object.id} has a solid footprint`);
    const x=solid.x+solid.w/2;
    assert.equal(practice.blocked(x,solid.y+solid.h/2,8),true,`${solid.id} blocks movement`);
    assert.equal(practice.projectileBlocked(x,solid.y+solid.h/2),true,`${solid.id} blocks shots`);

@@ -20,7 +20,7 @@ const characters=[
   appearance:{hair:'shag',hairColor:'#846142',facialHair:'goatee',shirt:'#8b9b59',pants:'#855c49',shoes:'#4b463b'},
   greeting:'Like, Willy buried his whole ship instead of buying a lockbox? I’m staying here to guard our lunch, in case he comes back for that too.',
   clue:'Someone was stomping around on the open deck. Scoob and I voted to check the beach for more clues. We got two votes.'},
- {id:'scooby',name:'Scooby-Doo',dx:137,dy:121,faceX:.6,faceY:-.4,dog:true,
+ {id:'scooby',name:'Scooby-Doo',dx:137,dy:121,faceX:.8,faceY:.6,dog:true,
   greeting:'Ruh-roh. Pirate bones! Shaggy and I smelled something old, down by the boat.',
   clue:'A chair down below. One big bone pirate. Rrr… I’ll wait with Shaggy.'},
 ].map(({dx,dy,appearance,...npc})=>({...npc,npcId:npc.id,title:'Mystery Inc.',

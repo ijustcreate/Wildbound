@@ -1,6 +1,7 @@
 import {block as b,shape as p,line as l} from './diagon-shop-brush.mjs';
 import {drawCampfire} from './campfire-art.mjs';
-import {MERLOCK_CAMPS,merlockCampGround} from './wild-merlock-camps.mjs';
+import {merlockCampGround} from './wild-merlock-camps.mjs';
+import {effectiveMerlockCamps} from './live-edit-spawns.mjs';
 
 const palettes=[
  ['#384443','#58695a','#7f8d6e','#a0a481'],
@@ -12,8 +13,10 @@ const checked=new WeakMap();
 export function visibleMerlockCamps(g,visible){
  const t=g.trainTest,d=t?.design;
  if(!d?.wildLands||d.activeRoom||t.wildLandsOverview)return [];
- if(!checked.has(d))checked.set(d,MERLOCK_CAMPS.filter(camp=>merlockCampGround(d,camp)));
- return checked.get(d).filter(camp=>visible(camp,112));
+ const source=effectiveMerlockCamps(g),previous=checked.get(d);
+ const camps=previous?.source===source?previous.camps:source.filter(camp=>merlockCampGround(d,camp));
+ if(previous?.source!==source)checked.set(d,{source,camps});
+ return camps.filter(camp=>visible(camp,112));
 }
 
 function mat(c,x,y,tone){

@@ -1,4 +1,5 @@
 import {activeCounterOpening} from './counterattack.mjs';
+import {activeLevelUp} from './level-up.mjs';
 
 function serializedEncounter(state) {
   const { trainAudio, ...saved } = state;
@@ -26,6 +27,13 @@ export function snapshot(g, {combatPresentation = false} = {}) {
   const state = serializedEncounter(Object.fromEntries(
     Object.entries(g).filter(([key, value]) => !omit.has(key) && typeof value !== "function"),
   ));
+  if (state.players?.some(actor => actor.levelUp)) {
+    state.players = state.players.map(actor => {
+      if (!actor.levelUp || combatPresentation && activeLevelUp(actor, g.time)) return actor;
+      const {levelUp, ...player} = actor;
+      return player;
+    });
+  }
   if (state.enemies) {
     state.enemies = state.enemies.map(enemy => {
       const opening = activeCounterOpening(enemy, g.time);

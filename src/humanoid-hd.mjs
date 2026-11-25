@@ -50,11 +50,18 @@ export function loadHumanoidArt(){
   return loading;
 }
 export function humanoidArtAvailable(c){return !!(c?.drawImage&&sheets.has('heads')&&sheets.has('materials'));}
-export function withDetailedHeadScale(c,h,enabled,paint,baseScale=1){
+export function withDetailedHeadScale(c,h,enabled,paint,baseScale=1,artFit){
   if(!enabled||!c?.save||!c?.scale||c.__legacyHumanoid)return paint();
   const scale=1.15*Math.max(.7,Math.min(1.6,Number(baseScale)||1));
-  c.save();c.translate(h.x,h.y+3);c.scale(scale,scale);c.translate(-h.x,-h.y-3);
-  try{return paint();}finally{c.restore();}
+  c.save();
+  try{
+    c.translate(h.x,h.y+3);c.scale(scale,scale);c.translate(-h.x,-h.y-3);
+    if(artFit){
+      const anchorY=h.y+artFit.anchorY;
+      c.translate(h.x,anchorY);c.scale(artFit.scale,artFit.scale);c.translate(-h.x,-anchorY);
+    }
+    return paint();
+  }finally{c.restore();}
 }
 
 function cell(name,index){

@@ -34,8 +34,22 @@ export function pointLightVisibility(field,source,point,ignoreOwner=null){
  return transmission;
 }
 const clamp=(v,min=0,max=255)=>Math.max(min,Math.min(max,Math.round(v)));
+const shadowLobe=(x,y,cx,cy,rx,ry)=>Math.max(0,1-Math.hypot((x-cx)/rx,(y-cy)/ry));
 const footprint=(x,y,shape)=>{
  const name=String(shape||'').toLowerCase();
+ if(name==='forest_canopy')return Math.max(
+  shadowLobe(x,y,-.48,-.16,.55,.67)*.79,
+  shadowLobe(x,y,-.02,-.27,.66,.78),
+  shadowLobe(x,y,.48,.02,.55,.68)*.85,
+  shadowLobe(x,y,-.13,.39,.59,.55)*.64);
+ if(name==='forest_conifer')return Math.max(
+  shadowLobe(x,y,-.14,-.23,.48,.79),
+  shadowLobe(x,y,.23,.07,.69,.57)*.72,
+  shadowLobe(x,y,-.35,.28,.62,.52)*.64);
+ if(name==='forest_bush')return Math.max(
+  shadowLobe(x,y,-.51,.11,.52,.69)*.75,
+  shadowLobe(x,y,-.09,-.18,.63,.77),
+  shadowLobe(x,y,.44,.04,.54,.64)*.82);
  if(name==='box')return Math.abs(x)<=1&&Math.abs(y)<=1?1:0;
  if(name==='actor'||name==='humanoid')return Math.hypot(x/.72,y)>1?0:1-Math.hypot(x/.72,y);
  if(name==='quadruped'||/crocodile|elephant|lion|tiger|wolf|boar|rhino|zebra|dragon/.test(name))return Math.max(0,1-Math.hypot(x/1.18,y/.58));
@@ -259,7 +273,7 @@ export function drawRealtimeWorldShadows(ctx,scene,worldX,worldY,options={}){
  const validation=validatedMaps.get(maps);
  let entry=canvasCache.get(maps);if(!entry||entry.key!==key||entry.validation!==validation||entry.pending){entry={key,validation,canvas:makeShadowCanvas(maps,{...options,darkness:1,canvas:entry?.canvas,originX:worldX,originY:worldY})};entry.pending=!!staticShadowFields.get(maps)?.pending;canvasCache.set(maps,entry);}
  if(!entry.canvas)return false;
- ctx.save();ctx.globalAlpha=options.darkness??maps.darkness;ctx.imageSmoothingEnabled=true;ctx.drawImage(entry.canvas,worldX,worldY,1600,1600);ctx.restore();return true;
+ ctx.save();ctx.globalAlpha=options.darkness??maps.darkness;ctx.imageSmoothingEnabled=false;ctx.drawImage(entry.canvas,worldX,worldY,1600,1600);ctx.restore();return true;
 }
 
 /** Smooth clockwise sun azimuth across daytime; darkness still suppresses cast shadows. */

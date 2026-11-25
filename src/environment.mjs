@@ -8,6 +8,7 @@ import {drawJungleFern} from './fern-art.mjs';
 import {drawForestAsset} from './forest-props.mjs';
 import {drawRockGrass} from './forest-grounding-art.mjs';
 import {drawSnowMelt,snowGroundAt} from './snow-surface.mjs';
+import {drawSnowPrint} from './snow-print-art.mjs';
 import {meadowAllowed} from './pixel-meadow.mjs';
 import {realmTree,realmHarvestable,realmAsset,tickRealmHazards,realmTerrainAt} from './realm-world.mjs';
 import {swampSurface} from './swamp-terrain.mjs';
@@ -27,6 +28,7 @@ import {drawGraveyardProp} from './graveyard-art.mjs';
 import {tickFlamingTrees} from './crypt-gear.mjs';
 import {flies} from './navigation.mjs';
 import {drawGrassProp,tickTallGrass} from './tall-grass.mjs';
+import {drawMossbellCheckpoint} from './wild-slime-hollow-site.mjs';
 export const propBase = (p) => ['tree','snow_tree'].includes(p.kind)?treeBase(p):p.kind==='palm'?palmBase(p):Number.isFinite(p.rootY)?{x:p.x,y:p.rootY}:ICE_PROPS.includes(p.kind)?iceBase(p):({
   x: p.x,
   y: p.y + p.size * (p.kind === "tree" ? 0.35 : 0.19),
@@ -155,12 +157,18 @@ export function tickEnvironment(g, dt) {
   tickSceneryFalls(g,dt);
   tickTracks(g);
 }
+// Leave room for the stamp's outer pixels at a cutaway floor edge.
+const snowPrintGroundAt=(g,mark)=>snowGroundAt(g,Math.round(mark.x),Math.round(mark.y),4);
+
 export function tickTracks(g) {
   const wildSnow=!!g.trainTest?.design.wildLands;
   if(wildSnow&&g.trainTest.design.activeRoom)return;
   const snowOnly=wildSnow||g.generatedEnvironment==='ice';
   const world=wildSnow?g.trainTest:g;
   const footprints=world.footprints=(world.footprints||[]).filter(f=>g.time-f.time<18);
+  const addTrack=mark=>{
+    if(!mark.snow||snowPrintGroundAt(g,mark))footprints.push(mark);
+  };
   for (const a of [...g.players, ...g.enemies,...hunterPets(g),...releasedCritters(g)]) {
     if(a.kind==='slime'||flies(a)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if (
@@ -173,10 +181,19 @@ export function tickTracks(g) {
     const feetOffset=a.kind?14:0;
     const snow=snowOnly&&snowGroundAt(g,a.x,a.y+feetOffset);
     if(snowOnly&&!snow||!snowOnly&&['water','shallow','floodbridge'].includes(waterAt(g,a.x,a.y+feetOffset))){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
-    if(wildSnow&&(a.trainRide||a.pirateRide||a.vehicleId||a.trainGround>0)){a.trackPosition={x:a.x,y:a.y};continue;}
+    if(wildSnow&&(a.trainRide||a.pirateRide||a.vehicleId||a.trainGround>0)){delete a.trackImpulse;a.trackPosition={x:a.x,y:a.y};continue;}
     if(a.trackPosition&&!!a.trackPosition.wildSnow!==wildSnow)a.trackPosition=null;
     const position=wildSnow?{x:a.x,y:a.y,wildSnow}:{x:a.x,y:a.y};
-    if(a.trackImpulse){const point=a.trackImpulse;delete a.trackImpulse;const angle=Math.atan2(a.faceY||0,a.faceX||1);for(const side of [-1,1])footprints.push({x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,water:!snow&&isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind,...(snow?{snow:true}:{})});a.trackPosition=position;}
+    if(a.trackImpulse){
+      const point=a.trackImpulse;
+      delete a.trackImpulse;
+      const angle=Math.atan2(a.faceY||0,a.faceX||1);
+      for(const side of [-1,1])addTrack({
+        x:point.x+Math.sin(angle)*side*3,y:point.y-Math.cos(angle)*side*3,angle,time:g.time,
+        water:!snow&&isShallow(waterAt(g,point.x,point.y)),scale:1.45,impact:point.kind,...(snow?{snow:true}:{}),
+      });
+      a.trackPosition=position;
+    }
     if(a.jumpHeight>0||a.groundHeight>0||a.swimming||a.flyingMounted){a.trackPosition=position;continue;}
     const last = a.trackPosition;
     if (
@@ -187,7 +204,7 @@ export function tickTracks(g) {
       a.trackSide = -(a.trackSide || 1);
       const angle = Math.atan2(a.y - last.y, a.x - last.x),
         water = !snow&&isShallow(waterAt(g, a.x, a.y + feetOffset));
-      footprints.push({
+      addTrack({
         x: a.x + Math.sin(angle) * a.trackSide * 3,
         y: a.y + feetOffset - Math.cos(angle) * a.trackSide * 3,
         angle,
@@ -211,19 +228,19 @@ export function drawTracks(c, g, visible=()=>true) {
   const banshee=(g.enemies||[]).some(e=>e.kind==='banshee_queen'&&e.hp>0&&!e.room);
   for (const f of (wildSnow?g.trainTest:g).footprints || []) {
     if(!visible(f)||banshee&&!f.snow)continue;
-    if(!f.snow&&['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
     const t = g.time - f.time;
+    if(f.snow){
+      if(t<0||t>=18||!snowPrintGroundAt(g,f))continue;
+      c.save();
+      c.globalAlpha*=(1-t/18)*.78;
+      drawSnowPrint(c,f);
+      c.restore();
+      continue;
+    }
+    if(['water','shallow','floodbridge'].includes(waterAt(g,f.x,f.y)))continue;
     c.save();
     c.translate(f.x, f.y);
-    if(f.snow){
-      c.globalAlpha*=Math.max(0,1-t/18)*.78;
-      c.rotate(f.angle);
-      c.fillStyle='#eff9f9';c.fillRect(-4,-3,7,6);
-      c.fillStyle='#819eab';c.fillRect(-3,-2,5,4);
-      c.fillStyle='#a6bcc6';c.fillRect(-2,0,5,2);
-      if(f.animal){c.fillRect(2,-2,2,1);c.fillRect(2,1,2,1);}
-      else{c.fillStyle='#637e8b';c.fillRect(-2,-1,1,2);c.fillRect(0,-1,1,2);}
-    } else if (f.water) {
+    if (f.water) {
       if (t > 1) {
         c.restore();
         continue;
@@ -268,6 +285,7 @@ export function drawTracks(c, g, visible=()=>true) {
   }
 }
 export function drawProp(c, p, time,game={},renderOptions={}) {
+  if(p.kind==='mossbell_checkpoint'){drawMossbellCheckpoint(c,p,time);return true;}
   // Boundless entrances and player-built floors can replace terrain after the
   // decoration was generated. Reuse the live grass mask instead of painting
   // mushrooms/reeds over the newly carved paving.

@@ -1,4 +1,4 @@
-import {tickBoardSequence} from './board-sequence.mjs';
+import {dismissBoardResult,tickBoardSequence} from './board-sequence.mjs';
 import {wildHomesteadAt,wildHomesteadBoardTable} from './wild-homestead-layout.mjs';
 import {WILD_LANDS_STOPS,wildLandsSurfaceAt} from './wild-lands-world.mjs';
 import {spellTransition} from './portal-transition.mjs';
@@ -144,6 +144,16 @@ export function homesteadBoardView(g,closeup=false){
  return {...s,players:s?.pawns||pawns(g),roll,time:g.time,generatedEnvironment:'forest'};
 }
 
+export function dismissHomesteadBoardResult(g){
+ const t=g.trainTest,s=t?.homesteadBoard;
+ if(!t?.design.wildLands||t.design.activeRoom||!s?.roll?.resolved||s.portal||s.roll.teleported)return false;
+ const view=nativeView(g,s);
+ if(!dismissBoardResult(view))return false;
+ sync(s,view);
+ g.persist?.();
+ return true;
+}
+
 export function homesteadBoardSuction(g){
  const t=g.trainTest,s=t?.homesteadBoard,portal=s?.portal;
  if(!portal||t.design.activeRoom)return null;
@@ -154,18 +164,26 @@ export function homesteadBoardSuction(g){
  return {table,playerId:portal.playerId,x,y,u,actorX:portal.fromX+(x-portal.fromX)*pull,actorY:portal.fromY+(y-portal.fromY-table.surfaceHeight)*pull-8*Math.sin(Math.PI*u),scale:1-.85*pull};
 }
 
-export function tickHomesteadBoard(g,dt){
+export function tickHomesteadBoard(g,dt,inputs={}){
  const t=g.trainTest,s=t?.homesteadBoard;
  if(!s||t.design.activeRoom)return;
  trimTurn(g,s);
+ let dismissedPlayerId;
  if(!s.roll)s.rollCooldown=Math.max(0,s.rollCooldown-dt);
  else{
   const view=nativeView(g,s),wasResolved=s.roll.resolved,oldRoll=s.roll;
-  tickBoardSequence(view,dt);sync(s,view);
+  const pawn=s.pawns.find(p=>p.id===oldRoll.playerId);
+  const player=g.players.find(p=>p.id===oldRoll.playerId);
+  const input=player&&available(player)&&inputs[player.device];
+  if(pawn&&player)pawn.device=player.device;
+  // The portal hides the closeup and runs to completion independently.
+  const controls=input&&!s.portal&&!oldRoll.teleported?{[player.device]:{...input,use:input.use||input.interact||input.close}}:{};
+  tickBoardSequence(view,dt,controls);sync(s,view);
+  if(!s.roll)dismissedPlayerId=oldRoll.playerId;
   if(wasResolved!==oldRoll.resolved||!s.roll)g.persist?.();
  }
  const portal=s.portal;
- if(!portal||t.time-portal.startsAt<SUCTION_SECONDS)return;
+ if(!portal||t.time-portal.startsAt<SUCTION_SECONDS)return dismissedPlayerId;
  s.portal=null;
  if(s.roll)s.roll.teleported=true;
  const p=g.players.find(q=>q.id===portal.playerId&&available(q));
@@ -178,4 +196,5 @@ export function tickHomesteadBoard(g,dt){
   g.message?.(`${p.name} landed near ${spot.name}. Return to the Homestead board for your next roll.${encounter?` A ${encounter.kind} was drawn to the Homestead trail.`:''}`);
  }else if(p)g.message?.('The portal closed without finding a clear landing.');
  g.persist?.();
+ return dismissedPlayerId;
 }

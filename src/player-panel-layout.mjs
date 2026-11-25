@@ -24,6 +24,36 @@ export function centeredPopupBox(width, height, maxWidth, maxHeight, margin = 16
   };
 }
 
+// Keep controls on the usable rectangle of a convex camera pane. The full
+// polygon can still be covered by the menu background along a diagonal seam.
+export function fitPanePanel(polygon, width, height) {
+  const levels = new Set(polygon.map(p => p.y));
+  for (let step = 0; step <= 16; step++) levels.add(height * step / 16);
+  const sections = [...levels].sort((a, b) => a - b).map(y => {
+    let left = Infinity, right = -Infinity;
+    for (let edge = 0; edge < polygon.length; edge++) {
+      const a = polygon[edge], b = polygon[(edge + 1) % polygon.length];
+      if (a.y === b.y || y < Math.min(a.y, b.y) || y > Math.max(a.y, b.y)) continue;
+      const x = a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y);
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+    }
+    return {y, left, right};
+  });
+  let best = {x: width / 2, y: height / 2, width: 0, height: 0};
+  for (let i = 0; i < sections.length; i++) {
+    const top = sections[i];
+    for (let j = i + 1; j < sections.length; j++) {
+      const bottom = sections[j];
+      const left = Math.max(top.left, bottom.left), right = Math.min(top.right, bottom.right);
+      const w = right - left, h = bottom.y - top.y;
+      // Convexity keeps the rectangle inside the cell between its two edges.
+      if (w > 0 && w * h > best.width * best.height) best = {x: left, y: top.y, width: w, height: h};
+    }
+  }
+  return best;
+}
+
 export function panelWidth(player) {
   if (player.room && !player.ui) return 800;
   if (player.ui?.socket) return 820;

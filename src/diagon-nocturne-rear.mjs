@@ -103,12 +103,23 @@ export function restoreNocturneCemeteryGhosts(g){
 export function drawNocturneRearGround(c,g,visible){
  const inView=NOCTURNE_REAR_AREAS.filter(a=>visible(a.x+a.w/2,a.y+a.h/2,a.w/2,a.h/2));
  if(inView.length){
-  c.save();c.beginPath();for(const {x,y,w,h} of inView)c.rect(x+2,y+2,w-4,h-4);
-  c.clip();b(c,9130,4828,532,772,'#17212661');c.restore();
+  c.save();c.beginPath();for(const {x,y,w,h} of inView)c.rect(x,y,w,h);
+  c.clip();
+  const shade=c.createLinearGradient(9130,0,9426,0);
+  shade.addColorStop(0,'#17212600');shade.addColorStop(.46,'#17212617');shade.addColorStop(1,'#17212661');
+  b(c,9130,4828,532,772,shade);c.restore();
  }
  if(visible(9562,5507,98,88)){
-  b(c,yard.left+1,yard.top+1,yard.right-yard.left-2,yard.bottom-yard.top-2,'#28352c43');
-  b(c,yard.left+2,gate.y-9,47,18,'#4f545055');
+  const {left,right,top,bottom}=yard;
+  p(c,'#28352c4f',[[left+3,top+10],[left+23,top+3],[right-20,top+4],[right-4,top+17],
+   [right-3,bottom-19],[right-15,bottom-6],[left+14,bottom-5],[left+6,bottom-24],[left+8,gate.y-16]]);
+  p(c,'#4f54505c',[[left+2,gate.y-9],[left+20,gate.y-10],[left+46,gate.y-6],[left+49,gate.y+3],
+   [left+38,gate.y+8],[left+2,gate.y+9]]);
+  for(let i=0;i<20;i++){
+   const x=left+6+(i*71)%165,y=top+(i%2?10+(i*13)%14:132+(i*17)%24);
+   b(c,x,y,3+i%4,2,i%3?'#52634f72':'#6572597f');
+   if(i%3===0)b(c,x+2,y-3,2,3,'#64775f70');
+  }
  }
  for(const grave of NOCTURNE_GRAVES){
   const {x,y,w}=grave,a=Math.round(w*.5),damaged=broken(g,grave);

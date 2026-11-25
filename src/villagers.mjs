@@ -9,6 +9,7 @@ import { snowAt } from "./ice-world.mjs";
 import { waterAt } from "./environment.mjs";
 import { drawCampfire } from "./campfire-art.mjs";
 import { drawSwimmer } from "./swim-render.mjs";
+import { drawWaterActor } from "./actor-water-art.mjs";
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
   ownerKey = (p) => String(p.profileId || p.id);
 export { VILLAGER_EVENT };
@@ -399,7 +400,7 @@ export function drawVillagerNpc(c, g, v, animator) {
   const draw = actor => animator.draw(c, actor, g.time, 48);
   if(v.villagerId==='april'&&v.swimming)
     drawSwimmer(c,v,g.time,draw);
-  else draw(v);
+  else drawWaterActor(c,g,v,48,draw);
   c.save();
   c.textAlign = "center";
   c.font = "bold 6px sans-serif";

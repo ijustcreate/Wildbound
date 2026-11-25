@@ -11,6 +11,7 @@ import {
 } from "../src/player-motion.mjs";
 import { humanoidHeadHalfWidth } from "../src/humanoid-hd.mjs";
 import { withDetailedHeadScale } from "../src/humanoid-hd.mjs";
+import { defaultExplorerHeadFit } from "../src/default-explorer-head.mjs";
 import { drawHumanHead, skinPalette } from "../src/human-head.mjs";
 import { captureLayers, capturedLayers, releaseLayers } from "../src/render-order.mjs";
 
@@ -55,6 +56,22 @@ test("Base rig head size scales the complete head around its anchor",()=>{
   let painted=false;withDetailedHeadScale(c,{x:4,y:8},true,()=>{painted=true},1.2);
   assert.ok(painted);assert.ok(calls.some(v=>Array.isArray(v)&&v[0]==='scale'&&v[1]===1.38&&v[2]===1.38));
   const model=defaultPlayerMotion();model.joints.head.editor={baseScale:1.2};assert.ok(validatePlayerMotion(JSON.parse(JSON.stringify(model))));
+});
+test("The stock explorer head scales down another 10% around each facing's lower contour",()=>{
+  const head={x:4,y:8};
+  const transform=fit=>{
+    let scale=1,offsetY=0;
+    const canvas={save(){},restore(){},translate(x,y){offsetY+=y*scale;},scale(x,y){scale*=y;}};
+    withDetailedHeadScale(canvas,head,true,()=>{},.7,fit);
+    return {scale,projectY:y=>offsetY+y*scale};
+  };
+  const original=transform();
+  for(let direction=0;direction<8;direction++){
+    const fit=defaultExplorerHeadFit(direction),smaller=transform(fit);
+    const anchor=head.y+fit.anchorY;
+    assert.equal(smaller.scale,original.scale*(.85*.9));
+    assert.ok(Math.abs(smaller.projectY(anchor)-original.projectY(anchor))<1e-9);
+  }
 });
 test("Old human rigs gain facial joints without losing edited head poses", () => {
   const old = defaultPlayerMotion();

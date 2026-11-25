@@ -32,6 +32,7 @@ app.whenReady().then(async()=>{
    const {petCard}=await import('./src/hunter-pet-ui.mjs');
    const {BACKPACK_SLOTS,count,give,stat}=await import('./src/items.mjs');
    const {broomFlightSpeed}=await import('./src/broom-mount.mjs');
+   const {WIZARD_CARDS}=await import('./src/wizard-cards.mjs');
    const game=new Game(()=>.5),hero=game.addPlayer('keyboard','Pitch tester');game.start();game.openingBoard=false;
    const tools=wildboundPolishTest,assets=tools.assets;tools.game=game;tools.show('play');game.spriteLibrary=assets.library;game.persist=()=>{};game.onSound=()=>{};
    const pictures={},checks=[],ok=(value,label)=>{if(!value)throw new Error(label);checks.push(label);};
@@ -119,7 +120,21 @@ app.whenReady().then(async()=>{
    ok(hero.quidditchLoaner&&hero.broomMount&&hero.jumpHeight>30,'The rack offers a working loaner broom');
    ok(Math.abs(broomFlightSpeed(hero)/broomFlightSpeed({...hero,field:{}})-1.1)<.001,'The purchased potion boosts actual pitch broom speed by 10 percent');
    const initial=hero.jumpHeight;keyboard({jump:true},10);ok(hero.jumpHeight>initial+12,'Jump input climbs while flying');
-   keyboard({dodge:true},10);ok(hero.jumpHeight<initial+23,'Dodge input descends while flying');
+   code('keydown','KeyK');const descend=tools.inputFrame();
+   ok(descend.keyboard.broomDescend&&!descend.keyboard.dodge,'Native K descends separately from dash');
+   for(let frame=0;frame<10;frame++)game.update(.05,descend);
+   code('keyup','KeyK');ok(hero.jumpHeight<initial+23,'The new descent control lowers the broom');
+   point(7980,5450,64);
+   const cruiseStart=hero.x;
+   keyboard({x:1});
+   const cruiseDistance=hero.x-cruiseStart,boostStart=hero.x;
+   code('keydown','KeyD');code('keydown','Space');
+   const dashInput=tools.inputFrame();
+   ok(dashInput.keyboard.dodge&&!dashInput.keyboard.broomDescend,'Native Space requests an airborne dash without descent');
+   game.update(.05,dashInput);
+   code('keyup','KeyD');code('keyup','Space');
+   ok(hero.dashTime>0&&hero.x-boostStart>cruiseDistance*1.5&&hero.jumpHeight===64,'The loaner broom boosts while keeping its altitude');
+   keyboard({},64);
    point(QUIDDITCH_TRUNK.x,QUIDDITCH_TRUNK.y+45,40);interact();
    ok(match.phase==='playing'&&match.bludgers.length===2,'Opening the trunk releases both Bludgers and starts play');
    ok(!game.blocked(QUIDDITCH_TRUNK.x,QUIDDITCH_TRUNK.y),'The chest leaves the playable field and no longer blocks movement');
@@ -161,6 +176,21 @@ app.whenReady().then(async()=>{
     ok(recoveryInputs['pad:0'].quidditchBall,'Physical West reaches the pitch after knocking the ball loose');
     game.update(.025,recoveryInputs);
     ok(match.quaffle.holderId===String(hero.id),'Physical West grabs the dislodged Quaffle from the air');
+    pad.buttons[2]={pressed:false,value:0};
+    point(7980,5450,64);
+    pad.buttons[13]={pressed:true,value:1};
+    const lower=tools.inputFrame();
+    ok(lower['pad:0'].broomDescend&&!lower['pad:0'].dodge,'Controller D-pad Down descends separately from dash');
+    game.update(.05,lower);
+    ok(hero.jumpHeight<64,'The controller lowers a broom during an active match');
+    pad.buttons[13]={pressed:false,value:0};
+    pad.axes[0]=1;pad.buttons[7]={pressed:true,value:1};
+    const controllerBoost=tools.inputFrame(),controllerStart=hero.x;
+    ok(controllerBoost['pad:0'].dodge&&!controllerBoost['pad:0'].broomDescend,'The default controller trigger requests a dash');
+    game.update(.05,controllerBoost);
+    ok(hero.dashTime>0&&hero.x-controllerStart>17,'The controller boosts a broom during an active match');
+    pad.axes[0]=0;pad.buttons[7]={pressed:false,value:0};
+    for(let frame=0;frame<10;frame++)game.update(.05,tools.inputFrame());
    }finally{
     if(originalPads)Object.defineProperty(navigator,'getGamepads',originalPads);else delete navigator.getGamepads;
     hero.device='keyboard';match.snitch.availableAt=savedAvailability;
@@ -306,7 +336,7 @@ app.whenReady().then(async()=>{
     stat(hero,'armor')===startingArmor&&!count(hero,'diagon_ice_cream'),'Eating Strawberry heals 35 HP and replaces the Chocolate effect');
    const findAlbum=player=>player.inventory.find(item=>item?.type==='wizard_card_collection');
    const originalRandom=game.random,frogCount=game.chocolateFrogs?.length||0;
-   game.random=()=>0;
+   game.random=()=>.49;
    useBackpackItem('chocolate_frog');
    let album=findAlbum(hero);
    ok(game.chocolateFrogs.length===frogCount+1&&album?.contents?.length===1&&album.qty===1,
@@ -316,6 +346,54 @@ app.whenReady().then(async()=>{
    album=findAlbum(hero);
    ok(album.contents.length===2&&new Set(album.contents.map(card=>card.type)).size===2&&count(hero,'wizard_card_collection')===1,
     'A second Chocolate Frog adds a distinct card to the same album');
+   const drawAlbum=()=>{
+    tools.heroUI.draw(game,renderer);
+    return document.querySelector('.wizard-card-popover');
+   };
+   const navCard=(popup,direction)=>popup.querySelector('[data-nav="wizard-card-'+direction+'"]').click();
+   const slotLabel=popup=>popup.querySelector('.wizard-card-navigation span')?.textContent;
+   const collectedIds=new Set(album.contents.map(card=>card.type));
+   const firstCollected=WIZARD_CARDS.findIndex(card=>collectedIds.has(card.id));
+   useBackpackItem('wizard_card_collection');
+   let popup=drawAlbum();
+   ok(popup?.textContent.includes('2 / 20 collected · 18 missing')&&slotLabel(popup)===(firstCollected+1)+' / 20'&&
+    popup.querySelector('h3')?.textContent===WIZARD_CARDS[firstCollected].name,
+    'The partial album opens on the first collected catalog card and counts eighteen missing');
+   const jumpButtons=[...popup.querySelectorAll('.wizard-card-slots button')];
+   ok(jumpButtons.length===20&&jumpButtons.every((button,index)=>{
+    const missing=!collectedIds.has(WIZARD_CARDS[index].id);
+    return button.dataset.slot===String(index)&&button.classList.contains('is-missing')===missing&&
+     (!missing||button.textContent.trim()==='?');
+   }),'The partial album displays all twenty direct jumps and marks every missing slot with a question mark');
+   jumpButtons[0].click();popup=drawAlbum();
+   ok(hero.ui.wizardCards.index===0&&slotLabel(popup)==='1 / 20'&&popup.querySelector('.wizard-card-placeholder')?.textContent.includes('?'),
+    'Selecting the first missing slot shows its question-mark card');
+   navCard(popup,'prev');popup=drawAlbum();
+   ok(hero.ui.wizardCards.index===19&&slotLabel(popup)==='20 / 20'&&popup.querySelector('h3')?.textContent===WIZARD_CARDS[19].name,
+    'Previous wraps to slot twenty and displays its collected wizard');
+   navCard(popup,'next');popup=drawAlbum();
+   popup.dispatchEvent(new WheelEvent('wheel',{deltaY:100,bubbles:true,cancelable:true}));
+   popup=drawAlbum();
+   ok(hero.ui.wizardCards.index===1&&slotLabel(popup)==='2 / 20','The mouse wheel reaches a missing card slot');
+   popup.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true,cancelable:true}));
+   popup=drawAlbum();
+   ok(hero.ui.wizardCards.index===0&&slotLabel(popup)==='1 / 20','The focused carousel accepts normal left arrow navigation');
+
+   const slotViews=[];
+   for(const [index,card] of WIZARD_CARDS.entries()){
+    const name=popup.querySelector('h3')?.textContent;
+    const missingMark=popup.querySelector('.wizard-card-placeholder')?.textContent.includes('?')&&name==='Uncollected card';
+    const portrait=popup.querySelector('canvas.wizard-card-portrait');
+    const collected=collectedIds.has(card.id);
+    slotViews.push({index:hero.ui.wizardCards.index,label:slotLabel(popup),
+     matches:collected?name===card.name&&!!portrait:missingMark&&!portrait});
+    if(collected&&portrait&&!pictures['wizard-card-partial-known'])pictures['wizard-card-partial-known']=portrait.toDataURL();
+    navCard(popup,'next');popup=drawAlbum();
+   }
+   ok(slotViews.length===20&&slotViews.every((view,index)=>view.matches&&view.index===index&&view.label===(index+1)+' / 20'),
+    'All twenty slots follow catalog order, revealing collected wizards and showing a question mark for missing cards');
+   ok(hero.ui.wizardCards.index===0,'Next wraps from slot twenty back to slot one');
+   game.inventoryAction(hero,'close');
    ok(give(hero.inventory,'chocolate_frog'),'One frog is ready to open with a full backpack');
    const fillerSlots=[];
    while(hero.inventory.filter(Boolean).length<BACKPACK_SLOTS){
@@ -341,13 +419,10 @@ app.whenReady().then(async()=>{
    ok(JSON.stringify(findAlbum(reloadedCollection)?.contents)===JSON.stringify(album.contents),'A saved expedition restores the complete album');
    window.requestAnimationFrame=nativeAnimationFrame;
    useBackpackItem('wizard_card_collection');
-   const drawAlbum=()=>{
-    tools.heroUI.draw(game,renderer);
-    return document.querySelector('.wizard-card-popover');
-   };
-   let popup=drawAlbum();
-   ok(hero.ui.wizardCards?.index===0&&popup?.textContent.includes('Chocolate Card Collection')&&popup.textContent.includes('20 / 20 collected'),
-    'Normal backpack Use opens the completed Chocolate Card Collection popup');
+   popup=drawAlbum();
+   ok(hero.ui.wizardCards?.index===0&&popup?.textContent.includes('Chocolate Card Collection')&&popup.textContent.includes('20 / 20 collected')&&
+    popup.querySelector('h3')?.textContent===WIZARD_CARDS[0].name,
+    'Normal backpack Use opens the completed collection on the first wizard in catalog order');
    popup.querySelector('[data-nav="wizard-card-next"]').click();
    popup=drawAlbum();
    ok(hero.ui.wizardCards.index===1,'The popup’s Next button browses to the second card');

@@ -11,12 +11,16 @@ import {drawGraveyardGround} from './graveyard-art.mjs';
 import {chipGravestone,nearestGravestone} from './graveyard-world.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
 import {wildLandsGround,wildLandsSurface,WILD_LANDS_STOPS,WILD_LANDS_GATES} from './wild-lands-world.mjs';
-import {wildLandsPathAt} from './wild-lands-geography.mjs';
+import {coastalSiteGround} from './wild-coastal-sites.mjs';
+import {wildLandsPaintedBiome,wildLandsPathAt,mossbellPathAt,moonveilPathAt} from './wild-lands-geography.mjs';
 import {HOLLOW_ROOM,mountainLand,mountainTrail} from './wild-mountain-layout.mjs';
 import {nearestTrainTrack} from './train-track.mjs';
 import {PIRATE_SHIP_BERTH,PIRATE_SHIP_LAYOUT,pirateShipLocal} from './pirate-ship.mjs';
 import {wildHomestead,wildHomesteadYardAt} from './wild-homestead-layout.mjs';
 import {tideglassGround} from './tideglass-layout.mjs';
+import {wildWheatFieldAt,wildWheatProps} from './wild-wheat-fields.mjs';
+import {WILD_SLIME_HOLLOW,mossbellScenery,mossbellClearsScenery,mossbellCheckpointBlocked} from './wild-slime-hollow-site.mjs';
+import {moonveilClearsScenery} from './wild-runic-sanctuary-site.mjs';
 
 const cemeteryScale=.8,graveSite=WILD_LANDS_SITES.find(site=>site.kind==='graves');
 const cemeteryBrushes=new Set(['gravestone','mausoleum','grave_candles']);
@@ -41,7 +45,7 @@ export function nativeWildBiome(d,x,y){
  const center=wildLandsGround(d,x,y);
  // Frostmere's blended borders can soften the edge from the outside, while
  // the terrain, props, snow overlays and movement agree inside the estate.
- if(d.activeRoom||center==='mountain'||center==='house'||tideglassGround(x,y))return center;
+ if(d.activeRoom||center==='mountain'||center==='house'||coastalSiteGround(x,y)||tideglassGround(x,y)||wildLandsPaintedBiome(x,y)===center)return center;
  const weights=new Map([[center,2]]);for(const r of [48,112,192,256])for(const [dx,dy]of [[r,0],[-r,0],[0,r],[0,-r]]){const kind=wildLandsGround(d,x+dx,y+dy);if(!['mountain','tideglass'].includes(kind))weights.set(kind,(weights.get(kind)||0)+Math.exp(-r/200));}let value=(forestNoise(x/76,y/76,731)*.8+forestHash(Math.floor(x/12),Math.floor(y/12))*.2)*[...weights.values()].reduce((a,b)=>a+b,0);for(const [kind,w]of weights){value-=w;if(value<=0)return kind;}return center;
 }
 export function nativeWildWorld(t,x,y,biome=nativeWildBiome(t.design,x,y)){
@@ -96,16 +100,37 @@ export function drawNativeWildTile(c,t,x,y,originX,originY,scale){
    if(!drawBiomeTile(c,r.world,kind,lx,ly))drawWinterTile(c,kind,lx,ly);
    if(kind==='ice')drawIceSnowShelf(c,lx,ly,x,y,nativeIceSnowEdges(t,x,y,r));
   }
- }else if(['swamp','caverns'].includes(biome))drawRealmGround(c,r.world,{sx:tx,sy:ty,ex:tx,ey:ty});else if(biome==='graveyard')drawGraveyardGround(c,r.world,{sx:tx,sy:ty,ex:tx+1,ey:ty+1},cemeteryScale);c.restore();
+ }else if(['swamp','caverns'].includes(biome))drawRealmGround(c,r.world,{sx:tx,sy:ty,ex:tx,ey:ty});
+ else if(biome==='graveyard')drawGraveyardGround(c,r.world,{sx:tx,sy:ty,ex:tx+1,ey:ty+1},cemeteryScale,{x:r.cx*1600,y:r.cy*1600});
+ c.restore();
 }
-function collisionLayer(t){const layer=t.design.activeRoom||'surface';if(t.nativeCollisionRoom!==layer){t.nativeCollisionRoom=layer;t.nativeCollision=new Map();t.nativePopulated=new Set();t.nativeCollisionAreas=new Set();}}
+function collisionLayer(t){const layer=t.design.activeRoom||'surface';if(t.nativeCollisionRoom!==layer){t.nativeCollisionRoom=layer;t.nativeCollision=new Map();t.nativePopulated=new Set();t.nativeCollisionAreas=new Set();delete t.nativeWheatCleared;delete t.nativeClearingProps;}}
+const nativeBucket=p=>Math.floor(p.x/256)+':'+Math.floor((p.rootY??p.y)/256);
+function applyNativePropPosition(prop,position){
+ const dx=position.x-prop.x,dy=position.y-prop.y;
+ prop.x=position.x;prop.y=position.y;
+ if(Number.isFinite(prop.rootY))prop.rootY+=dy;
+ if(prop.graveyardFootprint){prop.graveyardFootprint.x+=dx;prop.graveyardFootprint.y+=dy;}
+}
+export function updateNativePropPlacement(t,prop,position){
+ (t.liveEditNativePlacements??={})[prop.id]=position;
+ const oldKey=nativeBucket(prop),oldList=t.nativeCollision?.get(oldKey),index=oldList?.indexOf(prop)??-1;
+ applyNativePropPosition(prop,position);
+ if(index>=0&&nativeBucket(prop)!==oldKey){
+  oldList.splice(index,1);
+  if(!oldList.length)t.nativeCollision.delete(oldKey);
+  indexNativeProps(t,[prop]);
+ }
+ if(t.nativeWheatCleared?.delete(prop)||t.nativeClearingProps?.delete(prop))indexNativeProps(t,[prop]);
+ delete t.nativeFarView;
+}
 function indexNativeProps(t,props){
  for(const p of props){
   if(p.kind==='gravestone'){
    const damage=t.nativeGravestoneDamage?.[p.id];
    if(Number.isFinite(damage)&&damage>0){p.hp=Math.max(0,p.maxHp-damage);p.harvest=p.maxHp-p.hp;p.depleted=p.hp===0;}
   }
-  const bucket=Math.floor(p.x/256)+':'+Math.floor((p.rootY??p.y)/256);
+  const bucket=nativeBucket(p);
   if(!t.nativeCollision.has(bucket))t.nativeCollision.set(bucket,[]);
   t.nativeCollision.get(bucket).push(p);
  }
@@ -118,15 +143,48 @@ function piratePlankApproach(x,y){
 export function nativeWildProps(t,bounds){collisionLayer(t);if(t.design.activeRoom===HOLLOW_ROOM)return t.visibleForest=[];const farView=(t.viewZoom||1)<.3,farKey=farView?[t.design.activeRoom||'surface',(t.viewZoom||1)<.12?256:128,t.terrainStream?.generation||0,...['left','top','right','bottom'].map(k=>Math.floor(bounds[k]/128))].join(':'):null;if(farKey&&t.nativeFarView?.key===farKey){t.visibleForest=t.nativeFarView.props;return t.visibleForest;}
  const site=t.design.wildLands&&!t.design.activeRoom?cemeterySiteProps(t):[];
  const result=[...wildPortalRuins(t.design),...site].filter(o=>o.x>bounds.left-160&&o.x<bounds.right+160&&o.y>bounds.top-160&&o.y<bounds.bottom+160),far=(t.viewZoom||1)<.3;t.nativeCollision??=new Map();t.nativePopulated??=new Set();
+ if(!far)result.push(...wildWheatProps(t.design,bounds));
  if(site.length&&!t.nativePopulated.has(graveSite.id)){
   indexNativeProps(t,site);t.nativePopulated.add(graveSite.id);
  }
- for(let cy=Math.max(0,Math.floor((bounds.top-220)/1600));cy<=Math.min(5,Math.floor((bounds.bottom+220)/1600));cy++)for(let cx=Math.max(0,Math.floor((bounds.left-220)/1600));cx<=Math.min(9,Math.floor((bounds.right+220)/1600));cx++){
- t.nativeKinds??=new Map();const kindKey=[t.design.activeRoom||'surface',cx,cy].join(':');let kinds=t.nativeKinds.get(kindKey);if(!kinds){kinds=new Set();for(const dx of[50,800,1550])for(const dy of[50,800,1550])kinds.add(nativeWildBiome(t.design,cx*1600+dx,cy*1600+dy));t.nativeKinds.set(kindKey,kinds);}
+ if(t.design.wildLands&&!t.design.activeRoom){
+  const mossbell=t.mossbellScenery??=mossbellScenery();
+  if(!t.nativePopulated.has(WILD_SLIME_HOLLOW.id)){
+   indexNativeProps(t,mossbell);t.nativePopulated.add(WILD_SLIME_HOLLOW.id);
+  }
+  result.push(...mossbell.filter(p=>p.x>bounds.left-220&&p.x<bounds.right+220&&p.rootY>bounds.top-220&&p.rootY<bounds.bottom+300));
+ }
+ const columns=Math.ceil(t.design.width/1600),rows=Math.ceil(t.design.height/1600);
+ for(let cy=Math.max(0,Math.floor((bounds.top-220)/1600));cy<=Math.min(rows-1,Math.floor((bounds.bottom+220)/1600));cy++)for(let cx=Math.max(0,Math.floor((bounds.left-220)/1600));cx<=Math.min(columns-1,Math.floor((bounds.right+220)/1600));cx++){
+ t.nativeKinds??=new Map();const kindKey=[t.design.activeRoom||'surface',cx,cy].join(':');let kinds=t.nativeKinds.get(kindKey);if(!kinds){
+  kinds=new Set();
+  for(const dx of [50,350,650,950,1250,1550])for(const dy of [50,350,650,950,1250,1550]){
+   const x=cx*1600+dx,y=cy*1600+dy;
+   if(wildLandsSurface(t.design,x,y)==='grass')kinds.add(nativeWildBiome(t.design,x,y));
+  }
+  t.nativeKinds.set(kindKey,kinds);
+ }
  for(const kind of kinds){const record=nativeWildWorld(t,cx*1600+800,cy*1600+800,kind),key=[t.design.activeRoom||'surface',kind,cx,cy].join(':');if(!record)continue;if(!t.nativePopulated.has(key)){
- record.accepted??=record.props.filter(o=>{const y=o.rootY??o.y;if(wildHomesteadYardAt(t.design,o.x,y)||inWildLandmark(t.design,o.x,y,45)||nativeWildBiome(t.design,o.x,y)!==kind||wildLandsSurface(t.design,o.x,y)!=='grass')return false;if(t.design.activeRoom)return Math.hypot(o.x-8000,y-5490)>150;return !mountainLand(o.x,y)&&!mountainTrail(o.x,y,-36)&&!piratePlankApproach(o.x,y)&&!wildLandsPathAt(o.x,y)&&!WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-o.x,s.y-y)<700)&&!WILD_LANDS_GATES.some(s=>Math.hypot(s.x-o.x,s.y-y)<240)&&nearestTrainTrack(t.route,o.x,y).distance>Math.max(65,o.kind.includes('tree')?95:65);});
- indexNativeProps(t,record.accepted);t.nativePopulated.add(key);}
- for(const o of record.accepted||[])if(o.x>bounds.left-220&&o.x<bounds.right+220&&o.y>bounds.top-220&&o.y<bounds.bottom+300&&(!far||o.size>=70&&forestHash(o.x,o.y)<.55))result.push(o);
+ record.accepted??=record.props.filter(o=>{const y=o.rootY??o.y;if(wildHomesteadYardAt(t.design,o.x,y)||inWildLandmark(t.design,o.x,y,45)||nativeWildBiome(t.design,o.x,y)!==kind||wildLandsSurface(t.design,o.x,y)!=='grass')return false;if(t.design.activeRoom)return Math.hypot(o.x-8000,y-5490)>150;return !mountainLand(o.x,y)&&!mountainTrail(o.x,y,-36)&&!piratePlankApproach(o.x,y)&&(!wildLandsPathAt(o.x,y)||mossbellPathAt(o.x,y))&&!WILD_LANDS_STOPS.some(s=>Math.hypot(s.x-o.x,s.y-y)<700)&&!WILD_LANDS_GATES.some(s=>Math.hypot(s.x-o.x,s.y-y)<240)&&nearestTrainTrack(t.route,o.x,y).distance>Math.max(65,o.kind.includes('tree')?95:65);});
+ const surface=t.design.wildLands&&!t.design.activeRoom;
+ const scenery=record.accepted.filter(prop=>{
+  const edit=t.liveEditNativePlacements?.[prop.id];
+  if(edit){applyNativePropPosition(prop,edit);return true;}
+  if(surface&&(coastalSiteGround(prop.x,prop.rootY??prop.y)||mossbellClearsScenery(prop)||moonveilClearsScenery(prop)||mossbellPathAt(prop.x,prop.rootY??prop.y)||moonveilPathAt(prop.x,prop.rootY??prop.y))){
+   (t.nativeClearingProps??=new WeakSet()).add(prop);
+   return false;
+  }
+  const tree=prop.kind.includes('tree');
+  if(surface&&prop.kind!=='forest_ruin'&&wildWheatFieldAt(prop.x,prop.rootY??prop.y,tree?36:12,tree?28:10)){
+   // The cultivated ground stays open. Keep the source props available for
+   // existing local placement overrides, including those loaded after a visit.
+   (t.nativeWheatCleared??=new WeakSet()).add(prop);
+   return false;
+  }
+  return true;
+ });
+ indexNativeProps(t,scenery);t.nativePopulated.add(key);}
+ for(const o of record.accepted||[])if(o.x>bounds.left-220&&o.x<bounds.right+220&&o.y>bounds.top-220&&o.y<bounds.bottom+300&&(!far||o.size>=70&&forestHash(o.x,o.y)<.55)&&!t.nativeWheatCleared?.has(o)&&!t.nativeClearingProps?.has(o))result.push(o);
  }}if(far){const spacing=(t.viewZoom||1)<.12?256:128,groups=new Map();for(const o of result){const key=Math.floor(o.x/spacing)+':'+Math.floor((o.rootY??o.y)/spacing),old=groups.get(key);if(!old||(o.size||0)>(old.size||0))groups.set(key,o);}const lod=[...groups.values()];t.visibleForest=lod;if(farKey)t.nativeFarView={key:farKey,props:lod};return lod;}t.visibleForest=result;return result;
 }
 // Check accepted world props independently of the current camera. The doorway
@@ -149,6 +207,7 @@ export function nearbyNativeBayouShrine(t,x,y){
 }
 
 export function nativeWildBlocked(t,x,y,r=8,from=null){if(!streamRegion(t,x,y,100))return true;collisionLayer(t);if(wildPortalRuins(t.design).some(o=>!o.overhead&&footprintHit(o,null,x,y,r)))return true;
+ if(t.design.wildLands&&!t.design.activeRoom&&mossbellCheckpointBlocked(x,y,r))return true;
  if(wildHomesteadYardAt(t.design,x,y,180)&&wildHomestead(t.design).trees.some(o=>!o.depleted&&!o.falling&&footprintHit(o,t.spriteLibrary?.[o.kind],x,y,r,from)))return true;
  const area=Math.floor(x/1600)+':'+Math.floor(y/1600);t.nativeCollisionAreas??=new Set();if(!t.nativeCollisionAreas.has(area)){const visible=t.visibleForest;nativeWildProps(t,{left:x-200,top:y-200,right:x+200,bottom:y+200});t.visibleForest=visible;t.nativeCollisionAreas.add(area);}for(let cy=Math.floor((y-100)/256);cy<=Math.floor((y+100)/256);cy++)for(let cx=Math.floor((x-160)/256);cx<=Math.floor((x+160)/256);cx++)for(const p of t.nativeCollision.get(cx+':'+cy)||[]){if(p.depleted||p.falling)continue;if(p.graveyardFootprint){const b=p.graveyardFootprint;if(Math.hypot(x-Math.max(b.x,Math.min(x,b.x+b.w)),y-Math.max(b.y,Math.min(y,b.y+b.h)))<r)return true;}else if(footprintHit(p,t.spriteLibrary?.[p.kind],x,y,r,from))return true;}return false;
 }

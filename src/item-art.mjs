@@ -4,6 +4,8 @@ import {drawChocolateFrogIcon} from './frog-art.mjs';
 import {paintSchoolUniformIcon} from './train-students-art.mjs';
 import {drawBroomIcon,drawBroom} from './broom-art.mjs';
 import {drawWitchHatIcon} from './witch-hat-art.mjs';
+import {drawMerlinHatIcon} from './merlin-hat-art.mjs';
+import {drawMerlinRobeIcon,drawMerlinWand} from './merlin-outfit-art.mjs';
 import {paintSkeletonItem} from './skeleton-item-art.mjs';
 import {paintReaperItem} from './reaper-art.mjs';
 import {paintChristmasItem} from './christmas-art.mjs';
@@ -27,6 +29,7 @@ import {paintDiagonCritterIcon} from './diagon-critter-art.mjs';
 import {BIRD_CAGES} from './owl-emporium.mjs';
 import {WRONG_TURN_KEY,drawWrongTurnKeyIcon} from './wrong-turn-key.mjs';
 import {paintZonkoConsumableIcon} from './zonko-item-art.mjs';
+import {HAND_GEAR_ICON_SIZE,hasHandGearIcon,paintHandGearIcon} from './hand-gear-icon-art.mjs';
 // Small, exact-pixel item silhouettes shared by ground loot and inventory.
 export const ITEM_ART_TYPES = [
   "trap",
@@ -53,6 +56,10 @@ for (const id of Object.keys(ITEMS))
   if (!ITEM_ART_TYPES.includes(id)) ITEM_ART_TYPES.push(id);
 export function paintItem(c, type) {
   const custom=ITEMS[type]?.artPixels;if(Array.isArray(custom)&&custom.length===576){custom.forEach((color,i)=>{if(typeof color==='string'&&/^#[0-9a-f]{6}$/i.test(color)){c.fillStyle=color;c.fillRect(i%24,Math.floor(i/24),1,1);}});return;}
+  if(type==='greyhaven_starwatch_hat')return drawMerlinHatIcon(c);
+  if(type==='greyhaven_merlin_robe')return drawMerlinRobeIcon(c);
+  if(type==='greyhaven_rowan_wand')return drawMerlinWand(c,{x:5,y:19},{x:19,y:4});
+  if(hasHandGearIcon(type))return paintHandGearIcon(c,type,24);
   if(paintZonkoConsumableIcon(c,type))return;
   if(paintPirateCaptainItem(c,type))return;
   if(type==='glaive')return paintGlaiveIcon(c);
@@ -898,18 +905,20 @@ export function itemCanvas(type, dye = null) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 24;
   paintItem(canvas.getContext("2d"), type);
-  if (dye && /^#[0-9a-f]{6}$/i.test(dye)) {
-    const c = canvas.getContext("2d");
-    c.save();
-    c.globalCompositeOperation = "source-atop";
-    c.globalAlpha = 0.35;
-    c.fillStyle = dye;
-    c.fillRect(0, 0, 24, 24);
-    c.restore();
-  }
+  applyItemDye(canvas.getContext("2d"), dye, canvas.width);
   if (cache.size >= 512) cache.delete(cache.keys().next().value);
   cache.set(key, canvas);
   return canvas;
+}
+
+function applyItemDye(c, dye, size) {
+  if (!dye || !/^#[0-9a-f]{6}$/i.test(dye)) return;
+  c.save();
+  c.globalCompositeOperation = "source-atop";
+  c.globalAlpha = 0.35;
+  c.fillStyle = dye;
+  c.fillRect(0, 0, size, size);
+  c.restore();
 }
 export function drawItem(c, type, x, y, size = 24, dye = null) {
   c.save();
@@ -927,6 +936,22 @@ export function drawItem(c, type, x, y, size = 24, dye = null) {
 // resolution. Cached once per item/dye, never rebuilt for each inventory frame.
 export function detailedItemCanvas(type,dye=null){
  const status=humanoidArtStatus(),key='detail:'+status.revision+':'+type+':'+(dye||'');if(cache.has(key))return cache.get(key);
+ const custom=ITEMS[type]?.artPixels;
+ if(hasHandGearIcon(type)&&!(Array.isArray(custom)&&custom.length===576)){
+  const native=document.createElement('canvas');
+  native.width=native.height=HAND_GEAR_ICON_SIZE;
+  const ctx=native.getContext('2d');
+  paintHandGearIcon(ctx,type);
+  applyItemDye(ctx,dye,HAND_GEAR_ICON_SIZE);
+  let out=native;
+  if(status.ready&&ITEMS[type]?.slot){
+   out=document.createElement('canvas');out.width=out.height=HAND_GEAR_ICON_SIZE*2;
+   const scaled=out.getContext('2d');scaled.imageSmoothingEnabled=false;
+   scaled.drawImage(native,0,0,out.width,out.height);
+  }
+  if(cache.size>=512)cache.delete(cache.keys().next().value);
+  cache.set(key,out);return out;
+ }
  if(status.ready&&ITEMS[type]?.slot){
   const out=detailRaster(itemCanvas(type,dye),materialIndex(type),4);
   if(cache.size>=512)cache.delete(cache.keys().next().value);cache.set(key,out);return out;

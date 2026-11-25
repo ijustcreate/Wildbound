@@ -2,6 +2,7 @@ import {take} from './items.mjs';
 import {wildHomesteadHearth} from './wild-homestead-layout.mjs';
 import {HOGSMEADE_BUILDINGS,HOGSMEADE_PROPS} from './hogsmeade-layout.mjs';
 import {carriesInnWand} from './hogsmeade.mjs';
+import {GREYHAVEN_HEARTH} from './wild-castle.mjs';
 export {HOMESTEAD_HEARTH} from './wild-homestead-layout.mjs';
 
 const inn=HOGSMEADE_BUILDINGS.find(site=>site.id==='three-broomsticks');
@@ -10,16 +11,18 @@ export const THREE_BROOMSTICKS_HEARTH=Object.freeze({id:inn.id,room:null,x:inn.x
 const names={'three-broomsticks':'The Three Broomsticks','homestead':'Wilds Homestead','nocturne-curios':'Nocturne Alley'};
 const cancel={label:'Stay here',action:'close'};
 
-function network(g,shop){return [wildHomesteadHearth(g.trainTest.design),shop,THREE_BROOMSTICKS_HEARTH];}
+function network(g,shop){return [wildHomesteadHearth(g.trainTest.design),shop,THREE_BROOMSTICKS_HEARTH,GREYHAVEN_HEARTH];}
+const hearthName=hearth=>hearth.name||names[hearth.id];
 
 function reachableHearth(g,p,shop,nearby=false){
  const train=g.trainTest;
  if(!shop||!train?.design.wildLands||p.hp<=0||p.trainRide||p.pirateRide||p.room||p.vehicleId||p.broomMount||
    p.swimming||p.controlledFollowerId||p.bedRest||p.jumpHeight>2)return;
  const room=train.design.activeRoom||null;
- if(room&&room!=='diagon')return;
- return network(g,shop).find(hearth=>hearth.room===room&&Math.abs(p.x-hearth.x)<=(nearby?32:11)&&
-  p.y>=hearth.y-13&&p.y<=hearth.y+(nearby?38:1));
+ return network(g,shop).find(hearth=>{
+  const {x,y}=hearth.approach||hearth;
+  return hearth.room===room&&Math.abs(p.x-x)<=(nearby?32:11)&&p.y>=y-13&&p.y<=y+(nearby?38:1);
+ });
 }
 
 export function hearthBlocks(hearth,x,y,radius){
@@ -62,9 +65,9 @@ export function startFlooTravel(g,p,shop,fromPack=false){
 export function flooDialogueView(g,p,shop){
  const ui=p.ui,from=reachableHearth(g,p,shop,ui?.flooFromPack);
  const hearth=from?.id===ui?.flooHearth&&ui?.ownerDevice===p.device?from:null;
- const title=hearth&&names[hearth.id];
+ const title=hearth&&hearthName(hearth);
  const choices=hearth?network(g,shop).filter(dest=>dest.id!==hearth.id).map(dest=>({
-  label:names[dest.id],action:'floo:'+dest.id,disabled:needsWand(dest,p),
+  label:hearthName(dest),action:'floo:'+dest.id,disabled:needsWand(dest,p),
   detail:needsWand(dest,p)?'Carry a wand to visit the inn.':hearth.room!==dest.room?'The party travels together.':'Only you travel.',
  })): [];
  return {hearth,npc:{name:'Floo Powder',title},text:hearth?'Which fireplace do you want to go to? Each journey uses one pinch.':
@@ -85,7 +88,7 @@ export function flooDialogueAction(g,p,shop,action){
  const t=g.trainTest,to=network(g,shop).find(dest=>'floo:'+dest.id===action);
  if(!to||t.flooTransfer||!hasPowder(p))return true;
  if(to.room!==hearth.room&&!canBringParty(g)){
-  ui.notice='Everyone needs to be on foot before crossing into or out of Nocturne Alley.';
+  ui.notice='Everyone needs to be on foot before the party can use the Floo network.';
   return true;
  }
  t.flooTransfer={player:p.id,from:hearth,to,nearby:ui.flooFromPack,at:t.time+.28};

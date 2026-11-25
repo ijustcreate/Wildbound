@@ -2,18 +2,28 @@ import {boundlessTerrainAt} from './boundless-world.mjs';
 import {nativeWildTile} from './wild-native-biomes.mjs';
 import {wildLandsGround,wildLandsSurface} from './wild-lands-world.mjs';
 import {wildLandsPathAt} from './wild-lands-geography.mjs';
+import {HOGSMEADE_BUILDINGS} from './hogsmeade-layout.mjs';
+import {railwayStations,stationHouse} from './railway-station.mjs';
+import {wildLandmarkBuildings} from './wild-landmark-buildings.mjs';
 
 const meltWorlds=new WeakMap();
 const MELT_LIFE=11,MELT_LIMIT=128;
 
-export function snowGroundAt(g,x,y){
+const hogsmeadeFloors=HOGSMEADE_BUILDINGS.map(({x,y,w,h})=>({x:x-w/2,y:y-h/2,w,h}));
+const onFloor=(floors,x,y,margin)=>floors?.some(f=>
+ x+margin>=f.x&&x-margin<f.x+f.w&&y+margin>=f.y&&y-margin<f.y+f.h);
+
+export function snowGroundAt(g,x,y,floorMargin=0){
  const t=g.trainTest;
  if(t){
   const d=t.design;
   return d.wildLands&&!d.activeRoom&&wildLandsGround(d,x,y)==='ice'&&wildLandsSurface(d,x,y)==='grass'&&
-   !wildLandsPathAt(x,y)&&nativeWildTile(t,x,y)==='snow';
+   !wildLandsPathAt(x,y)&&nativeWildTile(t,x,y)==='snow'&&
+   !onFloor(hogsmeadeFloors,x,y,floorMargin)&&
+   !wildLandmarkBuildings(d).some(house=>onFloor(house.floors,x,y,floorMargin))&&
+   !railwayStations(d).some(world=>onFloor(stationHouse(world).floors,x,y,floorMargin));
  }
- if(g.generatedEnvironment!=='ice')return false;
+ if(g.generatedEnvironment!=='ice'||onFloor(g.house?.floors,x,y,floorMargin))return false;
  const tx=Math.floor(x/32),ty=Math.floor(y/32);
  if(tx>=0&&ty>=0&&tx<50&&ty<50)return g.terrain?.[ty*50+tx]==='snow';
  return g.mapMode==='boundless'&&boundlessTerrainAt(g,tx,ty)==='snow';

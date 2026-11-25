@@ -102,6 +102,22 @@ export function swampTreeStructure(type,seed){
  const clusters=base.map(([x,y,rx,ry],i)=>{rx*=.8+hash(seed,i+100)*.35;ry*=.82+hash(seed,i+110)*.3;return [Math.max(-57+rx,Math.min(57-rx,x+(hash(seed,i+80)-.5)*10+lean*(-y/110))),Math.max(-118+ry,y+(hash(seed,i+90)-.5)*9),rx,ry];});
  return {lean,width,clusters};
 }
+function drawSwampBranches(c,type,seed,plan){
+ const cypress=type==='cypress';
+ const dark=cypress?'#444a36':'#655e43',lit=cypress?'#817654':'#92805a';
+ for(const [index,[x,y]]of plan.clusters.entries()){
+  const attachmentY=cypress?Math.max(-73,y*(.58+hash(seed,index+181)*.15)):-23-hash(seed,index+181)*15;
+  // Above a mangrove's fork, follow the stem on the same side as the canopy mass.
+  const fork=cypress?0:Math.max(0,(-attachmentY-31)/13)*(x<0?-15:11)-1;
+  const attachmentX=fork*plan.width+plan.lean*(-attachmentY)/100;
+  const bendX=mix(attachmentX,x,.48+hash(seed,index+191)*.2);
+  const bendY=mix(y,attachmentY,.08+hash(seed,index+201)*.34);
+  const width=(cypress?4:3.5)*(.72+hash(seed,index+211)*.63);
+  line(c,attachmentX,attachmentY,bendX,bendY,width,dark);
+  line(c,bendX,bendY,x,y,width*.55,dark);
+  line(c,bendX-.75,bendY-1,x,y-1,width*.28,lit);
+ }
+}
 export function swampMossCurtains(type,seed=31,varied=false){
  if(varied)return swampTreeStructure(type,seed).clusters.map(([x,y,rx,ry],i)=>[Math.round(x+(i%2?-.65:.65)*rx),Math.round(y+ry*.65),Math.round(11+hash(seed,i+130)*12)]);
  return type==='cypress'?[[-34,-55,17],[-20,-52,12],[31,-63,20],[19,-60,11],[-22,-79,15],[13,-91,12]]:[[-42,-40,13],[-22,-34,18],[39,-47,18],[23,-39,12]];
@@ -121,13 +137,15 @@ export function drawSwampStudyTree(c,p,time=0){
   if(seed%3===0){poly(c,[[-2,-24],[-3,-31],[-1,-36],[2,-32],[2,-24]],'#233b31');rect(c,-2,-25,4,1,'#a08d5f');}
   for(const [x,yy]of [[-22,3],[21,2],[-12,5]]){line(c,x,yy,x*.5,-8,3,'#414938');line(c,x,yy-1,x*.5,-9,1,'#9b8c5e');}
 
-  for(const [x,y,b]of plan?plan.clusters.map(([x,y])=>[x,y,-Math.min(65,-y*.65)]):[[-27,-56,-37],[25,-65,-43],[-15,-82,-59],[17,-90,-67]]){line(c,0,b,x*.58,y+4,4,'#444a36');line(c,x*.58,y+4,x,y,2,'#817654');}
+  if(plan)drawSwampBranches(c,p.type,seed,plan);
+  else for(const [x,y,b]of [[-27,-56,-37],[25,-65,-43],[-15,-82,-59],[17,-90,-67]]){line(c,0,b,x*.58,y+4,4,'#444a36');line(c,x*.58,y+4,x,y,2,'#817654');}
   foliage(c,plan?.clusters||[[-23,-58,18,13],[20,-70,20,15],[-12,-84,18,18],[7,-99,15,17],[-2,-112,8,9]],seed,p.type);
  }else{
   for(const [x,y]of [[-28,3],[26,4],[-18,-1],[18,-4]]){const mid=x*.8+(hash(seed,x)-.5)*7;line(c,x,y,mid,-10,3,'#374334');line(c,mid,-10,x*.48,-22,3,'#5c5c42');line(c,x*.48,-22,x*.25,-28,4,'#5c5c42');line(c,x,y-1,mid,-10,1,'#a29567');line(c,mid,-10,x*.48,-22,1,'#a29567');}
   trunk([[-8,1],[-5,-23],[-16,-40],[-12,-46],[-1,-31],[8,-43],[14,-41],[4,-23],[7,1],[1,-4],[-2,-19],[-4,1]],'#3b4434');
   line(c,-3,-2,-1,-26,4,'#857851');line(c,-1,-26,-13,-42,3,'#857851');line(c,1,-26,11,-42,3,'#726c48');
-  for(const [x,y]of plan?.clusters||[[-35,-40],[32,-47],[-19,-60],[17,-66]]){line(c,-1,-26,x*.6,y+3,3,'#655e43');line(c,x*.6,y+3,x,y,2,'#92805a');}
+  if(plan)drawSwampBranches(c,p.type,seed,plan);
+  else for(const [x,y]of [[-35,-40],[32,-47],[-19,-60],[17,-66]]){line(c,-1,-26,x*.6,y+3,3,'#655e43');line(c,x*.6,y+3,x,y,2,'#92805a');}
   foliage(c,plan?.clusters||[[-31,-43,20,12],[29,-50,23,13],[-17,-60,22,15],[10,-70,22,14],[0,-48,20,11]],seed,p.type);
  }
  }

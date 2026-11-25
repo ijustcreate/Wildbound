@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Wildbound · Sprite stack trials</title>
+    <link rel="stylesheet" href="gallery.css">
+    <script defer src="manifest.js"></script>
+    <script defer src="gallery.js"></script>
+  </head>
+  <body>
+    <main>
+      <header class="intro">
+        <p class="project">Wildbound art workshop</p>
+        <h1>Sprite stack trials</h1>
+        <p>Compare the current game props with live turntables built from pixel-art slices.</p>
+      </header>
+
+      <section class="controls" aria-label="Turntable controls">
+        <button id="play" type="button" aria-label="Auto-rotate" aria-pressed="false">Auto-rotate</button>
+        <label class="angle" for="angle">
+          <span>Angle</span>
+          <input id="angle" type="range" min="0" max="359" value="24">
+          <output id="degrees" for="angle">24°</output>
+        </label>
+        <fieldset class="scale">
+          <legend>Scale</legend>
+          <label><input type="radio" name="scale" value="1"><span>1×</span></label>
+          <label><input type="radio" name="scale" value="2" checked><span>2×</span></label>
+          <label><input type="radio" name="scale" value="3"><span>3×</span></label>
+        </fieldset>
+      </section>
+
+      <p id="status" class="status" role="status" hidden></p>
+      <div id="demos" class="demos"></div>
+    </main>
+
+    <template id="prop-card">
+      <article class="prop">
+        <header class="prop-heading">
+          <div>
+            <p class="location"></p>
+            <h2></h2>
+          </div>
+          <p class="layer-count"></p>
+        </header>
+        <div class="comparison">
+          <figure>
+            <figcaption>Current prop</figcaption>
+            <div class="stage"><canvas data-original></canvas></div>
+          </figure>
+          <figure>
+            <figcaption>Sprite stack</figcaption>
+            <div class="stage"><canvas data-stack></canvas></div>
+          </figure>
+        </div>
+        <p class="description" hidden></p>
+        <div class="sources"></div>
+      </article>
+    </template>
+  </body>
+</html>

@@ -4,6 +4,9 @@ import {Game} from '../src/core.mjs';
 import {tickTracks} from '../src/environment.mjs';
 import {drawSnowMelt,snowGroundAt} from '../src/snow-surface.mjs';
 import {enterWildLands} from '../src/wild-lands.mjs';
+import {HOGSMEADE_BUILDINGS,HOGSMEADE_SHACK,hogsmeadeDoor} from '../src/hogsmeade-layout.mjs';
+import {nativeWildTile} from '../src/wild-native-biomes.mjs';
+import {railwayStations} from '../src/railway-station.mjs';
 
 function countMelt(game){
  let pixels=0;
@@ -52,4 +55,44 @@ test('walking and fire leave no thick-snow marks on Classic bare ice',()=>{
  game.spells=[{x:600,y:620,fire:true,vx:120,vy:0,life:1,remaining:50,size:5}];
  game.tickProjectiles(.1);
  assert.equal(countMelt(game),0);
+});
+
+test('Wild Lands snow stops at the Hogsmeade cutaway floors',()=>{
+ const game=new Game(()=>.5,{deferWorld:true});
+ const player=game.addPlayer('keyboard','Hogsmeade explorer');
+ assert.equal(enterWildLands(game).ok,true);
+ const [inn]=HOGSMEADE_BUILDINGS;
+ const innDoor=hogsmeadeDoor(inn);
+ assert.equal(snowGroundAt(game,innDoor.x,innDoor.y-12),false);
+ assert.equal(snowGroundAt(game,innDoor.x,innDoor.y+8),true);
+ assert.equal(snowGroundAt(game,innDoor.x,innDoor.y+1),true);
+ assert.equal(snowGroundAt(game,innDoor.x,innDoor.y+1,4),false);
+ assert.equal(snowGroundAt(game,innDoor.x,innDoor.y+8,4),true);
+
+ Object.assign(player,{x:HOGSMEADE_SHACK.x,y:HOGSMEADE_SHACK.y});
+ tickTracks(game);
+ player.x+=20;
+ tickTracks(game);
+ assert.equal(game.trainTest.footprints.length,0);
+});
+
+test('Frostmere station flooring covers its underlying snow',()=>{
+ const game=new Game(()=>.5,{deferWorld:true});
+ game.addPlayer('keyboard','Frostmere traveler');
+ assert.equal(enterWildLands(game).ok,true);
+ const train=game.trainTest;
+ const {x,y}=railwayStations(train.design).find(world=>world.station.visualId==='ice').station;
+ assert.equal(nativeWildTile(train,x,y),'snow');
+ assert.equal(snowGroundAt(game,x,y),false);
+});
+
+test('Classic house floors cover the snow tiles underneath them',()=>{
+ const game=new Game(()=>.5,{deferWorld:true});
+ game.generatedEnvironment='ice';
+ game.terrain=Array(2500).fill('snow');
+ game.house={floors:[{x:600,y:616,w:48,h:36}]};
+ assert.equal(snowGroundAt(game,620,620),false);
+ assert.equal(snowGroundAt(game,620,615),true);
+ assert.equal(snowGroundAt(game,620,615,4),false);
+ assert.equal(snowGroundAt(game,620,611,4),true);
 });

@@ -1,10 +1,75 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Profiles } from '../src/profiles.mjs';
-import { DEFAULT_APPEARANCE, HAIR_STYLES } from '../src/appearance.mjs';
-import { drawPlayer, defaultPlayerMotion, directionVector, validatePlayerMotion,playerPose,quiverPose } from '../src/player-motion.mjs';
+import { DEFAULT_APPEARANCE, EXPLORER_PRESET, HAIR_STYLES } from '../src/appearance.mjs';
+import { drawPlayer, defaultPlayerMotion, defaultNativePlayerMotion, directionVector, heldItemWorld, isDefaultExplorer, validatePlayerMotion,playerPose,playerRenderPose,projectPoint,quiverPose } from '../src/player-motion.mjs';
+import { fitDefaultExplorerPose } from '../src/default-explorer-art.mjs';
 import {renderLayers} from '../src/render-order.mjs';
 import { RigStudio } from '../src/player-studio.mjs';
+test('Stock explorer art recognizes new and legacy playable defaults', () => {
+  const profiles=new Profiles();
+  profiles.save=()=>{};
+  for(const appearance of [EXPLORER_PRESET,DEFAULT_APPEARANCE,null]){
+    const hero=profiles.create('Default '+profiles.data.heroes.length,appearance),player={};
+    profiles.assign(player,hero);
+    assert.equal(isDefaultExplorer(player),true);
+    assert.equal(isDefaultExplorer({appearance:player.appearance,sprite:'player',isPlayer:true}),false);
+  }
+  const preview={appearance:EXPLORER_PRESET,stockExplorerPreview:true};
+  assert.equal(isDefaultExplorer(preview),true);
+  assert.equal(isDefaultExplorer({...preview,appearance:{...EXPLORER_PRESET,hair:'long'}}),false);
+});
+test('The stock explorer fit preserves foot contacts and visibly lengthens both arm segments', () => {
+  const model=defaultPlayerMotion();
+  const [faceX,faceY]=directionVector(7);
+  const pose=playerPose({faceX,faceY,animationAction:'run',playerFrame:3.5},0,model);
+  const original=structuredClone(pose);
+  const points=Object.fromEntries(Object.entries(pose).map(([joint,point])=>[joint,projectPoint(point,7)]));
+  const originalPoints=structuredClone(points);
+  const fitted=fitDefaultExplorerPose(pose,points);
+
+  assert.deepEqual(pose,original);
+  for(const joint of ['footL','footR']){
+    assert.deepEqual(fitted[joint],original[joint]);
+    assert.deepEqual(points[joint],originalPoints[joint]);
+  }
+  assert.ok(points.pelvis.y>originalPoints.pelvis.y);
+  const eyeOffset=posePoints=>posePoints.head.y-posePoints.eyeL.y;
+  assert.ok(Math.abs(eyeOffset(points)-eyeOffset(originalPoints))<1e-9);
+  assert.ok(Math.abs(points.handR.y-projectPoint(fitted.handR,7).y)<1e-9);
+  const distance=(a,b)=>Math.hypot(...a.map((value,index)=>value-b[index]));
+  for(const side of ['L','R']){
+    const joints=['shoulder','elbow','hand'].map(joint=>joint+side);
+    const previous=joints.map((joint,index)=>{
+      const [x,y,z]=original[joint];
+      return [x,y,z-[3.75,3.25,2.7][index]];
+    });
+    assert.deepEqual(fitted[joints[0]],previous[0]);
+    for(let i=1;i<joints.length;i++){
+      const length=distance(fitted[joints[i-1]],fitted[joints[i]]);
+      assert.ok(Math.abs(length/distance(previous[i-1],previous[i])-1.1)<1e-9);
+    }
+  }
+});
+test('Custom native humanoids share the fitted pose and its held-item origin', () => {
+  const model=defaultNativePlayerMotion();
+  const actor={x:40,y:80,hp:100,faceX:0,faceY:1,animationAction:'idle',playerFrame:0,
+    appearance:{...DEFAULT_APPEARANCE,hair:'long',shirt:'#5d4b81'},equipment:{hand1:'wand'}};
+  const raw=playerPose(actor,0,model),fitted=playerRenderPose(actor,0,model);
+  assert.deepEqual(fitted,fitDefaultExplorerPose(raw));
+  assert.deepEqual(fitted.footL,raw.footL);
+  const hand=projectPoint(fitted.handR,0);
+  assert.deepEqual(heldItemWorld(actor,'hand1',0,model,48),{x:actor.x+hand.x,y:actor.y+hand.y});
+
+  const hatted={...actor,equipment:{...actor.equipment,head:'hat'}};
+  assert.deepEqual(playerRenderPose(hatted,0,model),playerPose(hatted,0,model));
+  const separate={...model,type:'villager'};
+  assert.deepEqual(playerRenderPose(actor,0,separate),playerPose(actor,0,separate));
+  const painted={...model,boneSprites:{'Body and pelvis':{0:{}}}};
+  assert.deepEqual(playerRenderPose(actor,0,painted),playerPose(actor,0,painted));
+  painted.boneSprites['Body and pelvis'][0].humanoidBaseFit=true;
+  assert.deepEqual(playerRenderPose(actor,0,painted),fitted);
+});
 test('Appearance persists with a character independently of stat-bearing gear', () => {
   const profiles = new Profiles(); profiles.save = () => {};
   const hero = profiles.create('Cosmetic test', DEFAULT_APPEARANCE), player = {};

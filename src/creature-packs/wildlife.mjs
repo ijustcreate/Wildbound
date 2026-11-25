@@ -10,13 +10,7 @@ import { pixelLine, pixelPolygon, pixelVolume } from '../pixel-shapes.mjs';
 import { paintLayers } from '../render-order.mjs';
 import { defaultSpiderMotion, drawSpider } from '../spider-motion.mjs';
 import { defaultNightMotion, drawNightRig } from '../night-rigs.mjs';
-import { squirrelWowClip } from '../squirrel-wow-motion.mjs';
-import { sheepWowClip } from '../sheep-wow-motion.mjs';
-import { skunkWowClip } from '../skunk-wow-motion.mjs';
-import { llamaWowClip } from '../llama-wow-motion.mjs';
-import { turkeyWowClip } from '../turkey-wow-motion.mjs';
-import { goldenRetrieverWowClip, goldenRetrieverWowMotionProvenance } from '../golden-retriever-wow-motion.mjs';
-import { TRICERATOPS_WOW_MOTION } from '../triceratops-wow-motion-data.mjs';
+import { creatureMotionLoader } from './motion-loading.mjs';
 import { requestedCreatureDefaults } from '../requested-creature-transfer.mjs';
 import { take } from '../items.mjs';
 
@@ -224,28 +218,7 @@ function crabJawOpening(action,frame,clip){
 
 function clipFor(model,action){
   if(model.type==='crab'&&crabClawTimeline(action))return crabClawClip(action);
-  if(model.type==='golden_retriever'){
-    const donorClip=goldenRetrieverWowClip(action);
-    if(donorClip)return donorClip;
-  }
-  if(model.type==='llama'){
-    const donorClip=llamaWowClip(action);
-    if(donorClip)return donorClip;
-  }
-  if(model.type==='skunk'){
-    const donorAction=({idle:'freeze',walk:'amble',run:'scurry'})[action]||action;
-    const donorClip=skunkWowClip(donorAction);
-    if(donorClip)return donorClip;
-  }
-  if(model.type==='sheep'){
-    const donorClip=sheepWowClip(action);
-    if(donorClip)return donorClip;
-  }
-  if(model.type==='squirrel'){
-    const donorClip=squirrelWowClip(action);
-    if(donorClip)return donorClip;
-    if(action==='leap')return squirrelClipFor(model,action);
-  }
+  if(model.type==='squirrel'&&action==='leap')return squirrelClipFor(model,action);
   const names=Object.keys(model.joints),frames=action==='idle'||action==='strut'||action==='flap-run'?8:action==='flap-attack'?10:action==='walk'||action==='run'||action==='graze'?8:6;
   const loop=['idle','walk','run','graze','trot','waddle','scuttle','amble','strut','scamper','crawl','clamber','heavy-walk','quick-walk','flap-run'].includes(action);
   return {fps:loop?10:16,length:frames,loop,keys:Array.from({length:frames},(_,frame)=>{
@@ -301,13 +274,6 @@ function makeRig(kind,spec){
   const joints=kind==='squirrel'?squirrelJoints(spec):kind==='sheep'?sheepJoints(spec):kind==='skunk'?skunkJoints(spec):spec.form==='crab'?crabJoints():spec.form==='penguin'||spec.form==='turkey'?bipedJoints(spec.form):quadrupedJoints(spec);
   const model={version:1,artGeneration:1,type:kind,name:spec.name,palette:clone(spec.palette),shape:clone(spec.shape),joints:Object.fromEntries(Object.entries(joints).map(([name,joint])=>[name,{parent:joint.parent,position:[...joint.position]}])),visibility:Object.fromEntries(Object.keys(joints).map(name=>[name,Array.from({length:VIEWS},(_,d)=>!name.startsWith('eye')||(![3,4,5].includes(d)&&!(name==='eyeL'&&d===6)&&!(name==='eyeR'&&d===2)))])),clips:{}};
   const actions=new Set(['idle','walk','run','attack','hurt','death',...spec.clips]);if(kind==='sheep'||kind==='skunk')actions.add('freeze');if(kind==='skunk')actions.add('scurry');for(const action of actions)model.clips[action]=clipFor(model,action);
-  if(kind==='turkey'){
-    // Stand retargets cleanly. Keep the donor Walk as a named candidate for
-    // review, but preserve the native strut for gameplay: donor foot pivots
-    // travel below the ground baseline in multiple sampled frames.
-    model.clips.idle=turkeyWowClip('stand')||model.clips.idle;
-    model.clips['wowhead-walk']=turkeyWowClip('walk')||model.clips.walk;
-  }
   return model;
 }
 
@@ -707,14 +673,66 @@ spider.clips.pounce=clipFor(spider,'pounce');
 const models=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[
   kind,kind==='river_otter'?otterMotion:kind==='fox_kit'?existingFox:kind==='jumping_spider'?spider:makeRig(kind,s),
 ]));
-models.golden_retriever.motionDonorRevision=1;
-models.golden_retriever.provenance=clone(goldenRetrieverWowMotionProvenance);
-for(const [action,clip] of Object.entries(TRICERATOPS_WOW_MOTION.clips))models.triceratops.clips[`wowhead-${action}`]=clone(clip);
-models.triceratops.motionDonorRevision=1;
-models.triceratops.provenance=clone(TRICERATOPS_WOW_MOTION.provenance);
+const editedMotion = new Set();
+function applyDonor(model, getClip, aliases = {}) {
+  if (editedMotion.has(model.type)) return;
+  for (const action of Object.keys(model.clips)) {
+    const clip = getClip(aliases[action] ?? action);
+    if (clip) model.clips[action] = clip;
+  }
+}
+export const wildlifeMotionLoading = creatureMotionLoader({
+  async squirrel() {
+    const { squirrelWowClip } = await import('../squirrel-wow-motion.mjs');
+    applyDonor(models.squirrel, squirrelWowClip);
+  },
+  async sheep() {
+    const { sheepWowClip } = await import('../sheep-wow-motion.mjs');
+    applyDonor(models.sheep, sheepWowClip);
+  },
+  async skunk() {
+    const { skunkWowClip } = await import('../skunk-wow-motion.mjs');
+    applyDonor(models.skunk, skunkWowClip, { idle: 'freeze', walk: 'amble', run: 'scurry' });
+  },
+  async llama() {
+    const { llamaWowClip } = await import('../llama-wow-motion.mjs');
+    applyDonor(models.llama, llamaWowClip);
+  },
+  async golden_retriever() {
+    const { goldenRetrieverWowClip, goldenRetrieverWowMotionProvenance } = await import('../golden-retriever-wow-motion.mjs');
+    if (editedMotion.has('golden_retriever')) return;
+    applyDonor(models.golden_retriever, goldenRetrieverWowClip);
+    models.golden_retriever.motionDonorRevision = 1;
+    models.golden_retriever.provenance = clone(goldenRetrieverWowMotionProvenance);
+  },
+  async turkey() {
+    const { turkeyWowClip } = await import('../turkey-wow-motion.mjs');
+    if (editedMotion.has('turkey')) return;
+    const { clips } = models.turkey;
+    // Keep donor Walk available in Studio alongside the native gameplay strut.
+    clips.idle = turkeyWowClip('stand') || clips.idle;
+    clips['wowhead-walk'] = turkeyWowClip('walk') || clips.walk;
+  },
+  async triceratops() {
+    const { TRICERATOPS_WOW_MOTION } = await import('../triceratops-wow-motion-data.mjs');
+    if (editedMotion.has('triceratops')) return;
+    const model = models.triceratops;
+    for (const [action, clip] of Object.entries(TRICERATOPS_WOW_MOTION.clips)) model.clips[`wowhead-${action}`] = clone(clip);
+    model.motionDonorRevision = 1;
+    model.provenance = clone(TRICERATOPS_WOW_MOTION.provenance);
+  },
+});
+// Direct library imports (scripts and tests) keep their synchronous rig API.
+if (!globalThis.window?.wildboundBoot) await Promise.all(wildlifeMotionLoading.all());
 function validateModel(kind,m){const baseline=models[kind];if(!baseline||m?.type!==kind||!m.joints||!m.palette||!m.shape||!m.clips)return false;for(const [name,j]of Object.entries(baseline.joints))if(!m.joints[name]||!Array.isArray(m.joints[name].position)||m.joints[name].position.length!==3||m.joints[name].position.some(v=>!Number.isFinite(v)))return false;return Object.values(m.visibility||{}).every(v=>Array.isArray(v)&&v.length===8&&v.every(x=>typeof x==='boolean'));}
 function defaultFor(kind){return()=>clone(models[kind]);}
-function replaceFor(kind){return model=>{if(!validateModel(kind,model))throw Error('Invalid wildlife rig: '+kind);for(const key of Object.keys(models[kind]))delete models[kind][key];Object.assign(models[kind],clone(model));};}
+function replaceFor(kind){return model=>{
+  if(!validateModel(kind,model))throw Error('Invalid wildlife rig: '+kind);
+  const authored = clone(model), current = models[kind];
+  editedMotion.add(kind);
+  for(const key of Object.keys(current))delete current[key];
+  Object.assign(current,authored);
+};}
 const subject=(kind,s)=>({name:s.name,data:models[kind],defaults:defaultFor(kind),replace:replaceFor(kind),draw:(c,a,t,m=models[kind],pose=null)=>paintWildlife(c,{...a,kind},t,m,pose),sprite:kind==='fox_kit'?'fox':kind,selected:models[kind].joints.head?'head':'pelvis',palette:Object.keys(models[kind].palette),shapeKeys:Object.keys(models[kind].shape),tracks:Object.keys(models[kind].joints).filter(n=>/^(head|tail|frontPaw|rearPaw|foot|claw|horn|shell|wing)/.test(n)).slice(0,8),clip:kind==='fox_kit'?'walk':'run',scale:kind==='squirrel'||kind==='baby_triceratops'?7:kind==='crab'||kind==='snail'?6:5});
 const otterSubject={name:'River otter / swimming and foraging',data:otterMotion,defaults:defaultOtterMotion,replace:replaceOtterMotion,draw:drawOtterRig,sprite:'river_otter',selected:'tailTip',palette:Object.keys(otterMotion.palette),shapeKeys:Object.keys(otterMotion.shape),tracks:['tailBase','tailMid','tailTip','tailEnd','frontPawL','frontPawR','head','find'],clip:'swim',scale:6};
 const subjects=Object.fromEntries(Object.entries(specs).map(([kind,s])=>[kind,kind==='river_otter'?otterSubject:subject(kind,s)]));

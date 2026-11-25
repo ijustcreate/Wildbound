@@ -46,7 +46,8 @@ export function charmCanTarget(g,source,target){
 export function playerCombatTargets(g,source){
  const owner=source?.owner??source?.id;
   return [...(g.enemies||[]),...(g.ghosts||[]).filter(a=>a.wildTiger&&a.faction==='hostile'&&!a.room&&a.hp>0),...(g.players||[]).filter(p=>p.id!==owner&&!p.room&&
-   (inDiagonArena(g)?arenaCanFight(g,source,p):friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>samePirateCombatFloor(source,e)&&charmCanTarget(g,source,e));
+   (inDiagonArena(g)?arenaCanFight(g,source,p):friendlyIceTarget(g,source,p)||g.pvp||isCharmed(p)||source?.charmShot||isCharmed(source)))].filter(e=>
+    !((e.wildSlimeRole||e.smokeMonsterRole)&&e.unattackable)&&samePirateCombatFloor(source,e)&&charmCanTarget(g,source,e));
 }
 export const charmShot=p=>({charmShot:isCharmed(p),...arenaShotPermit(p),...pirateShotFloor(p)});
 export function tickCharmedPlayer(g,p,dt){

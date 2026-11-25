@@ -3,6 +3,18 @@ import {beginHouseWorldTravel} from './house-worlds.mjs';
 export const BOARD_REVEAL_SECONDS=5;
 export const EVENT_DURATIONS=[1,3,5,7,12,20];
 export const eventDuration=value=>EVENT_DURATIONS.includes(Number(value))?Number(value):BOARD_REVEAL_SECONDS;
+
+export function dismissBoardResult(g){
+ const r=g.roll;
+ if(!r?.resolved)return false;
+ g.roll=null;
+ if(!r.centerLanding)g.eventTime=0;
+ finishBoardTurn(g,r);
+ if(!r.centerLanding)beginHouseWorldTravel(g,r.total);
+ g.rollCooldown=1.25;
+ return true;
+}
+
 // Roll time is independent of world time: hazards, actors and air stay frozen.
 export function tickBoardSequence(g,dt,inputs={}){
  const r=g.roll;if(!r)return false;
@@ -15,12 +27,7 @@ export function tickBoardSequence(g,dt,inputs={}){
  for(const p of g.players){const input=inputs[p.device]||{};if(input.jump)p.boardJumpRelease=true;else delete p.boardJumpRelease;p.previousInput={...input};p.jumpHeld=!!input.jump;p.dashHeld=!!input.dodge;p.charge=0;}
  if(owner&&r.elapsed>=1.6&&!r.resolved)owner.boardProgress=Math.min(r.targetProgress,r.startProgress+(r.elapsed-1.6)/.16);
  if(r.elapsed>=r.landingAt&&!r.resolved){g.resolveRoll();if(!r.centerLanding)g.eventOnBoard=true;}
- if(dismiss||r.elapsed>=r.landingAt+eventDuration(g.eventDuration)){
-  g.roll=null;if(!r.centerLanding)g.eventTime=0;
-  finishBoardTurn(g,r);
-  if(!r.centerLanding)beginHouseWorldTravel(g,r.total);
-  g.rollCooldown=1.25;
- }
+ if(dismiss||r.elapsed>=r.landingAt+eventDuration(g.eventDuration))dismissBoardResult(g);
  return true;
 }
 export function boardDicePose(roll,index){

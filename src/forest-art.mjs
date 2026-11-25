@@ -1,7 +1,7 @@
-import {waterAt} from './environment.mjs';
 import {drawJungleFern,fernAccentGroup} from './fern-art.mjs';
 import {vegetationWindStrength} from './vegetation-motion.mjs';
 import {forestHash as hash, forestNoise as noise, forestWind, clearingDistance, routeDistance,forestPavingAt} from './forest-landscape.mjs';
+import {addPixelShadowPolygon} from './pixel-shadow.mjs';
 
 const rect = (c, x, y, w, h, color) => {
   c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h));
@@ -94,47 +94,33 @@ export function drawLandscapeGround(c, g, bounds) {
     sx * 32, sy * 32, (ex - sx) * 32, (ey - sy) * 32);
 }
 
-export function drawForestBankBase(c, g, x, y, kind) {
-  if (!['shallow', 'water', 'floodbridge'].includes(kind)) return;
-  const terrain = g.terrain, tx = x / 32, ty = y / 32;
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-    if (waterAt(g,(tx+dx)*32+16,(ty+dy)*32+16) !== 'grass') continue;
-    for (let k = 0; k < 32; k += 4) {
-      const depth = 3 + Math.floor(noise((x + k) / 38, (y + k) / 38, g.seed) * (kind==='shallow'?5:4));
-      const px = dx ? x + (dx < 0 ? 0 : 32 - depth) : x + k;
-      const py = dy ? y + (dy < 0 ? 0 : 32 - depth) : y + k;
-      rect(c, px, py + 2, dx ? depth : 4, dy ? depth : 4, '#315b4b');
-      rect(c, px, py, dx ? depth : 4, dy ? depth : 4, '#7c9561');
-      if (hash(px, py) > .65) rect(c, px, py - 2, 2, 4, '#b0b777');
-      if(kind==='shallow'&&hash(px,py+g.seed)>.93){rect(c,px-2,py+3,7,4,'#446962');rect(c,px-2,py+1,6,3,'#9da989');}
-    }
-  }
- }
-export function drawForestBankFlow(c,g,x,y,kind){
-  if (!['shallow','water','floodbridge'].includes(kind))return;
-  // World-coordinate streamlets travel downstream without restarting at tile edges.
-  c.save(); c.beginPath(); c.rect(x, y, 32, 32); c.clip();
-  for (let py = Math.floor((y - g.time * 12) / 47) * 47 + g.time * 12; py < y + 32; py += 47) {
-    const px = Math.floor(x / 19) * 19 + Math.sin(py * .012 + g.seed) * 5;
-    rect(c, px, py, 2, 9, '#a8d7b955'); rect(c, px + 12, py + 16, 1, 6, '#d4e9bf66');
-  }
-  c.restore();
+const broadShadow = [[14,8],[23,7],[27,9],[33,5],[42,6],[48,13],[44,22],[34,24],[29,19],[17,21],[9,17],[10,12]];
+const narrowShadow = [[20,6],[23,7],[22,10],[35,12],[30,15],[40,20],[30,23],[19,18],[10,17],[12,14],[7,12],[16,11]];
+const rootContact = [[-15,1],[-10,-2],[-4,-3],[5,-3],[10,-1],[16,2],[13,4],[5,5],[-6,5],[-15,3]];
+const trunkShadow = [[-3,0],[4,-2],[36,13],[31,17],[5,4]];
+function shadowOutline(c, points, x, y, sx, sy, color, step=2) {
+  c.fillStyle=color; c.beginPath();
+  addPixelShadowPolygon(c,points.map(([px,py])=>[x+px*sx,y+py*sy]),step);
+  c.fill();
 }
-
-export function drawForestBank(c,g,x,y,kind){drawForestBankBase(c,g,x,y,kind);drawForestBankFlow(c,g,x,y,kind);}
-
-export function drawCanopyShadow(c, p, g) {
-  const base = p.rootY ?? p.y + p.size * .35;
-  if (p.fallen) {rect(c, p.x - 9, base, 25, 5, '#173e3444'); return;}
-  const s = p.size / 64, wind = forestWind(p.x, base, g.time) * 2;
-  c.save(); c.globalAlpha *= .24;
-  polygon(c, [[p.x - 4, base], [p.x + 6, base], [p.x + 53 * s, base + 23 * s], [p.x + 45 * s, base + 29 * s]], '#173d3b');
-  for (let row = -12; row < 13; row += 3) {
-    const span = Math.sqrt(Math.max(0, 1 - row * row / 169)) * 25;
-    const x = p.x + (40 + row * .6 - span) * s + wind, y = base + (18 + row) * s;
-    rect(c, x, y, (span * 2 + hash(row, p.x) * 3) * s, 3 * s, '#163b37');
+export function drawCanopyShadow(c, p, time = 0, cast = true) {
+  if (p.destroyed || (p.depleted && !p.fallen)) return;
+  const shrub = p.kind === 'bush' || p.kind === 'frost_shrub';
+  const size = p.size || 64, s = size / (shrub ? 40 : 64);
+  const artBase = p.y + size * (shrub ? .19 : .35);
+  const base = p.kind === 'frost_shrub' ? artBase : p.rootY ?? artBase;
+  // The low, cool root contact belongs beneath the prop on either shadow setting.
+  const contactScale = s * (shrub ? 1.12 : p.fallen ? .71 : 1);
+  shadowOutline(c,rootContact,p.x,base,contactScale,contactScale,'#18332f4c',1);
+  rect(c, p.x-7*contactScale, base-contactScale, 15*contactScale, 3*contactScale, '#142a2875');
+  if (!cast || p.fallen || p.falling || Number.isFinite(p.bushBurnAt)) return;
+  if (shrub) {
+    shadowOutline(c,broadShadow,p.x-14*s,base-3*s,s*.72,s*.36,'#18372f55');
+    return;
   }
-  c.restore();
+  const crown = p.treeType === 'pine' || p.kind === 'snow_tree' ? narrowShadow : broadShadow;
+  shadowOutline(c,trunkShadow,p.x,base,s,s,'#17342d4e');
+  shadowOutline(c,crown,p.x+forestWind(p.x,base,time)*2,base,s,s,'#16382f4d');
 }
 
 export function drawLandscapeCover(c, g, visible,shaderGrass=false) {

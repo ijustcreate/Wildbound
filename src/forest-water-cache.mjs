@@ -1,7 +1,6 @@
 import {waterAt} from './environment.mjs';
-import {drawWaterSurface} from './water-surface.mjs';
 import {clipRiverTile,drawDepthCorners} from './river-edges.mjs';
-import {drawForestBankBase,drawForestBankFlow} from './forest-art.mjs';
+import {drawForestBankBase,drawForestBankFlow,drawForestWater,forestShoreline} from './forest-shoreline.mjs';
 // One native-resolution atlas per bounded forest, shared by every camera.
 // Four-pixel gutters retain bank overhangs and the original tile/depth order.
 const layers=new WeakMap(),wet=new Set(['water','shallow','bridge','floodbridge']);
@@ -13,8 +12,35 @@ export function forestWaterLayer(g,bounds=null){
  const c=layer.canvas.getContext('2d');c.imageSmoothingEnabled=false;let visible=layer.tiles;
  if(bounds){visible=[];for(let y=Math.max(0,bounds.sy);y<Math.min(50,bounds.ey);y++)for(let x=Math.max(0,bounds.sx);x<Math.min(50,bounds.ex);x++){const index=y*50+x,slot=layer.tiles.get(index);if(slot)visible.push([index,slot]);}}
  layer.updatedTiles=0;
- for(const [index,slot]of visible){if(slot.frame===frame)continue;const x=index%50*32,y=Math.floor(index/50)*32,kind=slot.kind;
- if(!slot.bankReady){const b=layer.banks.getContext('2d');b.save();b.beginPath();b.rect(slot.x,slot.y,40,40);b.clip();b.translate(slot.x+4-x,slot.y+4-y);if(kind==='shallow')clipRiverTile(b,g,x,y);if(kind==='water')drawDepthCorners(b,g,x,y);drawForestBankBase(b,g,x,y,kind);b.restore();slot.bankReady=true;}
- c.clearRect(slot.x,slot.y,40,40);c.save();c.beginPath();c.rect(slot.x,slot.y,40,40);c.clip();c.translate(slot.x+4-x,slot.y+4-y);if(kind==='shallow')clipRiverTile(c,g,x,y);drawWaterSurface(c,g,x,y,32,32);c.drawImage(layer.banks,slot.x,slot.y,40,40,x-4,y-4,40,40);drawForestBankFlow(c,g,x,y,kind);c.restore();slot.frame=frame;layer.updatedTiles++;}
+ for(const [index,slot] of visible){
+  if(slot.frame===frame) continue;
+  const x=index%50*32,y=Math.floor(index/50)*32,kind=slot.kind;
+  if(!slot.shore){
+   const bank=layer.banks.getContext('2d');
+   bank.save();
+   bank.beginPath();
+   bank.rect(slot.x,slot.y,40,40);
+   bank.clip();
+   bank.translate(slot.x+4-x,slot.y+4-y);
+   if(kind==='shallow') clipRiverTile(bank,g,x,y);
+   if(kind==='water') drawDepthCorners(bank,g,x,y);
+   slot.shore=forestShoreline(g,x,y,kind);
+   drawForestBankBase(bank,slot.shore);
+   bank.restore();
+  }
+  c.clearRect(slot.x,slot.y,40,40);
+  c.save();
+  c.beginPath();
+  c.rect(slot.x,slot.y,40,40);
+  c.clip();
+  c.translate(slot.x+4-x,slot.y+4-y);
+  if(kind==='shallow') clipRiverTile(c,g,x,y);
+  drawForestWater(c,g,x,y,kind);
+  c.drawImage(layer.banks,slot.x,slot.y,40,40,x-4,y-4,40,40);
+  drawForestBankFlow(c,slot.shore,g.time||0);
+  c.restore();
+  slot.frame=frame;
+  layer.updatedTiles++;
+ }
  layer.frame=frame;return layer;
 }

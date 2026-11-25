@@ -5,6 +5,7 @@ import {magicBoltColor,magicChargePalette} from './magic-bolt-render.mjs';
 import {wandTipWorld} from './player-motion.mjs';
 import {drawManaWardSparkles} from './diagon-garden-ward-art.mjs';
 import {drawReturnedHeartGlow} from './returned-heart-glow.mjs';
+import {activeLevelUp,drawLevelUp} from './level-up.mjs';
 export {GAMEPLAY_FX};
 const limits=new WeakMap();
 export function emitGameplayFx(g,id,point,options={}){
@@ -38,11 +39,31 @@ export function actorGameplayStatuses(a,time){
  if(a.hp<=0)return [];
  return [['burning',a.burning>0],['poison',a.poison>0],['frozen',a.frozen>0||a.bansheeIce>0],['stunned',a.stun>0],['sleep',a.sleeping>0],['charm',a.succubusCharm?.remaining>0],['slow',a.slowUntil>time]].filter(([,on])=>on).map(([id])=>id);
 }
+export function drawActorLevelUp(c,g,a,x,y,layer='both'){
+ if(!activeLevelUp(a,g.time))return;
+ if(layer==='back'){
+  drawLevelUp(c,a,g.time,{x,y,layer});
+  return;
+ }
+ const room=a.room||null,actorX=room?(a.roomX??a.x):a.x,actorY=room?(a.roomY??a.y):a.y;
+ let labelOffset=0,nearby=0;
+ for(const hero of g.players||[]){
+  if(hero.id===a.id)break;
+  if((hero.room||null)!==room||!activeLevelUp(hero,g.time))continue;
+  const heroX=room?hero.roomX:hero.x,heroY=room?hero.roomY:hero.y;
+  if(Math.abs(heroX-actorX)<132&&Math.abs(heroY-actorY)<68){
+   nearby++;
+   labelOffset=Math.max(labelOffset,nearby*25+actorY-heroY);
+  }
+ }
+ drawLevelUp(c,a,g.time,{x,y,layer,labelOffset:labelOffset+(g.players?.length>1?18:0)});
+}
 export function drawActorGameplayFx(c,g,a,size,layer='front'){
  const x=a.room?(a.roomX??a.x):a.x,y=(a.room?(a.roomY??a.y):a.y)-(a.jumpHeight||0)-(a.groundHeight||0),context={actor:a,time:g.time,size,layer};
  drawReturnedHeartGlow(c,a,g.time,x,y,size,layer);
  for(const id of actorGameplayStatuses(a,g.time))drawGameplayFx(c,id,x,y,g.time,Number(a.id)||0,context);
  if(layer==='front')drawManaWardSparkles(c,a,g.time,x,y);
+ drawActorLevelUp(c,g,a,x,y,layer);
  if(layer!=='front'||a.hp<=0||!(a.charge>0))return;
  const effect=effects[GAMEPLAY_FX.charge.slot];
  for(const slot of ['hand1','hand2']){

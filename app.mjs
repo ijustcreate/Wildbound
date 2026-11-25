@@ -36,6 +36,7 @@ import { createLobbySettingsControllerRouter } from './src/lobby-settings-contro
 import { FieldKit } from "./src/field-kit.mjs";
 import { FrameMetrics, FixedClock } from "./src/performance.mjs";
 import { createPerformanceOverlay } from './src/performance-overlay.mjs';
+import { LiveEditor } from './src/live-editor.mjs';
 import { DEFAULT_APPEARANCE, appearanceControls } from "./src/appearance.mjs";
 import { drawPlayer } from "./src/player-motion.mjs";
 import { generateWorld } from "./src/world.mjs";
@@ -49,7 +50,7 @@ import { Assets } from "./src/assets.mjs";
 import { Renderer, drawMenu,drawDie } from "./src/render.mjs";
 import {warmSealVortex} from './src/seal-vortex.mjs';
 import { drawBoard } from "./src/board.mjs";
-import { homesteadBoardView } from "./src/homestead-board.mjs";
+import { dismissHomesteadBoardResult, homesteadBoardView } from "./src/homestead-board.mjs";
 import { Animator } from "./src/animation.mjs";
 import { ITEM_ART_TYPES, drawItem } from "./src/item-art.mjs";
 import {
@@ -82,6 +83,7 @@ import {
 import { count, give, equip, ITEMS } from "./src/items.mjs";
 import { Designer } from "./src/designer.mjs";
 import { loadDefinitions, creatures } from "./src/definitions.mjs";
+import { loadAdventureCreatureMotions } from './src/creature-packs/index.mjs';
 import { createGameDebug } from './src/game-debug.mjs';
 import { createDebugCodeTracker, createPauseCheatTracker } from './src/debug-code.mjs';
 loadDefinitions(EVENTS, ITEMS);
@@ -345,6 +347,7 @@ async function loadExpeditionCheckpoint(mode) {
 async function openExpeditionCheckpoint(saved,mode,{isCurrent,onOpen}={}) {
   // Validate the checkpoint before replacing the current party or world.
   if(Boolean(saved.wilds)!==(mode==='wilds'))throw Error('The checkpoint belongs to a different adventure mode.');
+  prepareAdventureMotion();
   const next=restoreSession(structuredClone(saved));
   if(next.localWorld)throw Error('Open this named world through Your living worlds.');
   profiles.reconcileCheckpoint(next);
@@ -439,6 +442,14 @@ for(const [id,parent,label]of [['pause-worlds','pause-dialog','WORLDS · SAVE & 
 const metrics = new FrameMetrics(),
   fixedClock = new FixedClock();
 const performanceOverlay = createPerformanceOverlay(metrics);
+const liveEditor = new LiveEditor({
+  root:$("play"),
+  canvas:$("game-canvas"),
+  getContext:()=>({game,renderer,available:screen==="play"&&!rooms.role,
+    label:game.trainTest?.design.activeRoom?.replaceAll('_',' ')||game.trainTest?.design.name||game.generatedEnvironment||'Expedition'}),
+  toggleProfiler:()=>{metrics.enabled=!metrics.enabled;metrics.reset();return metrics.enabled;},
+  clearMouse:()=>{mouse.down=false;mouse.dash=false;mouse.active=false;mouse.shackInteract=false;},
+});
 let fieldWasPaused = false;
 const fieldKit = new FieldKit({
   game: () => game,
@@ -468,8 +479,28 @@ document.documentElement.style.setProperty(
 );
 document.body.dataset.boardSize =
   localStorage.getItem("wildbound-board-size") || "compact";
+let adventureMotionRequest = null;
+function prepareAdventureMotion() {
+  if (adventureMotionRequest) return;
+  const request = loadAdventureCreatureMotions();
+  if (!request) return;
+  adventureMotionRequest = request;
+  const loading = $('creature-motion-loading');
+  loading.hidden = false;
+  request.then(results => {
+    for (const result of results) if (result.status === 'rejected') {
+      console.warn('Creature motion failed to load. Using the native animation.', result.reason);
+    }
+  }).finally(() => {
+    adventureMotionRequest = null;
+    loading.hidden = true;
+    fixedClock.reset();
+    last = performance.now();
+  });
+}
 function show(next) {
   if(next==='home'){newLobby();return;}
+  if(next==='play')prepareAdventureMotion();
   screen = next;
   (next === 'lobby' ? $('lobby') : $('play')).append(heroRoot);
   (next==='lobby'?(playableLobby?.area||$('lobby')):$('play')).append($('roster'));
@@ -780,6 +811,7 @@ function startGame() {
     nameNewCharacter(unnamed, startGame);
     return;
   }
+  prepareAdventureMotion();
   game.spriteLibrary = assets.library;
   game.environment = game.houseWorldsEnabled?'house':$("environment").value;
   game.mapMode = game.houseWorldsEnabled?'bounded':$("map-mode").value || 'bounded';
@@ -948,7 +980,20 @@ function updateControlGuide(message){
 }
 function updateHud() {
   if(game.trainTest){
-    const t=game.trainTest;$('round-label').textContent=t.design.wildLands?'THE WILD LANDS':'DEV RAILWAY';$('turn-label').textContent=t.design.name;$('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';$('threat-label').textContent=Math.round(t.speed)+' px/s';
+    const t=game.trainTest,closeup=homesteadBoardView(game,true),home=closeup||(boardPinned&&homesteadBoardView(game));
+    if(home){
+      const id=closeup?.roll.playerId??home.repeatTurnPlayerId??home.turnOrder?.[home.turn];
+      const player=game.players.find(p=>p.id===id);
+      const confirm=player?.device==='keyboard'?'Enter':controllerButtonNames(player?.controllerFamily||'generic')[0];
+      $('turn-label').textContent=player?`${player.name}’s turn`:'Homestead Wildbound';
+      $('turn-caption').textContent=closeup?.roll.resolved?`${confirm} to continue`:'';
+      $('turn-dot').style.background=player?.color||'#d5ad64';
+      $('turn-dot').style.color=player?.color||'#d5ad64';
+    }else{
+      $('turn-label').textContent=t.design.name;
+      $('turn-caption').textContent='J: JUMP · E: INTERACT · CAB W/S: THROTTLE · F: WHISTLE';
+    }
+    $('round-label').textContent=t.design.wildLands?'THE WILD LANDS':'DEV RAILWAY';$('threat-label').textContent=Math.round(t.speed)+' px/s';
     updateControlGuide(t.persistent?'Jump at a raised door to board. Camp preserves your Wilds checkpoint.':'Jump at a raised door to board. Use Developer tools to return to your expedition.');
     for(const id of ['event-card','dice-result','game-toast'])$(id)?.classList.add('hidden');renderRoster();return;
   }
@@ -1234,6 +1279,7 @@ async function startWildsExpedition(player,done=()=>{}){
    return;
   }
   pendingFreshWilds=null;
+  prepareAdventureMotion();
   const result=enterWildLands(target,{persistent:true,homeStart:true});
   if(!result.ok)return {ok:false,reason:result.message};
   done();
@@ -1313,6 +1359,10 @@ $('pause-settings').onclick=()=>openSettings(controllerDialogDevice||'keyboard',
 $('pause-dev').onclick=()=>{gameDebug ||= createGameDebug({getGame:()=>game,events:EVENTS,items:ITEMS,give,metrics,onTrainEnter:enterTrainScreen,onTrainReturn:leaveTrainScreen,onPerformanceChange:enabled=>performanceOverlay.panel.hidden=!enabled});const host=$('settings-dialog').open?$('settings-dialog'):$('pause-dialog');host.dataset.debugOwnerId=$('pause-dialog').dataset.debugOwnerId||'';gameDebug.open(host);};
 $("board-button").onclick = () => (boardPinned = !boardPinned);
 $("close-board").onclick = () => {
+  if(homesteadBoardView(game,true)?.roll){
+    if(rooms.role!=='client'&&dismissHomesteadBoardResult(game))boardPinned=false;
+    return;
+  }
   if(game.roll)return;
   boardPinned = false;
   boardDismissedRoll = game.roll;
@@ -1599,6 +1649,7 @@ mountWebFeedback(() => screen);
 window.addEventListener("keydown", (e) => {
   if(lobbyLanding?.handleKey(e))return;
   const modal = document.querySelector('dialog[open]');
+  if(!modal&&liveEditor.keyboard(e)){e.preventDefault();return;}
   if(e.code==='KeyY' && pauseCheatActive()){
     e.preventDefault();
     if(!e.repeat)pressPauseCheat();
@@ -1712,11 +1763,13 @@ window.addEventListener("blur", () => {
   mouse.shackInteract = false;
 });
 $("game-canvas").addEventListener("pointermove", (e) => {
+  if(liveEditor.active)return;
   mouse.x = e.clientX;
   mouse.y = e.clientY;
   mouse.active = true;
 });
 $("game-canvas").addEventListener("pointerdown", (e) => {
+  if(liveEditor.pointerDown(e)){e.preventDefault();return;}
   if (e.button === 2) mouse.dash = true;
   if (e.button === 0) {
     if(screen==='play'&&!paused&&renderer?.viewport&&game?.trainTest?.design?.wildLands&&!document.querySelector('dialog[open]')){
@@ -2111,6 +2164,7 @@ function inputFrame() {
       aimX: continuousAim.x,
       aimY: continuousAim.y,
       quidditchBall: !!pad.buttons[2]?.pressed,
+      broomDescend: directionPressed(13),
       attack: pressed("attack"),
       loot: pressed("loot"),
       jump: pressed("jump"),
@@ -2188,6 +2242,7 @@ function inputFrame() {
     tvA:keys.has("KeyZ"),
     tvX:keys.has("KeyX"),
     quidditchBall:keys.has("KeyX"),
+    broomDescend:keys.has("KeyK"),
     x:
       (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) -
       (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0),
@@ -2242,7 +2297,9 @@ function frame(now) {
     if(paused)refreshSaveStatus();
     lobbyLanding?.sync();
     designer?.animate(dt);
-    const wasBlocked = paused || !!document.querySelector('dialog[open]');
+    liveEditor.tick();
+    const preparingMotion = screen === 'play' && !!adventureMotionRequest;
+    const wasBlocked = paused || preparingMotion || liveEditor.holding || !!document.querySelector('dialog[open]');
     const inputs = inputFrame();
     diagnosticAge+=dt;
     if(diagnosticAge>=.5&&window.desktop?.reportDiagnostics){
@@ -2268,7 +2325,9 @@ function frame(now) {
     if (screen === 'lobby' && playableLobby) {
       const connected = new Set(Array.from(navigator.getGamepads?.()||[]).filter(Boolean).map(p=>'pad:'+p.index));
       for(const p of game.players) {p.lobbyDisconnected=p.device.startsWith('pad:')&&!connected.has(p.device);if(p.lobbyDisconnected)p.ready=false;}
+      const countdown = playableLobby.state.countdown;
       playableLobby.update(dt,inputs,blocked);
+      if (countdown === null && playableLobby.state.countdown !== null) prepareAdventureMotion();
       hudAge+=dt;if(hudAge>.12){renderRoster();hudAge=0;}
       heroUI.draw(game,renderer);
     }
@@ -2277,9 +2336,9 @@ function frame(now) {
       workshop.animate(now / 1000);
       framesWorkshop?.animate(now / 1000);
     }
-    if (screen === "play" && renderer) {
+    if (screen === "play" && renderer && !adventureMotionRequest) {
       const effective = rooms.tick(game, dt, inputs);
-      if (!paused && rooms.role !== "client")
+      if (!paused && !liveEditor.holding && rooms.role !== "client")
         metrics.measure("simulation", () =>
           fixedClock.advance(elapsed, (step) => game.update(step, effective)),
         );
@@ -2294,6 +2353,7 @@ function frame(now) {
       renderer.animator.metrics = metrics;
       metrics.measure("world", () => {
         renderer.draw(game, dt);
+        if(liveEditor.active)metrics.measure('liveEdit',()=>liveEditor.draw(renderer));
         (renderer.bellglassEffect??=new BellglassScreenEffect()).draw(renderer.ctx,game);
       });
       metrics.measure("inventory", () =>
@@ -2304,12 +2364,14 @@ function frame(now) {
         ),
       );
       fieldKit.tick(now / 1000);
-      const homeBoard=homesteadBoardView(game,true),boardGame=homeBoard||game,roll=boardGame.roll;
+      const homeBoard=homesteadBoardView(game,true),roll=homeBoard?.roll||game.roll;
+      const pinnedHome=boardPinned&&!roll&&homesteadBoardView(game);
+      const boardGame=homeBoard||pinnedHome||game;
       const boardVisible = boardPinned || !!roll;
       if(roll){boardPinned=false;$('event-card').classList.add('hidden');}
       $("board-panel").classList.toggle("hidden", !boardVisible);
       $("board-panel").classList.toggle('board-sequence',!!roll);
-      $('close-board').disabled=!!roll;
+      $('close-board').disabled=!!roll&&!(homeBoard?.roll.resolved&&rooms.role!=='client');
       if (boardVisible) {
         const boardCanvas=$('board-closeup'),boardWidth=Math.max(560,Math.round(boardCanvas.getBoundingClientRect().width*Math.min(2,window.devicePixelRatio||1))),boardHeight=Math.round(boardWidth*380/560);
         if(boardCanvas.width!==boardWidth||boardCanvas.height!==boardHeight){boardCanvas.width=boardWidth;boardCanvas.height=boardHeight;}
@@ -2333,7 +2395,7 @@ function frame(now) {
                 " · " +
                 roll.total +
                 " rolled"
-          : "Figures walk every space. The jungle keeps moving.";
+          : pinnedHome ? "Interact at the Homestead table to roll." : "Figures walk every space. The jungle keeps moving.";
       }
       hudAge += dt;
       if (hudAge > 0.12) {
@@ -2353,7 +2415,7 @@ function frame(now) {
   $('pvp-safe-indicator').hidden=screen!=='play'||game.pvp;
   routeMusic(elapsed); audio.update(game,screen==="play"&&!paused);updateTrainAudio(audio,game,screen==="play"&&!paused);
   if(metrics.enabled&&cpuStart)metrics.record('cpu',performance.now()-cpuStart);
-  performanceOverlay.tick(now,{game,screen,paused,canvas:renderer?.canvas,memory:performance.memory,errors:diagnosticErrors});
+  performanceOverlay.tick(now,{game,screen,paused:paused||liveEditor.holding,canvas:renderer?.canvas,views:renderer?.splitViews?.length||1,memory:performance.memory,errors:diagnosticErrors});
   requestAnimationFrame(frame);
 }
 document.addEventListener('visibilitychange',()=>{last=performance.now();metrics.reset();});

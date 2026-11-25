@@ -452,6 +452,14 @@ h1 em {
   height: 100%;
   display: block;
 }
+#creature-motion-loading {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  color: var(--ink, #f3dfbd);
+  text-align: center;
+}
 .game-top {
   position: absolute;
   left: 28px;
@@ -1070,6 +1078,42 @@ dialog h2 {
   inset: 60px 0 115px;
   pointer-events: none;
   z-index: 30;
+}
+#hero-overlays:has(> .split-player-pane) {
+  z-index: 32;
+}
+.split-player-pane {
+  position: absolute;
+  z-index: 2;
+  background: #162921;
+  pointer-events: auto;
+}
+#hero-overlays .split-player-pane > .hero-panel {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.split-player-pane .hero-panel.inventory-workbench.inventory-tight .equipment-window .paper-doll button[data-slot] {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  padding: 1px !important;
+}
+.split-player-pane .hero-panel.inventory-workbench.inventory-tight .equipment-window .paper-doll button[data-slot]:not(.empty-slot) {
+  grid-template-columns: 12px minmax(0, 1fr) !important;
+}
+.split-player-pane .hero-panel.inventory-workbench.inventory-tight .paper-doll canvas.item-icon {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 0;
+  min-height: 0;
+}
+.split-player-pane .hero-panel.inventory-workbench.inventory-tight .paper-doll .empty-equipment-icon {
+  display: none;
+}
+.split-player-pane .hero-panel.inventory-workbench.inventory-tight .paper-doll button[data-slot] .equipment-slot-label {
+  font: 600 8px/10px system-ui;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .hero-panel {
   position: absolute;

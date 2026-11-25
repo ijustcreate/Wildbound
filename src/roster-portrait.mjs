@@ -1,5 +1,5 @@
 import {controlledUnit} from './controlled-unit.mjs';
-import {drawPlayer,playerMotionRevision} from './player-motion.mjs';
+import {drawPlayer,isDefaultExplorer,playerMotionRevision} from './player-motion.mjs';
 import {drawAnacondaSegment} from './anaconda-art.mjs';
 import {rigSubject} from './rig-subjects.mjs';
 
@@ -13,7 +13,7 @@ export class RosterPortraits {
     canvas.dataset.actorId=String(subject.id);
     canvas.setAttribute('aria-label',(unit?`Controlling ${unit.name||unit.kind}`:owner.name)+' portrait');
     const loadout=unit||owner.controlMainLoadout||owner;
-    const signature=JSON.stringify([playerMotionRevision,subject.kind,subject.sprite,subject.villagerId,subject.appearance,loadout.equipment,loadout.equipmentSockets,subject.field?.cosmetics]);
+    const signature=JSON.stringify([playerMotionRevision,subject.kind,subject.sprite,subject.villagerId,subject.appearance,isDefaultExplorer(subject),loadout.equipment,loadout.equipmentSockets,subject.field?.cosmetics]);
     let cached=this.cache.get(subject);
     if(!cached||cached.signature!==signature){
       const image=document.createElement('canvas');image.width=96;image.height=112;

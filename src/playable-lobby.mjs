@@ -10,7 +10,7 @@ import { Animator } from './animation.mjs';
 import {characterLightingFrame} from './character-lighting.mjs';
 import {resizeGameSurface,LOBBY_PLAYER_SIZE} from './render-settings.mjs';
 import {drawLobbyBoard} from './lobby-board.mjs';
-import {drawLobbyMapTable,drawLobbyDifficultyTotem,drawLobbyDiceTray,drawLobbyExplorerStation,drawLobbyTargetLever} from './lobby-prop-art.mjs';
+import {drawLobbyMapTable,drawLobbyDifficultyTotem,drawLobbyDiceTray,drawLobbyExplorerStation,drawLobbyTargetLever,drawLobbyDeskBell,drawLobbyFireplace,drawLobbyHopFurniture,drawLobbyPlayBall} from './lobby-prop-art.mjs';
 import {applyCelShading} from './cel-shading.mjs';
 import {drawBansheeSteps} from './banshee-steps.mjs';
 import {drawEmbeddedArrow,groupLodgedArrows,drawFlyingArrow,arrowVisualAngle,drawArrowTrail} from './embedded-arrow.mjs';
@@ -31,7 +31,7 @@ import { controllerGlyph } from './controller-glyphs.mjs';
 import { ARROW_TYPES } from './quiver.mjs';
 import {DAMAGE_COLORS} from './enemy-damage.mjs';
 import {LobbyTelevision,drawLobbyTelevision,drawLobbyControllers} from './lobby-tv.mjs';
-import {lobbyObjectNearby,lobbyLabelY,lobbyPropDepth,lobbyActorDepth,targetReportAlpha,drawSeatedLobbyPlayer,canUseLobbyTV} from './lobby-scene.mjs';
+import {lobbyObjectInReach,lobbyObjectNearby,lobbyLabelY,lobbyPropDepth,lobbyActorDepth,targetReportAlpha,drawSeatedLobbyPlayer,canUseLobbyTV} from './lobby-scene.mjs';
 import {TvWildbound} from './tv-wildbound.mjs';
 import {deliverTvRecovery} from './tv-recovery.mjs';
 import {tickSalvage} from './salvage.mjs';
@@ -43,7 +43,11 @@ import {drawStarterChest,restockStarterChests} from './starter-chest.mjs';
 import {freshCharacter} from './items.mjs';
 import {drawItem} from './item-art.mjs';
 import {blankExplorerPreview} from './blank-explorer.mjs';
+import {EXPLORER_PRESET} from './appearance.mjs';
+import {LOBBY_FIREPLACE_GOAL,LobbyFireplaceBall} from './lobby-fireplace-ball.mjs';
+import {LOBBY_HOP_FURNITURE,LobbyFurnitureStreaks} from './lobby-furniture-streak.mjs';
 
+const DESK_BELL={id:'desk-bell',name:'Desk bell',x:120,y:280,reach:62};
 export const LOBBY_OBJECTS = [
   {id:'environment',name:'Map table',x:625,y:548},
   {id:'difficulty',name:'Difficulty totem',x:955,y:165},
@@ -53,9 +57,13 @@ export const LOBBY_OBJECTS = [
   {id:'character-station',name:'Explorer station',x:635,y:165},
   {id:'television',name:'Arcade TV',x:785,y:165},
   {id:'starter-chest',name:'Starter chest',x:950,y:548},
+  DESK_BELL,
 ];
+const HOP_PROPS=LOBBY_HOP_FURNITURE.map(f=>({id:f.id,depth:f.y+f.h,furniture:f}));
+const FIREPLACE_PROP={id:'fireplace',depth:LOBBY_FIREPLACE_GOAL.y+2};
+const LOBBY_SCENE_PROPS=[...LOBBY_OBJECTS,...HOP_PROPS,FIREPLACE_PROP];
 const LOOK_PRESETS = [
-  { skin:'#d9ab76', shirt:'#39745b', pants:'#665b87', shoes:'#49372d', hair:'crop', hairColor:'#593923' },
+  EXPLORER_PRESET,
   { skin:'#865437', shirt:'#d3b562', pants:'#49372d', shoes:'#272c35', hair:'curls', hairColor:'#272c35' },
   { skin:'#f2d6b3', shirt:'#46799e', pants:'#272c35', shoes:'#593923', hair:'ponytail', hairColor:'#a94955' },
   { skin:'#b97850', shirt:'#a94955', pants:'#3f5e58', shoes:'#49372d', hair:'bob', hairColor:'#d3b562' },
@@ -99,7 +107,12 @@ export function lobbyCamera(width,height){
   return {x:516,y:324,zoom};
 }
 export class LobbyState {
-  constructor(){this.members=new Map();this.countdown=null;this.started=false;}
+  constructor(){
+    this.members=new Map();this.countdown=null;this.started=false;
+    this.fireplaceBall=new LobbyFireplaceBall();
+    this.furnitureStreaks=new LobbyFurnitureStreaks();
+    this.bellRangAt=-Infinity;
+  }
   sync(players){
     const ids=new Set(players.map(p=>p.id));
     let changed=false;
@@ -110,7 +123,7 @@ export class LobbyState {
     if(changed)this.invalidate(players);
   }
   invalidate(players){for(const p of players)p.ready=false;this.countdown=null;}
-  nearest(p,controllers){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>o.id==='television'?canUseLobbyTV(s,s,controllers):Math.hypot(s.x-o.x,s.y-o.y)<100).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
+  nearest(p,controllers){const s=this.members.get(p.id);return s?.spawned?LOBBY_OBJECTS.filter(o=>lobbyObjectInReach(o,s,controllers)).sort((a,b)=>Math.hypot(s.x-a.x,s.y-a.y)-Math.hypot(s.x-b.x,s.y-b.y))[0]:null;}
   tick(dt,players){
     const ready=players.length>0&&players.every(p=>p.ready&&p.profileId&&this.members.get(p.id)?.spawned&&!this.members.get(p.id)?.panel&&!p.ui&&!p.room&&!p.lobbyDisconnected);
     if(!ready){this.countdown=null;return false;}
@@ -143,8 +156,9 @@ export class PlayableLobby {
       const p=this.getGame().players.find(p=>p.device==='keyboard');if(!p)return;
       const r=this.canvas.getBoundingClientRect(),view=this.view||{x:512,y:310,zoom:r.width/1024};
       const x=view.x+(e.clientX-r.left-r.width/2)/view.zoom,y=view.y+(e.clientY-r.top-r.height/2)/view.zoom;
-      const o=LOBBY_OBJECTS.find(o=>Math.hypot(o.x-x,o.y-y)<65);
-      if(o&&this.state.nearest(p,this.television?.controllers)===o)this.open(p,o.id);
+      if(this.boardReadyMenuOpen||this.tvWildbound||this.television.players.has(p.id)||this.state.members.get(p.id)?.panel||p.room||p.lobbyDisconnected)return;
+      const o=this.interactionFor(p);
+      if(o&&Math.hypot(o.x-x,o.y-y)<(o.id==='fireplace-ball'?24:65))this.open(p,o.id);
     };
     for(const id of ['map-mode','environment','difficulty','dice-count'])document.getElementById(id).addEventListener('change',()=>this.state.invalidate(this.getGame().players));
   }
@@ -166,6 +180,14 @@ export class PlayableLobby {
     this.getGame().dropLobbyItem=(p,type,qty,metadata)=>this.dropItem(p,type,qty,metadata);
   }
   reset(){delete this.getGame().tvWorld;this.practice=new LobbyPractice();this.state=new LobbyState();this.configurePractice();this.television.reset();this.tvWildbound=null;this.starterChestArt=null;this.nodes.clear();this.panels.replaceChildren();const help=this.root?.querySelector('.party-help');if(help){help.classList.remove('tv-guide');help.textContent=this.defaultHelp;}}
+  interactionFor(p){
+    const s=this.state.members.get(p.id);
+    const station=this.state.nearest(p,this.television?.controllers),ball=this.state.fireplaceBall;
+    if(!s?.spawned||!ball.canKick(s))return station;
+    const {x,y}=ball;
+    if(station&&Math.hypot(s.x-station.x,s.y-station.y)<=Math.hypot(s.x-x,s.y-y))return station;
+    return {id:'fireplace-ball',x,y};
+  }
   dropItem(player,type,qty,metadata={}){const member=this.state.members.get(player.id);if(!member?.spawned)return false;return this.practice.dropLoot(member.x,member.y,type,qty,player.name+' dropped',true,metadata);}
   returnFromTv(){
     const game=this.getGame();
@@ -257,6 +279,16 @@ export class PlayableLobby {
   }
   open(p,panel){
     const s=this.state.members.get(p.id);if(!s?.spawned||p.ui)return;
+    if(panel==='desk-bell'){
+      this.state.bellRangAt=this.practice.time;
+      this.sound?.('lobbyBell',DESK_BELL);
+      return;
+    }
+    if(panel==='fireplace-ball'){
+      const ball=this.state.fireplaceBall;
+      if(ball.kick({...s,id:p.id}))this.sound?.('lobbyKick',ball);
+      return;
+    }
     if(panel==='board'){this.openBoardReadyMenu(p);return;}
     if(panel==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');return;}
     if(panel==='television'){
@@ -710,7 +742,7 @@ export class PlayableLobby {
           s.menuRepeat=direction?(s.menuRepeat||0)+dt:0;
           if(direction&&s.menuRepeat>.35){game.inventoryAction(p,direction);s.menuRepeat=.24;}
         }else if(!p.room&&!s.inventoryRelease){
-          const o=this.state.nearest(p,this.television?.controllers);
+          const o=this.interactionFor(p);
           if(o?.id==='character-station'&&edge('lobbyInteract'))this.openCharacterStation(p);
           if(this.television?.players.has(p.id)){
             if(edge('interact'))this.television.leave(p.id,s);
@@ -718,8 +750,7 @@ export class PlayableLobby {
             if(edge('lobbyInteract')&&!input.jump&&!input.tvA){this.open(p,'television');if(this.television.players.has(p.id))joinedTv.add(p.id);}
           }
           else if(edge('lobbyInteract')&&o?.id!=='character-station'){
-            if(o?.id==='target-lever'){this.practice.toggleTargets();this.sound?.('ui');}
-            else if(o)this.open(p,o.id);
+            if(o)this.open(p,o.id);
           }
           if(o&&input.lobbyInteract)s.stationPress=true;
           if(!input.lobbyInteract)s.stationPress=false;
@@ -750,6 +781,15 @@ export class PlayableLobby {
       practiceInputs[p.device]={x:input.walkX||0,y:input.walkY||0};
     }
     this.practice.stepPractice(dt,players,this.state.members,practiceInputs,blocked);
+    if(!blocked){
+      const scorer=this.state.fireplaceBall.step(dt,(x,y,radius)=>this.practice.blocked(x,y,radius));
+      if(scorer!==null)this.sound?.('win',LOBBY_FIREPLACE_GOAL);
+      for(const event of this.state.furnitureStreaks.update(this.practice.players,this.practice.house?.furniture||[])){
+        if(event.kind!=='end')continue;
+        const member=this.state.members.get(event.playerId);
+        if(member)member.hopResult={...event,until:this.practice.time+2.5};
+      }
+    }
     // The real hero owns the inventory hold while the practice actor is paused
     // behind the inventory UI. Mirror salvage timing so its world sprite can
     // play the same hand/tool animation during the hold and brief finish burst.
@@ -844,7 +884,7 @@ export class PlayableLobby {
     const view=panel._idlePreview;if(!view)return;
     const {canvas,hero}=view,c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.imageSmoothingEnabled=false;
     drawLobbyCastShadow(c,130,175,48,13);c.save();c.translate(130,174);c.scale(3.5,3.5);
-    drawPlayer(c,{...hero,faceX:0,faceY:1,bowVisualAngle:undefined,animationAction:'idle',moving:false,playerFrame:undefined},time);c.restore();
+    drawPlayer(c,{...hero,stockExplorerPreview:true,faceX:0,faceY:1,bowVisualAngle:undefined,animationAction:'idle',moving:false,playerFrame:undefined},time);c.restore();
   }
   draw(){
     for(const panel of this.nodes.values())this.paintIdlePreview(panel,this.practice.time);
@@ -872,8 +912,13 @@ export class PlayableLobby {
     }
     this.drawPracticeGround(c);
     const actors=this.getGame().players.filter(p=>this.state.members.get(p.id)?.spawned&&!p.room).map(p=>this.practice.players.find(a=>a.id===p.id)||{...p,...this.state.members.get(p.id)});
-    const scene=[...LOBBY_OBJECTS.map(o=>({depth:lobbyPropDepth(o),object:o})),...actors.map(a=>({depth:lobbyActorDepth(a,this.practice.house.furniture,LOBBY_OBJECTS),actor:a}))].sort((a,b)=>a.depth-b.depth);
+    const scene=[
+      ...LOBBY_SCENE_PROPS.map(o=>({depth:lobbyPropDepth(o),object:o})),
+      ...actors.map(a=>({depth:lobbyActorDepth(a,this.practice.house.furniture,LOBBY_SCENE_PROPS),actor:a})),
+      {depth:this.state.fireplaceBall.y+4,ball:this.state.fireplaceBall},
+    ].sort((a,b)=>a.depth-b.depth);
     for(const entry of scene){
+      if(entry.ball){drawLobbyPlayBall(c,entry.ball);continue;}
       if(entry.actor){
         const actor=entry.actor,slot=this.television.players.get(actor.id)?.slot;
         drawLobbyActorShadow(c,actor,this.practice.time,LOBBY_PLAYER_SIZE);
@@ -882,6 +927,8 @@ export class PlayableLobby {
         continue;
       }
       const o=entry.object;
+      if(o.furniture){drawLobbyHopFurniture(c,o.furniture);continue;}
+      if(o.id==='fireplace'){drawLobbyFireplace(c,LOBBY_FIREPLACE_GOAL,this.state.fireplaceBall.goalTime);continue;}
       if(['board','starter-chest'].includes(o.id))drawLobbyCastShadow(c,o.x,o.y+12,112,22);
       if(o.id==='environment'){
         drawLobbyMapTable(c,o,this.mapPreviewEnvironment());
@@ -899,6 +946,8 @@ export class PlayableLobby {
         drawLobbyTelevision(c,this.television,o);drawLobbyControllers(c,this.television,actors);
       }else if(o.id==='character-station'){
         drawLobbyExplorerStation(c,o);
+      }else if(o.id==='desk-bell'){
+        drawLobbyDeskBell(c,o,this.practice.time-this.state.bellRangAt);
       }else{
         drawLobbyBoard(c,this.practice.time,this.mapPreviewEnvironment());
       }
@@ -915,11 +964,14 @@ export class PlayableLobby {
       c.font='bold 18px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#142021';c.fillStyle=DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical;this.label(String(Math.round(f.amount)),t.x,t.y-42-f.age*34-f.offset,18,DAMAGE_COLORS[f.type]||DAMAGE_COLORS.physical,700);c.restore();
     }
     for(const p of this.getGame().players){
-      const s=this.state.members.get(p.id);if(!s.spawned||p.room||s.panel||p.ui)continue;
-      const o=this.state.nearest(p,this.television.controllers);if(!o)continue;
-      const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[3];
-      this.label(this.television.players.has(p.id)?'Walk away · leave':interact+' · interact',o.x,lobbyLabelY(o)-18,12,p.color,650);
+      const s=this.state.members.get(p.id);if(!s.spawned||p.room||s.panel||p.ui||p.lobbyDisconnected)continue;
+      const o=this.interactionFor(p);if(!o)continue;
+      const names=controllerButtonNames(p.controllerFamily||'generic'),interact=p.device==='keyboard'?'E':names[this.getGame().mapping?.interact??3];
+      const action=o.id==='fireplace-ball'?'kick':o.id==='desk-bell'?'ring':'interact';
+      const y=o.id==='fireplace-ball'?o.y-25:lobbyLabelY(o)-18;
+      this.label(this.television.players.has(p.id)?'Walk away · leave':`${interact} · ${action}`,o.x,y,12,p.color,650);
     }
+    this.drawToyLabels(actors);
     applyCelShading(c);
     // Typography is drawn at display resolution after scene shading, never pixel-scaled.
     c.setTransform(scale/2,0,0,scale/2,0,0);c.textAlign='center';c.textBaseline='middle';
@@ -929,6 +981,34 @@ export class PlayableLobby {
       c.strokeText(label.text,x,y);c.fillStyle=label.color;c.fillText(label.text,x,y);
     }
     c.globalAlpha=1;
+  }
+  drawToyLabels(actors){
+    const {x,y}=LOBBY_FIREPLACE_GOAL;
+    const {fireplaceBall:ball,furnitureStreaks}=this.state;
+    if(ball.goalTime>0){
+      const scorer=actors.find(a=>a.id===ball.scorer);
+      this.label(scorer?`${scorer.name} scored!`:'Goal!',x,y-63,16,scorer?.color||'#ffda83',750);
+    }else if(actors.some(a=>a.x<400&&a.y<330)){
+      this.label(ball.goals?`Fireplace goals · ${ball.goals}`:'Kick the ball into the grate',x,y-63,13,'#f4efdc',650);
+    }
+    const active=actors.filter(a=>{
+      const member=this.state.members.get(a.id);
+      return !member.panel&&!this.television.players.has(a.id);
+    });
+    const middleSeat=LOBBY_HOP_FURNITURE[1];
+    const routeX=middleSeat.x+middleSeat.w/2,routeY=middleSeat.y+middleSeat.h/2;
+    if(active.some(a=>Math.hypot(a.x-routeX,a.y-routeY)<106)&&!active.some(a=>furnitureStreaks.players.get(a.id)?.count)){
+      this.label('Jump from seat to seat',routeX,routeY+41,13,'#f4efdc',650);
+    }
+    for(const actor of active){
+      const streak=furnitureStreaks.players.get(actor.id);
+      const result=this.state.members.get(actor.id).hopResult;
+      const count=streak?.count||(result?.until>this.practice.time?result.finished:0);
+      if(!count)continue;
+      const aboveHead=actor.y-(actor.jumpHeight||0)-(actor.groundHeight||0)-53;
+      const labelY=ball.canKick(actor)?Math.min(aboveHead,ball.y-43):aboveHead;
+      this.label(`${count} ${count===1?'hop':'hops'} · Best ${streak?.best??result.best}`,actor.x,labelY,13,actor.color,700);
+    }
   }
   label(text,x,y,size=14,color='#f4efdc',weight=500,alpha=1){this.labels.push({text,x,y,size,color,weight,alpha});}
 }

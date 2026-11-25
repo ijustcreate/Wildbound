@@ -15,15 +15,49 @@ function fixture(players=[]){
  return {players,sky:{elapsed:0},trainTest:{time:5,design:{wildLands:true,activeRoom:'diagon'}}};
 }
 
+test('the requested wizarding cast appears once in Diagon Alley',()=>{
+ const g=fixture();
+ tickAlley(g,0);
+ const residents=alleyResidentsFor(g);
+ const newcomerIds=[
+  'dobby','arthur-weasley','cedric-diggory','newt-scamander','newts-niffler','viktor-krum',
+  'fleur-delacour','rita-skeeter','severus-snape','sirius-black','remus-lupin','peeves',
+  'nearly-headless-nick','fawkes','buckbeak','mad-eye-moody','gilderoy-lockhart',
+ ];
+ const creatureIds=new Set(['newts-niffler','fawkes','buckbeak']);
+ const visitorForms={dobby:'elf',peeves:'poltergeist','nearly-headless-nick':'ghost'};
+ const topics=new Set();
+ for(const id of newcomerIds){
+  const actors=residents.filter(actor=>actor.residentId===id);
+  assert.equal(actors.length,1,id+' has exactly one actor in the district');
+  assert.ok(g.trainTest.alleyVisitors.includes(actors[0]),id+' is an Alley visitor');
+  assert.equal(Boolean(actors[0].visitorCreature),creatureIds.has(id),id+' uses the expected body type');
+  if(visitorForms[id])assert.equal(actors[0].visitorForm,visitorForms[id],id+' uses its own resident form');
+  const {topic}=ALLEY_RESIDENTS.find(resident=>resident.id===id);
+  assert.ok(topic?.label,id+' offers a personal dialogue topic');
+  assert.equal(topic.replies.length,2,id+' offers two answers');
+  assert.notEqual(topic.replies[0].text,topic.replies[1].text,id+' answers both choices distinctly');
+  topics.add(topic.label);
+ }
+ assert.equal(topics.size,newcomerIds.length);
+ const sprout=residents.filter(actor=>/\bSprout\b/.test(actor.name));
+ assert.equal(sprout.length,1,'Professor Sprout is represented by one actor');
+ assert.equal(sprout[0].residentId,'sprout');
+ assert.ok(g.trainTest.gardenVisitors.includes(sprout[0]));
+});
+
 test('street residents walk every daily route and meet a neighbor on clear ground',()=>{
  const g=fixture(),dt=.25;
  tickAlley(g,0);
  const visitors=g.trainTest.alleyVisitors,start=visitors.map(a=>({place:a.place,x:a.x,y:a.y}));
+ const dressed=visitors.filter(actor=>!actor.visitorCreature);
  const moved=new Set(),socialized=new Set(),reached=new Map(visitors.map(a=>[a.id,new Set()]));
- assert.equal(new Set(visitors.map(a=>a.id)).size,17);
- assert.equal(new Set(visitors.map(a=>JSON.stringify(a.equipment))).size,17);
+ assert.equal(new Set(visitors.map(a=>a.id)).size,ALLEY_RESIDENTS.length);
  for(const actor of visitors){
   assert.ok(Object.values(actor.equipment).every(id=>ITEMS[id]),actor.name);
+ }
+ assert.equal(new Set(dressed.map(a=>JSON.stringify(a.equipment))).size,dressed.length);
+ for(const actor of dressed){
   assert.ok(Object.values(actor.equipment).some(id=>id.startsWith('alley_')),actor.name);
  }
  for(let elapsed=0;elapsed<=ALLEY_RESIDENT_DAY+70;elapsed+=dt){
@@ -39,19 +73,20 @@ test('street residents walk every daily route and meet a neighbor on clear groun
  }
  assert.strictEqual(g.trainTest.alleyVisitors,visitors);
  for(const [index,actor]of visitors.entries()){
-  assert.deepEqual(reached.get(actor.id),new Set(ALLEY_RESIDENTS[index].stops),actor.name);
-  if(start[index].place==='sweets'){
+  const stops=new Set(ALLEY_RESIDENTS[index].stops);
+  assert.deepEqual(reached.get(actor.id),stops,actor.name);
+  if(stops.size>1)assert.ok(moved.has(actor.id),actor.name+' walks between stops');
+  if(!actor.visitorCreature)assert.ok(socialized.has(actor.id),actor.name+' meets another resident');
+  if(start[index].place==='sweets'&&!actor.visitorCreature){
    assert.equal(actor.place,'sweets',actor.name+' returns on the next day');
    assert.ok(actor.fortescueVisit,actor.name+' resumes the ice cream district route');
   }else assert.deepEqual({place:actor.place,x:actor.x,y:actor.y},start[index],actor.name+' returns on the next day');
  }
- assert.equal(moved.size,17);
- assert.equal(socialized.size,17);
 });
 
 test('sweets regulars buy inside Fortescue’s, then stroll with cones without forming a line',()=>{
  const g=fixture(),dt=.25,shop=ALLEY_SHOPS.find(s=>s.id==='floreans');
- const regulars=ALLEY_RESIDENTS.filter(resident=>resident.stops.includes('sweets'));
+ const regulars=ALLEY_RESIDENTS.filter(resident=>!resident.visitorCreature&&resident.stops.includes('sweets'));
  tickAlley(g,0);
  const shoppers=g.trainTest.alleyVisitors.filter(actor=>regulars.some(r=>r.id===actor.residentId));
  const originalHands=new Map(shoppers.map(actor=>[actor.id,actor.equipment.hand2]));
@@ -161,7 +196,7 @@ test('four named garden residents act, walk clear routes and visit the bookshop'
   {residentId:'vesper-rill'},{residentId:'adwin-chime'}];
  tickAlley(g,0);
  const visitors=g.trainTest.gardenVisitors;
- assert.equal(new Set(alleyResidentsFor(g).map(actor=>actor.name)).size,21);
+ assert.equal(new Set(alleyResidentsFor(g).map(actor=>actor.name)).size,ALLEY_RESIDENTS.length+GARDEN_RESIDENTS.length);
  assert.deepEqual(visitors.map(actor=>actor.name),['Neville Longbottom','Luna Lovegood','Hermione Granger','Professor Pomona Sprout']);
  assert.equal(new Set(visitors.map(actor=>JSON.stringify(actor.equipment))).size,4);
  for(const actor of visitors)assert.ok(Object.values(actor.equipment).every(id=>ITEMS[id]),actor.name);

@@ -710,7 +710,7 @@ export function installDebugTools(ctx) {
     ) {
       ctx.show("workshop");
       ctx.designer.tab = view === "events" ? "Events" : "Players";
-      ctx.designer.playerStudio.setSubject(
+      await ctx.designer.playerStudio.setSubject(
         view.endsWith("-studio") ? view.replace("-studio", "") : "player",
       );
       ctx.designer.kind = "lion";

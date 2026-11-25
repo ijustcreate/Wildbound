@@ -26,7 +26,8 @@ export const CUES={
  bladeContact:{files:oga('blade_01,blade_02'),gain:.19,priority:55,group:'impact',polyphony:4,cooldown:100,distance:590,maxDuration:.55},
  roll:impact('impactWood_light'),event:ui('bong_001'),trap:rpg('metalLatch'),heal:ui('glass_003'),defeat:impact('impactSoft_heavy'),dodge:rpg('cloth3,cloth4'),dashWhoosh:{files:files('rpg','cloth3,cloth4'),gain:.18,rate:.62,maxDuration:.32,bus:'sfx',priority:52,group:'movement',polyphony:4,cooldown:140,distance:620},win:ui('confirmation_004'),lose:ui('error_008'),
  loot:rpg('handleCoins,handleCoins2'),drop:rpg('dropLeather'),equip:rpg('beltHandle1,beltHandle2'),inventory:rpg('bookOpen'),close:rpg('bookClose'),doorOpen:rpg('doorOpen_1,doorOpen_2'),doorClose:rpg('doorClose_1,doorClose_2'),
- harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),wallBreak:impact('impactWood_heavy',.34),treeBreak:impact('impactWood_heavy',.42),rockBreak:impact('impactMining',.4),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),level:ui('confirmation_003'),
+ harvest:rpg('chop'),mine:impact('impactMining'),fall:impact('impactWood_heavy'),wallBreak:impact('impactWood_heavy',.34),treeBreak:impact('impactWood_heavy',.42),rockBreak:impact('impactMining',.4),hatch:impact('impactGlass_light'),glassBreak:impact('impactGlass_heavy',.38),web:rpg('clothBelt'),portal:ui('maximize_005'),
+ level:{files:['assets/sfx/ui/level-up.wav'],bus:'ui',gain:.2,priority:80,group:'progression',polyphony:1,cooldown:650,maxDuration:.72,spatial:false},
  grass:impact('footstep_grass',.13),wood:impact('footstep_wood',.13),snow:impact('footstep_snow',.13),stone:impact('footstep_concrete',.11),carpet:impact('footstep_carpet',.13),
  sand:recordedSteps('sand'),water:recordedSteps('water',.19),mud:recordedSteps('mud',.15),dirt:recordedSteps('dirt'),gravel:recordedSteps('gravel'),ice:recordedSteps('ice'),tile:recordedSteps('tile'),slide:ui('scratch_001'),
  wind:{files:['assets/sfx/ambience/wind.wav'],bus:'ambience',gain:.15},rain:{files:['assets/sfx/ambience/rain.ogg'],bus:'ambience',gain:.18},forest_ambient:{files:['assets/sfx/ambience/forest_ambient_20s_loop.wav'],bus:'ambience',gain:.10},
@@ -84,7 +85,7 @@ CUES.rescue=CUES.win;
 for(const name of ['grass','wood','snow','sand','water','stone','mud','dirt','gravel','ice','tile','carpet','stalkerStep'])Object.assign(CUES[name],{group:'footstep',priority:15,polyphony:4,cooldown:190,distance:300,maxDuration:.45});
 for(const name of ['attack','bow','magic','rifle'])Object.assign(CUES[name],{bus:'sfx',group:'weapon',priority:65,polyphony:6,cooldown:100,spatial:true,distance:650});
 for(const name of ['hurt','death','defeat','shield'])Object.assign(CUES[name],{priority:85,group:'critical',polyphony:6,cooldown:180});
-for(const name of ['event','win','lose','level','repairDone'])Object.assign(CUES[name],{priority:95,group:'notification',polyphony:3,cooldown:550});
+for(const name of ['event','win','lose','repairDone'])Object.assign(CUES[name],{priority:95,group:'notification',polyphony:3,cooldown:550});
 Object.assign(CUES.jump,{group:'movement',priority:35,cooldown:200,maxDuration:.4});
 Object.assign(CUES.land,{group:'movement',priority:40,cooldown:220,maxDuration:.45});
 Object.assign(CUES.repair,{group:'repair',priority:30,cooldown:420,maxDuration:.35,distance:220});
@@ -103,6 +104,8 @@ CUES.treeBreak.files.push(...oga('wood_01'));
 CUES.shield.files.push(...oga('metal_01'));
 CUES.magic.files.push(...oga('spell_fire_01'));
 CUES.coin={files:oga('item_coins_01,item_coins_02'),bus:'sfx',gain:.24,group:'reward',priority:55,polyphony:6,cooldown:90,distance:520,maxDuration:.9};
+CUES.lobbyBell={...impact('impactBell_heavy',.15),rate:1.7,maxDuration:.75,cooldown:200};
+CUES.lobbyKick={...impact('impactSoft_heavy',.13),rate:1.32,maxDuration:.32};
 CUES.pickup={files:oga('item_misc_01'),bus:'sfx',gain:.22,group:'reward',priority:45,polyphony:6,cooldown:100,distance:520,maxDuration:.9};
 CUES.chestOpen={files:oga('item_wood_01,lock_01,lock_02'),bus:'sfx',gain:.24,group:'interaction',priority:50,polyphony:4,cooldown:220,distance:520,maxDuration:1.1};
 CUES.woodBreak={files:oga('item_wood_01,wood_01'),bus:'sfx',gain:.3,group:'impact',priority:50,polyphony:5,cooldown:100,distance:620,maxDuration:.8};

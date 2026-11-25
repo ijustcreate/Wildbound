@@ -56,22 +56,30 @@ export function drawAlleyGoblin(c,actor,time,model=alleyGoblinMotion,suppliedPos
  const p=Object.fromEntries(Object.entries(pose).map(([name,point])=>[name,projectPoint(point,angle)]));
  const parts=[];
  const layer=(id,bone,bones,fn,depth=p[bone].depth)=>parts.push({id,bone,bones,fn,depth});
- const trousers=role==='bartender'||role==='bayou-sage'?cloth.pants:model.palette.legs;
+ const helper=role==='diagon-helper';
+ const trousers=helper||role==='bartender'||role==='bayou-sage'?cloth.pants:model.palette.legs;
  for(const side of ['L','R']){
   const hip='hip'+side,knee='knee'+side,foot='foot'+side,toe='toe'+side;
   const shoulder='shoulder'+side,elbow='elbow'+side,hand='hand'+side;
   const edge=p[hip].depth+.18;
   layer('Leg '+side,hip,[hip,knee,foot],()=>{
    limb(c,p[hip],p[knee],5,cloth.ink);limb(c,p[knee],p[foot],4,cloth.ink);
-   limb(c,p[hip],p[knee],3.5,trousers);limb(c,p[knee],p[foot],2.6,trousers);
+   limb(c,p[hip],p[knee],3.5,trousers);
+   const stocking=helper&&side==='L';
+   limb(c,p[knee],p[foot],2.6,stocking?cloth.accent:helper?cloth.boots:trousers);
+   if(stocking){
+    const band={x:p.kneeL.x+(p.footL.x-p.kneeL.x)*.55,y:p.kneeL.y+(p.footL.y-p.kneeL.y)*.55};
+    ellipse(c,band.x,band.y,1.6,.65,cloth.linen);
+   }
   },edge);
   layer('Boot '+side,foot,[foot,toe],()=>{
-   limb(c,p[foot],p[toe],4.8,cloth.ink);limb(c,p[foot],p[toe],3.4,cloth.boots);
-   ellipse(c,p[toe].x,p[toe].y-.55,1.6,1.05,cloth.shade);
+   const stocking=helper&&side==='L';
+   limb(c,p[foot],p[toe],4.8,cloth.ink);limb(c,p[foot],p[toe],3.4,stocking?cloth.accent:cloth.boots);
+   ellipse(c,p[toe].x,p[toe].y-.55,1.6,1.05,stocking?cloth.light:cloth.shade);
   },edge+.1);
   const armDepth=(p[shoulder].depth+p[elbow].depth+p[hand].depth)/3;
   layer('Arm '+side,shoulder,[shoulder,elbow,hand],()=>drawGoblinArm(c,p[shoulder],p[elbow],p[hand],role,cloth),armDepth);
-  layer('Hand '+side,hand,[hand],()=>drawGoblinHand(c,p[hand],side,angle),armDepth+.07);
+  layer('Hand '+side,hand,[hand],()=>drawGoblinHand(c,p[hand],side,angle,role),armDepth+.07);
  }
  layer('Torso / clothing','chest',['chest','pelvis','neck'],()=>drawGoblinTorso(c,p,angle,role,cloth,model.shape.bodyWidth));
  layer('Head / goblin','head',['head','earL','earR'],()=>drawGoblinHead(c,p.head,angle,role),p.head.depth+.7);

@@ -7,6 +7,9 @@ import {worldLightField} from './world-lighting.mjs';
 import {pointLightVisibility} from './realtime-shadows.mjs';
 import {encounterLightSources} from './encounter-lights.mjs';
 import {winterLightSources,drawWinterNight} from './winter-night.mjs';
+import {WILD_SLIME_HOLLOW} from './wild-slime-hollow-site.mjs';
+import {MOONVEIL_CIRCLE} from './wild-runic-sanctuary-site.mjs';
+import {moonveilLightSources} from './wild-runic-sanctuary-art.mjs';
 const sourceFrames=new WeakMap();
 let nightMask;
 
@@ -30,13 +33,13 @@ export function daylight(g) {
   if (t < 450) return 0;
   return (t - 450) / 30;
 }
-export function carriedLight(p) {
+export function carriedLight(p, packedIntensity = .92) {
   const equipped=['hand1', 'hand2'].map(slot => {const item=ITEMS[p.equipment?.[slot]];return item?.energyBlade&&p.energyBladeActive===false?null:item?.lightSource;})
     .filter(Boolean).map(light=>({...light,radius:280,inventoryLight:true}));
   // Merely carrying a lantern or torch improves visibility; combat effects are
   // deliberately checked against equipment slots in night-equipment.mjs.
   const packed=(p.inventory||[]).some(item=>item&&['torch','lantern'].includes(item.type));
-  if(packed)equipped.push({radius:280,intensity:.92,color:'#ffbd70',inventoryLight:true});
+  if(packed)equipped.push({radius:280,intensity:packedIntensity,color:'#ffbd70',inventoryLight:true});
   return equipped.sort((a, b) => b.radius - a.radius)[0] || null;
 }
 export function sightRadius(g, p, base = 280) {
@@ -46,10 +49,11 @@ export function sightRadius(g, p, base = 280) {
 export function lightSources(g,room=null) {
   const frameKey=`${g.time||0}:${g.sky?.elapsed||0}:${room||''}:${(g.players||[]).map(p=>[p.id,p.x,p.y,p.room,p.roomX,p.roomY,p.equipment?.hand1,p.equipment?.hand2,p.energyBladeActive,(p.inventory||[]).some(i=>i&&['torch','lantern'].includes(i.type)),p.controlPetPosition?.x,p.controlPetPosition?.y,p.controlMainLoadout?.equipment?.hand1,p.controlMainLoadout?.equipment?.hand2].join(',')).join(';')}:${(g.villageCampState?.fire?[g.villageCampState.fire.x,g.villageCampState.fire.y].join(','):'')}`;
   const fireKey=[...(g.spells||[]).filter(b=>b.fire&&b.life>0),...(g.fireballs||[]).filter(b=>!b.ice&&!b.water&&b.life>0),...(g.effects||[]).filter(f=>f.particle==='cinder-trail'&&f.life>0)].map(f=>[f.x,f.y,f.life].join(',')).join(';');
-  const cacheKey=frameKey+':'+fireKey;
+  const packedIntensity=g.trainTest?.design?.wildLands ? .32 : .92;
+  const cacheKey=frameKey+':'+fireKey+':'+packedIntensity;
   const cached=sourceFrames.get(g);if(cached?.key===cacheKey)return cached.sources;
   const sources = (g.players || []).filter(p => p.hp > 0 && (p.room||null)===room).flatMap(p => {
-    const light = carriedLight(p);
+    const light = carriedLight(p,packedIntensity);
     return light ? [{ x: room?p.roomX:p.x, y: room?p.roomY:p.y, ...light, owner:`actor:${p.id}`, room, height:30+(p.jumpHeight||0)+(p.groundHeight||0) }] : [];
   });
   sources.push(...encounterLightSources(g,room));
@@ -57,7 +61,7 @@ export function lightSources(g,room=null) {
   // companion while this second source stays on the displaced hero.
   if(!room)for(const p of g.players||[])if(p.hp>0&&p.controlMainLoadout&&p.controlPetPosition){
     const hero={...p,...p.controlMainLoadout,equipment:p.controlMainLoadout.equipment,inventory:p.controlMainLoadout.inventory};
-    const light=carriedLight(hero);if(light)sources.push({x:p.controlPetPosition.x,y:p.controlPetPosition.y,...light,owner:`actor:${p.id}:hero`,room:null,height:30+(p.controlPetPosition.jumpHeight||0)});
+    const light=carriedLight(hero,packedIntensity);if(light)sources.push({x:p.controlPetPosition.x,y:p.controlPetPosition.y,...light,owner:`actor:${p.id}:hero`,room:null,height:30+(p.controlPetPosition.jumpHeight||0)});
   }
   if(room){
     const portal=g.portals?.find(d=>d.id===room);
@@ -89,6 +93,12 @@ export function lightSources(g,room=null) {
   for(const p of g.scenery||[])if(['wisp_lantern','moonwell','thorn_shrine','hollow_stump'].includes(p.kind)&&!p.depleted){const lift=p.kind==='wisp_lantern'?p.size*.48:p.kind==='thorn_shrine'?p.size*.42:p.size*.24;sources.push({x:p.x,y:p.rootY-lift,height:lift,radius:p.kind==='wisp_lantern'?115:135,intensity:p.kind==='wisp_lantern'?.58:.4,color:p.kind==='moonwell'?'#a8b6ed':'#ce9ce8',owner:'prop:'+p.id});}
   sources.push(...houseLightSources(g));
   sources.push(...winterLightSources(g));
+  if(g.trainTest?.design.wildLands&&!g.trainTest.design.activeRoom){
+    const {x,y}=WILD_SLIME_HOLLOW.checkpoint;
+    sources.push({x,y,height:33,radius:96,intensity:.53,color:'#ffd27c',owner:'prop:mossbell-hollow:checkpoint'});
+    if((g.players||[]).some(p=>Math.hypot(p.x-MOONVEIL_CIRCLE.x,p.y-MOONVEIL_CIRCLE.y)<950))
+      sources.push(...moonveilLightSources(g.trainTest));
+  }
   sourceFrames.set(g,{key:cacheKey,sources});return sources;
 }
 export function lightAt(g, point) {

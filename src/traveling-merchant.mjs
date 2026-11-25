@@ -5,6 +5,7 @@ import {DEFAULT_APPEARANCE} from './appearance.mjs';
 import {locationClearing} from './location-clearing.mjs';
 import {drawCampfire,drawCampfireLabel} from './campfire-art.mjs';
 import {emporiumOwlOffer,owlAdoptionReason,purchaseEmporiumOwl} from './owl-companions.mjs';
+import {drawWaterActor} from './actor-water-art.mjs';
 export function merchantSites(g){
  const queue=[[25,25]],seen=new Set(['25:25']),sites=[];
  for(let i=0;i<queue.length;i++){const [tx,ty]=queue[i],x=tx*32+16,y=ty*32+16;
@@ -87,7 +88,7 @@ export function merchantAction(g,p,action){
 export function marlowVisual(m){return {...m,sprite:'player',kind:'player',hp:100,equipment:MARLOW_EQUIPMENT,
  appearance:{...DEFAULT_APPEARANCE,skin:'#c29b73',shirt:'#657c51',pants:'#5a5142',shoes:'#554535',hair:'sidepart',hairColor:'#4e3929',face:'stubble'}};}
 export function drawMerchant(c,g,animator){const m=g.merchant;if(!m)return;
- animator.draw(c,marlowVisual(m),g.time,43);
+ drawWaterActor(c,g,marlowVisual(m),43,pose=>animator.draw(c,pose,g.time,43));
  c.save();c.translate((m.campX??m.x)-32,(m.campY??m.y)+5);c.fillStyle='#644730';c.fillRect(-9,5,20,4);c.fillRect(-3,0,5,12);drawTorchFlame(c,0,0,g.time,m.x);c.restore();
  if(m.horse)drawPackHorse(c,m.horse,g.time);
  c.save();c.textAlign='center';c.font='9px sans-serif';c.fillStyle='#f1e1b9';c.fillText('Marlow Moss · Trade E / Y',m.x,m.y+33);c.restore();

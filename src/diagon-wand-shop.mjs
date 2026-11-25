@@ -1,4 +1,5 @@
 import {OLLIVANDERS_ASSETS, drawOllivandersAsset} from './diagon-wand-shop-assets.mjs';
+import {DIAGON_PAVER_LANE} from './alley-street-layout.mjs';
 import {
   drawOllivandersGround, drawOllivandersArchitecture,
 } from './diagon-wand-shop-architecture.mjs';
@@ -112,7 +113,7 @@ function paintApron(c) {
   for (const [x,y,w,h] of scatter) c.fillRect(x,y,w,h);
 }
 
-export function drawOllivandersApron(c, shop) {
+export function drawOllivandersApron(c, shop, streetEdge = Infinity) {
   const {x,y,w,h} = apronBounds;
   if (!apron && typeof document !== 'undefined') {
     apron = document.createElement('canvas');
@@ -122,14 +123,19 @@ export function drawOllivandersApron(c, shop) {
     pen.translate(-x,-y);
     paintApron(pen);
   }
+  c.save();
+  if (streetEdge < x+w) {
+    c.beginPath();
+    c.rect(shop.x+x,shop.y+y,Math.max(0,streetEdge-x),h);
+    c.clip();
+  }
   if (apron) {
     c.drawImage(apron, shop.x + x, shop.y + y);
   } else {
-    c.save();
     c.translate(shop.x, shop.y);
     paintApron(c);
-    c.restore();
   }
+  c.restore();
 }
 
 const courtyardCache = new WeakMap();
@@ -149,7 +155,7 @@ function courtyard(shop) {
 }
 
 export function ollivandersFloor(c, shop, open = true) {
-  drawOllivandersApron(c, shop);
+  drawOllivandersApron(c,shop,DIAGON_PAVER_LANE.x-shop.x);
   drawOllivandersGround(c, shop, open);
 }
 

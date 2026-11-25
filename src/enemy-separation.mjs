@@ -8,12 +8,13 @@ const spacingRadius=a=>Math.max(actorRadius(a),meleeBodyRadius(a)*.75);
 // Separate living bodies after their independent AI steps. Movement still goes
 // through moveActor, so terrain and world bounds remain authoritative.
 export function separateActorBodies(game,dt){
-  const players=(game.players||[]).filter(a=>a.hp>0&&!a.room&&!a.controlledFollowerId),enemies=[...(game.enemies||[]),...(game.ghosts||[]).filter(a=>a.wildTiger)].filter(a=>a.hp>0&&!a.room&&!a.graveEmergence&&!a.controlledBy);
+  const players=(game.players||[]).filter(a=>a.hp>0&&!a.room&&!a.controlledFollowerId),enemies=[...(game.enemies||[]),...(game.ghosts||[]).filter(a=>a.wildTiger)].filter(a=>a.hp>0&&!a.room&&!a.graveEmergence&&!a.controlledBy&&!a.smokeMonsterRole);
   const actors=[...players,...enemies];
   const seated=game.trainTest?.design.activeRoom==='diagon'?new Set(players.filter(p=>activeGardenBench(game,p))):null;
   for(let pass=0;pass<2;pass++)for(let i=0;i<actors.length;i++)for(let j=i+1;j<actors.length;j++){
     const a=actors[i],b=actors[j];
     if((a.room||null)!==(b.room||null))continue;
+    if((a.runeboundCat&&players.includes(b))||(b.runeboundCat&&players.includes(a)))continue;
     if(players.includes(a)&&enemies.includes(b)&&!enemyCanSeeTarget(b,a))continue;
     if(players.includes(b)&&enemies.includes(a)&&!enemyCanSeeTarget(a,b))continue;
     if(Math.abs((a.groundHeight||0)+(a.jumpHeight||0)-(b.groundHeight||0)-(b.jumpHeight||0))>26)continue;

@@ -1,5 +1,5 @@
 import {drawNativeFrog} from './frog-art.mjs';
-import {drawForestTree} from './forest.mjs';
+import {drawForestTree,forestTreeForm,treeStructure} from './forest.mjs';
 const r=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 
 const clay = {
@@ -69,11 +69,26 @@ function apple(c,x,y){
  r(c,x,y-7,1,3,'#60452d');r(c,x+1,y-7,3,2,'#66834a');r(c,x+2,y-7,2,1,'#93a45c');
 }
 function shadow(c,x,y,w){c.fillStyle='#172a2340';c.beginPath();c.ellipse(Math.round(x),Math.round(y+3),w,3,0,0,Math.PI*2);c.fill();}
+const appleTreeModels=new Map();
+// Stem positions stay inside their crowns as the oak's form varies.
+const appleSlots=[[2,-.16,.10],[2,.38,-.20],[3,-.18,.32],[3,.39,-.08],[1,-.50,0]];
 function tree(c,o,t,g){
  const size=78,s=size/64,seed=Math.abs(Math.floor(o.x*17+o.y*31))%100000;
- drawForestTree(c,{kind:'tree',treeType:'oak',leafHabit:'deciduous',x:0,y:0,rootY:0,size,seed},t,g);
- const fruit=[[-23,-43],[-8,-52],[10,-45],[27,-51],[3,-36]];
- for(let i=0;i<Math.min(o.fruit||0,fruit.length);i++){const [x,y]=fruit[i];apple(c,Math.round(x*s),Math.round(y*s));}
+ let model=appleTreeModels.get(seed);
+ if(!model){
+  model={kind:'tree',treeType:'oak',leafHabit:'deciduous',x:0,y:0,rootY:0,size,seed};
+  if(appleTreeModels.size>=32)appleTreeModels.delete(appleTreeModels.keys().next().value);
+  appleTreeModels.set(seed,model);
+ }
+ drawForestTree(c,model,t,g);
+ const count=Math.min(o.fruit||0,appleSlots.length);
+ if(!count)return;
+ const shape=treeStructure(model),{crowns}=forestTreeForm(model,shape);
+ for(let i=0;i<count;i++){
+  const [index,offsetX,offsetY]=appleSlots[i],[cx,cy,rx,ry]=crowns[index];
+  const x=cx+rx*offsetX,y=cy+ry*offsetY;
+  apple(c,(x*shape.width+y*shape.lean)*s,y*shape.height*s+7);
+ }
 }
 export function playgroundActors(g){
  if(g.trainTest||g.interiorWorld)return [];

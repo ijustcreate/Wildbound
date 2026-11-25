@@ -54,9 +54,10 @@ export function wildHomesteadPrompt(g,p){
 
 export function tickWildHomestead(g,dt,inputs){
  if(!available(g))return;
- tickHomesteadBoard(g,dt);
+ const dismissedPlayerId=tickHomesteadBoard(g,dt,inputs);
  tickHouseLiving(g,dt,inputs);
  for(const vehicle of g.house?.vehicles||[])tickVehicleEffects(g,vehicle,dt);
+ return dismissedPlayerId;
 }
 
 export function tickWildHomesteadVehicle(g,p,input,old,dt,use){

@@ -53,7 +53,7 @@ export function snowCoverDepth(g,x,y){return snowAt(g,x,y)*18;}
 export function snowShadowFactor(g,x,y){return 1-snowAt(g,x,y)*.84;}
 export function iceMotion(g,p,mx,my,speed,dt){
  const tile=g.terrain?.[Math.floor(p.y/32)*50+Math.floor(p.x/32)];
- if(g.generatedEnvironment!=='ice'||tile!=='ice'){p.slideX=p.slideY=0;return {dx:mx*speed*dt,dy:my*speed*dt};}
+ if(p.broomMount||g.generatedEnvironment!=='ice'||tile!=='ice'){p.slideX=p.slideY=0;return {dx:mx*speed*dt,dy:my*speed*dt};}
  const moving=Math.hypot(mx,my)>.05,snow=snowAt(g,p.x,p.y),grip=1-Math.exp(-dt*(moving?3.8+snow*9:1.7+snow*10));
  p.slideX=(p.slideX||0)+(mx*speed-(p.slideX||0))*grip;p.slideY=(p.slideY||0)+(my*speed-(p.slideY||0))*grip;
  if(Math.hypot(p.slideX,p.slideY)<1)p.slideX=p.slideY=0;

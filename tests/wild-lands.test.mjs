@@ -7,15 +7,41 @@ import {WILD_RIVERS,WILD_BRIDGES,wildLandsBridgeDeck,wildLandsPathAt} from '../s
 import {overlookBlocked,overlookMazeFor} from '../src/overlook-maze.mjs';
 import {damageStructureVehicle} from '../src/structure-destruction.mjs';
 import {WILD_LANDS_SITES,interactWildLandsSite,tickWildLandsContent} from '../src/wild-lands-content.mjs';
-import {updateTrainWater} from '../src/train-test.mjs';
+import {trainWorldBlocked,updateTrainWater} from '../src/train-test.mjs';
 import {railwayStations} from '../src/railway-station.mjs';
 import {drawRiverCattails,riverBankVegetation} from '../src/wild-river-vegetation.mjs';
+import {nativeWildProps} from '../src/wild-native-biomes.mjs';
+import {wildBiomeSafe} from '../src/wild-biome-spawns.mjs';
+import {MOSSBELL_TRAIL,WILD_SLIME_HOLLOW} from '../src/wild-slime-hollow-site.mjs';
 test('Wild Lands follows the sketch and keeps each surface territory larger than Classic',()=>{
  const d=wildLandsDesign(),area={};
  for(let y=100;y<d.height;y+=100)for(let x=100;x<d.width;x+=100){if(wildLandsSurface(d,x,y)!=='grass')continue;const b=wildLandsGround(d,x,y);area[b]=(area[b]||0)+10000;}
  for(const biome of ['jungle','forest','swamp','ice','graveyard','house','beach'])assert.ok(area[biome]>1600*1600,biome+' dry footprint '+area[biome]);
  assert.equal(wildLandsBiome(3000,2000),'jungle');assert.equal(wildLandsBiome(13000,1800),'swamp');assert.equal(wildLandsBiome(8200,4700),'house');assert.equal(wildLandsBiome(9200,5712),'ice');assert.equal(wildLandsBiome(3300,6000),'graveyard');
  assert.equal(wildLandsSurface(d,0,0),'water');assert.equal(wildLandsSurface(d,14600,8500),'grass');
+});
+test('Mossbell Hollow keeps its trail, arena and approach clear of ambient encounters',()=>{
+ const design=wildLandsDesign(),route=buildTrainRoute(design),t={design,route,streamDisabled:true};
+ const g={trainTest:t},site=WILD_SLIME_HOLLOW,{x,y,radius,checkpoint,checkpointApproach}=site;
+ const props=nativeWildProps(t,{left:x-400,top:y-400,right:x+400,bottom:y+450});
+ assert.ok(props.some(p=>p.kind==='mossbell_checkpoint'&&p.x===checkpoint.x&&p.rootY===checkpoint.y));
+ assert.ok(trainWorldBlocked(g,checkpoint.x,checkpoint.y,10));
+ assert.ok(!trainWorldBlocked(g,checkpointApproach.x,checkpointApproach.y,10));
+ assert.ok(Math.hypot(checkpointApproach.x-checkpoint.x,checkpointApproach.y-checkpoint.y)<34);
+ for(let i=1;i<MOSSBELL_TRAIL.length;i++){
+  const start=MOSSBELL_TRAIL[i-1],end=MOSSBELL_TRAIL[i];
+  const steps=Math.ceil(Math.hypot(end.x-start.x,end.y-start.y)/6);
+  for(let step=0;step<=steps;step++){
+   const px=start.x+(end.x-start.x)*step/steps,py=start.y+(end.y-start.y)*step/steps;
+   assert.ok(wildLandsPathAt(px,py)&&!trainWorldBlocked(g,px,py,10),`open trail at ${px}, ${py}`);
+   assert.ok(wildBiomeSafe(t,px,py),`protected trail at ${px}, ${py}`);
+  }
+ }
+ for(let py=y-radius;py<y+radius;py+=25)for(let px=x-radius;px<x+radius;px+=25){
+  if(Math.hypot(px-x,py-y)>=radius)continue;
+  assert.ok(!trainWorldBlocked(g,px,py,10)&&wildBiomeSafe(t,px,py),`open arena at ${px}, ${py}`);
+ }
+ assert.ok(!wildBiomeSafe(t,x,y-radius-130));
 });
 test('sketch river branches connect to a southwest mouth and footbridges preserve swimming beneath',()=>{
  const d=wildLandsDesign(),route=buildTrainRoute(d);assert.ok(WILD_RIVERS[0].at(-1)[0]<7000);

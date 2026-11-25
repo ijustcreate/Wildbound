@@ -6,7 +6,7 @@ import {stationaryCreature,creatureEgg} from './stationary-creatures.mjs';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 export function befriendCreature(actor,owner){
- if(!actor||actor.hp<=0||actor.practiceTarget||actor.kind==='bee_hive'||creatureEgg(actor))return false;
+ if(!actor||actor.hp<=0||actor.practiceTarget||actor.wildSlimeRole||actor.smokeMonsterRole||actor.runeboundCat||actor.kind==='bee_hive'||creatureEgg(actor))return false;
  Object.assign(actor,{faction:'ally',allyOwner:owner,aggro:false,state:'idle',timer:0,moving:false,attack:0,animationAction:null,poseTime:null,motionDuration:null});
  if(actor.kind==='succubus')Object.assign(actor,{succubusAttack:null,succubusWindup:0,succubusFlightHeight:0,succubusFlying:false});
  if(actor.kind==='imp')Object.assign(actor,{impWindup:0,impAim:null});

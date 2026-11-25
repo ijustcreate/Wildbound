@@ -35,6 +35,7 @@ export function shopCutawayOpen(shop,party) {
 
 export function shopServiceReach(shop,actor) {
   const {x,y}=shopLocalPosition(shop,actor.x,actor.y);
+  if(shop.id==='gringotts')return Math.abs(x)<61&&y>5&&y<layout.halfDepth-layout.wall;
   if(shop.frontEntrance)return Math.abs(x)<61&&y>5&&y<58;
   return (x>=-42&&x<=98&&y>=-7&&y<=51) ||
     (x>98&&x<=140&&Math.abs(y)<layout.entranceHalf);

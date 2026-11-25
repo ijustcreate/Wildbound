@@ -6,7 +6,7 @@ import {nativeWildTile,nearbyNativeBayouShrine} from './wild-native-biomes.mjs';
 import {WILD_LANDS_SITES} from './wild-lands-content.mjs';
 import {EAST_WILDS_WIDTH,HOLLOW_ROOM,HOLLOW_GATE,HOLLOW_EXIT,HOLLOW_ARRIVAL,hollowSurface,mountainLand,mountainSurface,mountainTerrainBlocked} from './wild-mountain-layout.mjs';
 import {greywakeShoreAt} from './wild-mountain-shore.mjs';
-import {sketchBiome,sketchGround,sketchSurface,sketchSurfaceAt} from './wild-lands-geography.mjs';
+import {eastWoodlandTerrain,sketchBiome,sketchGround,sketchSurface,sketchSurfaceAt} from './wild-lands-geography.mjs';
 import {WILDS_OVERLOOK,inOverlookGround} from './overlook-maze-layout.mjs';
 import {clearPirateRide} from './pirate-ship.mjs';
 import {QUIDDITCH_ROOM} from './quidditch-layout.mjs';
@@ -14,6 +14,9 @@ import {inQuidditch,leaveQuidditchPitch} from './quidditch-scene.mjs';
 import {wildHomesteadAt,wildHomesteadPoolAt} from './wild-homestead-layout.mjs';
 import {gardenPondContains} from './diagon-garden-layout.mjs';
 import {TIDEGLASS_BLOCKERS,tideglassGround,tideglassSurface} from './tideglass-layout.mjs';
+import {castleSurface} from './wild-castle-site.mjs';
+import {castleStory} from './wild-castle.mjs';
+import {coastalSiteBlocked,coastalSiteGround,coastalSiteSurface} from './wild-coastal-sites.mjs';
 // The user's landscape sketch, expressed in world coordinates (Classic is 1600²).
 export const WILD_LANDS_WIDTH=EAST_WILDS_WIDTH,WILD_LANDS_HEIGHT=9600;
 export const WILD_LANDS_STOPS=[
@@ -30,31 +33,38 @@ export const WILD_LANDS_GATES=[{id:'caverns',name:'Caverns',x:3900,y:6600},{id:'
 export const WILD_LANDS_EXIT={x:8000,y:5600};
 export const wildHash=(x,y)=>{let n=Math.imul(x|0,374761393)^Math.imul(y|0,668265263);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;};
 export const wildLandsBiome=sketchBiome;
-export function wildLandsSurface(d,x,y){
+function resolveWildLandsSurface(d,x,y,sketch){
  if(d.activeRoom==='diagon')return gardenPondContains(x,y)?'water':'grass';
  if(d.activeRoom===QUIDDITCH_ROOM)return 'grass';
+ if(castleStory(d.activeRoom))return 'grass';
  if(d.activeRoom===HOLLOW_ROOM){const surface=hollowSurface(x,y);return surface==='void'?'water':surface;}
  if(d.activeRoom)return x>6500&&x<9500&&y>3900&&y<5900?'grass':'water';
+ const castle=castleSurface(x,y);if(castle)return castle;
  if(wildHomesteadPoolAt(d,x,y))return 'water';
  if(d.wildStops?.some(s=>Math.abs(x-s.x)<580&&y>s.y-390&&y<s.y+100))return 'grass';
  const mountain=mountainSurface(x,y);
- return mountain==='grass'?mountain:tideglassSurface(x,y)||mountain||sketchSurface(x,y);
+ if(mountain==='grass')return mountain;
+ const coastal=coastalSiteSurface(x,y);
+ if(coastal)return coastal;
+ const east=eastWoodlandTerrain(x,y);
+ return east?woodlandSurface(east):tideglassSurface(x,y)||mountain||sketch(x,y);
+}
+const woodlandSurface=ground=>ground==='forest'||ground==='beach'?'grass':ground;
+export function wildLandsSurface(d,x,y){
+ return resolveWildLandsSurface(d,x,y,sketchSurface);
 }
 export function wildLandsSurfaceAt(d,x,y){
- if(d.activeRoom==='diagon')return gardenPondContains(x,y)?'water':'grass';
- if(d.activeRoom===QUIDDITCH_ROOM)return 'grass';
- if(d.activeRoom===HOLLOW_ROOM){const surface=hollowSurface(x,y);return surface==='void'?'water':surface;}
- if(d.activeRoom)return x>6500&&x<9500&&y>3900&&y<5900?'grass':'water';
- if(wildHomesteadPoolAt(d,x,y))return 'water';
- if(d.wildStops?.some(s=>Math.abs(x-s.x)<580&&y>s.y-390&&y<s.y+100))return 'grass';
- const mountain=mountainSurface(x,y);
- return mountain==='grass'?mountain:tideglassSurface(x,y)||mountain||sketchSurfaceAt(x,y);
+ return resolveWildLandsSurface(d,x,y,sketchSurfaceAt);
 }
 export function wildLandsGround(d,x,y){
  if(d.activeRoom)return d.activeRoom==='shadow'?'shadow':'caverns';
  if(greywakeShoreAt(x,y)==='sand')return 'beach';
  if(mountainLand(x,y))return 'mountain';
  if(d.wildLands&&(inOverlookGround(WILDS_OVERLOOK,x,y)||wildHomesteadAt(d,x,y)))return 'house';
+ const coastal=coastalSiteGround(x,y);
+ if(coastal)return coastal;
+ const east=eastWoodlandTerrain(x,y);
+ if(east==='forest'||east==='beach')return east;
  return tideglassGround(x,y)||sketchGround(x,y);
 }
 export function wildLandsTravel(g,id){
@@ -66,16 +76,17 @@ export function wildLandsTravel(g,id){
  if(inDiagon(g))switchAlleyLayer(g,null);
  else switchWildLandsLayer(g,null);
  t.wildLandsOverview=false;
+ const arrival=stop.approach??{x:stop.x,y:stop.y-120};
  for(const [i,p]of g.players.entries()){
   clearPirateRide(p);
   delete p.mountainDescent;
-  delete p.trainRide;Object.assign(p,{x:stop.x+i*35,y:stop.y-120,swimming:false,underBridge:false,trainDeck:false,trainGround:0,jumpHeight:0,jumpVelocity:0,ui:null});
+  delete p.trainRide;Object.assign(p,{x:arrival.x+i*35,y:arrival.y,swimming:false,underBridge:false,trainDeck:false,trainGround:0,jumpHeight:0,jumpVelocity:0,ui:null});
  }
  spellTransition(g);return {ok:true,message:'Arrived at '+stop.name+(stop.id==='jungle'?' · an enchanted brick wall waits beside the station.':'.')};
 }
 function nearbyWildGate(g,p){
  const t=g.trainTest,d=t?.design;
- if(!d?.wildLands||p.trainRide||p.pirateRide||inDiagon(g))return null;
+ if(!d?.wildLands||p.trainRide||p.pirateRide||inDiagon(g)||castleStory(d.activeRoom))return null;
  if(d.activeRoom){
   const exit=d.activeRoom===HOLLOW_ROOM?HOLLOW_EXIT:WILD_LANDS_EXIT;
   if(d.activeRoom===HOLLOW_ROOM&&g.players.some(q=>q.pirateRide))return null;
@@ -112,9 +123,9 @@ export function switchWildLandsLayer(g,room){
  const t=g.trainTest,previous=t.design.activeRoom||null;
  if(previous===(room||null))return;
  if(previous===HOLLOW_ROOM)crossHollow(g,t,false);
- else if(previous==='caverns'||previous==='shadow')crossBiomeRoom(g,t,previous,false);
+ else if(previous==='caverns'||previous==='shadow'||castleStory(previous))crossBiomeRoom(g,t,previous,false);
  if(room===HOLLOW_ROOM)crossHollow(g,t,true);
- else if(room==='caverns'||room==='shadow')crossBiomeRoom(g,t,room,true);
+ else if(room==='caverns'||room==='shadow'||castleStory(room))crossBiomeRoom(g,t,room,true);
  t.design.activeRoom=room||undefined;
 }
 export function wildLandsInteract(g,p){
@@ -143,6 +154,7 @@ export function wildLandsInteract(g,p){
 }
 
 export function wildLandsBlocked(d,x,y,t=null,radius=0){
+ if(!d.activeRoom&&coastalSiteBlocked(x,y,radius))return true;
  if(!d.activeRoom&&x>15520&&x<17200&&TIDEGLASS_BLOCKERS.some(s=>((x-s.x)/(s.rx+radius))**2+((y-s.y)/(s.ry+radius))**2<1))return true;
  if(d.activeRoom===HOLLOW_ROOM||!d.activeRoom)return mountainTerrainBlocked(d,x,y,radius);
  return x<6530||x>9470||y<3930||y>5870||!!(t&&nativeWildTile(t,x,y)?.endsWith('_void'));

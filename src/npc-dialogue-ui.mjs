@@ -1,6 +1,9 @@
 import {npcDialogueView, npcDialogueAction} from './npc-quests.mjs';
 import {drawMysteryDog} from './mystery-inc-art.mjs';
 import {drawFlooHearth} from './floo-art.mjs';
+import {drawLagoonMermaid} from './lagoon-mermaid-art.mjs';
+import {DIAGON_VISITING_CREATURE_BOUNDS,drawDiagonVisitingCreature} from './diagon-visiting-creature-art.mjs';
+import {paintDiagonVisitorForm} from './diagon-visitor-render.mjs';
 import {controllerButtonNames} from './controls.mjs';
 import {ITEMS} from './items.mjs';
 
@@ -119,16 +122,29 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
       drawFlooHearth(c,time,true);c.restore();continue;
     }
     if(!player&&source.dog&&p.ui.mysteryVisitor){
-      drawMysteryDog(c,{...source,x:canvas.width/2,y:canvas.height-17,faceX:1,faceY:1},time,185);
+      drawMysteryDog(c,{...source,x:canvas.width/2,y:canvas.height-29,faceX:1,faceY:1},time,176);
       continue;
     }
+    if(!player&&p.ui.lagoonMermaid){
+      drawLagoonMermaid(c,{...source,x:canvas.width/2,y:canvas.height*.43,faceX:0,faceY:1,size:218},time,{portrait:true});
+      continue;
+    }
+    if(!player&&source.visitorCreature){
+      const {halfWidth,height,below}=DIAGON_VISITING_CREATURE_BOUNDS[source.residentId];
+      const scale=Math.min((canvas.width-24)/(halfWidth*2),(canvas.height-34)/(height+below));
+      c.save();c.imageSmoothingEnabled=false;
+      c.translate(canvas.width/2,(canvas.height+scale*(height-below))/2);c.scale(scale,scale);
+      drawDiagonVisitingCreature(c,{...source,x:0,y:0,faceX:.7,faceY:1,moving:false,step:0,portrait:true},time);
+      c.restore();continue;
+    }
     const nativeNpc=!player&&['alan','alley_goblin'].includes(source.sprite);
+    const tallHat=source.equipment?.head==='greyhaven_starwatch_hat';
     c.save(); c.imageSmoothingEnabled = false;
     // The humanoid's origin is at its feet. Enlarge and move the legs below
     // the canvas edge, keeping the head/shoulders and equipped upper body.
-    animator.draw(c, {
+    const portrait={
       ...source, sprite:nativeNpc?source.sprite:!player&&source.villagerId?'villager':'explorer-teal', kind:nativeNpc?source.kind:!player&&source.villagerId?'villager':'player',
-      x: canvas.width / 2, y: canvas.height + (source.sprite==='alley_goblin'?4:34),
+      x: canvas.width / 2, y: canvas.height + (tallHat?12:source.sprite==='alley_goblin'?4:34),
       // A dialogue portrait is a stable presentation render, never the live
       // actor's direction or movement state.
       faceX: 0, faceY: 1,
@@ -139,7 +155,9 @@ export function drawNpcDialoguePortraits(panel, g, p, animator) {
       bowAiming: false, bowAimBlend: 0, bowVisualAngle: undefined, gatherTime: 0,
       equipment: source.equipment || {},
       step: undefined, dx: 0, dy: 0, direction: undefined,
-    }, time, 260);
+    };
+    const size=tallHat?166:260;
+    paintDiagonVisitorForm(c,portrait,time,size,(actor,scale)=>animator.draw(c,actor,time,scale),true,player?undefined:p.ui,g.time);
     c.restore();
   }
 }

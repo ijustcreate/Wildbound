@@ -1,0 +1,67 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Game} from '../src/core.mjs';
+import {enterWildLands} from '../src/wild-lands.mjs';
+import {saveSession,restoreSession} from '../src/session.mjs';
+import {ALLEY,ALLEY_BANK_VAULT,alleyBlocked,alleyPrompt,interactAlley,switchAlleyLayer} from '../src/diagon-alley.mjs';
+import {gringottsVaultProgress} from '../src/gringotts-vault.mjs';
+import {storagePortalsInScene} from '../src/storage-portals.mjs';
+import {storageOwner} from '../src/storage-repair.mjs';
+
+test('vault opens from gameplay input and routes simultaneous visitors to their own existing storage',()=>{
+ const g=new Game(()=>.5);
+ const p=g.addPlayer('keyboard','One'),q=g.addPlayer('pad:0','Two'),r=g.addPlayer('pad:1','Three');
+ g.phase='play';g.openingBoard=false;g.persist=()=>{};g.onSound=()=>{};
+ assert.ok(enterWildLands(g,{persistent:true}).ok);
+ g.trainTest.preparing=false;
+ switchAlleyLayer(g,'diagon');
+ const {x,y}=ALLEY_BANK_VAULT;
+ const first={x:x-7,y:y+31},second={x:x+7,y:y+33},summon={x:8000,y:4400};
+ Object.assign(p,first);Object.assign(q,second);Object.assign(r,summon,{faceX:0,faceY:1});
+ p.chests[0][0]={type:'sword',qty:1};q.chests[0][0]={type:'potion',qty:1};
+ for(const at of [first,second])assert.equal(alleyBlocked(g,at.x,at.y),false);
+ assert.equal(alleyPrompt(g,p),'OPEN VAULT DOOR');
+ const tick=(input={})=>g.update(.05,input);
+ tick({keyboard:{interact:true}});
+ assert.equal(p.room,null);
+ const walking={'pad:0':{y:-1}};
+ for(let i=0;i<8;i++)tick(walking);
+ assert.ok(gringottsVaultProgress(g)>0&&gringottsVaultProgress(g)<1);
+ assert.equal(q.room,null);
+ for(let i=0;i<12;i++)tick(walking);
+ assert.equal(alleyPrompt(g,p),'ENTER PERSONAL STORAGE');
+ tick({keyboard:{interact:true}});
+ assert.ok(p.room&&q.room&&p.room!==q.room);
+ assert.equal(storagePortalsInScene(g).length,0);
+ assert.equal(storageOwner(g,p),p);
+ assert.equal(storageOwner(g,q),q);
+ g.openInventory(p,0);g.openInventory(q,0);
+ assert.equal(g.storageFor(p)[0].type,'sword');
+ assert.equal(g.storageFor(q)[0].type,'potion');
+ Object.assign(r,ALLEY.entry);
+ assert.ok(interactAlley(g,r));
+ assert.equal(g.trainTest.design.activeRoom,'diagon');
+ Object.assign(r,summon);
+ g.portal(r);
+ const [ordinary]=storagePortalsInScene(g);
+ assert.equal(ordinary.owner,r.id);
+ assert.equal(g.enterRoom(r,g.portals.find(door=>door.id===p.room)),false);
+ Object.assign(r,{x:ordinary.x,y:ordinary.y});
+ assert.ok(g.enterRoom(r,ordinary));
+ const roomRoutes=g.portals.map(({id,x,y})=>({id,x,y}));
+ const restored=restoreSession(JSON.parse(JSON.stringify(saveSession(g))));
+ restored.trainTest.preparing=false;
+ for(const player of restored.players){
+  const route=roomRoutes.find(door=>door.id===player.room);
+  assert.ok(route);
+  player.roomX=160;player.roomY=213;
+  restored.update(.05,{});
+  assert.equal(player.room,null);
+  assert.deepEqual({x:player.x,y:player.y},{x:route.x,y:route.y});
+ }
+ assert.deepEqual(restored.portals,[]);
+ // Walk or Interact near the exit after reloading without re-triggering storage.
+ restored.update(.05,{});
+ assert.ok(restored.players.every(player=>!player.room));
+ assert.equal(restored.trainTest.design.activeRoom,'diagon');
+});

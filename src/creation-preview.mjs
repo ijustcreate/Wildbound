@@ -1,4 +1,4 @@
-import {drawPlayer,playerMotion,playerPose,projectPoint,directionVector} from './player-motion.mjs';
+import {drawPlayer,playerMotion,playerRenderPose,projectPoint,directionVector} from './player-motion.mjs';
 import {controllerButtonNames,controllerFamily,controllerMenuButtons} from './controls.mjs';
 
 // Menu actions use physical positions, independently of gameplay remapping.
@@ -26,8 +26,9 @@ function creationForestPlate(){
  return forestPlate;
 }
 export function drawCreationPreview(c,appearance,{width=240,height=160,mode='full',direction=0,time=0,model=playerMotion,scene=false}={}){
- const [faceX,faceY]=directionVector(direction),actor={appearance,equipment:{},faceX,faceY,animationAction:'idle',hp:100};
- const head=projectPoint(playerPose(actor,time,model).head,direction);
+ const [faceX,faceY]=directionVector(direction),actor={appearance,stockExplorerPreview:true,equipment:{},faceX,faceY,animationAction:'idle',hp:100};
+ const head=projectPoint(playerRenderPose(actor,time,model).head,direction);
+ if(model.nativeHumanoidRevision===1)head.y++;
  const close=mode!=='full',span=mode==='face'?20:mode==='hair'?30:scene?44:48;
  const scale=Math.max(1,Math.min(close?16:7,Math.floor((scene&&!close?height*.86:height-10)/span),Math.floor(width/(mode==='face'?24:30))));
  const center=close?head.y+(mode==='hair'?-1:0):-22;

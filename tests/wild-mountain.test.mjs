@@ -7,7 +7,7 @@ import {trainPrompt,trainWorldBlocked} from '../src/train-test.mjs';
 import {wildLandsGround,wildLandsSurface,wildLandsSurfaceAt} from '../src/wild-lands-world.mjs';
 import {nativeWaterRuns} from '../src/wild-lands-art.mjs';
 import {mountainPursuitRoute,tickMountainPursuit} from '../src/wild-mountain-encounters.mjs';
-import {EAST_WILDS_WIDTH,HOLLOW_ROOM,HOLLOW_GATE,HOLLOW_EXIT,HOLLOW_NAV,MOUNTAIN_ASCENT,MOUNTAIN_CAVE_TRAIL,MOUNTAIN_DESCENTS,MOUNTAIN_SUMMIT,hollowSurface,mountainHeight,mountainLineOpen,mountainMovementScale} from '../src/wild-mountain-layout.mjs';
+import {EAST_WILDS_WIDTH,HOLLOW_ROOM,HOLLOW_GATE,HOLLOW_EXIT,HOLLOW_NAV,MOUNTAIN_ASCENT,MOUNTAIN_CAVE_TRAIL,MOUNTAIN_DESCENTS,MOUNTAIN_OCEAN_DESCENT,MOUNTAIN_SUMMIT,hollowSurface,mountainHeight,mountainLineOpen,mountainMovementScale,mountainTerrainBlocked} from '../src/wild-mountain-layout.mjs';
 import {mysteryVisitors} from '../src/mystery-inc.mjs';
 import {npcDialogueView,npcDialogueAction} from '../src/npc-quests.mjs';
 import {PIRATE_SHIP_LAYOUT,pirateShip,movePirateShipPlayer,syncPirateShipPlayer} from '../src/pirate-ship.mjs';
@@ -167,6 +167,50 @@ test('the summit uses the visible shelf edge and ledges permit only a committed 
   for(let i=0;i<25;i++)step(g,{x:-dx/distance,y:-dy/distance});
   assert.ok(mountainHeight(d,p.x,p.y)<rise-12);
  }
+});
+
+test('explorers can take an unmarked downhill jump onto a clear lower trail without reversing uphill',()=>{
+ const {g,p,d}=wilds();
+ Object.assign(p,{x:16020,y:7270,invuln:999});
+ const height=mountainHeight(d,p.x,p.y);
+ step(g,{x:-1,y:1,jump:true});
+ assert.equal(p.mountainDescent?.id,'nearby-trail-drop');
+ const [x,y]=p.mountainDescent.landing;
+ assert.ok(mountainHeight(d,x,y)<height-20);
+ assert.ok(!mountainTerrainBlocked(d,x,y,12));
+ for(let i=0;i<30&&p.mountainDescent;i++)step(g);
+ assert.deepEqual([p.x,p.y,p.jumpHeight,p.trainGround,p.swimming],[x,y,0,0,false]);
+
+ step(g,{x:1,y:-1,jump:true});
+ assert.ok(!p.mountainDescent&&p.jumpHeight>0);
+ for(let i=0;i<30;i++){
+  step(g,{x:1,y:-1});
+  assert.ok(!mountainTerrainBlocked(d,p.x,p.y,8));
+  assert.ok(p.trainGround<height-16);
+ }
+});
+
+test('the east summit jump resumes through checkpoints and lands directly in deep ocean swimming',()=>{
+ const {g,p,d}=wilds(),{id,launch,landing}=MOUNTAIN_OCEAN_DESCENT;
+ assert.equal(wildLandsSurface(d,...landing),'water');
+ Object.assign(p,{...point(launch),trainGround:mountainHeight(d,...launch),invuln:999});
+ step(g,{x:1});
+ assert.ok(!p.mountainDescent,'walking toward the rim does not launch an explorer');
+ step(g,{x:1,jump:true});
+ assert.equal(p.mountainDescent?.id,id);
+ assert.ok(p.jumpHeight>0&&!p.swimming);
+ for(let i=0;i<16;i++)step(g);
+ const saved=restoreSession(JSON.parse(JSON.stringify(saveSession(g)))),hero=saved.players[0];
+ saved.trainTest.preparing=false;
+ assert.deepEqual(hero.mountainDescent,p.mountainDescent);
+ for(let i=0;i<60&&hero.mountainDescent;i++)step(saved);
+ assert.deepEqual([hero.x,hero.y,hero.jumpHeight,hero.trainGround,hero.swimming],[...landing,0,0,true]);
+ assert.equal(saved.effects.filter(effect=>effect.particle==='jump-splash').length,1);
+
+ for(let i=0;i<120;i++)step(saved,{x:-1,jump:i%25===0});
+ assert.ok(!hero.mountainDescent);
+ assert.equal(hero.trainGround,0);
+ assert.ok(!mountainTerrainBlocked(d,hero.x,hero.y,8));
 });
 
 test('cave mobs route along connected dry rock shelves instead of trying to cross the harbor',()=>{

@@ -18,6 +18,8 @@ import {houseKeepsWorld} from './house-victory.mjs';
 import {upgradeCemeteryFeatures} from './graveyard-world.mjs';
 import {trialState} from './expedition-trials.mjs';
 import {migrateEmporiumOwl} from './hunter-pets.mjs';
+import {restoreMoonveilSanctuary} from './wild-runic-sanctuary.mjs';
+import {restoreEastFlotsam} from './wild-merlock-camps.mjs';
 export function saveSession(game) {
   if(game.trainTest?.persistent){
     const state=snapshot(game);
@@ -110,6 +112,8 @@ export function restoreSession(saved) {
   }
   if(saved.wilds){
     g.trainTest=restoreWildLands(saved.wilds);
+    restoreMoonveilSanctuary(g);
+    restoreEastFlotsam(g);
     restoreCompartmentRiders(g.trainTest,g.players);
   }
   else initializeBoundlessWorld(g);

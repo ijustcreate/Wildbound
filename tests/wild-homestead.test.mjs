@@ -20,10 +20,10 @@ function start(){
  return {game,player:game.players[0],home:wildHomestead(game.trainTest.design)};
 }
 
-test('the valley gives the Homestead and both sides of the Overlook grass while Frostmere stays cold',()=>{
+test('the Homestead and Overlook flanks stay grassy as Frostmere snow reaches the north entrance',()=>{
  const design=wildLandsDesign(),trainTest={design,streamDisabled:true};
  const {entrance,gate}=WILDS_OVERLOOK;
- for(const [x,y] of [[entrance.x,entrance.y-80],[7484,5518],[8844,5518],[gate.x,gate.y+64],[WILD_HOMESTEAD.x,WILD_HOMESTEAD.y]]){
+ for(const [x,y] of [[7484,5518],[8844,5518],[gate.x,gate.y+64],[WILD_HOMESTEAD.x,WILD_HOMESTEAD.y]]){
   assert.equal(wildLandsGround(design,x,y),'house');
   assert.equal(nativeWildBiome(design,x,y),'house');
   assert.equal(wildLandsSurface(design,x,y),'grass');
@@ -31,6 +31,10 @@ test('the valley gives the Homestead and both sides of the Overlook grass while 
   assert.deepEqual(nativeWildIceMotion({trainTest},p,1,0,120,1/60),{dx:2,dy:0});
   assert.equal(p.slideX,0);
  }
+ const northY=entrance.y-80;
+ assert.equal(wildLandsGround(design,entrance.x,northY),'ice');
+ assert.equal(nativeWildBiome(design,entrance.x,northY),'ice');
+ assert.equal(nativeWildTile(trainTest,entrance.x,northY),'snow');
  assert.equal(wildLandsGround(design,8200,4240),'ice');
  assert.equal(nativeWildBiome(design,9380,5500),'ice');
  assert.equal(nativeWildTile(trainTest,9200,5712),'ice','the eastern frozen lake keeps its slide surface');

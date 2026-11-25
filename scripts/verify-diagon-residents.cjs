@@ -29,6 +29,8 @@ app.whenReady().then(async()=>{
    const {ALLEY_RESIDENTS}=await import('./src/diagon-resident-schedules.mjs');
    const {GARDEN_RESIDENTS}=await import('./src/diagon-garden-residents.mjs');
    const {alleyResidentsFor}=await import('./src/diagon-residents.mjs');
+   const {drawDiagonVisitingCreature}=await import('./src/diagon-visiting-creature-art.mjs');
+   const {paintDiagonVisitorForm}=await import('./src/diagon-visitor-render.mjs');
    const checks=[],images={},ok=(condition,label)=>{if(!condition)throw Error(label);checks.push(label);};
    const assets=new Assets();await assets.load();
    const g=new Game(()=>.5);g.addPlayer('keyboard','Alley visitor');g.start();g.openingBoard=false;
@@ -70,6 +72,12 @@ app.whenReady().then(async()=>{
     }
     if(resident.topic){
      t.noticeUntil=0;r.trainScene=null;draw();
+     if(actor.visitorCreature||actor.visitorForm){
+      const portrait=uiRoot.querySelector('.npc-dialogue-portrait');
+      ok(portrait?.getContext('2d').getImageData(0,0,portrait.width,portrait.height).data.some((value,i)=>i%4===3&&value>0),
+       'native conversation portrait renders for '+resident.name);
+      images[resident.id]=canvas.toDataURL();
+     }
      uiRoot.querySelector('[data-index="2"]').click();draw();
      ok(uiRoot.querySelector('.npc-dialogue-text')?.textContent===resident.topic.text,'native topic opens for '+resident.name);
      uiRoot.querySelector('[data-index="1"]').click();draw();
@@ -93,7 +101,9 @@ app.whenReady().then(async()=>{
    for(const [i,actor] of t.alleyVisitors.entries()){
     const x=104+(i%5)*208,y=225+Math.floor(i/5)*208;
     ink.fillStyle='#314440';ink.fillRect(x-89,y-159,178,192);
-    r.animator.draw(ink,{...actor,x,y:y-13,faceX:i%2?-.35:.35,faceY:1,animationAction:'idle'},1.5,151);
+    const pose={...actor,x,y:y-13,faceX:i%2?-.55:.55,faceY:1,animationAction:'idle'};
+    if(pose.visitorCreature)drawDiagonVisitingCreature(ink,pose,1.5);
+    else paintDiagonVisitorForm(ink,pose,1.5,151,(a,size)=>r.animator.draw(ink,a,1.5,size));
     ink.fillStyle='#efdcaa';ink.font='600 16px Georgia';ink.fillText(actor.name,x,y+19);
    }
    images.cast=board.toDataURL();

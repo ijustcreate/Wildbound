@@ -1,3 +1,5 @@
+import {castleSiteAt} from './wild-castle-site.mjs';
+
 // The eastern reach is authored in world units, alongside Greywake and the Wild Lands sketch.
 export const TIDEGLASS_BOUNDS={left:14800,top:750,right:19200,bottom:5990};
 export const TIDEGLASS_BEACON={x:17040,y:1600};
@@ -32,11 +34,16 @@ const lagoon=[
  [17510,3515],[17544,3710],[17422,3855],[17250,3930],[17005,3908],[16805,3980],
  [16670,3900],[16610,3780],
 ];
+export const GREYHAVEN_APPROACH_PATH=[
+ [16840,2030],[17025,2118],[17202,2190],[17390,2255],[17555,2300],
+ [17696,2310],[17772,2287],[17818,2245],[17838,2202],[17840,2160],
+];
 export const TIDEGLASS_PATHS=[
  [[15020,4795],[15520,4928],[15960,4800],[16365,4485],[16615,4165],[16500,3820],[16560,3510],
   [16785,3250],[17048,3220],[17050,2910],[16770,2670],[16690,2355],[16840,2030],[17020,1790]],
  [[16615,4165],[17010,4130],[17350,4170],[17670,4350],[18035,4345],[18255,4275]],
  [[16690,2355],[16445,2280],[16328,2190]],
+ GREYHAVEN_APPROACH_PATH,
  [[16365,4485],[16350,4850],[16470,5205],[16505,5460],[16390,5590]],
 ];
 
@@ -72,11 +79,21 @@ export function tideglassSurface(x,y){
  return null;
 }
 export function tideglassOcean(x,y){
- return tideglassEdge(x,y)<0&&!(x>16530&&x<17630&&y>3250&&y<4040&&shape(x,y,lagoon)>0);
+ return tideglassEdge(x,y)<0&&!tideglassLagoonAt(x,y);
+}
+export function tideglassLagoonAt(x,y,margin=0){
+ return x>16530&&x<17630&&y>3250&&y<4040&&shape(x,y,lagoon)>-margin;
 }
 export function tideglassPathDistance(x,y){
  let best=Infinity;
  for(const path of TIDEGLASS_PATHS)for(let i=1;i<path.length;i++)best=Math.min(best,step(x,y,path[i-1],path[i]));
+ return Math.sqrt(best);
+}
+export function greyhavenApproachDistance(x,y){
+ let best=Infinity;
+ for(let i=1;i<GREYHAVEN_APPROACH_PATH.length;i++){
+  best=Math.min(best,step(x,y,GREYHAVEN_APPROACH_PATH[i-1],GREYHAVEN_APPROACH_PATH[i]));
+ }
  return Math.sqrt(best);
 }
 export function tideglassGround(x,y){
@@ -85,7 +102,7 @@ export function tideglassGround(x,y){
  return edge<138&&y>2350?'beach':'tideglass';
 }
 export function tideglassSafePoint(x,y){
- return [TIDEGLASS_BEACON,TIDEGLASS_CAMP,TIDEGLASS_VAULT,...TIDEGLASS_SIGNALS].some(a=>(x-a.x)**2+(y-a.y)**2<190**2)||
+ return castleSiteAt(x,y,55)||[TIDEGLASS_BEACON,TIDEGLASS_CAMP,TIDEGLASS_VAULT,...TIDEGLASS_SIGNALS].some(a=>(x-a.x)**2+(y-a.y)**2<190**2)||
   tideglassPathDistance(x,y)<78;
 }
 export const TIDEGLASS_BLOCKERS=[

@@ -1,6 +1,8 @@
 // Four equal parts of the existing 480-second expedition day. Locations are
 // public approaches, so an errand never sends a resident through a shop wall.
 import {diagonLaneX,nocturneLaneX} from './alley-street-layout.mjs';
+import {DIAGON_VISITING_WIZARDS} from './diagon-visiting-wizards.mjs';
+import {DIAGON_VISITING_ADVENTURERS,DIAGON_VISITING_CREATURES} from './diagon-visiting-adventurers.mjs';
 
 export const ALLEY_RESIDENT_PLACES = Object.freeze(Object.fromEntries(Object.entries({
  arch: {x:7880,y:5520,name:'the station arch',activity:'Checks station arrivals',faceX:0,faceY:1},
@@ -14,6 +16,7 @@ export const ALLEY_RESIDENT_PLACES = Object.freeze(Object.fromEntries(Object.ent
  brooms: {x:8180,y:4640,name:'the broom shop',activity:'Compares broom repairs',faceX:1,faceY:0},
  owls: {x:8185,y:5015,name:'the owl emporium',activity:'Checks for new parcels',faceX:1,faceY:0},
  bank: {x:8000,y:3960,name:'the bank steps',activity:'Checks a change receipt',faceX:0,faceY:-1},
+ buckbeakCourtyard: {x:8052,y:4082,name:'the north courtyard',faceX:-1,faceY:1,fixed:true},
  branch: {x:8750,y:5225,name:'the Nocturne lane',activity:'Checks the lane’s lamps',faceX:1,faceY:0},
  oddities: {x:9040,y:4945,name:'the Nocturne antiques window',activity:'Inspects an antique in the window',faceX:1,faceY:0},
  charms: {x:9040,y:5500,name:'the Nocturne charm shop',activity:'Reads the new charm labels',faceX:1,faceY:0},
@@ -199,6 +202,9 @@ export const ALLEY_RESIDENTS = Object.freeze([
     {label:'Check whether the legs bend properly.',text:'“Precisely. A beetle must be able to move even when nobody is casting.” She makes a small check mark in the margin.'},
    ]},
  },
+ ...DIAGON_VISITING_WIZARDS,
+ ...DIAGON_VISITING_ADVENTURERS,
+ ...DIAGON_VISITING_CREATURES,
 ]);
 
 export const ALLEY_SOCIAL_EXCHANGES={

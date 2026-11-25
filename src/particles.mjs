@@ -76,7 +76,7 @@ export const particleFrameStats=c=>({...frames.get(c)});
 export function drawParticleEffect(c,id,x,y,time,seed=0,context){
  const effect=typeof id==='string'?effects[id]:id;if(!effect)return;
  if(effect.loop&&Number.isFinite(time)&&time>=0)time%=effect.life;
- const frame=frames.get(c);if(frame&&(frame.emitters>=frame.maxEmitters||frame.draws>=frame.budget))return;
+ const frame=context?.heldTorch?undefined:frames.get(c);if(frame&&(frame.emitters>=frame.maxEmitters||frame.draws>=frame.budget))return;
  // World-to-screen culling before allocating, preparing colors or transforming.
  if(c.getTransform&&c.canvas){const m=c.getTransform(),sx=m.a*x+m.c*y+m.e,sy=m.b*x+m.d*y+m.f,extent=(effect.pixelfx?pixelFxExtent(effect):effect.spread+effect.orbit+Math.abs(effect.speedY)*effect.life+Math.abs(effect.gravity)*effect.life**2+180)*Math.max(Math.hypot(m.a,m.b),Math.hypot(m.c,m.d));if(sx+extent<0||sy+extent<0||sx-extent>c.canvas.width||sy-extent>c.canvas.height){if(frame)frame.culled++;return;}}
  if(effect.pixelfx&&frame&&frame.pixelFxEmitters>=frame.maxPixelFx)return;

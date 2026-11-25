@@ -7,6 +7,7 @@ import {creatures} from '../src/definitions.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {defaultHouse} from '../src/house-design.mjs';
 import {drawHouseFloor,drawHouseWall,drawHouseDoor} from '../src/house-architecture-art.mjs';
+import {SMOKE_MONSTER_KIND} from '../src/smoke-monster.mjs';
 const make=env=>{const g=new Game(()=>.5);g.seed=1234;g.environment=env||'forest';g.addPlayer('keyboard','Reviewer');g.start();g.openingBoard=false;return g;};
 const pool=[{name:'A',kind:'lion',count:1,hp:100},{name:'B',kind:'bat',count:5,hp:24},{name:'C',kind:'snake',count:4,hp:36},{name:'D',kind:'golem',count:1,hp:200},{name:'Boss',kind:'dragon',count:1,hp:310,weight:20}];
 test('Director avoids the last three events, keeps variety with a fixed random source and bounds history',()=>{
@@ -47,8 +48,14 @@ test('Every encounter uses its own author stats; squad, edited species and expli
 test('Default event roster has unique save keys, two-line flavor and actionable tips without generic placeholder copy',()=>{
  const original=EVENTS.slice(0,106),added=EVENTS.slice(106);
  assert.equal(original.length,106);assert.ok(added.length>=39,'expanded roster retains all original additions');assert.equal(new Set(EVENTS.map(e=>e.name)).size,EVENTS.length);assert.equal(EVENTS[59].kind,'old_well');assert.ok(EVENTS.slice(60,69).every(e=>e.environment==='graveyard'));assert.equal(EVENTS[69].type,'friendly_npc');assert.equal(EVENTS[70].kind,'dreadmane_lion');assert.equal(EVENTS[75].kind,'shore_goblin');assert.equal(EVENTS[76].kind,'ghost');
+ const smokeEvent=added.find(e=>e.kind===SMOKE_MONSTER_KIND);
+ assert.ok(smokeEvent,'expanded roster retains the scripted Cinder Wraith encounter');
+ assert.equal(smokeEvent.name,'When the Smoke Walks');
+ assert.equal(smokeEvent.role,'boss');
+ assert.equal(smokeEvent.count,1);
+ assert.equal(smokeEvent.weight,0);
  for(const e of original){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(!e.verse.startsWith('The wild wakes beneath the sky'),e.name);if(!e.type||e.type==='enemy'){assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}}
- for(const e of added){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}
+ for(const e of added){assert.equal(e.verse.split('\n').length,2,e.name);assert.ok(e.tip.length>=25,e.name);if(e!==smokeEvent)assert.ok(creatures[e.kind],e.name);assert.ok(e.count>=1&&e.count<=20);}
 });
 test('Native House architecture is read-only, balanced and honors saved open doors and floor bounds',()=>{
  const h=defaultHouse(),saved=structuredClone(h),calls=[];let balance=0;

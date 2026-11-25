@@ -21,18 +21,70 @@ export const ENVIRONMENTS=['forest','desert','ice','house','temple','beach','gra
 export const resolveEnvironment=(choice,seed)=>choice==='random'?ENVIRONMENTS[Math.abs(seed)%ENVIRONMENTS.length]:choice;
 export const insideHouse=(x,y,h=null)=>h?.floors?h.floors.some(r=>contains(r,x,y)):x>480&&x<1120&&y>480&&y<1120;
 export const makeHouse=()=>activeHouse();
+const structureQueryScopes = new WeakMap();
+const structureQuerySize = 128;
+const structureQueryPadding = 48;
+
+// Reuse nearby geometry while combat rays and movement probe the same cells.
+// Collision state such as open doors and damaged sections stays live.
+export function withStructureCollisionQueries(game, update) {
+  const previous = structureQueryScopes.get(game);
+  structureQueryScopes.set(game, {cells: new Map()});
+  try {
+    return update();
+  } finally {
+    if (previous) structureQueryScopes.set(game, previous);
+    else structureQueryScopes.delete(game);
+  }
+}
+
+function structureCandidates(game, x, y, radius) {
+  const house = game.house, scope = structureQueryScopes.get(game);
+  if (!house || !scope || !(radius <= structureQueryPadding)) return house;
+  const {walls, doors, furniture, destructionRevision} = house;
+  if (scope.house !== house || scope.walls !== walls || scope.doors !== doors ||
+      scope.furniture !== furniture || scope.wallCount !== walls?.length ||
+      scope.doorCount !== doors?.length || scope.furnitureCount !== furniture?.length ||
+      scope.revision !== destructionRevision) {
+    scope.cells.clear();
+    scope.last = null;
+    Object.assign(scope, {house, walls, doors, furniture, revision: destructionRevision,
+      wallCount: walls?.length, doorCount: doors?.length, furnitureCount: furniture?.length});
+  }
+  const cx = Math.floor(x / structureQuerySize), cy = Math.floor(y / structureQuerySize);
+  if (scope.last && cx === scope.cx && cy === scope.cy) return scope.last;
+  const key = cx + ':' + cy;
+  let candidates = scope.cells.get(key);
+  if (!candidates) {
+    const left = cx * structureQuerySize - structureQueryPadding;
+    const top = cy * structureQuerySize - structureQueryPadding;
+    const right = (cx + 1) * structureQuerySize + structureQueryPadding;
+    const bottom = (cy + 1) * structureQuerySize + structureQueryPadding;
+    const overlaps = b => b.x <= right && b.y <= bottom &&
+      Math.max(b.x, b.x + b.w) >= left && Math.max(b.y, b.y + b.h) >= top;
+    candidates = {walls: walls?.filter(overlaps), doors: doors?.filter(overlaps), furniture: furniture?.filter(overlaps)};
+    scope.cells.set(key, candidates);
+  }
+  scope.cx = cx;
+  scope.cy = cy;
+  scope.last = candidates;
+  return candidates;
+}
+
 export function structureBlocked(g,x,y,r=8,canOpenDoors=false,footOffset=14,elevation=0,projectile=false,from=null,flying=false){
  r=from?.vehicleId?Math.max(r,34):r;
  if(!projectile&&boardTableBlocked(g,x,y,r,elevation,from))return true;
- if(overlookBlocked(g,x,y+footOffset,r,elevation,projectile))return true;
+ y+=footOffset;
+ if(overlookBlocked(g,x,y,r,elevation,projectile))return true;
  const clearsFence=!projectile&&(flying||from?.wingHover&&elevation>=32);
- if((g.house?.walls||[]).some(w=>!(clearsFence&&w.kind==='fence')&&!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y+footOffset,r)))return true;
- if((g.house?.doors||[]).some(d=>!(clearsFence&&d.kind==='gate')&&!d.open&&!canOpenDoors&&sectionBlocked(d,x,y+footOffset,r)))return true;
- return (g.house?.furniture||[]).some(f=>{
-  if(f.wallMounted||f.kind==='rug'||f.kind==='plant'||f.kind==='wall_clock'||!sectionBlocked(f,x,y+footOffset,r))return false;
+ const candidates=structureCandidates(g,x,y,r);
+ if(candidates?.walls?.some(w=>!(clearsFence&&w.kind==='fence')&&!(w.kind==='window'&&w.broken&&!w.sectionDamage&&(projectile||elevation>=10))&&sectionBlocked(w,x,y,r)))return true;
+ if(!canOpenDoors&&candidates?.doors?.some(d=>!(clearsFence&&d.kind==='gate')&&!d.open&&sectionBlocked(d,x,y,r)))return true;
+ return !!candidates?.furniture?.some(f=>{
+  if(f.wallMounted||f.kind==='rug'||f.kind==='plant'||f.kind==='wall_clock'||!sectionBlocked(f,x,y,r))return false;
   const height=furnitureHeight(f);
   if(height>0&&elevation>=height)return false;
-  return raisedSurfaceBlocked(f,x,y+footOffset,r,height>0&&!projectile?from:null,footOffset);
+  return raisedSurfaceBlocked(f,x,y,r,height>0&&!projectile?from:null,footOffset);
  });
 }
 export function breakWindow(g,x,y,r=1){

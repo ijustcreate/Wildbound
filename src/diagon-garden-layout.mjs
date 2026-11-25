@@ -2,7 +2,8 @@ import {DIAGON_STREET_INSET} from './alley-street-layout.mjs';
 
 export const GARDEN_LAWN={x:7110,y:3780,w:500,h:514};
 export const GARDEN_SHOP_APPROACH={x:6948,y:4000,w:254,h:44};
-export const MAGE_GARDEN_AREAS=[GARDEN_LAWN,{x:7542,y:3976,w:270+DIAGON_STREET_INSET,h:88},GARDEN_SHOP_APPROACH];
+export const GARDEN_STREET_APPROACH={x:7542,y:3976,w:270+DIAGON_STREET_INSET,h:88};
+export const MAGE_GARDEN_AREAS=[GARDEN_LAWN,GARDEN_STREET_APPROACH,GARDEN_SHOP_APPROACH];
 export const GARDEN_PERIMETER_FRONTAGES=[
  {x:6970,y:3735,theme:'garden-glazier',halfWidth:88,halfDepth:69},
  {x:6998,y:4150,theme:'garden-spindle',halfWidth:91,halfDepth:75},

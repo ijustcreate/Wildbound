@@ -3,7 +3,6 @@ import {WIZARD_CARDS,wizardCardActor} from './wizard-cards.mjs';
 import {wizardCardIds} from './wizard-card-collection.mjs';
 
 const portraits=new WeakMap();
-const cardById=new Map(WIZARD_CARDS.map(card=>[card.id,card]));
 const node=(tag,text='',className='')=>{
  const element=document.createElement(tag);
  element.className=className;
@@ -13,8 +12,9 @@ const node=(tag,text='',className='')=>{
 
 export function wizardCardCollectionPopup(panel,game,p,button){
  const view=p.ui.wizardCards,album=p.inventory[view.packIndex];
- const cards=wizardCardIds(album).map(id=>cardById.get(id)).filter(Boolean);
- const index=Math.min(Math.max(0,view.index||0),cards.length-1),card=cards[index];
+ const owned=new Set(wizardCardIds(album)),total=WIZARD_CARDS.length;
+ const index=Math.min(Math.max(0,view.index||0),total-1);
+ const current=WIZARD_CARDS[index],card=owned.has(current.id)?current:null;
  const popup=node('section','','inventory-popover wizard-card-popover');
  popup.setAttribute('role','dialog');
  popup.setAttribute('aria-label','Chocolate Card Collection');
@@ -24,27 +24,46 @@ export function wizardCardCollectionPopup(panel,game,p,button){
  header.append(node('strong','Chocolate Card Collection'));
  const close=button('×','wizard-card-close',()=>dispatch('close'));
  close.setAttribute('aria-label','Close card collection');header.append(close);popup.append(header);
- popup.append(node('small',`${cards.length} / ${WIZARD_CARDS.length} collected`,'wizard-card-progress'));
+ const slots=node('nav','','wizard-card-slots');slots.setAttribute('aria-label','All wizard card slots');
+ let found=0;
+ for(const [slot,entry] of WIZARD_CARDS.entries()){
+  const collected=owned.has(entry.id);
+  if(collected)found++;
+  const label=collected?entry.name:'Uncollected';
+  const marker=button(collected?String(slot+1):'?','wizard-card-slot-'+slot,()=>dispatch('wizard-card:'+slot));
+  marker.className=`wizard-card-slot ${collected?'is-collected':'is-missing'}`;
+  marker.dataset.slot=slot;
+  marker.setAttribute('aria-label',`Card ${slot+1} · ${label}`);
+  marker.title=label;
+  if(slot===index)marker.setAttribute('aria-current','true');
+  slots.append(marker);
+ }
+ popup.append(node('small',`${found} / ${total} collected · ${total-found} missing`,'wizard-card-progress'),slots);
+ const copy=node('div','','wizard-card-copy');
+ copy.setAttribute('aria-live','polite');
  if(card){
   const portrait=node('canvas','','wizard-card-portrait');
   portrait.width=132;portrait.height=148;
   portrait.setAttribute('role','img');portrait.setAttribute('aria-label',`Animated portrait of ${card.name}`);
   portraits.set(portrait,card);
   drawWizardCardPortrait(portrait,performance.now()/1000);
-  const copy=node('div','','wizard-card-copy');
-  copy.setAttribute('aria-live','polite');
   copy.append(node('h3',card.name),node('p',card.description));
-  popup.append(portrait,copy);
- }else popup.append(node('p','Eat a Chocolate Frog to find a wizard card.','wizard-card-copy'));
- const nav=node('nav','','wizard-card-navigation');nav.setAttribute('aria-label','Browse collected wizard cards');
+  popup.append(portrait);
+ }else{
+  const unknown=node('div','?','wizard-card-placeholder');
+  unknown.setAttribute('role','img');unknown.setAttribute('aria-label','Uncollected wizard card');
+  copy.append(node('h3','Uncollected card'));
+  popup.append(unknown);
+ }
+ popup.append(copy);
+ const nav=node('nav','','wizard-card-navigation');nav.setAttribute('aria-label','Browse wizard card slots');
  const previous=button('‹','wizard-card-prev',()=>dispatch('prev'));
  const next=button('›','wizard-card-next',()=>dispatch('next'));
  previous.dataset.nav='wizard-card-prev';next.dataset.nav='wizard-card-next';
  previous.setAttribute('aria-label','Previous wizard card');next.setAttribute('aria-label','Next wizard card');
- previous.disabled=next.disabled=cards.length<2;
- nav.append(previous,node('span',card?`${index+1} / ${cards.length}`:'0 / 0'),next);popup.append(nav);
+ nav.append(previous,node('span',`${index+1} / ${total}`),next);popup.append(nav);
  popup.addEventListener('wheel',event=>{
-  if(cards.length<2||!event.deltaY)return;
+  if(!event.deltaY)return;
   event.preventDefault();event.stopPropagation();
   dispatch(event.deltaY>0?'next':'prev');
  },{passive:false});

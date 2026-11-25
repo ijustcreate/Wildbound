@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {Game} from '../src/core.mjs';
+import {rules} from '../src/definitions.mjs';
 import {ALLEY_PITCH_PORTKEY,switchAlleyLayer} from '../src/diagon-alley.mjs';
+import {useBroom} from '../src/broom-mount.mjs';
 import {playerAction} from '../src/player-motion.mjs';
 import {QUIDDITCH_PITCH,QUIDDITCH_RACK,QUIDDITCH_ROOM,QUIDDITCH_TRUNK,quidditchFieldBlocked} from '../src/quidditch-layout.mjs';
 import {QUIDDITCH_COACH,quidditchVisualActor,visitQuidditchPitch} from '../src/quidditch-scene.mjs';
@@ -111,11 +113,50 @@ test('practice broom controls still rise and descend when flight wings are equip
  assert.ok(altitude>base&&altitude>WING_HOVER_HEIGHT);
  assert.equal(playerAction(quidditchVisualActor(p)),'broom_ride');
  assert.ok(!p.wingHover);
- step({dodge:true},16);
+ step({broomDescend:true},16);
  assert.ok(p.jumpHeight<altitude);
  step({block:true});
  assert.ok(!p.broomMount);
  assert.equal(p.jumpHeight,0);
+});
+
+test('pitch broom dash boosts horizontal flight at the same altitude with model-specific cooldowns',()=>{
+ for(const [type,multiplier] of [['flying_broom',1],['nimbus_2000',.9],['firebolt',.75]]){
+  const {g,p,step}=pitch();
+  p.inventory=[{type,qty:1}];
+  assert.ok(useBroom(g,p,0));
+  Object.assign(p,{jumpHeight:64,quidditchAltitude:64});
+  const start=p.x;
+  step({x:1});
+  const cruising=p.x-start;
+  const dashStart=p.x;
+  step({x:1,dodge:true});
+  assert.ok(p.x-dashStart>cruising*1.5,type+' gets a quick boost');
+  assert.equal(p.dodge,rules.dashCooldown*multiplier);
+  assert.equal(p.jumpHeight,64);
+  assert.equal(playerAction(quidditchVisualActor(p)),'broom_ride');
+  step({x:-1,dodge:true});
+  assert.ok(p.x-dashStart>rules.dashSpeed*.04,'active dash keeps its direction');
+  step({dodge:true},130);
+  assert.equal(p.dashTime,0,'holding dash after the cooldown does not restart it');
+  step();
+  const previousY=p.y;
+  step({y:1,dodge:true});
+  assert.ok(p.dashTime>0&&p.y>previousY,'releasing dash makes the next press available');
+  step({block:true});
+  assert.equal(p.broomMount,undefined);
+  assert.equal(p.dashTime,0);
+  assert.ok(p.dodge>0,'dismounting preserves the remaining cooldown');
+ }
+});
+
+test('a broom dash respects the edge of the pitch',()=>{
+ const {g,p,step}=pitch();
+ p.inventory=[{type:'flying_broom',qty:1}];
+ assert.ok(useBroom(g,p,0));
+ p.x=QUIDDITCH_PITCH.right-32;
+ step({x:1,dodge:true},10);
+ assert.ok(p.dashTime>0&&p.x<QUIDDITCH_PITCH.right);
 });
 
 test('wing flight does not act as a Quidditch broom when the ball is in reach',()=>{

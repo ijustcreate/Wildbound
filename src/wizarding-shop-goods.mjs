@@ -10,8 +10,8 @@ export const WIZARDING_SHOP_GOODS={
  [CRYSTAL_BALL_ID]:CRYSTAL_BALL_ITEM,
  [MAGIC_MUSHROOM_ID]:MAGIC_MUSHROOM_ITEM,
  firebolt:{name:'Firebolt',base:'flying_broom',stack:1,color:'#bd8655',rarity:'unique',mount:true,
-  broomSpeed:225,supplyOnly:true,sellPrice:180,
-  description:'A racing broom with a polished ebony shaft and curved iron footrests. Flies 7% faster than the other brooms. Use outdoors to mount.'},
+  broomSpeed:225,broomDashCooldownMultiplier:.75,supplyOnly:true,sellPrice:180,
+  description:'A racing broom with a polished ebony shaft and curved iron footrests. Flies 7% faster and has a 25% shorter dash cooldown. Use outdoors to mount.'},
  alley_battle_charms:{name:'Practical Battle Charms',base:'trinket',trinket:true,spellDamage:5,stack:1,
   supplyOnly:true,rarity:'rare',color:'#b26c45',sellPrice:47,
   description:`An ember-bound dueling manual. ${compatibleGear}`},
@@ -30,7 +30,7 @@ export const FLOURISH_SPELLBOOK_STOCK=[
  ['alley_battle_charms',95],['alley_efficient_casting',110],['alley_healing_charms',105],['alley_mana_runes',115],
 ];
 export const FIREBOLT_STOCK=['firebolt',360];
-export const MALKINS_WITCH_HAT_STOCK=[['witch_hat_plum',30],['witch_hat_slate',30],['witch_hat_russet',30]];
+export const MALKINS_WITCH_HAT_STOCK=[['witch_hat_plum',30],['witch_hat_slate',30],['witch_hat_russet',30],['witch_hat_parchment',30]];
 const newStock={flourish:FLOURISH_SPELLBOOK_STOCK,quidditch:[FIREBOLT_STOCK],malkins:MALKINS_WITCH_HAT_STOCK,bellglass:[BELLGLASS_CRYSTAL_BALL,BELLGLASS_MAGIC_MUSHROOM],
  'wrong-turn':[WRONG_TURN_KEY_OFFER],floreans:FORTESCUE_ICE_CREAM_STOCK};
 

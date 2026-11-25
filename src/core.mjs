@@ -2,6 +2,9 @@ import {BIOME_MIXED_EVENTS,encounterBiome,encounterContext,planBiomeEncounter,bi
 import {maintainEnemyGroupCombat,requestEnemyGroupTurn} from './enemy-group-combat.mjs';
 import {tickSpeciesCombat} from './enemy-species-combat.mjs';
 import {tickWildBiomeLeash,wildBiomeTargets} from './wild-biome-spawns.mjs';
+import {tickWildSlimeBoss,wildSlimeTargets} from './wild-slime-boss-combat.mjs';
+import {settleRuneboundCatDeath,tickRuneboundCat} from './wild-runic-sanctuary.mjs';
+import {settleSmokeMonsterDefeat,spawnSmokeMonster,tickSmokeMonster} from './smoke-monster.mjs';
 import {moveTickTock} from './tick-tock-crocodile.mjs';
 import {chargeRecoveryTime,openChargeCounter} from './counterattack.mjs';
 import {launchMeleeTarget, tickWeaponKnockback} from './weapon-knockback.mjs';
@@ -27,7 +30,7 @@ import {tickStationOwls} from './station-owls.mjs';
 import {tickTrainTest} from './train-test.mjs';
 import {tickGardenManaWards} from './diagon-garden-ward.mjs';
 import {BONE_CARVER_EVENT,spawnBoneCarver} from './bone-carver.mjs';
-import {broomFlightSpeed,tickBroomFlight} from './broom-mount.mjs';
+import {broomDashCooldownMultiplier,broomFlightSpeed,tickBroomFlight} from './broom-mount.mjs';
 import {vehicleRollsOver} from './vehicle-ground.mjs';
 import {awakenCemeteryPumpkins} from './squashling-awakening.mjs';
 import {DRAGON_EVENTS,dragonBreath} from './dragon-events.mjs';
@@ -45,6 +48,7 @@ import {CAPTAIN_EVENT,tickCaptain,initializeCaptain} from './oathless-captain-ai
 import {DREADMANE_EVENT,tickDreadmaneLion} from './dreadmane-lion-ai.mjs';
 import {eventHasStartingAreas,requiredSpawnSpot,unitStartingArea} from './starting-area.mjs';
 import {selectEvent,rememberEvent,eventUnitStats} from './event-director.mjs';
+import {canRollSmokeMonster,SMOKE_MONSTER_EVENT,smokeMonsterBoardSite} from './smoke-monster-event.mjs';
 import {beginTrial,defeatTrialMember,BREATHER_EVENT,tickTrials,regionalObjective} from './expedition-trials.mjs';
 import {mitigatedHit,spawnProtected} from './combat-fairness.mjs';
 import {polishDefaultEventCopy} from './event-flavor.mjs';
@@ -111,7 +115,7 @@ import {mountainMovementScale} from './wild-mountain-layout.mjs';
 import {tickMountainPursuit} from './wild-mountain-encounters.mjs';
 import {separateActorBodies} from './enemy-separation.mjs';
 import { initializeField, record, tickField } from "./field-systems.mjs";
-import {resolveEnvironment,structureBlocked,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
+import {resolveEnvironment,structureBlocked,withStructureCollisionQueries,breakWindow,webSlow,spawnSpot,spiderNest,tickSpider,maintainSpiderWebs,insideHouse} from './expansion.mjs';
 import { nearbyScenery } from "./performance.mjs";
 import {damageStructureMelee,damageSupplyChestMelee} from './structure-destruction.mjs';
 import {overlookNorth} from './overlook-maze-layout.mjs';
@@ -601,6 +605,7 @@ EVENTS.push(...CREATURE_PACK_EVENTS.map(event=>structuredClone(event)));
 EVENTS.push(structuredClone(CROSSFIRE_EVENT));categorizeEvents([EVENTS.at(-1)]);
 EVENTS.push(...categorizeEvents(structuredClone(COMBO_ENCOUNTERS)));
 EVENTS.push(...BIOME_MIXED_EVENTS.map(e=>structuredClone(e)));categorizeEvents(EVENTS.slice(-BIOME_MIXED_EVENTS.length));
+EVENTS.push({...SMOKE_MONSTER_EVENT});
 polishDefaultEventCopy(EVENTS);
 const initializedEventStats=new Set();
 for (const event of EVENTS) {
@@ -1214,12 +1219,12 @@ export class Game {
           this.effects.push({swordImpact:true,x:struckSection?.x??e.x,y:(struckSection?.y??e.y)-16-(e.jumpHeight||0),angle:Math.atan2(p.faceY,p.faceX)+.7,life:.16});
           }
         }
-        if (charge > 0.6 && !e.combatRole && !e.speciesCombat && !e.eldritchAim && !e.constructAI && !e.fireAction) {
+        if (charge > 0.6 && e.wildSlimeRole!=='boss' && !e.smokeMonsterRole && !e.combatRole && !e.speciesCombat && !e.eldritchAim && !e.constructAI && !e.fireAction) {
           e.state = "recover";
           e.timer = 0.7;
         }
         const launched = heavy && dealtDamage > 0 && !guard && !e.tacticalBlocked && launchMeleeTarget(this, p, e, charge);
-        if (!launched && !e.practiceTarget && !e.tacticalBlocked && e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
+        if (!launched && !e.practiceTarget && !e.tacticalBlocked && e.wildSlimeRole!=='boss' && e.state !== "charge" && !['carnivorous_flower','mimic_vine','poison_pod'].includes(e.kind)) {
           this.moveActor(
             e,
             p.faceX * (13 + charge * 50),
@@ -1368,7 +1373,10 @@ export class Game {
     if(this.houseWorldsEnabled&&[5,8].includes(r.total)){
       prepareHouseWorldTravel(this,r.total);
       this.message(this.event.name+' · The board calls everyone through.');
-    }else this.spawnEvent();
+    }else{
+      const smokeIndex=canRollSmokeMonster(this,r)?EVENTS.findIndex(event=>event.kind===SMOKE_MONSTER_EVENT.kind):-1;
+      if(smokeIndex<0||!this.spawnEvent(smokeIndex))this.spawnEvent();
+    }
   }
   runEventActions(trigger) {
     const event = this.event;
@@ -1391,12 +1399,19 @@ export class Game {
   spawnEvent(index,{test=false,force=false}={}) {
     this.eventOnBoard=false;
     if (index === undefined) {
-      const available=(g,e)=>(!g.localWorld?.pack.events||g.localWorld.pack.events.includes(EVENTS.indexOf(e)))&&eventAvailable(encounterContext(g),e)&&encounterLayoutAvailable(encounterContext(g),e)&&mixedPressureAllows(g,e);
+      const available=(g,e)=>e.kind!==SMOKE_MONSTER_EVENT.kind&&(!g.localWorld?.pack.events||g.localWorld.pack.events.includes(EVENTS.indexOf(e)))&&eventAvailable(encounterContext(g),e)&&encounterLayoutAvailable(encounterContext(g),e)&&mixedPressureAllows(g,e);
       index=nextFeaturedEncounter(this,EVENTS,available)??selectEvent(this,EVENTS,available);
       if(index===null)return;
     }
     const encounterZone=encounterBiome(this);
     if(!EVENTS[index]||!test&&!force&&!eventHasStartingAreas(this,EVENTS[index]))return false;
+    let smokeSite;
+    if(EVENTS[index].kind===SMOKE_MONSTER_EVENT.kind){
+      if(!test&&!force&&(this.trainTest||
+        (this.localWorld?.pack.events&&!this.localWorld.pack.events.includes(index))))return false;
+      smokeSite=smokeMonsterBoardSite(this);
+      if(!smokeSite)return false;
+    }
     if(EVENTS[index].biomeMixed&&!test&&!force&&EVENTS[index].environment!==encounterZone)return false;
     const mixedPlan=EVENTS[index].biomeMixed?planBiomeEncounter(this,EVENTS[index]):null;
     if(EVENTS[index].biomeMixed&&!mixedPlan)return false;
@@ -1415,7 +1430,7 @@ export class Game {
         mixedPlan.positions.push(spot);staging.enemies.push({...member,...spot,hp:1});
       }
     }
-    if(!test&&!force&&encounterZone==='graveyard'&&!cemeteryEvent(EVENTS[index]))return false;
+    if(!test&&!force&&encounterZone==='graveyard'&&!smokeSite&&!cemeteryEvent(EVENTS[index]))return false;
     if(!test&&!force&&EVENTS[index].environments&&!EVENTS[index].environments.includes(encounterZone))return false;
     const encounterSite = findEncounterSite(this, EVENTS[index], {preview:test||force});
     if(!encounterSite&&hasEncounterLayout(EVENTS[index].comboLayout))return false;
@@ -1453,6 +1468,15 @@ export class Game {
       this.message(this.event.name + " — " + this.event.tip);
       this.onSound(encounterCue(this.event));
       return;
+    }
+    if(smokeSite){
+      const monster=spawnSmokeMonster(this,smokeSite,{source:'board'});
+      if(!test)beginTrial(this,this.event,[monster]);
+      this.eventSpawnCount=1;
+      this.reveal={...smokeSite,life:4};
+      this.message(this.event.name+' — '+this.event.tip);
+      this.onSound(encounterCue(this.event));
+      return true;
     }
     if (!this.objective || this.objective.done) {
       const kind = regionalObjective(this);
@@ -1732,7 +1756,7 @@ export class Game {
           p.attack=0;delete p.swordStrike;delete p.swordFacing;clearSwordPolish(p);
           if(p.comboId&&this.time<(p.comboUntil||0))p.comboUntil=Math.max(p.comboUntil,this.time+rules.dashDuration+1);
         }
-        p.dodge = rules.dashCooldown * (p.staminaBoost > 0 ? 0.5 : 1);
+        p.dodge = rules.dashCooldown * broomDashCooldownMultiplier(p) * (p.staminaBoost > 0 ? 0.5 : 1);
         p.dashTime = rules.dashDuration;
         p.dashRecovery=0;
         p.dashGhostTimer=0;
@@ -1755,6 +1779,9 @@ export class Game {
     return {x:mx,y:my,speed};
   }
   tickCombatActors(dt){
+    return withStructureCollisionQueries(this,()=>this.updateCombatActors(dt));
+  }
+  updateCombatActors(dt){
     maintainEnemyGroupCombat(this);
     const lupin=lupinWolf(this);
     const targets = [...this.players,...hunterPets(this),...(this.ghosts||[]).filter(a=>a.pet),...(this.villageFollowers||[]),...this.enemies.filter(e=>e.holidayReindeer)].filter((p) => p.hp > 0 && !p.room);
@@ -1763,8 +1790,10 @@ export class Game {
     for (const e of this.enemies) {
       if(launched?.has(e))continue;
       if(e.cryptBoss)continue;
+      if(e.smokeMonsterRole){tickSmokeMonster(this,e,dt);continue;}
       if(e.swordHitPause>0){e.swordHitPause=Math.max(0,e.swordHitPause-dt);e.flash=Math.max(0,(e.flash||0)-dt);e.moving=false;continue;}
       if(e.practiceTarget)continue;
+      if(e.runeboundCat){tickRuneboundCat(this,e,dt);continue;}
       if(e.lupinWerewolf){tickLupinWerewolf(this,e,dt,damageEnemy);continue;}
       if(tickEnemyFlinch(this,e,dt))continue;
       if(e.pirateRole){tickPirateFighter(this,e,dt);continue;}
@@ -1773,7 +1802,12 @@ export class Game {
       const lupinTarget=lupinTargetForEnemy(lupin,e);
       const eligible=e.borginReflection?borginReflectionTargets(this,targets,BORGIN_MIRROR_STORE):
         e.shackBoggart?shackBoggartTargets(targets):lupinTarget?[...targets,lupinTarget]:targets;
-      const alive = wildBiomeTargets(this,e,eligible.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p))));
+      let alive = wildBiomeTargets(this,e,eligible.filter(p=>enemyCanSeeTarget(e,p)&&(e.kind==='succubus'||!isCharmed(p))));
+      if(e.wildSlimeRole){
+        alive=wildSlimeTargets(this,alive);
+        if(e.wildSlimeRole==='boss'){tickWildSlimeBoss(this,e,dt,alive);continue;}
+        if(e.wildSlimeReadyAt>this.time){e.moving=false;continue;}
+      }
       if(tickWildBiomeLeash(this,e,dt,alive))continue;
       if(tickMountainPursuit(this,e,dt,alive))continue;
       if(!e.nocturneBossRole&&(tickTacticalEnemy(this,e,dt,alive)||tickSpeciesCombat(this,e,dt,alive)))continue;
@@ -2390,6 +2424,8 @@ export class Game {
     }
     separateActorBodies(this,dt);
     for (const e of this.enemies.filter((e) => e.hp <= 0 && !e.defeated)) {
+      if(settleSmokeMonsterDefeat(this,e))continue;
+      if(settleRuneboundCatDeath(this,e))continue;
       if(settlePirateDefeat(this,e))continue;
       if(settleLupinDefeat(this,e))continue;
       if(settleBorginReflection(this,e))continue;
@@ -2410,6 +2446,9 @@ export class Game {
         dropRavenLoot(this,e); // Carried property survives friendship and death.
         continue; // Losing a friendly creature is not an enemy kill or loot reward.
       }
+      // Keep the cleanup on the ordinary corpse path. Scripted deaths own their presentation.
+      if(!e.wasSnared&&!e.boss&&!e.cryptBoss&&!e.nocturneBossRole&&!e.darkWizardId&&!e.tickTockCrocodile&&
+        !['skeleton_boss','anaconda','bee_hive'].includes(e.kind))e.corpseCleanup=true;
       if(e.kind!=='bee_hive'){summonGhost(this,e);summonNecromancerOnKill(this,e);}
       this.killedCreatures ??= Object.create(null);
       this.killedCreatures[e.kind] = (this.killedCreatures[e.kind] || 0) + 1;
@@ -2509,7 +2548,7 @@ export class Game {
       let rawInput=inputs[p.device]||{};
       if(this.openingBoard&&rawInput.jump)p.boardJumpRelease=true;
       if(p.boardJumpRelease){if(!rawInput.jump)delete p.boardJumpRelease;else rawInput={...rawInput,jump:false};}
-      const input=p.broomMount?{...rawInput,jump:false,dodge:false,block:false,attack:false,trap:false,controlCycle:false}:activeVehicle?{...rawInput,jump:false,dodge:false,block:passenger&&rawInput.block,controlCycle:false,trap:false}:rawInput;
+      const input=p.broomMount?{...rawInput,jump:false,block:false,holdPosition:false,attack:false,trap:false,controlCycle:false}:activeVehicle?{...rawInput,jump:false,dodge:false,block:passenger&&rawInput.block,controlCycle:false,trap:false}:rawInput;
       if (input.controlCycle && !p.ui && !p.room && p.hp > 0) cycleFollowerControl(this,p);
       const controlled = controlledFollower(this,p);
       const jumpActor=controlled||p;

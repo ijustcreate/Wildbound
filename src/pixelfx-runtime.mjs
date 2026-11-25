@@ -64,9 +64,13 @@ export function pixelFxSurface(effect,time,seed=0,quality=1,context){
   s={canvas,c:canvas.getContext('2d'),frame:createFrame(w,h,-ox,-oy),image:null,instance:null,time:-1};s.image=s.c.createImageData(w,h);
  }
  cache.delete(key);cache.set(key,s);if(cache.size>MAX_SURFACES)cache.delete(cache.keys().next().value);
- if(s.time!==t){
+ const trailX=effect.pixelfx==='fire/torch'?(context?.trailX??0):0;
+ const trailY=effect.pixelfx==='fire/torch'?(context?.trailY??0):0;
+ if(s.time!==t||s.trailX!==trailX||s.trailY!==trailY){
   if(!s.instance||t<s.time){s.instance=createFx(mod,opts);s.time=0;}
   s.instance.update(Math.max(0,t-s.time));s.time=t;
+  if(effect.pixelfx==='fire/torch')Object.assign(s.instance.options,{trailX,trailY});
+  s.trailX=trailX;s.trailY=trailY;
   clearFrame(s.frame);
   if(actor&&context?.previewBody){s.instance.draw(s.frame,'back');const p=painterFor(s.frame),alpha=actorAlphaOf(mod,t,opts);if(alpha>0)for(let y=0;y<actor.h;y++)for(let x=0;x<actor.w;x++){const v=actor.pixels[y*actor.w+x];if(v)p.dot(actor.x+x,actor.y+y,v,alpha);}s.instance.draw(s.frame,'front');}
   else s.instance.draw(s.frame,context?.layer);

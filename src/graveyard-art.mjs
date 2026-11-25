@@ -4,6 +4,7 @@ import {boundlessTerrainAt} from './boundless-world.mjs';
 import {applyTreeFall} from './tree-fall.mjs';
 import {graveyardHash} from './graveyard-world.mjs';
 import {drawPumpkinCrop} from './pumpkin-art.mjs';
+import {forestNoise} from './forest-landscape.mjs';
 
 // All scenery, textures and creatures are native integer Canvas pixels.
 const pixel=(c,x,y,w,h,color)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
@@ -14,6 +15,31 @@ const line=(c,x1,y1,x2,y2,color,width=2)=> {
 const visibleRect=(r,b)=>r.x+r.w>=b.sx*32 && r.x<=b.ex*32 && r.y+r.h>=b.sy*32 && r.y<=b.ey*32;
 const palettes={grass:['#172630','#1b2b35','#20313b','#253842'],mud:['#202a32','#27323a','#303b42','#39444a'],
   path:['#3d4d59','#42525e','#475763','#4c5c68']};
+const wildSoil=['#182730','#1d2c34','#213039','#25353c','#29393e','#2d3d41','#324245'];
+function wildSoilTone(x,y){
+  const broad=forestNoise(x/110,y/100,91),detail=forestNoise(x/29,y/24,416);
+  const grain=graveyardHash(51,x,y);
+  return wildSoil[Math.min(wildSoil.length-1,Math.floor((broad*.67+detail*.24+grain*.09)*wildSoil.length))];
+}
+function drawWildSoil(c,x,y,origin){
+  const wx=x+origin.x,wy=y+origin.y;
+  for(let row=0;row<32;row+=4){
+    let start=0,color=wildSoilTone(wx+2,wy+row+2);
+    for(let column=4;column<=32;column+=4){
+      const next=column<32?wildSoilTone(wx+column+2,wy+row+2):null;
+      if(color===next)continue;
+      pixel(c,x+start,y+row,column-start,4,color);
+      color=next;
+      start=column;
+    }
+  }
+  const tx=wx/32,ty=wy/32;
+  for(let n=0;n<9;n++){
+    const px=x+Math.floor(graveyardHash(437,tx*17+n,ty*23)*29);
+    const py=y+Math.floor(graveyardHash(437,ty*13+n,tx)*30);
+    pixel(c,px,py,2+n%3,1,n===0?'#635a50':n%3?'#3b4a4d':'#26383d');
+  }
+}
 function drawPlot(c,plot,seed) {
   const {x,y,w,h}=plot;
   pixel(c,x-2,y-1,w+4,h+3,'#293730');pixel(c,x,y,w,h,'#716e5c');
@@ -40,7 +66,7 @@ function drawPlot(c,plot,seed) {
 }
 
 /** bounds are exclusive tile indices, tile32; no document/Image dependency. */
-export function drawGraveyardGround(c,g,bounds,plotScale=1) {
+export function drawGraveyardGround(c,g,bounds,plotScale=1,wildOrigin=null) {
   if(!g?.graveyard||g.generatedEnvironment!=='graveyard'||!bounds)return false;
   const endless=g.mapMode==='boundless';
   const b={sx:endless?Math.floor(bounds.sx):Math.max(0,Math.floor(bounds.sx)),sy:endless?Math.floor(bounds.sy):Math.max(0,Math.floor(bounds.sy)),
@@ -53,6 +79,9 @@ export function drawGraveyardGround(c,g,bounds,plotScale=1) {
     if(g.phase==='won'||g.mapMode!=='boundless'&&Number.isFinite(g.bloom)&&g.bloom<3&&Math.hypot(x+16-800,y+16-800)>g.bloom*430) {
       pixel(c,x,y,32,32,'#888a8e');continue;
     }
+    // Wilds paths are painted by the world map. Its soil must not pick up the
+    // repeating Classic graveyard's square mud cells and rectangular safe area.
+    if(wildOrigin){drawWildSoil(c,x,y,wildOrigin);continue;}
     const kind=endless?boundlessTerrainAt(g,tx,ty):g.terrain?.[ty*50+tx] || 'grass',colors=palettes[kind] || palettes.grass;
     const tone=Math.sin(x*.011)+Math.cos(y*.008)+Math.sin((x+y)*.018);
     pixel(c,x,y,32,32,colors[Math.max(0,Math.min(3,Math.floor((tone+3)*.65)))]);

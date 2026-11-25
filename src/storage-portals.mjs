@@ -10,7 +10,7 @@ export function railwayStorageScene(g){
 
 export function storagePortalsInScene(g){
  const scene=railwayStorageScene(g);
- return g.portals.filter(d=>privateStoragePortal(d)&&d.railwayScene===scene);
+ return g.portals.filter(d=>privateStoragePortal(d)&&!d.bankVault&&d.railwayScene===scene);
 }
 
 export function drawStoragePortals(c,g,visible){

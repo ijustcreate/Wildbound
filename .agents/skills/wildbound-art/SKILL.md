@@ -1,6 +1,6 @@
 ---
 name: wildbound-art
-description: Create, revise, and verify Wildbound pixel sprites, scenery, wearable parts, and editable rig animations. Use for asset work on the Wildbound source checkout, including the pixel recipe command and skeletal motion transfer.
+description: Create, revise, and verify Wildbound pixel sprites, scenery, wearable parts, and editable rig animations. Use for asset work on the Wildbound source checkout, including pixel recipes, sprite-stacked props, and skeletal motion transfer.
 ---
 
 # Wildbound Art
@@ -11,6 +11,7 @@ Use the current Wildbound checkout and follow the [project instructions](../../.
 
 - [Pixel art and recipes](references/pixel-recipes.md) for new icons, sprites, and short animated effects, or a focused redraw with coordinate patches.
 - [Environment art](references/environment-art.md) for buildings, rooms, vegetation, and fixed-view props. Judge them beside a native scene under the destination camera.
+- [Sprite-stacked props](references/sprite-stacking.md) for rotatable props, four-view pixel sheets, and layer strips. Use existing scenery as the reference when auditioning replacements.
 - [Rigged art and motion](references/rigged-art-and-motion.md) for eight-direction characters, creatures, fitted gear, or transferring skeletal motion to native pixel parts.
 
 ## Review one asset in context

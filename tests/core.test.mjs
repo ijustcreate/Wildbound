@@ -112,6 +112,12 @@ test("All events have working spawns, including mixed squads", () => {
       if(EVENTS[i].mystery.goal==='recover')assert.ok(g.mystery.object);
       continue;
     }
+    if(event.kind==='smoke_monster'){
+      const cores=g.enemies.filter(e=>e.smokeMonsterRole==='core');
+      assert.equal(cores.length,event.count,event.name);
+      assert.equal(g.enemies.filter(e=>e.smokeMonsterCoreId===cores[0].id).length,6);
+      continue;
+    }
     const eventCount=EVENTS[i].enemies?.reduce((sum,member)=>sum+Math.max(0,Number(member.count)||0),0)??EVENTS[i].count;
     assert.equal(g.enemies.length, eventCount+(EVENTS[i].spiderNest?3:0)+(EVENTS[i].beeHive?1:0),EVENTS[i].name);
     if(EVENTS[i].spiderNest)g.enemies=g.enemies.filter(e=>e.kind!=='spider_egg');

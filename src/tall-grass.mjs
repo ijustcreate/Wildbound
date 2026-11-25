@@ -2,6 +2,8 @@ import {vegetationBlocked} from './house-surfaces.mjs';
 import {forestHash,forestNoise,routeDistance,clearingDistance} from './forest-landscape.mjs';
 import {nearbyScenery} from './performance.mjs';
 import {spawnParticleEffect} from './particles.mjs';
+import {vegetationWind,vegetationWindStrength} from './vegetation-motion.mjs';
+import {paintWheatPatch} from './wheat-grass.mjs';
 export function grassRootBurned(p,x,y){return (p.grassBurnMarks||[]).some(m=>Math.hypot(x-m.x,y-m.y)<m.radius);}
 export function drawGrassBurnMarks(c,p){
  for(const m of p.grassBurnMarks||[])for(let i=0;i<12;i++){
@@ -16,6 +18,7 @@ const palettes={
  house:['#36543a','#4f7242','#78934d','#a8b36c'],
  temple:['#264b36','#39734a','#5b9454','#9daf5a'],
  autumn:['#4b4930','#72633b','#a17a42','#c29a52'],
+ wheat:['#947039','#bd914a','#e1b970','#f6dda0'],
 };
 const hexRgb=value=>{
  const match=/^#?([\da-f]{6})$/i.exec(String(value||''));
@@ -27,7 +30,7 @@ const shade=(base,mult)=>rgbHex(base.map(v=>v*mult));
 
 export function grassPalette(prop={},environment='forest'){
  const key=environment==='house'&&prop.grassPalette==='house'?'forest':prop.grassPalette;
- const palette=palettes[key]||palettes[environment]||palettes.forest;
+ const palette=prop.grassVariant==='wheat'?palettes.wheat:palettes[key]||palettes[environment]||palettes.forest;
  const override=hexRgb(prop.grassTint),amount=override?.[0]===undefined?0:.26;
  const light=Math.max(.55,Math.min(1.35,Number(prop.grassShade)||1));
  return palette.map((color,i)=>{
@@ -79,15 +82,17 @@ export function createHouseShortGrass(seed,terrain,house){
 }
 
 function playerBend(p,game){
- let x=0,y=0;
+ let x=0,y=0,pressure=0;
  for(const a of game?.players||[]){
   if(a.hp<=0||a.room||a.swimming||a.jumpHeight>8)continue;
   const dx=p.x-a.x,dy=(p.rootY??p.y+p.size*.4)-(a.y+1),d=Math.hypot(dx,dy);
-  if(d>104||d<1)continue;
+  if(d>104)continue;
+  pressure=Math.max(pressure,(1-Math.max(0,d-18)/86)**2);
+  if(d<1)continue;
   const amount=(1-d/104)**2*(a.moving?1.25:.75);
   x+=dx/d*amount;y+=dy/d*amount;
  }
- return{x:Math.max(-1,Math.min(1,x)),y:Math.max(-1,Math.min(1,y))};
+ return{x:Math.max(-1,Math.min(1,x)),y:Math.max(-1,Math.min(1,y)),pressure};
 }
 
 function drawGrassTuft(c,p,time,short,palette,game){
@@ -144,23 +149,26 @@ export function drawGrassProp(c,p,time,environment,game){
  }
  if(p.cut){drawGrassTuft(c,{...p,cut:false,rootY:p.rootY??p.y+p.size*.4,size:p.size*.45},time,true,grassPalette(p,environment),game);return true;}
  drawGrassBurnMarks(c,p);
+ const wheat=p.grassVariant==='wheat',paint=wheat?paintWheatPatch:paintGrassPatch;
  if(typeof document==='undefined'){
   c.save();c.translate(p.x,p.rootY??p.y+p.size*.4);c.scale(p.size/80,p.size/80);
-  paintGrassPatch(c,p,grassPalette(p,environment));c.restore();return true;
+  paint(c,p,grassPalette(p,environment),grassRootBurned);c.restore();return true;
  }
- const signature=[p.grassPalette,p.grassTint,p.grassShade,p.tuftSeed,environment,p.grassBurnRevision||0].join('|');
+ const signature=[p.grassPalette,p.grassTint,p.grassShade,p.grassVariant,p.tuftSeed,p.size,environment,p.grassBurnRevision||0].join('|');
+ const half=wheat?47:44,above=wheat?70:40;
  let entry=grassSprites.get(p);
  if(!entry||entry.signature!==signature){
-  const sprite=document.createElement('canvas');sprite.width=88;sprite.height=48;
-  const pen=sprite.getContext('2d');pen.translate(44,40);
-  paintGrassPatch(pen,p,grassPalette(p,environment));
+  const sprite=document.createElement('canvas');sprite.width=half*2;sprite.height=above+(wheat?16:8);
+  const pen=sprite.getContext('2d');pen.translate(half,above);
+  paint(pen,p,grassPalette(p,environment),grassRootBurned);
   entry={sprite,signature};grassSprites.set(p,entry);
  }
  const root=p.rootY??p.y+p.size*.4,scale=p.size/80,bend=playerBend(p,game);
- const wind=Math.sin(Math.floor(time*8)*.18+p.x*.009+p.y*.004)*.025;
+ const wind=wheat?vegetationWind(p.x,root,time,vegetationWindStrength(game))*.25:Math.sin(Math.floor(time*8)*.18+p.x*.009+p.y*.004)*.025;
+ const squash=wheat?bend.pressure*.59:Math.abs(bend.y)*.12;
  c.save();c.imageSmoothingEnabled=false;c.translate(Math.round(p.x),Math.round(root));
- c.transform(scale,0,(wind+bend.x*.12)*scale,scale*(1-Math.abs(bend.y)*.12),0,0);
- c.drawImage(entry.sprite,-44,-40);c.restore();return true;
+ c.transform(scale,0,(wind+bend.x*.12)*scale,scale*(1-squash),0,0);
+ c.drawImage(entry.sprite,-half,-above);c.restore();return true;
 }
 
 // One small raster per living prop, released with its world. Wind deforms the

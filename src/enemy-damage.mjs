@@ -17,6 +17,7 @@ import {championPower} from './arena-drink-state.mjs';
 export const DAMAGE_COLORS={physical:'#fff2cf',magic:'#c6a3ff',fire:'#ff9b57',ice:'#7ee5ff',poison:'#ade96e',spectral:'#7ebaff'};
 export function damageEnemy(target,amount,type='physical',context){
   if(!Number.isFinite(amount)||amount<=0)return;
+  if((target.wildSlimeRole||target.smokeMonsterRole)&&target.unattackable)return 0;
   const raw=tacticalDamage(target,amount,type,context);
   amount=reactSpeciesHit(context?.g,target,Math.max(enemyOpeningDamage(context?.g,target,raw),speciesOpeningDamage(context?.g,target,raw)),type,context);
   const game=context?.g;

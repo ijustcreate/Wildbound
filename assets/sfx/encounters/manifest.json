@@ -6586,6 +6586,59 @@
     "source": "Original deterministic synthesis; no external samples"
   },
   {
+    "id": "encounter-170",
+    "name": "When the Smoke Walks",
+    "role": "boss",
+    "voice": "ghost",
+    "file": "assets/sfx/encounters/encounter-170.wav",
+    "duration": 2.15,
+    "motif": [
+      {
+        "at": 0.025,
+        "duration": 0.184,
+        "note": 5,
+        "accent": true
+      },
+      {
+        "at": 0.226,
+        "duration": 0.712,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.429,
+        "duration": 0.714,
+        "note": 7,
+        "accent": false
+      },
+      {
+        "at": 0.588,
+        "duration": 0.692,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 0.714,
+        "duration": 0.666,
+        "note": 10,
+        "accent": false
+      },
+      {
+        "at": 0.899,
+        "duration": 0.133,
+        "note": 5,
+        "accent": false
+      },
+      {
+        "at": 1.113,
+        "duration": 0.209,
+        "note": 12,
+        "accent": true
+      }
+    ],
+    "source": "Original deterministic synthesis; no external samples"
+  },
+  {
     "id": "travel-forest",
     "name": "Travel · forest",
     "voice": "wood",

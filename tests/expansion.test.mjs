@@ -5,6 +5,7 @@ import {generateWorld} from '../src/world.mjs';
 import {insideHouse,toggleDoor,resolveEnvironment,tickSpider,spiderNest,webSlow,structureBlocked} from '../src/expansion.mjs';
 import {saveSession,restoreSession} from '../src/session.mjs';
 import {defaultBeastMotion,validateBeastMotion} from '../src/beast-motion.mjs';
+import {SMOKE_MONSTER_KIND} from '../src/smoke-monster.mjs';
 const game=(env,random)=>{const g=new Game(random);g.environment=env;g.addPlayer('keyboard');g.start();g.openingBoard=false;return g;};
 test('all four random maps are reachable and ice terrain is snowy',()=>{
  assert.deepEqual(new Set([0,1,2,3].map(n=>resolveEnvironment('random',n))),new Set(['forest','desert','ice','house']));
@@ -18,9 +19,21 @@ test('ice cats spawn only in ice and use valid distinct editable rigs',()=>{
  }
  const spider=defaultBeastMotion('spider');assert.equal(Object.keys(spider.joints).filter(n=>n.startsWith('foot')).length,8);assert.ok(validateBeastMotion('spider',spider));
 });
-test('house starts players and first lion indoors, other encounters outdoors; doors control collision',()=>{
+test('house starts players and first lion indoors, ordinary encounters outdoors; doors control collision',()=>{
  const g=game('house'),p=g.players[0];assert.ok(insideHouse(p.x,p.y));
- for(let i=0;i<EVENTS.length;i++){if(EVENTS[i].environment||['monsoon','volcano','rhino'].includes(EVENTS[i].kind))continue;g.enemies=[];g.spawnEvent(i);assert.ok(g.enemies.every(e=>EVENTS[i].kind==="lion" ? insideHouse(e.x,e.y,g.house) : !insideHouse(e.x,e.y,g.house)),EVENTS[i].name);}
+ for(const [i,event] of EVENTS.entries()){
+  if(event.environment||['monsoon','volcano','rhino',SMOKE_MONSTER_KIND].includes(event.kind))continue;
+  g.enemies=[];
+  g.spawnEvent(i);
+  assert.ok(g.enemies.every(e=>insideHouse(e.x,e.y,g.house)===(event.kind==='lion')),event.name);
+ }
+ g.enemies=[];
+ assert.equal(g.spawnEvent(EVENTS.findIndex(event=>event.kind===SMOKE_MONSTER_KIND)),true);
+ const wraith=g.enemies.find(e=>e.smokeMonsterRole==='core');
+ assert.ok(wraith,'the scripted summon places a Cinder Wraith');
+ assert.ok(Math.hypot(wraith.x-p.x,wraith.y-p.y)<300,'the Wraith spawns near the player');
+ assert.equal(g.blocked(wraith.x,wraith.y,18,false,false,false,0),false);
+ g.enemies=[];
  const d=g.house.doors[0];p.x=d.x+d.w/2;p.y=d.y-40;assert.equal(structureBlocked(g,p.x,d.y-14),true);assert.equal(toggleDoor(g,p),true);assert.equal(structureBlocked(g,p.x,d.y-14),false);assert.equal(toggleDoor(g,p),true);assert.equal(d.open,false);
  p.x=d.x+d.w/2;p.y=d.y+d.h/2;d.open=true;toggleDoor(g,p);assert.equal(d.open,true,'cannot close on an actor');
  assert.equal(g.projectileBlocked(480,600),true);

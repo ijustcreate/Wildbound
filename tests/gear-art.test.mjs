@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { ITEMS, itemKind } from '../src/items.mjs';
 import { fittedGear, fittedShield, gearPalette, bootFrame, withBootPose } from '../src/gear-art.mjs';
 import { directionalHelmet } from '../src/wearable-art.mjs';
+import { drawWitchHat, WITCH_HAT_BOUNDS } from '../src/witch-hat-art.mjs';
+import { MERLIN_HAT_BOUNDS } from '../src/merlin-hat-art.mjs';
 import { paintItem } from '../src/item-art.mjs';
 import { renderLayers } from '../src/render-order.mjs';
 import { drawPlayer, defaultPlayerMotion, directionVector, poseAt, projectPoint } from '../src/player-motion.mjs';
@@ -59,7 +61,8 @@ test('Every fitted gear piece follows its joint in eight directions without chan
       for(const [key,color] of original) {
         const [x,y]=key.split(',').map(Number);
         assert.equal(moved.get(`${x+9},${y-12}`),color,id);
-        const extent=def.style==='witch'?{x:13,y:22}:extendedHeadwear[id]||{x:10,y:/horn/.test(def.style||'')?14:12};
+        const extent=id==='greyhaven_starwatch_hat'?{x:MERLIN_HAT_BOUNDS.right,y:-MERLIN_HAT_BOUNDS.top}
+          :def.style==='witch'?{x:13,y:22}:extendedHeadwear[id]||{x:10,y:/horn/.test(def.style||'')?14:12};
         assert.ok(Math.abs(x)<=extent.x&&Math.abs(y)<=extent.y,id);
       }
     }
@@ -67,8 +70,8 @@ test('Every fitted gear piece follows its joint in eight directions without chan
   assert.equal(JSON.stringify(ITEMS),before);
 });
 
-test('All four witch-hat icons and eight equipped views use their cloth colors',()=>{
-  const ids=['witch_hat','witch_hat_plum','witch_hat_slate','witch_hat_russet'];
+test('Witch-hat icons and all eight equipped views use each finish’s cloth colors',()=>{
+  const ids=['witch_hat','witch_hat_plum','witch_hat_slate','witch_hat_russet','witch_hat_parchment'];
   const pixels=[...Array.from({length:8},(_,direction)=>id=>raster(c=>directionalHelmet(c,id,{x:0,y:0},direction))),
     id=>raster(c=>paintItem(c,id))];
   for(const draw of pixels){
@@ -82,6 +85,25 @@ test('All four witch-hat icons and eight equipped views use their cloth colors',
   for(const key of pixels.at(-1)('witch_hat').keys()){
     const [x,y]=key.split(',').map(Number);
     assert.ok(x>=0&&x<24&&y>=0&&y<24);
+  }
+});
+
+test('Witch-hat cloth bends within picking bounds while its seated band stays fixed',()=>{
+  const {left,right,top,bottom}=WITCH_HAT_BOUNDS;
+  const paint=(direction,motion)=>raster(c=>drawWitchHat(c,{x:0,y:0},direction,'witch_hat_parchment',motion));
+  const band=pixels=>[...pixels].filter(([,color])=>color==='#43352e');
+  for(let direction=0;direction<8;direction++) {
+    const neutral=paint(direction);
+    for(const crown of [-1,-.5,0,.5,1])for(const brim of [-1,-.5,0,.5,1]) {
+      const bent=paint(direction,{crown,brim});
+      assert.deepEqual(band(bent),band(neutral));
+      for(const key of bent.keys()) {
+        const [x,y]=key.split(',').map(Number);
+        assert.ok(x>=left&&x<=right&&y>=top&&y<=bottom,key);
+      }
+    }
+    assert.notDeepEqual(paint(direction,{crown:1,brim:0}),paint(direction,{crown:-1,brim:0}));
+    assert.notDeepEqual(paint(direction,{crown:0,brim:1}),paint(direction,{crown:0,brim:-1}));
   }
 });
 

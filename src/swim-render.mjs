@@ -23,7 +23,8 @@ export function drawSwimBubbles(c,effect){
  c.restore();
 }
 export function drawWaterline(c,a,time,draw,{bob=1,shift=0,radius=17}={}){
- const wave=Math.sin(time*2.7+(a.id||0))*.75*bob;
+ const phase=Number.isFinite(a.id)?a.id:a.x*.13+a.y*.03;
+ const wave=Math.sin(time*2.7+phase)*.75*bob;
  c.save();c.beginPath();c.rect(a.x-radius*4,a.y-radius*4,radius*8,radius*4+1);c.clip();
  c.translate(0,wave);draw({...a,y:a.y+shift});c.restore();
  c.save();c.strokeStyle='#b5f4e9b8';c.lineWidth=1;

@@ -1,8 +1,11 @@
 import {ellipse,limb} from './player-motion.mjs';
 import {pixelPolygon} from './pixel-shapes.mjs';
 
-const skin={ink:'#313b2a',shade:'#52613a',base:'#738653',light:'#a3b378',ear:'#847653',earShade:'#625743',crease:'#44513a'};
+const commonSkin={ink:'#313b2a',shade:'#52613a',base:'#738653',light:'#a3b378',ear:'#847653',earShade:'#625743',crease:'#44513a'};
+const helperSkin={ink:'#4d3832',shade:'#956854',base:'#c08a6c',light:'#e0aa82',ear:'#ad725d',earShade:'#88584f',crease:'#6c4d45'};
+const skinForRole=role=>role==='diagon-helper'?helperSkin:commonSkin;
 const outfits={
+ 'diagon-helper':{ink:'#53423a',shade:'#987a60',cloth:'#c6af8a',light:'#e2cba4',linen:'#ebd8b0',accent:'#6d7473',metal:'#aa765b',pants:'#896959',boots:'#b78063'},
  banker:{ink:'#282b36',shade:'#383d51',cloth:'#50586d',light:'#748096',linen:'#d6c4a1',accent:'#855449',metal:'#bca46a',pants:'#424956',boots:'#393334'},
  bartender:{ink:'#39342e',shade:'#675146',cloth:'#936e52',light:'#bfa57a',linen:'#bcac80',accent:'#86714b',metal:'#b89a57',pants:'#555345',boots:'#4c4036'},
  'bayou-sage':{ink:'#302c20',shade:'#504832',cloth:'#776848',light:'#9a885f',linen:'#bdb18a',accent:'#7d623d',metal:'#bca36e',pants:'#5c5741',boots:'#443b2e'},
@@ -11,8 +14,17 @@ export const goblinOutfit=role=>outfits[role]||outfits.banker;
 const poly=(c,color,points)=>pixelPolygon(c,points.map(([x,y])=>({x,y})),color);
 const rect=(c,color,x,y,w,h=1)=>{c.fillStyle=color;c.fillRect(Math.round(x),Math.round(y),w,h);};
 
-function ear(c,x,y,side){
+function ear(c,x,y,side,skin,helper){
  c.save();c.translate(x,y);c.scale(side,1);
+ if(helper){
+  poly(c,skin.ink,[[0,1],[3,-3],[9,-6],[15,-5],[14,-2],[11,3],[8,5],[3,5],[0,3]]);
+  poly(c,skin.base,[[1,1],[4,-2],[9,-5],[14,-4],[12,1],[8,4],[3,4]]);
+  poly(c,skin.ear,[[3,1],[7,-2],[12,-4],[11,0],[8,2],[5,3]]);
+  poly(c,skin.earShade,[[3,1],[8,-1],[11,-2],[8,1],[5,2]]);
+  rect(c,skin.light,8,-5,4,1);
+  c.restore();
+  return;
+ }
  poly(c,skin.ink,[[0,1],[3,-3],[9,-6],[10,-5],[8,-1],[6,2],[3,3],[0,4]]);
  poly(c,skin.base,[[1,1],[4,-2],[9,-5],[7,-1],[5,1],[2,3]]);
  poly(c,skin.ear,[[3,0],[8,-3],[6,0],[4,2],[2,2]]);
@@ -21,12 +33,13 @@ function ear(c,x,y,side){
 }
 
 export function drawGoblinHead(c,h,d,role){
- const rear=d>=3&&d<=5,front=d===0,back=d===4,profile=d===2||d===6,sage=role==='bayou-sage',banker=role!=='bartender'&&!sage;
+ const rear=d>=3&&d<=5,front=d===0,back=d===4,profile=d===2||d===6,sage=role==='bayou-sage';
+ const helper=role==='diagon-helper',banker=role!=='bartender'&&!sage&&!helper,skin=skinForRole(role);
  c.save();c.translate(Math.round(h.x),Math.round(h.y));
  if(d>4)c.scale(-1,1);
  // The ears root in the temples, behind the near cheek as the head turns.
- if(front||back){ear(c,-5,-2,-1);ear(c,5,-2,1);}
- else{if(!profile)ear(c,-4,-2,-1);ear(c,4,-2,1);}
+ if(front||back){ear(c,-5,-2,-1,skin,helper);ear(c,5,-2,1,skin,helper);}
+ else{if(!profile)ear(c,-4,-2,-1,skin,helper);ear(c,4,-2,1,skin,helper);}
  const left=profile?-5:-6,right=profile?5:6;
  poly(c,skin.ink,[[left,-4],[-4,-7],[0,-8],[4,-7],[right,-4],[right,2],[4,5],[1,7],[-3,6],[left,3]]);
  poly(c,skin.base,[[left+1,-4],[-3,-6],[0,-7],[4,-6],[right-1,-3],[right-1,2],[3,5],[0,6],[-3,5],[left+1,2]]);
@@ -50,7 +63,19 @@ export function drawGoblinHead(c,h,d,role){
    rect(c,skin.crease,-4,4,3);rect(c,skin.light,-3,5,2);
   }
  }
- if(sage){
+ if(helper){
+  rect(c,skin.light,-3,-6,5,1);
+  if(!rear){
+   rect(c,'#f1dfad',-4,-2,3,3);
+   rect(c,'#627263',front?-3:-4,-1,2,2);
+   rect(c,skin.ink,front?-3:-4,-1,1,1);
+   if(front||!profile){
+    rect(c,'#f1dfad',2,-2,3,3);
+    rect(c,'#627263',2,-1,2,2);
+    rect(c,skin.ink,2,-1,1,1);
+   }
+  }
+ }else if(sage){
   poly(c,'#535f49',[[-5,-5],[-3,-7],[3,-7],[5,-5],[3,-4],[-3,-4]]);
   rect(c,'#b2b39a',-3,-6,6,1);
   if(!rear){
@@ -75,8 +100,19 @@ export function drawGoblinTorso(c,p,d,role,cloth,width=1){
  const front=d===0||d===1||d===7,back=d>=3&&d<=5,profile=d===2||d===6;
  const x=p.chest.x,y=p.chest.y,px=p.pelvis.x,py=p.pelvis.y;
  const breadth=(profile?4.2:front?6:5.4)*width,waist=(profile?3.2:4.6)*width;
+ const skin=skinForRole(role);
  limb(c,p.neck,p.chest,3.5,skin.shade);
  limb(c,p.neck,p.chest,2,skin.base);
+ if(role==='diagon-helper'){
+  const side=d>4?-1:1;
+  poly(c,cloth.ink,[[x-breadth,y-1],[x-side*2,y-3],[x+breadth,y+1],[px+waist+1,py+4],[px,py+3],[px-waist-1,py+5]]);
+  poly(c,cloth.cloth,[[x-breadth+1,y],[x-side*2,y-2],[x+breadth-1,y+1],[px+waist,py+3],[px,py+2],[px-waist,py+4]]);
+  poly(c,cloth.shade,[[x+breadth-2,y+2],[px+waist,py+3],[px,py+2],[px-waist,py+4],[px-waist+1,py+2],[px+waist-2,py+1]]);
+  limb(c,{x:x+side*breadth*.6,y:y-1},{x:px-side*waist*.72,y:py+2},1.25,back?cloth.shade:cloth.linen);
+  rect(c,cloth.light,px+side-1,py-1,2,2);
+  if(!back)rect(c,cloth.metal,px+side,py+1,1,1);
+  return;
+ }
  poly(c,cloth.ink,[[x-breadth,y-1],[x-2,y-3],[x+2,y-3],[x+breadth,y-1],[px+waist,py],[px-waist,py]]);
  poly(c,cloth.cloth,[[x-breadth+1,y-1],[x-2,y-2],[x+2,y-2],[x+breadth-1,y],[px+waist-1,py-1],[px-waist+1,py-1]]);
  poly(c,cloth.shade,[[x+breadth-2,y],[x+breadth-1,y+1],[px+waist-1,py-1],[px+1,py-1]]);
@@ -106,13 +142,22 @@ export function drawGoblinTorso(c,p,d,role,cloth,width=1){
 }
 
 export function drawGoblinArm(c,shoulder,elbow,hand,role,cloth){
+ const skin=skinForRole(role);
+ if(role==='diagon-helper'){
+  limb(c,shoulder,elbow,4.2,skin.ink);limb(c,shoulder,elbow,2.7,skin.base);
+  limb(c,elbow,hand,3.8,skin.ink);limb(c,elbow,hand,2.5,skin.base);
+  const sleeve={x:shoulder.x+(elbow.x-shoulder.x)*.38,y:shoulder.y+(elbow.y-shoulder.y)*.38};
+  limb(c,shoulder,sleeve,5.2,cloth.shade);limb(c,shoulder,sleeve,3.6,cloth.cloth);
+  return;
+ }
  const cuff={x:elbow.x+(hand.x-elbow.x)*.37,y:elbow.y+(hand.y-elbow.y)*.37};
  limb(c,shoulder,elbow,5,cloth.ink);limb(c,shoulder,elbow,3.4,cloth.cloth);
  limb(c,elbow,hand,4.2,skin.ink);limb(c,elbow,hand,2.7,skin.base);
  limb(c,elbow,cuff,3.4,role==='bartender'?cloth.linen:cloth.cloth);
 }
 
-export function drawGoblinHand(c,hand,side,d){
+export function drawGoblinHand(c,hand,side,d,role){
+ const skin=skinForRole(role);
  const thumb=side==='L'?1:-1;
  ellipse(c,hand.x,hand.y+1,2.9,3.2,skin.ink);
  ellipse(c,hand.x-.25,hand.y+.8,2.2,2.6,skin.base);

@@ -1,7 +1,7 @@
 import {block as b, shape as p} from './diagon-shop-brush.mjs';
 import {frontageBay,frontageRoof,SHOP_FRONTAGES} from './diagon-shop-frontages.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
-import {DIAGON_PAVER_LANE} from './alley-street-layout.mjs';
+import {DIAGON_PAVER_LANE,NOCTURNE_PAVEMENT_START} from './alley-street-layout.mjs';
 export {streetLamp,DIAGON_STREET_LAMPS,NOCTURNE_WALL_CANDLES,drawNocturneWallCandles} from './diagon-street-lights.mjs';
 
 const span=168,{x:left,w:width}=DIAGON_PAVER_LANE;
@@ -64,10 +64,6 @@ function pavers(c,style,palette){
     }
     y+=h;
   }
-  for(const x of [0,width-9]){
-    b(c,x,0,9,span,'#565e52');b(c,x+1,0,6,span,'#8a8872');b(c,x+1,0,2,span,'#a8a38a');
-    for(let y=13;y<span;y+=16)b(c,x+1,y,6,2,'#64695a');
-  }
 }
 
 function sidewalk(c,w,variant){
@@ -94,7 +90,19 @@ function streetDrain(c,x,y){
   b(c,x-7,y-5,14,1,'#a29c84');
 }
 
-export function drawAlleyPaving(c,alley,range) {
+function roadCurb(c,x,origin,top,bottom,openings){
+  if(top>=bottom)return;
+  const stops=[top,...openings.flat().filter(y=>y>top&&y<bottom),bottom].sort((a,b)=>a-b);
+  for(let i=1;i<stops.length;i++){
+    const y=stops[i-1],end=stops[i],mid=(y+end)/2;
+    if(openings.some(([from,to])=>mid>=from&&mid<to))continue;
+    b(c,x,y,9,end-y,'#565e52');b(c,x+1,y,6,end-y,'#8a8872');b(c,x+1,y,2,end-y,'#a8a38a');
+    for(let seam=origin+13+16*Math.ceil((y-origin-13)/16);seam<end;seam+=16)
+      b(c,x+1,seam,6,Math.min(2,end-seam),'#64695a');
+  }
+}
+
+export function drawAlleyPaving(c,alley,range,openings) {
   const origin=alley.top-span,streetWidth=alley.right-alley.left,east=left+width;
   const start=Math.max(0,Math.floor((range.top-origin)/span));
   const end=Math.min(Math.ceil((alley.bottom+span-origin)/span),Math.ceil((range.bottom-origin)/span));
@@ -117,11 +125,18 @@ export function drawAlleyPaving(c,alley,range) {
       c.translate(width,0);sidewalk(c,alley.right-east,variant+2);c.restore();
     }
   }
+  const curbTop=Math.max(origin,Math.round(range.top)),curbBottom=Math.min(alley.bottom+span,Math.round(range.bottom));
+  roadCurb(c,left,origin,curbTop,curbBottom,openings.west);
+  roadCurb(c,east-9,origin,curbTop,curbBottom,openings.east);
   for(const edge of [alley.top,alley.bottom]){
     const y=edge-7;
-    b(c,alley.left,y,streetWidth,14,'#53554a');
-    for(let x=alley.left;x<alley.right;x+=38){
-      b(c,x,y+2,36,9,'#8c8b78');b(c,x,y+2,36,2,'#aeab93');
+    const bank=edge===alley.top,ends=bank?[[alley.left,left],[east,alley.right]]:[[alley.left,alley.right]];
+    for(const [from,to] of ends){
+      b(c,from,y,to-from,14,'#53554a');
+      for(let x=from;x<to;x+=38){
+        const w=Math.min(36,to-x);
+        b(c,x,y+2,w,9,'#8c8b78');b(c,x,y+2,w,2,'#aeab93');
+      }
     }
   }
   for(const y of [4270,4515,4680,4895,5060,5275,5440,5655]){
@@ -222,11 +237,11 @@ function paintNocturnePavers(c,variant){
  }
 }
 export function drawNocturnePaving(c,routes,bounds){
- const visible=routes.filter(box=>box.x+box.w>Math.max(8460,bounds.left)&&box.x<bounds.right&&box.y+box.h>bounds.top&&box.y<bounds.bottom);
+ const visible=routes.filter(box=>box.x+box.w>Math.max(NOCTURNE_PAVEMENT_START,bounds.left)&&box.x<bounds.right&&box.y+box.h>bounds.top&&box.y<bounds.bottom);
  if(!visible.length)return;
  c.save();c.beginPath();
  for(const box of visible){
-  const start=Math.max(box.x,8460);
+  const start=Math.max(box.x,NOCTURNE_PAVEMENT_START);
   if(start<box.x+box.w)c.rect(start,box.y,box.x+box.w-start,box.h);
  }
  c.clip();
@@ -237,7 +252,7 @@ export function drawNocturnePaving(c,routes,bounds){
    stamp=document.createElement('canvas');stamp.width=nocturneStrip;stamp.height=84;
    paintNocturnePavers(stamp.getContext('2d'),variant);nocturnePavers.set(variant,stamp);
   }
-  for(let x=Math.floor(Math.max(8460,bounds.left)/nocturneStrip)*nocturneStrip;x<bounds.right;x+=nocturneStrip)c.drawImage(stamp,x,y);
+  for(let x=Math.floor(Math.max(NOCTURNE_PAVEMENT_START,bounds.left)/nocturneStrip)*nocturneStrip;x<bounds.right;x+=nocturneStrip)c.drawImage(stamp,x,y);
  }
  c.restore();
 }

@@ -1,4 +1,4 @@
-import {broomFlightSpeed,dismountBroom} from './broom-mount.mjs';
+import {dismountBroom} from './broom-mount.mjs';
 import {playerInput} from './inventory-input.mjs';
 import {spellTransition} from './portal-transition.mjs';
 import {QUIDDITCH_ROOM,QUIDDITCH_ARRIVAL,QUIDDITCH_RETURN,QUIDDITCH_RACK,QUIDDITCH_TEAMS,PITCH_FLIGHT_MIN,PITCH_FLIGHT_MAX,quidditchFieldBlocked} from './quidditch-layout.mjs';
@@ -51,7 +51,7 @@ function recoverPitchFooting(g,p){
 }
 
 function land(g,p){
- if(p.quidditchLoaner){delete p.broomMount;delete p.quidditchLoaner;}
+ if(p.quidditchLoaner){delete p.broomMount;delete p.quidditchLoaner;p.dashTime=p.dashRecovery=0;}
  else if(p.broomMount&&!dismountBroom(g,p))return false;
  p.jumpHeight=p.jumpVelocity=p.groundHeight=0;
  p.wingHover=false;p.jumpHeld=false;p.landTime=0;
@@ -71,7 +71,7 @@ function placeParty(g,point){
   delete p.swordDash;
   delete p.swordFacing;
   clearSwordPolish(p);
-  Object.assign(p,{bowAiming:false,bowAimBlend:undefined,blocking:false,queuedAttack:null});
+  Object.assign(p,{bowAiming:false,bowAimBlend:undefined,blocking:false,holdingPosition:false,queuedAttack:null});
  }
 }
 export function visitQuidditchPitch(g,p,returnPoint){
@@ -139,22 +139,20 @@ function movePitchPlayer(g,p,input,dt,staggered){
  const x=input.x||0,y=input.y||0,length=Math.hypot(x,y),span=Math.max(1,length);
  updateAimFacing(p,input);
  p.movementGait=length===0?'idle':length>=(p.movementGait==='run'?.68:.75)?'run':'walk';
- p.walking=p.movementGait==='walk';
- let motion;
+ p.walking=!p.broomMount&&p.movementGait==='walk';
  if(p.broomMount){
   p.broomMount.time=(p.broomMount.time||0)+dt;
   p.quidditchAltitude=limit((p.quidditchAltitude??Math.max(42,p.jumpHeight||0))+
-   ((input.jump?1:0)-(input.dodge?1:0))*68*dt,PITCH_FLIGHT_MIN+3,PITCH_FLIGHT_MAX);
+   ((input.jump?1:0)-(input.broomDescend?1:0))*68*dt,PITCH_FLIGHT_MIN+3,PITCH_FLIGHT_MAX);
   p.jumpHeight+=(p.quidditchAltitude-(p.jumpHeight||0))*(1-Math.exp(-dt*10));
   p.wingHover=false;p.landTime=0;
-  motion={x:x/span,y:y/span,speed:broomFlightSpeed(p)};
  }else{
   if(!input.jump)releaseJump(p);
   if(!tickWingFlight(g,p,input,dt))tickJump(p,dt,g);
   if(input.jump&&!p.jumpHeld&&!p.wingHover)startJump(p);
   p.jumpHeld=!!input.jump;
-  motion=g.playerDashMotion(p,input,dt,x/span,y/span);
  }
+ const motion=g.playerDashMotion(p,input,dt,x/span,y/span);
  recoverPitchFooting(g,p);
  const speed=motion.speed*(staggered?.38:1);
  const stride=!p.broomMount&&!p.dashTime&&!p.dashRecovery?jumpMotion(p,motion.x,motion.y,speed,dt):null;

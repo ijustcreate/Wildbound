@@ -19,7 +19,7 @@ import {drawSocketWorkshop} from './socket-workshop.mjs';
 import {salvageYield,salvageReason,salvageProgress} from './salvage.mjs';
 import {inventoryToolbar} from './inventory-toolbar.mjs';
 import {guardInventoryKeys} from './inventory-input.mjs';
-import {planPlayerPanels,openPlayArea,centeredPopupBox} from './player-panel-layout.mjs';
+import {planPlayerPanels,openPlayArea,centeredPopupBox,fitPanePanel} from './player-panel-layout.mjs';
 import {Animator} from './animation.mjs';
 import {drawOldWellRoom,wellForPlayer,WELL_TITLE} from './old-well.mjs';
 import {fitUndergroundCanvas} from './underground-view.mjs';
@@ -70,6 +70,7 @@ export class HeroUI {
     this.root = root;
     this.panels = new Map();
     this.panelAnchors = new Map();
+    this.splitPanes = new Map();
     const refreshTips=()=>{for(const panel of this.panels.values()){const anchor=panel.tooltipAnchor||panel.lastTooltipAnchor;if(panel.contains(anchor))anchor.showItemTooltip?.();}};
     globalThis.addEventListener?.('keydown',event=>{
       if(document.querySelector('dialog[open]'))return;
@@ -196,10 +197,7 @@ export class HeroUI {
     // created but never receive `place()`, leaving the panel at its tiny CSS
     // fallback dock on the left edge.
     const open = game.players.filter((p) => (onlyId === null || p.id === onlyId) && (p.ui || p.room&&!isSharedWorldRoom(game,p)&&(onlyId!==null||storageRoomRepresentative(game,p))));
-    const bounds = this.root.getBoundingClientRect();
-    const layout = planPlayerPanels(game.players, open, bounds.width, bounds.height);
-    const layoutKey = [bounds.width, bounds.height, ...open.map((p) => p.id),...game.players.map(p=>p.id+':'+p.room)].join('|');
-    let layoutChanged = layoutKey !== this.layoutKey;
+    let layoutChanged = false;
     for (const p of game.players) {
       if (onlyId !== null && p.id !== onlyId) continue;
       if (!p.ui && (!p.room||isSharedWorldRoom(game,p))) continue;
@@ -402,8 +400,14 @@ export class HeroUI {
       }
     // Content caching must not freeze a neighbour's position when a panel opens,
     // closes, changes chest mode, or the game window is resized.
+    const bounds = this.root.getBoundingClientRect();
+    const split = this.placeSplitPanes(game, renderer, open, bounds, layoutChanged);
+    const docked = split ? open.filter(p => !split.has(p.id)) : open;
+    const layout = planPlayerPanels(game.players, docked, bounds.width, bounds.height);
+    const layoutKey = [bounds.width, bounds.height, ...docked.map(p => p.id), ...game.players.map(p => p.id + ':' + p.room)].join('|');
+    layoutChanged ||= layoutKey !== this.layoutKey;
     if (layoutChanged) {
-      for (const p of open) this.place(this.panels.get(p.id), p, game, renderer, bounds, layout);
+      for (const p of docked) this.place(this.panels.get(p.id), p, game, bounds, layout);
       this.layoutKey = layoutKey;
     }
     if(renderer) {
@@ -426,10 +430,11 @@ export class HeroUI {
         const hovered=panel.contains(panel.tooltipHover)?panel.tooltipHover:null;
         const focused=panel.contains(panel.tooltipFocus)?panel.tooltipFocus:null;
         const anchor=hovered||focused||((panel.tooltipExpanded||(this.tooltipAlt&&this.tooltipAltOwner===panel.hero?.id))&&panel.contains(panel.lastTooltipAnchor)?panel.lastTooltipAnchor:null)||(!panel.classList.contains('storage-shop')&&(panel.hero?.device!=='keyboard'||panel.revealSelection)?selected:null);
-        if(anchor?.showItemTooltip){if(panel.tooltipAnchor!==anchor||layoutChanged||panel.querySelector('.item-tooltip')?.hidden)anchor.showItemTooltip();}
+        if(anchor?.showItemTooltip){if(panel.tooltipAnchor!==anchor||layoutChanged||panel.splitLayoutChanged||panel.querySelector('.item-tooltip')?.hidden)anchor.showItemTooltip();}
         else if(panel.classList.contains('chest-redesign')||panel.hero?.device!=='keyboard'||panel.revealSelection){const tip=panel.querySelector('.item-tooltip');if(tip)tip.hidden=true;}
       }
       panel.revealSelection=false;
+      panel.splitLayoutChanged=false;
     }
   }
   storagePopup(panel,game,p,button){
@@ -970,18 +975,79 @@ export class HeroUI {
     }
     for(const [id,panel]of this.storageBackdrops)if(!wanted.has(id)){panel.remove();this.storageBackdrops.delete(id);}
   }
-  place(panel, p, game, r, bounds = this.root.getBoundingClientRect(), layout = planPlayerPanels(game.players, game.players.filter(q => q.ui || q.room), bounds.width, bounds.height)) {
-    let box = layout.get(p.id);
+  placeSplitPanes(game, renderer, open, bounds, contentChanged) {
+    const canvas = renderer?.canvas;
+    const views = game.phase === 'play' && canvas?.parentElement === this.root.parentElement && renderer?.splitViews;
+    const hasMenus = views?.length && open.some(p => p.ui);
+    if (!hasMenus && !this.splitPanes.size) return null;
+    const keep = new Set(), placed = new Set();
+    if (hasMenus) {
+      const rect = canvas.getBoundingClientRect();
+      const sx = rect.width / renderer.viewport.w, sy = rect.height / renderer.viewport.h;
+      for (const view of views) {
+        const owners = open.filter(p => p.ui && view.players.some(q => q.id === p.id));
+        if (!owners.length) continue;
+        keep.add(view.key);
+        let pane = this.splitPanes.get(view.key);
+        if (!pane) {
+          pane = el('div', null, 'split-player-pane');
+          this.splitPanes.set(view.key, pane);
+        }
+        if (pane.parentElement !== this.root) this.root.append(pane);
+        for (const p of owners) {
+          placed.add(p.id);
+          this.movePanel(this.panels.get(p.id), pane);
+        }
+        const x = rect.left - bounds.left + view.x * sx, y = rect.top - bounds.top + view.y * sy;
+        const width = view.w * sx, height = view.h * sy;
+        const polygon = view.poly.map(p => ({x: (p.x - view.x) * sx, y: (p.y - view.y) * sy}));
+        const points = polygon.map(p => `${p.x.toFixed(2)}px ${p.y.toFixed(2)}px`).join(', ');
+        const key = [...[x, y, width, height].map(n => n.toFixed(2)), points, ...owners.map(p => p.id)].join('|');
+        if (!contentChanged && key === pane.layoutKey) continue;
+        pane.layoutKey = key;
+        Object.assign(pane.style, {left: `${x}px`, top: `${y}px`, width: `${width}px`, height: `${height}px`, clipPath: `polygon(${points})`});
+        const box = fitPanePanel(polygon, width, height);
+        const columns = Math.min(box.width >= 760 ? 2 : 1, owners.length);
+        const rows = Math.ceil(owners.length / columns);
+        const menuWidth = box.width / columns, menuHeight = box.height / rows;
+        owners.forEach((p, i) => {
+          const splitBox = {x: box.x + i % columns * menuWidth, y: box.y + Math.floor(i / columns) * menuHeight,
+            width: menuWidth, height: menuHeight, side: 'center'};
+          const panel = this.panels.get(p.id);
+          this.place(panel, p, game, bounds, null, splitBox);
+          panel.splitLayoutChanged = true;
+        });
+      }
+    }
+    for (const p of open) if (!placed.has(p.id)) this.movePanel(this.panels.get(p.id), this.root);
+    for (const [key, pane] of this.splitPanes) {
+      if (keep.has(key)) continue;
+      pane.remove();
+      this.splitPanes.delete(key);
+    }
+    return placed;
+  }
+  movePanel(panel, parent) {
+    if (panel.parentElement === parent) return;
+    if (parent.moveBefore) parent.moveBefore(panel, null);
+    else {
+      const active = panel.contains(document.activeElement) ? document.activeElement : null;
+      parent.append(panel);
+      active?.focus({preventScroll: true});
+    }
+  }
+  place(panel, p, game, bounds, layout, splitBox = null) {
+    let box = splitBox ?? layout.get(p.id);
     if (!box) return;
     // Storage is a focused task, not a side rail. Give chest transfers and the
     // private storeroom map a stable centered dialog footprint, even in lobby.
-    if(layout.size===1&&panel.classList.contains('victory-loot-session'))
+    if(layout?.size===1&&panel.classList.contains('victory-loot-session'))
       box={...centeredPopupBox(bounds.width,bounds.height,440,520,18),side:'center'};
-    else if(layout.size===1&&panel.classList.contains('starter-chest-session'))
+    else if(layout?.size===1&&panel.classList.contains('starter-chest-session'))
       box={...centeredPopupBox(bounds.width,bounds.height,480,620,18),side:'center'};
-    else if(layout.size===1&&panel.classList.contains('chest-redesign'))
+    else if(layout?.size===1&&panel.classList.contains('chest-redesign'))
       box={...centeredPopupBox(bounds.width,bounds.height,520,620,18),side:'center'};
-    if(panel.classList.contains('npc-dialogue-session')){
+    if(!splitBox&&panel.classList.contains('npc-dialogue-session')){
       if(layout.size===1){
         const width=Math.min(680,bounds.width-24);
         const height=Math.min(224,Math.max(150,bounds.height*.42),bounds.height-24);
@@ -994,7 +1060,7 @@ export class HeroUI {
     if(panel.classList.contains('private-storage-room'))box=storagePanelBox(game,p,bounds,box);
     const {x, y, width, height, side} = box;
     panel.dataset.anchor = side;
-    panel.classList.toggle('party-panel', layout.size > 1);
+    panel.classList.toggle('party-panel', layout?.size > 1 || !!splitBox);
     panel.classList.toggle('inventory-compact', height <= 580);
     panel.classList.toggle('inventory-tight', height <= 460);
     panel.classList.toggle('inventory-narrow', width <= 380);

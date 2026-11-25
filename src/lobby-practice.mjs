@@ -4,6 +4,8 @@ import {structureBlocked} from './expansion.mjs';
 import {refreshVitals} from './items.mjs';
 import {restoreHunterPet,petRecord} from './hunter-pets.mjs';
 import {LOBBY_FLOOR,LOBBY_TV} from './lobby-geometry.mjs';
+import {LOBBY_FIREPLACE_GOAL} from './lobby-fireplace-ball.mjs';
+import {LOBBY_HOP_FURNITURE} from './lobby-furniture-streak.mjs';
 
 export const LOBBY_FURNITURE=[
  // Match the visible lower-row tables; the old footprints were on the top wall.
@@ -17,13 +19,15 @@ export const LOBBY_FURNITURE=[
 export const LOBBY_FIXTURES=[
  {id:'difficulty',x:934,y:158,w:42,h:18},
  {id:'target-lever',x:447,y:545,w:36,h:15},
+ {id:'desk-bell',x:91,y:275,w:58,h:13},
 ];
 
 // A separate simulation uses the real combat/movement code without touching saves.
 export class LobbyPractice extends Game {
   constructor(){
     super();this.phase='play';this.openingBoard=false;this.generatedEnvironment='lobby';
-    this.house={walls:structuredClone(LOBBY_FIXTURES),doors:[],furniture:structuredClone(LOBBY_FURNITURE),pools:[],floors:[],rooms:[],trees:[]};this.scenery=[];this.terrain.fill('grass');this.pickups=[];
+    const fireplace={id:'fireplace',x:LOBBY_FIREPLACE_GOAL.x-34,y:LOBBY_FLOOR.top,w:68,h:LOBBY_FIREPLACE_GOAL.y-LOBBY_FLOOR.top-10};
+    this.house={walls:structuredClone([...LOBBY_FIXTURES,fireplace]),doors:[],furniture:structuredClone([...LOBBY_FURNITURE,...LOBBY_HOP_FURNITURE]),pools:[],floors:[],rooms:[],trees:[]};this.scenery=[];this.terrain.fill('grass');this.pickups=[];
     this.targetsMoving=false;this.targetClock=0;this.targets=[{x:280,y:125,angle:0},{x:455,y:125,angle:0},{x:120,y:178,angle:-Math.PI/4},{x:52,y:350,angle:-Math.PI/2},{x:52,y:520,angle:-Math.PI/2}].map((t,i)=>({...t,id:i,homeX:t.x,homeY:t.y,hits:0,score:0,flash:0}));
     for(const t of this.targets)Object.assign(t,{id:this.nextId++,kind:'practice_target',practiceTarget:true,hp:1e9,maxHp:1e9,combatText:[],state:'idle',speed:0,damage:0});
     this.enemies=this.targets;

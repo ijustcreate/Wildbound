@@ -1,5 +1,5 @@
-import { CREATURE_PACK as wildlifePack } from './wildlife.mjs';
-import { CREATURE_PACK as eldritchPack } from './eldritch.mjs';
+import { CREATURE_PACK as wildlifePack, wildlifeMotionLoading } from './wildlife.mjs';
+import { CREATURE_PACK as eldritchPack, eldritchMotionLoading } from './eldritch.mjs';
 import { CREATURE_PACK as constructsPack } from './constructs.mjs';
 import { applyCreaturePackRuntimeAdjustments } from '../creature-pack-runtime-adjustments.mjs';
 import { tickSkunkActor } from '../skunk-behavior.mjs';
@@ -27,6 +27,15 @@ export const CREATURE_PACK_SUBJECTS = mergeUnique('subjects');
 applyCreaturePackRuntimeAdjustments(CREATURE_PACK_SUBJECTS);
 export const CREATURE_PACK_DEFAULTS = mergeUnique('defaults');
 export const CREATURE_PACK_EVENTS = Object.freeze(CREATURE_PACKS.flatMap(pack => pack.events || []));
+
+export function loadCreatureMotion(kind) {
+  return wildlifeMotionLoading.load(kind) ?? eldritchMotionLoading.load(kind);
+}
+
+export function loadAdventureCreatureMotions() {
+  const requests = [...wildlifeMotionLoading.all(), ...eldritchMotionLoading.all()];
+  return requests.length ? Promise.allSettled(requests) : null;
+}
 
 export function tickCreaturePackActor(game, actor, dt, livingTargets) {
   // The shared wild-fauna path owns otter shoreline movement and its saved

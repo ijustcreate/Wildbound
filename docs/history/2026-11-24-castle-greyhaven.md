@@ -1,0 +1,15 @@
+# Castle Greyhaven in Tideglass Reach
+
+Castle Greyhaven sits on the eastern mainland beyond Stormwatch Beacon. A branch from the Tideglass trail leads to the south approach at `(17840, 2168)`. The fixed lantern-lined stone bridge stops at the hinged timber span. The portcullis starts open and the drawbridge starts flat. Interact by the open doorway to enter. The lever is just inside the main entrance on the right. It raises or lowers the bridge over 1.25 seconds. Walkers use the bridge deck while swimmers remain in the moat. The raised span blocks the crossing, and the island landing keeps the entrance available from the castle side.
+
+The floor plan follows the supplied Castle Greyhaven reference. Four round stair towers connect the Great Hall, the Gallery, and the High Solar. The ground story has the lion runner, paired suits of armor, kitchen and cellar, and a banquet room. The Gallery looks down through a guarded atrium and has a book-lined dining room, twin beds, and a private chamber. The High Solar has a hearth and crest rug, a blue orb chamber, a furnished study, and a long table by the southern wall. Playable fixtures use the same footprints as the native pixel artwork. The room indicator and stairs show the active story and destination.
+
+Wilds checkpoints retain the active story and the shared drawbridge setting. The ordinary railway renderer draws the surface castle and uses a cutaway for each interior terrain layer. Exterior and interior scenery are original native pixel assets based on the supplied visual references.
+
+The focused case checks the moat and deck masks, the active-story checkpoint, and access to every tower stair. An additional layout sweep reached all 16 stair triggers and landings and all 10 side rooms using the production collision routine. The muted source Electron run walked the fixed and movable spans, entered together, operated the lever, tested the raised gap from each bank, cleared every floor, and reloaded a checkpoint. Captures and receipts are under `test-output/greyhaven-review/`.
+
+## Desktop 1.2.152
+
+The executable is `dist/1.2.152/Wildbound-win32-x64/Wildbound.exe`. The package came from the modified `Wildbound_worlds` checkout at `a6cee9bc55ad12ed58df5c3d27b150449f31ef26` after an in-process Node syntax check of 1,209 runtime files. Thirteen Greyhaven runtime files matched the package by SHA-256. The executable passed the muted lobby boot. The verified normal-profile desktop shortcut pins `Play Wildbound.cmd -BuildDirectory "dist\1.2.152\Wildbound-win32-x64"`. The default launcher resolved to 1.2.152 at verification time.
+
+The packaged renderer passed 74 muted Electron checks with the terrain Worker and no renderer or Worker errors. The walkthrough included checkpoint reload, split cameras, and the shared floor map. Controller actions were simulated by the app input mapper. The moat can briefly show its flat base color while the Worker streams the native water texture. Verification covered Greyhaven and the nearby Wilds systems.

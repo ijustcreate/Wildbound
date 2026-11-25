@@ -111,7 +111,8 @@ export function tickTacticalEnemy(g,e,dt,targets){
   }
   track(e,p,dt);
   const archer=e.combatRole==='archer',empty=archer&&enemyQuiver(e)<=0,footwork=archer?rangedFootwork(g,e,p):null;
-  if(archer&&!empty&&!footwork.plant&&clearShot(g,e,p)&&m.repositionUntil>g.time&&beh.hunt!==false){strafe(g,e,p,dt);return true;}
+  let targetVisible;
+  if(archer&&!empty&&!footwork.plant&&m.repositionUntil>g.time&&beh.hunt!==false&&(targetVisible=clearShot(g,e,p))){strafe(g,e,p,dt);return true;}
   if(e.combatRole==='shield'&&g.time-(m.lastHitAt??-99)>2)m.guard=Math.min(100,(m.guard??100)+dt*12);
   if(archer){
     const arrows=enemyQuiver(e);
@@ -124,18 +125,18 @@ export function tickTacticalEnemy(g,e,dt,targets){
   const laneBusy=(archer||e.combatRole==='charger')&&allyInAttackLane(g,e,p.x-e.x,p.y-e.y,d,archer?16:30);
   const aligned=(e.faceX*(p.x-e.x)+e.faceY*(p.y-e.y))/Math.max(1,d)>.75;
   const tooClose=archer&&!empty?d<105:e.combatRole==='charger'?d<82:false;
-  if(attackEnabled&&e.cooldown<=0&&!laneBusy&&!tooClose&&aligned&&d<range&&clearShot(g,e,p)&&requestEnemyGroupTurn(g,e,p,{rush:e.combatRole==='charger',flightSpeed:archer&&!empty?270:0})){
+  if(attackEnabled&&e.cooldown<=0&&!laneBusy&&!tooClose&&aligned&&d<range&&(targetVisible??=clearShot(g,e,p))&&requestEnemyGroupTurn(g,e,p,{rush:e.combatRole==='charger',flightSpeed:archer&&!empty?270:0})){
     m.lastRush=null;const s=tacticalPhase(e,'windup',empty?.55:archer?.7:e.combatRole==='charger'?.75:.62);s.targetId=p.id;s.melee=empty;e.bowBash=empty;return true;
   }
   if(beh.hunt!==false){
     if(archer){
-      if(!clearShot(g,e,p)){travel(g,e,p,dt);return true;}
+      if(!(targetVisible??=clearShot(g,e,p))){travel(g,e,p,dt);return true;}
       if(empty){if(d>40)travel(g,e,p,dt);return true;}
       if(footwork.plant)return true;
       if(occupied){travel(g,e,enemyGroupPosition(g,e,p,{backline:true}),dt);return true;}
       const threatened=d<155||p.swordDash||p.charge>.35&&d<240;
       if(threatened){if(g.time>=m.nextEvasionAt){strafe(g,e,p,dt,75);m.evadingUntil=g.time+.4;m.nextEvasionAt=g.time+1.8;}else if(g.time<m.evadingUntil)strafe(g,e,p,dt,75);}
-      else if(laneBusy||!clearShot(g,e,p)||e.cooldown>0&&d<290)strafe(g,e,p,dt);
+      else if(laneBusy||e.cooldown>0&&d<290)strafe(g,e,p,dt);
       else if(d>300)travel(g,e,p,dt);
     }else if(e.combatRole==='charger'&&(tooClose||occupied||laneBusy||m.lastRush&&e.cooldown>0)){
       strafe(g,e,p,dt,tooClose?70:0);

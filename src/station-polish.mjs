@@ -601,7 +601,7 @@ export function drawStationFloorDetails(c,s) {
 export function drawStationLightPool(c,l,night) {
   // Pools strengthen at night without casting a blurred circle over the roof.
   steppedPool(c,l.x,l.y+4,Math.min(38,l.r*.54),Math.min(23,l.r*.28),night?1.6:.38);
-  if(l.raise) steppedPool(c,l.x+1,l.y-l.raise,11,9,night?1.8:.32);
+  if(l.raise) steppedPool(c,l.glass?.x??l.x+1,l.glass?.y??l.y-l.raise,11,9,night?1.8:.32);
 }
 
 function support(c,f,t) {

@@ -1,8 +1,12 @@
 import {block as b,shape,line} from './diagon-shop-brush.mjs';
 import {drawForestAsset} from './forest-props.mjs';
+import {paintForestCanopy} from './forest-canopy-art.mjs';
+import {drawTreeBranches,drawTreeTrunk} from './forest-tree-art.mjs';
+import {makeTreeForm,treeStemAt} from './forest-tree-form.mjs';
 import {drawSnowyOwl} from './snowy-owl-art.mjs';
 import {drawPixelChatText,pixelChatTextWidth} from './pixel-chat-font.mjs';
-import {GARDEN_BENCHES,GARDEN_LAMPS,GARDEN_LAWN,GARDEN_PATHS,GARDEN_POOL,GARDEN_SHOP_APPROACH,GARDEN_TREES,MAGE_GARDEN_AREAS,gardenPathAt} from './diagon-garden-layout.mjs';
+import {GARDEN_BENCHES,GARDEN_LAMPS,GARDEN_LAWN,GARDEN_PATHS,GARDEN_POOL,GARDEN_SHOP_APPROACH,GARDEN_STREET_APPROACH,GARDEN_TREES,MAGE_GARDEN_AREAS,gardenPathAt} from './diagon-garden-layout.mjs';
+import {DIAGON_STREET} from './alley-street-layout.mjs';
 import {drawGardenPool,paintGardenPoolStone} from './diagon-garden-pool.mjs';
 import {gardenCatsFor} from './diagon-garden-cats.mjs';
 import {inGardenPond} from './diagon-garden-ward.mjs';
@@ -11,14 +15,14 @@ import {drawGardenWardWater} from './diagon-garden-ward-art.mjs';
 export {MAGE_GARDEN_AREAS,insideMageGarden,mageGardenBlocked,mageGardenFootstep} from './diagon-garden-layout.mjs';
 
 const turf=['#3b523e','#425b43','#496247','#4e6649','#54714f','#5c7650'];
-const treeColors={
- cedar:['#263e3c','#345049','#456451','#52795e','#719270'],
- laurel:['#2f4236','#435d46','#52704d','#638452','#8da56b'],
- lilac:['#303e46','#454b5d','#595b73','#73718a','#9a8ca8'],
+const treeStyles={
+ cedar:{type:'oak',spread:1.55,width:1.32,height:1.14,colors:['#263e35','#304d41','#3a5a47','#476952','#577a5c','#71926b','#94a97e']},
+ laurel:{type:'oak',spread:1.35,width:1.28,height:1.18,colors:['#2a402e','#385136','#45603c','#536f43','#66844e','#829957','#a1af6d']},
+ lilac:{type:'maple',spread:1.62,width:1.44,height:1.24,colors:['#323744','#444659','#56566b','#66637d','#7d7492','#9988ab','#bca5c6']},
 };
 const spark=['#c5f2c9','#e8ddff','#a5ddc2','#b4bde4'];
 const slabs=['#747c70','#807e72','#898776','#958d78','#9c957e'];
-const gardenView={x:7379,y:4026,rx:440,ry:325};
+const gardenView={x:7395,y:4026,rx:450,ry:325};
 const gardenLeft=Math.min(...MAGE_GARDEN_AREAS.map(a=>a.x));
 const gardenRight=Math.max(...MAGE_GARDEN_AREAS.map(a=>a.x+a.w));
 const beds=[
@@ -61,9 +65,16 @@ function paving(c){
 
 function gardenGround(c){
  const lawn=GARDEN_LAWN;
+ const {x,y,h}=GARDEN_STREET_APPROACH,mouth=DIAGON_STREET.x+7;
+ const wing=[[x,y],[mouth-102,y],[mouth-77,y+4],[mouth-57,y+3],[mouth-34,y+9],[mouth-17,y+12],
+  [mouth+3,y+16],[mouth+3,y+h-16],[mouth-20,y+h-14],[mouth-49,y+h-8],[mouth-73,y+h-4],
+  [mouth-98,y+h],[x,y+h]];
  c.save();c.beginPath();for(const a of MAGE_GARDEN_AREAS)c.rect(a.x,a.y,a.w,a.h);c.clip();
- for(const area of MAGE_GARDEN_AREAS)b(c,area.x,area.y,area.w,area.h,turf[2]);
- for(let y=lawn.y+6;y<lawn.y+lawn.h;y+=15)for(let x=lawn.x+4;x<lawn.x+lawn.w;x+=16){
+ c.beginPath();c.rect(lawn.x,lawn.y,lawn.w,lawn.h);
+ c.rect(GARDEN_SHOP_APPROACH.x,GARDEN_SHOP_APPROACH.y,GARDEN_SHOP_APPROACH.w,GARDEN_SHOP_APPROACH.h);
+ c.moveTo(...wing[0]);for(const point of wing.slice(1))c.lineTo(...point);c.closePath();c.clip();
+ b(c,gardenLeft,lawn.y,mouth+3-gardenLeft,lawn.h,turf[2]);
+ for(let y=lawn.y+6;y<lawn.y+lawn.h;y+=15)for(let x=lawn.x+4;x<mouth;x+=16){
   const n=grain(x,y),px=x+Math.floor(n*8),py=y+Math.floor(grain(y,x)*7);
   if(n<.2)continue;
   b(c,px,py,3+Math.floor(n*9),2,turf[Math.floor(grain(y,x)*turf.length)]);
@@ -103,40 +114,42 @@ function makeCanvas(w,h){
 
 let terrain;
 const treeRasters=new WeakMap();
-function paintTree(c,o,index,sway){
- const colors=treeColors[o.kind];
- shape(c,'#293831',[[-21,4],[-11,-18],[-16,-39],[-28,-56],[-22,-62],[-9,-51],[-4,-35],[2,-65],[15,-70],[17,-65],[12,-48],[10,-22],[18,-3],[28,5],[9,8],[-4,3],[-15,8]]);
- shape(c,'#685742',[[-14,3],[-7,-18],[-12,-36],[-22,-50],[-14,-47],[-4,-35],[5,-51],[8,-62],[13,-65],[10,-31],[8,-18],[14,-4],[22,3],[7,4],[1,-8],[-5,2]]);
- line(c,'#9b825c',1,-9,5,-39,3);line(c,'#aa9570',-3,-33,-15,-49,2);
- const clusters=o.kind==='cedar'?[[-43,-60],[-27,-80],[-2,-95],[19,-84],[40,-70],[9,-63],[-19,-61]]:
-  [[-43,-63],[-21,-86],[9,-92],[34,-78],[49,-62],[-24,-58],[11,-72],[24,-57]];
- for(const [i,[cx,cy]] of clusters.entries()){
-  const x=cx+sway,y=cy,w=i%3===0?32:26,h=i%3===1?21:17;
-  shape(c,colors[i%3],[[x-w,y],[x-w+4,y-h*.6],[x-w*.56,y-h],[x+w*.35,y-h],[x+w*.84,y-h*.55],[x+w,y-1],[x+w*.67,y+h*.62],[x-w*.58,y+h*.65]]);
-  shape(c,colors[i%3+2],[[x-w+6,y-2],[x-w+9,y-h*.58],[x-w*.45,y-h+3],[x+w*.3,y-h+4],[x+w*.63,y-h*.45],[x+w*.33,y],[x-w*.4,y+5]]);
- }
- for(let i=0;i<47;i++){
-  const x=-53+grain(i,index)*107+sway,y=-99+grain(index,i)*52;
-  if((x+4)**2+(y+73)**2*3>2760)continue;
-  b(c,x,y,2+(i%3===0),1+(i%7===0),o.kind==='lilac'&&i%4===1?'#c4a7c2':colors[4]);
+function gardenTreeArt(o,index){
+ const {type,spread,width,height,colors}=treeStyles[o.kind];
+ const seed=grain(o.x,o.y)*1000,form=makeTreeForm(type,seed,spread);
+ const trunk=form.trunk.map(([x,y,w])=>[x,y*height,w*1.18]);
+ const branches=form.branches.map(branch=>({...branch,y:branch.y*height,elbowY:branch.elbowY*height,tipY:branch.tipY*height}));
+ const crowns=form.crowns.map(([x,y,rx,ry])=>[x,y*height,rx*width,ry*1.08]);
+ const side=index%2?-1:1;
+ const perchY=-49+(grain(seed,31)-.5)*6,startY=-39+(grain(seed,32)-.5)*8;
+ const perch={side,x:side*(19+index%3*6),y:perchY,startX:treeStemAt(trunk,startY)[0],startY,width:4+(grain(seed,33)-.5)*2};
+ return {frames:[],seed,prop:{...o,seed,treeType:type},form:{trunk,branches},crowns,colors,perch};
+}
+function paintTree(c,sway,{prop,form,crowns,seed,colors}){
+ drawTreeBranches(c,prop,form);
+ drawTreeTrunk(c,prop,form);
+ for(const [i,[x,y,rx,ry]] of crowns.entries()){
+  const exposure=Math.min(.32,(-y-55)*.014)+(grain(seed,i)-.5)*.16;
+  paintForestCanopy(c,x+sway,y,rx,ry,colors,seed+i*7.3,{exposure});
  }
 }
 
 function drawTree(c,o,time,index,owl=true){
  const phase=Math.floor(time*3+index*.7)%4,scale=o.size/110;
- let frames=treeRasters.get(o);
- if(!frames){frames=[];treeRasters.set(o,frames);}
+ let art=treeRasters.get(o);
+ if(!art){art=gardenTreeArt(o,index);treeRasters.set(o,art);}
+ const {frames}=art;
  if(!frames[phase]){
-  const canvas=makeCanvas(180,122),pen=canvas.getContext('2d');pen.translate(90,112);
-  paintTree(pen,o,index,[0,1,0,-1][phase]);frames[phase]=canvas;
+  const canvas=makeCanvas(180,130),pen=canvas.getContext('2d');pen.translate(90,120);
+  paintTree(pen,[0,1,0,-1][phase],art);frames[phase]=canvas;
  }
  c.save();c.translate(o.x,o.y);c.scale(scale,scale);c.imageSmoothingEnabled=false;
- c.drawImage(frames[phase],-90,-112);
+ c.drawImage(frames[phase],-90,-120);
  if(owl&&[0,2,3,6].includes(index)){
-  const wing=index%2?-1:1,perch=wing*(19+index%3*6);
-  line(c,'#786f56',wing*5,-37,perch+wing*9,-52,4);
-  line(c,'#9c8860',wing*7,-39,perch+wing*5,-51,1);
-  drawSnowyOwl(c,{hp:1,x:perch,y:-49,faceX:-wing,faceY:1,owlPhase:'perch',visualSeed:index+3},time,30);
+  const {side,x,y,startX,startY,width}=art.perch;
+  line(c,'#786f56',startX,startY,x+side*9,y-3,width);
+  line(c,'#9c8860',startX,startY-2,x+side*5,y-2,1);
+  drawSnowyOwl(c,{hp:1,x,y,faceX:-side,faceY:1,owlPhase:'perch',visualSeed:index+3},time,30);
  }
  c.restore();
 }

@@ -6,6 +6,7 @@ import {OLLIVANDERS_LAYOUT as layout} from './diagon-wand-shop-layout.mjs';
 import {drawOllivandersApron} from './diagon-wand-shop.mjs';
 import {drawGringottsDragon} from './gringotts-dragon-art.mjs';
 import {NIGHTGLASS_REAR_DOOR} from './diagon-nocturne-rear.mjs';
+import {DIAGON_PAVER_LANE} from './alley-street-layout.mjs';
 import {
   SHOP_FRONTAGES, frontageRoof, frontageBay, frontageSign, frontageLamp,
   frontageEntry, frontageSill,
@@ -231,8 +232,9 @@ export function groundShop(c,shop,side,open,props) {
   // The approved broken stone approach is reused. Reflect only its plan so
   // every threshold opens toward the avenue.
   if(shop.district!=='nocturne'&&!shop.frontEntrance){
+    const edge=side>0?DIAGON_PAVER_LANE.x:DIAGON_PAVER_LANE.x+DIAGON_PAVER_LANE.w;
     c.save();c.translate(shop.x,shop.y);c.scale(side,1);
-    drawOllivandersApron(c,{x:0,y:0});c.restore();
+    drawOllivandersApron(c,{x:0,y:0},Math.abs(shop.x-edge));c.restore();
   }
   const f=SHOP_FRONTAGES[shop.id];
   cached(c,shop,open?'floor':'foundation',groundBounds,pen=>paintGround(pen,shop,side,f,open,props));

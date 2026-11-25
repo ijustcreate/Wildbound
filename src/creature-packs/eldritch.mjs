@@ -1,8 +1,6 @@
 import {tickEldritchAttack} from '../eldritch-attack-logic.mjs';
 import { ellipse, facingIndex, limb, poseAt, projectPoint } from '../player-motion.mjs';
-import { GREAT_OWL_WOW_MOTION } from '../great-owl-wow-motion-data.mjs';
-import { BLINKY_WOW_MOTION } from '../blinky-wow-motion-data.mjs';
-import { CLINGING_REMAINS_WOW_MOTION } from '../clinging-remains-wow-motion-data.mjs';
+import { creatureMotionLoader } from './motion-loading.mjs';
 
 // Original, editable Wildbound pixel rigs. These are not imported meshes or
 // unverified Wowhead clips: each clip below is a native animation fitted to the
@@ -219,34 +217,8 @@ const labels = {
 function createModel(kind) {
   const joints = skeletonFor(kind), jointNames = Object.keys(joints);
   const clips = Object.fromEntries(specialClips[kind].map(action => [action, { fps: 10, length: 8, loop: ['idle', 'float', 'move', 'glide', 'fly', 'crawl', 'drift', 'walk', 'stalk', 'sway', 'hover'].includes(action), keys: clipKeys(kind, action, jointNames) }]));
-  if (kind === 'great_owl') {
-    // Replace matching base actions with sampled Archimedes motion. Keep the
-    // native glide: the donor's tier-3 flight sequences alias to ground Stand.
-    Object.assign(clips, structuredClone(GREAT_OWL_WOW_MOTION.clips));
-  }
-  if (kind === 'butterfly_dragon') {
-    // Stand, Walk, Run and AttackUnarmed are independent donor tracks. The
-    // source's apparent Fly ID aliases back to Run, so retain native fly.
-    Object.assign(clips, structuredClone(BLINKY_WOW_MOTION.clips));
-  }
-  if (kind === 'evil_hand') {
-    // Replace only crawl and attack with the donor's skinned hand motion.
-    // Idle, windup, recover, hurt and death stay native and editable.
-    for (const [action, clip] of Object.entries(CLINGING_REMAINS_WOW_MOTION.clips)) {
-      clips[action] = {
-        ...structuredClone(clip),
-        keys: clip.keys.map(frame => ({ ...structuredClone(frame), joints: {
-          ...Object.fromEntries(jointNames.map(name => [name, [0, 0, 0]])),
-          ...structuredClone(frame.joints),
-        } })),
-      };
-    }
-  }
   const model = {
     version: 1, type: kind, name: labels[kind], artRevision: 1, animationSource: kind === 'great_owl' ? 'verified-wowhead-donor-motion-with-native-glide' : kind === 'butterfly_dragon' ? 'verified-wowhead-ground-motion-with-native-fly' : kind === 'evil_hand' ? 'verified-wowhead-hand-crawl-and-attack-with-native-warning-death' : 'native-wildbound-approximation',
-    ...(kind === 'great_owl' ? { animationProvenance: structuredClone(GREAT_OWL_WOW_MOTION.provenance) } : {}),
-    ...(kind === 'butterfly_dragon' ? { animationProvenance: structuredClone(BLINKY_WOW_MOTION.provenance) } : {}),
-    ...(kind === 'evil_hand' ? { animationProvenance: structuredClone(CLINGING_REMAINS_WOW_MOTION.provenance) } : {}),
     joints, palette: { ...palette[kind] }, shape: { bodyWidth: kind === 'tree_ent' ? 13 : 9, headRadius: kind === 'arcane_eye' || kind === 'watcher' ? 7 : 5, limbWidth: kind === 'cave_monster' ? 4 : 3, wingSpan: kind === 'great_owl' ? 26 : 22 },
     visibility: Object.fromEntries(jointNames.filter(n => /^(eye|beak|snout)/.test(n)).map(n => [n, Array.from({ length: 8 }, (_, d) => d !== 4 && !(d === 3 && n === 'eyeR') && !(d === 5 && n === 'eyeL'))])),
     clips,
@@ -256,6 +228,37 @@ function createModel(kind) {
 
 const MODELS = Object.fromEntries(Object.keys(specialClips).map(kind => [kind, createModel(kind)]));
 const clone = value => structuredClone(value);
+const editedMotion = new Set();
+function applyDonor(kind, donor, fillAllJoints = false) {
+  if (editedMotion.has(kind)) return;
+  const model = MODELS[kind];
+  const clips = clone(donor.clips);
+  if (fillAllJoints) {
+    const joints = Object.keys(model.joints);
+    for (const clip of Object.values(clips)) for (const key of clip.keys) {
+      key.joints = { ...Object.fromEntries(joints.map(name => [name, [0, 0, 0]])), ...key.joints };
+    }
+  }
+  Object.assign(model.clips, clips);
+  model.animationProvenance = clone(donor.provenance);
+}
+export const eldritchMotionLoading = creatureMotionLoader({
+  async great_owl() {
+    const { GREAT_OWL_WOW_MOTION } = await import('../great-owl-wow-motion-data.mjs');
+    // Keep native glide because the donor's flight sequences alias to Stand.
+    applyDonor('great_owl', GREAT_OWL_WOW_MOTION);
+  },
+  async butterfly_dragon() {
+    const { BLINKY_WOW_MOTION } = await import('../blinky-wow-motion-data.mjs');
+    // Keep native flight because the donor's Fly ID aliases to Run.
+    applyDonor('butterfly_dragon', BLINKY_WOW_MOTION);
+  },
+  async evil_hand() {
+    const { CLINGING_REMAINS_WOW_MOTION } = await import('../clinging-remains-wow-motion-data.mjs');
+    applyDonor('evil_hand', CLINGING_REMAINS_WOW_MOTION, true);
+  },
+});
+if (!globalThis.window?.wildboundBoot) await Promise.all(eldritchMotionLoading.all());
 const poseFrame = (actor, time, model, action) => actor.playerFrame ?? actor.poseFrame ?? (actor.step != null && actor.moving ? actor.step * 0.65 : time * (model.clips[action]?.fps || 10));
 
 function paintLink(c, a, b, width, color) {
@@ -844,9 +847,14 @@ function validate(model) {
 }
 
 const subject = kind => ({
-  name: labels[kind], data: MODELS[kind], defaults: () => clone(MODELS[kind]), replace: model => { if (!validate(model) || model.type !== kind) throw new Error(`Invalid ${kind} rig`); MODELS[kind] = clone(model); return MODELS[kind]; }, draw: (c, actor, time, model = MODELS[kind], pose = null) => drawEldritch(c, actor, time, model, pose), sprite: kind,
+  name: labels[kind], get data() { return MODELS[kind]; }, defaults: () => clone(MODELS[kind]), replace: model => {
+    if (!validate(model) || model.type !== kind) throw new Error(`Invalid ${kind} rig`);
+    editedMotion.add(kind);
+    MODELS[kind] = clone(model);
+    return MODELS[kind];
+  }, draw: (c, actor, time, model = MODELS[kind], pose = null) => drawEldritch(c, actor, time, model, pose), sprite: kind,
   selected: ({ arcane_eye: 'eye', great_owl: 'wingTipL', butterfly_dragon: 'wingTipL', evil_hand: 'finger2Tip', eye_tentacle: 'eye', jade_tentacle: 'tip', flying_raptor: 'wingTipL', archangel: 'halo', watcher: 'eye', cave_monster: 'head', tree_ent: 'leafCrown', spore: 'cap' })[kind],
-  palette: Object.keys(MODELS[kind].palette), shapeKeys: Object.keys(MODELS[kind].shape), tracks: Object.keys(MODELS[kind].joints).filter(n => /^(eye|wing|stalk|segment|branch|tip|tail|foot)/.test(n)).slice(0, 6), clip: kind === 'tree_ent' ? 'walk' : kind === 'spore' ? 'burst' : kind === 'great_owl' || kind === 'flying_raptor' || kind === 'butterfly_dragon' || kind === 'archangel' ? 'fly' : 'idle', scale: kind === 'butterfly_dragon' ? 4 : kind === 'spore' ? 7 : 5,
+  palette: Object.keys(MODELS[kind].palette), shapeKeys: Object.keys(MODELS[kind].shape), tracks: Object.keys(MODELS[kind].joints).filter(n => /^(eye|wing|stalk|segment|branch|tip|tail|foot)/.test(n)).slice(0, 6), clip: kind === 'great_owl' ? 'glide' : kind === 'tree_ent' ? 'walk' : kind === 'spore' ? 'burst' : kind === 'flying_raptor' || kind === 'butterfly_dragon' || kind === 'archangel' ? 'fly' : 'idle', scale: kind === 'butterfly_dragon' ? 4 : kind === 'spore' ? 7 : 5,
 });
 
 const defaults = {

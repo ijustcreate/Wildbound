@@ -18,6 +18,7 @@ import {BROOM_SPEED_POTION,BROOM_SPEED_POTION_ITEM} from './broom-speed-potion.m
 import {fortescueIceCreamBonus} from './fortescue-ice-cream.mjs';
 import {STOLEN_HEART,storedHeartMetadata} from './stolen-heart.mjs';
 import {WIZARD_CARD_COLLECTION,WIZARD_CARD_COLLECTION_ITEM,mergeWizardCardCollection,mergeWizardCardCollectionSlots} from './wizard-card-collection.mjs';
+import {GREYHAVEN_GEAR} from './wild-castle-gear.mjs';
 export const SLOTS = [
   "head",
   "neck",
@@ -32,6 +33,7 @@ export const SLOTS = [
   "hand2",
 ];
 export const ITEMS = {
+  ...GREYHAVEN_GEAR,
   ...ARENA_DRINK_ITEMS,
   ...ARENA_COSTUMES,
   ...EMPORIUM_OWL_ITEMS,
@@ -89,7 +91,7 @@ export const ITEMS = {
   raw_ice:{name:'Raw ice',stack:99,color:'#b4efff',material:true,description:'A piece of frozen ice. Melts after five minutes outside the ice level.'},
   armor_bag: { name: 'Armorer Bag', stack: 1, color: '#bb995e', bag: { slots: 10, category: 'armor' }, description: 'Ten armor slots. Open to store or retrieve equipment.' },
   flying_broom:{name:'Witch’s flying broom',stack:1,color:'#bd984f',rarity:'unique',mount:true,sellPrice:90,description:'Use outdoors to mount and fly. B / loot button: dismount and return the broom. A released captured pet can ride behind you.'},
-  nimbus_2000:{name:'Repaired Nimbus 2000',base:'flying_broom',stack:1,color:'#c69a4d',rarity:'unique',mount:true,sellPrice:120,questReward:true,description:'Harry Potter’s old Nimbus 2000, carefully repaired with two brass bindings. Use outdoors to fly; dismount to return it to your backpack.'},
+  nimbus_2000:{name:'Repaired Nimbus 2000',base:'flying_broom',stack:1,color:'#c69a4d',rarity:'unique',mount:true,broomDashCooldownMultiplier:.9,sellPrice:120,questReward:true,description:'Harry Potter’s old Nimbus 2000, carefully repaired with two brass bindings. Dash cooldown is 10% shorter while riding. Use outdoors to mount.'},
   standard_book_of_spells:{name:'Standard Book of Spells',base:'trinket',trinket:true,spellDamage:3,stack:1,rarity:'unique',color:'#9c5345',artColor:'#9c5345',questReward:true,description:'Hermione Granger’s spare textbook. Socket into compatible gear: +3 spell damage. No bonus while loose in your backpack.'},
   ...Object.fromEntries(Object.entries(WIZARDING_SHOP_GOODS).map(([id,item])=>[id,{...item}])),
   chocolate_frog:{name:'Chocolate Frog',base:'potion',food:true,stack:10,color:'#70462f',artColor:'#70462f',rarity:'uncommon',questReward:true,description:'Adds an unowned wizard card until your collection is complete. Grants 5 minutes of sparkles. 50%: refill health. 50%: it hops away and can be caught with a net and a bottle.'},
@@ -112,6 +114,7 @@ export const ITEMS = {
   witch_hat_plum:{name:'Crooked witch hat (Ink Plum)',base:'hat',slot:'head',stack:1,armor:2,color:'#725783',rarity:'rare',style:'witch',supplyOnly:true,description:'Ink-plum cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
   witch_hat_slate:{name:'Crooked witch hat (Midnight Slate)',base:'hat',slot:'head',stack:1,armor:2,color:'#526d85',rarity:'rare',style:'witch',supplyOnly:true,description:'Midnight-slate cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
   witch_hat_russet:{name:'Crooked witch hat (Ember Russet)',base:'hat',slot:'head',stack:1,armor:2,color:'#975f44',rarity:'rare',style:'witch',supplyOnly:true,description:'Ember-russet cloth with a curled point, a stitched brim and a brass buckle. Armor +2.'},
+  witch_hat_parchment:{name:'Crooked witch hat (Parchment)',base:'hat',slot:'head',stack:1,armor:2,color:'#e3cfad',rarity:'rare',style:'witch',supplyOnly:true,description:'Pale cream cloth with a curled point, a swept brim and a brass buckle. Armor +2.'},
   relic_bag: { name: 'Reliquary Bag', stack: 1, color: '#b89bd9', bag: { slots: 10, category: 'relics' }, description: 'Ten relic slots. Picked-up relics go here first. Relics inside grant their passive bonuses while you carry this bag.' },
   crafting_bag: { name: 'Crafting Pouch', stack: 1, color: '#83bb92', bag: { slots: 1, category: 'crafting' }, description: 'One crafting supply slot. Holds one stack.' },
   relic_dust:{name:'Relic Dust',stack:999,color:'#c6b38d',material:true,sellPrice:1,description:'Salvaged from unwanted gear. Sell later; stacks to 999.'},

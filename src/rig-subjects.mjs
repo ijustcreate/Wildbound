@@ -75,8 +75,14 @@ import {gloamwhiskerMotion,defaultGloamwhiskerMotion,replaceGloamwhiskerMotion,d
 import {slimeMotion,defaultSlimeMotion,replaceSlimeMotion,drawSlime} from './slime-motion.mjs';
 import { CREATURE_PACK_SUBJECTS } from './creature-packs/index.mjs';
 import {ARENA_SUBJECTS} from './tv-arena-creatures.mjs';
+import {defaultLagoonMermaidMotion,lagoonMermaidMotion,replaceLagoonMermaidMotion} from './lagoon-mermaid-rig.mjs';
+import {drawLagoonMermaidRig} from './lagoon-mermaid-art.mjs';
 export const RIG_SUBJECTS = {
   ...ARENA_SUBJECTS,
+  lagoon_mermaid:{name:'Lagoon mermaid / articulated tail',data:lagoonMermaidMotion,defaults:defaultLagoonMermaidMotion,
+    replace:replaceLagoonMermaidMotion,draw:drawLagoonMermaidRig,sprite:'lagoon_mermaid',selected:'tailMid',
+    palette:Object.keys(lagoonMermaidMotion.palette),shapeKeys:Object.keys(lagoonMermaidMotion.shape),
+    tracks:['tailBase','tailMid','tailTip','flukeL','flukeR','handR'],clip:'brush',scale:6},
   alley_goblin:{name:'Alley goblin / short humanoid',data:alleyGoblinMotion,defaults:defaultAlleyGoblinMotion,replace:replaceAlleyGoblinMotion,draw:drawAlleyGoblin,sprite:'alley_goblin',selected:'head',palette:['legs'],shapeKeys:['bodyWidth'],tracks:['head','handL','handR','footL','footR'],clip:'idle',scale:7},
   gloamwhisker_rat:{name:'Gloamwhisker rat / Nocturne critter',data:gloamwhiskerMotion,defaults:defaultGloamwhiskerMotion,replace:replaceGloamwhiskerMotion,draw:drawGloamwhisker,sprite:'gloamwhisker_rat',selected:'head',palette:Object.keys(gloamwhiskerMotion.palette),shapeKeys:Object.keys(gloamwhiskerMotion.shape),tracks:['head','frontPawR','rearPawL','tailTip'],clip:'walk',scale:10},
  graveyard_cat:{name:'Cemetery cat / Honey rig',data:honeyCatMotion,defaults:defaultHoneyCat,replace:replaceHoneyCat,draw:drawHoneyCat,sprite:'graveyard_cat',selected:'head',palette:Object.keys(honeyCatMotion.palette),shapeKeys:Object.keys(honeyCatMotion.shape),tracks:['head','tailTip','frontPawL','rearPawR'],clip:'walk',scale:6},

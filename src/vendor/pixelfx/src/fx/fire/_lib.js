@@ -58,7 +58,7 @@ export const BACK_LAYERS = [[1, 1, 7], [0.76, 0.86, 5], [0.54, 0.68, 3], [0.3, 0
  * edges crackle. N(rate, seed, off) is the effect's noise at this frame; n seeds this tongue. H: hot-first ramp.
  * jit: how far the edges crackle (px); wob: how far the tip wanders (px).
  */
-export function flameTongue(p, x, y, h, w, sx, N, n, H, layers = LAYERS, jit = 0.5, wob = 1.1) {
+export function flameTongue(p, x, y, h, w, sx, N, n, H, layers = LAYERS, jit = 0.5, wob = 1.1, sy = 0) {
   if (h < 1) return;
   for (const [lw, lh, ri] of layers) {
     const L = h * lh, c = H[ri];
@@ -66,7 +66,8 @@ export function flameTongue(p, x, y, h, w, sx, N, n, H, layers = LAYERS, jit = 0
       const u = r / Math.max(1, L);
       const half = w * lw * Math.pow(1 - u, 0.85) * Math.min(1, (r + 1.5) / 3.5) + N(9, n, r * 0.45) * jit;
       if (half < 0.3) continue;
-      const cx = x + sx * u * u * lh + N(4, n + 7, r * 0.2) * u * wob, Y = Math.round(y - r);
+      const bend = u * u * lh;
+      const cx = x + sx * bend + N(4, n + 7, r * 0.2) * u * wob, Y = Math.round(y - r + sy * bend);
       for (let px = Math.round(cx - half), x1 = Math.round(cx + half); px <= x1; px++) p.px(px, Y, c);
     }
   }
@@ -262,6 +263,8 @@ const SMOKE1 = hex("#5b5566");
  */
 export function burn(p, t, T, o) {
   const { H, D, NL, S } = o, HC = o.height, X = o.x ?? 0, Y = o.y ?? 0, W = o.spread ?? 6, G = o.glow ?? 1;
+  const trailX = o.trailX ?? 0, trailY = o.trailY ?? 0;
+  const slip = age => 1 - Math.exp(-age * 2.8);
   const N = (rate, seed = 0, off = 0) => NL(t, rate, seed, off);
   const fla = (tt) => 0.74 + 0.16 * NL(tt, 7.3, S + 1) + 0.1 * NL(tt, 19, S + 2), fl = fla(t);
   const SMOKE = mix(SMOKE1, H[6], 0.25), EMB = [H[1], H[2], H[4], H[6]], GLOW = mix(mix(H[3], H[4], 0.5), WHITE, 0.25);
@@ -272,20 +275,22 @@ export function burn(p, t, T, o) {
     const { h, n } = TT[i], leap = Math.max(0, NL(tt, 2.6, n + 70) - 0.55) * 1.4;
     return (h + 0.25 * h * NL(tt, 3.3, n) + h * leap) * (0.9 + 0.1 * fla(tt));
   };
-  const sweep = (i, tt, h) => NL(tt, 2.2, TT[i].n + 40) * (1 + h * 0.08) + lean(tt) * h * 0.9 - clamp(TT[i].dx * 0.3, -2.5, 2.5);
+  const sweep = (i, tt, h) => NL(tt, 2.2, TT[i].n + 40) * (1 + h * 0.08) + lean(tt) * h * 0.9 - clamp(TT[i].dx * 0.3, -2.5, 2.5) + trailX * h / HC * 0.35;
+  const lift = h => trailY * h / HC * 0.22;
   const tip = (i, tt) => {
     const h = height(i, tt);
-    return [X + TT[i].dx + sweep(i, tt, h) * 0.85, Y + TT[i].y - h * 0.88 + 3, h];
+    return [X + TT[i].dx + sweep(i, tt, h) * 0.85, Y + TT[i].y - h * 0.88 + 3 + lift(h) * 0.85, h];
   };
   const tongueAt = (i) => {
     const { dx, y, w, n, back } = TT[i], h = height(i, t);
-    flameTongue(p, X + dx, Y + y, h, w, sweep(i, t, h), N, n, H, back ? BACK_LAYERS : w > 2.2 ? BIG_LAYERS : LAYERS, 0.5, 1.1 + h * 0.04);
+    flameTongue(p, X + dx, Y + y, h, w, sweep(i, t, h), N, n, H, back ? BACK_LAYERS : w > 2.2 ? BIG_LAYERS : LAYERS, 0.5, 1.1 + h * 0.04, lift(h));
   };
 
   // the plume: each puff keeps the sway the plume had when it left, so the wiggle climbs it
   looped(t, D, count(o.smoke ?? 12), S + 300, (r) => ({ x: r.range(-W, W) * 0.7, y: -HC * 0.8 - r.range(0, 6), vx: r.range(-2, 2), vy: -r.range(10, 17), life: r.range(...(o.smokeLife ?? [1.6, 2.6])), s: r.range(0.7, 1.1) * (o.smokeSize ?? 3) }), (q, age) => {
     const [x, y] = drift(q.x, q.y, q.vx, q.vy, age, o.wind ?? 3, -20, 1.6, 1);
-    smokePuff(p, X + x + NL(t - age, 0.8, S + 60) * (1.5 + 2.5 * age), Y + y, 1 - age / q.life, q.s, SMOKE);
+    const lag = slip(age);
+    smokePuff(p, X + x + NL(t - age, 0.8, S + 60) * (1.5 + 2.5 * age) + trailX * lag, Y + y + trailY * lag, 1 - age / q.life, q.s, SMOKE);
   });
   // flame puffs shed from the tips
   const puffs = [];
@@ -295,10 +300,11 @@ export function burn(p, t, T, o) {
   }, (q, age) => {
     const [tx, ty] = tip(q.i, t - age);
     const [x, y, vx, vy] = drift(tx + q.ox, ty + q.oy, q.vx, q.vy, Math.min(age, q.fire), 0, -95, 5, 3.2);
-    if (age < q.fire) return puffs.push([x, y, 1 - age / q.fire, q.s, q.f]);
+    const lag = slip(age);
+    if (age < q.fire) return puffs.push([x + trailX * lag, y + trailY * lag, 1 - age / q.fire, q.s, q.f]);
     if (age - q.fire > q.sl) return;
     const [sx, sy] = drift(x, y, vx * 0.6, vy * 0.6 - 6, age - q.fire, o.wind ?? 3, -16, 1.6, 1.2);
-    smokePuff(p, sx, sy, 1 - (age - q.fire) / q.sl, q.s * 0.7, 0);
+    smokePuff(p, sx + trailX * lag, sy + trailY * lag, 1 - (age - q.fire) / q.sl, q.s * 0.7, 0);
   });
   for (let i = 0; i < TT.length; i++) if (TT[i].back) tongueAt(i);
   for (let i = 0; i < TT.length; i++) if (!TT[i].back) tongueAt(i);
@@ -306,13 +312,15 @@ export function burn(p, t, T, o) {
   // licks torn off the tips, rising and shrinking
   looped(t, D, TT.length * count(o.licks ?? 4), S + 220, (r, j) => ({ i: j % TT.length, vx: r.range(-3, 3), vy: -r.range(12, 22), s: r.range(0.9, 1.6) * (0.8 + 0.5 * TT[j % TT.length].env), life: 0.26 }), (q, age) => {
     const [tx, ty] = tip(q.i, t - age);
-    lick(p, tx + q.vx * age, ty - 2 + q.vy * age, 1 - age / q.life, q.s, H);
+    const lag = slip(age);
+    lick(p, tx + q.vx * age + trailX * lag, ty - 2 + q.vy * age + trailY * lag, 1 - age / q.life, q.s, H);
   });
   for (const [x, y, k, s, f] of puffs) firePuff(p, x, y, k, s, f, H);
   // embers carried up by the heat, wandering and cooling
   looped(t, D, count(o.embers ?? 8), S + 500, (r) => ({ x: r.range(-W, W), y: -r.range(HC * 0.3, HC * 0.8), vx: r.range(-15, 15), vy: -r.range(25, 60), life: r.range(1.1, 2.4), s: r.chance(0.15) ? 2 : r.range(1, 1.6), a: r.range(0, 6.3), b: r.range(0, 6.3) }), (q, age) => {
     const [x, y] = drift(q.x, q.y, q.vx, q.vy, age, 0, -30, 1.6, 1.6);
-    ember(p, X + x + 7 * (Math.sin(age * 2.3 + q.a) - Math.sin(q.a)), Y + y + 2 * (Math.sin(age * 3 + q.b) - Math.sin(q.b)), 1 - age / q.life, q.s, EMB, age * 40 + q.a);
+    const lag = slip(age);
+    ember(p, X + x + 7 * (Math.sin(age * 2.3 + q.a) - Math.sin(q.a)) + trailX * lag, Y + y + 2 * (Math.sin(age * 3 + q.b) - Math.sin(q.b)) + trailY * lag, 1 - age / q.life, q.s, EMB, age * 40 + q.a);
   });
   // light: a broad warm wash, lights on the flames, a hot heart at the base
   if (G > 0) {

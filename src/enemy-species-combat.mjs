@@ -199,7 +199,8 @@ export function tickSpeciesCombat(g,e,dt,targets){
  const backline=['ranged','spell'].includes(base.style)||base.style==='support'&&(e.kind!=='skeleton_caster'||g.enemies.some(a=>a!==e&&a.hp>0&&a.group===e.group));
  const occupied=enemyGroupBusy(g,e,p),footwork=backline?rangedFootwork(g,e,p):null;
  const circling=base.style==='rush'&&beh.circle&&d<220&&e.tacticTime>0;
- if(enabled&&!circling&&e.cooldown<=0&&d<(base.style==='support'?65:attack.range)&&clearShot(g,e,p)&&requestEnemyGroupTurn(g,e,p,{rush:base.style==='rush',flightSpeed:base.style==='ranged'?270:base.style==='spell'?(e.kind==='water_elemental'?150:190):0})){
+ let targetVisible;
+ if(enabled&&!circling&&e.cooldown<=0&&d<(base.style==='support'?65:attack.range)&&(targetVisible??=clearShot(g,e,p))&&requestEnemyGroupTurn(g,e,p,{rush:base.style==='rush',flightSpeed:base.style==='ranged'?270:base.style==='spell'?(e.kind==='water_elemental'?150:190):0})){
   const next=speciesPhase(e,'windup',attack.windup);next.targetId=p.id;next.bowBash=e.kind==='archer'&&base.style==='melee';next.style=base.style==='spell'?'ranged':base.style;next.reach=base.style==='rush'?base.speed*base.active+(base.width||0):attack.range;next.width=(base.width||13)*2;next.arc=Math.acos(base.arc??.3);return true;
  }
  if(e.tickTockCrocodile){
@@ -207,7 +208,7 @@ export function tickSpeciesCombat(g,e,dt,targets){
   return true;
  }
  const before={x:e.x,y:e.y};if(beh.hunt!==false){
-  if(backline&&!clearShot(g,e,p))navigateEnemy(g,e,p,dt);
+  if(backline&&!(targetVisible??=clearShot(g,e,p)))navigateEnemy(g,e,p,dt);
   else if(occupied){if(!backline||d>180)navigateEnemy(g,e,enemyGroupPosition(g,e,p,{backline,range:attack.range}),dt);}
   else if(circling){
    const side=e.orbit||((Number(e.id)||0)%2?1:-1),radial=d<100?-.65:d>155?.5:0;

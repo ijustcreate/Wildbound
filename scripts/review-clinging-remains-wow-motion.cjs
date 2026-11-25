@@ -13,6 +13,8 @@ app.whenReady().then(async () => {
     await window.loadFile(path.join(root, 'index.html'));
     const image = await window.webContents.executeJavaScript(`(async()=>{
       const {defaultEldritchRig,renderEldritchPreview}=await import('./src/creature-packs/eldritch.mjs');
+      const {loadCreatureMotion}=await import('./src/creature-packs/index.mjs');
+      await loadCreatureMotion('evil_hand');
       const {poseAt}=await import('./src/player-motion.mjs');
       const rig=defaultEldritchRig('evil_hand'),canvas=document.createElement('canvas');
       const cellW=124,cellH=170,columns=8,top=48;canvas.width=cellW*columns;canvas.height=top+cellH*4;
