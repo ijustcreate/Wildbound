@@ -1,0 +1,229 @@
+import {drawJungleFern,fernAccentGroup} from './fern-art.mjs';
+import {vegetationWindStrength} from './vegetation-motion.mjs';
+import {forestHash as hash, forestNoise as noise, forestWind, clearingDistance, routeDistance,forestPavingAt} from './forest-landscape.mjs';
+import {addPixelShadowPolygon} from './pixel-shadow.mjs';
+
+const rect = (c, x, y, w, h, color) => {
+  c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h));
+};
+function polygon(c, points, color) {
+  c.fillStyle = color; c.beginPath();
+  points.forEach(([x, y], i) => i ? c.lineTo(Math.round(x), Math.round(y)) : c.moveTo(Math.round(x), Math.round(y)));
+  c.closePath(); c.fill();
+}
+const groundCache = new WeakMap();
+export const hasForestLandscape = g => !!g.forestLandscape && (g.generatedEnvironment || g.environment || 'forest') === 'forest';
+const grassColors = ['#365744', '#426344', '#557346', '#668348', '#7e944e', '#94a358'];
+
+export function forestGroundTone(plan,x,y){
+      const large = noise(x / 235, y / 235, plan.seed);
+      const detail = noise(x / 45, y / 45, plan.seed + 23);
+      const clear = clearingDistance(x, y, plan.seed);
+      const light = Math.max(0, 1 - clear) * .28;
+      const n = large * .75 + detail * .25 + light;
+      const path = routeDistance(plan, x, y), edge = 23 + noise(x / 70, y / 70, plan.seed) * 16;
+      let color = grassColors[Math.min(5, Math.floor(n * 6))];
+      if (path < edge || clear < .92) color = ['#89975d', '#929d64', '#9ca56d'][Math.min(2, Math.floor(detail * 3))];
+      if (path < edge - 10 && clear > 1) color = ['#8a9270', '#969b78', '#a4a481'][Math.min(2, Math.floor(detail * 3))];
+ return color;
+}
+
+function paving(c, plan, cx, cy, rx, ry, seed) {
+  const cells = plan.paving.cells;
+  for (let y = -12; y < 12; y++) for (let x = -12; x < 12; x++) {
+    const px = cx + x * 12, py = cy + y * 9;
+    if ((x * 12 / rx) ** 2 + (y * 9 / ry) ** 2 > .8 + noise(x * .3, y * .3, seed) * .4) continue;
+    const v = cells[(y + 12) * 24 + x + 12];
+    if (!v) continue;
+    rect(c, px, py + 1, 11, 8, '#536452');
+    rect(c, px, py, 10, 6, v === 2 ? '#a4ac87' : '#879775');
+    rect(c, px, py, 8, 1, '#bdc09a');
+    if (hash(x + seed, y) > .6) rect(c, px + 6, py + 3, 5, 3, '#718c4d');
+  }
+}
+
+export function drawLandscapeGround(c, g, bounds) {
+  const plan = g.forestLandscape;
+  let entry = groundCache.get(plan);
+  if(entry&&entry.terrain!==g.terrain&&entry.terrainKey===g.terrain.join(','))entry.terrain=g.terrain;
+  if (!entry || entry.terrain !== g.terrain) {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1600;
+    const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
+    for (let y = 0; y < 1600; y += 8) for (let x = 0; x < 1600; x += 8) {
+      const large = noise(x / 235, y / 235, plan.seed);
+      const detail = noise(x / 45, y / 45, plan.seed + 23);
+      const clear = clearingDistance(x, y, plan.seed);
+      const light = Math.max(0, 1 - clear) * .28;
+      const n = large * .75 + detail * .25 + light;
+      const path = routeDistance(plan, x, y), edge = 23 + noise(x / 70, y / 70, plan.seed) * 16;
+      let color = grassColors[Math.min(5, Math.floor(n * 6))];
+      if (path < edge || clear < .92) color = ['#89975d', '#929d64', '#9ca56d'][Math.min(2, Math.floor(detail * 3))];
+      if (path < edge - 10 && clear > 1) color = ['#8a9270', '#969b78', '#a4a481'][Math.min(2, Math.floor(detail * 3))];
+      rect(ctx, x, y, 8, 8, color);
+      if (hash(x, y + plan.seed) > .65) rect(ctx, x + 2, y + 4, 3, 1, path < edge ? '#b7b38a' : '#a4b06c');
+    }
+    paving(ctx, plan, 800, 816, 137, 99, plan.seed);
+    for (const l of plan.landmarks) paving(ctx, plan, l.x, l.y, 138, 108, l.seed);
+    // Ground litter uses contextual clusters rather than one mark per tile.
+    for (const p of g.scenery) {
+      if (p.kind === 'forest_ruin') {
+        for (let i = 0; i < 28; i++) {
+          const x = p.x + (hash(i, p.seed) - .5) * (p.width + 55), y = p.y + hash(p.seed, i) * 24;
+          rect(ctx, x, y + 2, 5 + hash(i, 1) * 8, 3, '#46594b');
+          rect(ctx, x, y, 5 + hash(i, 1) * 8, 3, i % 3 ? '#82917a' : '#a4ab8c');
+        }
+      }
+      if (p.kind !== 'tree') continue;
+      const by = p.rootY ?? p.y + p.size * .35;
+      for (let i = 0; i < 52; i++) {
+        const x = p.x + (hash(p.x, i) - .5) * p.size, y = by + (hash(i, p.y) - .5) * p.size * .55;
+        if (g.terrain[Math.floor(y / 32) * 50 + Math.floor(x / 32)] !== 'grass') continue;
+        rect(ctx, x, y, 2 + hash(i, p.x) * 3, 2, p.autumnAccent || p.season === 'autumn' ? ['#b4a355', '#ac784b', '#775b42'][i % 3] : ['#71834d', '#8e9659', '#586d43'][i % 3]);
+      }
+      for(const sign of [-1,1])for(let step=0;step<9;step++){
+        const x=p.x+sign*step*4,y=by+step*1.3+Math.sin(step*.8)*2;
+        if(g.terrain[Math.floor(y/32)*50+Math.floor(x/32)]!=='grass')continue;
+        rect(ctx,x,y,5,Math.max(1,4-step*.35),'#536348');
+        rect(ctx,x,y,4,1,p.treeType==='birch'?'#b1b89b':'#8c8b60');
+      }
+    }
+    entry = {canvas, terrain: g.terrain, terrainKey:g.terrain.join(',')}; groundCache.set(plan, entry);
+  }
+  const {sx, sy, ex, ey} = bounds;
+  c.drawImage(entry.canvas, sx * 32, sy * 32, (ex - sx) * 32, (ey - sy) * 32,
+    sx * 32, sy * 32, (ex - sx) * 32, (ey - sy) * 32);
+}
+
+const broadShadow = [[14,8],[23,7],[27,9],[33,5],[42,6],[48,13],[44,22],[34,24],[29,19],[17,21],[9,17],[10,12]];
+const narrowShadow = [[20,6],[23,7],[22,10],[35,12],[30,15],[40,20],[30,23],[19,18],[10,17],[12,14],[7,12],[16,11]];
+const rootContact = [[-15,1],[-10,-2],[-4,-3],[5,-3],[10,-1],[16,2],[13,4],[5,5],[-6,5],[-15,3]];
+const trunkShadow = [[-3,0],[4,-2],[36,13],[31,17],[5,4]];
+function shadowOutline(c, points, x, y, sx, sy, color, step=2) {
+  c.fillStyle=color; c.beginPath();
+  addPixelShadowPolygon(c,points.map(([px,py])=>[x+px*sx,y+py*sy]),step);
+  c.fill();
+}
+export function drawCanopyShadow(c, p, time = 0, cast = true) {
+  if (p.destroyed || (p.depleted && !p.fallen)) return;
+  const shrub = p.kind === 'bush' || p.kind === 'frost_shrub';
+  const size = p.size || 64, s = size / (shrub ? 40 : 64);
+  const artBase = p.y + size * (shrub ? .19 : .35);
+  const base = p.kind === 'frost_shrub' ? artBase : p.rootY ?? artBase;
+  // The low, cool root contact belongs beneath the prop on either shadow setting.
+  const contactScale = s * (shrub ? 1.12 : p.fallen ? .71 : 1);
+  shadowOutline(c,rootContact,p.x,base,contactScale,contactScale,'#18332f4c',1);
+  rect(c, p.x-7*contactScale, base-contactScale, 15*contactScale, 3*contactScale, '#142a2875');
+  if (!cast || p.fallen || p.falling || Number.isFinite(p.bushBurnAt)) return;
+  if (shrub) {
+    shadowOutline(c,broadShadow,p.x-14*s,base-3*s,s*.72,s*.36,'#18372f55');
+    return;
+  }
+  const crown = p.treeType === 'pine' || p.kind === 'snow_tree' ? narrowShadow : broadShadow;
+  shadowOutline(c,trunkShadow,p.x,base,s,s,'#17342d4e');
+  shadowOutline(c,crown,p.x+forestWind(p.x,base,time)*2,base,s,s,'#16382f4d');
+}
+
+export function drawLandscapeCover(c, g, visible,shaderGrass=false) {
+  const plan = g.forestLandscape;
+  for (const p of plan.cover) {
+    if(shaderGrass&&p.kind==='grass')continue;
+    if (!visible(p) || (g.bloom < 3 && Math.hypot(p.x - 800, p.y - 800) > g.bloom * 430)) continue;
+    if (p.kind === 'fern') {
+        if(fernAccentGroup(plan.cover).has(p)&&!forestPavingAt(plan,p.x,p.y))drawJungleFern(c,p,g.time,vegetationWindStrength(g));
+    } else {
+      const wind = Math.round(forestWind(p.x, p.y, g.time,vegetationWindStrength(g)) * 2);
+      const shade = noise(p.x / 235, p.y / 235, plan.seed) < .45;
+      for (let i = 0; i < 3; i++) {
+        const height = 3 + hash(i, p.seed) * 7;
+        rect(c, p.x + i * 3, p.y - height / 2, 1, height / 2, '#526f40');
+        rect(c, p.x + i * 3 + wind, p.y - height, 1, height / 2 + 1, shade ? '#739453' : '#b3bd77');
+      }
+      if (p.kind === 'flower') {
+        const color = p.seed % 3 < 1 ? '#e2c865' : '#ce9ebb';
+        rect(c, p.x + 2 + wind, p.y - 7, 5, 2, color); rect(c, p.x + 3 + wind, p.y - 8, 2, 4, color);
+        rect(c, p.x + 3 + wind, p.y - 7, 1, 1, '#f0ddb0');
+      }
+    }
+  }
+}
+
+function stoneBlock(c, x, y, w, h, seed) {
+  rect(c, x, y, w, h, '#405354');
+  rect(c, x + 1, y, w - 2, h - 2, ['#667674', '#71807a', '#7f8c81'][Math.floor(hash(x + seed, y) * 3)]);
+  rect(c, x + 1, y, w - 2, 2, '#a0a996');
+  if (hash(x, y + seed) > .6) {rect(c, x + w * .6, y + 2, 2, h - 3, '#485e58'); rect(c, x + w * .6 - 3, y + 3, 4, 1, '#485e58');}
+  if (hash(y + seed, x) > .48) {
+    rect(c, x + 2, y + h - 4, w * .6, 3, '#657e47'); rect(c, x + 3, y + h - 3, w * .3, 1, '#a1ad64');
+  }
+}
+function drawPillarCapGrass(c,left,top,width,depth,seed) {
+  const x=Math.round(left)+5,y=Math.round(top)+5,w=Math.floor(width)-10,h=Math.floor(depth)-12;
+  if(w<9||h<8)return;
+  const [root,shade,grass,light]=grassColors.slice(1,5);
+  // The uneven sod sits inside the lit stone rim.
+  rect(c,x+2,y,w-4,1,shade);
+  rect(c,x,y+1,w,h-2,shade);
+  rect(c,x+2,y+h-1,w-4,1,root);
+  for(let row=0;row<h-3;row+=5)for(let col=0;col<w-4;col+=7){
+    const tone=hash(seed+row,col);
+    if(tone<.3)continue;
+    const px=x+1+col,py=y+1+row,run=Math.min(5,w-col-2);
+    rect(c,px,py,run,2,tone>.68?grass:root);
+    rect(c,px+1,py+2,run-2,1,tone>.68?grass:root);
+  }
+  for(let row=5;row<h-1;row+=7)for(let col=4;col<w-4;col+=8){
+    const tone=hash(seed+col,row);
+    if(tone<.17)continue;
+    const px=x+col+(tone>.66?1:0),py=y+row,lean=tone>.5?1:-1;
+    rect(c,px-2,py,5,2,root);
+    rect(c,px-1,py-2,3,2,grass);
+    rect(c,px+lean*2,py-3,1,3,grass);
+    rect(c,px,py-3,1,2,light);
+    if(tone>.48)rect(c,px-lean,py-4,1,1,light);
+  }
+}
+
+export function drawForestRuin(c, p) {
+  const left = p.x - p.width / 2, top = p.y - p.depth - p.height;
+  polygon(c, [[left, p.y], [left + p.width, p.y], [left + p.width + p.height * .7, p.y + p.height * .35], [left + p.height * .7, p.y + p.height * .35]], '#193d3533');
+  rect(c, left, top + p.depth, p.width, p.height, '#405656');
+  for (let row = 0; row < Math.ceil(p.height / 11); row++) {
+    const y = top + p.depth + row * 11, h = Math.min(11, p.y - y);
+    for (let x = left - (row % 2) * 12; x < left + p.width; x += 25) {
+      const lx = Math.max(left, x), width = Math.min(left + p.width, x + 25) - lx;
+      if (width > 0 && h > 0) stoneBlock(c, lx, y, width, h, p.seed);
+    }
+  }
+  rect(c, left, top + p.depth, 5, p.height, '#9aa58e');
+  rect(c, left + p.width - 7, top + p.depth + 2, 7, p.height - 2, '#394e50');
+  rect(c, left - 3, top + p.depth - 3, p.width + 6, 6, '#acb399');
+  rect(c, left - 3, top + p.depth + 3, p.width + 6, 3, '#526564');
+  polygon(c, [[left, top], [left + p.width, top + 2], [left + p.width + 3, top + p.depth - 3], [left - 3, top + p.depth - 3]], '#a7af8b');
+  if (p.shape === 'pillar' || p.grassCap) drawPillarCapGrass(c,left,top,p.width,p.depth,p.seed);
+  else {
+    rect(c, left + 5, top + 3, p.width - 10, Math.max(4, p.depth - 10), '#7f9958');
+    for (let i = 0; i < p.width * .65; i++) {
+      const x = left + hash(i, p.seed) * p.width, y = top + hash(p.seed, i) * (p.depth - 3);
+      rect(c, x, y, 1, 2 + hash(i, 3) * 4, i % 3 ? '#b9c47e' : '#526f45');
+    }
+  }
+  if (p.shape === 'shrine') {
+    rect(c, p.x - 12, top + p.depth + 13, 24, Math.max(12, p.height - 19), '#304c49');
+    rect(c, p.x - 5, top + p.depth + 17, 10, 10, '#a3aa94');
+    polygon(c, [[p.x - 4, top + p.depth + 27], [p.x + 4, top + p.depth + 27], [p.x + 9, p.y - 5], [p.x - 9, p.y - 5]], '#81917d');
+  }
+  if (p.shape === 'pillar') {
+    rect(c, p.x - 5, top + p.depth + 12, 10, Math.max(5, p.height - 23), '#526966');
+    rect(c, p.x - 2, top + p.depth + 14, 2, Math.max(3, p.height - 27), '#889782');
+  }
+  // Buttress steps are solid decorative faces within the same ground footprint.
+  if (p.shape === 'terrace') for (let i = 0; i < 4; i++) {
+    const y = p.y - i * 6;
+    rect(c, left + 8 + i * 2, y - 3, p.width * .4 - i * 2, 3, '#aab193');
+    rect(c, left + 8 + i * 2, y, p.width * .4 - i * 2, 2, '#4c6260');
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = left + hash(i, p.seed) * p.width, length = 8 + hash(p.seed, i) * p.height * .65;
+    for (let k = 0; k < length; k += 4) rect(c, x + Math.sin(k * .2) * 2, top + p.depth + k, 2 + k % 3, 4, k % 8 ? '#627c46' : '#92a65c');
+  }
+}
